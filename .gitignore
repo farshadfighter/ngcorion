@@ -22,10 +22,6 @@ env/
 .idea/
 *.swp
 
-# Logs
-*.log
-logs/
-
 # OS
 .DS_Store
 Thumbs.db
