@@ -4,7 +4,7 @@
 Base config of project
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
+#from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # Project Info
     PROJECT_NAME: str = "Netease"
-    VERSION: str = "1.0.1"
+    VERSION: str = "1.0.2"
     DESCRIPTION: str = "Network Asset Management System"
     
     # Database
