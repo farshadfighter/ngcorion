@@ -3,8 +3,10 @@
 """
 Base config of project
 """
+# Pydantic help for create clean config
 from pydantic_settings import BaseSettings
 #from typing import Optional
+
 
 
 class Settings(BaseSettings):
