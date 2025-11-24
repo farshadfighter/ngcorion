@@ -1,29 +1,33 @@
 from app.core.database import SessionLocal
 from app.models import User, UserRole
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.core.security import get_password_hash
 
 db = SessionLocal()
 
 try:
-    password = "123456"
-    hashed = pwd_context.hash(password)
+    # فقط آپدیت پسورد (بدون حذف!)
+    user = db.query(User).filter(User.username == "admin").first()
     
-    # بدون full_name
-    user = User(
-        username="Sina_Bimesl",
-        email="sina@gmail.com",
-        hashed_password=hashed,
-        role=UserRole.ADMIN,
-        is_active=True
-    )
-    db.add(user)
-    db.commit()
-    
-    print(f"✅ Created user: {user.username} (id={user.id})")
+    if user:
+        # آپدیت پسورد
+        user.hashed_password = get_password_hash("123456")
+        db.commit()
+        print(f"✅ Password updated for: {user.username}")
+    else:
+        # ساخت یوزر جدید
+        user = User(
+            username="admin",
+            email="admin@test.com",
+            hashed_password=get_password_hash("123456"),
+            role=UserRole.ADMIN,
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        print(f"✅ User created: {user.username}")
     
 except Exception as e:
     print(f"❌ Error: {e}")
+    db.rollback()
 finally:
     db.close()
