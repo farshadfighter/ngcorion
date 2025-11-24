@@ -8,6 +8,7 @@ from app.core.database import Base, engine # DB connection
 from app.modules.auth import router as auth_router # auth router
 from app.modules.logs import router as logs_router # logs router
 from app.modules.users import router as users_router # users router
+from app.modules.assets.router import router as assets_router # asset router
 
 # Create database table
 Base.metadata.create_all(bind=engine)
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"]) #authenticate
 app.include_router(logs_router.router, prefix="/api/logs", tags=["Logs"])  #login/logs
 app.include_router(users_router.router, prefix="/api/users", tags=["Users"]) #user_manager
+app.include_router(assets_router) # asset management
 
 @app.get("/")
 def root():

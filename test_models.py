@@ -11,15 +11,18 @@ db = SessionLocal()
 
 try:
     # 1. Create AssetType
-    asset_type = AssetType(
+    asset_type = db.query(AssetType).filter(AssetType.type_name == "Firewall").first()
+    if not asset_type:
+        asset_type = AssetType(
         type_name="Firewall",
         category="Security",
         description="Network security device"
-    )
-    db.add(asset_type)
-    db.commit()
-    print(f"✅ Created AssetType: {asset_type}")
-    
+        )
+        db.add(asset_type)
+        db.commit()
+        print(f"✅ Created AssetType: {asset_type}")
+    else:
+        print(f"✅ Found AssetType: {asset_type}")
     # 2. Get existing user (assuming you have user id=1)
     user = db.query(User).filter(User.id == 1).first()
     if not user:
