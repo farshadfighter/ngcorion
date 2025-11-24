@@ -1,8 +1,9 @@
-from .user import User, UserRole
-from .login_log import LoginLog
+"""
+Models Package
+Import all models so Alembic can discover them
+"""
 
-__all__ = ["User", "UserRole", "LoginLog"]
-
+# Import Base first
 from app.core.database import Base
 
 # Import ENUMs
@@ -14,7 +15,7 @@ from app.models.enums import (
 )
 
 # Import existing models
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.login_log import LoginLog
 
 # Import asset reference tables
@@ -35,6 +36,7 @@ from app.models.asset_dependencies import AssetDependency
 from app.models.asset_security_status import AssetSecurityStatus
 
 
+# Export all 
 __all__ = [
     "Base",
     "StatusEnum",
@@ -42,6 +44,7 @@ __all__ = [
     "RiskLevelEnum",
     "RelationTypeEnum",
     "User",
+    "UserRole",
     "LoginLog",
     "AssetType",
     "NetworkZone",
