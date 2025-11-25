@@ -4,7 +4,8 @@ from typing import List
 from app.core.database import get_db
 from .schemas import *
 from .service import AssetService
-
+from app.core.dependencies import get_current_user, require_admin
+from app.models import User
 # === Asset Types Router ===
 asset_types_router = APIRouter(prefix="/api/asset-types", tags=["Asset Types"])
 
