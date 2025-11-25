@@ -137,4 +137,85 @@ def get_user(
 def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
-    current_user: User = De
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create new user with permissions
+    
+    Requires: user_management.write permission (or admin role)
+    
+    - **username**: Username (3-50 characters, unique)
+    - **email**: Email address (unique)
+    - **password**: Password (minimum 4 characters)
+    - **role**: User role (admin, manager, user, guest)
+    - **is_active**: Activity status (default: true)
+    - **permissions**: List of module permissions (optional)
+    
+    If permissions not provided, defaults are applied:
+    - dashboard: read=True
+    - asset_list: read=True
+    - all others: False
+    
+    Note: Admin users don't need permissions (they have all access)
+    """
+    check_user_management_permission(current_user, "write", db)
+    
+    service = UserService(db)
+    new_user = service.create_user(user_data)
+    return new_user
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: int,
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update user information and permissions
+    
+    Requires: user_management.write permission (or admin role)
+    
+    - **user_id**: User ID
+    - All fields are optional (submit only fields you want to change)
+    - **permissions**: If provided, replaces ALL existing permissions
+    
+    Note: Cannot change admin user's permissions (they always have full access)
+    """
+    check_user_management_permission(current_user, "write", db)
+    
+    service = UserService(db)
+    updated_user = service.update_user(user_id, user_data)
+    return updated_user
+
+
+@router.delete("/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete user
+    
+    Requires: user_management.delete permission (or admin role)
+    
+    - **user_id**: User ID
+    
+    Note: This operation is irreversible! User's permissions are also deleted.
+    
+    Warning: Cannot delete yourself or the last admin user.
+    """
+    check_user_management_permission(current_user, "delete", db)
+    
+    # Prevent self-deletion
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete yourself"
+        )
+    
+    service = UserService(db)
+    result = service.delete_user(user_id)
+    return result
