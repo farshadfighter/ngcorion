@@ -35,6 +35,8 @@ from app.models.asset import Asset
 from app.models.asset_dependencies import AssetDependency
 from app.models.asset_security_status import AssetSecurityStatus
 
+from app.models.user_permission import UserPermission, ModuleEnum
+
 
 # Export all 
 __all__ = [
@@ -55,4 +57,6 @@ __all__ = [
     "Asset",
     "AssetDependency",
     "AssetSecurityStatus",
+    "UserPermission",
+    "ModuleEnum",
 ]

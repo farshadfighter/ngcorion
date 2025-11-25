@@ -1,68 +1,52 @@
 """
-User Service - (CRUD)
+User Service with Permission Management
 """
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 from typing import List, Optional
 
 from app.models import User, UserRole
+from app.models.user_permission import UserPermission, ModuleEnum, get_default_permissions
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash
 
 
 class UserService:
-    """User management service"""
+    """User management service with permission support"""
     
     def __init__(self, db: Session):
         self.db = db
     
+    # ==========================================
+    # User CRUD Operations
+    # ==========================================
+    
     def get_all_users(self) -> List[User]:
-        """
-        get users list
-        
-        Returns:
-        All users list
-        """
+        """Get all users"""
         return self.db.query(User).all()
     
     def get_user_by_id(self, user_id: int) -> User:
-        """
-        get user by ID
-        
-        Args:
-            user_id: User Identify
-        
-        Returns:
-            User object
-        
-        Raises:
-            HTTPException: if user not found or already taken
-        """
+        """Get user by ID with permissions"""
         user = self.db.query(User).filter(User.id == user_id).first()
         
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"the user with {user_id} id not found"
+                detail=f"User with id {user_id} not found"
             )
         
         return user
     
     def create_user(self, user_data: UserCreate) -> User:
         """
-        Creat new User
+        Create new user with permissions
         
-        Args:
-            user_data: new user data
-        
-        Returns:
-            Created User object
-        
-        Raises:
-            HTTPException: if email or Already available
+        If permissions not provided, default permissions are applied:
+        - dashboard: read=True
+        - asset_list: read=True
+        - all others: read=False, write=False, delete=False
         """
-        # بررسی تکراری نبودن username
+        # Check username uniqueness
         existing_user = self.db.query(User).filter(
             User.username == user_data.username
         ).first()
@@ -70,10 +54,10 @@ class UserService:
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"User name '{user_data.username}' already used."
+                detail=f"Username '{user_data.username}' already exists"
             )
         
-        # بررسی تکراری نبودن email
+        # Check email uniqueness
         existing_email = self.db.query(User).filter(
             User.email == user_data.email
         ).first()
@@ -81,19 +65,19 @@ class UserService:
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Email '{user_data.email}' already used."
+                detail=f"Email '{user_data.email}' already exists"
             )
         
-        # تبدیل role به enum
+        # Validate role
         try:
             user_role = UserRole(user_data.role)
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Role '{user_data.role}' Is invalid, please use valid Role: admin, manager, user, guest"
+                detail=f"Invalid role '{user_data.role}'. Valid roles: admin, manager, user, guest"
             )
         
-        # ساخت کاربر جدید
+        # Create user
         new_user = User(
             username=user_data.username,
             email=user_data.email,
@@ -103,33 +87,25 @@ class UserService:
         )
         
         self.db.add(new_user)
+        self.db.flush()  # Get user ID without committing
+        
+        # Create permissions (skip for admin - they have all permissions)
+        if user_role != UserRole.ADMIN:
+            self._create_user_permissions(new_user.id, user_data.permissions)
+        
         self.db.commit()
         self.db.refresh(new_user)
         
-        print(f"New user created successfully --->: {new_user.username} ({new_user.role.value})")
+        print(f"[+] User created: {new_user.username} ({new_user.role.value})")
         
         return new_user
     
     def update_user(self, user_id: int, user_data: UserUpdate) -> User:
-        """
-        Edit user
-        
-        Args:
-            user_id: User ID
-            user_data: User data (Optinal)
-        
-        Returns:
-            Udated User object 
-        
-        Raises:
-            HTTPException: if user not found or Already available
-        """
-        # پیدا کردن کاربر
+        """Update user and optionally their permissions"""
         user = self.get_user_by_id(user_id)
         
-        # به‌روزرسانی username
+        # Update username
         if user_data.username is not None:
-            # بررسی تکراری نبودن
             existing = self.db.query(User).filter(
                 User.username == user_data.username,
                 User.id != user_id
@@ -138,12 +114,12 @@ class UserService:
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"user name '{user_data.username}' Already used"
+                    detail=f"Username '{user_data.username}' already exists"
                 )
             
             user.username = user_data.username
         
-        # به‌روزرسانی email
+        # Update email
         if user_data.email is not None:
             existing = self.db.query(User).filter(
                 User.email == user_data.email,
@@ -153,74 +129,178 @@ class UserService:
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"email '{user_data.email}' Already used"
+                    detail=f"Email '{user_data.email}' already exists"
                 )
             
             user.email = user_data.email
         
-        # به‌روزرسانی password
+        # Update password
         if user_data.password is not None:
             user.hashed_password = get_password_hash(user_data.password)
         
-        # به‌روزرسانی role
+        # Update role
         if user_data.role is not None:
             try:
                 user.role = UserRole(user_data.role)
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Role '{user_data.role}' not Valid"
+                    detail=f"Invalid role '{user_data.role}'"
                 )
         
-        # به‌روزرسانی is_active
+        # Update is_active
         if user_data.is_active is not None:
             user.is_active = user_data.is_active
+        
+        # Update permissions (if provided and user is not admin)
+        if user_data.permissions is not None and user.role != UserRole.ADMIN:
+            self._update_user_permissions(user_id, user_data.permissions)
         
         self.db.commit()
         self.db.refresh(user)
         
-        print(f"User {user.username} Update successfully")
+        print(f"[*] User updated: {user.username}")
         
         return user
     
     def delete_user(self, user_id: int) -> dict:
-        """
-        Remove User
-        
-        Args:
-            user_id: ID
-        
-        Returns:
-            success
-        
-        Raises:
-            HTTPException: if user not found
-        """
+        """Delete user (permissions are deleted automatically via CASCADE)"""
         user = self.get_user_by_id(user_id)
-        
         username = user.username
         
         self.db.delete(user)
         self.db.commit()
         
-        print(f"User {username} Removed.")
+        print(f"[-] User deleted: {username}")
         
         return {
             "success": True,
-            "message": f"User '{username}' Removed successfully."
+            "message": f"User '{username}' deleted successfully"
         }
     
     def search_users(self, query: str) -> List[User]:
-        """
-       Search user by name and email
-        
-        Args:
-            query: search query
-        
-        Returns:
-           Users list:
-        """
+        """Search users by username or email"""
         return self.db.query(User).filter(
             (User.username.ilike(f"%{query}%")) | 
             (User.email.ilike(f"%{query}%"))
         ).all()
+    
+    # ==========================================
+    # Permission Management
+    # ==========================================
+    
+    def _create_user_permissions(self, user_id: int, permissions_data: Optional[List] = None):
+        """
+        Create permissions for a user
+        
+        If permissions_data is None, default permissions are used.
+        """
+        if permissions_data is None:
+            # Use default permissions
+            defaults = get_default_permissions()
+            for perm in defaults:
+                permission = UserPermission(
+                    user_id=user_id,
+                    module=perm['module'],
+                    can_read=perm['can_read'],
+                    can_write=perm['can_write'],
+                    can_delete=perm['can_delete']
+                )
+                self.db.add(permission)
+        else:
+            # Use provided permissions
+            for perm_data in permissions_data:
+                try:
+                    module = ModuleEnum(perm_data.module)
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Invalid module '{perm_data.module}'"
+                    )
+                
+                permission = UserPermission(
+                    user_id=user_id,
+                    module=module,
+                    can_read=perm_data.can_read,
+                    can_write=perm_data.can_write,
+                    can_delete=perm_data.can_delete
+                )
+                self.db.add(permission)
+    
+    def _update_user_permissions(self, user_id: int, permissions_data: List):
+        """
+        Update user permissions (replaces all existing permissions)
+        """
+        # Delete existing permissions
+        self.db.query(UserPermission).filter(
+            UserPermission.user_id == user_id
+        ).delete()
+        
+        # Create new permissions
+        for perm_data in permissions_data:
+            try:
+                module = ModuleEnum(perm_data.module)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid module '{perm_data.module}'"
+                )
+            
+            permission = UserPermission(
+                user_id=user_id,
+                module=module,
+                can_read=perm_data.can_read,
+                can_write=perm_data.can_write,
+                can_delete=perm_data.can_delete
+            )
+            self.db.add(permission)
+    
+    def get_user_permissions(self, user_id: int) -> List[UserPermission]:
+        """Get all permissions for a user"""
+        return self.db.query(UserPermission).filter(
+            UserPermission.user_id == user_id
+        ).all()
+    
+    def check_permission(self, user_id: int, module: str, action: str) -> bool:
+        """
+        Check if user has specific permission
+        
+        Args:
+            user_id: User ID
+            module: Module name (e.g., 'asset_list')
+            action: Action type ('read', 'write', 'delete')
+        
+        Returns:
+            bool: True if user has permission
+        """
+        # Get user to check if admin
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return False
+        
+        # Admin has all permissions
+        if user.role == UserRole.ADMIN:
+            return True
+        
+        # Check permission table
+        try:
+            module_enum = ModuleEnum(module)
+        except ValueError:
+            return False
+        
+        permission = self.db.query(UserPermission).filter(
+            UserPermission.user_id == user_id,
+            UserPermission.module == module_enum
+        ).first()
+        
+        if not permission:
+            return False
+        
+        if action == 'read':
+            return permission.can_read
+        elif action == 'write':
+            return permission.can_write
+        elif action == 'delete':
+            return permission.can_delete
+        
+        return False
