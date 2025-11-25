@@ -1,5 +1,6 @@
 """
 Netease - Main Application
+Updated to use authentication-enabled routers
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,9 @@ from app.core.database import Base, engine
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
-from app.modules.assets.router import (
+
+# Import authenticated routers
+from app.modules.assets.router_with_auth import (
     asset_types_router,
     assets_router,
     owners_router,
@@ -23,18 +26,25 @@ from app.modules.assets.router import (
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Netease Asset Manager", redirect_slashes=False)
+app = FastAPI(
+    title="Netease Asset Manager",
+    description="Network Asset Management System",
+    version="1.0.0",
+    redirect_slashes=False
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # در production باید محدود شود
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Register routers
+# Authentication routes (no auth required)
 app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
+
+# Protected routes (auth required)
 app.include_router(logs_router.router, prefix="/api/logs", tags=["Logs"])
 app.include_router(users_router.router, prefix="/api/users", tags=["Users"])
 app.include_router(asset_types_router)
@@ -48,13 +58,20 @@ app.include_router(dependencies_router)
 app.include_router(security_router)
 app.include_router(views_router)
 
+
 @app.get("/")
 def root():
-    return {"message": "Netease API is running"}
+    return {
+        "project": "Netease",
+        "version": "1.0.0",
+        "status": "running"
+    }
+
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
 
 if __name__ == "__main__":
     import uvicorn
