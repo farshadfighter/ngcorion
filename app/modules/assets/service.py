@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models import AssetType
 from .schemas import AssetTypeCreate
 from app.models import Asset, AssetOwner, AssetLocation
+from app.models import NetworkZone, OSCatalog, VendorCatalog, AssetDependency, AssetSecurityStatus
 
 class AssetService:
     
@@ -99,3 +100,104 @@ class AssetService:
         db.commit()
         db.refresh(location)
         return location
+
+    # === Network Zones ===
+    @staticmethod
+    def get_all_zones(db: Session):
+        return db.query(NetworkZone).all()
+    
+    @staticmethod
+    def create_zone(db: Session, data: dict):
+        zone = NetworkZone(**data)
+        db.add(zone)
+        db.commit()
+        db.refresh(zone)
+        return zone
+    
+    # === OS Catalog ===
+    @staticmethod
+    def get_all_os(db: Session):
+        return db.query(OSCatalog).all()
+    
+    @staticmethod
+    def create_os(db: Session, data: dict):
+        os_entry = OSCatalog(**data)
+        db.add(os_entry)
+        db.commit()
+        db.refresh(os_entry)
+        return os_entry
+    
+    # === Vendor Catalog ===
+    @staticmethod
+    def get_all_vendors(db: Session):
+        return db.query(VendorCatalog).all()
+    
+    @staticmethod
+    def create_vendor(db: Session, data: dict):
+        vendor = VendorCatalog(**data)
+        db.add(vendor)
+        db.commit()
+        db.refresh(vendor)
+        return vendor
+    
+    # === Dependencies ===
+    @staticmethod
+    def get_asset_dependencies(db: Session, asset_id: int):
+        return db.query(AssetDependency).filter(AssetDependency.asset_id == asset_id).all()
+    
+    @staticmethod
+    def create_dependency(db: Session, data: dict):
+        dep = AssetDependency(**data)
+        db.add(dep)
+        db.commit()
+        db.refresh(dep)
+        return dep
+    
+    # === Security Status ===
+    @staticmethod
+    def get_security_status(db: Session, asset_id: int):
+        return db.query(AssetSecurityStatus).filter(AssetSecurityStatus.asset_id == asset_id).first()
+    
+    @staticmethod
+    def create_security_status(db: Session, data: dict):
+        status = AssetSecurityStatus(**data)
+        db.add(status)
+        db.commit()
+        db.refresh(status)
+        return status
+    
+    @staticmethod
+    def get_assets_overview(db: Session, user_id: int = None):
+        """Overview view"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+        
+        return [asset.get_overview() for asset in query.all()]
+    
+    @staticmethod
+    def get_assets_network_system(db: Session, user_id: int = None):
+        """Network & System view"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+        
+        return [asset.get_network_system() for asset in query.all()]
+    
+    @staticmethod
+    def get_assets_location_ownership(db: Session, user_id: int = None):
+        """Location & Ownership view"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+        
+        return [asset.get_location_ownership() for asset in query.all()]
+    
+    @staticmethod
+    def get_assets_security_audit(db: Session, user_id: int = None):
+        """Security/Risk/Audit view"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+        
+        return [asset.get_security_risk_audit() for asset in query.all()]

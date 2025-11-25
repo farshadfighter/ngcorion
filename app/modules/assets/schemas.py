@@ -3,7 +3,7 @@ from typing import Optional
 
 from datetime import date, datetime
 from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
-
+from app.models.enums import RelationTypeEnum
 
 class AssetTypeBase(BaseModel):
     type_name: str
@@ -88,6 +88,71 @@ class AssetLocationCreate(BaseModel):
 class AssetLocationResponse(AssetLocationCreate):
     id: int
     user_id: int
+    
+    class Config:
+        from_attributes = True
+                
+# Network Zones
+class NetworkZoneCreate(BaseModel):
+    zone_name: str
+    description: Optional[str] = None
+
+class NetworkZoneResponse(NetworkZoneCreate):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+# OS Catalog
+class OSCatalogCreate(BaseModel):
+    os_name: str
+    os_version: Optional[str] = None
+    os_family: Optional[str] = None
+
+class OSCatalogResponse(OSCatalogCreate):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+# Vendor Catalog
+class VendorCatalogCreate(BaseModel):
+    vendor_name: str
+    vendor_type: Optional[str] = None
+
+class VendorCatalogResponse(VendorCatalogCreate):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+# Asset Dependencies
+class AssetDependencyCreate(BaseModel):
+    asset_id: int
+    depends_on_id: int
+    relation_type: RelationTypeEnum
+    description: Optional[str] = None
+
+class AssetDependencyResponse(AssetDependencyCreate):
+    id: int
+    
+    class Config:
+        from_attributes = True
+
+# Asset Security Status
+class AssetSecurityStatusCreate(BaseModel):
+    asset_id: int
+    antivirus_installed: bool = False
+    antivirus_status: Optional[str] = None
+    firewall_enabled: bool = False
+    last_patch_date: Optional[date] = None
+    backup_enabled: bool = False
+    vulnerability_score: Optional[float] = None
+    compliance_status: Optional[str] = None
+    notes: Optional[str] = None
+
+class AssetSecurityStatusResponse(AssetSecurityStatusCreate):
+    id: int
     
     class Config:
         from_attributes = True
