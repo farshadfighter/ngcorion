@@ -4,837 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Netease - Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f4f6f9;
-            min-height: 100vh;
-        }
-
-        /* ==================== Sidebar ==================== */
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 260px;
-            height: 100vh;
-            background: #1a202c;
-            color: #fff;
-            transition: width 0.3s ease;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar.collapsed {
-            width: 70px;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid #2d3748;
-        }
-
-        .sidebar-logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .sidebar-logo svg {
-            width: 24px;
-            height: 24px;
-            fill: white;
-        }
-
-        .sidebar-title {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .sidebar.collapsed .sidebar-title {
-            display: none;
-        }
-
-        /* Toggle Button */
-        .sidebar-toggle {
-            position: absolute;
-            right: -12px;
-            top: 28px;
-            width: 24px;
-            height: 24px;
-            background: #00d4ff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4);
-        }
-
-        .sidebar-toggle svg {
-            width: 14px;
-            height: 14px;
-            fill: white;
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar.collapsed .sidebar-toggle svg {
-            transform: rotate(180deg);
-        }
-
-        /* Navigation */
-        .sidebar-nav {
-            flex: 1;
-            padding: 16px 0;
-            overflow-y: auto;
-        }
-
-        .nav-section {
-            margin-bottom: 8px;
-        }
-
-        .nav-section-title {
-            padding: 8px 20px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #718096;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .sidebar.collapsed .nav-section-title {
-            display: none;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            color: #a0aec0;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            gap: 12px;
-        }
-
-        .nav-item:hover {
-            background: #2d3748;
-            color: #fff;
-        }
-
-        .nav-item.active {
-            background: linear-gradient(90deg, rgba(0, 212, 255, 0.2) 0%, transparent 100%);
-            color: #00d4ff;
-            border-left: 3px solid #00d4ff;
-        }
-
-        .nav-item svg {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-            flex-shrink: 0;
-        }
-
-        .nav-item span {
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .sidebar.collapsed .nav-item span {
-            display: none;
-        }
-
-        /* Submenu */
-        .nav-submenu {
-            display: none;
-            background: #151a23;
-        }
-
-        .nav-submenu.open {
-            display: block;
-        }
-
-        .nav-submenu .nav-item {
-            padding-left: 52px;
-            font-size: 13px;
-        }
-
-        .sidebar.collapsed .nav-submenu {
-            display: none !important;
-        }
-
-        .nav-item .arrow {
-            margin-left: auto;
-            transition: transform 0.2s ease;
-        }
-
-        .nav-item.expanded .arrow {
-            transform: rotate(90deg);
-        }
-
-        /* User Section */
-        .sidebar-user {
-            padding: 16px 20px;
-            border-top: 1px solid #2d3748;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .user-info {
-            flex: 1;
-            overflow: hidden;
-        }
-
-        .user-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .user-role {
-            font-size: 12px;
-            color: #718096;
-            text-transform: capitalize;
-        }
-
-        .sidebar.collapsed .user-info {
-            display: none;
-        }
-
-        .user-menu-btn {
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: background 0.2s ease;
-        }
-
-        .user-menu-btn:hover {
-            background: #2d3748;
-        }
-
-        .user-menu-btn svg {
-            width: 16px;
-            height: 16px;
-            fill: #718096;
-        }
-
-        .sidebar.collapsed .user-menu-btn {
-            display: none;
-        }
-
-        /* User Dropdown */
-        .user-dropdown {
-            position: absolute;
-            bottom: 70px;
-            left: 20px;
-            right: 20px;
-            background: #2d3748;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            display: none;
-            overflow: hidden;
-        }
-
-        .user-dropdown.show {
-            display: block;
-        }
-
-        .user-dropdown-item {
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #a0aec0;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .user-dropdown-item:hover {
-            background: #4a5568;
-            color: #fff;
-        }
-
-        .user-dropdown-item svg {
-            width: 16px;
-            height: 16px;
-            fill: currentColor;
-        }
-
-        .user-dropdown-item.logout {
-            border-top: 1px solid #4a5568;
-            color: #fc8181;
-        }
-
-        .user-dropdown-item.logout:hover {
-            background: #c53030;
-            color: #fff;
-        }
-
-        /* ==================== Main Content ==================== */
-        .main-content {
-            margin-left: 260px;
-            min-height: 100vh;
-            transition: margin-left 0.3s ease;
-        }
-
-        .sidebar.collapsed ~ .main-content {
-            margin-left: 70px;
-        }
-
-        /* Header */
-        .main-header {
-            background: #fff;
-            padding: 16px 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .page-title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a202c;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        /* Content Area */
-        .content-area {
-            padding: 32px;
-        }
-
-        /* Dashboard Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 24px;
-            margin-bottom: 32px;
-        }
-
-        .stat-card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-
-        .stat-card-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .stat-card-icon svg {
-            width: 24px;
-            height: 24px;
-            fill: white;
-        }
-
-        .stat-card-icon.blue { background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); }
-        .stat-card-icon.green { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
-        .stat-card-icon.orange { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
-        .stat-card-icon.purple { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-
-        .stat-card-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: #1a202c;
-        }
-
-        .stat-card-label {
-            font-size: 14px;
-            color: #718096;
-            margin-top: 4px;
-        }
-
-        /* Welcome Section */
-        .welcome-section {
-            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-            border-radius: 16px;
-            padding: 32px;
-            color: #fff;
-            margin-bottom: 32px;
-        }
-
-        .welcome-title {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .welcome-subtitle {
-            font-size: 16px;
-            color: #a0aec0;
-        }
-
-        /* Access Denied */
-        .access-denied {
-            text-align: center;
-            padding: 80px 32px;
-        }
-
-        .access-denied svg {
-            width: 80px;
-            height: 80px;
-            fill: #e53e3e;
-            margin-bottom: 24px;
-        }
-
-        .access-denied h2 {
-            font-size: 24px;
-            color: #1a202c;
-            margin-bottom: 8px;
-        }
-
-        .access-denied p {
-            color: #718096;
-        }
-
-        /* Hidden class */
-        .hidden {
-            display: none !important;
-        }
-
-        /* ==================== Page Header ==================== */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .page-header h2 {
-            font-size: 24px;
-            color: #1a202c;
-        }
-
-        /* ==================== Buttons ==================== */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.4);
-        }
-
-        .btn-secondary {
-            background: #e2e8f0;
-            color: #4a5568;
-        }
-
-        .btn-secondary:hover {
-            background: #cbd5e0;
-        }
-
-        .btn-danger {
-            background: #e53e3e;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c53030;
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        .btn-icon {
-            padding: 6px;
-            border-radius: 6px;
-            background: transparent;
-        }
-
-        .btn-icon:hover {
-            background: #e2e8f0;
-        }
-
-        .btn-icon.edit:hover {
-            background: #ebf8ff;
-            color: #0099cc;
-        }
-
-        .btn-icon.delete:hover {
-            background: #fff5f5;
-            color: #e53e3e;
-        }
-
-        /* ==================== Data Table ==================== */
-        .data-table-container {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .data-table th,
-        .data-table td {
-            padding: 14px 16px;
-            text-align: left;
-        }
-
-        .data-table th {
-            background: #f7fafc;
-            font-size: 12px;
-            font-weight: 600;
-            color: #718096;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .data-table td {
-            font-size: 14px;
-            color: #4a5568;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .data-table tr:hover {
-            background: #f7fafc;
-        }
-
-        .data-table .loading-cell {
-            text-align: center;
-            padding: 40px;
-            color: #718096;
-        }
-
-        .data-table .actions-cell {
-            display: flex;
-            gap: 8px;
-        }
-
-        /* Status Badge */
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-badge.active {
-            background: #c6f6d5;
-            color: #276749;
-        }
-
-        .status-badge.inactive {
-            background: #fed7d7;
-            color: #c53030;
-        }
-
-        /* Role Badge */
-        .role-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: capitalize;
-        }
-
-        .role-badge.admin {
-            background: #e9d8fd;
-            color: #6b46c1;
-        }
-
-        .role-badge.manager {
-            background: #bee3f8;
-            color: #2b6cb0;
-        }
-
-        .role-badge.user {
-            background: #feebc8;
-            color: #c05621;
-        }
-
-        .role-badge.guest {
-            background: #e2e8f0;
-            color: #718096;
-        }
-
-        /* ==================== Modal ==================== */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .modal {
-            background: #fff;
-            border-radius: 16px;
-            width: 100%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal.modal-small {
-            max-width: 400px;
-        }
-
-        .modal-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h3 {
-            font-size: 18px;
-            color: #1a202c;
-        }
-
-        .modal-close {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: #f7fafc;
-            border-radius: 8px;
-            font-size: 20px;
-            cursor: pointer;
-            color: #718096;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-close:hover {
-            background: #e2e8f0;
-            color: #1a202c;
-        }
-
-        .modal-body {
-            padding: 24px;
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .modal-footer {
-            padding: 16px 24px;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-        }
-
-        /* ==================== Form Styles ==================== */
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        .modal .form-group {
-            margin-bottom: 16px;
-        }
-
-        .modal .form-group label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #4a5568;
-            margin-bottom: 6px;
-        }
-
-        .modal .form-group input[type="text"],
-        .modal .form-group input[type="email"],
-        .modal .form-group input[type="password"],
-        .modal .form-group select {
-            width: 100%;
-            padding: 10px 14px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.2s ease;
-        }
-
-        .modal .form-group input:focus,
-        .modal .form-group select:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .checkbox-label input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        #password-hint {
-            font-weight: 400;
-            color: #a0aec0;
-            font-size: 12px;
-        }
-
-        .form-error {
-            background: #fff5f5;
-            border: 1px solid #fc8181;
-            color: #c53030;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 16px;
-        }
-
-        .warning-text {
-            color: #c53030;
-            font-size: 14px;
-            margin-top: 8px;
-        }
-
-        /* ==================== Permissions Section ==================== */
-        .permissions-section {
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .permissions-section h4 {
-            font-size: 16px;
-            color: #1a202c;
-            margin-bottom: 4px;
-        }
-
-        .permissions-hint {
-            font-size: 13px;
-            color: #718096;
-            margin-bottom: 16px;
-        }
-
-        .permissions-grid {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .permission-header,
-        .permission-row {
-            display: grid;
-            grid-template-columns: 1fr 60px 60px 60px;
-            align-items: center;
-            padding: 10px 16px;
-        }
-
-        .permission-header {
-            background: #f7fafc;
-            font-size: 12px;
-            font-weight: 600;
-            color: #718096;
-            text-transform: uppercase;
-        }
-
-        .permission-header span:not(:first-child),
-        .permission-row input {
-            text-align: center;
-            justify-self: center;
-        }
-
-        .permission-row {
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .permission-row span {
-            font-size: 14px;
-            color: #4a5568;
-        }
-
-        .permission-row input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <!-- Sidebar -->
@@ -944,7 +114,7 @@
         </header>
 
         <div class="content-area" id="contentArea">
-            <!-- Dashboard Content -->
+            <!-- ==================== Dashboard Page ==================== -->
             <div id="page-dashboard">
                 <div class="welcome-section">
                     <h2 class="welcome-title">Welcome back, <span id="welcomeName">Admin</span>!</h2>
@@ -958,7 +128,7 @@
                                 <svg viewBox="0 0 24 24"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/></svg>
                             </div>
                         </div>
-                        <div class="stat-card-value">0</div>
+                        <div class="stat-card-value" id="stat-total-assets">0</div>
                         <div class="stat-card-label">Total Assets</div>
                     </div>
 
@@ -968,7 +138,7 @@
                                 <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
                             </div>
                         </div>
-                        <div class="stat-card-value">0</div>
+                        <div class="stat-card-value" id="stat-active-assets">0</div>
                         <div class="stat-card-label">Active Assets</div>
                     </div>
 
@@ -978,7 +148,7 @@
                                 <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
                             </div>
                         </div>
-                        <div class="stat-card-value">0</div>
+                        <div class="stat-card-value" id="stat-pending-issues">0</div>
                         <div class="stat-card-label">Pending Issues</div>
                     </div>
 
@@ -988,38 +158,271 @@
                                 <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                             </div>
                         </div>
-                        <div class="stat-card-value">0</div>
+                        <div class="stat-card-value" id="stat-total-users">0</div>
                         <div class="stat-card-label">Total Users</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Other Pages (Placeholder) -->
+            <!-- ==================== Asset Requirement Page ==================== -->
             <div id="page-asset_requirement" class="hidden">
-                <h2>Asset Requirement</h2>
-                <p>Asset requirement form will be here.</p>
+                <div class="page-header">
+                    <h2>Asset Requirement</h2>
+                </div>
+                <p>Asset requirement form will be implemented here.</p>
             </div>
 
+            <!-- ==================== Asset List Page ==================== -->
             <div id="page-asset_list" class="hidden">
-                <h2>Asset List</h2>
-                <p>Asset list will be here.</p>
+    <!-- Asset List View -->
+    <div id="asset-list-view">
+        <div class="page-header">
+            <h2>Asset List</h2>
+            <div class="page-header-actions">
+                <div class="search-box">
+                    <input type="text" id="asset-search" placeholder="Search assets..." onkeyup="searchAssets()">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="#718096"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                </div>
+                <button class="btn btn-primary" onclick="showCreateAssetModal()" id="btn-create-asset">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    Add Asset
+                </button>
             </div>
+        </div>
 
+        <div class="data-table-container">
+            <table class="data-table" id="assets-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>IP Address</th>
+                        <th>Type</th>
+                        <th>Owner</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="assets-table-body">
+                    <tr>
+                        <td colspan="8" class="loading-cell">Loading assets...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Asset View Modal -->
+    <div class="modal-overlay hidden" id="asset-view-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Asset Details</h3>
+                <button class="modal-close" onclick="closeAssetViewModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>Name</label>
+                        <span id="view-asset-name">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Hostname</label>
+                        <span id="view-asset-hostname">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>IP Address</label>
+                        <span id="view-asset-ip">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>MAC Address</label>
+                        <span id="view-asset-mac">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Type</label>
+                        <span id="view-asset-type">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Owner</label>
+                        <span id="view-asset-owner">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Location</label>
+                        <span id="view-asset-location">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Manufacturer</label>
+                        <span id="view-asset-manufacturer">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Model</label>
+                        <span id="view-asset-model">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Serial Number</label>
+                        <span id="view-asset-serial">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Operating System</label>
+                        <span id="view-asset-os">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Status</label>
+                        <span id="view-asset-status">-</span>
+                    </div>
+                    <div class="detail-item full-width">
+                        <label>Description</label>
+                        <span id="view-asset-description">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAssetViewModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Create/Edit Modal -->
+    <div class="modal-overlay hidden" id="asset-modal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h3 id="asset-modal-title">Create Asset</h3>
+                <button class="modal-close" onclick="closeAssetModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="asset-form">
+                    <input type="hidden" id="asset-id">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="asset-name">Asset Name *</label>
+                            <input type="text" id="asset-name" required maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="asset-hostname">Hostname</label>
+                            <input type="text" id="asset-hostname" maxlength="100">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="asset-type">Asset Type</label>
+                            <select id="asset-type">
+                                <option value="">Select Type</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="asset-status">Status</label>
+                            <select id="asset-status">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="maintenance">Maintenance</option>
+                                <option value="retired">Retired</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="asset-ip">IP Address</label>
+                            <input type="text" id="asset-ip" placeholder="192.168.1.1">
+                        </div>
+                        <div class="form-group">
+                            <label for="asset-mac">MAC Address</label>
+                            <input type="text" id="asset-mac" placeholder="AA:BB:CC:DD:EE:FF">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="asset-owner">Owner</label>
+                            <select id="asset-owner">
+                                <option value="">Select Owner</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="asset-location">Location</label>
+                            <select id="asset-location">
+                                <option value="">Select Location</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="asset-manufacturer">Manufacturer</label>
+                            <input type="text" id="asset-manufacturer" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="asset-model">Model</label>
+                            <input type="text" id="asset-model" maxlength="100">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="asset-serial">Serial Number</label>
+                        <input type="text" id="asset-serial" maxlength="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="asset-description">Description</label>
+                        <textarea id="asset-description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-error hidden" id="asset-form-error"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAssetModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAsset()" id="btn-save-asset">Save Asset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay hidden" id="asset-delete-modal">
+        <div class="modal modal-small">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+                <button class="modal-close" onclick="closeAssetDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete asset <strong id="delete-asset-name"></strong>?</p>
+                <p class="warning-text">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeAssetDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteAsset()" id="btn-confirm-delete-asset">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+            <!-- ==================== Auto Discovery Page ==================== -->
             <div id="page-asset_auto_discovery" class="hidden">
-                <h2>Auto Discovery</h2>
-                <p>Auto discovery tool will be here.</p>
+                <div class="page-header">
+                    <h2>Auto Discovery</h2>
+                </div>
+                <p>Auto discovery tool will be implemented here.</p>
             </div>
 
+            <!-- ==================== Auditing Page ==================== -->
             <div id="page-auditing" class="hidden">
-                <h2>Auditing</h2>
-                <p>Auditing module will be here.</p>
+                <div class="page-header">
+                    <h2>Auditing</h2>
+                </div>
+                <p>Auditing module will be implemented here.</p>
             </div>
 
+            <!-- ==================== Hardening Page ==================== -->
             <div id="page-hardening" class="hidden">
-                <h2>Hardening</h2>
-                <p>Hardening module will be here.</p>
+                <div class="page-header">
+                    <h2>Hardening</h2>
+                </div>
+                <p>Hardening module will be implemented here.</p>
             </div>
 
+            <!-- ==================== User Management Page ==================== -->
             <div id="page-user_management" class="hidden">
                 <!-- User List View -->
                 <div id="user-list-view">
@@ -1076,7 +479,7 @@
 
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="user-password">Password <span id="password-hint">(min 4 chars)</span></label>
+                                        <label for="user-password">Password <span id="password-hint" class="form-hint">(min 4 chars)</span></label>
                                         <input type="password" id="user-password" minlength="4">
                                     </div>
                                     <div class="form-group">
@@ -1196,12 +599,15 @@
                 </div>
             </div>
 
+            <!-- ==================== Logs Page ==================== -->
             <div id="page-logs" class="hidden">
-                <h2>System Logs</h2>
-                <p>System logs will be here.</p>
+                <div class="page-header">
+                    <h2>System Logs</h2>
+                </div>
+                <p>System logs will be implemented here.</p>
             </div>
 
-            <!-- Access Denied Page -->
+            <!-- ==================== Access Denied Page ==================== -->
             <div id="page-access_denied" class="hidden">
                 <div class="access-denied">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
@@ -1212,530 +618,9 @@
         </div>
     </main>
 
-    <script>
-        // ==================== Configuration ====================
-        const API_URL = 'http://localhost:8000';
-
-        // ==================== State ====================
-        let currentPage = 'dashboard';
-        let permissions = {};
-        let userInfo = {};
-
-        // ==================== Initialization ====================
-        window.onload = function() {
-            // Check authentication
-            const token = localStorage.getItem('access_token');
-            if (!token) {
-                window.location.href = 'index.html';
-                return;
-            }
-
-            // Load user info
-            userInfo = {
-                username: localStorage.getItem('username') || 'User',
-                role: localStorage.getItem('role') || 'user'
-            };
-
-            // Load permissions
-            try {
-                permissions = JSON.parse(localStorage.getItem('permissions')) || {};
-            } catch (e) {
-                permissions = {};
-            }
-
-            // Initialize UI
-            initializeUI();
-            applyPermissions();
-            showPage('dashboard');
-
-            // Set current date
-            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        };
-
-        // ==================== UI Initialization ====================
-        function initializeUI() {
-            // Set user info
-            document.getElementById('userName').textContent = userInfo.username;
-            document.getElementById('userRole').textContent = userInfo.role;
-            document.getElementById('userAvatar').textContent = userInfo.username.charAt(0).toUpperCase();
-            document.getElementById('welcomeName').textContent = userInfo.username;
-
-            // Add click listeners to nav items
-            document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-                item.addEventListener('click', function() {
-                    const page = this.getAttribute('data-page');
-                    showPage(page);
-                });
-            });
-        }
-
-        // ==================== Permission Management ====================
-        function applyPermissions() {
-            // Define which nav items correspond to which permission modules
-            const navPermissionMap = {
-                'nav-dashboard': 'dashboard',
-                'nav-asset_requirement': 'asset_requirement',
-                'nav-asset_list': 'asset_list',
-                'nav-asset_auto_discovery': 'asset_auto_discovery',
-                'nav-auditing': 'auditing',
-                'nav-hardening': 'hardening',
-                'nav-user_management': 'user_management',
-                'nav-logs': 'logs'
-            };
-
-            // Hide nav items based on read permission
-            for (const [navId, module] of Object.entries(navPermissionMap)) {
-                const navElement = document.getElementById(navId);
-                if (navElement) {
-                    const hasReadPermission = permissions[module]?.read === true;
-                    if (!hasReadPermission) {
-                        navElement.classList.add('hidden');
-                    }
-                }
-            }
-
-            // Hide entire sections if all items are hidden
-            hideEmptySections();
-        }
-
-        function hideEmptySections() {
-            // Check Asset Management section
-            const assetItems = ['nav-asset_requirement', 'nav-asset_list', 'nav-asset_auto_discovery'];
-            const hasVisibleAsset = assetItems.some(id => {
-                const el = document.getElementById(id);
-                return el && !el.classList.contains('hidden');
-            });
-            if (!hasVisibleAsset) {
-                document.getElementById('nav-asset-management')?.classList.add('hidden');
-            }
-
-            // Check Security section
-            const securityItems = ['nav-auditing', 'nav-hardening'];
-            const hasVisibleSecurity = securityItems.some(id => {
-                const el = document.getElementById(id);
-                return el && !el.classList.contains('hidden');
-            });
-            if (!hasVisibleSecurity) {
-                document.getElementById('nav-security')?.classList.add('hidden');
-            }
-
-            // Check Admin section
-            const adminItems = ['nav-user_management', 'nav-logs'];
-            const hasVisibleAdmin = adminItems.some(id => {
-                const el = document.getElementById(id);
-                return el && !el.classList.contains('hidden');
-            });
-            if (!hasVisibleAdmin) {
-                document.getElementById('nav-admin')?.classList.add('hidden');
-            }
-        }
-
-        function hasPermission(module, action = 'read') {
-            return permissions[module]?.[action] === true;
-        }
-
-        // ==================== Page Navigation ====================
-        function showPage(pageName) {
-            // Check permission
-            if (!hasPermission(pageName, 'read')) {
-                pageName = 'access_denied';
-            }
-
-            // Hide all pages
-            document.querySelectorAll('[id^="page-"]').forEach(page => {
-                page.classList.add('hidden');
-            });
-
-            // Show selected page
-            const pageElement = document.getElementById(`page-${pageName}`);
-            if (pageElement) {
-                pageElement.classList.remove('hidden');
-            }
-
-            // Update active nav item
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            const activeNav = document.querySelector(`.nav-item[data-page="${pageName}"]`);
-            if (activeNav) {
-                activeNav.classList.add('active');
-            }
-
-            // Update page title
-            const pageTitles = {
-                'dashboard': 'Dashboard',
-                'asset_requirement': 'Asset Requirement',
-                'asset_list': 'Asset List',
-                'asset_auto_discovery': 'Auto Discovery',
-                'auditing': 'Auditing',
-                'hardening': 'Hardening',
-                'user_management': 'User Management',
-                'logs': 'System Logs',
-                'access_denied': 'Access Denied'
-            };
-            document.getElementById('pageTitle').textContent = pageTitles[pageName] || pageName;
-
-            currentPage = pageName;
-        }
-
-        // ==================== Sidebar Functions ====================
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        }
-
-        function toggleUserMenu() {
-            document.getElementById('userDropdown').classList.toggle('show');
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('userDropdown');
-            const menuBtn = document.querySelector('.user-menu-btn');
-            if (!dropdown.contains(e.target) && !menuBtn.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
-
-        // ==================== User Actions ====================
-        function changePassword() {
-            alert('Change password functionality coming soon!');
-            document.getElementById('userDropdown').classList.remove('show');
-        }
-
-        function logout() {
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('username');
-            localStorage.removeItem('role');
-            localStorage.removeItem('permissions');
-            window.location.href = 'index.html';
-        }
-
-        // ==================== User Management ====================
-        let usersData = [];
-        let editingUserId = null;
-        let deletingUserId = null;
-
-        // Load users when page changes to user_management
-        const originalShowPage = showPage;
-        showPage = function(pageName) {
-            originalShowPage(pageName);
-            if (pageName === 'user_management') {
-                loadUsers();
-                updateCreateButtonVisibility();
-            }
-        };
-
-        function updateCreateButtonVisibility() {
-            const createBtn = document.getElementById('btn-create-user');
-            if (createBtn) {
-                if (hasPermission('user_management', 'write')) {
-                    createBtn.classList.remove('hidden');
-                } else {
-                    createBtn.classList.add('hidden');
-                }
-            }
-        }
-
-        async function loadUsers() {
-            const tbody = document.getElementById('users-table-body');
-            tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Loading users...</td></tr>';
-
-            try {
-                const response = await fetch(`${API_URL}/api/users/`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    }
-                });
-
-                if (response.status === 401) {
-                    logout();
-                    return;
-                }
-
-                if (!response.ok) {
-                    throw new Error('Failed to load users');
-                }
-
-                usersData = await response.json();
-                renderUsersTable();
-            } catch (error) {
-                console.error('Error loading users:', error);
-                tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Error loading users</td></tr>';
-            }
-        }
-
-        function renderUsersTable() {
-            const tbody = document.getElementById('users-table-body');
-            
-            if (usersData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No users found</td></tr>';
-                return;
-            }
-
-            const canWrite = hasPermission('user_management', 'write');
-            const canDelete = hasPermission('user_management', 'delete');
-
-            tbody.innerHTML = usersData.map(user => `
-                <tr>
-                    <td>${user.id}</td>
-                    <td><strong>${user.username}</strong></td>
-                    <td>${user.email}</td>
-                    <td><span class="role-badge ${user.role}">${user.role}</span></td>
-                    <td><span class="status-badge ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
-                    <td class="actions-cell">
-                        ${canWrite ? `
-                            <button class="btn btn-icon edit" onclick="editUser(${user.id})" title="Edit">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                            </button>
-                        ` : ''}
-                        ${canDelete ? `
-                            <button class="btn btn-icon delete" onclick="deleteUser(${user.id}, '${user.username}')" title="Delete">
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        ` : ''}
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // Create User Modal
-        function showCreateUserModal() {
-            editingUserId = null;
-            document.getElementById('modal-title').textContent = 'Create User';
-            document.getElementById('btn-save-user').textContent = 'Create User';
-            document.getElementById('user-form').reset();
-            document.getElementById('user-password').required = true;
-            document.getElementById('password-hint').textContent = '(min 4 chars) *';
-            document.getElementById('permissions-section').classList.remove('hidden');
-            document.getElementById('form-error').classList.add('hidden');
-            
-            // Reset permissions to defaults
-            resetPermissions();
-            
-            document.getElementById('user-modal').classList.remove('hidden');
-        }
-
-        // Edit User Modal
-        async function editUser(userId) {
-            editingUserId = userId;
-            document.getElementById('modal-title').textContent = 'Edit User';
-            document.getElementById('btn-save-user').textContent = 'Update User';
-            document.getElementById('user-password').required = false;
-            document.getElementById('password-hint').textContent = '(leave empty to keep current)';
-            document.getElementById('form-error').classList.add('hidden');
-
-            try {
-                const response = await fetch(`${API_URL}/api/users/${userId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    }
-                });
-
-                if (!response.ok) throw new Error('Failed to load user');
-
-                const user = await response.json();
-                
-                document.getElementById('user-id').value = user.id;
-                document.getElementById('user-username').value = user.username;
-                document.getElementById('user-email').value = user.email;
-                document.getElementById('user-password').value = '';
-                document.getElementById('user-role').value = user.role;
-                document.getElementById('user-active').checked = user.is_active;
-
-                // Handle permissions section visibility
-                if (user.role === 'admin') {
-                    document.getElementById('permissions-section').classList.add('hidden');
-                } else {
-                    document.getElementById('permissions-section').classList.remove('hidden');
-                    loadPermissions(user.permissions || []);
-                }
-
-                document.getElementById('user-modal').classList.remove('hidden');
-            } catch (error) {
-                console.error('Error loading user:', error);
-                alert('Error loading user details');
-            }
-        }
-
-        function resetPermissions() {
-            document.querySelectorAll('.permission-row').forEach(row => {
-                const module = row.dataset.module;
-                row.querySelector('.perm-read').checked = (module === 'dashboard' || module === 'asset_list');
-                row.querySelector('.perm-write').checked = false;
-                row.querySelector('.perm-delete').checked = false;
-            });
-        }
-
-        function loadPermissions(permissions) {
-            // Reset all first
-            document.querySelectorAll('.permission-row').forEach(row => {
-                row.querySelector('.perm-read').checked = false;
-                row.querySelector('.perm-write').checked = false;
-                row.querySelector('.perm-delete').checked = false;
-            });
-
-            // Set from data
-            permissions.forEach(perm => {
-                const row = document.querySelector(`.permission-row[data-module="${perm.module}"]`);
-                if (row) {
-                    row.querySelector('.perm-read').checked = perm.can_read;
-                    row.querySelector('.perm-write').checked = perm.can_write;
-                    row.querySelector('.perm-delete').checked = perm.can_delete;
-                }
-            });
-        }
-
-        function getPermissionsFromForm() {
-            const permissions = [];
-            document.querySelectorAll('.permission-row').forEach(row => {
-                permissions.push({
-                    module: row.dataset.module,
-                    can_read: row.querySelector('.perm-read').checked,
-                    can_write: row.querySelector('.perm-write').checked,
-                    can_delete: row.querySelector('.perm-delete').checked
-                });
-            });
-            return permissions;
-        }
-
-        function closeUserModal() {
-            document.getElementById('user-modal').classList.add('hidden');
-            editingUserId = null;
-        }
-
-        async function saveUser() {
-            const saveBtn = document.getElementById('btn-save-user');
-            const errorDiv = document.getElementById('form-error');
-            
-            const username = document.getElementById('user-username').value.trim();
-            const email = document.getElementById('user-email').value.trim();
-            const password = document.getElementById('user-password').value;
-            const role = document.getElementById('user-role').value;
-            const isActive = document.getElementById('user-active').checked;
-
-            // Validation
-            if (!username || !email) {
-                errorDiv.textContent = 'Username and email are required';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-
-            if (!editingUserId && (!password || password.length < 4)) {
-                errorDiv.textContent = 'Password must be at least 4 characters';
-                errorDiv.classList.remove('hidden');
-                return;
-            }
-
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
-            errorDiv.classList.add('hidden');
-
-            try {
-                const userData = {
-                    username,
-                    email,
-                    role,
-                    is_active: isActive
-                };
-
-                // Add password only if provided
-                if (password) {
-                    userData.password = password;
-                }
-
-                // Add permissions only if not admin
-                if (role !== 'admin') {
-                    userData.permissions = getPermissionsFromForm();
-                }
-
-                const url = editingUserId 
-                    ? `${API_URL}/api/users/${editingUserId}`
-                    : `${API_URL}/api/users/`;
-
-                const response = await fetch(url, {
-                    method: editingUserId ? 'PUT' : 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    },
-                    body: JSON.stringify(userData)
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.detail || 'Failed to save user');
-                }
-
-                closeUserModal();
-                loadUsers();
-            } catch (error) {
-                console.error('Error saving user:', error);
-                errorDiv.textContent = error.message;
-                errorDiv.classList.remove('hidden');
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = editingUserId ? 'Update User' : 'Create User';
-            }
-        }
-
-        // Delete User
-        function deleteUser(userId, username) {
-            deletingUserId = userId;
-            document.getElementById('delete-username').textContent = username;
-            document.getElementById('delete-modal').classList.remove('hidden');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('delete-modal').classList.add('hidden');
-            deletingUserId = null;
-        }
-
-        async function confirmDeleteUser() {
-            if (!deletingUserId) return;
-
-            const deleteBtn = document.getElementById('btn-confirm-delete');
-            deleteBtn.disabled = true;
-            deleteBtn.textContent = 'Deleting...';
-
-            try {
-                const response = await fetch(`${API_URL}/api/users/${deletingUserId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.detail || 'Failed to delete user');
-                }
-
-                closeDeleteModal();
-                loadUsers();
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                alert(error.message);
-            } finally {
-                deleteBtn.disabled = false;
-                deleteBtn.textContent = 'Delete';
-            }
-        }
-
-        // Toggle permissions visibility based on role selection
-        document.getElementById('user-role')?.addEventListener('change', function() {
-            const permSection = document.getElementById('permissions-section');
-            if (this.value === 'admin') {
-                permSection.classList.add('hidden');
-            } else {
-                permSection.classList.remove('hidden');
-            }
-        });
-    </script>
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/assets.js"></script> 
 </body>
 </html>
