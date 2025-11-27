@@ -44,7 +44,7 @@ class AssetBase(BaseModel):
     description: Optional[str] = None
 
 class AssetCreate(AssetBase):
-    user_id: int  # Admin specifies which user owns this
+    user_id: Optional[int] = None  # Admin specifies which user owns this
 
 class AssetUpdate(BaseModel):
     asset_name: Optional[str] = None

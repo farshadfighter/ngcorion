@@ -1,6 +1,6 @@
 /* ==========================================
    NETEASE - Asset List JavaScript
-   Fixed to match actual API response
+   Fixed to match actual API schema
    ========================================== */
 
 // ==================== State ====================
@@ -13,8 +13,8 @@ let deletingAssetId = null;
 
 // ==================== Initialize ====================
 function init_asset_list() {
+    loadDropdownData();  // Load dropdowns first
     loadAssets();
-    loadDropdownData();
     updateAssetCreateButtonVisibility();
 }
 
@@ -64,6 +64,12 @@ async function loadDropdownData() {
         if (ownersRes.ok) assetOwners = await ownersRes.json();
         if (locationsRes.ok) assetLocations = await locationsRes.json();
 
+        console.log('Dropdown data loaded:', {
+            types: assetTypes.length,
+            owners: assetOwners.length,
+            locations: assetLocations.length
+        });
+
         populateAssetDropdowns();
     } catch (error) {
         console.error('Error loading dropdown data:', error);
@@ -73,40 +79,40 @@ async function loadDropdownData() {
 function populateAssetDropdowns() {
     // Asset Type
     const typeSelect = document.getElementById('asset-type');
-    if (typeSelect && assetTypes.length) {
-        typeSelect.innerHTML = '<option value="">Select Type</option>' +
-            assetTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+    if (typeSelect) {
+        typeSelect.innerHTML = '<option value="">Select Type *</option>' +
+            assetTypes.map(t => `<option value="${t.id}">${t.type_name}</option>`).join('');
     }
 
     // Owner
     const ownerSelect = document.getElementById('asset-owner');
-    if (ownerSelect && assetOwners.length) {
+    if (ownerSelect) {
         ownerSelect.innerHTML = '<option value="">Select Owner</option>' +
-            assetOwners.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+            assetOwners.map(o => `<option value="${o.id}">${o.full_name}</option>`).join('');
     }
 
     // Location
     const locationSelect = document.getElementById('asset-location');
-    if (locationSelect && assetLocations.length) {
+    if (locationSelect) {
         locationSelect.innerHTML = '<option value="">Select Location</option>' +
-            assetLocations.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            assetLocations.map(l => `<option value="${l.id}">${l.site_name}</option>`).join('');
     }
 }
 
 // Helper to get name from ID
 function getTypeName(typeId) {
     const type = assetTypes.find(t => t.id === typeId);
-    return type ? type.name : '-';
+    return type ? type.type_name : '-';
 }
 
 function getOwnerName(ownerId) {
     const owner = assetOwners.find(o => o.id === ownerId);
-    return owner ? owner.name : '-';
+    return owner ? owner.full_name : '-';
 }
 
 function getLocationName(locationId) {
     const location = assetLocations.find(l => l.id === locationId);
-    return location ? location.name : '-';
+    return location ? location.site_name : '-';
 }
 
 // ==================== Render Table ====================
@@ -201,6 +207,9 @@ function showCreateAssetModal() {
     document.getElementById('asset-form').reset();
     document.getElementById('asset-form-error').classList.add('hidden');
     
+    // Refresh dropdowns
+    populateAssetDropdowns();
+    
     document.getElementById('asset-modal').classList.remove('hidden');
 }
 
@@ -249,9 +258,17 @@ async function saveAsset() {
     const errorDiv = document.getElementById('asset-form-error');
     
     const assetName = document.getElementById('asset-name').value.trim();
+    const assetTypeId = document.getElementById('asset-type').value;
     
+    // Validation
     if (!assetName) {
         errorDiv.textContent = 'Asset name is required';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    
+    if (!assetTypeId) {
+        errorDiv.textContent = 'Asset type is required';
         errorDiv.classList.remove('hidden');
         return;
     }
@@ -261,20 +278,26 @@ async function saveAsset() {
     errorDiv.classList.add('hidden');
 
     try {
+        // Build asset data matching schema
         const assetData = {
             asset_name: assetName,
+            asset_type_id: parseInt(assetTypeId),
             hostname: document.getElementById('asset-hostname').value.trim() || null,
             ip_address: document.getElementById('asset-ip').value.trim() || null,
             mac_address: document.getElementById('asset-mac').value.trim() || null,
-            asset_type_id: parseInt(document.getElementById('asset-type').value) || null,
             owner_id: parseInt(document.getElementById('asset-owner').value) || null,
             location_id: parseInt(document.getElementById('asset-location').value) || null,
             manufacturer: document.getElementById('asset-manufacturer').value.trim() || null,
             model: document.getElementById('asset-model').value.trim() || null,
             serial_number: document.getElementById('asset-serial').value.trim() || null,
-            status: document.getElementById('asset-status').value,
+            status: document.getElementById('asset-status').value || 'active',
             description: document.getElementById('asset-description').value.trim() || null
         };
+
+        // For create, we don't need user_id (backend adds it from current_user)
+        // But the schema requires it, so let's check backend behavior
+        
+        console.log('Sending asset data:', assetData);
 
         const url = editingAssetId 
             ? `/api/assets/${editingAssetId}`
@@ -286,9 +309,10 @@ async function saveAsset() {
         });
 
         const data = await response.json();
+        console.log('Response:', data);
 
         if (!response.ok) {
-            throw new Error(data.detail || 'Failed to save asset');
+            throw new Error(data.detail || JSON.stringify(data) || 'Failed to save asset');
         }
 
         closeAssetModal();
