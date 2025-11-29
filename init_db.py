@@ -23,7 +23,7 @@ from app.models import (
     AssetDependency, AssetSecurityStatus,
     NetworkZone, OSCatalog, VendorCatalog
 )
-from app.models.enums import RoleEnum
+from app.models.user import UserRole
 import bcrypt
 
 
@@ -53,7 +53,7 @@ def create_admin_user(db):
         username="admin",
         email="admin@netease.local",
         hashed_password=hashed_password,
-        role=RoleEnum.ADMIN,
+        role=UserRole.ADMIN,
         is_active=True
     )
     db.add(admin)
