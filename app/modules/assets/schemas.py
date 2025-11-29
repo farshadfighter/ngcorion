@@ -49,8 +49,24 @@ class AssetCreate(AssetBase):
 class AssetUpdate(BaseModel):
     asset_name: Optional[str] = None
     hostname: Optional[str] = None
+    asset_type_id: Optional[int] = None
+    asset_role: Optional[str] = None
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    os_name: Optional[str] = None
+    os_version: Optional[str] = None
+    ip_address: Optional[str] = None
+    mac_address: Optional[str] = None
+    location_id: Optional[int] = None
+    owner_id: Optional[int] = None
     status: Optional[StatusEnum] = None
-    # ... (other fields optional)
+    confidentiality_level: Optional[ConfidentialityLevelEnum] = None
+    risk_level: Optional[RiskLevelEnum] = None
+    last_audit_date: Optional[date] = None
+    last_patch_date: Optional[date] = None
+    asset_value: Optional[float] = None
+    description: Optional[str] = None
 
 class AssetResponse(AssetBase):
     id: int

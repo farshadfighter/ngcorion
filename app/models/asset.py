@@ -248,8 +248,8 @@ class Asset(Base):
     
     user_id = Column(
         Integer,
-        ForeignKey('users.id', ondelete='CASCADE'),
-        nullable=False,
+        ForeignKey('users.id', ondelete='SET NULL'),
+        nullable=True,
         index=True,
         comment="FK to users - determines which user owns this asset"
     )

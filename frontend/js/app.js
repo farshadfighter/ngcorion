@@ -269,3 +269,64 @@ window.addEventListener('hashchange', function() {
         showPage(hash);
     }
 });
+
+
+// ==================== Dashboard Stats ====================
+async function init_dashboard() {
+    try {
+        // Load assets count
+        const assetsRes = await apiRequest('/api/assets/');
+        if (assetsRes.ok) {
+            const assets = await assetsRes.json();
+            document.getElementById('stat-total-assets').textContent = assets.length;
+            
+            const activeAssets = assets.filter(a => a.status === 'active').length;
+            document.getElementById('stat-active-assets').textContent = activeAssets;
+        }
+
+        // Load users count (if has permission)
+        if (hasPermission('user_management', 'read')) {
+            const usersRes = await apiRequest('/api/users/');
+            if (usersRes.ok) {
+                const users = await usersRes.json();
+                document.getElementById('stat-total-users').textContent = users.length;
+            }
+        }
+
+        // Pending issues (placeholder - can be customized)
+        document.getElementById('stat-pending-issues').textContent = '0';
+        
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
+
+// ==================== Dashboard Stats ====================
+async function init_dashboard() {
+    try {
+        // Load assets count
+        const assetsRes = await apiRequest('/api/assets/');
+        if (assetsRes.ok) {
+            const assets = await assetsRes.json();
+            document.getElementById('stat-total-assets').textContent = assets.length;
+            
+            const activeAssets = assets.filter(a => a.status === 'active').length;
+            document.getElementById('stat-active-assets').textContent = activeAssets;
+        }
+
+        // Load users count (if has permission)
+        if (hasPermission('user_management', 'read')) {
+            const usersRes = await apiRequest('/api/users/');
+            if (usersRes.ok) {
+                const users = await usersRes.json();
+                document.getElementById('stat-total-users').textContent = users.length;
+            }
+        }
+
+        // Pending issues (placeholder)
+        document.getElementById('stat-pending-issues').textContent = '0';
+        
+    } catch (error) {
+        console.error('Error loading dashboard stats:', error);
+    }
+}
