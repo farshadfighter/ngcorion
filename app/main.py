@@ -9,6 +9,7 @@ from app.core.database import Base, engine
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
+from app.modules.assets.enums_router import enums_router
 
 # Import authenticated routers
 from app.modules.assets.router_with_auth import (
@@ -57,6 +58,7 @@ app.include_router(vendors_router)
 app.include_router(dependencies_router)
 app.include_router(security_router)
 app.include_router(views_router)
+app.include_router(enums_router)
 
 
 @app.get("/")
