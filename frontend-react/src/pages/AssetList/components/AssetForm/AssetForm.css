@@ -1,0 +1,113 @@
+/* ==========================================
+   NGCORION - Asset Form Styles
+   ========================================== */
+
+.asset-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* Step Indicator */
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  position: relative;
+}
+
+.step::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 40px;
+  right: 0;
+  height: 2px;
+  background-color: var(--border-color);
+  transform: translateY(-50%);
+}
+
+.step:last-child::after {
+  display: none;
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  background-color: var(--color-gray-200);
+  color: var(--text-secondary);
+  position: relative;
+  z-index: 1;
+}
+
+.step.active .step-num {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.step.completed .step-num {
+  background-color: var(--color-success);
+  color: white;
+}
+
+.step.completed::after {
+  background-color: var(--color-success);
+}
+
+.step-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.step.active .step-title {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Form Step */
+.form-step {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+.form-step .input-group:last-child {
+  grid-column: span 2;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 600px) {
+  .form-step {
+    grid-template-columns: 1fr;
+  }
+
+  .form-step .input-group:last-child {
+    grid-column: span 1;
+  }
+
+  .step-title {
+    display: none;
+  }
+}

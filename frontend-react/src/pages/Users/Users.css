@@ -1,0 +1,31 @@
+/* ==========================================
+   NGCORION - Users Styles
+   ========================================== */
+
+.users-page {
+  max-width: 1200px;
+}
+
+.users-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.users-toolbar .search-box {
+  width: 300px;
+}
+
+.user-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}

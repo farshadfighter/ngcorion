@@ -1,0 +1,79 @@
+/* ==========================================
+   NGCORION - Dashboard Styles
+   ========================================== */
+
+.dashboard {
+  max-width: 1200px;
+}
+
+.dashboard-welcome {
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--border-radius);
+}
+
+.stat-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.stat-primary .stat-icon {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.stat-success .stat-icon {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.stat-warning .stat-icon {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.stat-info .stat-icon {
+  background-color: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
