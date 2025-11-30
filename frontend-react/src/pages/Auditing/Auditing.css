@@ -1,0 +1,41 @@
+/* ==========================================
+   NGCORION - Auditing Styles
+   ========================================== */
+
+.auditing-page {
+  max-width: 1200px;
+}
+
+.placeholder-content {
+  text-align: center;
+  padding: var(--spacing-2xl);
+}
+
+.placeholder-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--text-light);
+  margin-bottom: var(--spacing-md);
+}
+
+.placeholder-content h3 {
+  font-size: var(--font-size-xl);
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.placeholder-content p {
+  color: var(--text-gray);
+  margin-bottom: var(--spacing-sm);
+}
+
+.coming-soon {
+  display: inline-block;
+  margin-top: var(--spacing-md);
+  padding: 6px 16px;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}

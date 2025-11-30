@@ -12,6 +12,12 @@ export const useAuth = () => {
   const canWrite = isAdmin || isManager;
   const canDelete = isAdmin;
 
+  // Check permission for a module
+  const hasPermission = (module, action = 'read') => {
+    if (isAdmin) return true;
+    return user?.permissions?.[module]?.[action] === true;
+  };
+
   return {
     user,
     isAuthenticated,
@@ -20,6 +26,7 @@ export const useAuth = () => {
     isManager,
     canWrite,
     canDelete,
+    hasPermission,
   };
 };
 

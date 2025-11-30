@@ -10,6 +10,10 @@ import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import AssetList from './pages/AssetList';
 import AssetRequirement from './pages/AssetRequirement';
+import AutoDiscovery from './pages/AutoDiscovery';
+import Auditing from './pages/Auditing';
+import Hardening from './pages/Hardening';
+import Logs from './pages/Logs';
 import './App.css';
 
 function App() {
@@ -31,12 +35,14 @@ function App() {
           <Route path="/users" element={<Users />} />
           <Route path="/assets" element={<AssetList />} />
           <Route path="/asset-requirement" element={<AssetRequirement />} />
+          <Route path="/auto-discovery" element={<AutoDiscovery />} />
+          <Route path="/auditing" element={<Auditing />} />
+          <Route path="/hardening" element={<Hardening />} />
+          <Route path="/logs" element={<Logs />} />
         </Route>
 
-        {/* Redirect root to dashboard */}
+        {/* Redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-        {/* 404 - Redirect to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </div>

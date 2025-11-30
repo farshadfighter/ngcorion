@@ -19,21 +19,26 @@ export const login = createAsyncThunk(
   'auth/login',
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const response = await api.post('/auth/login', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      // ارسال JSON به backend
+      const response = await api.post('/auth/login', {
+        username,
+        password
       });
 
-      const { access_token, user } = response.data;
+      const { access_token, username: user, role, permissions } = response.data;
+
+      // ساخت آبجکت user
+      const userData = { 
+        username: user, 
+        role, 
+        permissions 
+      };
 
       // Store in localStorage
       localStorage.setItem('token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('user', JSON.stringify(userData));
 
-      return { token: access_token, user };
+      return { token: access_token, user: userData };
     } catch (error) {
       return rejectWithValue(error.response?.data?.detail || 'Login failed');
     }
@@ -45,18 +50,6 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   localStorage.removeItem('user');
   return null;
 });
-
-export const getCurrentUser = createAsyncThunk(
-  'auth/getCurrentUser',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/auth/me');
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.detail || 'Failed to get user');
-    }
-  }
-);
 
 // Slice
 const authSlice = createSlice({
@@ -89,10 +82,6 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.token = null;
         state.user = null;
-      })
-      // Get current user
-      .addCase(getCurrentUser.fulfilled, (state, action) => {
-        state.user = action.payload;
       });
   },
 });
