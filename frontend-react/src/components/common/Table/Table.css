@@ -3,10 +3,10 @@
    ========================================== */
 
 .table-container {
-  overflow-x: auto;
   background-color: var(--bg-primary);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .table {
@@ -14,94 +14,88 @@
   border-collapse: collapse;
 }
 
-.table th {
-  padding: var(--spacing-md);
+.table th,
+.table td {
+  padding: 14px 16px;
   text-align: left;
-  font-size: var(--font-size-xs);
+}
+
+.table th {
+  background: #f7fafc;
+  font-size: 12px;
   font-weight: 600;
+  color: #4a5568;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--text-secondary);
-  background-color: var(--color-gray-50);
   border-bottom: 1px solid var(--border-color);
 }
 
 .table td {
-  padding: var(--spacing-md);
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
+  font-size: var(--font-size-base);
+  color: #2d3748;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.table tbody tr:hover {
+  background-color: #f7fafc;
 }
 
 .table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.table tbody tr:hover {
-  background-color: var(--color-gray-50);
-}
-
-.table-row-clickable {
-  cursor: pointer;
-}
-
-/* Loading */
+/* Loading State */
 .table-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-2xl);
-  color: var(--text-muted);
-  gap: var(--spacing-md);
+  text-align: center;
+  padding: 40px;
+  color: var(--text-gray);
 }
 
-.table-spinner {
+.table-loading-spinner {
   width: 32px;
   height: 32px;
   border: 3px solid var(--color-gray-200);
-  border-top-color: var(--color-primary);
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
 }
 
-/* Empty */
+/* Empty State */
 .table-empty {
   text-align: center;
-  padding: var(--spacing-2xl);
-  color: var(--text-muted);
-  background-color: var(--bg-primary);
-  border-radius: var(--border-radius-lg);
+  padding: 40px;
+  color: var(--text-gray);
 }
 
-/* Actions column */
+/* Actions Cell */
 .table-actions {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
+  gap: 8px;
 }
 
 .table-action-btn {
   padding: 6px;
-  background: none;
   border: none;
-  border-radius: var(--border-radius);
+  background: transparent;
+  border-radius: 6px;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-gray);
   transition: all var(--transition-fast);
 }
 
 .table-action-btn:hover {
-  background-color: var(--color-gray-100);
-  color: var(--text-primary);
+  background: #e2e8f0;
 }
 
 .table-action-btn.edit:hover {
-  color: var(--color-primary);
+  background: #ebf8ff;
+  color: #0099cc;
 }
 
 .table-action-btn.delete:hover {
-  color: var(--color-danger);
+  background: #fff5f5;
+  color: #e53e3e;
 }
 
 .table-action-btn svg {
