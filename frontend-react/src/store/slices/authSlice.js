@@ -23,7 +23,7 @@ export const login = createAsyncThunk(
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await api.post('/api/auth/login', formData, {
+      const response = await api.post('/auth/login', formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
@@ -50,7 +50,7 @@ export const getCurrentUser = createAsyncThunk(
   'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/api/auth/me');
+      const response = await api.get('/auth/me');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.detail || 'Failed to get user');
