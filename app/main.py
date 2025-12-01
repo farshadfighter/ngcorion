@@ -1,6 +1,6 @@
 """
 Netease - Main Application
-Updated to use authentication-enabled routers
+Updated with Auto Discovery module
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,12 +25,15 @@ from app.modules.assets.router_with_auth import (
     views_router
 )
 
+# NEW: Import discovery router
+from app.modules.discovery import router as discovery_router
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Netease Asset Manager",
-    description="Network Asset Management System",
-    version="1.0.0",
+    description="Network Asset Management System with Auto Discovery",
+    version="1.1.0",
     redirect_slashes=False
 )
 
@@ -60,13 +63,17 @@ app.include_router(security_router)
 app.include_router(views_router)
 app.include_router(enums_router)
 
+# NEW: Auto Discovery routes
+app.include_router(discovery_router.router)
+
 
 @app.get("/")
 def root():
     return {
         "project": "Netease",
-        "version": "1.0.0",
-        "status": "running"
+        "version": "1.1.0",
+        "status": "running",
+        "features": ["Asset Management", "Auto Discovery"]
     }
 
 

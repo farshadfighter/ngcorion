@@ -13,7 +13,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
 from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
-
+from sqlalchemy.dialects.postgresql import JSON
 
 class Asset(Base):
     """
@@ -242,6 +242,12 @@ class Asset(Base):
         comment="Additional notes or description"
     )
     
+    discovered_fields = Column(
+        JSON,
+        nullable=True,
+        comment="Fields populated by auto-discovery (JSON: {field_name: true})"
+    )
+    
     # ====================================
     # User Ownership (Data Isolation)
     # ====================================
@@ -414,6 +420,7 @@ class Asset(Base):
         from datetime import date
         days_since_audit = (date.today() - self.last_audit_date).days
         return days_since_audit > days_threshold
+
 
 
 # ====================================
