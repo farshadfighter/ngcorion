@@ -76,7 +76,7 @@ def get_current_user(
         raise credentials_exception
     
     # پیدا کردن کاربر در دیتابیس
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.query(User).filter(User.username == user_id).first()
     
     if user is None:
         raise credentials_exception

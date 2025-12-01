@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGCORION - Auto Discovery Test</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00d9ff;
+            border-bottom: 2px solid #00d9ff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #ffa500;
+            margin-top: 30px;
+        }
+        .section {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            color: #aaa;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #0f0f23;
+            color: #fff;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            border-color: #00d9ff;
+            outline: none;
+        }
+        button {
+            background: #00d9ff;
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px 10px 0;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00b8d9;
+            transform: translateY(-2px);
+        }
+        button.secondary {
+            background: #ffa500;
+        }
+        button.danger {
+            background: #ff4757;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .response {
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+        .response.success {
+            border-color: #00ff88;
+        }
+        .response.error {
+            border-color: #ff4757;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .status.running {
+            background: #ffa500;
+            color: #000;
+        }
+        .status.completed {
+            background: #00ff88;
+            color: #000;
+        }
+        .status.failed {
+            background: #ff4757;
+            color: #fff;
+        }
+        .host-card {
+            background: #1a1a2e;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .host-card h4 {
+            color: #00d9ff;
+            margin: 0 0 10px;
+        }
+        .host-card .detail {
+            display: flex;
+            margin: 5px 0;
+        }
+        .host-card .detail .label {
+            width: 120px;
+            color: #888;
+        }
+        .host-card .detail .value {
+            color: #fff;
+        }
+        .port-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .port-badge {
+            background: #2d3748;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .port-badge.open {
+            background: #00ff88;
+            color: #000;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .login-status {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .login-status.logged-in {
+            background: #00ff88;
+            color: #000;
+        }
+        .login-status.logged-out {
+            background: #ff4757;
+            color: #fff;
+        }
+        .discovered-field {
+            background: #ffa500 !important;
+            color: #000 !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-status logged-out" id="loginStatus">Not Logged In</div>
+
+<h1>🔍 NGCORION - Auto Discovery Test</h1>
+
+<!-- Login Section -->
+<div class="section">
+    <h2>1️⃣ Login First</h2>
+    <div class="grid">
+        <div>
+            <label>API Base URL:</label>
+            <input type="text" id="baseUrl" value="http://172.16.200.90:8000" placeholder="http://localhost:8000">
+        </div>
+        <div>
+            <label>Username:</label>
+            <input type="text" id="username" value="admin" placeholder="admin">
+        </div>
+    </div>
+    <label>Password:</label>
+    <input type="password" id="password" value="" placeholder="Enter password">
+    <br>
+    <button onclick="login()">🔐 Login</button>
+    <div class="response" id="loginResponse"></div>
+</div>
+
+<!-- Scan Section -->
+<div class="section">
+    <h2>2️⃣ Start Network Scan</h2>
+    <div class="grid">
+        <div>
+            <label>Target (IP or Range):</label>
+            <input type="text" id="scanTarget" value="192.168.1.1" placeholder="192.168.1.0/24">
+            <small style="color:#888">Examples: 192.168.1.1, 192.168.1.0/24, 10.0.0.1-254</small>
+        </div>
+        <div>
+            <label>Scan Type:</label>
+            <select id="scanType">
+                <option value="basic">Basic (~30 sec)</option>
+                <option value="detailed">Detailed (~2-3 min)</option>
+                <option value="full">Full (~10+ min)</option>
+            </select>
+        </div>
+    </div>
+    <button onclick="startScan()">🚀 Start Scan</button>
+    <button class="secondary" onclick="getAllScans()">📋 Get All Scans</button>
+    <div class="response" id="scanResponse"></div>
+</div>
+
+<!-- Scan Status Section -->
+<div class="section">
+    <h2>3️⃣ Check Scan Status</h2>
+    <label>Scan ID:</label>
+    <input type="text" id="scanId" placeholder="Enter scan_id from step 2">
+    <button onclick="checkScanStatus()">🔄 Check Status</button>
+    <button onclick="autoRefresh()" id="autoRefreshBtn">⏱️ Auto Refresh (5s)</button>
+    <div id="scanStatusDisplay"></div>
+    <div class="response" id="statusResponse"></div>
+</div>
+
+<!-- Discovered Hosts Section -->
+<div class="section">
+    <h2>4️⃣ Discovered Hosts</h2>
+    <div id="hostsContainer">
+        <p style="color:#888">Run a scan first to see discovered hosts here...</p>
+    </div>
+</div>
+
+<!-- Match Asset Section -->
+<div class="section">
+    <h2>5️⃣ Match IP to Existing Asset</h2>
+    <label>IP Address:</label>
+    <input type="text" id="matchIp" placeholder="192.168.1.100">
+    <button onclick="matchAsset()">🔍 Find Matching Asset</button>
+    <div class="response" id="matchResponse"></div>
+</div>
+
+<!-- Apply Discovery Section -->
+<div class="section">
+    <h2>6️⃣ Apply Discovery to Asset</h2>
+    <div class="grid">
+        <div>
+            <label>Scan ID:</label>
+            <input type="text" id="applyScanId" placeholder="Scan ID">
+        </div>
+        <div>
+            <label>Asset ID:</label>
+            <input type="text" id="applyAssetId" placeholder="Asset ID">
+        </div>
+    </div>
+    <label>IP Address (from scan):</label>
+    <input type="text" id="applyIp" placeholder="192.168.1.100">
+    <label>Fields to Apply:</label>
+    <div style="margin: 10px 0;">
+        <label style="display: inline;"><input type="checkbox" class="fieldCheck" value="hostname" checked> hostname</label>
+        <label style="display: inline; margin-left: 15px;"><input type="checkbox" class="fieldCheck" value="mac_address" checked> mac_address</label>
+        <label style="display: inline; margin-left: 15px;"><input type="checkbox" class="fieldCheck" value="os_name" checked> os_name</label>
+        <label style="display: inline; margin-left: 15px;"><input type="checkbox" class="fieldCheck" value="os_version" checked> os_version</label>
+        <label style="display: inline; margin-left: 15px;"><input type="checkbox" class="fieldCheck" value="vendor" checked> vendor (→manufacturer)</label>
+    </div>
+    <button onclick="applyDiscovery()">✅ Apply to Asset</button>
+    <div class="response" id="applyResponse"></div>
+</div>
+
+<script>
+    let token = localStorage.getItem('discovery_token') || '';
+    let autoRefreshInterval = null;
+    
+    // Check if already logged in
+    if (token) {
+        document.getElementById('loginStatus').textContent = 'Logged In ✓';
+        document.getElementById('loginStatus').className = 'login-status logged-in';
+    }
+    
+    function getBaseUrl() {
+        return document.getElementById('baseUrl').value.replace(/\/$/, '');
+    }
+    
+    function getHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+    
+    function showResponse(elementId, data, isError = false) {
+        const el = document.getElementById(elementId);
+        el.textContent = JSON.stringify(data, null, 2);
+        el.className = 'response ' + (isError ? 'error' : 'success');
+    }
+    
+    // Login
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const response = await fetch(`${getBaseUrl()}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.access_token) {
+                token = data.access_token;
+                localStorage.setItem('discovery_token', token);
+                document.getElementById('loginStatus').textContent = `Logged In: ${username} ✓`;
+                document.getElementById('loginStatus').className = 'login-status logged-in';
+                showResponse('loginResponse', { message: 'Login successful!', token: token.substring(0, 20) + '...' });
+            } else {
+                showResponse('loginResponse', data, true);
+            }
+        } catch (error) {
+            showResponse('loginResponse', { error: error.message }, true);
+        }
+    }
+    
+    // Start Scan
+    async function startScan() {
+        const target = document.getElementById('scanTarget').value;
+        const scanType = document.getElementById('scanType').value;
+        
+        try {
+            const response = await fetch(`${getBaseUrl()}/api/discovery/scan`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({ target, scan_type: scanType })
+            });
+            
+            const data = await response.json();
+            showResponse('scanResponse', data, !response.ok);
+            
+            if (response.ok && data.scan_id) {
+                document.getElementById('scanId').value = data.scan_id;
+                document.getElementById('applyScanId').value = data.scan_id;
+            }
+        } catch (error) {
+            showResponse('scanResponse', { error: error.message }, true);
+        }
+    }
+    
+    // Get All Scans
+    async function getAllScans() {
+        try {
+            const response = await fetch(`${getBaseUrl()}/api/discovery/scans`, {
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            showResponse('scanResponse', data, !response.ok);
+        } catch (error) {
+            showResponse('scanResponse', { error: error.message }, true);
+        }
+    }
+    
+    // Check Scan Status
+    async function checkScanStatus() {
+        const scanId = document.getElementById('scanId').value;
+        if (!scanId) {
+            alert('Enter Scan ID first');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${getBaseUrl()}/api/discovery/scan/${scanId}`, {
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            
+            // Show status badge
+            const statusDisplay = document.getElementById('scanStatusDisplay');
+            if (data.status) {
+                statusDisplay.innerHTML = `<span class="status ${data.status}">${data.status.toUpperCase()}</span>
+                    <span style="margin-left:15px">Hosts: ${data.hosts_up || 0}/${data.hosts_total || 0}</span>`;
+            }
+            
+            showResponse('statusResponse', data, !response.ok);
+            
+            // Display hosts if completed
+            if (data.status === 'completed' && data.hosts) {
+                displayHosts(data.hosts, scanId);
+            }
+            
+            // Stop auto-refresh if completed or failed
+            if (data.status === 'completed' || data.status === 'failed') {
+                stopAutoRefresh();
+            }
+            
+        } catch (error) {
+            showResponse('statusResponse', { error: error.message }, true);
+        }
+    }
+    
+    // Display discovered hosts
+    function displayHosts(hosts, scanId) {
+        const container = document.getElementById('hostsContainer');
+        
+        if (!hosts || hosts.length === 0) {
+            container.innerHTML = '<p style="color:#888">No hosts discovered.</p>';
+            return;
+        }
+        
+        let html = '';
+        hosts.forEach(host => {
+            html += `
+            <div class="host-card">
+                <h4>🖥️ ${host.ip_address} ${host.hostname ? '(' + host.hostname + ')' : ''}</h4>
+                <div class="detail"><span class="label">State:</span><span class="value">${host.state}</span></div>
+                <div class="detail"><span class="label">MAC:</span><span class="value">${host.mac_address || 'N/A'}</span></div>
+                <div class="detail"><span class="label">Vendor:</span><span class="value">${host.vendor || 'N/A'}</span></div>
+                <div class="detail"><span class="label">OS:</span><span class="value">${host.os_name || 'Unknown'} ${host.os_version || ''} ${host.os_accuracy ? '(' + host.os_accuracy + '%)' : ''}</span></div>
+                <div class="detail"><span class="label">Type Guess:</span><span class="value">${host.suggested_asset_type || 'unknown'}</span></div>
+                <div class="port-list">
+                    ${host.ports.map(p => `<span class="port-badge ${p.state}">${p.port}/${p.protocol} ${p.service || ''}</span>`).join('')}
+                </div>
+                <button onclick="useHost('${host.ip_address}')" style="margin-top:10px">Use This Host</button>
+            </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // Use host for apply
+    function useHost(ip) {
+        document.getElementById('applyIp').value = ip;
+        document.getElementById('matchIp').value = ip;
+    }
+    
+    // Auto refresh
+    function autoRefresh() {
+        const btn = document.getElementById('autoRefreshBtn');
+        
+        if (autoRefreshInterval) {
+            stopAutoRefresh();
+        } else {
+            autoRefreshInterval = setInterval(checkScanStatus, 5000);
+            btn.textContent = '⏹️ Stop Auto Refresh';
+            btn.className = 'danger';
+            checkScanStatus(); // Check immediately
+        }
+    }
+    
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        const btn = document.getElementById('autoRefreshBtn');
+        btn.textContent = '⏱️ Auto Refresh (5s)';
+        btn.className = 'secondary';
+    }
+    
+    // Match Asset
+    async function matchAsset() {
+        const ip = document.getElementById('matchIp').value;
+        if (!ip) {
+            alert('Enter IP address');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${getBaseUrl()}/api/discovery/match/${ip}`, {
+                headers: getHeaders()
+            });
+            const data = await response.json();
+            showResponse('matchResponse', data, !response.ok);
+            
+            if (data.found && data.asset_id) {
+                document.getElementById('applyAssetId').value = data.asset_id;
+            }
+        } catch (error) {
+            showResponse('matchResponse', { error: error.message }, true);
+        }
+    }
+    
+    // Apply Discovery
+    async function applyDiscovery() {
+        const scanId = document.getElementById('applyScanId').value;
+        const assetId = document.getElementById('applyAssetId').value;
+        const ip = document.getElementById('applyIp').value;
+        
+        const fields = [];
+        document.querySelectorAll('.fieldCheck:checked').forEach(cb => {
+            fields.push(cb.value);
+        });
+        
+        if (!scanId || !assetId || !ip) {
+            alert('Fill all fields: Scan ID, Asset ID, IP Address');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${getBaseUrl()}/api/discovery/apply?scan_id=${scanId}`, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify({
+                    asset_id: parseInt(assetId),
+                    ip_address: ip,
+                    fields_to_apply: fields
+                })
+            });
+            const data = await response.json();
+            showResponse('applyResponse', data, !response.ok);
+        } catch (error) {
+            showResponse('applyResponse', { error: error.message }, true);
+        }
+    }
+</script>
+
+</body>
+</html>
