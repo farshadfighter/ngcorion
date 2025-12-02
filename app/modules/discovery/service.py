@@ -50,14 +50,13 @@ def get_scan_arguments(scan_type: str) -> str:
     
     elif scan_type == "detailed":
         # -sV: Service version detection
-        # -O: OS detection (needs root)
         # --top-ports 1000: More ports
-        return "-sT -sV -O -T4 --top-ports 1000 -Pn"
+        return "-sT -sV -T4 --top-ports 1000 -Pn"
     
     elif scan_type == "full":
-        # -A: Aggressive (OS, version, scripts, traceroute)
+        # -A: Aggressive (, version, scripts, traceroute)
         # -p-: All 65535 ports
-        return "-sT -sV -O -A -T4 -p- -Pn"
+        return "-sT -sV -A -T4 -p- -Pn"
     
     else:
         return "-sT -T4 --top-ports 100 -Pn"
