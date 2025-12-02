@@ -13,6 +13,7 @@ import zonesReducer from './slices/zonesSlice';
 import osCatalogReducer from './slices/osCatalogSlice';
 import vendorsReducer from './slices/vendorsSlice';
 import enumsReducer from './slices/enumsSlice';
+import discoveryReducer from './slices/discoverySlice';
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +27,7 @@ export const store = configureStore({
     osCatalog: osCatalogReducer,
     vendors: vendorsReducer,
     enums: enumsReducer,
+    discovery: discoveryReducer,
   },
   devTools: import.meta.env.DEV,
 });

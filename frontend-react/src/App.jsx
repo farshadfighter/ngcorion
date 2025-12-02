@@ -10,11 +10,12 @@ import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import AssetList from './pages/AssetList';
 import AssetRequirement from './pages/AssetRequirement';
-import AutoDiscovery from './pages/AutoDiscovery';
+import AutoDiscovery from './pages/AutoDiscovery/AutoDiscovery';
 import Auditing from './pages/Auditing';
 import Hardening from './pages/Hardening';
 import Logs from './pages/Logs';
 import './App.css';
+
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/assets" element={<AssetList />} />
           <Route path="/asset-requirement" element={<AssetRequirement />} />
           <Route path="/auto-discovery" element={<AutoDiscovery />} />
+          <Route path="/discovery" element={<AutoDiscovery />} />
           <Route path="/auditing" element={<Auditing />} />
           <Route path="/hardening" element={<Hardening />} />
           <Route path="/logs" element={<Logs />} />

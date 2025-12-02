@@ -38,6 +38,18 @@ export const fetchAsset = createAsyncThunk(
     }
   }
 );
+export const fetchAssetTypes = createAsyncThunk(
+  'assets/fetchTypes',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/asset-types/');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail);
+    }
+  }
+);
+
 
 export const createAsset = createAsyncThunk(
   'assets/create',
@@ -185,6 +197,9 @@ const assetsSlice = createSlice({
       })
       .addCase(fetchSecurityView.fulfilled, (state, action) => {
         state.assets = action.payload;
+      })
+      .addCase(fetchAssetTypes.fulfilled, (state, action) => {
+        state.assetTypes = action.payload;
       });
   },
 });
