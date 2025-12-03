@@ -23,3 +23,24 @@
   gap: var(--spacing-sm);
   margin-top: var(--spacing-md);
 }
+
+/* Loading Spinner */
+.table-action-btn .spinner {
+  animation: spin 1s linear infinite;
+  width: 18px;
+  height: 18px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.table-action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

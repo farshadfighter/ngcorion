@@ -21,6 +21,11 @@
   gap: var(--spacing-sm);
   flex: 1;
   position: relative;
+  transition: all 0.2s ease;
+}
+
+.step:hover {
+  opacity: 0.8;
 }
 
 .step::after {
@@ -102,9 +107,29 @@
   background: #fee2e2;
   border: 1px solid #ef4444;
   color: #dc2626;
-  padding: 10px 16px;
+  padding: 12px 16px;
   border-radius: 8px;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideIn 0.3s ease-out;
+}
+
+.error-message::before {
+  content: '⚠️';
+  font-size: 16px;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Form Step */
@@ -112,43 +137,63 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--spacing-md);
+  animation: fadeIn 0.3s ease-in;
 }
 
-.form-step .input-group:last-child {
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.form-step .input-group:last-child,
+.form-step .select-group:last-child {
   grid-column: span 2;
 }
 
 /* Discovered Field Highlight */
-.form-step .input.discovered,
 .form-step .discovered input,
-.form-step .discovered select {
+.form-step .discovered select,
+.form-step .discovered textarea {
   border-color: #f59e0b !important;
   background-color: #fffbeb !important;
 }
 
+.form-step .discovered label::after {
+  content: ' 🔍';
+  color: #f59e0b;
+  font-size: 12px;
+  margin-left: 4px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.form-step .discovered {
+  position: relative;
+}
+
 .form-step .discovered::after {
-  content: '🔍 Auto-discovered';
+  content: 'Auto-discovered';
   position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 11px;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
   color: #92400e;
   background: #fef3c7;
   padding: 2px 6px;
   border-radius: 4px;
+  font-weight: 500;
+  pointer-events: none;
+  z-index: 10;
 }
 
-/* Input Group for discovered fields */
-.input-group {
-  position: relative;
-}
-
-.input-group.discovered .input-label::after {
-  content: ' (Auto-discovered)';
-  color: #f59e0b;
-  font-size: 11px;
-  font-weight: normal;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 /* Form Actions */

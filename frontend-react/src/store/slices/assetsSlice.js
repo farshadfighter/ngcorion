@@ -177,14 +177,15 @@ const assetsSlice = createSlice({
       })
       // Update asset
       .addCase(updateAsset.fulfilled, (state, action) => {
-        const index = state.assets.findIndex((a) => a.id === action.payload.id);
+        const payloadId = action.payload.id || action.payload.asset_id;
+        const index = state.assets.findIndex((a) => (a.id || a.asset_id) === payloadId);
         if (index !== -1) {
           state.assets[index] = action.payload;
         }
       })
       // Delete asset
       .addCase(deleteAsset.fulfilled, (state, action) => {
-        state.assets = state.assets.filter((a) => a.id !== action.payload);
+        state.assets = state.assets.filter((a) => (a.id || a.asset_id) !== action.payload);
       })
       // View fetches
       .addCase(fetchOverviewView.fulfilled, (state, action) => {

@@ -17,39 +17,55 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Helper to format date for input (YYYY-MM-DD)
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
+  // Helper to get field value with fallbacks
+  const getFieldValue = (primary, ...fallbacks) => {
+    return primary || fallbacks.find(v => v) || '';
+  };
+
   // Initialize form data from asset prop
-  const getInitialFormData = () => ({
+  const getInitialFormData = (assetData) => ({
     // Step 1: Basic Info
-    asset_name: asset?.asset_name || '',
-    hostname: asset?.hostname || '',
-    asset_type_id: asset?.asset_type_id || '',
-    asset_role: asset?.asset_role || asset?.role || '',
-    manufacturer: asset?.manufacturer || asset?.vendor || '',
-    model: asset?.model || '',
+    asset_name: assetData?.asset_name || '',
+    hostname: assetData?.hostname || '',
+    asset_type_id: assetData?.asset_type_id || '',
+    asset_role: getFieldValue(assetData?.asset_role, assetData?.role),
+    manufacturer: getFieldValue(assetData?.manufacturer, assetData?.vendor),
+    model: assetData?.model || '',
     // Step 2: System Info
-    serial_number: asset?.serial_number || '',
-    os_name: asset?.os_name || '',
-    os_version: asset?.os_version || '',
-    ip_address: asset?.ip_address || '',
-    mac_address: asset?.mac_address || '',
+    serial_number: assetData?.serial_number || '',
+    os_name: getFieldValue(assetData?.os_name, assetData?.os),
+    os_version: assetData?.os_version || '',
+    ip_address: assetData?.ip_address || '',
+    mac_address: assetData?.mac_address || '',
     // Step 3: Location & Ownership
-    location_id: asset?.location_id || '',
-    owner_id: asset?.owner_id || '',
-    status: asset?.status || 'active',
+    location_id: assetData?.location_id || '',
+    owner_id: assetData?.owner_id || '',
+    status: assetData?.status || 'active',
     // Step 4: Security
-    confidentiality_level: asset?.confidentiality_level || asset?.confidentiality || '',
-    risk_level: asset?.risk_level || '',
-    last_audit_date: asset?.last_audit_date || '',
-    last_patch_date: asset?.last_patch_date || '',
-    asset_value: asset?.asset_value || '',
-    description: asset?.description || '',
+    confidentiality_level: getFieldValue(assetData?.confidentiality_level, assetData?.confidentiality),
+    risk_level: getFieldValue(assetData?.risk_level, assetData?.risk),
+    last_audit_date: formatDateForInput(assetData?.last_audit_date),
+    last_patch_date: formatDateForInput(assetData?.last_patch_date),
+    asset_value: assetData?.asset_value || '',
+    description: assetData?.description || '',
   });
 
-  const [formData, setFormData] = useState(getInitialFormData);
+  const [formData, setFormData] = useState(() => getInitialFormData(asset));
 
   // Reset form when asset changes
   useEffect(() => {
-    setFormData(getInitialFormData());
+    setFormData(getInitialFormData(asset));
     setCurrentStep(1);
     setError('');
   }, [asset]);
@@ -68,13 +84,46 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     if (error) setError('');
   };
 
-  const handleNext = () => {
-    if (currentStep === 1 && !formData.asset_name.trim()) {
-      setError('Asset name is required');
-      return;
+  const validateStep = (step) => {
+    switch (step) {
+      case 1:
+        if (!formData.asset_name.trim()) {
+          setError('Asset name is required');
+          return false;
+        }
+        if (!formData.asset_type_id) {
+          setError('Asset type is required');
+          return false;
+        }
+        break;
+      case 2:
+        // Optional: Validate IP address format if provided
+        if (formData.ip_address && !formData.ip_address.match(/^(\d{1,3}\.){3}\d{1,3}$/)) {
+          setError('Invalid IP address format (expected: xxx.xxx.xxx.xxx)');
+          return false;
+        }
+        // Optional: Validate MAC address format if provided
+        if (formData.mac_address && !formData.mac_address.match(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/)) {
+          setError('Invalid MAC address format (expected: XX:XX:XX:XX:XX:XX)');
+          return false;
+        }
+        break;
+      case 3:
+        // No required fields in step 3
+        break;
+      case 4:
+        // Optional: Validate asset value is positive
+        if (formData.asset_value && parseFloat(formData.asset_value) < 0) {
+          setError('Asset value must be a positive number');
+          return false;
+        }
+        break;
     }
-    if (currentStep === 1 && !formData.asset_type_id) {
-      setError('Asset type is required');
+    return true;
+  };
+
+  const handleNext = () => {
+    if (!validateStep(currentStep)) {
       return;
     }
     setError('');
@@ -86,6 +135,18 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   };
 
   const handleSubmit = async () => {
+    // Validate all required fields before submitting
+    if (!formData.asset_name.trim()) {
+      setError('Asset name is required');
+      setCurrentStep(1);
+      return;
+    }
+    if (!formData.asset_type_id) {
+      setError('Asset type is required');
+      setCurrentStep(1);
+      return;
+    }
+
     setError('');
     setLoading(true);
 
@@ -115,10 +176,10 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
       };
 
       if (asset) {
-        // UPDATE - get the correct ID
-        const assetId = asset.id || asset.asset_id;
+        // UPDATE - get the correct ID (check both formats)
+        const assetId = asset.asset_id || asset.id;
         if (!assetId) {
-          throw new Error('Asset ID not found');
+          throw new Error('Asset ID not found for update');
         }
         await dispatch(updateAsset({ assetId, assetData: submitData })).unwrap();
       } else {
