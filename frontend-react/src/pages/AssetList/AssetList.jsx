@@ -1,17 +1,19 @@
 /* ==========================================
-   NGCORION - Asset List Page
+   NGCORION - Asset List Page (Fixed)
    ========================================== */
 
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchAssets,
+  fetchAsset,
   fetchOverviewView,
   fetchNetworkView,
   fetchLocationView,
   fetchSecurityView,
   deleteAsset,
   setCurrentView,
+  clearSelectedAsset,
 } from '../../store/slices/assetsSlice';
 import { fetchAssetTypes } from '../../store/slices/assetTypesSlice';
 import { fetchOwners } from '../../store/slices/ownersSlice';
@@ -29,7 +31,7 @@ import './AssetList.css';
 const AssetList = () => {
   const dispatch = useDispatch();
   const { canWrite, canDelete } = useAuth();
-  const { assets, currentView, loading } = useSelector((state) => state.assets);
+  const { assets, selectedAsset, currentView, loading } = useSelector((state) => state.assets);
   const { items: assetTypes } = useSelector((state) => state.assetTypes);
   const { items: owners } = useSelector((state) => state.owners);
   const { items: locations } = useSelector((state) => state.locations);
@@ -39,6 +41,7 @@ const AssetList = () => {
   const [editingAsset, setEditingAsset] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingAsset, setDeletingAsset] = useState(null);
+  const [isLoadingAsset, setIsLoadingAsset] = useState(false);
 
   useEffect(() => {
     dispatch(fetchAssetTypes());
@@ -47,6 +50,15 @@ const AssetList = () => {
     dispatch(fetchAllEnums());
     loadViewData(currentView);
   }, [dispatch]);
+
+  // When selectedAsset changes and we're waiting for it, open the form
+  useEffect(() => {
+    if (selectedAsset && isLoadingAsset) {
+      setEditingAsset(selectedAsset);
+      setIsLoadingAsset(false);
+      setIsFormOpen(true);
+    }
+  }, [selectedAsset, isLoadingAsset]);
 
   const loadViewData = (view) => {
     switch (view) {
@@ -140,7 +152,11 @@ const AssetList = () => {
       render: (_, row) => (
         <div className="table-actions">
           {canWrite && (
-            <button className="table-action-btn edit" onClick={() => handleEdit(row)}>
+            <button 
+              className="table-action-btn edit" 
+              onClick={() => handleEdit(row)}
+              disabled={isLoadingAsset}
+            >
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
               </svg>
@@ -167,12 +183,30 @@ const AssetList = () => {
 
   const handleCreate = () => {
     setEditingAsset(null);
+    dispatch(clearSelectedAsset());
     setIsFormOpen(true);
   };
 
-  const handleEdit = (asset) => {
-    setEditingAsset(asset);
-    setIsFormOpen(true);
+  // FIXED: Fetch complete asset data before editing
+  const handleEdit = async (asset) => {
+    const assetId = asset.asset_id || asset.id;
+    if (!assetId) {
+      console.error('No asset ID found');
+      return;
+    }
+    
+    setIsLoadingAsset(true);
+    try {
+      // Fetch complete asset data from API
+      await dispatch(fetchAsset(assetId)).unwrap();
+      // The useEffect above will handle opening the form
+    } catch (err) {
+      console.error('Failed to fetch asset:', err);
+      setIsLoadingAsset(false);
+      // Fallback: use the row data (incomplete)
+      setEditingAsset(asset);
+      setIsFormOpen(true);
+    }
   };
 
   const handleDeleteClick = (asset) => {
@@ -194,6 +228,7 @@ const AssetList = () => {
   const handleFormClose = () => {
     setIsFormOpen(false);
     setEditingAsset(null);
+    dispatch(clearSelectedAsset());
     loadViewData(currentView);
   };
 
@@ -217,7 +252,7 @@ const AssetList = () => {
       <Table
         columns={columns}
         data={filteredAssets}
-        loading={loading}
+        loading={loading || isLoadingAsset}
         emptyMessage="No assets found"
       />
 

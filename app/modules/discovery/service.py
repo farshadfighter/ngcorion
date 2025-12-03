@@ -44,19 +44,18 @@ def get_scan_arguments(scan_type: str) -> str:
     """
     if scan_type == "basic":
         # -sT: TCP connect scan (no root needed)
-        # -T4: Aggressive timing
         # --top-ports 100: Common ports only
-        return "-sT -T4 --top-ports 100 -Pn"
+        return "-sT -sV --top-ports 100 -Pn"
     
     elif scan_type == "detailed":
         # -sV: Service version detection
         # --top-ports 1000: More ports
-        return "-sT -sV -T4 --top-ports 1000 -Pn"
+        return "-sT -sV --top-ports 1000 -Pn -v"
     
     elif scan_type == "full":
         # -A: Aggressive (, version, scripts, traceroute)
         # -p-: All 65535 ports
-        return "-sT -sV -A -T4 -p- -Pn"
+        return "-sT -sV -Pn -A -v"
     
     else:
         return "-sT -T4 --top-ports 100 -Pn"
@@ -66,23 +65,23 @@ def get_scan_arguments(scan_type: str) -> str:
 # OS Detection Helpers
 # ====================================
 
-def parse_os_info(host_data: dict) -> tuple:
-    """Extract OS information from nmap results"""
-    os_name = None
-    os_version = None
-    os_accuracy = None
+# def parse_os_info(host_data: dict) -> tuple:
+#     """Extract OS information from nmap results"""
+#     os_name = None
+#     os_version = None
+#     os_accuracy = None
     
-    if 'osmatch' in host_data and host_data['osmatch']:
-        best_match = host_data['osmatch'][0]
-        os_name = best_match.get('name', '')
-        os_accuracy = int(best_match.get('accuracy', 0))
+#     if 'osmatch' in host_data and host_data['osmatch']:
+#         best_match = host_data['osmatch'][0]
+#         os_name = best_match.get('name', '')
+#         os_accuracy = int(best_match.get('accuracy', 0))
         
-        # Extract version from osclass if available
-        if 'osclass' in best_match and best_match['osclass']:
-            osclass = best_match['osclass'][0]
-            os_version = osclass.get('osgen', '')
+#         # Extract version from osclass if available
+#         if 'osclass' in best_match and best_match['osclass']:
+#             osclass = best_match['osclass'][0]
+#             os_version = osclass.get('osgen', '')
     
-    return os_name, os_version, os_accuracy
+#     return os_name, os_version, os_accuracy
 
 
 def guess_asset_type(host: DiscoveredHost) -> str:
@@ -181,7 +180,7 @@ def run_nmap_scan(target: str, scan_type: str, scan_id: str) -> ScanResponse:
                 vendor = host_data['vendor'].get(mac_address)
             
             # OS Detection
-            os_name, os_version, os_accuracy = parse_os_info(host_data)
+            # os_name, os_version, os_accuracy = parse_os_info(host_data)
             
             # Ports
             ports = []
@@ -203,9 +202,9 @@ def run_nmap_scan(target: str, scan_type: str, scan_id: str) -> ScanResponse:
                 hostname=hostname,
                 mac_address=mac_address,
                 vendor=vendor,
-                os_name=os_name,
-                os_version=os_version,
-                os_accuracy=os_accuracy,
+                # os_name=os_name,
+                # os_version=os_version,
+                # os_accuracy=os_accuracy,
                 ports=ports,
                 state=host_data.get('status', {}).get('state', 'up')
             )
@@ -214,7 +213,7 @@ def run_nmap_scan(target: str, scan_type: str, scan_id: str) -> ScanResponse:
             discovered_host.suggested_asset_type = guess_asset_type(discovered_host)
             
             discovered_hosts.append(discovered_host)
-            logger.info(f"Found host: {host_ip} ({os_name or 'unknown OS'})")
+            # logger.info(f"Found host: {host_ip} ({os_name or 'unknown OS'})")
         
         # Update scan result
         scan.status = "completed"

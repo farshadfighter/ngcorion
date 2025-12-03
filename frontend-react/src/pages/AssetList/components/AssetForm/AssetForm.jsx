@@ -1,8 +1,8 @@
 /* ==========================================
-   NGCORION - Asset Form Component (Multi-step)
+   NGCORION - Asset Form Component (Fixed)
    ========================================== */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createAsset, updateAsset } from '../../../../store/slices/assetsSlice';
 import Button from '../../../../components/common/Button';
@@ -17,13 +17,14 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
+  // Initialize form data from asset prop
+  const getInitialFormData = () => ({
     // Step 1: Basic Info
     asset_name: asset?.asset_name || '',
     hostname: asset?.hostname || '',
     asset_type_id: asset?.asset_type_id || '',
-    asset_role: asset?.asset_role || '',
-    manufacturer: asset?.manufacturer || '',
+    asset_role: asset?.asset_role || asset?.role || '',
+    manufacturer: asset?.manufacturer || asset?.vendor || '',
     model: asset?.model || '',
     // Step 2: System Info
     serial_number: asset?.serial_number || '',
@@ -35,15 +36,23 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     location_id: asset?.location_id || '',
     owner_id: asset?.owner_id || '',
     status: asset?.status || 'active',
-    // Step 4: Ports (simplified)
-    // Step 5: Security
-    confidentiality_level: asset?.confidentiality_level || '',
+    // Step 4: Security
+    confidentiality_level: asset?.confidentiality_level || asset?.confidentiality || '',
     risk_level: asset?.risk_level || '',
     last_audit_date: asset?.last_audit_date || '',
     last_patch_date: asset?.last_patch_date || '',
     asset_value: asset?.asset_value || '',
     description: asset?.description || '',
   });
+
+  const [formData, setFormData] = useState(getInitialFormData);
+
+  // Reset form when asset changes
+  useEffect(() => {
+    setFormData(getInitialFormData());
+    setCurrentStep(1);
+    setError('');
+  }, [asset]);
 
   const steps = [
     { num: 1, title: 'Basic Info' },
@@ -55,10 +64,12 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user types
+    if (error) setError('');
   };
 
   const handleNext = () => {
-    if (currentStep === 1 && !formData.asset_name) {
+    if (currentStep === 1 && !formData.asset_name.trim()) {
       setError('Asset name is required');
       return;
     }
@@ -79,25 +90,53 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     setLoading(true);
 
     try {
+      // Prepare submit data
       const submitData = {
-        ...formData,
+        asset_name: formData.asset_name.trim(),
+        hostname: formData.hostname.trim() || null,
         asset_type_id: parseInt(formData.asset_type_id) || null,
+        asset_role: formData.asset_role.trim() || null,
+        manufacturer: formData.manufacturer.trim() || null,
+        model: formData.model.trim() || null,
+        serial_number: formData.serial_number.trim() || null,
+        os_name: formData.os_name.trim() || null,
+        os_version: formData.os_version.trim() || null,
+        ip_address: formData.ip_address.trim() || null,
+        mac_address: formData.mac_address.trim() || null,
         location_id: parseInt(formData.location_id) || null,
         owner_id: parseInt(formData.owner_id) || null,
-        asset_value: parseFloat(formData.asset_value) || null,
+        status: formData.status || 'active',
+        confidentiality_level: formData.confidentiality_level || null,
+        risk_level: formData.risk_level || null,
+        last_audit_date: formData.last_audit_date || null,
+        last_patch_date: formData.last_patch_date || null,
+        asset_value: formData.asset_value ? parseFloat(formData.asset_value) : null,
+        description: formData.description.trim() || null,
       };
 
       if (asset) {
-        await dispatch(updateAsset({ assetId: asset.id || asset.asset_id, assetData: submitData })).unwrap();
+        // UPDATE - get the correct ID
+        const assetId = asset.id || asset.asset_id;
+        if (!assetId) {
+          throw new Error('Asset ID not found');
+        }
+        await dispatch(updateAsset({ assetId, assetData: submitData })).unwrap();
       } else {
+        // CREATE
         await dispatch(createAsset(submitData)).unwrap();
       }
       onClose();
     } catch (err) {
-      setError(err || 'Failed to save asset');
+      console.error('Save error:', err);
+      setError(typeof err === 'string' ? err : err.message || 'Failed to save asset');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Check if field was auto-discovered
+  const isDiscoveredField = (fieldName) => {
+    return asset?.discovered_fields?.[fieldName] === true;
   };
 
   const renderStep = () => {
@@ -117,13 +156,14 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
               name="hostname"
               value={formData.hostname}
               onChange={handleChange}
+              className={isDiscoveredField('hostname') ? 'discovered' : ''}
             />
             <Select
               label="Asset Type"
               name="asset_type_id"
               value={formData.asset_type_id}
               onChange={handleChange}
-              options={assetTypes.map((t) => ({ value: t.id, label: t.type_name }))}
+              options={assetTypes?.map((t) => ({ value: t.id, label: t.type_name })) || []}
               required
             />
             <Input
@@ -138,6 +178,7 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
               name="manufacturer"
               value={formData.manufacturer}
               onChange={handleChange}
+              className={isDiscoveredField('manufacturer') ? 'discovered' : ''}
             />
             <Input
               label="Model"
@@ -161,12 +202,14 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
               name="os_name"
               value={formData.os_name}
               onChange={handleChange}
+              className={isDiscoveredField('os_name') ? 'discovered' : ''}
             />
             <Input
               label="OS Version"
               name="os_version"
               value={formData.os_version}
               onChange={handleChange}
+              className={isDiscoveredField('os_version') ? 'discovered' : ''}
             />
             <Input
               label="IP Address"
@@ -179,6 +222,7 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
               name="mac_address"
               value={formData.mac_address}
               onChange={handleChange}
+              className={isDiscoveredField('mac_address') ? 'discovered' : ''}
             />
           </div>
         );
@@ -190,21 +234,26 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
               name="location_id"
               value={formData.location_id}
               onChange={handleChange}
-              options={locations.map((l) => ({ value: l.id, label: l.site_name }))}
+              options={locations?.map((l) => ({ value: l.id, label: l.site_name })) || []}
             />
             <Select
               label="Owner"
               name="owner_id"
               value={formData.owner_id}
               onChange={handleChange}
-              options={owners.map((o) => ({ value: o.id, label: o.full_name }))}
+              options={owners?.map((o) => ({ value: o.id, label: o.full_name })) || []}
             />
             <Select
               label="Status"
               name="status"
               value={formData.status}
               onChange={handleChange}
-              options={status.map((s) => ({ value: s.value, label: s.label }))}
+              options={status?.map((s) => ({ value: s.value, label: s.label })) || [
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'retired', label: 'Retired' },
+              ]}
             />
           </div>
         );
@@ -216,14 +265,24 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
               name="confidentiality_level"
               value={formData.confidentiality_level}
               onChange={handleChange}
-              options={confidentiality.map((c) => ({ value: c.value, label: c.label }))}
+              options={confidentiality?.map((c) => ({ value: c.value, label: c.label })) || [
+                { value: 'public', label: 'Public' },
+                { value: 'internal', label: 'Internal' },
+                { value: 'confidential', label: 'Confidential' },
+                { value: 'critical', label: 'Critical' },
+              ]}
             />
             <Select
               label="Risk Level"
               name="risk_level"
               value={formData.risk_level}
               onChange={handleChange}
-              options={risk.map((r) => ({ value: r.value, label: r.label }))}
+              options={risk?.map((r) => ({ value: r.value, label: r.label })) || [
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'critical', label: 'Critical' },
+              ]}
             />
             <Input
               label="Last Audit Date"
@@ -273,12 +332,26 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
             className={`step ${currentStep === step.num ? 'active' : ''} ${
               currentStep > step.num ? 'completed' : ''
             }`}
+            onClick={() => {
+              // Allow clicking on completed steps to go back
+              if (step.num < currentStep) {
+                setCurrentStep(step.num);
+              }
+            }}
+            style={{ cursor: step.num < currentStep ? 'pointer' : 'default' }}
           >
             <div className="step-num">{step.num}</div>
             <span className="step-title">{step.title}</span>
           </div>
         ))}
       </div>
+
+      {/* Edit Mode Indicator */}
+      {asset && (
+        <div className="edit-indicator">
+          ✏️ Editing: <strong>{asset.asset_name}</strong> (ID: {asset.id || asset.asset_id})
+        </div>
+      )}
 
       {/* Error */}
       {error && <div className="error-message">{error}</div>}

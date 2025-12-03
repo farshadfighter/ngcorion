@@ -1,0 +1,213 @@
+/* ==========================================
+   NGCORION - Activity Log Styles
+   ========================================== */
+
+.activity-log {
+  background: #1e293b;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 350px;
+}
+
+.activity-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.activity-log-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.log-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.log-count {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.btn-clear {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-clear:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.activity-log-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* Scrollbar */
+.activity-log-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-log-container::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.activity-log-container::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+
+.activity-log-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Empty State */
+.log-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Log Entries */
+.log-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #334155;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.log-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.log-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.log-message {
+  font-size: 13px;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+.log-details {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  word-break: break-all;
+}
+
+.log-time {
+  font-size: 11px;
+  color: #64748b;
+  flex-shrink: 0;
+  font-family: 'Monaco', 'Consolas', monospace;
+}
+
+/* Log Types */
+.log-entry.log-success {
+  background: #064e3b;
+  border-left: 3px solid #10b981;
+}
+
+.log-entry.log-success .log-message {
+  color: #a7f3d0;
+}
+
+.log-entry.log-error {
+  background: #7f1d1d;
+  border-left: 3px solid #ef4444;
+}
+
+.log-entry.log-error .log-message {
+  color: #fecaca;
+}
+
+.log-entry.log-warning {
+  background: #78350f;
+  border-left: 3px solid #f59e0b;
+}
+
+.log-entry.log-warning .log-message {
+  color: #fde68a;
+}
+
+.log-entry.log-info {
+  background: #1e3a5f;
+  border-left: 3px solid #3b82f6;
+}
+
+.log-entry.log-info .log-message {
+  color: #bfdbfe;
+}
+
+.log-entry.log-host {
+  background: #312e81;
+  border-left: 3px solid #8b5cf6;
+}
+
+.log-entry.log-host .log-message {
+  color: #c4b5fd;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .activity-log {
+    height: 250px;
+  }
+  
+  .log-entry {
+    flex-wrap: wrap;
+  }
+  
+  .log-time {
+    width: 100%;
+    margin-top: 4px;
+    padding-left: 24px;
+  }
+}

@@ -8,6 +8,7 @@ import api from '../../api/axios';
 // Initial state
 const initialState = {
   assets: [],
+  assetTypes: [],
   selectedAsset: null,
   currentView: 'overview', // overview, network, location, ports, security
   loading: false,
