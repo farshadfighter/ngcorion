@@ -9,7 +9,7 @@ from typing import List
 from app.core.database import get_db
 from .schemas import *
 from .service import AssetService
-from app.core.dependencies import get_current_user, require_admin
+from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager
 from app.models import User
 
 
@@ -133,10 +133,10 @@ def get_asset(
 def update_asset(
     asset_id: int,
     data: AssetUpdate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db)
 ):
-    """Update asset (admin only)"""
+    """Update asset (admin or manager)"""
     asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
     if not asset:
         raise HTTPException(404, "Asset not found")

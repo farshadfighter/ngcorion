@@ -199,10 +199,10 @@ const AssetList = () => {
   const handleEdit = async (asset) => {
     const assetId = asset.asset_id || asset.id;
     if (!assetId) {
-      console.error('No asset ID found');
+      setError('Invalid asset ID');
       return;
     }
-    
+
     setIsLoadingAsset(true);
     try {
       // Fetch complete asset data from API
@@ -210,10 +210,10 @@ const AssetList = () => {
       // The useEffect above will handle opening the form
     } catch (err) {
       console.error('Failed to fetch asset:', err);
+      // Show error instead of dangerous fallback
+      setError(err || 'Failed to load asset details. Please try again.');
+    } finally {
       setIsLoadingAsset(false);
-      // Fallback: use the row data (incomplete)
-      setEditingAsset(asset);
-      setIsFormOpen(true);
     }
   };
 

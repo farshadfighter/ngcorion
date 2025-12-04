@@ -1,5 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
+import re
 
 from datetime import date, datetime
 from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
@@ -67,6 +68,42 @@ class AssetUpdate(BaseModel):
     last_patch_date: Optional[date] = None
     asset_value: Optional[float] = None
     description: Optional[str] = None
+
+    @field_validator('ip_address')
+    @classmethod
+    def validate_ip(cls, v):
+        if v is None or v == '':
+            return v
+        # IPv4 validation
+        pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid IP address format')
+        return v
+
+    @field_validator('mac_address')
+    @classmethod
+    def validate_mac(cls, v):
+        if v is None or v == '':
+            return v
+        # MAC address validation (supports : or - separators)
+        pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid MAC address format')
+        return v
+
+    @field_validator('asset_value')
+    @classmethod
+    def validate_value(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Asset value must be positive')
+        return v
+
+    @field_validator('asset_name')
+    @classmethod
+    def validate_name(cls, v):
+        if v is not None and len(v.strip()) < 2:
+            raise ValueError('Asset name must be at least 2 characters')
+        return v
 
 class AssetResponse(AssetBase):
     id: int

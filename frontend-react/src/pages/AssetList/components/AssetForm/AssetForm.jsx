@@ -1,5 +1,7 @@
 /* ==========================================
-   NGCORION - Asset Form Component (Fixed)
+   Asset Form Component - Redesigned
+   - Add Mode: Step-by-step wizard
+   - Edit Mode: All fields visible at once
    ========================================== */
 
 import { useState, useEffect } from 'react';
@@ -15,7 +17,10 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   const { status, confidentiality, risk } = useSelector((state) => state.enums);
   const [currentStep, setCurrentStep] = useState(1);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const isEditMode = !!asset;
 
   // Helper to format date for input (YYYY-MM-DD)
   const formatDateForInput = (dateString) => {
@@ -138,12 +143,12 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     // Validate all required fields before submitting
     if (!formData.asset_name.trim()) {
       setError('Asset name is required');
-      setCurrentStep(1);
+      if (!isEditMode) setCurrentStep(1);
       return;
     }
     if (!formData.asset_type_id) {
       setError('Asset type is required');
-      setCurrentStep(1);
+      if (!isEditMode) setCurrentStep(1);
       return;
     }
 
@@ -182,11 +187,18 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
           throw new Error('Asset ID not found for update');
         }
         await dispatch(updateAsset({ assetId, assetData: submitData })).unwrap();
+        setSuccessMessage('✓ Asset updated successfully!');
       } else {
         // CREATE
         await dispatch(createAsset(submitData)).unwrap();
+        setSuccessMessage('✓ Asset created successfully!');
       }
-      onClose();
+
+      // Show success for 1.5 seconds, then close
+      setTimeout(() => {
+        setSuccessMessage('');
+        onClose();
+      }, 1500);
     } catch (err) {
       console.error('Save error:', err);
       setError(typeof err === 'string' ? err : err.message || 'Failed to save asset');
@@ -200,6 +212,7 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     return asset?.discovered_fields?.[fieldName] === true;
   };
 
+  // Render step content for ADD mode (wizard)
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -383,58 +396,285 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     }
   };
 
-  return (
-    <div className="asset-form">
-      {/* Step Indicator */}
-      <div className="step-indicator">
-        {steps.map((step) => (
-          <div
-            key={step.num}
-            className={`step ${currentStep === step.num ? 'active' : ''} ${
-              currentStep > step.num ? 'completed' : ''
-            }`}
-            onClick={() => {
-              // Allow clicking on completed steps to go back
-              if (step.num < currentStep) {
-                setCurrentStep(step.num);
-              }
-            }}
-            style={{ cursor: step.num < currentStep ? 'pointer' : 'default' }}
-          >
-            <div className="step-num">{step.num}</div>
-            <span className="step-title">{step.title}</span>
+  // Render all fields at once for EDIT mode
+  const renderAllFields = () => {
+    return (
+      <div className="edit-all-fields">
+        {/* Section 1: Basic Information */}
+        <div className="field-section">
+          <h3 className="section-title">
+            <span className="section-icon">📝</span>
+            Basic Information
+          </h3>
+          <div className="section-grid">
+            <Input
+              label="Asset Name"
+              name="asset_name"
+              value={formData.asset_name}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="Hostname"
+              name="hostname"
+              value={formData.hostname}
+              onChange={handleChange}
+              className={isDiscoveredField('hostname') ? 'discovered' : ''}
+            />
+            <Select
+              label="Asset Type"
+              name="asset_type_id"
+              value={formData.asset_type_id}
+              onChange={handleChange}
+              options={assetTypes?.map((t) => ({ value: t.id, label: t.type_name })) || []}
+              required
+            />
+            <Input
+              label="Role"
+              name="asset_role"
+              value={formData.asset_role}
+              onChange={handleChange}
+              placeholder="e.g., Core Network Switch"
+            />
+            <Input
+              label="Manufacturer"
+              name="manufacturer"
+              value={formData.manufacturer}
+              onChange={handleChange}
+              className={isDiscoveredField('manufacturer') ? 'discovered' : ''}
+            />
+            <Input
+              label="Model"
+              name="model"
+              value={formData.model}
+              onChange={handleChange}
+            />
           </div>
-        ))}
+        </div>
+
+        {/* Section 2: System Information */}
+        <div className="field-section">
+          <h3 className="section-title">
+            <span className="section-icon">💻</span>
+            System Information
+          </h3>
+          <div className="section-grid">
+            <Input
+              label="Serial Number"
+              name="serial_number"
+              value={formData.serial_number}
+              onChange={handleChange}
+            />
+            <Input
+              label="OS Name"
+              name="os_name"
+              value={formData.os_name}
+              onChange={handleChange}
+              className={isDiscoveredField('os_name') ? 'discovered' : ''}
+            />
+            <Input
+              label="OS Version"
+              name="os_version"
+              value={formData.os_version}
+              onChange={handleChange}
+              className={isDiscoveredField('os_version') ? 'discovered' : ''}
+            />
+            <Input
+              label="IP Address"
+              name="ip_address"
+              value={formData.ip_address}
+              onChange={handleChange}
+            />
+            <Input
+              label="MAC Address"
+              name="mac_address"
+              value={formData.mac_address}
+              onChange={handleChange}
+              className={isDiscoveredField('mac_address') ? 'discovered' : ''}
+            />
+          </div>
+        </div>
+
+        {/* Section 3: Location & Ownership */}
+        <div className="field-section">
+          <h3 className="section-title">
+            <span className="section-icon">📍</span>
+            Location & Ownership
+          </h3>
+          <div className="section-grid">
+            <Select
+              label="Location"
+              name="location_id"
+              value={formData.location_id}
+              onChange={handleChange}
+              options={locations?.map((l) => ({ value: l.id, label: l.site_name })) || []}
+            />
+            <Select
+              label="Owner"
+              name="owner_id"
+              value={formData.owner_id}
+              onChange={handleChange}
+              options={owners?.map((o) => ({ value: o.id, label: o.full_name })) || []}
+            />
+            <Select
+              label="Status"
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              options={status?.map((s) => ({ value: s.value, label: s.label })) || [
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+                { value: 'maintenance', label: 'Maintenance' },
+                { value: 'retired', label: 'Retired' },
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Section 4: Security & Compliance */}
+        <div className="field-section">
+          <h3 className="section-title">
+            <span className="section-icon">🔒</span>
+            Security & Compliance
+          </h3>
+          <div className="section-grid">
+            <Select
+              label="Confidentiality Level"
+              name="confidentiality_level"
+              value={formData.confidentiality_level}
+              onChange={handleChange}
+              options={confidentiality?.map((c) => ({ value: c.value, label: c.label })) || [
+                { value: 'public', label: 'Public' },
+                { value: 'internal', label: 'Internal' },
+                { value: 'confidential', label: 'Confidential' },
+                { value: 'critical', label: 'Critical' },
+              ]}
+            />
+            <Select
+              label="Risk Level"
+              name="risk_level"
+              value={formData.risk_level}
+              onChange={handleChange}
+              options={risk?.map((r) => ({ value: r.value, label: r.label })) || [
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'critical', label: 'Critical' },
+              ]}
+            />
+            <Input
+              label="Last Audit Date"
+              type="date"
+              name="last_audit_date"
+              value={formData.last_audit_date}
+              onChange={handleChange}
+            />
+            <Input
+              label="Last Patch Date"
+              type="date"
+              name="last_patch_date"
+              value={formData.last_patch_date}
+              onChange={handleChange}
+            />
+            <Input
+              label="Asset Value ($)"
+              type="number"
+              name="asset_value"
+              value={formData.asset_value}
+              onChange={handleChange}
+            />
+            <div className="input-group full-width">
+              <label className="input-label">Description</label>
+              <textarea
+                className="input"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Additional notes about this asset..."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`asset-form ${isEditMode ? 'edit-mode' : 'add-mode'}`}>
+      {/* Header with mode indicator */}
+      <div className="form-header">
+        {isEditMode ? (
+          <div className="edit-header">
+            <div className="edit-title">
+              <span className="edit-icon">✏️</span>
+              <div>
+                <h2>Edit Asset</h2>
+                <p className="edit-subtitle">
+                  <strong>{asset.asset_name}</strong>
+                  <span className="asset-id">ID: {asset.id || asset.asset_id}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="add-header">
+            <span className="add-icon">➕</span>
+            <h2>Create New Asset</h2>
+          </div>
+        )}
       </div>
 
-      {/* Edit Mode Indicator */}
-      {asset && (
-        <div className="edit-indicator">
-          ✏️ Editing: <strong>{asset.asset_name}</strong> (ID: {asset.id || asset.asset_id})
+      {/* Step Indicator - Only for ADD mode */}
+      {!isEditMode && (
+        <div className="step-indicator">
+          {steps.map((step) => (
+            <div
+              key={step.num}
+              className={`step ${currentStep === step.num ? 'active' : ''} ${
+                currentStep > step.num ? 'completed' : ''
+              }`}
+              onClick={() => {
+                // Allow clicking on completed steps to go back
+                if (step.num < currentStep) {
+                  setCurrentStep(step.num);
+                }
+              }}
+              style={{ cursor: step.num < currentStep ? 'pointer' : 'default' }}
+            >
+              <div className="step-num">{step.num}</div>
+              <span className="step-title">{step.title}</span>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Success Message */}
+      {successMessage && <div className="success-message">{successMessage}</div>}
 
       {/* Error */}
       {error && <div className="error-message">{error}</div>}
 
       {/* Form Content */}
-      {renderStep()}
+      {isEditMode ? renderAllFields() : renderStep()}
 
       {/* Actions */}
       <div className="form-actions">
         <Button variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        {currentStep > 1 && (
+        {!isEditMode && currentStep > 1 && (
           <Button variant="outline" onClick={handleBack}>
-            Back
+            ← Back
           </Button>
         )}
-        {currentStep < 4 ? (
-          <Button onClick={handleNext}>Next</Button>
+        {!isEditMode && currentStep < 4 ? (
+          <Button onClick={handleNext}>
+            Next →
+          </Button>
         ) : (
           <Button onClick={handleSubmit} loading={loading}>
-            {asset ? 'Update Asset' : 'Create Asset'}
+            {asset ? 'Save Changes' : 'Create Asset'}
           </Button>
         )}
       </div>
