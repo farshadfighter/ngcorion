@@ -36,6 +36,13 @@ from app.models.asset import Asset
 from app.models.asset_dependencies import AssetDependency
 from app.models.asset_security_status import AssetSecurityStatus
 
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveryApplication,
+    DiscoveryAuditLog
+)
+
 # Import audit models LAST (depend on User and Asset)
 from app.models.audit import (
     DeviceType,
@@ -71,6 +78,10 @@ __all__ = [
     "Asset",
     "AssetDependency",
     "AssetSecurityStatus",
+    # Discovery models
+    "DiscoveryScan",
+    "DiscoveryApplication",
+    "DiscoveryAuditLog",
     # Audit models
     "DeviceType",
     "CheckStatus",

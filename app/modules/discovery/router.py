@@ -5,14 +5,15 @@ app/modules/discovery/router.py
 API endpoints for network scanning and asset discovery
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.asset import Asset
+from app.modules.users.service import UserService
 
 from .schemas import (
     ScanRequest, ScanResponse,
@@ -30,17 +31,49 @@ router = APIRouter(
 
 
 # ====================================
+# Permission Check Helper
+# ====================================
+
+def check_discovery_permission(current_user: User, action: str, db: Session):
+    """
+    Check if current user can perform action on asset_auto_discovery module
+
+    Admin: Always allowed
+    Others: Check permission table
+    """
+    # Admin has all permissions
+    if current_user.role == UserRole.ADMIN:
+        return True
+
+    service_obj = UserService(db)
+    has_permission = service_obj.check_permission(
+        user_id=current_user.id,
+        module="asset_auto_discovery",
+        action=action
+    )
+
+    if not has_permission:
+        raise HTTPException(
+            status_code=403,
+            detail=f"You don't have {action} permission for Asset Auto Discovery"
+        )
+
+    return True
+
+
+# ====================================
 # Scan Endpoints
 # ====================================
 
 @router.post("/scan", response_model=ScanResponse)
 async def start_scan(
     request: ScanRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Start a new network scan
-    
+
     **Parameters:**
     - **target**: IP address or range
         - Single IP: `192.168.1.1`
@@ -50,18 +83,14 @@ async def start_scan(
         - `basic`: Quick scan, ~30 seconds
         - `detailed`: Service + OS detection, ~2-3 minutes
         - `full`: All ports, ~10+ minutes
-    
+
     **Returns:**
     Scan object with `scan_id` to poll for results
-    
-    **Permissions:** Admin or Manager only
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(
-            status_code=403,
-            detail="Only admin or manager can run network scans"
-        )
-    
+    check_discovery_permission(current_user, "write", db)
+
     try:
         scan = await service.start_scan(request)
         return scan
@@ -91,23 +120,29 @@ async def get_scan_status(
 
 @router.get("/scans", response_model=List[ScanResponse])
 async def get_all_scans(
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all recent scans (last 20)"""
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    """Get all recent scans (last 20)
+
+    **Permissions:** Requires read permission for asset_auto_discovery module
+    """
+    check_discovery_permission(current_user, "read", db)
     return service.get_all_scans()
 
 
 @router.delete("/scan/{scan_id}")
 async def delete_scan(
     scan_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Delete a scan from history"""
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Admin only")
-    
+    """Delete a scan from history
+
+    **Permissions:** Requires delete permission for asset_auto_discovery module
+    """
+    check_discovery_permission(current_user, "delete", db)
+
     if service.delete_scan(scan_id):
         return {"message": "Scan deleted"}
     raise HTTPException(status_code=404, detail="Scan not found")
@@ -177,26 +212,27 @@ async def find_matching_asset(
 @router.post("/apply", response_model=ApplyDiscoveryResponse)
 async def apply_discovery_to_asset(
     request: ApplyDiscoveryRequest,
-    scan_id: str,  # Query parameter: which scan to get data from
+    scan_id: str = Query(..., description="Scan ID to get discovered data from"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Apply discovered data to an existing asset
-    
+
     **Only updates empty fields!**
     If a field already has data, it will be skipped.
-    
+
     **Parameters:**
     - **asset_id**: Target asset ID
     - **ip_address**: IP of discovered host (to get data from scan)
     - **fields_to_apply**: List of fields to update
     - **scan_id**: Query param - which scan results to use
-    
+
     **Marks fields with `discovered_fields` JSON for frontend highlighting**
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    check_discovery_permission(current_user, "write", db)
     
     # Get asset
     asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
@@ -272,18 +308,19 @@ async def create_asset_from_discovery(
 ):
     """
     Create a new asset from discovered host data
-    
+
     **User must provide:**
     - `asset_name`: Name for the new asset
     - `asset_type_id`: Asset type ID
     - `discovered_host`: The discovered host data
-    
+
     **Auto-filled from discovery:**
     - hostname, ip_address, mac_address
     - os_name, os_version, manufacturer
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    check_discovery_permission(current_user, "write", db)
     
     host = request.discovered_host
     
@@ -344,14 +381,14 @@ async def create_asset_from_discovery(
 
 @router.post("/apply-bulk")
 async def apply_discovery_bulk(
-    scan_id: str,
-    asset_mappings: List[Dict[str, Any]],
+    scan_id: str = Query(..., description="Scan ID to get discovered data from"),
+    asset_mappings: List[Dict[str, Any]] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Apply discovery results to multiple assets at once
-    
+
     **Request body:**
     ```json
     [
@@ -359,9 +396,10 @@ async def apply_discovery_bulk(
         {"asset_id": 2, "ip_address": "192.168.1.20", "fields": ["mac_address"]}
     ]
     ```
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    check_discovery_permission(current_user, "write", db)
     
     results = []
     
