@@ -43,6 +43,8 @@ const Users = () => {
   });
   const [permissions, setPermissions] = useState({});
   const [formError, setFormError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     dispatch(fetchUsers());
@@ -165,6 +167,7 @@ const Users = () => {
 
   const handleDeleteClick = (user) => {
     setDeletingUser(user);
+    setDeleteError('');
     setIsDeleteModalOpen(true);
   };
 
@@ -237,12 +240,22 @@ const Users = () => {
   };
 
   const handleDelete = async () => {
+    setDeleteError('');
     try {
       await dispatch(deleteUser(deletingUser.id)).unwrap();
       setIsDeleteModalOpen(false);
       setDeletingUser(null);
+
+      // Show success message
+      setSuccessMessage(`User "${deletingUser.username}" deleted successfully!`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+
+      // Refresh user list
+      dispatch(fetchUsers());
     } catch (err) {
       console.error('Delete failed:', err);
+      // Show error in the delete modal
+      setDeleteError(typeof err === 'string' ? err : err.message || 'Failed to delete user. You may not have permission.');
     }
   };
 
@@ -257,6 +270,13 @@ const Users = () => {
           Add User
         </Button>
       </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div className="success-message" style={{ marginBottom: '20px' }}>
+          {successMessage}
+        </div>
+      )}
 
       <div className="users-toolbar">
         <SearchBox
@@ -390,6 +410,11 @@ const Users = () => {
         title="Delete User"
         size="small"
       >
+        {deleteError && (
+          <div className="error-message" style={{ marginBottom: '16px' }}>
+            {deleteError}
+          </div>
+        )}
         <p>Are you sure you want to delete user "<strong>{deletingUser?.username}</strong>"?</p>
         <p className="warning-text">This action cannot be undone.</p>
         <div className="form-actions">

@@ -83,12 +83,12 @@
 
 .add-icon {
   font-size: 32px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
 }
 
 .add-header h2 {
   margin: 0;
-  color: #065f46;
+  color: #14532d;
   font-size: 24px;
   font-weight: 700;
 }
@@ -375,7 +375,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%);
+  background: #ffffff !important;
   padding: 24px;
   border-radius: 16px;
   border: 1px solid #e5e7eb;
@@ -404,12 +404,27 @@
   position: relative;
 }
 
+.form-step input,
+.form-step select,
+.form-step textarea {
+  background: #ffffff !important;
+  border: 2px solid #d1d5db !important;
+  color: #1f2937 !important;
+}
+
 .form-step input:focus,
 .form-step select:focus,
 .form-step textarea:focus {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
   transform: translateY(-1px);
+  background: #ffffff !important;
+}
+
+.form-step label,
+.form-step .input-label {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
 }
 
 /* ==========================================
