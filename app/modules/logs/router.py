@@ -1,5 +1,5 @@
 """
-Logs Router - API های لاگ
+Logs Router - API 
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -19,10 +19,10 @@ def get_all_logs(
     db: Session = Depends(get_db)
 ):
     """
-    دریافت تمام لاگ‌های ورود
+  Get all input logs
     
-    - **limit**: تعداد رکورد (پیش‌فرض: 50)
-    - **success_only**: true=فقط موفق، false=فقط ناموفق، None=همه
+    - **limit**:(Default: 50)
+    - **success_only**: true=only success, false=Only failed ,None= All
     """
     query = db.query(LoginLog)
     
@@ -40,10 +40,10 @@ def get_user_logs(
     db: Session = Depends(get_db)
 ):
     """
-    دریافت لاگ‌های یک کاربر خاص
+    Get special user log
     
-    - **username**: نام کاربری
-    - **limit**: تعداد رکورد (پیش‌فرض: 20)
+    - **username**: username
+    - **limit**: (Default: 20)
     """
     logs = db.query(LoginLog).filter(
         LoginLog.username == username
@@ -55,20 +55,20 @@ def get_user_logs(
 @router.get("/stats")
 def get_login_stats(db: Session = Depends(get_db)):
     """
-    آمار کلی لاگین‌ها
+    total login log
     
     Returns:
-        - total_attempts: کل تلاش‌ها
-        - successful_logins: تعداد موفق
-        - failed_attempts: تعداد ناموفق
-        - success_rate: درصد موفقیت
-        - recent_successful_logins: 5 لاگین موفق اخیر
+        - total_attempts: 
+        - successful_logins: 
+        - failed_attempts:
+        - success_rate: 
+        - recent_successful_logins: 
     """
     total_attempts = db.query(LoginLog).count()
     successful = db.query(LoginLog).filter(LoginLog.success == True).count()
     failed = db.query(LoginLog).filter(LoginLog.success == False).count()
     
-    # آخرین لاگین‌های موفق
+# last success login
     recent_logins = db.query(LoginLog).filter(
         LoginLog.success == True
     ).order_by(LoginLog.timestamp.desc()).limit(5).all()
