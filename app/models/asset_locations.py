@@ -26,21 +26,6 @@ class AssetLocation(Base):
     """
     Asset Locations Table
     
-    Stores physical and logical location information.
-    Each user maintains their own list of locations.
-    
-    Attributes:
-        id: Unique identifier (auto-generated)
-        site_name: Site or building name
-        rack_name: Rack identifier
-        room: Room name or number
-        floor: Floor number or name
-        network_zone: Network zone (e.g., DMZ, Internal, Management)
-        vlan_id: VLAN identifier
-        subnet: Network subnet (CIDR notation)
-        description: Additional notes
-        user_id: Reference to users table (data isolation)
-    
     Relationships:
         user: The user who created this location record
         assets: List of assets at this location (reverse relationship)

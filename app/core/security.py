@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from .config import settings
 from .database import get_db
 
+from app.models.user import User
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token authentication
@@ -39,21 +41,7 @@ def create_access_token(data: dict):
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-):
-    """
-    استخراج کاربر فعلی از JWT token
-    
-    Args:
-        token: JWT token از header
-        db: Database session
-        
-    Returns:
-        User object
-        
-    Raises:
-        HTTPException: اگر token نامعتبر باشد یا کاربر پیدا نشود
-    """
-    from app.models.user import User  # Import اینجا برای جلوگیری از circular import
+    ):
     
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -75,13 +63,13 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    # پیدا کردن کاربر در دیتابیس
+# Find user in Database
     user = db.query(User).filter(User.username == user_id).first()
     
     if user is None:
         raise credentials_exception
     
-    # بررسی فعال بودن کاربر
+# Check activity
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

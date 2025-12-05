@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
@@ -8,6 +8,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 def get_db():
+    """
+    Dependency that provides a database session.
+    Creates a new session for each request, yields it to the endpoint,
+    and ensures it is closed after the request finishes.
+    """
     db = SessionLocal()
     try:
         yield db

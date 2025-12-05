@@ -126,9 +126,6 @@ class AssetDependency(Base):
         """
         Returns a human-readable description of the dependency
         
-        Returns:
-            str: Description of dependency
-        
         Example:
             >>> dep.get_description()
             "Router-01 depends on Core-Switch-01 via network_link"
@@ -183,17 +180,6 @@ class AssetDependency(Base):
    This creates a self-referential relationship
    (table references itself)
    
-   Visual:
-   asset_inventory          asset_dependencies
-   ┌────┬──────────┐       ┌────┬──────────┬───────────────┬──────────────┐
-   │ id │ name     │       │ id │ asset_id │ depends_on_id │ relation_type│
-   ├────┼──────────┤       ├────┼──────────┼───────────────┼──────────────┤
-   │ 1  │ Switch-01│◄──────┤ 1  │ 2        │ 1             │ network_link │
-   │ 2  │ Router-01│◄──┐   └────┴──────────┴───────────────┴──────────────┘
-   └────┴──────────┘   └──────────┘
-                        Router depends on Switch
-
-
 4. Relation Types (from RelationTypeEnum):
    ========================================
    - network_link: Physical/logical network connection
@@ -201,7 +187,6 @@ class AssetDependency(Base):
    - backup_link: Redundant/backup connection
    - power_source: Power supply dependency
    - logical_connection: Other logical relationships
-
 
 5. Relationships explanation:
    ==========================

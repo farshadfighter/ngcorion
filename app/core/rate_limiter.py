@@ -1,8 +1,5 @@
 """
 Rate Limiter for Discovery Scans
-
-Prevents abuse and DoS attacks by limiting the number of concurrent
-and hourly scans per user.
 """
 
 from datetime import datetime, timedelta
@@ -10,7 +7,6 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.discovery import DiscoveryScan
-
 
 class RateLimiter:
     """
@@ -22,8 +18,8 @@ class RateLimiter:
     """
 
     # Configuration
-    MAX_CONCURRENT_SCANS = 5
-    MAX_SCANS_PER_HOUR = 20
+    MAX_CONCURRENT_SCANS = 10
+    MAX_SCANS_PER_HOUR = 40
 
     @staticmethod
     def check_scan_limit(user_id: int, db: Session) -> bool:
