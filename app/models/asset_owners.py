@@ -6,10 +6,10 @@ Each user has their own list of asset owners.
 
 Example:
     owner = AssetOwner(
-        full_name="Ali Rezaei",
+        full_name="Sina Bimesl",
         department="IT",
         role="Network Manager",
-        email="ali@company.com",
+        email="fayatech@company.com",
         user_id=1  # Owner belongs to user with id=1
     )
 """
@@ -26,17 +26,6 @@ class AssetOwner(Base):
     
     Stores information about people responsible for assets.
     Each user maintains their own list of owners.
-    
-    Attributes:
-        id: Unique identifier (auto-generated)
-        full_name: Full name of the owner
-        department: Department/team name
-        role: Job role/position
-        email: Contact email
-        phone: Contact phone number
-        responsibility_level: Level of responsibility (e.g., Primary, Secondary)
-        user_id: Reference to users table (which user owns this record)
-        created_at: Record creation timestamp
     
     Relationships:
         user: The user who created this owner record
@@ -158,9 +147,9 @@ class AssetOwner(Base):
    
    Example:
    User "sina" (id=1) has 3 asset owners:
-   - Ali Rezaei
-   - Sara Mohammadi
-   - Reza Karimi
+   - Ali mansouri
+   - Aylar Rezaei
+   - Ahad zargar
    
    If user "sina" is deleted:
    → All 3 asset owners are automatically deleted
@@ -176,17 +165,17 @@ class AssetOwner(Base):
    
    Database:
    id | full_name      | department | user_id
-   1  | Ali Rezaei     | IT         | 1 (sina)
-   2  | Sara Mohammadi | Security   | 1 (sina)
-   3  | Hassan Abbasi  | Network    | 2 (reza)
+   1  | Aylar Rezaei     | IT         | 1 (sina)
+   2  | Ali Mansouri | Security   | 1 (sina)
+   3  | Ahad zargar  | Network    | 2 (ali)
    
    Query for user "sina":
    owners = db.query(AssetOwner).filter(AssetOwner.user_id == 1).all()
-   → Returns: Ali Rezaei, Sara Mohammadi
+   → Returns: Aylar Rezaei, Ali Mansouri
    
-   Query for user "reza":
+   Query for user "ali":
    owners = db.query(AssetOwner).filter(AssetOwner.user_id == 2).all()
-   → Returns: Hassan Abbasi
+   → Returns: Ahad zargar
 
 
 3. Why index=True on certain columns?
@@ -220,11 +209,11 @@ class AssetOwner(Base):
    =========================
    # User "sina" creates an owner
    owner = AssetOwner(
-       full_name="Ali Rezaei",
+       full_name="Ali",
        department="Network",
        role="Senior Engineer",
        email="ali@company.com",
-       phone="+98-912-1234567",
+       phone="+98-914-1234567",
        responsibility_level="Primary",
        user_id=1  # sina's user_id
    )
@@ -240,8 +229,8 @@ class AssetOwner(Base):
        print(f"{owner.full_name} - {owner.department}")
    
    # Output:
-   # Ali Rezaei - Network
-   # Sara Mohammadi - Security
+   # Ali mansori - Network
+   # Aylar rezaei - Security
 
 
 6. Integration with Asset:

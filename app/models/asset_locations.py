@@ -226,10 +226,10 @@ class AssetLocation(Base):
    id | site_name  | rack_name | user_id
    1  | Main DC    | Rack-12   | 1 (sina)
    2  | Branch Off | Rack-03   | 1 (sina)
-   3  | Cloud AWS  | N/A       | 2 (reza)
+   3  | Cloud AWS  | N/A       | 2 (ahad)
    
    User "sina" sees only: Main DC, Branch Off
-   User "reza" sees only: Cloud AWS
+   User "ahad" sees only: Cloud AWS
 
 
 4. Flexible Location Definition
