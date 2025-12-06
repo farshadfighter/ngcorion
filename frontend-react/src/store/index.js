@@ -14,6 +14,7 @@ import osCatalogReducer from './slices/osCatalogSlice';
 import vendorsReducer from './slices/vendorsSlice';
 import enumsReducer from './slices/enumsSlice';
 import discoveryReducer from './slices/discoverySlice';
+import dependenciesReducer from './slices/dependenciesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     vendors: vendorsReducer,
     enums: enumsReducer,
     discovery: discoveryReducer,
+    dependencies: dependenciesReducer,
   },
   devTools: import.meta.env.DEV,
 });

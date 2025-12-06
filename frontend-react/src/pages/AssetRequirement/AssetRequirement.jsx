@@ -11,6 +11,8 @@ import { fetchZones, createZone, deleteZone } from '../../store/slices/zonesSlic
 import { fetchOSCatalog, createOS, deleteOS } from '../../store/slices/osCatalogSlice';
 import { fetchVendors, createVendor, deleteVendor } from '../../store/slices/vendorsSlice';
 import { fetchAllEnums } from '../../store/slices/enumsSlice';
+import { fetchAllDependencies, createDependency, deleteDependency } from '../../store/slices/dependenciesSlice';
+import { fetchAssets } from '../../store/slices/assetsSlice';
 import { useAuth } from '../../hooks/useAuth';
 import Tabs from '../../components/common/Tabs';
 import Button from '../../components/common/Button';
@@ -35,6 +37,8 @@ const AssetRequirement = () => {
   const { items: zones, loading: zonesLoading } = useSelector((state) => state.zones);
   const { items: osCatalog, loading: osLoading } = useSelector((state) => state.osCatalog);
   const { items: vendors, loading: vendorsLoading } = useSelector((state) => state.vendors);
+  const { items: dependencies, loading: dependenciesLoading } = useSelector((state) => state.dependencies);
+  const { assets } = useSelector((state) => state.assets);
   const { status, confidentiality, risk, relationTypes } = useSelector((state) => state.enums);
 
   useEffect(() => {
@@ -44,6 +48,8 @@ const AssetRequirement = () => {
     dispatch(fetchZones());
     dispatch(fetchOSCatalog());
     dispatch(fetchVendors());
+    dispatch(fetchAssets());
+    dispatch(fetchAllDependencies());
     dispatch(fetchAllEnums());
   }, [dispatch]);
 
@@ -54,6 +60,7 @@ const AssetRequirement = () => {
     { key: 'zones', label: 'Network Zones' },
     { key: 'os', label: 'OS Catalog' },
     { key: 'vendors', label: 'Vendors' },
+    { key: 'dependencies', label: 'Dependencies' },
     { key: 'enums', label: 'Enums' },
   ];
 
@@ -158,6 +165,65 @@ const AssetRequirement = () => {
           createAction: createVendor,
           deleteAction: deleteVendor,
         };
+      case 'dependencies':
+        return {
+          data: dependencies,
+          loading: dependenciesLoading,
+          columns: [
+            { key: 'id', title: 'ID', width: '60px' },
+            {
+              key: 'asset_id',
+              title: 'Asset',
+              render: (value) => {
+                const asset = assets?.find((a) => a.id === value);
+                return asset ? asset.asset_name : `Asset ${value}`;
+              }
+            },
+            {
+              key: 'depends_on_id',
+              title: 'Depends On',
+              render: (value) => {
+                const asset = assets?.find((a) => a.id === value);
+                return asset ? asset.asset_name : `Asset ${value}`;
+              }
+            },
+            {
+              key: 'relation_type',
+              title: 'Relation Type',
+              render: (value) => {
+                const rt = relationTypes?.find((r) => r.value === value);
+                return rt ? rt.label : value;
+              }
+            },
+            { key: 'description', title: 'Description' },
+          ],
+          formFields: [
+            {
+              name: 'asset_id',
+              label: 'Asset',
+              type: 'select',
+              options: assets?.map((a) => ({ value: a.id, label: a.asset_name })) || [],
+              required: true
+            },
+            {
+              name: 'depends_on_id',
+              label: 'Depends On',
+              type: 'select',
+              options: assets?.map((a) => ({ value: a.id, label: a.asset_name })) || [],
+              required: true
+            },
+            {
+              name: 'relation_type',
+              label: 'Relation Type',
+              type: 'select',
+              options: relationTypes?.map((r) => ({ value: r.value, label: r.label })) || [],
+              required: true
+            },
+            { name: 'description', label: 'Description' },
+          ],
+          createAction: createDependency,
+          deleteAction: deleteDependency,
+        };
       case 'enums':
         return { isEnums: true };
       default:
@@ -196,7 +262,14 @@ const AssetRequirement = () => {
     }
 
     try {
-      await dispatch(config.createAction(formData)).unwrap();
+      // Convert numeric fields to integers for dependencies
+      const submitData = { ...formData };
+      if (activeTab === 'dependencies') {
+        if (submitData.asset_id) submitData.asset_id = parseInt(submitData.asset_id, 10);
+        if (submitData.depends_on_id) submitData.depends_on_id = parseInt(submitData.depends_on_id, 10);
+      }
+
+      await dispatch(config.createAction(submitData)).unwrap();
       setIsModalOpen(false);
     } catch (err) {
       setFormError(err || 'Failed to create');
@@ -277,17 +350,29 @@ const AssetRequirement = () => {
         <form onSubmit={handleSubmit} className="requirement-form">
           {formError && <div className="error-message">{formError}</div>}
 
-          {config.formFields?.map((field) => (
-            <Input
-              key={field.name}
-              label={field.label}
-              type={field.type || 'text'}
-              name={field.name}
-              value={formData[field.name] || ''}
-              onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-              required={field.required}
-            />
-          ))}
+          {config.formFields?.map((field) =>
+            field.type === 'select' ? (
+              <Select
+                key={field.name}
+                label={field.label}
+                name={field.name}
+                value={formData[field.name] || ''}
+                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                options={field.options}
+                required={field.required}
+              />
+            ) : (
+              <Input
+                key={field.name}
+                label={field.label}
+                type={field.type || 'text'}
+                name={field.name}
+                value={formData[field.name] || ''}
+                onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
+                required={field.required}
+              />
+            )
+          )}
 
           <div className="form-actions">
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>

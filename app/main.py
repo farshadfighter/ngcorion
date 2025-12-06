@@ -1,10 +1,13 @@
 """
 Ngicorn - Main Application
+
+FastAPI application entry point with CORS middleware and route registration.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.database import Base, engine
+from app.core.config import settings
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
@@ -25,18 +28,22 @@ from app.modules.assets.router_with_auth import (
     views_router
 )
 
+# Create database tables
 Base.metadata.create_all(bind=engine)
 
+# Initialize FastAPI application
 app = FastAPI(
-    title="Ngiocorn",
-    description="Network monitoring and asset management system",
-    version="1.0.6",
+    title=settings.PROJECT_NAME,
+    description=settings.DESCRIPTION,
+    version=settings.VERSION,
     redirect_slashes=False
 )
 
+# Configure CORS middleware
+# WARNING: Default allows all origins - configure BACKEND_CORS_ORIGINS in .env for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # در production باید محدود شود
+    allow_origins=settings.BACKEND_CORS_ORIGINS,  # Must be restricted in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
