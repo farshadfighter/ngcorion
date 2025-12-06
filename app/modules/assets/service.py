@@ -67,23 +67,59 @@ class AssetService:
     
     @staticmethod
     def create_asset(db: Session, data: dict):
-        """Create new asset"""
+        """Create new asset with optional security status"""
+        # Extract security_status if present
+        security_status_data = data.pop('security_status', None)
+
+        # Create asset
         asset = Asset(**data)
         db.add(asset)
         db.commit()
         db.refresh(asset)
+
+        # Create security status if provided
+        if security_status_data:
+            security_status_data['asset_id'] = asset.id
+            security_status = AssetSecurityStatus(**security_status_data)
+            db.add(security_status)
+            db.commit()
+
         return asset
     
     @staticmethod
     def update_asset(db: Session, asset_id: int, data: dict):
-        """Update asset"""
+        """Update asset with optional security status"""
+        # Extract security_status if present
+        security_status_data = data.pop('security_status', None)
+
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if asset:
+            # Update asset fields
             for key, value in data.items():
                 if value is not None:
                     setattr(asset, key, value)
             db.commit()
             db.refresh(asset)
+
+            # Update or create security status if provided
+            if security_status_data:
+                existing_security = db.query(AssetSecurityStatus).filter(
+                    AssetSecurityStatus.asset_id == asset_id
+                ).first()
+
+                if existing_security:
+                    # Update existing security status
+                    for key, value in security_status_data.items():
+                        if hasattr(existing_security, key):
+                            setattr(existing_security, key, value)
+                else:
+                    # Create new security status
+                    security_status_data['asset_id'] = asset_id
+                    new_security = AssetSecurityStatus(**security_status_data)
+                    db.add(new_security)
+
+                db.commit()
+
         return asset
     
     @staticmethod
@@ -371,9 +407,39 @@ class AssetService:
     
     @staticmethod
     def get_assets_security_audit(db: Session, user_id: int = None):
-        """Security/Risk/Audit view"""
+        """Security/Risk/Audit view with security status"""
         query = db.query(Asset)
         if user_id:
             query = query.filter(Asset.user_id == user_id)
-        
-        return [asset.get_security_risk_audit() for asset in query.all()]
+
+        assets = query.all()
+        result = []
+
+        for asset in assets:
+            data = asset.get_security_risk_audit()
+
+            # Add security status fields if available
+            if hasattr(asset, 'security_status') and asset.security_status:
+                sec = asset.security_status
+                data.update({
+                    'antivirus_installed': sec.antivirus_installed,
+                    'antivirus_status': sec.antivirus_status,
+                    'firewall_enabled': sec.firewall_enabled,
+                    'backup_enabled': sec.backup_enabled,
+                    'vulnerability_score': sec.vulnerability_score,
+                    'compliance_status': sec.compliance_status,
+                })
+            else:
+                # Default values if no security status exists
+                data.update({
+                    'antivirus_installed': None,
+                    'antivirus_status': None,
+                    'firewall_enabled': None,
+                    'backup_enabled': None,
+                    'vulnerability_score': None,
+                    'compliance_status': None,
+                })
+
+            result.append(data)
+
+        return result

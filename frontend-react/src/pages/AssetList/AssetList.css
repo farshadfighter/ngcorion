@@ -44,3 +44,80 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* Security Status Badges */
+.status-badge.active {
+  background-color: #22c55e;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-badge.inactive {
+  background-color: #ef4444;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-badge.compliant {
+  background-color: #22c55e;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-badge.non-compliant {
+  background-color: #ef4444;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-badge.partially-compliant {
+  background-color: #f59e0b;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-badge.under-review {
+  background-color: #3b82f6;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+/* Vulnerability Score Badges */
+.vuln-score {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.vuln-score.low {
+  background-color: #22c55e;
+  color: white;
+}
+
+.vuln-score.medium {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.vuln-score.high {
+  background-color: #ef4444;
+  color: white;
+}
+
+.text-muted {
+  color: #6b7280;
+  font-style: italic;
+}

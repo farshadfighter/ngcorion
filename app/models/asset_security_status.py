@@ -30,18 +30,6 @@ class AssetSecurityStatus(Base):
     Stores security and compliance information for assets.
     One-to-one relationship with asset_inventory.
     
-    Attributes:
-        id: Unique identifier (auto-generated)
-        asset_id: Reference to asset_inventory (one-to-one)
-        antivirus_installed: Whether antivirus is installed
-        antivirus_status: Status of antivirus (Active, Outdated, etc.)
-        firewall_enabled: Whether firewall is enabled
-        last_patch_date: Date of last security patch
-        backup_enabled: Whether backup is configured
-        vulnerability_score: CVSS or custom vulnerability score (0-10)
-        compliance_status: Compliance state (Compliant, Non-Compliant, etc.)
-        notes: Additional security notes
-    
     Relationships:
         asset: The asset this security status belongs to
     """

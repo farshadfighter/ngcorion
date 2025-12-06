@@ -57,13 +57,20 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
     location_id: assetData?.location_id || '',
     owner_id: assetData?.owner_id || '',
     status: assetData?.status || 'active',
-    // Step 4: Security
+    // Step 4: Security & Audit
     confidentiality_level: getFieldValue(assetData?.confidentiality_level, assetData?.confidentiality),
     risk_level: getFieldValue(assetData?.risk_level, assetData?.risk),
     last_audit_date: formatDateForInput(assetData?.last_audit_date),
     last_patch_date: formatDateForInput(assetData?.last_patch_date),
     asset_value: assetData?.asset_value || '',
     description: assetData?.description || '',
+    // Security Status fields
+    antivirus_installed: assetData?.antivirus_installed || false,
+    antivirus_status: assetData?.antivirus_status || '',
+    firewall_enabled: assetData?.firewall_enabled || false,
+    backup_enabled: assetData?.backup_enabled || false,
+    vulnerability_score: assetData?.vulnerability_score || '',
+    compliance_status: assetData?.compliance_status || '',
   });
 
   const [formData, setFormData] = useState(() => getInitialFormData(asset));
@@ -83,8 +90,11 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   ];
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
     // Clear error when user types
     if (error) setError('');
   };
@@ -178,6 +188,15 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
         last_patch_date: formData.last_patch_date || null,
         asset_value: formData.asset_value ? parseFloat(formData.asset_value) : null,
         description: formData.description.trim() || null,
+        // Security status data
+        security_status: {
+          antivirus_installed: formData.antivirus_installed,
+          antivirus_status: formData.antivirus_installed ? (formData.antivirus_status || null) : null,
+          firewall_enabled: formData.firewall_enabled,
+          backup_enabled: formData.backup_enabled,
+          vulnerability_score: formData.vulnerability_score ? parseFloat(formData.vulnerability_score) : null,
+          compliance_status: formData.compliance_status || null,
+        },
       };
 
       if (asset) {
@@ -356,6 +375,76 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
                 { value: 'medium', label: 'Medium' },
                 { value: 'high', label: 'High' },
                 { value: 'critical', label: 'Critical' },
+              ]}
+            />
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="antivirus_installed"
+                  checked={formData.antivirus_installed}
+                  onChange={handleChange}
+                />
+                <span>Antivirus Installed</span>
+              </label>
+            </div>
+            {formData.antivirus_installed && (
+              <Select
+                label="Antivirus Status"
+                name="antivirus_status"
+                value={formData.antivirus_status}
+                onChange={handleChange}
+                options={[
+                  { value: 'Active', label: 'Active' },
+                  { value: 'Outdated', label: 'Outdated' },
+                  { value: 'Disabled', label: 'Disabled' },
+                  { value: 'Unknown', label: 'Unknown' },
+                ]}
+              />
+            )}
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="firewall_enabled"
+                  checked={formData.firewall_enabled}
+                  onChange={handleChange}
+                />
+                <span>Firewall Enabled</span>
+              </label>
+            </div>
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="backup_enabled"
+                  checked={formData.backup_enabled}
+                  onChange={handleChange}
+                />
+                <span>Backup Enabled</span>
+              </label>
+            </div>
+            <Input
+              label="Vulnerability Score (0-10)"
+              type="number"
+              name="vulnerability_score"
+              value={formData.vulnerability_score}
+              onChange={handleChange}
+              min="0"
+              max="10"
+              step="0.1"
+            />
+            <Select
+              label="Compliance Status"
+              name="compliance_status"
+              value={formData.compliance_status}
+              onChange={handleChange}
+              options={[
+                { value: 'Compliant', label: 'Compliant' },
+                { value: 'Non-Compliant', label: 'Non-Compliant' },
+                { value: 'Partially Compliant', label: 'Partially Compliant' },
+                { value: 'Under Review', label: 'Under Review' },
+                { value: 'Not Applicable', label: 'Not Applicable' },
               ]}
             />
             <Input
@@ -560,6 +649,76 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
                 { value: 'medium', label: 'Medium' },
                 { value: 'high', label: 'High' },
                 { value: 'critical', label: 'Critical' },
+              ]}
+            />
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="antivirus_installed"
+                  checked={formData.antivirus_installed}
+                  onChange={handleChange}
+                />
+                <span>Antivirus Installed</span>
+              </label>
+            </div>
+            {formData.antivirus_installed && (
+              <Select
+                label="Antivirus Status"
+                name="antivirus_status"
+                value={formData.antivirus_status}
+                onChange={handleChange}
+                options={[
+                  { value: 'Active', label: 'Active' },
+                  { value: 'Outdated', label: 'Outdated' },
+                  { value: 'Disabled', label: 'Disabled' },
+                  { value: 'Unknown', label: 'Unknown' },
+                ]}
+              />
+            )}
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="firewall_enabled"
+                  checked={formData.firewall_enabled}
+                  onChange={handleChange}
+                />
+                <span>Firewall Enabled</span>
+              </label>
+            </div>
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  name="backup_enabled"
+                  checked={formData.backup_enabled}
+                  onChange={handleChange}
+                />
+                <span>Backup Enabled</span>
+              </label>
+            </div>
+            <Input
+              label="Vulnerability Score (0-10)"
+              type="number"
+              name="vulnerability_score"
+              value={formData.vulnerability_score}
+              onChange={handleChange}
+              min="0"
+              max="10"
+              step="0.1"
+            />
+            <Select
+              label="Compliance Status"
+              name="compliance_status"
+              value={formData.compliance_status}
+              onChange={handleChange}
+              options={[
+                { value: 'Compliant', label: 'Compliant' },
+                { value: 'Non-Compliant', label: 'Non-Compliant' },
+                { value: 'Partially Compliant', label: 'Partially Compliant' },
+                { value: 'Under Review', label: 'Under Review' },
+                { value: 'Not Applicable', label: 'Not Applicable' },
               ]}
             />
             <Input

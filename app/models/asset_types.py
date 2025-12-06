@@ -42,14 +42,14 @@ class AssetType(Base):
         Integer,
         primary_key=True,
         autoincrement=True,
-        comment="شناسه یکتا"
+        comment="Unique identifier"
     )
     
     type_name = Column(
         String(100),
         unique=True,
         nullable=False,
-        index=True,  # برای جستجوی سریع
+        index=True,
         comment="نام نوع asset (مثلاً Firewall)"
     )
     

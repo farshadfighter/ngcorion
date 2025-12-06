@@ -134,9 +134,52 @@ const AssetList = () => {
           ...baseColumns,
           { key: 'confidentiality', title: 'Confidentiality' },
           { key: 'risk_level', title: 'Risk' },
+          {
+            key: 'antivirus_status',
+            title: 'Antivirus',
+            render: (value, row) => {
+              if (!row.antivirus_installed) return <span className="text-muted">Not Installed</span>;
+              return <span className={`status-badge ${value?.toLowerCase() || 'unknown'}`}>{value || 'Unknown'}</span>;
+            },
+          },
+          {
+            key: 'firewall_enabled',
+            title: 'Firewall',
+            render: (value) => (
+              <span className={`status-badge ${value ? 'active' : 'inactive'}`}>
+                {value ? 'Enabled' : 'Disabled'}
+              </span>
+            ),
+          },
+          {
+            key: 'backup_enabled',
+            title: 'Backup',
+            render: (value) => (
+              <span className={`status-badge ${value ? 'active' : 'inactive'}`}>
+                {value ? 'Enabled' : 'Disabled'}
+              </span>
+            ),
+          },
+          {
+            key: 'vulnerability_score',
+            title: 'Vuln Score',
+            render: (value) => {
+              if (value === null || value === undefined) return '-';
+              const level = value >= 7 ? 'high' : value >= 4 ? 'medium' : 'low';
+              return <span className={`vuln-score ${level}`}>{value.toFixed(1)}</span>;
+            },
+          },
+          {
+            key: 'compliance_status',
+            title: 'Compliance',
+            render: (value) => (
+              <span className={`status-badge ${value?.toLowerCase()?.replace(' ', '-') || 'unknown'}`}>
+                {value || 'Unknown'}
+              </span>
+            ),
+          },
           { key: 'last_audit_date', title: 'Last Audit' },
           { key: 'last_patch_date', title: 'Last Patch' },
-          { key: 'asset_value', title: 'Value' },
         ];
       default:
         return baseColumns;
