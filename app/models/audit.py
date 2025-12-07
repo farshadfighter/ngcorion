@@ -1,5 +1,3 @@
-# models/audit.py
-
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from datetime import datetime

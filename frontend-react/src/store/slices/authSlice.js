@@ -19,7 +19,7 @@ export const login = createAsyncThunk(
   'auth/login',
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      // ارسال JSON به backend
+      // Send JSON to backend
       const response = await api.post('/auth/login', {
         username,
         password
@@ -27,11 +27,11 @@ export const login = createAsyncThunk(
 
       const { access_token, username: user, role, permissions } = response.data;
 
-      // ساخت آبجکت user
-      const userData = { 
-        username: user, 
-        role, 
-        permissions 
+      // Create user object
+      const userData = {
+        username: user,
+        role,
+        permissions
       };
 
       // Store in localStorage

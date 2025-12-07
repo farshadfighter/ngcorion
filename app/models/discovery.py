@@ -19,19 +19,6 @@ class DiscoveryScan(Base):
     Ensures scans persist across server restarts and provides
     proper audit trail for compliance.
 
-    Attributes:
-        id: Primary key
-        scan_id: Unique scan identifier (8-char UUID)
-        user_id: Who initiated the scan
-        target: IP address or range scanned
-        scan_type: Scan intensity (basic, detailed, full)
-        status: Current status (running, completed, failed)
-        started_at: When scan began
-        completed_at: When scan finished (nullable)
-        hosts_discovered: Total hosts found
-        hosts_up: Number of live hosts
-        error_message: Error details if failed
-        results_json: Full scan results as JSON
     """
     __tablename__ = "discovery_scans"
 
