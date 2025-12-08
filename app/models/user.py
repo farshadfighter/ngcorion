@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
 import enum
@@ -19,3 +20,6 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship to permissions - cascade delete ensures permissions are deleted when user is deleted
+    permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")

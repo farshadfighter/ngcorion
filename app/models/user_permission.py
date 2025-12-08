@@ -143,7 +143,7 @@ class UserPermission(Base):
     
     user = relationship(
         "User",
-        backref="permissions"
+        back_populates="permissions"
     )
     
     # ====================================
