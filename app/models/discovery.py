@@ -54,13 +54,25 @@ class DiscoveryScan(Base):
         String(255),
         nullable=False,
         index=True,
-        comment="Target IP, CIDR range, or IP range"
+        comment="Target IP, CIDR range, or IP range (e.g., 192.168.1.0/24, 192.168.1.1-192.168.1.50)"
     )
 
     scan_type = Column(
         String(20),
         nullable=False,
         comment="Scan intensity: basic, detailed, full"
+    )
+
+    ports = Column(
+        String(255),
+        nullable=True,
+        comment="Ports to scan (e.g., '80,443,8080' or '1-1000' or 'top1000')"
+    )
+
+    protocol = Column(
+        String(20),
+        default="TCP",
+        comment="Protocol to scan: TCP, UDP, or BOTH"
     )
 
     # Scan Status and Results
@@ -132,9 +144,167 @@ class DiscoveryScan(Base):
         back_populates="scan",
         cascade="all, delete-orphan"
     )
+    discovered_hosts = relationship(
+        "DiscoveredHost",
+        back_populates="scan",
+        cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<DiscoveryScan(scan_id='{self.scan_id}', target='{self.target}', status='{self.status}')>"
+
+
+class DiscoveredHost(Base):
+    """
+    Store discovered hosts awaiting approval
+
+    This table holds scan results before they're approved and added to the
+    main asset inventory. Provides a staging area for review and approval.
+
+    Hosts are highlighted in the UI (orange) to indicate they need review.
+    Once approved, they're either:
+    - Matched to existing assets (update)
+    - Created as new assets
+
+    Attributes:
+        id: Primary key
+        scan_id: Reference to the scan that found this host
+        ip_address: Discovered IP address
+        mac_address: MAC address if available
+        hostname: Hostname if discovered
+        os_info: Operating system information
+        open_ports: JSON array of discovered open ports
+        status: pending, approved, rejected, merged
+        approved_by_user_id: Who approved/rejected this
+        approved_at: When it was approved/rejected
+        matched_asset_id: If matched to existing asset
+        discovery_source: How it was discovered (nmap, passive, etc.)
+        additional_info: Any extra discovered information as JSON
+    """
+    __tablename__ = "discovered_hosts"
+
+    # Primary Key
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Foreign Keys
+    scan_id = Column(
+        String(50),
+        ForeignKey("discovery_scans.scan_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Scan that discovered this host"
+    )
+
+    # Discovered Information
+    ip_address = Column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Discovered IP address"
+    )
+
+    mac_address = Column(
+        String(17),
+        nullable=True,
+        index=True,
+        comment="MAC address if discovered"
+    )
+
+    hostname = Column(
+        String(255),
+        nullable=True,
+        comment="Hostname if discovered"
+    )
+
+    os_info = Column(
+        String(255),
+        nullable=True,
+        comment="Operating system information"
+    )
+
+    os_accuracy = Column(
+        Integer,
+        nullable=True,
+        comment="OS detection accuracy percentage"
+    )
+
+    # Port Information
+    open_ports = Column(
+        JSON,
+        nullable=True,
+        comment="Array of discovered open ports with service info"
+    )
+
+    # Approval Workflow
+    status = Column(
+        String(20),
+        default="pending",
+        index=True,
+        comment="Status: pending, approved, rejected, merged"
+    )
+
+    approved_by_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="User who approved/rejected"
+    )
+
+    approved_at = Column(
+        DateTime,
+        nullable=True,
+        comment="When approved/rejected"
+    )
+
+    matched_asset_id = Column(
+        Integer,
+        ForeignKey("asset_inventory.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Asset ID if matched/merged"
+    )
+
+    # Discovery Metadata
+    discovery_source = Column(
+        String(50),
+        default="nmap",
+        comment="Discovery method: nmap, passive, manual, etc."
+    )
+
+    state = Column(
+        String(20),
+        nullable=True,
+        comment="Host state: up, down, unknown"
+    )
+
+    additional_info = Column(
+        JSON,
+        nullable=True,
+        comment="Additional discovered information"
+    )
+
+    # Timestamps
+    discovered_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        index=True,
+        comment="When this host was discovered"
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        comment="Last update timestamp"
+    )
+
+    # Relationships
+    scan = relationship("DiscoveryScan", back_populates="discovered_hosts")
+    approved_by = relationship("User", foreign_keys=[approved_by_user_id])
+    matched_asset = relationship("Asset", foreign_keys=[matched_asset_id])
+
+    def __repr__(self):
+        return f"<DiscoveredHost(ip='{self.ip_address}', status='{self.status}', scan_id='{self.scan_id}')>"
 
 
 class DiscoveryApplication(Base):

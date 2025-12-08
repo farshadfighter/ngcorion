@@ -39,6 +39,7 @@ from app.models.asset_security_status import AssetSecurityStatus
 # Import discovery models (depend on User and Asset)
 from app.models.discovery import (
     DiscoveryScan,
+    DiscoveredHost,
     DiscoveryApplication,
     DiscoveryAuditLog
 )
@@ -80,6 +81,7 @@ __all__ = [
     "AssetSecurityStatus",
     # Discovery models
     "DiscoveryScan",
+    "DiscoveredHost",
     "DiscoveryApplication",
     "DiscoveryAuditLog",
     # Audit models

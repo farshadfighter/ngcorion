@@ -12,12 +12,19 @@ import re
 class ScanRequest(BaseModel):
     """
     Request to start a network scan
-    
+
     Example:
-        {"target": "192.168.1.0/24", "scan_type": "detailed"}
+        {
+            "target": "192.168.1.0/24",
+            "scan_type": "detailed",
+            "ports": "80,443,8080",
+            "protocol": "TCP"
+        }
     """
-    target: str  # IP address or IP range
+    target: str  # IP address, IP range, or CIDR
     scan_type: str = "basic"  # basic, detailed, full
+    ports: Optional[str] = None  # Port specification: "80,443,8080" or "1-1000" or "top1000"
+    protocol: str = "TCP"  # TCP, UDP, or BOTH
     
     @field_validator('target')
     @classmethod
@@ -46,6 +53,46 @@ class ScanRequest(BaseModel):
         allowed = ['basic', 'detailed', 'full']
         if v not in allowed:
             raise ValueError(f'scan_type must be one of: {allowed}')
+        return v
+
+    @field_validator('protocol')
+    @classmethod
+    def validate_protocol(cls, v):
+        allowed = ['TCP', 'UDP', 'BOTH']
+        if v.upper() not in allowed:
+            raise ValueError(f'protocol must be one of: {allowed}')
+        return v.upper()
+
+    @field_validator('ports')
+    @classmethod
+    def validate_ports(cls, v):
+        if v is None:
+            return v
+        # Allow: "80,443,8080", "1-1000", "top1000", "all"
+        if v.lower() in ['top1000', 'all']:
+            return v.lower()
+        # Validate comma-separated or range
+        if ',' in v:
+            # Comma-separated: "80,443,8080"
+            for port in v.split(','):
+                if not port.strip().isdigit() or not (1 <= int(port.strip()) <= 65535):
+                    raise ValueError(f'Invalid port: {port}')
+        elif '-' in v:
+            # Range: "1-1000"
+            parts = v.split('-')
+            if len(parts) != 2:
+                raise ValueError('Port range must be in format: 1-1000')
+            start, end = parts
+            if not (start.isdigit() and end.isdigit()):
+                raise ValueError('Port range must contain only numbers')
+            if not (1 <= int(start) <= 65535 and 1 <= int(end) <= 65535):
+                raise ValueError('Ports must be between 1-65535')
+            if int(start) >= int(end):
+                raise ValueError('Start port must be less than end port')
+        else:
+            # Single port
+            if not v.isdigit() or not (1 <= int(v) <= 65535):
+                raise ValueError('Port must be between 1-65535')
         return v
 
 
@@ -145,3 +192,111 @@ class CreateAssetFromDiscoveryRequest(BaseModel):
     discovered_host: DiscoveredHost
     asset_name: str  # User must provide name
     asset_type_id: int  # User must select type
+
+# ========================================
+# Pending Approval Workflow Schemas
+# ========================================
+
+class PendingHostResponse(BaseModel):
+    """Response schema for discovered host awaiting approval"""
+    id: int
+    scan_id: str
+    ip_address: str
+    mac_address: Optional[str] = None
+    hostname: Optional[str] = None
+    os_info: Optional[str] = None
+    os_accuracy: Optional[int] = None
+    open_ports: List[DiscoveredPort] = []
+    status: str  # pending, approved, rejected, merged
+    state: Optional[str] = None  # up, down, unknown
+    discovered_at: datetime
+    matched_asset_id: Optional[int] = None
+    highlight: bool = True  # For UI to show orange highlighting
+
+
+class PendingHostsListResponse(BaseModel):
+    """List of pending discovered hosts"""
+    total: int
+    pending: List[PendingHostResponse]
+
+
+class ApproveHostRequest(BaseModel):
+    """
+    Request to approve a discovered host
+
+    Actions:
+    - create_new: Create new asset from discovered data
+    - merge_with_existing: Update existing asset (non-destructive)
+    """
+    action: str  # create_new or merge_with_existing
+    asset_id: Optional[int] = None  # Required if action is merge_with_existing
+    asset_data: Optional[Dict[str, Any]] = None  # Asset creation data if creating new
+
+    @field_validator('action')
+    @classmethod
+    def validate_action(cls, v):
+        allowed = ['create_new', 'merge_with_existing']
+        if v not in allowed:
+            raise ValueError(f'action must be one of: {allowed}')
+        return v
+
+
+class ApproveHostResponse(BaseModel):
+    """Response after approving a discovered host"""
+    success: bool
+    asset_id: int
+    message: str
+    fields_applied: List[str]
+    action_taken: str  # created or merged
+
+
+class RejectHostResponse(BaseModel):
+    """Response after rejecting a discovered host"""
+    success: bool
+    message: str
+
+
+class BulkApproveRequest(BaseModel):
+    """Request to approve multiple hosts at once"""
+    host_ids: List[int]
+    default_asset_type_id: int
+    default_location_id: Optional[int] = None
+    default_owner_id: Optional[int] = None
+
+
+class BulkApproveResponse(BaseModel):
+    """Response after bulk approval"""
+    success: bool
+    approved: int
+    created_assets: List[int]
+    errors: List[Dict[str, Any]]
+
+
+class MatchCheckResponse(BaseModel):
+    """Response when checking for matching assets"""
+    matches_found: bool
+    matches: List[Dict[str, Any]]
+    recommendation: str  # merge, create_new, or review
+
+    
+class ScanListResponse(BaseModel):
+    """Response for listing scans"""
+    scans: List[Dict[str, Any]]
+    total: int
+
+
+# ========================================
+# Configuration Models
+# ========================================
+
+class ScanConfigResponse(BaseModel):
+    """Available scan configuration options"""
+    scan_types: List[str] = ["basic", "detailed", "full"]
+    protocols: List[str] = ["TCP", "UDP", "BOTH"]
+    port_presets: Dict[str, str] = {
+        "common": "80,443,22,21,25,110,143,3306,3389,8080",
+        "web": "80,443,8080,8443,8000,8888",
+        "database": "3306,5432,1433,1521,27017,6379",
+        "top1000": "top1000",
+        "all": "all"
+    }
