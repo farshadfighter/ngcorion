@@ -21,7 +21,7 @@ from .schemas import (
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
     DiscoveredHost
 )
-from . import service
+from .service import DiscoveryService
 
 
 router = APIRouter(
@@ -92,7 +92,7 @@ async def start_scan(
     check_discovery_permission(current_user, "write", db)
 
     try:
-        scan = await service.start_scan(request)
+        scan = await DiscoveryService.start_scan(db, request, current_user.id)
         return scan
     except Exception as e:
         raise HTTPException(
@@ -128,7 +128,7 @@ async def get_all_scans(
     **Permissions:** Requires read permission for asset_auto_discovery module
     """
     check_discovery_permission(current_user, "read", db)
-    return service.get_all_scans()
+    return DiscoveryService.get_all_scans(db)
 
 
 @router.delete("/scan/{scan_id}")

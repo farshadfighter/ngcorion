@@ -273,6 +273,22 @@ class DiscoveryService:
         return db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
 
     @staticmethod
+    def get_discovered_host_by_ip(
+        db: Session,
+        scan_id: str,
+        ip_address: str
+    ) -> Optional[DiscoveredHost]:
+        """Get discovered host by scan ID and IP address"""
+        return (
+            db.query(DiscoveredHost)
+            .filter(
+                DiscoveredHost.scan_id == scan_id,
+                DiscoveredHost.ip_address == ip_address
+            )
+            .first()
+        )
+
+    @staticmethod
     def reject_discovered_host(
         db: Session,
         host_id: int,
@@ -612,3 +628,109 @@ class DiscoveryService:
             "pending_hosts": pending_hosts,
             "approved_hosts": approved_hosts
         }
+
+    @staticmethod
+    def delete_scan(db: Session, scan_id: str) -> bool:
+        """
+        Delete a scan and all associated discovered hosts
+
+        Returns:
+            True if scan was deleted, False if not found
+        """
+        scan = DiscoveryService.get_scan(db, scan_id)
+        if not scan:
+            return False
+
+        # Delete associated discovered hosts
+        db.query(DiscoveredHost).filter(DiscoveredHost.scan_id == scan_id).delete()
+
+        # Delete scan
+        db.delete(scan)
+        db.commit()
+
+        logger.info(f"Deleted scan {scan_id}")
+        return True
+
+    @staticmethod
+    def get_scan_status(db: Session, scan_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get scan status with discovered hosts in ScanResponse format
+
+        Returns:
+            Dict matching ScanResponse schema, or None if not found
+        """
+        scan = DiscoveryService.get_scan(db, scan_id)
+        if not scan:
+            return None
+
+        # Get discovered hosts for this scan
+        discovered_hosts = (
+            db.query(DiscoveredHost)
+            .filter(DiscoveredHost.scan_id == scan_id)
+            .all()
+        )
+
+        # Convert discovered hosts to schema format
+        hosts_list = []
+        for host in discovered_hosts:
+            host_dict = {
+                "ip_address": host.ip_address,
+                "hostname": host.hostname,
+                "mac_address": host.mac_address,
+                "vendor": None,  # TODO: Add vendor lookup
+                "os_name": host.os_info,
+                "os_version": None,
+                "os_accuracy": host.os_accuracy,
+                "ports": host.open_ports or [],
+                "state": host.state or "unknown"
+            }
+            hosts_list.append(host_dict)
+
+        return {
+            "scan_id": scan.scan_id,
+            "target": scan.target,
+            "scan_type": scan.scan_type,
+            "status": scan.status,
+            "started_at": scan.started_at,
+            "completed_at": scan.completed_at,
+            "hosts_up": scan.hosts_up or 0,
+            "hosts_total": scan.hosts_discovered or 0,
+            "hosts": hosts_list,
+            "error": scan.error_message
+        }
+
+    @staticmethod
+    async def start_scan(db: Session, request: ScanRequest, user_id: int) -> Dict[str, Any]:
+        """
+        Start a new scan (async)
+
+        Creates scan record and executes scan in background
+
+        Returns:
+            Dict matching ScanResponse schema
+        """
+        # Create scan record
+        scan = DiscoveryService.create_scan(
+            db=db,
+            user_id=user_id,
+            target=request.target,
+            scan_type=request.scan_type,
+            ports=request.ports,
+            protocol=request.protocol
+        )
+
+        # Execute scan in background (for now, run synchronously)
+        # TODO: Use background task for proper async execution
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+
+        def run_scan():
+            return DiscoveryService.execute_scan(db, scan.scan_id)
+
+        # Run scan in thread pool to avoid blocking
+        with ThreadPoolExecutor() as executor:
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(executor, run_scan)
+
+        # Return scan status
+        return DiscoveryService.get_scan_status(db, scan.scan_id)
