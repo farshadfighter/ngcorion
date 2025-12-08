@@ -7,7 +7,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
-from .schemas import *
+from .schemas import (
+    AssetTypeCreate, AssetTypeResponse,
+    AssetCreate, AssetUpdate, AssetResponse,
+    AssetOwnerCreate, AssetOwnerResponse,
+    AssetLocationCreate, AssetLocationResponse,
+    NetworkZoneCreate, NetworkZoneResponse,
+    OSCatalogCreate, OSCatalogResponse,
+    VendorCatalogCreate, VendorCatalogResponse,
+    AssetDependencyCreate, AssetDependencyResponse,
+    AssetSecurityStatusCreate, AssetSecurityStatusResponse
+)
 from .service import AssetService
 from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager
 from app.models import User
@@ -19,7 +29,7 @@ asset_types_router = APIRouter(prefix="/api/asset-types", tags=["Asset Types"])
 
 @asset_types_router.get("/", response_model=List[AssetTypeResponse])
 def get_asset_types(
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all asset types (authenticated users)"""
@@ -39,7 +49,7 @@ def create_asset_type(
 @asset_types_router.get("/{type_id}", response_model=AssetTypeResponse)
 def get_asset_type(
     type_id: int,
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get asset type by id (authenticated users)"""
@@ -104,7 +114,7 @@ def create_asset(
     db: Session = Depends(get_db)
 ):
     """Create asset (admin only)"""
-    asset_data = data.dict()
+    asset_data = data.model_dump()
     # If user_id not provided, use current user
     if not asset_data.get('user_id'):
         asset_data['user_id'] = current_user.id
@@ -178,7 +188,7 @@ def create_owner(
     db: Session = Depends(get_db)
 ):
     """Create owner (admin only) - uses current_user.id dynamically"""
-    return AssetService.create_owner(db, data.dict(), user_id=current_user.id)
+    return AssetService.create_owner(db, data.model_dump(), user_id=current_user.id)
 
 
 @owners_router.get("/{owner_id}", response_model=AssetOwnerResponse)
@@ -206,7 +216,7 @@ def update_owner(
     db: Session = Depends(get_db)
 ):
     """Update owner (admin only)"""
-    owner = AssetService.update_owner(db, owner_id, data.dict())
+    owner = AssetService.update_owner(db, owner_id, data.model_dump())
     if not owner:
         raise HTTPException(404, "Owner not found")
     return owner
@@ -247,7 +257,7 @@ def create_location(
     db: Session = Depends(get_db)
 ):
     """Create location (admin only) - uses current_user.id dynamically"""
-    return AssetService.create_location(db, data.dict(), user_id=current_user.id)
+    return AssetService.create_location(db, data.model_dump(), user_id=current_user.id)
 
 
 @locations_router.get("/{location_id}", response_model=AssetLocationResponse)
@@ -275,7 +285,7 @@ def update_location(
     db: Session = Depends(get_db)
 ):
     """Update location (admin only)"""
-    location = AssetService.update_location(db, location_id, data.dict())
+    location = AssetService.update_location(db, location_id, data.model_dump())
     if not location:
         raise HTTPException(404, "Location not found")
     return location
@@ -299,7 +309,7 @@ zones_router = APIRouter(prefix="/api/zones", tags=["Zones"])
 
 @zones_router.get("/", response_model=List[NetworkZoneResponse])
 def get_zones(
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get all zones (authenticated users)"""
@@ -313,7 +323,7 @@ def create_zone(
     db: Session = Depends(get_db)
 ):
     """Create zone (admin only)"""
-    return AssetService.create_zone(db, data.dict())
+    return AssetService.create_zone(db, data.model_dump())
 
 
 @zones_router.delete("/{zone_id}")
@@ -334,7 +344,7 @@ os_router = APIRouter(prefix="/api/os-catalog", tags=["OS Catalog"])
 
 @os_router.get("/", response_model=List[OSCatalogResponse])
 def get_os_catalog(
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get OS catalog (authenticated users)"""
@@ -348,7 +358,7 @@ def create_os(
     db: Session = Depends(get_db)
 ):
     """Create OS entry (admin only)"""
-    return AssetService.create_os(db, data.dict())
+    return AssetService.create_os(db, data.model_dump())
 
 
 @os_router.delete("/{os_id}")
@@ -369,7 +379,7 @@ vendors_router = APIRouter(prefix="/api/vendors", tags=["Vendors"])
 
 @vendors_router.get("/", response_model=List[VendorCatalogResponse])
 def get_vendors(
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get vendors (authenticated users)"""
@@ -383,7 +393,7 @@ def create_vendor(
     db: Session = Depends(get_db)
 ):
     """Create vendor (admin only)"""
-    return AssetService.create_vendor(db, data.dict())
+    return AssetService.create_vendor(db, data.model_dump())
 
 
 @vendors_router.delete("/{vendor_id}")
@@ -405,7 +415,7 @@ dependencies_router = APIRouter(prefix="/api/dependencies", tags=["Dependencies"
 @dependencies_router.get("/asset/{asset_id}", response_model=List[AssetDependencyResponse])
 def get_dependencies(
     asset_id: int,
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get asset dependencies"""
@@ -419,7 +429,7 @@ def create_dependency(
     db: Session = Depends(get_db)
 ):
     """Create dependency (admin only)"""
-    return AssetService.create_dependency(db, data.dict())
+    return AssetService.create_dependency(db, data.model_dump())
 
 
 @dependencies_router.delete("/{dep_id}")
@@ -441,7 +451,7 @@ security_router = APIRouter(prefix="/api/security", tags=["Security"])
 @security_router.get("/asset/{asset_id}", response_model=AssetSecurityStatusResponse)
 def get_security(
     asset_id: int,
-    current_user: User = Depends(get_current_user),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get security status"""
@@ -458,7 +468,7 @@ def create_security(
     db: Session = Depends(get_db)
 ):
     """Create security status (admin only)"""
-    return AssetService.create_security_status(db, data.dict())
+    return AssetService.create_security_status(db, data.model_dump())
 
 
 @security_router.put("/{status_id}", response_model=AssetSecurityStatusResponse)
@@ -469,7 +479,7 @@ def update_security(
     db: Session = Depends(get_db)
 ):
     """Update security status (admin only)"""
-    status = AssetService.update_security_status(db, status_id, data.dict())
+    status = AssetService.update_security_status(db, status_id, data.model_dump())
     if not status:
         raise HTTPException(404, "Security status not found")
     return status
