@@ -1,10 +1,21 @@
-from pydantic import BaseModel, field_validator
-from typing import Optional
+from pydantic import BaseModel, field_validator, EmailStr, ConfigDict
+from typing import Optional, Generic, TypeVar, List
 import re
 
 from datetime import date, datetime
 from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
 from app.models.enums import RelationTypeEnum
+
+# Generic type for pagination
+T = TypeVar('T')
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    """Generic paginated response"""
+    items: List[T]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
 
 class AssetTypeBase(BaseModel):
     type_name: str
@@ -12,13 +23,18 @@ class AssetTypeBase(BaseModel):
     description: Optional[str] = None
 
 class AssetTypeCreate(AssetTypeBase):
-    pass
+    @field_validator('type_name', 'category')
+    @classmethod
+    def validate_strings(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError('Field must be at least 2 characters')
+        return v
 
 class AssetTypeResponse(AssetTypeBase):
     id: int
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Asset Schemas
@@ -111,23 +127,40 @@ class AssetResponse(AssetBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Owner/Location Schemas
 class AssetOwnerCreate(BaseModel):
     full_name: str
     department: Optional[str] = None
     role: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     phone: Optional[str] = None
+
+    @field_validator('full_name')
+    @classmethod
+    def validate_full_name(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError('Full name must be at least 2 characters')
+        return v
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        if v is None or v == '':
+            return v
+        # Basic phone validation (allows various formats)
+        v = v.strip()
+        if len(v) < 7:
+            raise ValueError('Phone number must be at least 7 characters')
+        return v
 
 class AssetOwnerResponse(AssetOwnerCreate):
     id: int
     user_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AssetLocationCreate(BaseModel):
     site_name: str
@@ -138,12 +171,37 @@ class AssetLocationCreate(BaseModel):
     vlan_id: Optional[int] = None
     subnet: Optional[str] = None
 
+    @field_validator('site_name')
+    @classmethod
+    def validate_site_name(cls, v):
+        v = v.strip()
+        if len(v) < 2:
+            raise ValueError('Site name must be at least 2 characters')
+        return v
+
+    @field_validator('vlan_id')
+    @classmethod
+    def validate_vlan(cls, v):
+        if v is not None and (v < 1 or v > 4094):
+            raise ValueError('VLAN ID must be between 1 and 4094')
+        return v
+
+    @field_validator('subnet')
+    @classmethod
+    def validate_subnet(cls, v):
+        if v is None or v == '':
+            return v
+        # Basic CIDR validation
+        pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/([0-9]|[1-2][0-9]|3[0-2])$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid subnet format (use CIDR notation, e.g., 192.168.1.0/24)')
+        return v
+
 class AssetLocationResponse(AssetLocationCreate):
     id: int
     user_id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
                 
 # Network Zones
 class NetworkZoneCreate(BaseModel):
@@ -153,8 +211,7 @@ class NetworkZoneCreate(BaseModel):
 class NetworkZoneResponse(NetworkZoneCreate):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # OS Catalog
 class OSCatalogCreate(BaseModel):
@@ -165,8 +222,7 @@ class OSCatalogCreate(BaseModel):
 class OSCatalogResponse(OSCatalogCreate):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Vendor Catalog
 class VendorCatalogCreate(BaseModel):
@@ -176,8 +232,7 @@ class VendorCatalogCreate(BaseModel):
 class VendorCatalogResponse(VendorCatalogCreate):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Asset Dependencies
 class AssetDependencyCreate(BaseModel):
@@ -189,8 +244,7 @@ class AssetDependencyCreate(BaseModel):
 class AssetDependencyResponse(AssetDependencyCreate):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Asset Security Status
 class AssetSecurityStatusCreate(BaseModel):
@@ -207,5 +261,4 @@ class AssetSecurityStatusCreate(BaseModel):
 class AssetSecurityStatusResponse(AssetSecurityStatusCreate):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -2,9 +2,12 @@
 Asset Service - Complete CRUD operations
 """
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.query import Query
+from typing import List, Optional
+from math import ceil
 from app.models import (
     AssetType, Asset, AssetOwner, AssetLocation,
-    NetworkZone, OSCatalog, VendorCatalog, 
+    NetworkZone, OSCatalog, VendorCatalog,
     AssetDependency, AssetSecurityStatus
 )
 from .schemas import AssetTypeCreate
@@ -12,7 +15,36 @@ from .schemas import AssetTypeCreate
 
 class AssetService:
     """Asset Management Service with complete CRUD operations"""
-    
+
+    # ==========================================
+    # Helper Methods
+    # ==========================================
+
+    @staticmethod
+    def paginate_query(query: Query, page: int = 1, page_size: int = 50):
+        """
+        Paginate a SQLAlchemy query
+
+        Args:
+            query: SQLAlchemy query object
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+
+        Returns:
+            tuple: (items, total_count, total_pages)
+        """
+        if page < 1:
+            page = 1
+        if page_size < 1 or page_size > 100:
+            page_size = 50
+
+        total_count = query.count()
+        total_pages = ceil(total_count / page_size) if total_count > 0 else 1
+
+        items = query.offset((page - 1) * page_size).limit(page_size).all()
+
+        return items, total_count, total_pages
+
     # ==========================================
     # Asset Types
     # ==========================================
@@ -30,12 +62,24 @@ class AssetService:
     @staticmethod
     def create_asset_type(db: Session, data: AssetTypeCreate):
         """Create new asset type"""
-        asset_type = AssetType(**data.dict())
+        asset_type = AssetType(**data.model_dump())
         db.add(asset_type)
         db.commit()
         db.refresh(asset_type)
         return asset_type
     
+    @staticmethod
+    def update_asset_type(db: Session, type_id: int, data: dict):
+        """Update asset type"""
+        asset_type = db.query(AssetType).filter(AssetType.id == type_id).first()
+        if asset_type:
+            for key, value in data.items():
+                if hasattr(asset_type, key):
+                    setattr(asset_type, key, value)
+            db.commit()
+            db.refresh(asset_type)
+        return asset_type
+
     @staticmethod
     def delete_asset_type(db: Session, type_id: int):
         """Delete asset type"""

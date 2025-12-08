@@ -3,9 +3,9 @@ Asset Management Routers with Authentication
 All routes require JWT authentication
 Admin-only routes are protected with require_admin dependency
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.core.database import get_db
 from .schemas import (
     AssetTypeCreate, AssetTypeResponse,
@@ -16,7 +16,8 @@ from .schemas import (
     OSCatalogCreate, OSCatalogResponse,
     VendorCatalogCreate, VendorCatalogResponse,
     AssetDependencyCreate, AssetDependencyResponse,
-    AssetSecurityStatusCreate, AssetSecurityStatusResponse
+    AssetSecurityStatusCreate, AssetSecurityStatusResponse,
+    PaginatedResponse
 )
 from .service import AssetService
 from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager
@@ -55,7 +56,7 @@ def get_asset_type(
     """Get asset type by id (authenticated users)"""
     asset_type = AssetService.get_asset_type(db, type_id)
     if not asset_type:
-        raise HTTPException(404, "Asset type not found")
+        raise HTTPException(status_code=404, detail="Asset type not found")
     return asset_type
 
 
@@ -67,15 +68,9 @@ def update_asset_type(
     db: Session = Depends(get_db)
 ):
     """Update asset type (admin only)"""
-    asset_type = AssetService.get_asset_type(db, type_id)
+    asset_type = AssetService.update_asset_type(db, type_id, data.model_dump())
     if not asset_type:
-        raise HTTPException(404, "Asset type not found")
-    
-    asset_type.type_name = data.type_name
-    asset_type.category = data.category
-    asset_type.description = data.description
-    db.commit()
-    db.refresh(asset_type)
+        raise HTTPException(status_code=404, detail="Asset type not found")
     return asset_type
 
 
@@ -87,7 +82,7 @@ def delete_asset_type(
 ):
     """Delete asset type (admin only)"""
     if not AssetService.delete_asset_type(db, type_id):
-        raise HTTPException(404, "Asset type not found")
+        raise HTTPException(status_code=404, detail="Asset type not found")
     return {"message": "Deleted successfully"}
 
 
@@ -97,14 +92,32 @@ assets_router = APIRouter(prefix="/api/assets", tags=["Assets"])
 
 @assets_router.get("/", response_model=List[AssetResponse])
 def get_assets(
+    page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
+    page_size: Optional[int] = Query(None, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get assets (admin sees all, user sees own)"""
-    if current_user.role.value == "admin":
-        return AssetService.get_all_assets(db)
-    else:
-        return AssetService.get_user_assets(db, current_user.id)
+    """
+    Get assets (admin sees all, user sees own)
+
+    Supports optional pagination via page and page_size query parameters.
+    If pagination params are omitted, returns all results (backward compatible).
+    """
+    from app.models import Asset
+
+    # Build base query
+    query = db.query(Asset)
+    if current_user.role.value != "admin":
+        query = query.filter(Asset.user_id == current_user.id)
+
+    # If pagination requested, return paginated results
+    if page is not None and page_size is not None:
+        items, total, total_pages = AssetService.paginate_query(query, page, page_size)
+        # Return as PaginatedResponse in header but List in response for backward compatibility
+        return items
+
+    # Return all results (backward compatible)
+    return query.all()
 
 
 @assets_router.post("/", response_model=AssetResponse)
@@ -130,11 +143,11 @@ def get_asset(
     """Get asset by id"""
     asset = AssetService.get_asset(db, asset_id)
     if not asset:
-        raise HTTPException(404, "Asset not found")
+        raise HTTPException(status_code=404, detail="Asset not found")
     
     # Check permission: admin or owner
     if current_user.role.value != "admin" and asset.user_id != current_user.id:
-        raise HTTPException(403, "Access denied")
+        raise HTTPException(status_code=403, detail="Access denied")
     
     return asset
 
@@ -149,7 +162,7 @@ def update_asset(
     """Update asset (admin or manager)"""
     asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
     if not asset:
-        raise HTTPException(404, "Asset not found")
+        raise HTTPException(status_code=404, detail="Asset not found")
     return asset
 
 
@@ -161,7 +174,7 @@ def delete_asset(
 ):
     """Delete asset (admin only)"""
     if not AssetService.delete_asset(db, asset_id):
-        raise HTTPException(404, "Asset not found")
+        raise HTTPException(status_code=404, detail="Asset not found")
     return {"message": "Deleted successfully"}
 
 
@@ -200,10 +213,10 @@ def get_owner(
     """Get owner by id"""
     owner = AssetService.get_owner(db, owner_id)
     if not owner:
-        raise HTTPException(404, "Owner not found")
+        raise HTTPException(status_code=404, detail="Owner not found")
     
     if current_user.role.value != "admin" and owner.user_id != current_user.id:
-        raise HTTPException(403, "Access denied")
+        raise HTTPException(status_code=403, detail="Access denied")
     
     return owner
 
@@ -218,7 +231,7 @@ def update_owner(
     """Update owner (admin only)"""
     owner = AssetService.update_owner(db, owner_id, data.model_dump())
     if not owner:
-        raise HTTPException(404, "Owner not found")
+        raise HTTPException(status_code=404, detail="Owner not found")
     return owner
 
 
@@ -230,7 +243,7 @@ def delete_owner(
 ):
     """Delete owner (admin only)"""
     if not AssetService.delete_owner(db, owner_id):
-        raise HTTPException(404, "Owner not found")
+        raise HTTPException(status_code=404, detail="Owner not found")
     return {"message": "Deleted successfully"}
 
 
@@ -269,10 +282,10 @@ def get_location(
     """Get location by id"""
     location = AssetService.get_location(db, location_id)
     if not location:
-        raise HTTPException(404, "Location not found")
+        raise HTTPException(status_code=404, detail="Location not found")
     
     if current_user.role.value != "admin" and location.user_id != current_user.id:
-        raise HTTPException(403, "Access denied")
+        raise HTTPException(status_code=403, detail="Access denied")
     
     return location
 
@@ -287,7 +300,7 @@ def update_location(
     """Update location (admin only)"""
     location = AssetService.update_location(db, location_id, data.model_dump())
     if not location:
-        raise HTTPException(404, "Location not found")
+        raise HTTPException(status_code=404, detail="Location not found")
     return location
 
 
@@ -299,7 +312,7 @@ def delete_location(
 ):
     """Delete location (admin only)"""
     if not AssetService.delete_location(db, location_id):
-        raise HTTPException(404, "Location not found")
+        raise HTTPException(status_code=404, detail="Location not found")
     return {"message": "Deleted successfully"}
 
 
@@ -334,7 +347,7 @@ def delete_zone(
 ):
     """Delete zone (admin only)"""
     if not AssetService.delete_zone(db, zone_id):
-        raise HTTPException(404, "Zone not found")
+        raise HTTPException(status_code=404, detail="Zone not found")
     return {"message": "Deleted successfully"}
 
 
@@ -369,7 +382,7 @@ def delete_os(
 ):
     """Delete OS entry (admin only)"""
     if not AssetService.delete_os(db, os_id):
-        raise HTTPException(404, "OS not found")
+        raise HTTPException(status_code=404, detail="OS not found")
     return {"message": "Deleted successfully"}
 
 
@@ -404,7 +417,7 @@ def delete_vendor(
 ):
     """Delete vendor (admin only)"""
     if not AssetService.delete_vendor(db, vendor_id):
-        raise HTTPException(404, "Vendor not found")
+        raise HTTPException(status_code=404, detail="Vendor not found")
     return {"message": "Deleted successfully"}
 
 
@@ -440,7 +453,7 @@ def delete_dependency(
 ):
     """Delete dependency (admin only)"""
     if not AssetService.delete_dependency(db, dep_id):
-        raise HTTPException(404, "Dependency not found")
+        raise HTTPException(status_code=404, detail="Dependency not found")
     return {"message": "Deleted successfully"}
 
 
@@ -457,7 +470,7 @@ def get_security(
     """Get security status"""
     status = AssetService.get_security_status(db, asset_id)
     if not status:
-        raise HTTPException(404, "Security status not found")
+        raise HTTPException(status_code=404, detail="Security status not found")
     return status
 
 
@@ -481,7 +494,7 @@ def update_security(
     """Update security status (admin only)"""
     status = AssetService.update_security_status(db, status_id, data.model_dump())
     if not status:
-        raise HTTPException(404, "Security status not found")
+        raise HTTPException(status_code=404, detail="Security status not found")
     return status
 
 

@@ -14,9 +14,6 @@ class AuthService:
     def __init__(self, db: Session):
         """
         Initialize authentication service.
-
-        Args:
-            db: Database session
         """
         self.db = db
 
