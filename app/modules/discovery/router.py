@@ -19,7 +19,7 @@ from .schemas import (
     ScanRequest, ScanResponse,
     ApplyDiscoveryRequest, ApplyDiscoveryResponse,
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
-    DiscoveredHost
+    DiscoveredHost, PendingHostsListResponse, PendingHostResponse
 )
 from .service import DiscoveryService
 
@@ -104,15 +104,16 @@ async def start_scan(
 @router.get("/scan/{scan_id}", response_model=ScanResponse)
 async def get_scan_status(
     scan_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Get status and results of a scan
-    
+
     Poll this endpoint to check scan progress.
     When `status` is `completed`, the `hosts` array contains results.
     """
-    scan = service.get_scan_status(scan_id)
+    scan = DiscoveryService.get_scan_status(db, scan_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return scan
@@ -143,9 +144,54 @@ async def delete_scan(
     """
     check_discovery_permission(current_user, "delete", db)
 
-    if service.delete_scan(scan_id):
+    if DiscoveryService.delete_scan(db, scan_id):
         return {"message": "Scan deleted"}
     raise HTTPException(status_code=404, detail="Scan not found")
+
+
+@router.get("/pending", response_model=PendingHostsListResponse)
+async def get_pending_hosts(
+    scan_id: str = Query(None, description="Filter by specific scan ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all discovered hosts pending approval
+
+    Returns hosts that have been discovered but not yet approved or rejected.
+    These are candidates for asset creation or merging.
+
+    **Permissions:** Requires read permission for asset_auto_discovery module
+    """
+    check_discovery_permission(current_user, "read", db)
+
+    # Get pending hosts (filter by user if not admin)
+    user_id = None if current_user.role == UserRole.ADMIN else current_user.id
+    pending_hosts = DiscoveryService.get_pending_hosts(db, scan_id=scan_id, user_id=user_id)
+
+    # Convert to response format
+    pending_list = []
+    for host in pending_hosts:
+        pending_list.append({
+            "id": host.id,
+            "scan_id": host.scan_id,
+            "ip_address": host.ip_address,
+            "mac_address": host.mac_address,
+            "hostname": host.hostname,
+            "os_info": host.os_info,
+            "os_accuracy": host.os_accuracy,
+            "open_ports": host.open_ports or [],
+            "status": host.status,
+            "state": host.state,
+            "discovered_at": host.discovered_at,
+            "matched_asset_id": host.matched_asset_id,
+            "highlight": True
+        })
+
+    return {
+        "total": len(pending_list),
+        "pending": pending_list
+    }
 
 
 # ====================================
@@ -244,10 +290,10 @@ async def apply_discovery_to_asset(
         raise HTTPException(status_code=403, detail="Not your asset")
     
     # Get discovered host from scan
-    discovered_host = service.get_discovered_host_by_ip(scan_id, request.ip_address)
+    discovered_host = DiscoveryService.get_discovered_host_by_ip(db, scan_id, request.ip_address)
     if not discovered_host:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=f"Host {request.ip_address} not found in scan {scan_id}"
         )
     
