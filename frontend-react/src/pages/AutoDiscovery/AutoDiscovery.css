@@ -485,26 +485,275 @@
   margin-bottom: 4px;
 }
 
+/* ==========================================
+   Pending Hosts Awaiting Approval
+   ========================================== */
+
+.pending-hosts-section {
+  margin-bottom: 30px;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  margin: 0;
+  color: #1a1a2e;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.pending-hosts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.pending-hosts-table thead {
+  background: #f9fafb;
+}
+
+.pending-hosts-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  font-size: 13px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.pending-hosts-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Orange highlighting for pending hosts */
+.pending-host-row {
+  background-color: #FFF3CD !important;
+  border-left: 4px solid #FF9800;
+  animation: pulse-orange 2s ease-in-out infinite;
+}
+
+@keyframes pulse-orange {
+  0%, 100% {
+    background-color: #FFF3CD;
+  }
+  50% {
+    background-color: #FFE699;
+  }
+}
+
+.pending-host-row:hover {
+  background-color: #FFE699 !important;
+}
+
+.ports-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.port-tag {
+  background: #e0e7ff;
+  color: #4338ca;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.accuracy {
+  color: #10b981;
+  font-size: 12px;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-success {
+  background: #10b981;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.status-pending {
+  background: #FFF3CD;
+  color: #92400e;
+}
+
+.status-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-merged {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* ==========================================
+   Match Modal
+   ========================================== */
+
+.match-modal {
+  max-width: 600px;
+}
+
+.match-info {
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.recommendation {
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.recommendation.merge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.recommendation.create_new {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.recommendation.review {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.matches-found h4 {
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  color: #1a1a2e;
+}
+
+.match-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.match-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.match-score {
+  background: #3b82f6;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.match-details p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.match-details strong {
+  color: #374151;
+}
+
+.match-actions {
+  margin-top: 12px;
+}
+
+.no-matches {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.create-new-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px dashed #e5e7eb;
+  text-align: center;
+}
+
+.create-new-section h4 {
+  font-size: 16px;
+  margin: 0 0 12px 0;
+  color: #1a1a2e;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .discovery-page {
     padding: 16px;
   }
-  
+
   .hosts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .discovery-actions {
     flex-direction: column;
   }
-  
+
   .history-table {
     font-size: 13px;
   }
-  
+
   .history-table th,
   .history-table td {
     padding: 8px;
+  }
+
+  .pending-hosts-table {
+    font-size: 12px;
+  }
+
+  .pending-hosts-table th,
+  .pending-hosts-table td {
+    padding: 8px;
+  }
+
+  .actions-cell {
+    flex-direction: column;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }

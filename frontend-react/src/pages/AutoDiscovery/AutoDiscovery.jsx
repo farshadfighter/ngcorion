@@ -16,6 +16,11 @@ import {
   stopScanning,
   clearAllScans,
   addLogEntry,
+  fetchPendingHosts,
+  checkMatches,
+  approveHost,
+  rejectHost,
+  bulkApproveHosts,
 } from '../../store/slices/discoverySlice';
 import { fetchAssetTypes } from '../../store/slices/assetsSlice';
 import DiscoveryResultModal from './DiscoveryResultModal';
@@ -33,10 +38,13 @@ const AutoDiscovery = () => {
     isLoadingScans,
     discoveredHosts,
     error,
+    pendingHosts,
+    matchResults,
+    isLoadingPending,
   } = useSelector((state) => state.discovery);
-  
+
   const { assetTypes } = useSelector((state) => state.assets);
-  
+
   // Local state
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('basic');
@@ -45,10 +53,8 @@ const AutoDiscovery = () => {
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedHost, setSelectedHost] = useState(null);
   const [showResultModal, setShowResultModal] = useState(false);
-  const [pendingHosts, setPendingHosts] = useState([]);
   const [selectedPendingIds, setSelectedPendingIds] = useState([]);
   const [showMatchModal, setShowMatchModal] = useState(false);
-  const [matchResults, setMatchResults] = useState(null);
   
   // Polling interval ref
   const pollIntervalRef = useRef(null);
@@ -57,7 +63,7 @@ const AutoDiscovery = () => {
   useEffect(() => {
     dispatch(fetchAllScans());
     dispatch(fetchAssetTypes());
-    fetchPendingHosts();
+    dispatch(fetchPendingHosts());
 
     return () => {
       // Cleanup polling on unmount
@@ -66,23 +72,6 @@ const AutoDiscovery = () => {
       }
     };
   }, [dispatch]);
-
-  // Fetch pending hosts awaiting approval
-  const fetchPendingHosts = async () => {
-    try {
-      const response = await fetch('/api/discovery/pending', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPendingHosts(data.pending || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch pending hosts:', error);
-    }
-  };
   
   // Poll for scan status when scanning
   useEffect(() => {
@@ -139,7 +128,7 @@ const AutoDiscovery = () => {
 
     // Refresh pending hosts after scan completes
     setTimeout(() => {
-      fetchPendingHosts();
+      dispatch(fetchPendingHosts());
     }, 5000);
   };
   
@@ -152,52 +141,20 @@ const AutoDiscovery = () => {
 
   // Check for matching assets before approval
   const handleCheckMatches = async (hostId) => {
-    try {
-      const response = await fetch(`/api/discovery/hosts/${hostId}/check-matches`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setMatchResults(data);
-        setShowMatchModal(true);
-      }
-    } catch (error) {
-      console.error('Failed to check matches:', error);
-      alert('Failed to check for matching assets');
-    }
+    await dispatch(checkMatches(hostId));
+    setShowMatchModal(true);
   };
 
   // Approve a discovered host
   const handleApprove = async (hostId, action = 'create_new', assetId = null) => {
-    try {
-      const requestBody = { action };
-      if (action === 'merge_with_existing' && assetId) {
-        requestBody.asset_id = assetId;
-      }
+    const result = await dispatch(approveHost({ hostId, action, assetId }));
 
-      const response = await fetch(`/api/discovery/hosts/${hostId}/approve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        alert(`✅ ${data.message}`);
-        fetchPendingHosts(); // Refresh list
-        setShowMatchModal(false);
-      } else {
-        const error = await response.json();
-        alert(`❌ Failed: ${error.detail || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Failed to approve host:', error);
-      alert('Failed to approve host');
+    if (result.type === 'discovery/approveHost/fulfilled') {
+      alert(`✅ ${result.payload.message}`);
+      dispatch(fetchPendingHosts()); // Refresh list
+      setShowMatchModal(false);
+    } else {
+      alert(`❌ Failed: ${result.payload || 'Unknown error'}`);
     }
   };
 
@@ -207,23 +164,13 @@ const AutoDiscovery = () => {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/discovery/hosts/${hostId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+    const result = await dispatch(rejectHost(hostId));
 
-      if (response.ok) {
-        alert('✅ Host rejected');
-        fetchPendingHosts();
-      } else {
-        alert('❌ Failed to reject host');
-      }
-    } catch (error) {
-      console.error('Failed to reject host:', error);
-      alert('Failed to reject host');
+    if (result.type === 'discovery/rejectHost/fulfilled') {
+      alert('✅ Host rejected');
+      dispatch(fetchPendingHosts());
+    } else {
+      alert('❌ Failed to reject host');
     }
   };
 
@@ -237,30 +184,17 @@ const AutoDiscovery = () => {
     const defaultTypeId = prompt('Enter default asset type ID:');
     if (!defaultTypeId) return;
 
-    try {
-      const response = await fetch('/api/discovery/bulk-approve', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          host_ids: selectedPendingIds,
-          default_asset_type_id: parseInt(defaultTypeId)
-        })
-      });
+    const result = await dispatch(bulkApproveHosts({
+      hostIds: selectedPendingIds,
+      defaultAssetTypeId: parseInt(defaultTypeId)
+    }));
 
-      if (response.ok) {
-        const data = await response.json();
-        alert(`✅ Approved ${data.approved} hosts`);
-        setSelectedPendingIds([]);
-        fetchPendingHosts();
-      } else {
-        alert('❌ Bulk approval failed');
-      }
-    } catch (error) {
-      console.error('Failed to bulk approve:', error);
-      alert('Failed to bulk approve hosts');
+    if (result.type === 'discovery/bulkApprove/fulfilled') {
+      alert(`✅ Approved ${result.payload.approved} hosts`);
+      setSelectedPendingIds([]);
+      dispatch(fetchPendingHosts());
+    } else {
+      alert('❌ Bulk approval failed');
     }
   };
 
@@ -389,81 +323,102 @@ const AutoDiscovery = () => {
         </div>
       )}
       
-      {/* Discovered Hosts */}
-      {discoveredHosts.length > 0 && (
-        <div className="discovered-hosts">
-          <h2>📡 Discovered Hosts ({discoveredHosts.length})</h2>
-          <div className="hosts-grid">
-            {discoveredHosts.map((host, index) => (
-              <div 
-                key={index} 
-                className="host-card"
-                onClick={() => handleHostClick(host)}
+      {/* Pending Hosts Awaiting Approval */}
+      {pendingHosts.length > 0 && (
+        <div className="pending-hosts-section">
+          <div className="section-header">
+            <h2>⚠️ Discovered Hosts Awaiting Approval ({pendingHosts.length})</h2>
+            <div className="bulk-actions">
+              <button
+                className="btn btn-small"
+                onClick={selectAll}
               >
-                <div className="host-header">
-                  <span className="host-ip">{host.ip_address}</span>
-                  <span className={`host-state ${host.state}`}>{host.state}</span>
-                </div>
-                
-                {host.hostname && (
-                  <div className="host-detail">
-                    <span className="label">Hostname:</span>
-                    <span className="value">{host.hostname}</span>
-                  </div>
-                )}
-                
-                {host.vendor && (
-                  <div className="host-detail">
-                    <span className="label">Vendor:</span>
-                    <span className="value">{host.vendor}</span>
-                  </div>
-                )}
-                
-                {host.os_name && (
-                  <div className="host-detail">
-                    <span className="label">OS:</span>
-                    <span className="value">
-                      {host.os_name} {host.os_version || ''}
-                      {host.os_accuracy && ` (${host.os_accuracy}%)`}
-                    </span>
-                  </div>
-                )}
-                
-                {host.mac_address && (
-                  <div className="host-detail">
-                    <span className="label">MAC:</span>
-                    <span className="value">{host.mac_address}</span>
-                  </div>
-                )}
-                
-                <div className="host-detail">
-                  <span className="label">Type Guess:</span>
-                  <span className="value type-badge">
-                    {host.suggested_asset_type || 'unknown'}
-                  </span>
-                </div>
-                
-                <div className="host-ports">
-                  <span className="label">Open Ports ({host.ports?.length || 0}):</span>
-                  <div className="ports-list">
-                    {host.ports?.slice(0, 10).map((port, i) => (
-                      <span key={i} className="port-badge">
-                        {port.port}/{port.protocol}
-                        {port.service && ` (${port.service})`}
-                      </span>
-                    ))}
-                    {host.ports?.length > 10 && (
-                      <span className="port-more">+{host.ports.length - 10} more</span>
-                    )}
-                  </div>
-                </div>
-                
-                <button className="btn btn-small btn-action">
-                  Click to Apply →
+                {selectedPendingIds.length === pendingHosts.length ? 'Deselect All' : 'Select All'}
+              </button>
+              {selectedPendingIds.length > 0 && (
+                <button
+                  className="btn btn-small btn-primary"
+                  onClick={handleBulkApprove}
+                >
+                  Approve Selected ({selectedPendingIds.length})
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
+
+          <table className="pending-hosts-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" onChange={selectAll} checked={selectedPendingIds.length === pendingHosts.length} /></th>
+                <th>IP Address</th>
+                <th>Hostname</th>
+                <th>MAC Address</th>
+                <th>OS Info</th>
+                <th>Open Ports</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingHosts.map((host) => (
+                <tr key={host.id} className={host.highlight ? 'pending-host-row' : ''}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedPendingIds.includes(host.id)}
+                      onChange={() => toggleSelection(host.id)}
+                    />
+                  </td>
+                  <td><strong>{host.ip_address}</strong></td>
+                  <td>{host.hostname || '-'}</td>
+                  <td>{host.mac_address || '-'}</td>
+                  <td>
+                    {host.os_info ? (
+                      <>
+                        {host.os_info}
+                        {host.os_accuracy && <span className="accuracy"> ({host.os_accuracy}%)</span>}
+                      </>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    {host.open_ports && host.open_ports.length > 0 ? (
+                      <div className="ports-inline">
+                        {host.open_ports.slice(0, 5).map((port, i) => (
+                          <span key={i} className="port-tag">
+                            {port.port}/{port.protocol}
+                          </span>
+                        ))}
+                        {host.open_ports.length > 5 && (
+                          <span className="port-more">+{host.open_ports.length - 5}</span>
+                        )}
+                      </div>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    <span className={`status-badge status-${host.status}`}>
+                      {host.status}
+                    </span>
+                  </td>
+                  <td className="actions-cell">
+                    <button
+                      className="btn btn-small btn-success"
+                      onClick={() => handleCheckMatches(host.id)}
+                      title="Check for matches and approve"
+                    >
+                      ✓ Check & Approve
+                    </button>
+                    <button
+                      className="btn btn-small btn-danger"
+                      onClick={() => handleReject(host.id)}
+                      title="Reject this host"
+                    >
+                      ✗
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       
@@ -623,6 +578,84 @@ const AutoDiscovery = () => {
             setSelectedHost(null);
           }}
         />
+      )}
+
+      {/* Match Results Modal */}
+      {showMatchModal && matchResults && (
+        <div className="modal-overlay" onClick={() => setShowMatchModal(false)}>
+          <div className="modal match-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🔍 Check Matching Assets</h3>
+              <button className="close-btn" onClick={() => setShowMatchModal(false)}>×</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="match-info">
+                <p><strong>Recommendation:</strong> <span className={`recommendation ${matchResults.recommendation}`}>
+                  {matchResults.recommendation === 'merge' ? '🔗 Merge with existing' :
+                   matchResults.recommendation === 'create_new' ? '➕ Create new asset' :
+                   '⚠️ Review carefully'}
+                </span></p>
+              </div>
+
+              {matchResults.matches_found && matchResults.matches.length > 0 ? (
+                <div className="matches-found">
+                  <h4>Found {matchResults.matches.length} matching asset(s):</h4>
+                  {matchResults.matches.map((match, index) => (
+                    <div key={index} className="match-card">
+                      <div className="match-header">
+                        <strong>{match.asset_name || `Asset #${match.asset_id}`}</strong>
+                        <span className="match-score">Match: {match.match_type}</span>
+                      </div>
+                      <div className="match-details">
+                        <p><strong>IP:</strong> {match.ip_address || '-'}</p>
+                        <p><strong>MAC:</strong> {match.mac_address || '-'}</p>
+                        <p><strong>Hostname:</strong> {match.hostname || '-'}</p>
+                      </div>
+                      <div className="match-actions">
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleApprove(
+                            pendingHosts.find(h => h.id === matchResults.host_id)?.id,
+                            'merge_with_existing',
+                            match.asset_id
+                          )}
+                        >
+                          Merge with this asset
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="no-matches">
+                  <p>✨ No matching assets found. This appears to be a new device.</p>
+                </div>
+              )}
+
+              <div className="create-new-section">
+                <h4>Or create as new asset:</h4>
+                <button
+                  className="btn btn-success"
+                  onClick={() => {
+                    const hostId = pendingHosts.find(h => matchResults.host_id === h.id)?.id;
+                    if (hostId) {
+                      handleApprove(hostId, 'create_new');
+                    }
+                  }}
+                >
+                  ➕ Create New Asset
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowMatchModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

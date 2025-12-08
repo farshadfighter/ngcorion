@@ -11,19 +11,22 @@ const initialState = {
   // Scan state
   currentScan: null,
   scanHistory: [],
-  
+
   // Loading states
   isScanning: false,
   isLoadingScans: false,
   isApplying: false,
-  
+  isLoadingPending: false,
+
   // Results
   discoveredHosts: [],
   matchedAsset: null,
-  
+  pendingHosts: [],
+  matchResults: null,
+
   // Activity Log
   activityLog: [],
-  
+
   // Errors
   error: null,
 };
@@ -33,12 +36,20 @@ const initialState = {
 // Start a new scan
 export const startScan = createAsyncThunk(
   'discovery/startScan',
-  async ({ target, scanType = 'basic' }, { rejectWithValue }) => {
+  async ({ target, scan_type = 'basic', ports = null, protocol = 'TCP' }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/api/discovery/scan', {
+      const requestData = {
         target,
-        scan_type: scanType,
-      });
+        scan_type,
+        protocol
+      };
+
+      // Only add ports if specified
+      if (ports) {
+        requestData.ports = ports;
+      }
+
+      const response = await api.post('/api/discovery/scan', requestData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -163,6 +174,98 @@ export const clearAllScans = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.detail || 'Failed to clear history'
+      );
+    }
+  }
+);
+
+// ==================== New Pending Hosts API ====================
+
+// Get pending hosts awaiting approval
+export const fetchPendingHosts = createAsyncThunk(
+  'discovery/fetchPending',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/discovery/pending');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.detail || 'Failed to fetch pending hosts'
+      );
+    }
+  }
+);
+
+// Check for matching assets
+export const checkMatches = createAsyncThunk(
+  'discovery/checkMatches',
+  async (hostId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/discovery/hosts/${hostId}/check-matches`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.detail || 'Failed to check matches'
+      );
+    }
+  }
+);
+
+// Approve a discovered host
+export const approveHost = createAsyncThunk(
+  'discovery/approveHost',
+  async ({ hostId, action, assetId = null, assetData = null }, { rejectWithValue }) => {
+    try {
+      const requestBody = { action };
+      if (action === 'merge_with_existing' && assetId) {
+        requestBody.asset_id = assetId;
+      }
+      if (action === 'create_new' && assetData) {
+        requestBody.asset_data = assetData;
+      }
+
+      const response = await api.post(`/api/discovery/hosts/${hostId}/approve`, requestBody);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.detail || 'Failed to approve host'
+      );
+    }
+  }
+);
+
+// Reject a discovered host
+export const rejectHost = createAsyncThunk(
+  'discovery/rejectHost',
+  async (hostId, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/discovery/hosts/${hostId}/reject`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.detail || 'Failed to reject host'
+      );
+    }
+  }
+);
+
+// Bulk approve hosts
+export const bulkApproveHosts = createAsyncThunk(
+  'discovery/bulkApprove',
+  async ({ hostIds, defaultAssetTypeId, defaultLocationId = null, defaultOwnerId = null }, { rejectWithValue }) => {
+    try {
+      const requestBody = {
+        host_ids: hostIds,
+        default_asset_type_id: defaultAssetTypeId
+      };
+      if (defaultLocationId) requestBody.default_location_id = defaultLocationId;
+      if (defaultOwnerId) requestBody.default_owner_id = defaultOwnerId;
+
+      const response = await api.post('/api/discovery/bulk-approve', requestBody);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.detail || 'Failed to bulk approve'
       );
     }
   }
@@ -412,6 +515,107 @@ const discoverySlice = createSlice({
       .addCase(clearAllScans.rejected, (state, action) => {
         state.isLoadingScans = false;
         state.error = action.payload;
+      })
+
+      // ===== Fetch Pending Hosts =====
+      .addCase(fetchPendingHosts.pending, (state) => {
+        state.isLoadingPending = true;
+      })
+      .addCase(fetchPendingHosts.fulfilled, (state, action) => {
+        state.isLoadingPending = false;
+        state.pendingHosts = action.payload.pending || [];
+      })
+      .addCase(fetchPendingHosts.rejected, (state, action) => {
+        state.isLoadingPending = false;
+        state.error = action.payload;
+      })
+
+      // ===== Check Matches =====
+      .addCase(checkMatches.fulfilled, (state, action) => {
+        state.matchResults = action.payload;
+      })
+      .addCase(checkMatches.rejected, (state, action) => {
+        state.error = action.payload;
+      })
+
+      // ===== Approve Host =====
+      .addCase(approveHost.pending, (state) => {
+        state.isApplying = true;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'info',
+          message: 'Approving discovered host...',
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .addCase(approveHost.fulfilled, (state, action) => {
+        state.isApplying = false;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'success',
+          message: action.payload.message,
+          details: `Asset #${action.payload.asset_id} - ${action.payload.action_taken}`,
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .addCase(approveHost.rejected, (state, action) => {
+        state.isApplying = false;
+        state.error = action.payload;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'error',
+          message: `Failed to approve: ${action.payload}`,
+          timestamp: new Date().toISOString(),
+        });
+      })
+
+      // ===== Reject Host =====
+      .addCase(rejectHost.pending, (state) => {
+        state.isApplying = true;
+      })
+      .addCase(rejectHost.fulfilled, (state, action) => {
+        state.isApplying = false;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'info',
+          message: action.payload.message,
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .addCase(rejectHost.rejected, (state, action) => {
+        state.isApplying = false;
+        state.error = action.payload;
+      })
+
+      // ===== Bulk Approve =====
+      .addCase(bulkApproveHosts.pending, (state) => {
+        state.isApplying = true;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'info',
+          message: 'Bulk approving hosts...',
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .addCase(bulkApproveHosts.fulfilled, (state, action) => {
+        state.isApplying = false;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'success',
+          message: `Bulk approved ${action.payload.approved} hosts`,
+          details: `Created ${action.payload.created_assets?.length || 0} assets`,
+          timestamp: new Date().toISOString(),
+        });
+      })
+      .addCase(bulkApproveHosts.rejected, (state, action) => {
+        state.isApplying = false;
+        state.error = action.payload;
+        state.activityLog.unshift({
+          id: Date.now(),
+          type: 'error',
+          message: `Bulk approval failed: ${action.payload}`,
+          timestamp: new Date().toISOString(),
+        });
       });
   },
 });
