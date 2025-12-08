@@ -389,81 +389,102 @@ const AutoDiscovery = () => {
         </div>
       )}
       
-      {/* Discovered Hosts */}
-      {discoveredHosts.length > 0 && (
-        <div className="discovered-hosts">
-          <h2>📡 Discovered Hosts ({discoveredHosts.length})</h2>
-          <div className="hosts-grid">
-            {discoveredHosts.map((host, index) => (
-              <div 
-                key={index} 
-                className="host-card"
-                onClick={() => handleHostClick(host)}
+      {/* Pending Hosts Awaiting Approval */}
+      {pendingHosts.length > 0 && (
+        <div className="pending-hosts-section">
+          <div className="section-header">
+            <h2>⚠️ Discovered Hosts Awaiting Approval ({pendingHosts.length})</h2>
+            <div className="bulk-actions">
+              <button
+                className="btn btn-small"
+                onClick={selectAll}
               >
-                <div className="host-header">
-                  <span className="host-ip">{host.ip_address}</span>
-                  <span className={`host-state ${host.state}`}>{host.state}</span>
-                </div>
-                
-                {host.hostname && (
-                  <div className="host-detail">
-                    <span className="label">Hostname:</span>
-                    <span className="value">{host.hostname}</span>
-                  </div>
-                )}
-                
-                {host.vendor && (
-                  <div className="host-detail">
-                    <span className="label">Vendor:</span>
-                    <span className="value">{host.vendor}</span>
-                  </div>
-                )}
-                
-                {host.os_name && (
-                  <div className="host-detail">
-                    <span className="label">OS:</span>
-                    <span className="value">
-                      {host.os_name} {host.os_version || ''}
-                      {host.os_accuracy && ` (${host.os_accuracy}%)`}
-                    </span>
-                  </div>
-                )}
-                
-                {host.mac_address && (
-                  <div className="host-detail">
-                    <span className="label">MAC:</span>
-                    <span className="value">{host.mac_address}</span>
-                  </div>
-                )}
-                
-                <div className="host-detail">
-                  <span className="label">Type Guess:</span>
-                  <span className="value type-badge">
-                    {host.suggested_asset_type || 'unknown'}
-                  </span>
-                </div>
-                
-                <div className="host-ports">
-                  <span className="label">Open Ports ({host.ports?.length || 0}):</span>
-                  <div className="ports-list">
-                    {host.ports?.slice(0, 10).map((port, i) => (
-                      <span key={i} className="port-badge">
-                        {port.port}/{port.protocol}
-                        {port.service && ` (${port.service})`}
-                      </span>
-                    ))}
-                    {host.ports?.length > 10 && (
-                      <span className="port-more">+{host.ports.length - 10} more</span>
-                    )}
-                  </div>
-                </div>
-                
-                <button className="btn btn-small btn-action">
-                  Click to Apply →
+                {selectedPendingIds.length === pendingHosts.length ? 'Deselect All' : 'Select All'}
+              </button>
+              {selectedPendingIds.length > 0 && (
+                <button
+                  className="btn btn-small btn-primary"
+                  onClick={handleBulkApprove}
+                >
+                  Approve Selected ({selectedPendingIds.length})
                 </button>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
+
+          <table className="pending-hosts-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" onChange={selectAll} checked={selectedPendingIds.length === pendingHosts.length} /></th>
+                <th>IP Address</th>
+                <th>Hostname</th>
+                <th>MAC Address</th>
+                <th>OS Info</th>
+                <th>Open Ports</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingHosts.map((host) => (
+                <tr key={host.id} className={host.highlight ? 'pending-host-row' : ''}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedPendingIds.includes(host.id)}
+                      onChange={() => toggleSelection(host.id)}
+                    />
+                  </td>
+                  <td><strong>{host.ip_address}</strong></td>
+                  <td>{host.hostname || '-'}</td>
+                  <td>{host.mac_address || '-'}</td>
+                  <td>
+                    {host.os_info ? (
+                      <>
+                        {host.os_info}
+                        {host.os_accuracy && <span className="accuracy"> ({host.os_accuracy}%)</span>}
+                      </>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    {host.open_ports && host.open_ports.length > 0 ? (
+                      <div className="ports-inline">
+                        {host.open_ports.slice(0, 5).map((port, i) => (
+                          <span key={i} className="port-tag">
+                            {port.port}/{port.protocol}
+                          </span>
+                        ))}
+                        {host.open_ports.length > 5 && (
+                          <span className="port-more">+{host.open_ports.length - 5}</span>
+                        )}
+                      </div>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    <span className={`status-badge status-${host.status}`}>
+                      {host.status}
+                    </span>
+                  </td>
+                  <td className="actions-cell">
+                    <button
+                      className="btn btn-small btn-success"
+                      onClick={() => handleCheckMatches(host.id)}
+                      title="Check for matches and approve"
+                    >
+                      ✓ Check & Approve
+                    </button>
+                    <button
+                      className="btn btn-small btn-danger"
+                      onClick={() => handleReject(host.id)}
+                      title="Reject this host"
+                    >
+                      ✗
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
       
