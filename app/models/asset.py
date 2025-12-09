@@ -309,8 +309,31 @@ class Asset(Base):
     
     
     def get_network_system(self) -> Dict[str, Any]:
-        """Returns network/system info (Page 2): asset_id, name, serial_number, os, ip_address, mac_address."""
+        """Returns network/system info (Page 2): asset_id, name, serial_number, os, ip_address, mac_address, ports, protocols."""
         os_full = f"{self.os_name} {self.os_version}" if self.os_name and self.os_version else self.os_name
+
+        # Get ports information
+        ports_data = []
+        protocols_set = set()
+
+        if hasattr(self, 'ports') and self.ports:
+            for port in self.ports:
+                if port.is_active:
+                    ports_data.append({
+                        'port_number': port.port_number,
+                        'protocol': port.protocol.name if port.protocol else None,
+                        'service': port.service_name
+                    })
+                    if port.protocol:
+                        protocols_set.add(port.protocol.name)
+
+        # Format ports display: "80(http), 443(https), 22(ssh)" etc
+        ports_summary = ', '.join([f"{p['port_number']}/{p['protocol']}" for p in ports_data[:5]])
+        if len(ports_data) > 5:
+            ports_summary += f" +{len(ports_data) - 5} more"
+
+        # Format protocols display: "TCP, UDP"
+        protocols_summary = ', '.join(sorted(protocols_set)) if protocols_set else None
 
         return {
             'asset_id': self.id,
@@ -318,7 +341,10 @@ class Asset(Base):
             'serial_number': self.serial_number,
             'os': os_full,
             'ip_address': self.ip_address,
-            'mac_address': self.mac_address
+            'mac_address': self.mac_address,
+            'ports': ports_summary or None,
+            'ports_count': len(ports_data),
+            'protocols': protocols_summary
         }
     
     

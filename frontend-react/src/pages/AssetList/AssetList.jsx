@@ -114,6 +114,26 @@ const AssetList = () => {
           { key: 'os', title: 'OS' },
           { key: 'ip_address', title: 'IP Address' },
           { key: 'mac_address', title: 'MAC Address' },
+          {
+            key: 'ports',
+            title: 'Ports',
+            render: (value, row) => {
+              if (!value) return <span className="text-muted">No ports</span>;
+              return (
+                <span className="ports-summary" title={value}>
+                  {value}
+                </span>
+              );
+            }
+          },
+          {
+            key: 'protocols',
+            title: 'Protocols',
+            render: (value) => {
+              if (!value) return <span className="text-muted">-</span>;
+              return <span className="protocols-summary">{value}</span>;
+            }
+          },
         ];
       case 'location':
         return [

@@ -757,3 +757,31 @@
     gap: 12px;
   }
 }
+
+/* Match Feedback Styles */
+.match-feedback {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #4b5563;
+}
+
+.match-feedback.info {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
+.match-feedback.success {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.match-feedback strong {
+  font-weight: 600;
+}

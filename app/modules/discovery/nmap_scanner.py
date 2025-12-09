@@ -78,10 +78,12 @@ class NmapScanner:
             # Default to well-known ports
             cmd.extend(["-p", "1-1024"])
 
-        # Additional options
+        # Additional options for faster scanning
         cmd.extend([
-            "--max-retries=2",  # Reduce retries for faster scan
-            "--host-timeout=300s"  # Max time per host
+            "--max-retries=1",  # Reduce retries for faster scan
+            "--host-timeout=30s",  # Max time per host (30 seconds)
+            "--min-rate=100",  # Minimum packets per second
+            "-T4"  # Aggressive timing (faster)
         ])
 
         cmd.append(target)

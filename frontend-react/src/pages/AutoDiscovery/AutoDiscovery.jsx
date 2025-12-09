@@ -24,6 +24,7 @@ import {
 } from '../../store/slices/discoverySlice';
 import { fetchAssetTypes } from '../../store/slices/assetsSlice';
 import DiscoveryResultModal from './DiscoveryResultModal';
+import ScanResultsModal from './ScanResultsModal';
 import ActivityLog from './ActivityLog';
 import './AutoDiscovery.css';
 
@@ -54,8 +55,12 @@ const AutoDiscovery = () => {
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedHost, setSelectedHost] = useState(null);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showScanResultsModal, setShowScanResultsModal] = useState(false);
+  const [selectedScanResults, setSelectedScanResults] = useState(null);
   const [selectedPendingIds, setSelectedPendingIds] = useState([]);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [targetMatchedAsset, setTargetMatchedAsset] = useState(null);
+  const [isCheckingMatch, setIsCheckingMatch] = useState(false);
   
   // Polling interval ref
   const pollIntervalRef = useRef(null);
@@ -100,7 +105,38 @@ const AutoDiscovery = () => {
     const rangePattern = /^(\d{1,3}\.){3}\d{1,3}-\d{1,3}$/;
     return ipPattern.test(value) || rangePattern.test(value);
   };
-  
+
+  // Check if target matches an existing asset
+  const handleTargetLookup = async () => {
+    const trimmedTarget = target.trim();
+    if (!trimmedTarget) {
+      setTargetMatchedAsset(null);
+      return;
+    }
+
+    // Extract single IP from target (only lookup single IPs, not ranges or CIDR)
+    const singleIpPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!singleIpPattern.test(trimmedTarget)) {
+      setTargetMatchedAsset(null);
+      return;
+    }
+
+    setIsCheckingMatch(true);
+    try {
+      const result = await dispatch(matchIpToAsset(trimmedTarget)).unwrap();
+      if (result && result.asset) {
+        setTargetMatchedAsset(result.asset);
+      } else {
+        setTargetMatchedAsset(null);
+      }
+    } catch (error) {
+      // No match found or error occurred
+      setTargetMatchedAsset(null);
+    } finally {
+      setIsCheckingMatch(false);
+    }
+  };
+
   // Start scan handler
   const handleStartScan = () => {
     if (!target.trim()) {
@@ -150,6 +186,15 @@ const AutoDiscovery = () => {
     }, 5000);
   };
   
+  // Handle viewing scan results
+  const handleViewResults = async (scanId) => {
+    const result = await dispatch(checkScanStatus(scanId));
+    if (result.payload) {
+      setSelectedScanResults(result.payload);
+      setShowScanResultsModal(true);
+    }
+  };
+
   // Handle host click - check if matches existing asset
   const handleHostClick = async (host) => {
     setSelectedHost(host);
@@ -475,7 +520,7 @@ const AutoDiscovery = () => {
                   <td>
                     <button
                       className="btn btn-small"
-                      onClick={() => dispatch(checkScanStatus(scan.scan_id))}
+                      onClick={() => handleViewResults(scan.scan_id)}
                       disabled={scan.status !== 'completed'}
                     >
                       {scan.status === 'completed' ? `📊 ${scan.hosts_up || 0} hosts` : '-'}
@@ -520,12 +565,31 @@ const AutoDiscovery = () => {
                 <input
                   type="text"
                   value={target}
-                  onChange={(e) => setTarget(e.target.value)}
+                  onChange={(e) => {
+                    setTarget(e.target.value);
+                    setTargetMatchedAsset(null); // Clear match when target changes
+                  }}
+                  onBlur={handleTargetLookup}
                   placeholder="e.g., 192.168.1.1 or 192.168.1.0/24"
                 />
                 <small>
                   Formats: Single IP (192.168.1.1), CIDR (192.168.1.0/24), Range (192.168.1.1-254)
                 </small>
+                {isCheckingMatch && (
+                  <div className="match-feedback info">
+                    🔍 Checking for existing asset...
+                  </div>
+                )}
+                {!isCheckingMatch && targetMatchedAsset && (
+                  <div className="match-feedback success">
+                    ✅ Found existing asset: <strong>{targetMatchedAsset.asset_name}</strong> (ID: {targetMatchedAsset.id})
+                  </div>
+                )}
+                {!isCheckingMatch && target.trim() && !targetMatchedAsset && /^(\d{1,3}\.){3}\d{1,3}$/.test(target.trim()) && (
+                  <div className="match-feedback">
+                    ℹ️ No existing asset found for this IP. New asset will be created from scan results.
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -694,6 +758,17 @@ const AutoDiscovery = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Scan Results Modal */}
+      {showScanResultsModal && selectedScanResults && (
+        <ScanResultsModal
+          scan={selectedScanResults}
+          onClose={() => {
+            setShowScanResultsModal(false);
+            setSelectedScanResults(null);
+          }}
+        />
       )}
     </div>
   );
