@@ -165,7 +165,7 @@ class Port(Base):
     )
 
     # Relationships
-    asset = relationship("Asset", backref="ports")
+    asset = relationship("Asset", back_populates="ports")
     protocol = relationship("Protocol", back_populates="ports")
     discovered_by_scan = relationship("DiscoveryScan", foreign_keys=[discovered_by_scan_id])
 

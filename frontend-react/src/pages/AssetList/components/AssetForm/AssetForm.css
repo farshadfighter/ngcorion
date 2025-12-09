@@ -25,12 +25,39 @@
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .edit-title {
   display: flex;
   align-items: center;
   gap: 16px;
+}
+
+.btn-manage-ports {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  white-space: nowrap;
+}
+
+.btn-manage-ports:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}
+
+.btn-manage-ports:active {
+  transform: translateY(0);
 }
 
 .edit-icon {

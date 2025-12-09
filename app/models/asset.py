@@ -275,7 +275,15 @@ class Asset(Base):
         "AssetOwner",
         backref="assets"
     )
-    
+
+    # Relationship to Ports
+    ports = relationship(
+        "Port",
+        back_populates="asset",
+        cascade="all, delete-orphan",
+        lazy="select"
+    )
+
     # Note: Relationships with asset_dependencies and asset_security_status
     # are defined in those models using backref
     

@@ -10,6 +10,7 @@ import { createAsset, updateAsset } from '../../../../store/slices/assetsSlice';
 import Button from '../../../../components/common/Button';
 import Input from '../../../../components/common/Input';
 import Select from '../../../../components/common/Select';
+import PortManagementModal from '../PortManagementModal';
 import './AssetForm.css';
 
 const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
@@ -19,6 +20,7 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPortModal, setShowPortModal] = useState(false);
 
   const isEditMode = !!asset;
 
@@ -775,6 +777,13 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
                 </p>
               </div>
             </div>
+            <button
+              className="btn-manage-ports"
+              onClick={() => setShowPortModal(true)}
+              type="button"
+            >
+              🔌 Manage Ports
+            </button>
           </div>
         ) : (
           <div className="add-header">
@@ -837,6 +846,18 @@ const AssetForm = ({ asset, assetTypes, owners, locations, onClose }) => {
           </Button>
         )}
       </div>
+
+      {/* Port Management Modal */}
+      {showPortModal && (
+        <PortManagementModal
+          asset={asset}
+          onClose={() => setShowPortModal(false)}
+          onUpdate={() => {
+            // Optionally refresh asset data here if needed
+            console.log('Ports updated');
+          }}
+        />
+      )}
     </div>
   );
 };

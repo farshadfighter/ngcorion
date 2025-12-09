@@ -8,6 +8,7 @@ API endpoints for network scanning and asset discovery
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
+from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -199,6 +200,358 @@ async def get_pending_hosts(
     return {
         "total": len(pending_list),
         "pending": pending_list
+    }
+
+
+@router.get("/hosts/{host_id}/check-matches")
+async def check_host_matches(
+    host_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Check for matching assets for a discovered host
+
+    Returns potential asset matches based on IP, MAC address, and hostname.
+    Used by the "Check & Approve" workflow to find existing assets that might
+    match the discovered host.
+
+    **Permissions:** Requires read permission for asset_auto_discovery module
+    """
+    from app.models.discovery import DiscoveredHost
+
+    check_discovery_permission(current_user, "read", db)
+
+    # Get the discovered host
+    host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Discovered host not found")
+
+    # Find potential matching assets
+    matches = []
+
+    # Search by IP address (strongest match)
+    if host.ip_address:
+        ip_match = db.query(Asset).filter(
+            Asset.ip_address == host.ip_address
+        )
+        if current_user.role != UserRole.ADMIN:
+            ip_match = ip_match.filter(Asset.user_id == current_user.id)
+
+        ip_asset = ip_match.first()
+        if ip_asset:
+            matches.append({
+                "asset_id": ip_asset.id,
+                "asset_name": ip_asset.asset_name,
+                "match_type": "ip_address",
+                "match_value": host.ip_address,
+                "confidence": "high",
+                "asset_type": ip_asset.asset_type.type_name if ip_asset.asset_type else None,
+                "hostname": ip_asset.hostname,
+                "mac_address": ip_asset.mac_address
+            })
+
+    # Search by MAC address (strong match)
+    if host.mac_address and not matches:
+        mac_match = db.query(Asset).filter(
+            Asset.mac_address == host.mac_address
+        )
+        if current_user.role != UserRole.ADMIN:
+            mac_match = mac_match.filter(Asset.user_id == current_user.id)
+
+        mac_asset = mac_match.first()
+        if mac_asset:
+            matches.append({
+                "asset_id": mac_asset.id,
+                "asset_name": mac_asset.asset_name,
+                "match_type": "mac_address",
+                "match_value": host.mac_address,
+                "confidence": "medium",
+                "asset_type": mac_asset.asset_type.type_name if mac_asset.asset_type else None,
+                "hostname": mac_asset.hostname,
+                "ip_address": mac_asset.ip_address
+            })
+
+    # Search by hostname (weaker match)
+    if host.hostname and not matches:
+        hostname_match = db.query(Asset).filter(
+            Asset.hostname == host.hostname
+        )
+        if current_user.role != UserRole.ADMIN:
+            hostname_match = hostname_match.filter(Asset.user_id == current_user.id)
+
+        hostname_asset = hostname_match.first()
+        if hostname_asset:
+            matches.append({
+                "asset_id": hostname_asset.id,
+                "asset_name": hostname_asset.asset_name,
+                "match_type": "hostname",
+                "match_value": host.hostname,
+                "confidence": "low",
+                "asset_type": hostname_asset.asset_type.type_name if hostname_asset.asset_type else None,
+                "ip_address": hostname_asset.ip_address,
+                "mac_address": hostname_asset.mac_address
+            })
+
+    return {
+        "host_id": host_id,
+        "discovered_host": {
+            "ip_address": host.ip_address,
+            "mac_address": host.mac_address,
+            "hostname": host.hostname,
+            "os_info": host.os_info,
+            "open_ports": host.open_ports
+        },
+        "matches": matches,
+        "match_count": len(matches)
+    }
+
+
+@router.post("/hosts/{host_id}/approve")
+async def approve_discovered_host(
+    host_id: int,
+    request_body: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Approve a discovered host
+
+    **Actions:**
+    - `merge_with_existing`: Merge with existing asset (requires asset_id)
+    - `create_new`: Create new asset (requires asset_data)
+    - `skip`: Mark as reviewed but don't create/merge
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
+    """
+    from app.models.discovery import DiscoveredHost
+
+    check_discovery_permission(current_user, "write", db)
+
+    # Get the discovered host
+    host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Discovered host not found")
+
+    # Extract parameters from request body
+    action = request_body.get("action")
+    asset_id = request_body.get("asset_id")
+    asset_data = request_body.get("asset_data")
+
+    if action == "merge_with_existing":
+        if not asset_id:
+            raise HTTPException(status_code=400, detail="asset_id required for merge action")
+
+        # Get the asset
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+
+        # Check ownership
+        if current_user.role != UserRole.ADMIN and asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this asset")
+
+        # Update asset with discovered data (only empty fields)
+        updated_fields = []
+        if host.hostname and not asset.hostname:
+            asset.hostname = host.hostname
+            updated_fields.append("hostname")
+        if host.mac_address and not asset.mac_address:
+            asset.mac_address = host.mac_address
+            updated_fields.append("mac_address")
+        if host.os_info and not asset.os_name:
+            asset.os_name = host.os_info
+            updated_fields.append("os_name")
+
+        # Mark host as approved
+        host.status = "merged"
+        host.matched_asset_id = asset_id
+        host.approved_by_user_id = current_user.id
+        host.approved_at = datetime.utcnow()
+
+        db.commit()
+
+        return {
+            "message": f"Host merged with asset {asset.asset_name}",
+            "asset_id": asset_id,
+            "action_taken": "merge_with_existing",
+            "updated_fields": updated_fields
+        }
+
+    elif action == "create_new":
+        if not asset_data:
+            raise HTTPException(status_code=400, detail="asset_data required for create_new action")
+
+        # Create new asset
+        asset = Asset(
+            asset_name=asset_data.get("asset_name"),
+            hostname=host.hostname,
+            ip_address=host.ip_address,
+            mac_address=host.mac_address,
+            os_name=host.os_info,
+            asset_type_id=asset_data.get("asset_type_id"),
+            user_id=current_user.id,
+            discovered_fields={
+                "hostname": True,
+                "ip_address": True,
+                "mac_address": True,
+                "os_name": True
+            }
+        )
+
+        db.add(asset)
+        db.flush()  # Get the ID
+
+        # Mark host as approved
+        host.status = "approved"
+        host.matched_asset_id = asset.id
+        host.approved_by_user_id = current_user.id
+        host.approved_at = datetime.utcnow()
+
+        db.commit()
+
+        return {
+            "message": f"New asset created: {asset.asset_name}",
+            "asset_id": asset.id,
+            "action_taken": "create_new"
+        }
+
+    elif action == "skip":
+        # Mark as reviewed but don't do anything
+        host.status = "skipped"
+        host.approved_by_user_id = current_user.id
+        host.approved_at = datetime.utcnow()
+        db.commit()
+
+        return {
+            "message": "Host marked as reviewed",
+            "action_taken": "skip"
+        }
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid action: {action}")
+
+
+@router.post("/hosts/{host_id}/reject")
+async def reject_discovered_host(
+    host_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Reject a discovered host
+
+    Marks the host as rejected and removes it from pending list.
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
+    """
+    from app.models.discovery import DiscoveredHost
+
+    check_discovery_permission(current_user, "write", db)
+
+    # Get the discovered host
+    host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Discovered host not found")
+
+    # Mark as rejected
+    host.status = "rejected"
+    host.approved_by_user_id = current_user.id
+    host.approved_at = datetime.utcnow()
+
+    db.commit()
+
+    return {
+        "message": f"Host {host.ip_address} rejected",
+        "host_id": host_id
+    }
+
+
+@router.post("/bulk-approve")
+async def bulk_approve_hosts(
+    request_body: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Bulk approve multiple discovered hosts
+
+    Creates new assets for all specified hosts with default values.
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
+    """
+    from app.models.discovery import DiscoveredHost
+
+    check_discovery_permission(current_user, "write", db)
+
+    # Extract parameters from request body
+    host_ids = request_body.get("host_ids", [])
+    default_asset_type_id = request_body.get("default_asset_type_id")
+    default_location_id = request_body.get("default_location_id")
+    default_owner_id = request_body.get("default_owner_id")
+
+    if not host_ids:
+        raise HTTPException(status_code=400, detail="host_ids required")
+    if not default_asset_type_id:
+        raise HTTPException(status_code=400, detail="default_asset_type_id required")
+
+    created_assets = []
+    errors = []
+
+    for host_id in host_ids:
+        try:
+            host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+            if not host:
+                errors.append(f"Host {host_id} not found")
+                continue
+
+            # Create asset name from IP or hostname
+            asset_name = host.hostname or f"Host-{host.ip_address}"
+
+            # Create new asset
+            asset = Asset(
+                asset_name=asset_name,
+                hostname=host.hostname,
+                ip_address=host.ip_address,
+                mac_address=host.mac_address,
+                os_name=host.os_info,
+                asset_type_id=default_asset_type_id,
+                location_id=default_location_id,
+                owner_id=default_owner_id,
+                user_id=current_user.id,
+                discovered_fields={
+                    "hostname": True,
+                    "ip_address": True,
+                    "mac_address": True,
+                    "os_name": True
+                }
+            )
+
+            db.add(asset)
+            db.flush()
+
+            # Mark host as approved
+            host.status = "approved"
+            host.matched_asset_id = asset.id
+            host.approved_by_user_id = current_user.id
+            host.approved_at = datetime.utcnow()
+
+            created_assets.append({
+                "host_id": host_id,
+                "asset_id": asset.id,
+                "asset_name": asset_name
+            })
+
+        except Exception as e:
+            errors.append(f"Host {host_id}: {str(e)}")
+
+    db.commit()
+
+    return {
+        "message": f"Bulk approved {len(created_assets)} hosts",
+        "approved": len(created_assets),
+        "errors": errors if errors else None,
+        "created_assets": created_assets
     }
 
 
