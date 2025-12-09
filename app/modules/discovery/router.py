@@ -19,9 +19,11 @@ from .schemas import (
     ScanRequest, ScanResponse,
     ApplyDiscoveryRequest, ApplyDiscoveryResponse,
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
-    DiscoveredHost, PendingHostsListResponse, PendingHostResponse
+    DiscoveredHost, PendingHostsListResponse, PendingHostResponse,
+    AddPortsRequest, OverwritePortsRequest, PortManagementResponse
 )
 from .service import DiscoveryService
+from .port_service import PortService
 
 
 router = APIRouter(
@@ -481,3 +483,142 @@ async def apply_discovery_bulk(
         "total": len(asset_mappings),
         "results": results
     }
+
+
+# ====================================
+# Port Management Endpoints
+# ====================================
+
+@router.post("/ports/add", response_model=PortManagementResponse)
+async def add_ports_to_asset(
+    request: AddPortsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Add new ports to an asset (non-destructive)
+
+    Only adds ports that don't already exist for the asset.
+    This is useful when you want to add newly discovered ports without affecting existing ones.
+    """
+    # Check permission
+    check_discovery_permission(current_user, "edit", db)
+
+    # Verify asset belongs to user (if not admin)
+    if current_user.role != UserRole.ADMIN:
+        asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+        if not asset or asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this asset")
+
+    # Convert PortInfo objects to dictionaries
+    ports_data = [
+        {
+            "port_number": port.port_number,
+            "protocol": port.protocol,
+            "service_name": port.service_name,
+            "service_product": port.service_product,
+            "service_version": port.service_version,
+            "state": port.state
+        }
+        for port in request.ports
+    ]
+
+    result = PortService.add_ports(
+        db=db,
+        asset_id=request.asset_id,
+        ports_data=ports_data,
+        scan_id=request.scan_id
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result.get("error", "Failed to add ports"))
+
+    return result
+
+
+@router.post("/ports/overwrite", response_model=PortManagementResponse)
+async def overwrite_asset_ports(
+    request: OverwritePortsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Overwrite all ports for an asset (destructive)
+
+    Removes all existing ports and replaces them with the new ones.
+    This is useful when you want the scan results to be the single source of truth for ports.
+    """
+    # Check permission
+    check_discovery_permission(current_user, "edit", db)
+
+    # Verify asset belongs to user (if not admin)
+    if current_user.role != UserRole.ADMIN:
+        asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+        if not asset or asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this asset")
+
+    # Convert PortInfo objects to dictionaries
+    ports_data = [
+        {
+            "port_number": port.port_number,
+            "protocol": port.protocol,
+            "service_name": port.service_name,
+            "service_product": port.service_product,
+            "service_version": port.service_version,
+            "state": port.state
+        }
+        for port in request.ports
+    ]
+
+    result = PortService.overwrite_ports(
+        db=db,
+        asset_id=request.asset_id,
+        ports_data=ports_data,
+        scan_id=request.scan_id
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result.get("error", "Failed to overwrite ports"))
+
+    return result
+
+
+@router.get("/assets/{asset_id}/ports")
+async def get_asset_ports(
+    asset_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all ports for an asset
+    """
+    # Check permission
+    check_discovery_permission(current_user, "view", db)
+
+    # Verify asset belongs to user (if not admin)
+    if current_user.role != UserRole.ADMIN:
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if not asset or asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to view this asset")
+
+    ports = PortService.get_asset_ports(db, asset_id)
+    return {"asset_id": asset_id, "ports": ports, "total": len(ports)}
+
+
+@router.delete("/ports/{port_id}")
+async def delete_port(
+    port_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a specific port
+    """
+    # Check permission
+    check_discovery_permission(current_user, "delete", db)
+
+    success = PortService.delete_port(db, port_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Port not found")
+
+    return {"success": True, "message": "Port deleted successfully"}

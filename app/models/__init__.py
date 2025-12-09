@@ -36,6 +36,9 @@ from app.models.asset import Asset
 from app.models.asset_dependencies import AssetDependency
 from app.models.asset_security_status import AssetSecurityStatus
 
+# Import port and protocol models (depend on Asset)
+from app.models.port import Port, Protocol
+
 # Import discovery models (depend on User and Asset)
 from app.models.discovery import (
     DiscoveryScan,
@@ -79,6 +82,9 @@ __all__ = [
     "Asset",
     "AssetDependency",
     "AssetSecurityStatus",
+    # Port and Protocol models
+    "Port",
+    "Protocol",
     # Discovery models
     "DiscoveryScan",
     "DiscoveredHost",

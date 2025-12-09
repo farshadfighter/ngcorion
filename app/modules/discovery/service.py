@@ -42,9 +42,10 @@ class DiscoveryService:
         db: Session,
         user_id: int,
         target: str,
-        scan_type: str = "basic",
+        scan_type: str = "well_known_ports",
         ports: Optional[str] = None,
-        protocol: str = "TCP"
+        protocol: str = "TCP",
+        job_name: Optional[str] = None
     ) -> DiscoveryScan:
         """
         Create a new scan record in database
@@ -53,9 +54,10 @@ class DiscoveryService:
             db: Database session
             user_id: User initiating the scan
             target: IP address, CIDR, or range
-            scan_type: basic, detailed, or full
-            ports: Port specification
+            scan_type: all_ports, well_known_ports, or custom_ports
+            ports: Port specification (required for custom_ports)
             protocol: TCP, UDP, or BOTH
+            job_name: User-friendly name for the scan job
 
         Returns:
             DiscoveryScan object with pending status
@@ -66,6 +68,7 @@ class DiscoveryService:
         # Create scan record
         scan = DiscoveryScan(
             scan_id=scan_id,
+            job_name=job_name or f"Scan {scan_id}",
             user_id=user_id,
             target=target,
             scan_type=scan_type,
@@ -82,7 +85,7 @@ class DiscoveryService:
         # Log audit trail
         log_scan_started(db, user_id, scan_id, target, scan_type)
 
-        logger.info(f"Created scan {scan_id} for target {target}")
+        logger.info(f"Created scan {scan_id} ({job_name}) for target {target}")
         return scan
 
     @staticmethod
@@ -688,6 +691,7 @@ class DiscoveryService:
 
         return {
             "scan_id": scan.scan_id,
+            "job_name": scan.job_name,
             "target": scan.target,
             "scan_type": scan.scan_type,
             "status": scan.status,
@@ -716,7 +720,8 @@ class DiscoveryService:
             target=request.target,
             scan_type=request.scan_type,
             ports=request.ports,
-            protocol=request.protocol
+            protocol=request.protocol,
+            job_name=request.job_name
         )
 
         # Execute scan in background (for now, run synchronously)

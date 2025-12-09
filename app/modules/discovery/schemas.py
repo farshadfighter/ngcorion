@@ -15,15 +15,17 @@ class ScanRequest(BaseModel):
 
     Example:
         {
+            "job_name": "Production Network Scan",
             "target": "192.168.1.0/24",
-            "scan_type": "detailed",
+            "scan_type": "well_known_ports",
             "ports": "80,443,8080",
             "protocol": "TCP"
         }
     """
+    job_name: Optional[str] = None  # User-friendly name for the scan job
     target: str  # IP address, IP range, or CIDR
-    scan_type: str = "basic"  # basic, detailed, full
-    ports: Optional[str] = None  # Port specification: "80,443,8080" or "1-1000" or "top1000"
+    scan_type: str = "well_known_ports"  # all_ports, well_known_ports, custom_ports
+    ports: Optional[str] = None  # Port specification: "80,443,8080" or "1-1000" (required for custom_ports)
     protocol: str = "TCP"  # TCP, UDP, or BOTH
     
     @field_validator('target')
@@ -50,7 +52,7 @@ class ScanRequest(BaseModel):
     @field_validator('scan_type')
     @classmethod
     def validate_scan_type(cls, v):
-        allowed = ['basic', 'detailed', 'full']
+        allowed = ['all_ports', 'well_known_ports', 'custom_ports']
         if v not in allowed:
             raise ValueError(f'scan_type must be one of: {allowed}')
         return v
@@ -68,9 +70,7 @@ class ScanRequest(BaseModel):
     def validate_ports(cls, v):
         if v is None:
             return v
-        # Allow: "80,443,8080", "1-1000", "top1000", "all"
-        if v.lower() in ['top1000', 'all']:
-            return v.lower()
+        # Allow: "80,443,8080", "1-1000", or single port
         # Validate comma-separated or range
         if ',' in v:
             # Comma-separated: "80,443,8080"
@@ -135,6 +135,7 @@ class DiscoveredHost(BaseModel):
 class ScanResponse(BaseModel):
     """Response from a network scan"""
     scan_id: str
+    job_name: Optional[str] = None
     target: str
     scan_type: str
     status: str  # running, completed, failed
@@ -291,12 +292,47 @@ class ScanListResponse(BaseModel):
 
 class ScanConfigResponse(BaseModel):
     """Available scan configuration options"""
-    scan_types: List[str] = ["basic", "detailed", "full"]
+    scan_types: List[str] = ["all_ports", "well_known_ports", "custom_ports"]
     protocols: List[str] = ["TCP", "UDP", "BOTH"]
     port_presets: Dict[str, str] = {
         "common": "80,443,22,21,25,110,143,3306,3389,8080",
         "web": "80,443,8080,8443,8000,8888",
-        "database": "3306,5432,1433,1521,27017,6379",
-        "top1000": "top1000",
-        "all": "all"
+        "database": "3306,5432,1433,1521,27017,6379"
     }
+
+
+# ========================================
+# Port Management Schemas
+# ========================================
+
+class PortInfo(BaseModel):
+    """Information about a port"""
+    port_number: int
+    protocol: str  # TCP, UDP
+    service_name: Optional[str] = None
+    service_product: Optional[str] = None
+    service_version: Optional[str] = None
+    state: str = "open"
+
+
+class AddPortsRequest(BaseModel):
+    """Request to add new ports to an asset"""
+    asset_id: int
+    ports: List[PortInfo]
+    scan_id: Optional[str] = None  # Track which scan discovered these ports
+
+
+class OverwritePortsRequest(BaseModel):
+    """Request to overwrite all ports for an asset"""
+    asset_id: int
+    ports: List[PortInfo]
+    scan_id: Optional[str] = None  # Track which scan discovered these ports
+
+
+class PortManagementResponse(BaseModel):
+    """Response after port management operation"""
+    success: bool
+    asset_id: int
+    ports_added: int
+    ports_removed: int
+    message: str

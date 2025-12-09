@@ -40,6 +40,13 @@ class DiscoveryScan(Base):
         comment="Unique 8-character scan identifier"
     )
 
+    job_name = Column(
+        String(200),
+        nullable=True,
+        index=True,
+        comment="User-friendly job name for the scan"
+    )
+
     # User Reference
     user_id = Column(
         Integer,
@@ -60,7 +67,7 @@ class DiscoveryScan(Base):
     scan_type = Column(
         String(20),
         nullable=False,
-        comment="Scan intensity: basic, detailed, full"
+        comment="Scan type: all_ports, well_known_ports, custom_ports"
     )
 
     ports = Column(

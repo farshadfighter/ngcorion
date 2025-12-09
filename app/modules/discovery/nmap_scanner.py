@@ -35,67 +35,51 @@ class NmapScanner:
         target: str,
         ports: Optional[str] = None,
         protocol: str = "TCP",
-        scan_type: str = "basic"
+        scan_type: str = "well_known_ports"
     ) -> List[str]:
         """
         Build nmap command based on parameters
 
         Args:
             target: IP address, CIDR, or range
-            ports: Port specification (e.g., "80,443", "1-1000", "top1000", "all")
+            ports: Port specification (e.g., "80,443", "1-1000")
             protocol: TCP, UDP, or BOTH
-            scan_type: basic, detailed, or full
+            scan_type: all_ports, well_known_ports, or custom_ports
 
         Returns:
             List of command arguments
 
         Examples:
-            basic: nmap -sn 192.168.1.0/24
-            detailed: nmap -sV -O 192.168.1.0/24
-            full: nmap -sV -O -A 192.168.1.0/24
+            all_ports: nmap -sT -sV -Pn -p- 192.168.1.0/24
+            well_known_ports: nmap -sT -sV -Pn -p 1-1024 192.168.1.0/24
+            custom_ports: nmap -sT -sV -Pn -p 80,443,8080 192.168.1.0/24
         """
         if not NmapScanner.is_nmap_available():
             raise FileNotFoundError("nmap is not installed or not in PATH")
 
         cmd = ["nmap", "-oX", "-"]  # XML output to stdout
 
-        # Scan type determines depth of scan
-        if scan_type == "basic":
-            cmd.append("-sn")  # Ping scan only (host discovery)
-        elif scan_type == "detailed":
-            cmd.extend(["-sV", "-O"])  # Service + OS detection
-        elif scan_type == "full":
-            cmd.extend(["-sV", "-O", "-A"])  # Aggressive scan (all features)
-        else:
-            # Default to basic
-            cmd.append("-sn")
+        # Always use -sT (TCP connect scan), -sV (version detection), -Pn (skip host discovery)
+        cmd.extend(["-sT", "-sV", "-Pn"])
 
-        # Protocol selection
-        is_root = NmapScanner.is_root()
-        if protocol == "TCP":
-            cmd.append("-sS" if is_root else "-sT")  # SYN scan if root, else TCP connect
-        elif protocol == "UDP":
-            cmd.append("-sU")  # UDP scan
-        elif protocol == "BOTH":
-            cmd.extend(["-sS" if is_root else "-sT", "-sU"])
-        else:
-            # Default to TCP
-            cmd.append("-sS" if is_root else "-sT")
-
-        # Port specification
-        if ports:
-            if ports.lower() == "top1000":
-                cmd.append("--top-ports=1000")
-            elif ports.lower() == "all":
-                cmd.append("-p-")  # All 65535 ports
-            else:
-                # Custom ports: "80,443" or "1-1000"
+        # Determine port range based on scan type
+        if scan_type == "all_ports":
+            cmd.append("-p-")  # All 65535 ports
+        elif scan_type == "well_known_ports":
+            cmd.extend(["-p", "1-1024"])  # Well-known ports (1-1024)
+        elif scan_type == "custom_ports":
+            if ports:
+                # Custom ports: "80,443" or "1-1000" or specific port
                 cmd.extend(["-p", ports])
-        # If no ports specified and not basic scan, use default (top 1000)
+            else:
+                # Default to well-known if no custom ports specified
+                cmd.extend(["-p", "1-1024"])
+        else:
+            # Default to well-known ports
+            cmd.extend(["-p", "1-1024"])
 
         # Additional options
         cmd.extend([
-            "-Pn",  # Skip host discovery (treat all as online)
             "--max-retries=2",  # Reduce retries for faster scan
             "--host-timeout=300s"  # Max time per host
         ])
@@ -289,7 +273,7 @@ class NmapScanner:
         target: str,
         ports: Optional[str] = None,
         protocol: str = "TCP",
-        scan_type: str = "basic",
+        scan_type: str = "well_known_ports",
         timeout: int = 600
     ) -> Dict[str, Any]:
         """
@@ -299,7 +283,7 @@ class NmapScanner:
             target: IP address, CIDR, or range
             ports: Port specification
             protocol: TCP, UDP, or BOTH
-            scan_type: basic, detailed, or full
+            scan_type: all_ports, well_known_ports, or custom_ports
             timeout: Maximum execution time
 
         Returns:
@@ -355,7 +339,7 @@ def test_scan(target: str = "127.0.0.1"):
         target=target,
         ports="80,443",
         protocol="TCP",
-        scan_type="basic"
+        scan_type="custom_ports"
     )
 
     print(f"Success: {result['success']}")
