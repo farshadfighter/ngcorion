@@ -77,17 +77,23 @@ async def start_scan(
     Start a new network scan
 
     **Parameters:**
+    - **job_name**: User-friendly name for the scan (optional)
     - **target**: IP address or range
         - Single IP: `192.168.1.1`
         - CIDR range: `192.168.1.0/24`
         - IP range: `192.168.1.1-254`
-    - **scan_type**: Scan intensity
-        - `basic`: Quick scan, ~30 seconds
-        - `detailed`: Service + OS detection, ~2-3 minutes
-        - `full`: All ports, ~10+ minutes
+    - **scan_type**: Port scan type
+        - `all_ports`: Scans all 65535 ports (slowest, most thorough)
+        - `well_known_ports`: Scans ports 1-1024 (default, balanced)
+        - `custom_ports`: Scans specific ports (requires ports parameter)
+    - **ports**: Port specification (required for custom_ports)
+        - Single port: `80`
+        - Port list: `80,443,8080`
+        - Port range: `1-1000`
+    - **protocol**: TCP, UDP, or BOTH (default: TCP)
 
     **Returns:**
-    Scan object with `scan_id` to poll for results
+    Scan object with `scan_id` and `job_name` to poll for results
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """

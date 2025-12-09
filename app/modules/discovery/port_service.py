@@ -54,10 +54,21 @@ class PortService:
         Returns:
             Dict with success status and count of ports added
         """
+        from app.models import DiscoveryScan
+
         # Verify asset exists
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
             return {"success": False, "error": "Asset not found"}
+
+        # Validate scan_id exists if provided
+        valid_scan_id = None
+        if scan_id:
+            scan = db.query(DiscoveryScan).filter(DiscoveryScan.scan_id == scan_id).first()
+            if scan:
+                valid_scan_id = scan_id
+            else:
+                logger.warning(f"Scan ID {scan_id} not found, setting to None")
 
         # Get existing ports for this asset
         existing_ports = db.query(Port).filter(Port.asset_id == asset_id).all()
@@ -86,7 +97,7 @@ class PortService:
                 service_product=port_data.get("service_product"),
                 service_version=port_data.get("service_version"),
                 state=port_data.get("state", "open"),
-                discovered_by_scan_id=scan_id,
+                discovered_by_scan_id=valid_scan_id,
                 is_active=True
             )
 
@@ -126,10 +137,21 @@ class PortService:
         Returns:
             Dict with success status and counts of ports added/removed
         """
+        from app.models import DiscoveryScan
+
         # Verify asset exists
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
             return {"success": False, "error": "Asset not found"}
+
+        # Validate scan_id exists if provided
+        valid_scan_id = None
+        if scan_id:
+            scan = db.query(DiscoveryScan).filter(DiscoveryScan.scan_id == scan_id).first()
+            if scan:
+                valid_scan_id = scan_id
+            else:
+                logger.warning(f"Scan ID {scan_id} not found, setting to None")
 
         # Get count of existing ports
         existing_ports = db.query(Port).filter(Port.asset_id == asset_id).all()
@@ -157,7 +179,7 @@ class PortService:
                 service_product=port_data.get("service_product"),
                 service_version=port_data.get("service_version"),
                 state=port_data.get("state", "open"),
-                discovered_by_scan_id=scan_id,
+                discovered_by_scan_id=valid_scan_id,
                 is_active=True
             )
 

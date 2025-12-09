@@ -36,13 +36,18 @@ const initialState = {
 // Start a new scan
 export const startScan = createAsyncThunk(
   'discovery/startScan',
-  async ({ target, scan_type = 'basic', ports = null, protocol = 'TCP' }, { rejectWithValue }) => {
+  async ({ job_name = null, target, scan_type = 'well_known_ports', ports = null, protocol = 'TCP' }, { rejectWithValue }) => {
     try {
       const requestData = {
         target,
         scan_type,
         protocol
       };
+
+      // Add job_name if specified
+      if (job_name) {
+        requestData.job_name = job_name;
+      }
 
       // Only add ports if specified
       if (ports) {
