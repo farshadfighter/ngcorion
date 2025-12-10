@@ -426,6 +426,13 @@ const AutoDiscovery = () => {
                       onChange={() => toggleSelection(host.id)}
                     />
                   </td>
+                  <td>
+                    {host.matched_asset_id ? (
+                      <strong>#{host.matched_asset_id}</strong>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
+                  </td>
                   <td><strong>{host.ip_address}</strong></td>
                   <td>{host.hostname || '-'}</td>
                   <td>{host.mac_address || '-'}</td>
