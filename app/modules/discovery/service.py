@@ -65,10 +65,18 @@ class DiscoveryService:
         # Generate unique scan ID
         scan_id = str(uuid.uuid4())[:8].upper()
 
+        # Generate job name in format: Scan-{random_number}-{ip}
+        if not job_name:
+            import random
+            # Extract first IP from target for job name
+            target_ip = target.split('/')[0].split('-')[0].strip()  # Handle CIDR and ranges
+            random_num = str(random.randint(10, 99)).zfill(2)  # 2-digit random number (01-99)
+            job_name = f"Scan-{random_num}-{target_ip}"
+
         # Create scan record
         scan = DiscoveryScan(
             scan_id=scan_id,
-            job_name=job_name or f"Scan {scan_id}",
+            job_name=job_name,
             user_id=user_id,
             target=target,
             scan_type=scan_type,

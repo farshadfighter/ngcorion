@@ -4,6 +4,7 @@ All routes require JWT authentication
 Admin-only routes are protected with require_admin dependency
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
@@ -176,6 +177,87 @@ def delete_asset(
     if not AssetService.delete_asset(db, asset_id):
         raise HTTPException(status_code=404, detail="Asset not found")
     return {"message": "Deleted successfully"}
+
+
+@assets_router.get("/export/excel")
+def export_assets_excel(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Export assets to Excel file
+
+    Returns all assets visible to the current user (admin sees all, user sees own)
+    """
+    from app.models import Asset
+    from app.utils.excel_utils import export_assets_to_excel
+    from datetime import datetime
+
+    # Build query based on user role
+    query = db.query(Asset)
+    if current_user.role.value != "admin":
+        query = query.filter(Asset.user_id == current_user.id)
+
+    assets = query.all()
+
+    # Generate Excel file
+    excel_file = export_assets_to_excel(assets, include_data=True)
+
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"assets_export_{timestamp}.xlsx"
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@assets_router.get("/export/template")
+def download_asset_template(
+    _current_user: User = Depends(get_current_user)
+):
+    """
+    Download empty Excel template for asset import
+
+    Returns a template file with all required columns but no data
+    """
+    from app.utils.excel_utils import create_asset_template
+
+    # Generate template
+    excel_file = create_asset_template()
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=asset_import_template.xlsx"}
+    )
+
+
+@assets_router.post("/import/excel")
+async def import_assets_excel(
+    current_user: User = Depends(require_admin_or_manager),
+    db: Session = Depends(get_db)
+):
+    """
+    Import assets from Excel file
+
+    NOTE: Import functionality will be fully implemented with validation standards.
+    For now, this endpoint is a placeholder.
+
+    Supports:
+    - Adding new assets
+    - Updating existing assets (matched by ID, asset_name, or IP)
+    - Validation and error reporting
+    """
+    # TODO: Implement full import logic with validation
+    return {
+        "status": "not_implemented",
+        "message": "Import functionality will be implemented with proper validation standards"
+    }
 
 
 # === Owners Router ===

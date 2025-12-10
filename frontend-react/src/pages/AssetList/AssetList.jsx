@@ -303,11 +303,75 @@ const AssetList = () => {
     loadViewData(currentView);
   };
 
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/assets/export/excel', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Export failed');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/assets/export/template', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'asset_import_template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Template download failed');
+      }
+    } catch (error) {
+      console.error('Template download error:', error);
+    }
+  };
+
+  const handleImport = () => {
+    // TODO: Implement import functionality with file upload
+    alert('Import functionality will be implemented with proper validation standards');
+  };
+
   return (
     <div className="asset-list-page">
       <div className="page-header">
         <h1 className="page-title">Asset List</h1>
-        {canWrite && <Button onClick={handleCreate}>Add Asset</Button>}
+        <div className="header-actions">
+          <Button onClick={handleExport} variant="secondary">📤 Export</Button>
+          <Button onClick={handleDownloadTemplate} variant="secondary">📋 Template</Button>
+          {canWrite && <Button onClick={handleImport} variant="secondary">📥 Import</Button>}
+          {canWrite && <Button onClick={handleCreate}>Add Asset</Button>}
+        </div>
       </div>
 
       <Tabs tabs={viewTabs} activeTab={currentView} onChange={handleViewChange} />

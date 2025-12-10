@@ -47,7 +47,6 @@ const AutoDiscovery = () => {
   const { assetTypes } = useSelector((state) => state.assets);
 
   // Local state
-  const [jobName, setJobName] = useState('');
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('well_known_ports');
   const [ports, setPorts] = useState('');
@@ -161,11 +160,6 @@ const AutoDiscovery = () => {
       protocol: protocol
     };
 
-    // Add job name if specified
-    if (jobName.trim()) {
-      scanData.job_name = jobName.trim();
-    }
-
     // Add ports if specified (required for custom_ports)
     if (ports.trim()) {
       scanData.ports = ports.trim();
@@ -175,7 +169,6 @@ const AutoDiscovery = () => {
     setShowScanModal(false);
 
     // Reset form
-    setJobName('');
     setTarget('');
     setScanType('well_known_ports');
     setPorts('');
@@ -413,6 +406,7 @@ const AutoDiscovery = () => {
             <thead>
               <tr>
                 <th><input type="checkbox" onChange={selectAll} checked={selectedPendingIds.length === pendingHosts.length} /></th>
+                <th>Asset ID</th>
                 <th>IP Address</th>
                 <th>Hostname</th>
                 <th>MAC Address</th>
@@ -547,19 +541,6 @@ const AutoDiscovery = () => {
             </div>
             
             <div className="modal-body">
-              <div className="form-group">
-                <label>Job Name (Optional)</label>
-                <input
-                  type="text"
-                  value={jobName}
-                  onChange={(e) => setJobName(e.target.value)}
-                  placeholder="e.g., Production Network Scan"
-                />
-                <small>
-                  Give your scan a friendly name for easier identification
-                </small>
-              </div>
-
               <div className="form-group">
                 <label>Target IP or Range *</label>
                 <input
