@@ -21,7 +21,7 @@ class Protocol(Base):
     __tablename__ = "protocols"
 
     id = Column(
-        Integer,
+        Integer,  
         primary_key=True,
         autoincrement=True,
         comment="Protocol ID"
