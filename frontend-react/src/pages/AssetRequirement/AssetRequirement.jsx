@@ -285,16 +285,13 @@ const AssetRequirement = () => {
 
   const handleExport = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/asset-requirements/export/excel', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await api.get('/api/asset-requirements/export/excel', {
+        responseType: 'blob'
       });
 
-      if (!response.ok) throw new Error('Export failed');
-
-      const blob = await response.blob();
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -305,22 +302,19 @@ const AssetRequirement = () => {
       document.body.removeChild(a);
     } catch (err) {
       console.error('Export failed:', err);
-      alert('Failed to export asset requirements');
+      alert('Failed to export asset requirements: ' + (err.response?.data?.detail || err.message));
     }
   };
 
   const handleDownloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/asset-requirements/export/template', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await api.get('/api/asset-requirements/export/template', {
+        responseType: 'blob'
       });
 
-      if (!response.ok) throw new Error('Template download failed');
-
-      const blob = await response.blob();
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -331,7 +325,7 @@ const AssetRequirement = () => {
       document.body.removeChild(a);
     } catch (err) {
       console.error('Template download failed:', err);
-      alert('Failed to download template');
+      alert('Failed to download template: ' + (err.response?.data?.detail || err.message));
     }
   };
 
@@ -347,20 +341,13 @@ const AssetRequirement = () => {
       formData.append('file', file);
 
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/asset-requirements/import/excel', {
-          method: 'POST',
+        const response = await api.post('/api/asset-requirements/import/excel', formData, {
           headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
+            'Content-Type': 'multipart/form-data'
+          }
         });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.detail || 'Import failed');
-        }
+        const result = response.data;
 
         alert(`Import successful!\n${JSON.stringify(result.summary, null, 2)}`);
 
@@ -374,7 +361,7 @@ const AssetRequirement = () => {
         dispatch(fetchAllDependencies());
       } catch (err) {
         console.error('Import failed:', err);
-        alert('Failed to import: ' + err.message);
+        alert('Failed to import: ' + (err.response?.data?.detail || err.message));
       }
     };
     input.click();

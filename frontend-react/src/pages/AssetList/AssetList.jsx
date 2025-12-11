@@ -361,9 +361,43 @@ const AssetList = () => {
     }
   };
 
-  const handleImport = () => {
-    // TODO: Implement import functionality with file upload
-    alert('Import functionality will be implemented with proper validation standards');
+  const handleImport = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:8000/api/assets/import/excel', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          alert(`Import successful!\n${JSON.stringify(result.summary, null, 2)}`);
+
+          // Refresh asset list
+          loadViewData(currentView);
+        } else {
+          const error = await response.json();
+          alert('Failed to import: ' + (error.detail || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Import failed:', err);
+        alert('Failed to import: ' + err.message);
+      }
+    };
+    input.click();
   };
 
   return (
