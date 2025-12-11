@@ -3,7 +3,7 @@ Asset Management Routers with Authentication
 All routes require JWT authentication
 Admin-only routes are protected with require_admin dependency
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -239,25 +239,89 @@ def download_asset_template(
 
 @assets_router.post("/import/excel")
 async def import_assets_excel(
+    file: bytes = None,
     current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db)
 ):
     """
     Import assets from Excel file
 
-    NOTE: Import functionality will be fully implemented with validation standards.
-    For now, this endpoint is a placeholder.
+    Supports:
+    - Adding new assets
+    - Updating existing assets (matched by ID, asset_name, or IP)
+    - Validation and error reporting
+
+    **Request:** Upload Excel file as multipart/form-data with key 'file'
+
+    **Returns:**
+    - created: Number of new assets created
+    - updated: Number of existing assets updated
+    - skipped: Number of empty rows skipped
+    - errors: List of error messages
+    - details: Detailed results for each processed row
+    """
+    # This endpoint expects multipart/form-data
+    # Redirect to the upload endpoint
+    raise HTTPException(
+        status_code=501,
+        detail="Please use the /import/excel/upload endpoint instead"
+    )
+
+
+@assets_router.post("/import/excel/upload")
+async def import_assets_excel_upload(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin_or_manager),
+    db: Session = Depends(get_db)
+):
+    """
+    Import assets from Excel file
 
     Supports:
     - Adding new assets
     - Updating existing assets (matched by ID, asset_name, or IP)
     - Validation and error reporting
+
+    **Returns:**
+    - created: Number of new assets created
+    - updated: Number of existing assets updated
+    - skipped: Number of empty rows skipped
+    - errors: List of error messages
+    - details: Detailed results for each processed row
     """
-    # TODO: Implement full import logic with validation
-    return {
-        "status": "not_implemented",
-        "message": "Import functionality will be implemented with proper validation standards"
-    }
+    from app.utils.excel_utils import import_assets_from_excel
+    from io import BytesIO
+
+    # Validate file type
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+        )
+
+    try:
+        # Read file content
+        content = await file.read()
+        file_buffer = BytesIO(content)
+
+        # Import assets
+        results = import_assets_from_excel(file_buffer, db, current_user)
+
+        return {
+            "status": "success",
+            "created": results["created"],
+            "updated": results["updated"],
+            "skipped": results["skipped"],
+            "errors": results["errors"],
+            "details": results["details"],
+            "message": f"Import completed: {results['created']} created, {results['updated']} updated, {results['skipped']} skipped, {len(results['errors'])} errors"
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Import failed: {str(e)}"
+        )
 
 
 # === Owners Router ===
@@ -630,3 +694,165 @@ def get_security_audit(
         return AssetService.get_assets_security_audit(db)
     else:
         return AssetService.get_assets_security_audit(db, current_user.id)
+
+
+# === Asset Requirements Import/Export Router ===
+requirements_router = APIRouter(prefix="/api/asset-requirements", tags=["Asset Requirements"])
+
+
+@requirements_router.get("/export/excel")
+def export_requirements_excel(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Export all asset requirements to Excel file with multiple sheets
+
+    Returns a single Excel file with sheets for:
+    - Asset Types
+    - Owners
+    - Locations
+    - Network Zones
+    - OS Catalog
+    - Vendors
+    - Dependencies
+
+    Admin sees all data, regular users see only their own data
+    """
+    from app.utils.excel_utils import export_asset_requirements_to_excel
+    from datetime import datetime
+
+    # Gather all data
+    data_dict = {}
+
+    # Asset Types (available to all users)
+    data_dict["asset_types"] = AssetService.get_all_asset_types(db)
+
+    # Owners (user-specific)
+    if current_user.role.value == "admin":
+        data_dict["owners"] = AssetService.get_all_owners(db)
+    else:
+        data_dict["owners"] = AssetService.get_user_owners(db, current_user.id)
+
+    # Locations (user-specific)
+    if current_user.role.value == "admin":
+        data_dict["locations"] = AssetService.get_all_locations(db)
+    else:
+        data_dict["locations"] = AssetService.get_user_locations(db, current_user.id)
+
+    # Network Zones (available to all users)
+    data_dict["zones"] = AssetService.get_all_zones(db)
+
+    # OS Catalog (available to all users)
+    data_dict["os_catalog"] = AssetService.get_all_os(db)
+
+    # Vendors (available to all users)
+    data_dict["vendors"] = AssetService.get_all_vendors(db)
+
+    # Dependencies (all)
+    from app.models import AssetDependency
+    data_dict["dependencies"] = db.query(AssetDependency).all()
+
+    # Generate Excel file
+    excel_file = export_asset_requirements_to_excel(data_dict)
+
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"asset_requirements_export_{timestamp}.xlsx"
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@requirements_router.get("/export/template")
+def download_requirements_template(
+    _current_user: User = Depends(get_current_user)
+):
+    """
+    Download empty Excel template for asset requirements import
+
+    Returns a template file with all required sheets and columns but no data
+    """
+    from app.utils.excel_utils import create_asset_requirements_template
+
+    # Generate template
+    excel_file = create_asset_requirements_template()
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=asset_requirements_template.xlsx"}
+    )
+
+
+@requirements_router.post("/import/excel")
+async def import_requirements_excel(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Import asset requirements from Excel file
+
+    Supports importing:
+    - Asset Types
+    - Owners
+    - Locations
+    - Network Zones
+    - OS Catalog
+    - Vendors
+    - Dependencies
+
+    The Excel file should have separate sheets for each type of requirement.
+    Supports both creating new items and updating existing ones (matched by ID or name).
+
+    **Returns:**
+    - Results for each sheet with counts of created, updated, and skipped items
+    - List of errors if any occurred
+    """
+    from app.utils.excel_utils import import_asset_requirements_from_excel
+    from io import BytesIO
+
+    # Validate file type
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+        )
+
+    try:
+        # Read file content
+        content = await file.read()
+        file_buffer = BytesIO(content)
+
+        # Import requirements
+        results = import_asset_requirements_from_excel(file_buffer, db, current_user)
+
+        # Calculate totals
+        total_created = sum(r["created"] for r in results.values())
+        total_updated = sum(r["updated"] for r in results.values())
+        total_skipped = sum(r["skipped"] for r in results.values())
+        total_errors = sum(len(r["errors"]) for r in results.values())
+
+        return {
+            "status": "success",
+            "summary": {
+                "created": total_created,
+                "updated": total_updated,
+                "skipped": total_skipped,
+                "errors": total_errors
+            },
+            "details": results,
+            "message": f"Import completed: {total_created} created, {total_updated} updated, {total_skipped} skipped, {total_errors} errors"
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Import failed: {str(e)}"
+        )
