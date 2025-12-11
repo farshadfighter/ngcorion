@@ -30,7 +30,11 @@ import './AssetList.css';
 
 const AssetList = () => {
   const dispatch = useDispatch();
-  const { canWrite, canDelete } = useAuth();
+  const { canWrite, canDelete, hasPermission } = useAuth();
+
+  // Check permissions for asset_list module
+  const hasWritePermission = canWrite('asset_list');
+  const hasDeletePermission = canDelete('asset_list');
   const { assets, selectedAsset, currentView, loading } = useSelector((state) => state.assets);
   const { items: assetTypes } = useSelector((state) => state.assetTypes);
   const { items: owners } = useSelector((state) => state.owners);
@@ -214,7 +218,7 @@ const AssetList = () => {
       width: '100px',
       render: (_, row) => (
         <div className="table-actions">
-          {canWrite && (
+          {hasWritePermission && (
             <button
               className="table-action-btn edit"
               onClick={() => handleEdit(row)}
@@ -233,7 +237,7 @@ const AssetList = () => {
               )}
             </button>
           )}
-          {canDelete && (
+          {hasDeletePermission && (
             <button className="table-action-btn delete" onClick={() => handleDeleteClick(row)}>
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
@@ -369,8 +373,8 @@ const AssetList = () => {
         <div className="header-actions">
           <Button onClick={handleExport} variant="secondary">📤 Export</Button>
           <Button onClick={handleDownloadTemplate} variant="secondary">📋 Template</Button>
-          {canWrite && <Button onClick={handleImport} variant="secondary">📥 Import</Button>}
-          {canWrite && <Button onClick={handleCreate}>Add Asset</Button>}
+          {hasWritePermission && <Button onClick={handleImport} variant="secondary">📥 Import</Button>}
+          {hasWritePermission && <Button onClick={handleCreate}>Add Asset</Button>}
         </div>
       </div>
 

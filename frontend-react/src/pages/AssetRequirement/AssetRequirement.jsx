@@ -25,6 +25,10 @@ import './AssetRequirement.css';
 const AssetRequirement = () => {
   const dispatch = useDispatch();
   const { canWrite, canDelete } = useAuth();
+
+  // Check permissions for asset_requirement module
+  const hasWritePermission = canWrite('asset_requirement');
+  const hasDeletePermission = canDelete('asset_requirement');
   const [activeTab, setActiveTab] = useState('types');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({});
@@ -284,7 +288,7 @@ const AssetRequirement = () => {
           title: 'Actions',
           width: '80px',
           render: (_, row) =>
-            canDelete && (
+            hasDeletePermission && (
               <button className="table-action-btn delete" onClick={() => handleDelete(row.id)}>
                 <svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
@@ -329,7 +333,7 @@ const AssetRequirement = () => {
     <div className="asset-requirement-page">
       <div className="page-header">
         <h1 className="page-title">Asset Requirement</h1>
-        {canWrite && <Button onClick={handleCreate}>Add New</Button>}
+        {hasWritePermission && <Button onClick={handleCreate}>Add New</Button>}
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
