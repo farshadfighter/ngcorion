@@ -176,23 +176,20 @@ def delete_asset(
 
 @assets_router.get("/export/excel")
 def export_assets_excel(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """
-    Export assets to Excel file
+    Export assets to Excel file (requires read permission)
 
-    Returns all assets visible to the current user (admin sees all, user sees own)
+    Returns all assets that the user has permission to access
     """
     from app.models import Asset
     from app.utils.excel_utils import export_assets_to_excel
     from datetime import datetime
 
-    # Build query based on user role
+    # Build query - permission-based access
     query = db.query(Asset)
-    if current_user.role.value != "admin":
-        query = query.filter(Asset.user_id == current_user.id)
-
     assets = query.all()
 
     # Generate Excel file
@@ -235,7 +232,7 @@ def download_asset_template(
 @assets_router.post("/import/excel")
 async def import_assets_excel(
     file: bytes = None,
-    current_user: User = Depends(require_admin_or_manager),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
     """
