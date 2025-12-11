@@ -682,11 +682,11 @@ requirements_router = APIRouter(prefix="/api/asset-requirements", tags=["Asset R
 
 @requirements_router.get("/export/excel")
 def export_requirements_excel(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_REQUIREMENT", "read")),
     db: Session = Depends(get_db)
 ):
     """
-    Export all asset requirements to Excel file with multiple sheets
+    Export all asset requirements to Excel file with multiple sheets (requires read permission)
 
     Returns a single Excel file with sheets for:
     - Asset Types
@@ -697,36 +697,20 @@ def export_requirements_excel(
     - Vendors
     - Dependencies
 
-    Admin sees all data, regular users see only their own data
+    All users with read permission see all data (permission-based access)
     """
     from app.utils.excel_utils import export_asset_requirements_to_excel
     from datetime import datetime
 
-    # Gather all data
+    # Gather all data - permission-based access, all users see all data
     data_dict = {}
 
-    # Asset Types (available to all users)
+    # All data is now available to users with read permission
     data_dict["asset_types"] = AssetService.get_all_asset_types(db)
-
-    # Owners (user-specific)
-    if current_user.role.value == "admin":
-        data_dict["owners"] = AssetService.get_all_owners(db)
-    else:
-        data_dict["owners"] = AssetService.get_user_owners(db, current_user.id)
-
-    # Locations (user-specific)
-    if current_user.role.value == "admin":
-        data_dict["locations"] = AssetService.get_all_locations(db)
-    else:
-        data_dict["locations"] = AssetService.get_user_locations(db, current_user.id)
-
-    # Network Zones (available to all users)
+    data_dict["owners"] = AssetService.get_all_owners(db)
+    data_dict["locations"] = AssetService.get_all_locations(db)
     data_dict["zones"] = AssetService.get_all_zones(db)
-
-    # OS Catalog (available to all users)
     data_dict["os_catalog"] = AssetService.get_all_os(db)
-
-    # Vendors (available to all users)
     data_dict["vendors"] = AssetService.get_all_vendors(db)
 
     # Dependencies (all)
@@ -750,10 +734,10 @@ def export_requirements_excel(
 
 @requirements_router.get("/export/template")
 def download_requirements_template(
-    _current_user: User = Depends(get_current_user)
+    _current_user: User = Depends(require_permission("ASSET_REQUIREMENT", "read"))
 ):
     """
-    Download empty Excel template for asset requirements import
+    Download empty Excel template for asset requirements import (requires read permission)
 
     Returns a template file with all required sheets and columns but no data
     """
@@ -773,7 +757,7 @@ def download_requirements_template(
 @requirements_router.post("/import/excel")
 async def import_requirements_excel(
     file: UploadFile = File(...),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_REQUIREMENT", "write")),
     db: Session = Depends(get_db)
 ):
     """

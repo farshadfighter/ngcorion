@@ -14,12 +14,14 @@ import { fetchAllEnums } from '../../store/slices/enumsSlice';
 import { fetchAllDependencies, createDependency, deleteDependency } from '../../store/slices/dependenciesSlice';
 import { fetchAssets } from '../../store/slices/assetsSlice';
 import { useAuth } from '../../hooks/useAuth';
+import api from '../../api/axios';
 import Tabs from '../../components/common/Tabs';
 import Button from '../../components/common/Button';
 import Table from '../../components/common/Table';
 import Modal from '../../components/common/Modal';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
+import SearchBox from '../../components/common/SearchBox';
 import './AssetRequirement.css';
 
 const AssetRequirement = () => {
@@ -33,6 +35,7 @@ const AssetRequirement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({});
   const [formError, setFormError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Redux state
   const { items: assetTypes, loading: typesLoading } = useSelector((state) => state.assetTypes);
@@ -280,6 +283,103 @@ const AssetRequirement = () => {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/asset-requirements/export/excel', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Export failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `asset_requirements_export_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to export asset requirements');
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/asset-requirements/export/template', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error('Template download failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'asset_requirements_template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Template download failed:', err);
+      alert('Failed to download template');
+    }
+  };
+
+  const handleImport = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/asset-requirements/import/excel', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.detail || 'Import failed');
+        }
+
+        alert(`Import successful!\n${JSON.stringify(result.summary, null, 2)}`);
+
+        // Refresh data
+        dispatch(fetchAssetTypes());
+        dispatch(fetchOwners());
+        dispatch(fetchLocations());
+        dispatch(fetchZones());
+        dispatch(fetchOSCatalog());
+        dispatch(fetchVendors());
+        dispatch(fetchAllDependencies());
+      } catch (err) {
+        console.error('Import failed:', err);
+        alert('Failed to import: ' + err.message);
+      }
+    };
+    input.click();
+  };
+
   const columnsWithActions = config.columns
     ? [
         ...config.columns,
@@ -329,18 +429,40 @@ const AssetRequirement = () => {
     );
   }
 
+  // Filter data based on search query
+  const filteredData = config.data?.filter((item) => {
+    if (!searchQuery) return true;
+    const searchLower = searchQuery.toLowerCase();
+    return Object.values(item).some((value) =>
+      String(value).toLowerCase().includes(searchLower)
+    );
+  }) || [];
+
   return (
     <div className="asset-requirement-page">
       <div className="page-header">
         <h1 className="page-title">Asset Requirement</h1>
-        {hasWritePermission && <Button onClick={handleCreate}>Add New</Button>}
+        <div className="header-actions">
+          <Button onClick={handleExport} variant="secondary">📤 Export</Button>
+          <Button onClick={handleDownloadTemplate} variant="secondary">📋 Template</Button>
+          {hasWritePermission && <Button onClick={handleImport} variant="secondary">📥 Import</Button>}
+          {hasWritePermission && <Button onClick={handleCreate}>Add New</Button>}
+        </div>
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
+      <div className="asset-toolbar">
+        <SearchBox
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search..."
+        />
+      </div>
+
       <Table
         columns={columnsWithActions}
-        data={config.data}
+        data={filteredData}
         loading={config.loading}
         emptyMessage="No data found"
       />
