@@ -21,7 +21,7 @@ from .schemas import (
     PaginatedResponse
 )
 from .service import AssetService
-from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager
+from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission
 from app.models import User
 
 
@@ -95,21 +95,20 @@ assets_router = APIRouter(prefix="/api/assets", tags=["Assets"])
 def get_assets(
     page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
     page_size: Optional[int] = Query(None, ge=1, le=100, description="Items per page"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """
-    Get assets (admin sees all, user sees own)
+    Get assets (permission-based access)
 
     Supports optional pagination via page and page_size query parameters.
     If pagination params are omitted, returns all results (backward compatible).
+    Users with read permission for ASSET_LIST can see all assets.
     """
     from app.models import Asset
 
-    # Build base query
+    # Build base query - no user_id filtering, permission-based access
     query = db.query(Asset)
-    if current_user.role.value != "admin":
-        query = query.filter(Asset.user_id == current_user.id)
 
     # If pagination requested, return paginated results
     if page is not None and page_size is not None:
@@ -124,10 +123,10 @@ def get_assets(
 @assets_router.post("/", response_model=AssetResponse)
 def create_asset(
     data: AssetCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Create asset (admin only)"""
+    """Create asset (requires write permission)"""
     asset_data = data.model_dump()
     # If user_id not provided, use current user
     if not asset_data.get('user_id'):
@@ -138,18 +137,14 @@ def create_asset(
 @assets_router.get("/{asset_id}", response_model=AssetResponse)
 def get_asset(
     asset_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get asset by id"""
+    """Get asset by id (requires read permission)"""
     asset = AssetService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
-    
-    # Check permission: admin or owner
-    if current_user.role.value != "admin" and asset.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return asset
 
 
@@ -157,10 +152,10 @@ def get_asset(
 def update_asset(
     asset_id: int,
     data: AssetUpdate,
-    current_user: User = Depends(require_admin_or_manager),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Update asset (admin or manager)"""
+    """Update asset (requires write permission)"""
     asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -170,10 +165,10 @@ def update_asset(
 @assets_router.delete("/{asset_id}")
 def delete_asset(
     asset_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Delete asset (admin only)"""
+    """Delete asset (requires delete permission)"""
     if not AssetService.delete_asset(db, asset_id):
         raise HTTPException(status_code=404, detail="Asset not found")
     return {"message": "Deleted successfully"}
