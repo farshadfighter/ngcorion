@@ -322,40 +322,34 @@ owners_router = APIRouter(prefix="/api/owners", tags=["Owners"])
 
 @owners_router.get("/", response_model=List[AssetOwnerResponse])
 def get_owners(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get owners for current user (admin sees all)"""
-    if current_user.role.value == "admin":
-        return AssetService.get_all_owners(db)
-    else:
-        return AssetService.get_user_owners(db, current_user.id)
+    """Get all owners (permission-based access)"""
+    return AssetService.get_all_owners(db)
 
 
 @owners_router.post("/", response_model=AssetOwnerResponse)
 def create_owner(
     data: AssetOwnerCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Create owner (admin only) - uses current_user.id dynamically"""
+    """Create owner (requires write permission) - uses current_user.id dynamically"""
     return AssetService.create_owner(db, data.model_dump(), user_id=current_user.id)
 
 
 @owners_router.get("/{owner_id}", response_model=AssetOwnerResponse)
 def get_owner(
     owner_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get owner by id"""
+    """Get owner by id (requires read permission)"""
     owner = AssetService.get_owner(db, owner_id)
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
-    
-    if current_user.role.value != "admin" and owner.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return owner
 
 
@@ -363,10 +357,10 @@ def get_owner(
 def update_owner(
     owner_id: int,
     data: AssetOwnerCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Update owner (admin only)"""
+    """Update owner (requires write permission)"""
     owner = AssetService.update_owner(db, owner_id, data.model_dump())
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
@@ -376,10 +370,10 @@ def update_owner(
 @owners_router.delete("/{owner_id}")
 def delete_owner(
     owner_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Delete owner (admin only)"""
+    """Delete owner (requires delete permission)"""
     if not AssetService.delete_owner(db, owner_id):
         raise HTTPException(status_code=404, detail="Owner not found")
     return {"message": "Deleted successfully"}
@@ -391,40 +385,34 @@ locations_router = APIRouter(prefix="/api/locations", tags=["Locations"])
 
 @locations_router.get("/", response_model=List[AssetLocationResponse])
 def get_locations(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get locations (admin sees all, user sees own)"""
-    if current_user.role.value == "admin":
-        return AssetService.get_all_locations(db)
-    else:
-        return AssetService.get_user_locations(db, current_user.id)
+    """Get all locations (permission-based access)"""
+    return AssetService.get_all_locations(db)
 
 
 @locations_router.post("/", response_model=AssetLocationResponse)
 def create_location(
     data: AssetLocationCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Create location (admin only) - uses current_user.id dynamically"""
+    """Create location (requires write permission) - uses current_user.id dynamically"""
     return AssetService.create_location(db, data.model_dump(), user_id=current_user.id)
 
 
 @locations_router.get("/{location_id}", response_model=AssetLocationResponse)
 def get_location(
     location_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get location by id"""
+    """Get location by id (requires read permission)"""
     location = AssetService.get_location(db, location_id)
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    
-    if current_user.role.value != "admin" and location.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return location
 
 
@@ -432,10 +420,10 @@ def get_location(
 def update_location(
     location_id: int,
     data: AssetLocationCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Update location (admin only)"""
+    """Update location (requires write permission)"""
     location = AssetService.update_location(db, location_id, data.model_dump())
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
@@ -445,10 +433,10 @@ def update_location(
 @locations_router.delete("/{location_id}")
 def delete_location(
     location_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Delete location (admin only)"""
+    """Delete location (requires delete permission)"""
     if not AssetService.delete_location(db, location_id):
         raise HTTPException(status_code=404, detail="Location not found")
     return {"message": "Deleted successfully"}
