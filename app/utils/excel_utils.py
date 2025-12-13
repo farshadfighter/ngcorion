@@ -408,32 +408,36 @@ def export_asset_requirements_to_excel(data_dict: Dict[str, List[Any]]) -> Bytes
     # Export Network Zones
     if "zones" in data_dict and data_dict["zones"]:
         ws = wb.create_sheet("Network Zones")
-        columns = ["ID", "Zone Name"]
+        columns = ["ID", "Zone Name", "Description"]
         style_header_row(ws, columns)
 
         for row_idx, item in enumerate(data_dict["zones"], 2):
             ws.cell(row=row_idx, column=1, value=item.id)
             ws.cell(row=row_idx, column=2, value=item.zone_name)
+            ws.cell(row=row_idx, column=3, value=item.description if hasattr(item, 'description') else None)
 
     # Export OS Catalog
     if "os_catalog" in data_dict and data_dict["os_catalog"]:
         ws = wb.create_sheet("OS Catalog")
-        columns = ["ID", "OS Name"]
+        columns = ["ID", "OS Name", "OS Version", "OS Family"]
         style_header_row(ws, columns)
 
         for row_idx, item in enumerate(data_dict["os_catalog"], 2):
             ws.cell(row=row_idx, column=1, value=item.id)
             ws.cell(row=row_idx, column=2, value=item.os_name)
+            ws.cell(row=row_idx, column=3, value=item.os_version if hasattr(item, 'os_version') else None)
+            ws.cell(row=row_idx, column=4, value=item.os_family if hasattr(item, 'os_family') else None)
 
     # Export Vendors
     if "vendors" in data_dict and data_dict["vendors"]:
         ws = wb.create_sheet("Vendors")
-        columns = ["ID", "Vendor Name"]
+        columns = ["ID", "Vendor Name", "Vendor Type"]
         style_header_row(ws, columns)
 
         for row_idx, item in enumerate(data_dict["vendors"], 2):
             ws.cell(row=row_idx, column=1, value=item.id)
             ws.cell(row=row_idx, column=2, value=item.vendor_name)
+            ws.cell(row=row_idx, column=3, value=item.vendor_type if hasattr(item, 'vendor_type') else None)
 
     # Export Dependencies
     if "dependencies" in data_dict and data_dict["dependencies"]:
@@ -488,17 +492,17 @@ def create_asset_requirements_template() -> BytesIO:
 
     # Network Zones template
     ws = wb.create_sheet("Network Zones")
-    columns = ["ID", "Zone Name"]
+    columns = ["ID", "Zone Name", "Description"]
     style_header_row(ws, columns)
 
     # OS Catalog template
     ws = wb.create_sheet("OS Catalog")
-    columns = ["ID", "OS Name"]
+    columns = ["ID", "OS Name", "OS Version", "OS Family"]
     style_header_row(ws, columns)
 
     # Vendors template
     ws = wb.create_sheet("Vendors")
-    columns = ["ID", "Vendor Name"]
+    columns = ["ID", "Vendor Name", "Vendor Type"]
     style_header_row(ws, columns)
 
     # Dependencies template
@@ -668,7 +672,10 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         results["zones"]["skipped"] += 1
                         continue
 
-                    data = {"zone_name": row[1]}
+                    data = {
+                        "zone_name": row[1],
+                        "description": row[2] if len(row) > 2 else None
+                    }
 
                     existing = None
                     if row[0]:
@@ -677,7 +684,9 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         existing = db_session.query(NetworkZone).filter(NetworkZone.zone_name == data["zone_name"]).first()
 
                     if existing:
-                        existing.zone_name = data["zone_name"]
+                        for key, value in data.items():
+                            if value is not None:
+                                setattr(existing, key, value)
                         results["zones"]["updated"] += 1
                     else:
                         new_item = NetworkZone(**data)
@@ -696,7 +705,11 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         results["os_catalog"]["skipped"] += 1
                         continue
 
-                    data = {"os_name": row[1]}
+                    data = {
+                        "os_name": row[1],
+                        "os_version": row[2] if len(row) > 2 else None,
+                        "os_family": row[3] if len(row) > 3 else None
+                    }
 
                     existing = None
                     if row[0]:
@@ -705,7 +718,9 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         existing = db_session.query(OSCatalog).filter(OSCatalog.os_name == data["os_name"]).first()
 
                     if existing:
-                        existing.os_name = data["os_name"]
+                        for key, value in data.items():
+                            if value is not None:
+                                setattr(existing, key, value)
                         results["os_catalog"]["updated"] += 1
                     else:
                         new_item = OSCatalog(**data)
@@ -724,7 +739,10 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         results["vendors"]["skipped"] += 1
                         continue
 
-                    data = {"vendor_name": row[1]}
+                    data = {
+                        "vendor_name": row[1],
+                        "vendor_type": row[2] if len(row) > 2 else None
+                    }
 
                     existing = None
                     if row[0]:
@@ -733,7 +751,9 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         existing = db_session.query(VendorCatalog).filter(VendorCatalog.vendor_name == data["vendor_name"]).first()
 
                     if existing:
-                        existing.vendor_name = data["vendor_name"]
+                        for key, value in data.items():
+                            if value is not None:
+                                setattr(existing, key, value)
                         results["vendors"]["updated"] += 1
                     else:
                         new_item = VendorCatalog(**data)
