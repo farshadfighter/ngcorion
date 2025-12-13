@@ -464,15 +464,30 @@ class AssetService:
 
             # Add security status fields if available
             if hasattr(asset, 'security_status') and asset.security_status:
+                # Handle both list (InstrumentedList) and single object cases
                 sec = asset.security_status
-                data.update({
-                    'antivirus_installed': sec.antivirus_installed,
-                    'antivirus_status': sec.antivirus_status,
-                    'firewall_enabled': sec.firewall_enabled,
-                    'backup_enabled': sec.backup_enabled,
-                    'vulnerability_score': sec.vulnerability_score,
-                    'compliance_status': sec.compliance_status,
-                })
+                if isinstance(sec, list):
+                    sec = sec[0] if len(sec) > 0 else None
+
+                if sec:
+                    data.update({
+                        'antivirus_installed': sec.antivirus_installed,
+                        'antivirus_status': sec.antivirus_status,
+                        'firewall_enabled': sec.firewall_enabled,
+                        'backup_enabled': sec.backup_enabled,
+                        'vulnerability_score': sec.vulnerability_score,
+                        'compliance_status': sec.compliance_status,
+                    })
+                else:
+                    # Default values if no security status exists
+                    data.update({
+                        'antivirus_installed': None,
+                        'antivirus_status': None,
+                        'firewall_enabled': None,
+                        'backup_enabled': None,
+                        'vulnerability_score': None,
+                        'compliance_status': None,
+                    })
             else:
                 # Default values if no security status exists
                 data.update({
