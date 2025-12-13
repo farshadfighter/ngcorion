@@ -63,6 +63,50 @@ class AssetBase(BaseModel):
 class AssetCreate(AssetBase):
     user_id: Optional[int] = None  # Admin specifies which user owns this
 
+    @field_validator('ip_address')
+    @classmethod
+    def validate_ip(cls, v):
+        if v is None or v == '':
+            return v
+        # IPv4 validation
+        pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid IP address format')
+        return v
+
+    @field_validator('mac_address')
+    @classmethod
+    def validate_mac(cls, v):
+        if v is None or v == '':
+            return v
+        # MAC address validation - supports multiple formats:
+        # - XX:XX:XX:XX:XX:XX (colon separated)
+        # - XX-XX-XX-XX-XX-XX (hyphen separated)
+        # - XXXX.XXXX.XXXX (Cisco dot notation)
+        # - XXXXXXXXXXXX (no separators)
+        mac_patterns = [
+            r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$',  # Colon or hyphen separated
+            r'^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$',    # Cisco dot notation
+            r'^[0-9A-Fa-f]{12}$'                             # No separators (compact)
+        ]
+        if not any(re.match(pattern, v) for pattern in mac_patterns):
+            raise ValueError('Invalid MAC address format. Supported formats: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX')
+        return v
+
+    @field_validator('asset_value')
+    @classmethod
+    def validate_value(cls, v):
+        if v is not None and v < 0:
+            raise ValueError('Asset value must be positive')
+        return v
+
+    @field_validator('asset_name')
+    @classmethod
+    def validate_name(cls, v):
+        if v is not None and len(v.strip()) < 2:
+            raise ValueError('Asset name must be at least 2 characters')
+        return v
+
 class AssetUpdate(BaseModel):
     asset_name: Optional[str] = None
     hostname: Optional[str] = None
