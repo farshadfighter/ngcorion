@@ -84,6 +84,7 @@ class AssetUpdate(BaseModel):
     last_patch_date: Optional[date] = None
     asset_value: Optional[float] = None
     description: Optional[str] = None
+    security_status: Optional[dict] = None
 
     @field_validator('ip_address')
     @classmethod
