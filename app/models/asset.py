@@ -414,12 +414,13 @@ class Asset(Base):
 
     @staticmethod
     def validate_mac_address(mac_addr: str) -> bool:
-        """Validate MAC address format (supports 00:11:22:33:44:55, 00-11-22-33-44-55, 0011.2233.4455)."""
+        """Validate MAC address format (supports 00:11:22:33:44:55, 00-11-22-33-44-55, 0011.2233.4455, 001122334455)."""
         if not mac_addr:
             return False
         mac_patterns = [
-            r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$',
-            r'^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$'
+            r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$',  # Colon or hyphen separated
+            r'^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$',    # Cisco dot notation
+            r'^[0-9A-Fa-f]{12}$'                             # No separators (compact)
         ]
         return any(re.match(pattern, mac_addr) for pattern in mac_patterns)
 

@@ -47,7 +47,6 @@ const AutoDiscovery = () => {
   const { assetTypes } = useSelector((state) => state.assets);
 
   // Local state
-  const [jobName, setJobName] = useState('');
   const [target, setTarget] = useState('');
   const [scanType, setScanType] = useState('well_known_ports');
   const [ports, setPorts] = useState('');
@@ -161,11 +160,6 @@ const AutoDiscovery = () => {
       protocol: protocol
     };
 
-    // Add job name if specified
-    if (jobName.trim()) {
-      scanData.job_name = jobName.trim();
-    }
-
     // Add ports if specified (required for custom_ports)
     if (ports.trim()) {
       scanData.ports = ports.trim();
@@ -175,7 +169,6 @@ const AutoDiscovery = () => {
     setShowScanModal(false);
 
     // Reset form
-    setJobName('');
     setTarget('');
     setScanType('well_known_ports');
     setPorts('');
@@ -209,12 +202,22 @@ const AutoDiscovery = () => {
   };
 
   // Approve a discovered host
-  const handleApprove = async (hostId, action = 'create_new', assetId = null) => {
-    const result = await dispatch(approveHost({ hostId, action, assetId }));
+  const handleApprove = async (hostId, action = 'create_new', assetId = null, assetData = null) => {
+    const result = await dispatch(approveHost({ hostId, action, assetId, assetData }));
 
     if (result.type === 'discovery/approveHost/fulfilled') {
-      alert(`✅ ${result.payload.message}`);
-      dispatch(fetchPendingHosts()); // Refresh list
+      const message = result.payload.message;
+      const createdAssetId = result.payload.asset_id;
+
+      if (action === 'create_new' && createdAssetId) {
+        alert(`✅ ${message}\n\nAsset ID: #${createdAssetId}\n\nThe host has been removed from the pending list.`);
+      } else if (action === 'merge_with_existing') {
+        alert(`✅ ${message}\n\nThe host has been merged and removed from the pending list.`);
+      } else {
+        alert(`✅ ${message}`);
+      }
+
+      dispatch(fetchPendingHosts()); // Refresh list to remove approved host
       setShowMatchModal(false);
     } else {
       alert(`❌ Failed: ${result.payload || 'Unknown error'}`);
@@ -413,6 +416,7 @@ const AutoDiscovery = () => {
             <thead>
               <tr>
                 <th><input type="checkbox" onChange={selectAll} checked={selectedPendingIds.length === pendingHosts.length} /></th>
+                <th>Asset ID</th>
                 <th>IP Address</th>
                 <th>Hostname</th>
                 <th>MAC Address</th>
@@ -431,6 +435,13 @@ const AutoDiscovery = () => {
                       checked={selectedPendingIds.includes(host.id)}
                       onChange={() => toggleSelection(host.id)}
                     />
+                  </td>
+                  <td>
+                    {host.matched_asset_id ? (
+                      <strong>#{host.matched_asset_id}</strong>
+                    ) : (
+                      <span className="text-muted">-</span>
+                    )}
                   </td>
                   <td><strong>{host.ip_address}</strong></td>
                   <td>{host.hostname || '-'}</td>
@@ -547,19 +558,6 @@ const AutoDiscovery = () => {
             </div>
             
             <div className="modal-body">
-              <div className="form-group">
-                <label>Job Name (Optional)</label>
-                <input
-                  type="text"
-                  value={jobName}
-                  onChange={(e) => setJobName(e.target.value)}
-                  placeholder="e.g., Production Network Scan"
-                />
-                <small>
-                  Give your scan a friendly name for easier identification
-                </small>
-              </div>
-
               <div className="form-group">
                 <label>Target IP or Range *</label>
                 <input
@@ -737,12 +735,48 @@ const AutoDiscovery = () => {
 
               <div className="create-new-section">
                 <h4>Or create as new asset:</h4>
+                {matchResults.matches_found && matchResults.matches.length > 0 && (
+                  <p className="warning-text" style={{color: '#f59e0b', fontSize: '0.9rem', marginBottom: '8px'}}>
+                    ⚠️ Warning: Matches were found above. Creating a new asset may result in duplicates.
+                  </p>
+                )}
                 <button
                   className="btn btn-success"
                   onClick={() => {
                     const hostId = pendingHosts.find(h => matchResults.host_id === h.id)?.id;
                     if (hostId) {
-                      handleApprove(hostId, 'create_new');
+                      // Warn if matches exist
+                      if (matchResults.matches_found && matchResults.matches.length > 0) {
+                        if (!window.confirm('Matching assets were found. Are you sure you want to create a new asset instead of merging?')) {
+                          return;
+                        }
+                      }
+
+                      // Prompt for required asset information
+                      const assetName = prompt('Enter Asset Name:');
+                      if (!assetName) {
+                        alert('Asset name is required');
+                        return;
+                      }
+
+                      // Show available asset types
+                      let assetTypeOptions = 'Available Asset Types:\n';
+                      assetTypes.forEach(type => {
+                        assetTypeOptions += `${type.id}: ${type.type_name}\n`;
+                      });
+
+                      const assetTypeId = prompt(assetTypeOptions + '\nEnter Asset Type ID:');
+                      if (!assetTypeId || isNaN(assetTypeId)) {
+                        alert('Valid Asset Type ID is required');
+                        return;
+                      }
+
+                      const assetData = {
+                        asset_name: assetName,
+                        asset_type_id: parseInt(assetTypeId)
+                      };
+
+                      handleApprove(hostId, 'create_new', null, assetData);
                     }
                   }}
                 >

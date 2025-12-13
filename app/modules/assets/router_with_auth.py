@@ -3,7 +3,8 @@ Asset Management Routers with Authentication
 All routes require JWT authentication
 Admin-only routes are protected with require_admin dependency
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
@@ -20,7 +21,7 @@ from .schemas import (
     PaginatedResponse
 )
 from .service import AssetService
-from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager
+from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission
 from app.models import User
 
 
@@ -94,21 +95,20 @@ assets_router = APIRouter(prefix="/api/assets", tags=["Assets"])
 def get_assets(
     page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
     page_size: Optional[int] = Query(None, ge=1, le=100, description="Items per page"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
     """
-    Get assets (admin sees all, user sees own)
+    Get assets (permission-based access)
 
     Supports optional pagination via page and page_size query parameters.
     If pagination params are omitted, returns all results (backward compatible).
+    Users with read permission for ASSET_LIST can see all assets.
     """
     from app.models import Asset
 
-    # Build base query
+    # Build base query - no user_id filtering, permission-based access
     query = db.query(Asset)
-    if current_user.role.value != "admin":
-        query = query.filter(Asset.user_id == current_user.id)
 
     # If pagination requested, return paginated results
     if page is not None and page_size is not None:
@@ -123,10 +123,10 @@ def get_assets(
 @assets_router.post("/", response_model=AssetResponse)
 def create_asset(
     data: AssetCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Create asset (admin only)"""
+    """Create asset (requires write permission)"""
     asset_data = data.model_dump()
     # If user_id not provided, use current user
     if not asset_data.get('user_id'):
@@ -137,18 +137,14 @@ def create_asset(
 @assets_router.get("/{asset_id}", response_model=AssetResponse)
 def get_asset(
     asset_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get asset by id"""
+    """Get asset by id (requires read permission)"""
     asset = AssetService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
-    
-    # Check permission: admin or owner
-    if current_user.role.value != "admin" and asset.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return asset
 
 
@@ -156,10 +152,10 @@ def get_asset(
 def update_asset(
     asset_id: int,
     data: AssetUpdate,
-    current_user: User = Depends(require_admin_or_manager),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Update asset (admin or manager)"""
+    """Update asset (requires write permission)"""
     asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -169,13 +165,155 @@ def update_asset(
 @assets_router.delete("/{asset_id}")
 def delete_asset(
     asset_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Delete asset (admin only)"""
+    """Delete asset (requires delete permission)"""
     if not AssetService.delete_asset(db, asset_id):
         raise HTTPException(status_code=404, detail="Asset not found")
     return {"message": "Deleted successfully"}
+
+
+@assets_router.get("/export/excel")
+def export_assets_excel(
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Export assets to Excel file (requires read permission)
+
+    Returns all assets that the user has permission to access
+    """
+    from app.models import Asset
+    from app.utils.excel_utils import export_assets_to_excel
+    from datetime import datetime
+
+    # Build query - permission-based access
+    query = db.query(Asset)
+    assets = query.all()
+
+    # Generate Excel file
+    excel_file = export_assets_to_excel(assets, include_data=True)
+
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"assets_export_{timestamp}.xlsx"
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@assets_router.get("/export/template")
+def download_asset_template(
+    _current_user: User = Depends(get_current_user)
+):
+    """
+    Download empty Excel template for asset import
+
+    Returns a template file with all required columns but no data
+    """
+    from app.utils.excel_utils import create_asset_template
+
+    # Generate template
+    excel_file = create_asset_template()
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=asset_import_template.xlsx"}
+    )
+
+
+@assets_router.post("/import/excel")
+async def import_assets_excel(
+    file: bytes = None,
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Import assets from Excel file
+
+    Supports:
+    - Adding new assets
+    - Updating existing assets (matched by ID, asset_name, or IP)
+    - Validation and error reporting
+
+    **Request:** Upload Excel file as multipart/form-data with key 'file'
+
+    **Returns:**
+    - created: Number of new assets created
+    - updated: Number of existing assets updated
+    - skipped: Number of empty rows skipped
+    - errors: List of error messages
+    - details: Detailed results for each processed row
+    """
+    # This endpoint expects multipart/form-data
+    # Redirect to the upload endpoint
+    raise HTTPException(
+        status_code=501,
+        detail="Please use the /import/excel/upload endpoint instead"
+    )
+
+
+@assets_router.post("/import/excel/upload")
+async def import_assets_excel_upload(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin_or_manager),
+    db: Session = Depends(get_db)
+):
+    """
+    Import assets from Excel file
+
+    Supports:
+    - Adding new assets
+    - Updating existing assets (matched by ID, asset_name, or IP)
+    - Validation and error reporting
+
+    **Returns:**
+    - created: Number of new assets created
+    - updated: Number of existing assets updated
+    - skipped: Number of empty rows skipped
+    - errors: List of error messages
+    - details: Detailed results for each processed row
+    """
+    from app.utils.excel_utils import import_assets_from_excel
+    from io import BytesIO
+
+    # Validate file type
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+        )
+
+    try:
+        # Read file content
+        content = await file.read()
+        file_buffer = BytesIO(content)
+
+        # Import assets
+        results = import_assets_from_excel(file_buffer, db, current_user)
+
+        return {
+            "status": "success",
+            "created": results["created"],
+            "updated": results["updated"],
+            "skipped": results["skipped"],
+            "errors": results["errors"],
+            "details": results["details"],
+            "message": f"Import completed: {results['created']} created, {results['updated']} updated, {results['skipped']} skipped, {len(results['errors'])} errors"
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Import failed: {str(e)}"
+        )
 
 
 # === Owners Router ===
@@ -184,40 +322,34 @@ owners_router = APIRouter(prefix="/api/owners", tags=["Owners"])
 
 @owners_router.get("/", response_model=List[AssetOwnerResponse])
 def get_owners(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get owners for current user (admin sees all)"""
-    if current_user.role.value == "admin":
-        return AssetService.get_all_owners(db)
-    else:
-        return AssetService.get_user_owners(db, current_user.id)
+    """Get all owners (permission-based access)"""
+    return AssetService.get_all_owners(db)
 
 
 @owners_router.post("/", response_model=AssetOwnerResponse)
 def create_owner(
     data: AssetOwnerCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Create owner (admin only) - uses current_user.id dynamically"""
+    """Create owner (requires write permission) - uses current_user.id dynamically"""
     return AssetService.create_owner(db, data.model_dump(), user_id=current_user.id)
 
 
 @owners_router.get("/{owner_id}", response_model=AssetOwnerResponse)
 def get_owner(
     owner_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get owner by id"""
+    """Get owner by id (requires read permission)"""
     owner = AssetService.get_owner(db, owner_id)
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
-    
-    if current_user.role.value != "admin" and owner.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return owner
 
 
@@ -225,10 +357,10 @@ def get_owner(
 def update_owner(
     owner_id: int,
     data: AssetOwnerCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Update owner (admin only)"""
+    """Update owner (requires write permission)"""
     owner = AssetService.update_owner(db, owner_id, data.model_dump())
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
@@ -238,10 +370,10 @@ def update_owner(
 @owners_router.delete("/{owner_id}")
 def delete_owner(
     owner_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Delete owner (admin only)"""
+    """Delete owner (requires delete permission)"""
     if not AssetService.delete_owner(db, owner_id):
         raise HTTPException(status_code=404, detail="Owner not found")
     return {"message": "Deleted successfully"}
@@ -253,40 +385,34 @@ locations_router = APIRouter(prefix="/api/locations", tags=["Locations"])
 
 @locations_router.get("/", response_model=List[AssetLocationResponse])
 def get_locations(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get locations (admin sees all, user sees own)"""
-    if current_user.role.value == "admin":
-        return AssetService.get_all_locations(db)
-    else:
-        return AssetService.get_user_locations(db, current_user.id)
+    """Get all locations (permission-based access)"""
+    return AssetService.get_all_locations(db)
 
 
 @locations_router.post("/", response_model=AssetLocationResponse)
 def create_location(
     data: AssetLocationCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Create location (admin only) - uses current_user.id dynamically"""
+    """Create location (requires write permission) - uses current_user.id dynamically"""
     return AssetService.create_location(db, data.model_dump(), user_id=current_user.id)
 
 
 @locations_router.get("/{location_id}", response_model=AssetLocationResponse)
 def get_location(
     location_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
-    """Get location by id"""
+    """Get location by id (requires read permission)"""
     location = AssetService.get_location(db, location_id)
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    
-    if current_user.role.value != "admin" and location.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-    
+
     return location
 
 
@@ -294,10 +420,10 @@ def get_location(
 def update_location(
     location_id: int,
     data: AssetLocationCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db)
 ):
-    """Update location (admin only)"""
+    """Update location (requires write permission)"""
     location = AssetService.update_location(db, location_id, data.model_dump())
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
@@ -307,10 +433,10 @@ def update_location(
 @locations_router.delete("/{location_id}")
 def delete_location(
     location_id: int,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("ASSET_LIST", "delete")),
     db: Session = Depends(get_db)
 ):
-    """Delete location (admin only)"""
+    """Delete location (requires delete permission)"""
     if not AssetService.delete_location(db, location_id):
         raise HTTPException(status_code=404, detail="Location not found")
     return {"message": "Deleted successfully"}
@@ -548,3 +674,149 @@ def get_security_audit(
         return AssetService.get_assets_security_audit(db)
     else:
         return AssetService.get_assets_security_audit(db, current_user.id)
+
+
+# === Asset Requirements Import/Export Router ===
+requirements_router = APIRouter(prefix="/api/asset-requirements", tags=["Asset Requirements"])
+
+
+@requirements_router.get("/export/excel")
+def export_requirements_excel(
+    current_user: User = Depends(require_permission("ASSET_REQUIREMENT", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Export all asset requirements to Excel file with multiple sheets (requires read permission)
+
+    Returns a single Excel file with sheets for:
+    - Asset Types
+    - Owners
+    - Locations
+    - Network Zones
+    - OS Catalog
+    - Vendors
+    - Dependencies
+
+    All users with read permission see all data (permission-based access)
+    """
+    from app.utils.excel_utils import export_asset_requirements_to_excel
+    from datetime import datetime
+
+    # Gather all data - permission-based access, all users see all data
+    data_dict = {}
+
+    # All data is now available to users with read permission
+    data_dict["asset_types"] = AssetService.get_all_asset_types(db)
+    data_dict["owners"] = AssetService.get_all_owners(db)
+    data_dict["locations"] = AssetService.get_all_locations(db)
+    data_dict["zones"] = AssetService.get_all_zones(db)
+    data_dict["os_catalog"] = AssetService.get_all_os(db)
+    data_dict["vendors"] = AssetService.get_all_vendors(db)
+
+    # Dependencies (all)
+    from app.models import AssetDependency
+    data_dict["dependencies"] = db.query(AssetDependency).all()
+
+    # Generate Excel file
+    excel_file = export_asset_requirements_to_excel(data_dict)
+
+    # Generate filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"asset_requirements_export_{timestamp}.xlsx"
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@requirements_router.get("/export/template")
+def download_requirements_template(
+    _current_user: User = Depends(require_permission("ASSET_REQUIREMENT", "read"))
+):
+    """
+    Download empty Excel template for asset requirements import (requires read permission)
+
+    Returns a template file with all required sheets and columns but no data
+    """
+    from app.utils.excel_utils import create_asset_requirements_template
+
+    # Generate template
+    excel_file = create_asset_requirements_template()
+
+    # Return as downloadable file
+    return StreamingResponse(
+        excel_file,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=asset_requirements_template.xlsx"}
+    )
+
+
+@requirements_router.post("/import/excel")
+async def import_requirements_excel(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_permission("ASSET_REQUIREMENT", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Import asset requirements from Excel file
+
+    Supports importing:
+    - Asset Types
+    - Owners
+    - Locations
+    - Network Zones
+    - OS Catalog
+    - Vendors
+    - Dependencies
+
+    The Excel file should have separate sheets for each type of requirement.
+    Supports both creating new items and updating existing ones (matched by ID or name).
+
+    **Returns:**
+    - Results for each sheet with counts of created, updated, and skipped items
+    - List of errors if any occurred
+    """
+    from app.utils.excel_utils import import_asset_requirements_from_excel
+    from io import BytesIO
+
+    # Validate file type
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+        )
+
+    try:
+        # Read file content
+        content = await file.read()
+        file_buffer = BytesIO(content)
+
+        # Import requirements
+        results = import_asset_requirements_from_excel(file_buffer, db, current_user)
+
+        # Calculate totals
+        total_created = sum(r["created"] for r in results.values())
+        total_updated = sum(r["updated"] for r in results.values())
+        total_skipped = sum(r["skipped"] for r in results.values())
+        total_errors = sum(len(r["errors"]) for r in results.values())
+
+        return {
+            "status": "success",
+            "summary": {
+                "created": total_created,
+                "updated": total_updated,
+                "skipped": total_skipped,
+                "errors": total_errors
+            },
+            "details": results,
+            "message": f"Import completed: {total_created} created, {total_updated} updated, {total_skipped} skipped, {total_errors} errors"
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Import failed: {str(e)}"
+        )

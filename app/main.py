@@ -25,7 +25,8 @@ from app.modules.assets.router_with_auth import (
     vendors_router,
     dependencies_router,
     security_router,
-    views_router
+    views_router,
+    requirements_router
 )
 
 # Create database tables
@@ -65,6 +66,7 @@ app.include_router(vendors_router)
 app.include_router(dependencies_router)
 app.include_router(security_router)
 app.include_router(views_router)
+app.include_router(requirements_router)
 app.include_router(enums_router)
 
 # NEW: Auto Discovery routes

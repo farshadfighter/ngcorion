@@ -30,3 +30,8 @@ Thumbs.db
 test/
 *-test/
 
+# Claude
+node_modules/  
+package.json
+package-lock.json
+CLAUDE.md

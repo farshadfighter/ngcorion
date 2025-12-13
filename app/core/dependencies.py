@@ -101,3 +101,56 @@ def require_admin_or_manager(current_user: User = Depends(get_current_user)) -> 
             detail="Admin or manager role required"
         )
     return current_user
+
+
+def require_permission(module: str, permission_type: str):
+    """
+    Factory function to create a dependency that checks if user has specific permission.
+
+    Args:
+        module: Module name (e.g., "ASSET_LIST", "DASHBOARD")
+        permission_type: Permission type ("read", "write", "delete")
+
+    Returns:
+        Dependency function that checks permission
+    """
+    def check_permission(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ) -> User:
+        from app.models import UserPermission
+
+        # Admin always has all permissions
+        if current_user.role.value == "admin":
+            return current_user
+
+        # Check user's permission for this module
+        permission = db.query(UserPermission).filter(
+            UserPermission.user_id == current_user.id,
+            UserPermission.module == module
+        ).first()
+
+        if not permission:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No permission for {module}"
+            )
+
+        # Check specific permission type
+        has_permission = False
+        if permission_type == "read" and permission.can_read:
+            has_permission = True
+        elif permission_type == "write" and permission.can_write:
+            has_permission = True
+        elif permission_type == "delete" and permission.can_delete:
+            has_permission = True
+
+        if not has_permission:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permission: {permission_type} access required for {module}"
+            )
+
+        return current_user
+
+    return check_permission

@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User, UserRole
 from app.models.asset import Asset
+from app.models.discovery import DiscoveredHost
 from app.modules.users.service import UserService
 
 from .schemas import (
@@ -218,8 +219,6 @@ async def check_host_matches(
 
     **Permissions:** Requires read permission for asset_auto_discovery module
     """
-    from app.models.discovery import DiscoveredHost
-
     check_discovery_permission(current_user, "read", db)
 
     # Get the discovered host
@@ -324,7 +323,6 @@ async def approve_discovered_host(
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    from app.models.discovery import DiscoveredHost
 
     check_discovery_permission(current_user, "write", db)
 
@@ -445,7 +443,6 @@ async def reject_discovered_host(
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    from app.models.discovery import DiscoveredHost
 
     check_discovery_permission(current_user, "write", db)
 
@@ -480,7 +477,6 @@ async def bulk_approve_hosts(
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    from app.models.discovery import DiscoveredHost
 
     check_discovery_permission(current_user, "write", db)
 

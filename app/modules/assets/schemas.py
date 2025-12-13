@@ -84,6 +84,7 @@ class AssetUpdate(BaseModel):
     last_patch_date: Optional[date] = None
     asset_value: Optional[float] = None
     description: Optional[str] = None
+    security_status: Optional[dict] = None
 
     @field_validator('ip_address')
     @classmethod
@@ -101,10 +102,18 @@ class AssetUpdate(BaseModel):
     def validate_mac(cls, v):
         if v is None or v == '':
             return v
-        # MAC address validation (supports : or - separators)
-        pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
-        if not re.match(pattern, v):
-            raise ValueError('Invalid MAC address format')
+        # MAC address validation - supports multiple formats:
+        # - XX:XX:XX:XX:XX:XX (colon separated)
+        # - XX-XX-XX-XX-XX-XX (hyphen separated)
+        # - XXXX.XXXX.XXXX (Cisco dot notation)
+        # - XXXXXXXXXXXX (no separators)
+        mac_patterns = [
+            r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$',  # Colon or hyphen separated
+            r'^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$',    # Cisco dot notation
+            r'^[0-9A-Fa-f]{12}$'                             # No separators (compact)
+        ]
+        if not any(re.match(pattern, v) for pattern in mac_patterns):
+            raise ValueError('Invalid MAC address format. Supported formats: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX')
         return v
 
     @field_validator('asset_value')

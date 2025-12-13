@@ -30,7 +30,11 @@ import './AssetList.css';
 
 const AssetList = () => {
   const dispatch = useDispatch();
-  const { canWrite, canDelete } = useAuth();
+  const { canWrite, canDelete, hasPermission } = useAuth();
+
+  // Check permissions for asset_list module
+  const hasWritePermission = canWrite('asset_list');
+  const hasDeletePermission = canDelete('asset_list');
   const { assets, selectedAsset, currentView, loading } = useSelector((state) => state.assets);
   const { items: assetTypes } = useSelector((state) => state.assetTypes);
   const { items: owners } = useSelector((state) => state.owners);
@@ -214,7 +218,7 @@ const AssetList = () => {
       width: '100px',
       render: (_, row) => (
         <div className="table-actions">
-          {canWrite && (
+          {hasWritePermission && (
             <button
               className="table-action-btn edit"
               onClick={() => handleEdit(row)}
@@ -233,7 +237,7 @@ const AssetList = () => {
               )}
             </button>
           )}
-          {canDelete && (
+          {hasDeletePermission && (
             <button className="table-action-btn delete" onClick={() => handleDeleteClick(row)}>
               <svg viewBox="0 0 24 24" fill="currentColor">
                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
@@ -303,11 +307,109 @@ const AssetList = () => {
     loadViewData(currentView);
   };
 
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/assets/export/excel', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Export failed');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/assets/export/template', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'asset_import_template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Template download failed');
+      }
+    } catch (error) {
+      console.error('Template download error:', error);
+    }
+  };
+
+  const handleImport = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:8000/api/assets/import/excel', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          alert(`Import successful!\n${JSON.stringify(result.summary, null, 2)}`);
+
+          // Refresh asset list
+          loadViewData(currentView);
+        } else {
+          const error = await response.json();
+          alert('Failed to import: ' + (error.detail || 'Unknown error'));
+        }
+      } catch (err) {
+        console.error('Import failed:', err);
+        alert('Failed to import: ' + err.message);
+      }
+    };
+    input.click();
+  };
+
   return (
     <div className="asset-list-page">
       <div className="page-header">
         <h1 className="page-title">Asset List</h1>
-        {canWrite && <Button onClick={handleCreate}>Add Asset</Button>}
+        <div className="header-actions">
+          <Button onClick={handleExport} variant="secondary">📤 Export</Button>
+          <Button onClick={handleDownloadTemplate} variant="secondary">📋 Template</Button>
+          {hasWritePermission && <Button onClick={handleImport} variant="secondary">📥 Import</Button>}
+          {hasWritePermission && <Button onClick={handleCreate}>Add Asset</Button>}
+        </div>
       </div>
 
       <Tabs tabs={viewTabs} activeTab={currentView} onChange={handleViewChange} />
