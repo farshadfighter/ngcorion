@@ -1,0 +1,12 @@
+INFO:     Will watch for changes in these directories: ['/home/zi/Desktop/main_app/netease']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [7436] using WatchFiles
+INFO:     Started server process [7454]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+[2025-12-13 15:34:52] Login Success!: User 'admin' With IP 127.0.0.1
+INFO:     127.0.0.1:49958 - "POST /auth/login HTTP/1.1" 200 OK
+[2025-12-13 15:34:52] Login Success!: User 'admin' With IP 127.0.0.1
+INFO:     127.0.0.1:49974 - "POST /auth/login HTTP/1.1" 200 OK
+[2025-12-13 15:34:53] Login Success!: User 'admin' With IP 127.0.0.1
+INFO:     127.0.0.1:60060 - "POST /auth/login HTTP/1.1" 200 OK
