@@ -104,11 +104,14 @@ def get_assets(
     Supports optional pagination via page and page_size query parameters.
     If pagination params are omitted, returns all results (backward compatible).
     Users with read permission for ASSET_LIST can see all assets.
+
+    Assets are sorted by name (Zabbix approach) instead of ID for professional appearance.
     """
     from app.models import Asset
 
     # Build base query - no user_id filtering, permission-based access
-    query = db.query(Asset)
+    # Sort by asset_name instead of ID (Zabbix approach - makes ID gaps invisible)
+    query = db.query(Asset).order_by(Asset.asset_name)
 
     # If pagination requested, return paginated results
     if page is not None and page_size is not None:
@@ -189,7 +192,8 @@ def export_assets_excel(
     from datetime import datetime
 
     # Build query - permission-based access
-    query = db.query(Asset)
+    # Sort by asset_name for consistent ordering in exports
+    query = db.query(Asset).order_by(Asset.asset_name)
     assets = query.all()
 
     # Generate Excel file

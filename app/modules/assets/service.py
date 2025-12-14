@@ -96,13 +96,13 @@ class AssetService:
     
     @staticmethod
     def get_user_assets(db: Session, user_id: int):
-        """Get all assets for a user"""
-        return db.query(Asset).filter(Asset.user_id == user_id).all()
+        """Get all assets for a user - sorted by asset_name"""
+        return db.query(Asset).filter(Asset.user_id == user_id).order_by(Asset.asset_name).all()
     
     @staticmethod
     def get_all_assets(db: Session):
-        """Get all assets (admin only)"""
-        return db.query(Asset).all()
+        """Get all assets (admin only) - sorted by asset_name"""
+        return db.query(Asset).order_by(Asset.asset_name).all()
     
     @staticmethod
     def get_asset(db: Session, asset_id: int):
@@ -424,38 +424,46 @@ class AssetService:
     
     @staticmethod
     def get_assets_overview(db: Session, user_id: int = None):
-        """Overview view"""
-        query = db.query(Asset)
-        if user_id:
-            query = query.filter(Asset.user_id == user_id)
-        
-        return [asset.get_overview() for asset in query.all()]
-    
-    @staticmethod
-    def get_assets_network_system(db: Session, user_id: int = None):
-        """Network & System view"""
-        query = db.query(Asset)
-        if user_id:
-            query = query.filter(Asset.user_id == user_id)
-        
-        return [asset.get_network_system() for asset in query.all()]
-    
-    @staticmethod
-    def get_assets_location_ownership(db: Session, user_id: int = None):
-        """Location & Ownership view"""
-        query = db.query(Asset)
-        if user_id:
-            query = query.filter(Asset.user_id == user_id)
-        
-        return [asset.get_location_ownership() for asset in query.all()]
-    
-    @staticmethod
-    def get_assets_security_audit(db: Session, user_id: int = None):
-        """Security/Risk/Audit view with security status"""
+        """Overview view - sorted by asset_name"""
         query = db.query(Asset)
         if user_id:
             query = query.filter(Asset.user_id == user_id)
 
+        # Sort by asset name instead of ID for professional appearance
+        query = query.order_by(Asset.asset_name)
+        return [asset.get_overview() for asset in query.all()]
+    
+    @staticmethod
+    def get_assets_network_system(db: Session, user_id: int = None):
+        """Network & System view - sorted by asset_name"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+
+        # Sort by asset name instead of ID for professional appearance
+        query = query.order_by(Asset.asset_name)
+        return [asset.get_network_system() for asset in query.all()]
+    
+    @staticmethod
+    def get_assets_location_ownership(db: Session, user_id: int = None):
+        """Location & Ownership view - sorted by asset_name"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+
+        # Sort by asset name instead of ID for professional appearance
+        query = query.order_by(Asset.asset_name)
+        return [asset.get_location_ownership() for asset in query.all()]
+    
+    @staticmethod
+    def get_assets_security_audit(db: Session, user_id: int = None):
+        """Security/Risk/Audit view with security status - sorted by asset_name"""
+        query = db.query(Asset)
+        if user_id:
+            query = query.filter(Asset.user_id == user_id)
+
+        # Sort by asset name instead of ID for professional appearance
+        query = query.order_by(Asset.asset_name)
         assets = query.all()
         result = []
 
