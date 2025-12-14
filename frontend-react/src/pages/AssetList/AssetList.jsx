@@ -98,13 +98,13 @@ const AssetList = () => {
   const getColumns = () => {
     const baseColumns = [
       { key: 'asset_name', title: 'Asset Name', width: '200px' },
-      { key: 'hostname', title: 'Hostname' },
     ];
 
     switch (currentView) {
       case 'overview':
         return [
           ...baseColumns,
+          { key: 'hostname', title: 'Hostname' },
           { key: 'asset_type', title: 'Type' },
           { key: 'role', title: 'Role' },
           { key: 'vendor', title: 'Vendor' },
