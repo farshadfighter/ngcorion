@@ -346,6 +346,7 @@ class Asset(Base):
         return {
             'asset_id': self.id,
             'asset_name': self.asset_name,
+            'hostname': self.hostname,
             'serial_number': self.serial_number,
             'os': os_full,
             'ip_address': self.ip_address,
