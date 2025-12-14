@@ -105,12 +105,11 @@ def get_assets(
     If pagination params are omitted, returns all results (backward compatible).
     Users with read permission for ASSET_LIST can see all assets.
 
-    Assets are sorted by name (Zabbix approach) instead of ID for professional appearance.
     """
     from app.models import Asset
 
     # Build base query - no user_id filtering, permission-based access
-    # Sort by asset_name instead of ID (Zabbix approach - makes ID gaps invisible)
+    # Sort by asset_name instead of ID (makes ID gaps invisible)
     query = db.query(Asset).order_by(Asset.asset_name)
 
     # If pagination requested, return paginated results
