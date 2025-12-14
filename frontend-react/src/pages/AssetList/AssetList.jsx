@@ -97,15 +97,14 @@ const AssetList = () => {
 
   const getColumns = () => {
     const baseColumns = [
-      { key: 'asset_id', title: 'ID', width: '70px' },
-      { key: 'asset_name', title: 'Asset Name' },
+      { key: 'asset_name', title: 'Asset Name', width: '200px' },
+      { key: 'hostname', title: 'Hostname' },
     ];
 
     switch (currentView) {
       case 'overview':
         return [
           ...baseColumns,
-          { key: 'hostname', title: 'Hostname' },
           { key: 'asset_type', title: 'Type' },
           { key: 'role', title: 'Role' },
           { key: 'vendor', title: 'Vendor' },
@@ -113,10 +112,11 @@ const AssetList = () => {
         ];
       case 'network':
         return [
-          ...baseColumns,
+          { key: 'asset_name', title: 'Asset Name', width: '180px' },
+          { key: 'ip_address', title: 'IP Address', width: '130px' },
+          { key: 'hostname', title: 'Hostname', width: '150px' },
           { key: 'serial_number', title: 'Serial' },
           { key: 'os', title: 'OS' },
-          { key: 'ip_address', title: 'IP Address' },
           { key: 'mac_address', title: 'MAC Address' },
           {
             key: 'ports',
@@ -212,6 +212,12 @@ const AssetList = () => {
 
   const columns = [
     ...getColumns(),
+    {
+      key: 'asset_id',
+      title: 'ID',
+      width: '60px',
+      render: (value) => <span className="text-muted" style={{ fontSize: '0.85em' }}>{value}</span>,
+    },
     {
       key: 'actions',
       title: 'Actions',
