@@ -259,11 +259,10 @@ class AssetLocationResponse(AssetLocationCreate):
 # Network Zones
 class NetworkZoneCreate(BaseModel):
     zone_name: str
-    description: Optional[str] = None
 
 class NetworkZoneResponse(NetworkZoneCreate):
     id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 # OS Catalog
@@ -278,11 +277,10 @@ class OSCatalogResponse(OSCatalogCreate):
 # Vendor Catalog
 class VendorCatalogCreate(BaseModel):
     vendor_name: str
-    vendor_type: Optional[str] = None
 
 class VendorCatalogResponse(VendorCatalogCreate):
     id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 # Asset Dependencies
