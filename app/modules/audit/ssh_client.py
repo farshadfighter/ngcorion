@@ -77,6 +77,14 @@ REDACT_PATTERNS = [
 
     # ntp authentication keys
     (re.compile(r"^(ntp authentication-key\s+\d+\s+md5)\s+\S+", re.M), r"\1 <REDACTED>"),
+
+    # tacacs-server keys
+    (re.compile(r"^(tacacs-server\s+host\s+\S+\s+key)\s+.+$", re.M), r"\1 <REDACTED>"),
+    (re.compile(r"^(tacacs-server\s+key)\s+.+$", re.M), r"\1 <REDACTED>"),
+
+    # radius-server keys
+    (re.compile(r"^(radius-server\s+host\s+\S+\s+key)\s+.+$", re.M), r"\1 <REDACTED>"),
+    (re.compile(r"^(radius-server\s+key)\s+.+$", re.M), r"\1 <REDACTED>"),
 ]
 
 
