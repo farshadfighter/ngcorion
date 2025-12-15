@@ -269,12 +269,10 @@ class NetworkZoneResponse(NetworkZoneCreate):
 # OS Catalog
 class OSCatalogCreate(BaseModel):
     os_name: str
-    os_version: Optional[str] = None
-    os_family: Optional[str] = None
 
 class OSCatalogResponse(OSCatalogCreate):
     id: int
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 # Vendor Catalog

@@ -408,39 +408,32 @@ def export_asset_requirements_to_excel(data_dict: Dict[str, List[Any]]) -> Bytes
     # Export Network Zones
     if "zones" in data_dict and data_dict["zones"]:
         ws = wb.create_sheet("Network Zones")
-        columns = ["ID", "Zone Name", "Description"]
+        columns = ["ID", "Zone Name"]
         style_header_row(ws, columns)
 
         for row_idx, item in enumerate(data_dict["zones"], 2):
             ws.cell(row=row_idx, column=1, value=item.id)
             ws.cell(row=row_idx, column=2, value=item.zone_name)
-            ws.cell(row=row_idx, column=3, value=item.description if hasattr(item, 'description') else None)
 
     # Export OS Catalog
     if "os_catalog" in data_dict and data_dict["os_catalog"]:
         ws = wb.create_sheet("OS Catalog")
-        columns = ["ID", "OS Name", "OS Version", "OS Family", "Description"]
+        columns = ["ID", "OS Name"]
         style_header_row(ws, columns)
 
         for row_idx, item in enumerate(data_dict["os_catalog"], 2):
             ws.cell(row=row_idx, column=1, value=item.id)
             ws.cell(row=row_idx, column=2, value=item.os_name)
-            ws.cell(row=row_idx, column=3, value=item.os_version if hasattr(item, 'os_version') else None)
-            ws.cell(row=row_idx, column=4, value=item.os_family if hasattr(item, 'os_family') else None)
-            ws.cell(row=row_idx, column=5, value=item.description if hasattr(item, 'description') else None)
 
     # Export Vendors
     if "vendors" in data_dict and data_dict["vendors"]:
         ws = wb.create_sheet("Vendors")
-        columns = ["ID", "Vendor Name", "Vendor Type", "Website", "Description"]
+        columns = ["ID", "Vendor Name"]
         style_header_row(ws, columns)
 
         for row_idx, item in enumerate(data_dict["vendors"], 2):
             ws.cell(row=row_idx, column=1, value=item.id)
             ws.cell(row=row_idx, column=2, value=item.vendor_name)
-            ws.cell(row=row_idx, column=3, value=item.vendor_type if hasattr(item, 'vendor_type') else None)
-            ws.cell(row=row_idx, column=4, value=item.website if hasattr(item, 'website') else None)
-            ws.cell(row=row_idx, column=5, value=item.description if hasattr(item, 'description') else None)
 
     # Export Dependencies
     if "dependencies" in data_dict and data_dict["dependencies"]:
@@ -495,17 +488,17 @@ def create_asset_requirements_template() -> BytesIO:
 
     # Network Zones template
     ws = wb.create_sheet("Network Zones")
-    columns = ["ID", "Zone Name", "Description"]
+    columns = ["ID", "Zone Name"]
     style_header_row(ws, columns)
 
     # OS Catalog template
     ws = wb.create_sheet("OS Catalog")
-    columns = ["ID", "OS Name", "OS Version", "OS Family", "Description"]
+    columns = ["ID", "OS Name"]
     style_header_row(ws, columns)
 
     # Vendors template
     ws = wb.create_sheet("Vendors")
-    columns = ["ID", "Vendor Name", "Vendor Type", "Website", "Description"]
+    columns = ["ID", "Vendor Name"]
     style_header_row(ws, columns)
 
     # Dependencies template
@@ -676,8 +669,7 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         continue
 
                     data = {
-                        "zone_name": row[1],
-                        "description": row[2] if len(row) > 2 else None
+                        "zone_name": row[1]
                     }
 
                     existing = None
@@ -709,10 +701,7 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         continue
 
                     data = {
-                        "os_name": row[1],
-                        "os_version": row[2] if len(row) > 2 else None,
-                        "os_family": row[3] if len(row) > 3 else None,
-                        "description": row[4] if len(row) > 4 else None
+                        "os_name": row[1]
                     }
 
                     existing = None
@@ -744,10 +733,7 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         continue
 
                     data = {
-                        "vendor_name": row[1],
-                        "vendor_type": row[2] if len(row) > 2 else None,
-                        "website": row[3] if len(row) > 3 else None,
-                        "description": row[4] if len(row) > 4 else None
+                        "vendor_name": row[1]
                     }
 
                     existing = None
