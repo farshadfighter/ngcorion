@@ -13,6 +13,7 @@ from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
+from app.modules.audit import router as audit_router
 
 # Import authenticated routers
 from app.modules.assets.router_with_auth import (
@@ -71,6 +72,9 @@ app.include_router(enums_router)
 
 # NEW: Auto Discovery routes
 app.include_router(discovery_router.router)
+
+# NEW: Cisco CIS Audit routes
+app.include_router(audit_router.router)
 
 
 @app.get("/")
