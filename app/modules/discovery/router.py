@@ -978,3 +978,388 @@ async def delete_port(
         raise HTTPException(status_code=404, detail="Port not found")
 
     return {"success": True, "message": "Port deleted successfully"}
+
+
+# ====================================
+# Apply Discovery with Modes
+# ====================================
+
+@router.get("/hosts/{host_id}/preview")
+async def preview_discovery_application(
+    host_id: int,
+    asset_id: int = Query(None, description="Asset ID to compare against"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Preview what changes will be made when applying discovery
+
+    Returns the discovered data and optionally compares it with an existing asset
+    to show what would change in each mode (overwrite, merge, create_new).
+
+    **Permissions:** Requires read permission for asset_auto_discovery module
+    """
+    check_discovery_permission(current_user, "read", db)
+
+    # Get the discovered host
+    host = db.query(DiscoveredHostModel).filter(DiscoveredHostModel.id == host_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Discovered host not found")
+
+    # Build discovered data dict
+    discovered_data = {
+        "ip_address": host.ip_address,
+        "hostname": host.hostname,
+        "mac_address": host.mac_address,
+        "os_info": host.os_info,
+        "os_accuracy": host.os_accuracy,
+        "open_ports": host.open_ports or [],
+        "state": host.state
+    }
+
+    response = {
+        "host_id": host_id,
+        "discovered_data": discovered_data,
+        "discovered_ports_count": len(host.open_ports or []),
+        "has_existing_data": False,
+        "existing_ports_count": 0
+    }
+
+    # If asset_id provided, compare with existing asset
+    if asset_id:
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+
+        # Check ownership
+        if current_user.role != UserRole.ADMIN and asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to view this asset")
+
+        # Get existing ports
+        existing_ports = PortService.get_asset_ports(db, asset_id)
+
+        existing_data = {
+            "ip_address": asset.ip_address,
+            "hostname": asset.hostname,
+            "mac_address": asset.mac_address,
+            "os_name": asset.os_name,
+            "ports": existing_ports
+        }
+
+        response["asset_id"] = asset_id
+        response["asset_name"] = asset.asset_name
+        response["existing_data"] = existing_data
+        response["existing_ports_count"] = len(existing_ports)
+        response["has_existing_data"] = bool(
+            asset.ip_address or asset.hostname or asset.mac_address or
+            asset.os_name or existing_ports
+        )
+
+        # Calculate what would change in each mode
+        overwrite_changes = {
+            "fields_to_replace": [],
+            "ports_to_remove": len(existing_ports),
+            "ports_to_add": len(host.open_ports or [])
+        }
+        merge_changes = {
+            "fields_to_fill": [],
+            "ports_to_add": 0
+        }
+
+        # Check which fields would be overwritten/merged
+        field_mapping = [
+            ("hostname", "hostname"),
+            ("mac_address", "mac_address"),
+            ("os_info", "os_name")
+        ]
+
+        for discovered_field, asset_field in field_mapping:
+            discovered_value = getattr(host, discovered_field, None)
+            current_value = getattr(asset, asset_field, None)
+
+            if discovered_value:
+                if current_value:
+                    overwrite_changes["fields_to_replace"].append({
+                        "field": asset_field,
+                        "current": current_value,
+                        "new": discovered_value
+                    })
+                else:
+                    merge_changes["fields_to_fill"].append({
+                        "field": asset_field,
+                        "value": discovered_value
+                    })
+
+        # Calculate new ports for merge mode
+        existing_port_keys = set()
+        for port in existing_ports:
+            key = f"{port.get('port_number', port.get('port'))}:{port.get('protocol', 'tcp').upper()}"
+            existing_port_keys.add(key)
+
+        for port in (host.open_ports or []):
+            key = f"{port.get('port')}:{port.get('protocol', 'tcp').upper()}"
+            if key not in existing_port_keys:
+                merge_changes["ports_to_add"] += 1
+
+        response["overwrite_changes"] = overwrite_changes
+        response["merge_changes"] = merge_changes
+
+    return response
+
+
+@router.post("/hosts/{host_id}/apply", response_model=ApplyDiscoveryModeResponse)
+async def apply_discovery_with_mode(
+    host_id: int,
+    request: ApplyDiscoveryMode,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Apply discovery results with a specific mode
+
+    **Modes:**
+    - `overwrite`: Replace ALL existing data with discovered data (destructive)
+        - Replaces hostname, MAC address, OS info
+        - Removes all existing ports and adds discovered ports
+    - `merge`: Keep existing data + add new discovered data (non-destructive)
+        - Only fills empty fields (hostname, MAC, OS)
+        - Adds new ports without removing existing ones
+    - `create_new`: Create a new asset with the discovered data
+        - Requires asset_name and asset_type_id
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
+    """
+    check_discovery_permission(current_user, "write", db)
+
+    # Get the discovered host
+    host = db.query(DiscoveredHostModel).filter(DiscoveredHostModel.id == host_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Discovered host not found")
+
+    mode = request.mode
+
+    if mode == "create_new":
+        # Create new asset
+        if not request.asset_name:
+            raise HTTPException(status_code=400, detail="asset_name required for create_new mode")
+        if not request.asset_type_id:
+            raise HTTPException(status_code=400, detail="asset_type_id required for create_new mode")
+
+        # Check if IP already exists for this user
+        existing = db.query(Asset).filter(
+            Asset.ip_address == host.ip_address,
+            Asset.user_id == current_user.id
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Asset with IP {host.ip_address} already exists (ID: {existing.id})"
+            )
+
+        # Create new asset
+        asset = Asset(
+            asset_name=request.asset_name,
+            hostname=host.hostname,
+            ip_address=host.ip_address,
+            mac_address=host.mac_address,
+            os_name=host.os_info,
+            asset_type_id=request.asset_type_id,
+            location_id=request.location_id,
+            owner_id=request.owner_id,
+            user_id=current_user.id,
+            discovered_fields={
+                "hostname": bool(host.hostname),
+                "ip_address": bool(host.ip_address),
+                "mac_address": bool(host.mac_address),
+                "os_name": bool(host.os_info)
+            }
+        )
+
+        db.add(asset)
+        db.flush()  # Get the ID
+
+        # Add discovered ports
+        ports_added = 0
+        if host.open_ports:
+            ports_data = []
+            for port in host.open_ports:
+                ports_data.append({
+                    "port_number": port.get("port"),
+                    "protocol": port.get("protocol", "tcp").upper(),
+                    "service_name": port.get("service"),
+                    "service_product": port.get("product"),
+                    "service_version": port.get("version"),
+                    "state": port.get("state", "open")
+                })
+            if ports_data:
+                result = PortService.add_ports(db, asset.id, ports_data, host.scan_id)
+                ports_added = result.get("ports_added", 0)
+
+        # Mark host as approved
+        host.status = "approved"
+        host.matched_asset_id = asset.id
+        host.approved_by_user_id = current_user.id
+        host.approved_at = datetime.utcnow()
+
+        db.commit()
+
+        fields_updated = []
+        if host.hostname:
+            fields_updated.append("hostname")
+        if host.ip_address:
+            fields_updated.append("ip_address")
+        if host.mac_address:
+            fields_updated.append("mac_address")
+        if host.os_info:
+            fields_updated.append("os_name")
+
+        return ApplyDiscoveryModeResponse(
+            success=True,
+            mode="create_new",
+            asset_id=asset.id,
+            asset_name=asset.asset_name,
+            message=f"New asset '{asset.asset_name}' created from discovery",
+            fields_updated=fields_updated,
+            ports_added=ports_added
+        )
+
+    elif mode in ["overwrite", "merge"]:
+        # Both modes require asset_id
+        if not request.asset_id:
+            raise HTTPException(status_code=400, detail="asset_id required for overwrite/merge mode")
+
+        # Get the asset
+        asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+
+        # Check ownership
+        if current_user.role != UserRole.ADMIN and asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this asset")
+
+        # Store before state for response
+        before_state = {
+            "hostname": asset.hostname,
+            "mac_address": asset.mac_address,
+            "os_name": asset.os_name,
+            "ip_address": asset.ip_address
+        }
+
+        fields_updated = []
+        fields_overwritten = []
+        discovered_fields = asset.discovered_fields or {}
+
+        if mode == "overwrite":
+            # Overwrite mode: Replace everything with discovered data
+
+            # Update fields (even if they have data)
+            if host.hostname:
+                if asset.hostname and asset.hostname != host.hostname:
+                    fields_overwritten.append("hostname")
+                asset.hostname = host.hostname
+                discovered_fields["hostname"] = True
+                fields_updated.append("hostname")
+
+            if host.mac_address:
+                if asset.mac_address and asset.mac_address != host.mac_address:
+                    fields_overwritten.append("mac_address")
+                asset.mac_address = host.mac_address
+                discovered_fields["mac_address"] = True
+                fields_updated.append("mac_address")
+
+            if host.os_info:
+                if asset.os_name and asset.os_name != host.os_info:
+                    fields_overwritten.append("os_name")
+                asset.os_name = host.os_info
+                discovered_fields["os_name"] = True
+                fields_updated.append("os_name")
+
+            # Overwrite ports - remove all existing and add discovered
+            ports_removed = 0
+            ports_added = 0
+            if host.open_ports:
+                ports_data = []
+                for port in host.open_ports:
+                    ports_data.append({
+                        "port_number": port.get("port"),
+                        "protocol": port.get("protocol", "tcp").upper(),
+                        "service_name": port.get("service"),
+                        "service_product": port.get("product"),
+                        "service_version": port.get("version"),
+                        "state": port.get("state", "open")
+                    })
+                result = PortService.overwrite_ports(db, asset.id, ports_data, host.scan_id)
+                ports_removed = result.get("ports_removed", 0)
+                ports_added = result.get("ports_added", 0)
+
+        else:  # merge mode
+            # Merge mode: Only fill empty fields and add new ports
+
+            if host.hostname and not asset.hostname:
+                asset.hostname = host.hostname
+                discovered_fields["hostname"] = True
+                fields_updated.append("hostname")
+
+            if host.mac_address and not asset.mac_address:
+                asset.mac_address = host.mac_address
+                discovered_fields["mac_address"] = True
+                fields_updated.append("mac_address")
+
+            if host.os_info and not asset.os_name:
+                asset.os_name = host.os_info
+                discovered_fields["os_name"] = True
+                fields_updated.append("os_name")
+
+            # Merge ports - add only new ones
+            ports_removed = 0
+            ports_added = 0
+            if host.open_ports:
+                ports_data = []
+                for port in host.open_ports:
+                    ports_data.append({
+                        "port_number": port.get("port"),
+                        "protocol": port.get("protocol", "tcp").upper(),
+                        "service_name": port.get("service"),
+                        "service_product": port.get("product"),
+                        "service_version": port.get("version"),
+                        "state": port.get("state", "open")
+                    })
+                result = PortService.add_ports(db, asset.id, ports_data, host.scan_id)
+                ports_added = result.get("ports_added", 0)
+
+        # Update discovered_fields marker
+        asset.discovered_fields = discovered_fields
+
+        # Mark host as approved/merged
+        host.status = "merged"
+        host.matched_asset_id = asset.id
+        host.approved_by_user_id = current_user.id
+        host.approved_at = datetime.utcnow()
+
+        db.commit()
+
+        after_state = {
+            "hostname": asset.hostname,
+            "mac_address": asset.mac_address,
+            "os_name": asset.os_name,
+            "ip_address": asset.ip_address
+        }
+
+        mode_name = "Overwrite" if mode == "overwrite" else "Merge"
+        return ApplyDiscoveryModeResponse(
+            success=True,
+            mode=mode,
+            asset_id=asset.id,
+            asset_name=asset.asset_name,
+            message=f"{mode_name} applied successfully to '{asset.asset_name}'",
+            fields_updated=fields_updated,
+            fields_overwritten=fields_overwritten,
+            ports_added=ports_added,
+            ports_removed=ports_removed,
+            before=before_state,
+            after=after_state
+        )
+
+    else:
+        raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}")

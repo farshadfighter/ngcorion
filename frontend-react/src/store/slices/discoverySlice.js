@@ -180,6 +180,54 @@ export const rejectHost = createAsyncThunk(
 );
 
 /**
+ * Preview discovery application (compare with existing asset)
+ */
+export const previewDiscoveryApplication = createAsyncThunk(
+  'discovery/previewApplication',
+  async ({ hostId, assetId }, { rejectWithValue }) => {
+    try {
+      let url = `/api/discovery/hosts/${hostId}/preview`;
+      if (assetId) {
+        url += `?asset_id=${assetId}`;
+      }
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to preview application');
+    }
+  }
+);
+
+/**
+ * Apply discovery with mode (overwrite, merge, create_new)
+ */
+export const applyDiscoveryWithMode = createAsyncThunk(
+  'discovery/applyWithMode',
+  async ({ hostId, mode, assetId, assetName, assetTypeId, locationId, ownerId }, { rejectWithValue }) => {
+    try {
+      const requestBody = {
+        mode,
+        host_id: hostId,
+      };
+
+      if (mode === 'create_new') {
+        requestBody.asset_name = assetName;
+        requestBody.asset_type_id = assetTypeId;
+        if (locationId) requestBody.location_id = locationId;
+        if (ownerId) requestBody.owner_id = ownerId;
+      } else {
+        requestBody.asset_id = assetId;
+      }
+
+      const response = await api.post(`/api/discovery/hosts/${hostId}/apply`, requestBody);
+      return { ...response.data, hostId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to apply discovery');
+    }
+  }
+);
+
+/**
  * Bulk approve multiple hosts
  */
 export const bulkApproveHosts = createAsyncThunk(
