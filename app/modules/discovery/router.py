@@ -14,14 +14,14 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User, UserRole
 from app.models.asset import Asset
-from app.models.discovery import DiscoveredHost
+from app.models.discovery import DiscoveredHost as DiscoveredHostModel
 from app.modules.users.service import UserService
 
 from .schemas import (
     ScanRequest, ScanResponse,
     ApplyDiscoveryRequest, ApplyDiscoveryResponse,
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
-    DiscoveredHost, PendingHostsListResponse, PendingHostResponse,
+    DiscoveredHost as DiscoveredHostSchema, PendingHostsListResponse, PendingHostResponse,
     AddPortsRequest, OverwritePortsRequest, PortManagementResponse
 )
 from .service import DiscoveryService
@@ -222,7 +222,7 @@ async def check_host_matches(
     check_discovery_permission(current_user, "read", db)
 
     # Get the discovered host
-    host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+    host = db.query(DiscoveredHostModel).filter(DiscoveredHostModel.id == host_id).first()
     if not host:
         raise HTTPException(status_code=404, detail="Discovered host not found")
 
@@ -327,7 +327,7 @@ async def approve_discovered_host(
     check_discovery_permission(current_user, "write", db)
 
     # Get the discovered host
-    host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+    host = db.query(DiscoveredHostModel).filter(DiscoveredHostModel.id == host_id).first()
     if not host:
         raise HTTPException(status_code=404, detail="Discovered host not found")
 
@@ -447,7 +447,7 @@ async def reject_discovered_host(
     check_discovery_permission(current_user, "write", db)
 
     # Get the discovered host
-    host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+    host = db.query(DiscoveredHostModel).filter(DiscoveredHostModel.id == host_id).first()
     if not host:
         raise HTTPException(status_code=404, detail="Discovered host not found")
 
@@ -496,7 +496,7 @@ async def bulk_approve_hosts(
 
     for host_id in host_ids:
         try:
-            host = db.query(DiscoveredHost).filter(DiscoveredHost.id == host_id).first()
+            host = db.query(DiscoveredHostModel).filter(DiscoveredHostModel.id == host_id).first()
             if not host:
                 errors.append(f"Host {host_id} not found")
                 continue

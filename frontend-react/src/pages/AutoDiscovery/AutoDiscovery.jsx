@@ -1,811 +1,377 @@
-/* ==========================================
-   NGCORION - Auto Discovery Page
-   Main page for network scanning
-   ========================================== */
+/**
+ * Auto Discovery Page
+ * Network scanning and asset discovery management
+ */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   startScan,
   checkScanStatus,
-  fetchAllScans,
-  matchIpToAsset,
-  applyDiscovery,
-  clearCurrentScan,
+  fetchScanHistory,
+  fetchPendingHosts,
+  deleteScan,
   clearError,
   stopScanning,
-  clearAllScans,
-  addLogEntry,
-  fetchPendingHosts,
-  checkMatches,
-  approveHost,
-  rejectHost,
-  bulkApproveHosts,
 } from '../../store/slices/discoverySlice';
 import { fetchAssetTypes } from '../../store/slices/assetsSlice';
-import DiscoveryResultModal from './DiscoveryResultModal';
-import ScanResultsModal from './ScanResultsModal';
-import ActivityLog from './ActivityLog';
+
+import NewScanModal from './components/NewScanModal';
+import PendingHostsTable from './components/PendingHostsTable';
+import ScanHistoryTable from './components/ScanHistoryTable';
+import ScanResultsModal from './components/ScanResultsModal';
+import ApproveHostModal from './components/ApproveHostModal';
+
 import './AutoDiscovery.css';
 
 const AutoDiscovery = () => {
   const dispatch = useDispatch();
-  
+
   // Redux state
   const {
     currentScan,
     scanHistory,
-    isScanning,
-    isLoadingScans,
-    discoveredHosts,
-    error,
     pendingHosts,
-    matchResults,
-    isLoadingPending,
+    loading,
+    error,
   } = useSelector((state) => state.discovery);
 
   const { assetTypes } = useSelector((state) => state.assets);
 
   // Local state
-  const [target, setTarget] = useState('');
-  const [scanType, setScanType] = useState('well_known_ports');
-  const [ports, setPorts] = useState('');
-  const [protocol, setProtocol] = useState('TCP');
   const [showScanModal, setShowScanModal] = useState(false);
-  const [selectedHost, setSelectedHost] = useState(null);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [showScanResultsModal, setShowScanResultsModal] = useState(false);
-  const [selectedScanResults, setSelectedScanResults] = useState(null);
-  const [selectedPendingIds, setSelectedPendingIds] = useState([]);
-  const [showMatchModal, setShowMatchModal] = useState(false);
-  const [targetMatchedAsset, setTargetMatchedAsset] = useState(null);
-  const [isCheckingMatch, setIsCheckingMatch] = useState(false);
-  
-  // Polling interval ref
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [selectedScan, setSelectedScan] = useState(null);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [selectedHostForApproval, setSelectedHostForApproval] = useState(null);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
+
+  // Polling ref
   const pollIntervalRef = useRef(null);
-  
-  // Load scan history and asset types on mount
+
+  // Load initial data
   useEffect(() => {
-    dispatch(fetchAllScans());
-    dispatch(fetchAssetTypes());
+    dispatch(fetchScanHistory());
     dispatch(fetchPendingHosts());
+    dispatch(fetchAssetTypes());
 
     return () => {
-      // Cleanup polling on unmount
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
   }, [dispatch]);
-  
-  // Poll for scan status when scanning
+
+  // Poll for scan status when running
   useEffect(() => {
     if (currentScan && currentScan.status === 'running') {
       pollIntervalRef.current = setInterval(() => {
         dispatch(checkScanStatus(currentScan.scan_id));
-      }, 3000); // Poll every 3 seconds
+      }, 3000);
     } else {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+
+      // Refresh pending hosts when scan completes
+      if (currentScan && currentScan.status === 'completed') {
+        dispatch(fetchPendingHosts());
+        dispatch(fetchScanHistory());
+      }
     }
-    
+
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
   }, [currentScan, dispatch]);
-  
-  // Validate IP/Range format
-  const validateTarget = (value) => {
-    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
-    const rangePattern = /^(\d{1,3}\.){3}\d{1,3}-\d{1,3}$/;
-    return ipPattern.test(value) || rangePattern.test(value);
-  };
 
-  // Check if target matches an existing asset
-  const handleTargetLookup = async () => {
-    const trimmedTarget = target.trim();
-    if (!trimmedTarget) {
-      setTargetMatchedAsset(null);
-      return;
-    }
-
-    // Extract single IP from target (only lookup single IPs, not ranges or CIDR)
-    const singleIpPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
-    if (!singleIpPattern.test(trimmedTarget)) {
-      setTargetMatchedAsset(null);
-      return;
-    }
-
-    setIsCheckingMatch(true);
-    try {
-      const result = await dispatch(matchIpToAsset(trimmedTarget)).unwrap();
-      if (result && result.asset) {
-        setTargetMatchedAsset(result.asset);
-      } else {
-        setTargetMatchedAsset(null);
-      }
-    } catch (error) {
-      // No match found or error occurred
-      setTargetMatchedAsset(null);
-    } finally {
-      setIsCheckingMatch(false);
-    }
-  };
-
-  // Start scan handler
-  const handleStartScan = () => {
-    if (!target.trim()) {
-      alert('Please enter an IP address or range');
-      return;
-    }
-
-    if (!validateTarget(target.trim())) {
-      alert('Invalid IP format. Use: 192.168.1.1, 192.168.1.0/24, or 192.168.1.1-254');
-      return;
-    }
-
-    // Validate custom_ports requires ports field
-    if (scanType === 'custom_ports' && !ports.trim()) {
-      alert('Custom ports scan type requires port specification');
-      return;
-    }
-
-    const scanData = {
-      target: target.trim(),
-      scan_type: scanType,
-      protocol: protocol
-    };
-
-    // Add ports if specified (required for custom_ports)
-    if (ports.trim()) {
-      scanData.ports = ports.trim();
-    }
-
+  // Handle starting a new scan
+  const handleStartScan = useCallback((scanData) => {
     dispatch(startScan(scanData));
     setShowScanModal(false);
+  }, [dispatch]);
 
-    // Reset form
-    setTarget('');
-    setScanType('well_known_ports');
-    setPorts('');
-
-    // Refresh pending hosts after scan completes
-    setTimeout(() => {
-      dispatch(fetchPendingHosts());
-    }, 5000);
-  };
-  
   // Handle viewing scan results
-  const handleViewResults = async (scanId) => {
-    const result = await dispatch(checkScanStatus(scanId));
+  const handleViewResults = useCallback(async (scan) => {
+    const result = await dispatch(checkScanStatus(scan.scan_id));
     if (result.payload) {
-      setSelectedScanResults(result.payload);
-      setShowScanResultsModal(true);
+      setSelectedScan(result.payload);
+      setShowResultsModal(true);
     }
-  };
+  }, [dispatch]);
 
-  // Handle host click - check if matches existing asset
-  const handleHostClick = async (host) => {
-    setSelectedHost(host);
-    await dispatch(matchIpToAsset(host.ip_address));
-    setShowResultModal(true);
-  };
-
-  // Check for matching assets before approval
-  const handleCheckMatches = async (hostId) => {
-    await dispatch(checkMatches(hostId));
-    setShowMatchModal(true);
-  };
-
-  // Approve a discovered host
-  const handleApprove = async (hostId, action = 'create_new', assetId = null, assetData = null) => {
-    const result = await dispatch(approveHost({ hostId, action, assetId, assetData }));
-
-    if (result.type === 'discovery/approveHost/fulfilled') {
-      const message = result.payload.message;
-      const createdAssetId = result.payload.asset_id;
-
-      if (action === 'create_new' && createdAssetId) {
-        alert(`✅ ${message}\n\nAsset ID: #${createdAssetId}\n\nThe host has been removed from the pending list.`);
-      } else if (action === 'merge_with_existing') {
-        alert(`✅ ${message}\n\nThe host has been merged and removed from the pending list.`);
-      } else {
-        alert(`✅ ${message}`);
-      }
-
-      dispatch(fetchPendingHosts()); // Refresh list to remove approved host
-      setShowMatchModal(false);
-    } else {
-      alert(`❌ Failed: ${result.payload || 'Unknown error'}`);
+  // Handle deleting a scan
+  const handleDeleteScan = useCallback((scanId) => {
+    if (window.confirm('Are you sure you want to delete this scan?')) {
+      dispatch(deleteScan(scanId));
     }
-  };
+  }, [dispatch]);
 
-  // Reject a discovered host
-  const handleReject = async (hostId) => {
-    if (!window.confirm('Are you sure you want to reject this discovered host?')) {
-      return;
-    }
+  // Handle host approval workflow
+  const handleApproveHost = useCallback((host) => {
+    setSelectedHostForApproval(host);
+    setShowApproveModal(true);
+  }, []);
 
-    const result = await dispatch(rejectHost(hostId));
+  // Handle refresh
+  const handleRefresh = useCallback(() => {
+    dispatch(fetchScanHistory());
+    dispatch(fetchPendingHosts());
+  }, [dispatch]);
 
-    if (result.type === 'discovery/rejectHost/fulfilled') {
-      alert('✅ Host rejected');
-      dispatch(fetchPendingHosts());
-    } else {
-      alert('❌ Failed to reject host');
-    }
-  };
-
-  // Bulk approve selected hosts
-  const handleBulkApprove = async () => {
-    if (selectedPendingIds.length === 0) {
-      alert('Please select hosts to approve');
-      return;
-    }
-
-    const defaultTypeId = prompt('Enter default asset type ID:');
-    if (!defaultTypeId) return;
-
-    const result = await dispatch(bulkApproveHosts({
-      hostIds: selectedPendingIds,
-      defaultAssetTypeId: parseInt(defaultTypeId)
-    }));
-
-    if (result.type === 'discovery/bulkApprove/fulfilled') {
-      alert(`✅ Approved ${result.payload.approved} hosts`);
-      setSelectedPendingIds([]);
-      dispatch(fetchPendingHosts());
-    } else {
-      alert('❌ Bulk approval failed');
-    }
-  };
-
-  // Toggle selection of pending host
-  const toggleSelection = (hostId) => {
-    setSelectedPendingIds(prev =>
-      prev.includes(hostId)
-        ? prev.filter(id => id !== hostId)
-        : [...prev, hostId]
-    );
-  };
-
-  // Select all pending hosts
-  const selectAll = () => {
-    if (selectedPendingIds.length === pendingHosts.length) {
-      setSelectedPendingIds([]);
-    } else {
-      setSelectedPendingIds(pendingHosts.map(h => h.id));
-    }
-  };
-  
-  // Format date
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleString('fa-IR');
-  };
-  
-  // Get status badge class
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'running': return 'status-running';
-      case 'completed': return 'status-completed';
-      case 'failed': return 'status-failed';
-      default: return '';
-    }
-  };
-  
-  // Get scan type label
-  const getScanTypeLabel = (type) => {
-    switch (type) {
-      case 'all_ports': return 'All Ports (1-65535)';
-      case 'well_known_ports': return 'Well-Known Ports (1-1024)';
-      case 'custom_ports': return 'Custom Ports';
-      default: return type;
-    }
+  // Calculate scan progress percentage (estimated)
+  const getScanProgress = () => {
+    if (!currentScan || currentScan.status !== 'running') return 0;
+    const elapsed = Date.now() - new Date(currentScan.started_at).getTime();
+    // Estimate based on scan type
+    const estimates = {
+      all_ports: 300000, // 5 min
+      well_known_ports: 60000, // 1 min
+      custom_ports: 30000, // 30 sec
+    };
+    const estimate = estimates[currentScan.scan_type] || 60000;
+    return Math.min(95, (elapsed / estimate) * 100);
   };
 
   return (
-    <div className="discovery-page">
-      {/* Header */}
+    <div className="discovery-container">
+      {/* Page Header */}
       <div className="discovery-header">
-        <h1>🔍 Asset Auto Discovery</h1>
-        <p>Scan your network to discover assets automatically</p>
+        <div className="header-content">
+          <h1 className="page-title">Auto Discovery</h1>
+          <p className="page-subtitle">
+            Scan your network to discover and manage assets automatically
+          </p>
+        </div>
+        <div className="header-actions">
+          <button
+            className="btn btn-icon"
+            onClick={handleRefresh}
+            disabled={loading.history || loading.pending}
+            title="Refresh"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+            </svg>
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowScanModal(true)}
+            disabled={loading.scan}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            New Scan
+          </button>
+        </div>
       </div>
-      
-      {/* Error Display */}
+
+      {/* Error Alert */}
       {error && (
-        <div className="error-banner">
+        <div className="alert alert-error">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M15 9l-6 6M9 9l6 6" />
+          </svg>
           <span>{error}</span>
-          <button onClick={() => dispatch(clearError())}>×</button>
+          <button className="alert-close" onClick={() => dispatch(clearError())}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
-      
-      {/* Action Bar */}
-      <div className="discovery-actions">
-        <button 
-          className="btn btn-primary"
-          onClick={() => setShowScanModal(true)}
-          disabled={isScanning}
-        >
-          {isScanning ? '⏳ Scanning...' : '➕ New Scan'}
-        </button>
-        
-        {isScanning && (
-          <button 
-            className="btn btn-danger"
-            onClick={() => {
-              dispatch(stopScanning());
-              if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-                pollIntervalRef.current = null;
-              }
-            }}
-          >
-            ⏹️ Stop Scan
-          </button>
-        )}
-        
-        <button 
-          className="btn btn-secondary"
-          onClick={() => dispatch(fetchAllScans())}
-          disabled={isLoadingScans}
-        >
-          🔄 Refresh
-        </button>
-        
-        {scanHistory.length > 0 && (
-          <button 
-            className="btn btn-danger-outline"
-            onClick={() => {
-              if (window.confirm('Are you sure you want to clear all scan history?')) {
-                dispatch(clearAllScans());
-              }
-            }}
-            disabled={isLoadingScans}
-          >
-            🗑️ Clear History
-          </button>
-        )}
-      </div>
-      
-      {/* Current Scan Progress */}
+
+      {/* Active Scan Progress */}
       {currentScan && currentScan.status === 'running' && (
-        <div className="scan-progress">
-          <div className="progress-header">
-            <span>🔍 {currentScan.job_name || `Scan ${currentScan.scan_id}`}: {currentScan.target}</span>
-            <span className="scan-type">{getScanTypeLabel(currentScan.scan_type)}</span>
+        <div className="scan-progress-card">
+          <div className="scan-progress-header">
+            <div className="scan-info">
+              <div className="scan-icon scanning">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+              </div>
+              <div className="scan-details">
+                <h3>{currentScan.job_name || 'Network Scan'}</h3>
+                <p>Target: <strong>{currentScan.target}</strong></p>
+              </div>
+            </div>
+            <div className="scan-meta">
+              <span className="scan-type-badge">{getScanTypeLabel(currentScan.scan_type)}</span>
+              <button
+                className="btn btn-sm btn-danger"
+                onClick={() => {
+                  dispatch(stopScanning());
+                  if (pollIntervalRef.current) {
+                    clearInterval(pollIntervalRef.current);
+                  }
+                }}
+              >
+                Stop
+              </button>
+            </div>
           </div>
-          <div className="progress-bar">
-            <div className="progress-bar-inner scanning"></div>
+          <div className="scan-progress-bar">
+            <div
+              className="progress-fill"
+              style={{ width: `${getScanProgress()}%` }}
+            />
           </div>
-          <p className="progress-text">
-            Please wait... Scan started at {formatDate(currentScan.started_at)}
+          <p className="scan-progress-text">
+            Scanning in progress... Started at {new Date(currentScan.started_at).toLocaleTimeString()}
           </p>
         </div>
       )}
-      
-      {/* Pending Hosts Awaiting Approval */}
-      {pendingHosts.length > 0 && (
-        <div className="pending-hosts-section">
-          <div className="section-header">
-            <h2>⚠️ Discovered Hosts Awaiting Approval ({pendingHosts.length})</h2>
-            <div className="bulk-actions">
-              <button
-                className="btn btn-small"
-                onClick={selectAll}
-              >
-                {selectedPendingIds.length === pendingHosts.length ? 'Deselect All' : 'Select All'}
-              </button>
-              {selectedPendingIds.length > 0 && (
-                <button
-                  className="btn btn-small btn-primary"
-                  onClick={handleBulkApprove}
-                >
-                  Approve Selected ({selectedPendingIds.length})
-                </button>
-              )}
-            </div>
-          </div>
 
-          <table className="pending-hosts-table">
-            <thead>
-              <tr>
-                <th><input type="checkbox" onChange={selectAll} checked={selectedPendingIds.length === pendingHosts.length} /></th>
-                <th>Asset ID</th>
-                <th>IP Address</th>
-                <th>Hostname</th>
-                <th>MAC Address</th>
-                <th>OS Info</th>
-                <th>Open Ports</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingHosts.map((host) => (
-                <tr key={host.id} className={host.highlight ? 'pending-host-row' : ''}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedPendingIds.includes(host.id)}
-                      onChange={() => toggleSelection(host.id)}
-                    />
-                  </td>
-                  <td>
-                    {host.matched_asset_id ? (
-                      <strong>#{host.matched_asset_id}</strong>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </td>
-                  <td><strong>{host.ip_address}</strong></td>
-                  <td>{host.hostname || '-'}</td>
-                  <td>{host.mac_address || '-'}</td>
-                  <td>
-                    {host.os_info ? (
-                      <>
-                        {host.os_info}
-                        {host.os_accuracy && <span className="accuracy"> ({host.os_accuracy}%)</span>}
-                      </>
-                    ) : '-'}
-                  </td>
-                  <td>
-                    {host.open_ports && host.open_ports.length > 0 ? (
-                      <div className="ports-inline">
-                        {host.open_ports.slice(0, 5).map((port, i) => (
-                          <span key={i} className="port-tag">
-                            {port.port}/{port.protocol}
-                          </span>
-                        ))}
-                        {host.open_ports.length > 5 && (
-                          <span className="port-more">+{host.open_ports.length - 5}</span>
-                        )}
-                      </div>
-                    ) : '-'}
-                  </td>
-                  <td>
-                    <span className={`status-badge status-${host.status}`}>
-                      {host.status}
-                    </span>
-                  </td>
-                  <td className="actions-cell">
-                    <button
-                      className="btn btn-small btn-success"
-                      onClick={() => handleCheckMatches(host.id)}
-                      title="Check for matches and approve"
-                    >
-                      ✓ Check & Approve
-                    </button>
-                    <button
-                      className="btn btn-small btn-danger"
-                      onClick={() => handleReject(host.id)}
-                      title="Reject this host"
-                    >
-                      ✗
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon pending">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{pendingHosts.length}</span>
+            <span className="stat-label">Pending Approval</span>
+          </div>
         </div>
-      )}
-      
-      {/* Scan History */}
-      <div className="scan-history">
-        <h2>📋 Scan History</h2>
-        {isLoadingScans ? (
-          <p className="loading">Loading...</p>
-        ) : scanHistory.length === 0 ? (
-          <p className="empty">No scans yet. Start your first scan!</p>
-        ) : (
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Job Name</th>
-                <th>Target</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Result</th>
-                <th>Started</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scanHistory.map((scan) => (
-                <tr key={scan.scan_id}>
-                  <td><code>{scan.scan_id}</code></td>
-                  <td><strong>{scan.job_name || `Scan ${scan.scan_id}`}</strong></td>
-                  <td>{scan.target}</td>
-                  <td>{getScanTypeLabel(scan.scan_type)}</td>
-                  <td>
-                    <span className={`status-badge ${getStatusClass(scan.status)}`}>
-                      {scan.status}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-small"
-                      onClick={() => handleViewResults(scan.scan_id)}
-                      disabled={scan.status !== 'completed'}
-                    >
-                      {scan.status === 'completed' ? `📊 ${scan.hosts_up || 0} hosts` : '-'}
-                    </button>
-                  </td>
-                  <td>{formatDate(scan.started_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="stat-card">
+          <div className="stat-icon scans">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{scanHistory.length}</span>
+            <span className="stat-label">Total Scans</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon completed">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
+              <path d="M22 4L12 14.01l-3-3" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">
+              {scanHistory.filter(s => s.status === 'completed').length}
+            </span>
+            <span className="stat-label">Completed</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon hosts">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <path d="M8 21h8M12 17v4" />
+            </svg>
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">
+              {scanHistory.reduce((acc, s) => acc + (s.hosts_up || 0), 0)}
+            </span>
+            <span className="stat-label">Hosts Found</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="tab-navigation">
+        <button
+          className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pending')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+          </svg>
+          Pending Hosts
+          {pendingHosts.length > 0 && (
+            <span className="tab-badge">{pendingHosts.length}</span>
+          )}
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          Scan History
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="tab-content">
+        {activeTab === 'pending' && (
+          <PendingHostsTable
+            hosts={pendingHosts}
+            loading={loading.pending}
+            onApprove={handleApproveHost}
+            assetTypes={assetTypes}
+          />
+        )}
+        {activeTab === 'history' && (
+          <ScanHistoryTable
+            scans={scanHistory}
+            loading={loading.history}
+            onViewResults={handleViewResults}
+            onDelete={handleDeleteScan}
+          />
         )}
       </div>
-      
-      {/* Activity Log */}
-      <ActivityLog />
-      
-      {/* New Scan Modal */}
+
+      {/* Modals */}
       {showScanModal && (
-        <div className="modal-overlay" onClick={() => setShowScanModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>🔍 New Network Scan</h3>
-              <button className="close-btn" onClick={() => setShowScanModal(false)}>×</button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Target IP or Range *</label>
-                <input
-                  type="text"
-                  value={target}
-                  onChange={(e) => {
-                    setTarget(e.target.value);
-                    setTargetMatchedAsset(null); // Clear match when target changes
-                  }}
-                  onBlur={handleTargetLookup}
-                  placeholder="e.g., 192.168.1.1 or 192.168.1.0/24"
-                />
-                <small>
-                  Formats: Single IP (192.168.1.1), CIDR (192.168.1.0/24), Range (192.168.1.1-254)
-                </small>
-                {isCheckingMatch && (
-                  <div className="match-feedback info">
-                    🔍 Checking for existing asset...
-                  </div>
-                )}
-                {!isCheckingMatch && targetMatchedAsset && (
-                  <div className="match-feedback success">
-                    ✅ Found existing asset: <strong>{targetMatchedAsset.asset_name}</strong> (ID: {targetMatchedAsset.id})
-                  </div>
-                )}
-                {!isCheckingMatch && target.trim() && !targetMatchedAsset && /^(\d{1,3}\.){3}\d{1,3}$/.test(target.trim()) && (
-                  <div className="match-feedback">
-                    ℹ️ No existing asset found for this IP. New asset will be created from scan results.
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label>Scan Type *</label>
-                <select value={scanType} onChange={(e) => setScanType(e.target.value)}>
-                  <option value="well_known_ports">Well-Known Ports (1-1024) - Recommended</option>
-                  <option value="all_ports">All Ports (1-65535) - Slowest, most thorough</option>
-                  <option value="custom_ports">Custom Ports - Specify below</option>
-                </select>
-              </div>
-
-              {scanType === 'custom_ports' && (
-                <div className="form-group">
-                  <label>Custom Ports *</label>
-                  <input
-                    type="text"
-                    value={ports}
-                    onChange={(e) => setPorts(e.target.value)}
-                    placeholder="e.g., 80,443,8080 or 1-1000"
-                  />
-                  <small>
-                    Examples: Single port (80), List (80,443,8080), Range (1-1000)
-                  </small>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label>Protocol</label>
-                <select value={protocol} onChange={(e) => setProtocol(e.target.value)}>
-                  <option value="TCP">TCP (Recommended)</option>
-                  <option value="UDP">UDP</option>
-                  <option value="BOTH">BOTH (Slower)</option>
-                </select>
-              </div>
-
-              <div className="scan-info">
-                <h4>ℹ️ Scan Details:</h4>
-                <ul>
-                  {scanType === 'all_ports' && (
-                    <>
-                      <li>✓ Scans all 65,535 ports</li>
-                      <li>✓ Service version detection (-sV)</li>
-                      <li>✓ TCP connect scan (-sT)</li>
-                      <li>⚠️ This will take the longest time</li>
-                    </>
-                  )}
-                  {scanType === 'well_known_ports' && (
-                    <>
-                      <li>✓ Scans ports 1-1024 (well-known)</li>
-                      <li>✓ Service version detection (-sV)</li>
-                      <li>✓ TCP connect scan (-sT)</li>
-                      <li>✓ Balanced speed and coverage</li>
-                    </>
-                  )}
-                  {scanType === 'custom_ports' && (
-                    <>
-                      <li>✓ Scans only specified ports</li>
-                      <li>✓ Service version detection (-sV)</li>
-                      <li>✓ TCP connect scan (-sT)</li>
-                      <li>✓ Fastest option for targeted scans</li>
-                    </>
-                  )}
-                  <li>🔍 Using flags: -sT -sV -Pn</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowScanModal(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleStartScan}>
-                🚀 Start Scan
-              </button>
-            </div>
-          </div>
-        </div>
+        <NewScanModal
+          onClose={() => setShowScanModal(false)}
+          onSubmit={handleStartScan}
+          isLoading={loading.scan}
+        />
       )}
-      
-      {/* Result Modal */}
-      {showResultModal && selectedHost && (
-        <DiscoveryResultModal
-          host={selectedHost}
-          scanId={currentScan?.scan_id}
-          assetTypes={assetTypes}
+
+      {showResultsModal && selectedScan && (
+        <ScanResultsModal
+          scan={selectedScan}
           onClose={() => {
-            setShowResultModal(false);
-            setSelectedHost(null);
+            setShowResultsModal(false);
+            setSelectedScan(null);
           }}
         />
       )}
 
-      {/* Match Results Modal */}
-      {showMatchModal && matchResults && (
-        <div className="modal-overlay" onClick={() => setShowMatchModal(false)}>
-          <div className="modal match-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>🔍 Check Matching Assets</h3>
-              <button className="close-btn" onClick={() => setShowMatchModal(false)}>×</button>
-            </div>
-
-            <div className="modal-body">
-              <div className="match-info">
-                <p><strong>Recommendation:</strong> <span className={`recommendation ${matchResults.recommendation}`}>
-                  {matchResults.recommendation === 'merge' ? '🔗 Merge with existing' :
-                   matchResults.recommendation === 'create_new' ? '➕ Create new asset' :
-                   '⚠️ Review carefully'}
-                </span></p>
-              </div>
-
-              {matchResults.matches_found && matchResults.matches.length > 0 ? (
-                <div className="matches-found">
-                  <h4>Found {matchResults.matches.length} matching asset(s):</h4>
-                  {matchResults.matches.map((match, index) => (
-                    <div key={index} className="match-card">
-                      <div className="match-header">
-                        <strong>{match.asset_name || `Asset #${match.asset_id}`}</strong>
-                        <span className="match-score">Match: {match.match_type}</span>
-                      </div>
-                      <div className="match-details">
-                        <p><strong>IP:</strong> {match.ip_address || '-'}</p>
-                        <p><strong>MAC:</strong> {match.mac_address || '-'}</p>
-                        <p><strong>Hostname:</strong> {match.hostname || '-'}</p>
-                      </div>
-                      <div className="match-actions">
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleApprove(
-                            pendingHosts.find(h => h.id === matchResults.host_id)?.id,
-                            'merge_with_existing',
-                            match.asset_id
-                          )}
-                        >
-                          Merge with this asset
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="no-matches">
-                  <p>✨ No matching assets found. This appears to be a new device.</p>
-                </div>
-              )}
-
-              <div className="create-new-section">
-                <h4>Or create as new asset:</h4>
-                {matchResults.matches_found && matchResults.matches.length > 0 && (
-                  <p className="warning-text" style={{color: '#f59e0b', fontSize: '0.9rem', marginBottom: '8px'}}>
-                    ⚠️ Warning: Matches were found above. Creating a new asset may result in duplicates.
-                  </p>
-                )}
-                <button
-                  className="btn btn-success"
-                  onClick={() => {
-                    const hostId = pendingHosts.find(h => matchResults.host_id === h.id)?.id;
-                    if (hostId) {
-                      // Warn if matches exist
-                      if (matchResults.matches_found && matchResults.matches.length > 0) {
-                        if (!window.confirm('Matching assets were found. Are you sure you want to create a new asset instead of merging?')) {
-                          return;
-                        }
-                      }
-
-                      // Prompt for required asset information
-                      const assetName = prompt('Enter Asset Name:');
-                      if (!assetName) {
-                        alert('Asset name is required');
-                        return;
-                      }
-
-                      // Show available asset types
-                      let assetTypeOptions = 'Available Asset Types:\n';
-                      assetTypes.forEach(type => {
-                        assetTypeOptions += `${type.id}: ${type.type_name}\n`;
-                      });
-
-                      const assetTypeId = prompt(assetTypeOptions + '\nEnter Asset Type ID:');
-                      if (!assetTypeId || isNaN(assetTypeId)) {
-                        alert('Valid Asset Type ID is required');
-                        return;
-                      }
-
-                      const assetData = {
-                        asset_name: assetName,
-                        asset_type_id: parseInt(assetTypeId)
-                      };
-
-                      handleApprove(hostId, 'create_new', null, assetData);
-                    }
-                  }}
-                >
-                  ➕ Create New Asset
-                </button>
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowMatchModal(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Scan Results Modal */}
-      {showScanResultsModal && selectedScanResults && (
-        <ScanResultsModal
-          scan={selectedScanResults}
+      {showApproveModal && selectedHostForApproval && (
+        <ApproveHostModal
+          host={selectedHostForApproval}
+          assetTypes={assetTypes}
           onClose={() => {
-            setShowScanResultsModal(false);
-            setSelectedScanResults(null);
+            setShowApproveModal(false);
+            setSelectedHostForApproval(null);
           }}
         />
       )}
     </div>
   );
+};
+
+// Helper function for scan type labels
+const getScanTypeLabel = (type) => {
+  const labels = {
+    all_ports: 'All Ports',
+    well_known_ports: 'Well-Known',
+    custom_ports: 'Custom',
+  };
+  return labels[type] || type;
 };
 
 export default AutoDiscovery;
