@@ -4,7 +4,9 @@
 
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://172.16.200.90:8000';
+// For development: use Vite proxy (empty baseURL = relative paths)
+// For production: use VITE_API_URL from environment
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Create axios instance
 const api = axios.create({
