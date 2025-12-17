@@ -118,6 +118,14 @@
   color: #dc3545;
 }
 
+.error-text {
+  color: #dc3545;
+  background: #f8d7da;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-top: 12px;
+}
+
 /* Audit Meta */
 .audit-meta {
   padding: 16px;

@@ -61,17 +61,16 @@ const Auditing = () => {
         asset_id: parseInt(selectedAssetId),
         ssh_username: credentials.username,
         ssh_password: credentials.password,
-        enable_secret: credentials.enable_secret || credentials.password
+        ssh_secret: credentials.enable_secret || null,
+        profile: 'L1'
       });
 
-      const sessionId = response.data.session_id;
+      // The execute endpoint returns the session directly
+      const sessionData = response.data;
+      setAuditSession(sessionData);
 
-      // Fetch session details
-      const sessionResponse = await api.get(`/api/audit/sessions/${sessionId}`);
-      setAuditSession(sessionResponse.data);
-
-      // Fetch detailed results
-      const resultsResponse = await api.get(`/api/audit/sessions/${sessionId}/results`);
+      // Fetch detailed results using the session_id from response
+      const resultsResponse = await api.get(`/api/audit/sessions/${sessionData.session_id}/results`);
       setAuditResults(resultsResponse.data);
 
     } catch (err) {
@@ -89,8 +88,8 @@ const Auditing = () => {
 
   const resultsColumns = [
     {
-      key: 'rule_id',
-      title: 'Rule ID',
+      key: 'check_number',
+      title: 'Check ID',
       width: '100px'
     },
     {
@@ -98,18 +97,19 @@ const Auditing = () => {
       title: 'Status',
       width: '100px',
       render: (value) => (
-        <span className={`audit-status ${value.toLowerCase()}`}>
+        <span className={`audit-status ${value?.toLowerCase()}`}>
           {value === 'PASS' ? '✓' : value === 'FAIL' ? '✗' : '○'} {value}
         </span>
       )
     },
     {
-      key: 'title',
+      key: 'check_title',
       title: 'Check Title'
     },
     {
-      key: 'description',
-      title: 'Description',
+      key: 'severity',
+      title: 'Severity',
+      width: '100px',
       render: (value) => <span className="description-cell">{value}</span>
     },
     {
@@ -196,38 +196,42 @@ const Auditing = () => {
         <div className="audit-results">
           <div className="results-summary">
             <div className="summary-cards">
-              <div className={`summary-card ${getComplianceColor(auditSession.compliance_pct)}`}>
+              <div className={`summary-card ${getComplianceColor(auditSession.compliance?.compliance_pct || 0)}`}>
                 <div className="card-label">Compliance Score</div>
-                <div className="card-value">{auditSession.compliance_pct.toFixed(1)}%</div>
+                <div className="card-value">{(auditSession.compliance?.compliance_pct || 0).toFixed(1)}%</div>
                 <div className="card-sub">
-                  {auditSession.passed_count} of {auditSession.total_checks} checks passed
+                  {auditSession.compliance?.passed || 0} of {auditSession.compliance?.total_checks || 0} checks passed
                 </div>
               </div>
 
               <div className="summary-card info">
                 <div className="card-label">Weighted Score</div>
-                <div className="card-value">{auditSession.weighted_compliance_pct.toFixed(1)}%</div>
+                <div className="card-value">{(auditSession.compliance?.weighted_compliance_pct || 0).toFixed(1)}%</div>
                 <div className="card-sub">Priority-weighted compliance</div>
               </div>
 
               <div className="summary-card">
                 <div className="card-label">Failed Checks</div>
-                <div className="card-value danger-text">{auditSession.failed_count}</div>
+                <div className="card-value danger-text">{auditSession.compliance?.failed || 0}</div>
                 <div className="card-sub">Need attention</div>
               </div>
 
               <div className="summary-card">
-                <div className="card-label">Informational</div>
-                <div className="card-value">{auditSession.info_count}</div>
+                <div className="card-label">Errors</div>
+                <div className="card-value">{auditSession.compliance?.errors || 0}</div>
                 <div className="card-sub">For review</div>
               </div>
             </div>
 
             <div className="audit-meta">
               <p><strong>Asset:</strong> {auditSession.asset_name}</p>
-              <p><strong>IP Address:</strong> {auditSession.ip_address}</p>
-              <p><strong>Audit Date:</strong> {new Date(auditSession.audit_date).toLocaleString()}</p>
-              <p><strong>Template:</strong> {auditSession.template_name}</p>
+              <p><strong>IP Address:</strong> {auditSession.target_ip}</p>
+              <p><strong>Audit Date:</strong> {auditSession.started_at ? new Date(auditSession.started_at).toLocaleString() : 'N/A'}</p>
+              <p><strong>Device Type:</strong> {auditSession.device_type}</p>
+              <p><strong>Status:</strong> {auditSession.status}</p>
+              {auditSession.connection_error && (
+                <p className="error-text"><strong>Error:</strong> {auditSession.connection_error}</p>
+              )}
             </div>
           </div>
 
