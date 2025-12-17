@@ -20,7 +20,7 @@ import NewScanModal from './components/NewScanModal';
 import PendingHostsTable from './components/PendingHostsTable';
 import ScanHistoryTable from './components/ScanHistoryTable';
 import ScanResultsModal from './components/ScanResultsModal';
-import ApproveHostModal from './components/ApproveHostModal';
+import ApplyDiscoveryModal from './components/ApplyDiscoveryModal';
 import AssetListTable from './components/AssetListTable';
 
 import './AutoDiscovery.css';
@@ -368,12 +368,13 @@ const AutoDiscovery = () => {
       )}
 
       {showApproveModal && selectedHostForApproval && (
-        <ApproveHostModal
+        <ApplyDiscoveryModal
           host={selectedHostForApproval}
           assetTypes={assetTypes}
           onClose={() => {
             setShowApproveModal(false);
             setSelectedHostForApproval(null);
+            dispatch(fetchPendingHosts()); // Refresh the list
           }}
         />
       )}
