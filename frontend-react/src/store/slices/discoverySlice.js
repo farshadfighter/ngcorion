@@ -19,6 +19,9 @@ const initialState = {
   selectedHost: null,
   matchResults: null,
 
+  // Preview state for apply modes
+  previewData: null,
+
   // Loading states
   loading: {
     scan: false,
@@ -26,6 +29,8 @@ const initialState = {
     pending: false,
     approve: false,
     matches: false,
+    preview: false,
+    applyMode: false,
   },
 
   // Error state
@@ -280,6 +285,11 @@ const discoverySlice = createSlice({
     // Clear match results
     clearMatchResults: (state) => {
       state.matchResults = null;
+    },
+
+    // Clear preview data
+    clearPreviewData: (state) => {
+      state.previewData = null;
     },
 
     // Stop scanning (client-side)
