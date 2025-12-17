@@ -454,6 +454,7 @@ export const {
   setSelectedHost,
   clearSelectedHost,
   clearMatchResults,
+  clearPreviewData,
   stopScanning,
 } = discoverySlice.actions;
 
