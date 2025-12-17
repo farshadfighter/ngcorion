@@ -57,32 +57,42 @@ const Auditing = () => {
     setAuditResults([]);
 
     try {
-      const response = await api.post('/api/audit/cisco/execute', {
+      console.log('Executing audit for asset:', selectedAssetId);
+
+      const requestData = {
         asset_id: parseInt(selectedAssetId),
         ssh_username: credentials.username,
         ssh_password: credentials.password,
         ssh_secret: credentials.enable_secret || null,
         profile: 'L1'
-      });
+      };
+      console.log('Request data:', { ...requestData, ssh_password: '***' });
+
+      const response = await api.post('/api/audit/cisco/execute', requestData);
+      console.log('Audit response:', response.data);
 
       // The execute endpoint returns the session directly
       const sessionData = response.data;
       setAuditSession(sessionData);
 
       // Fetch detailed results using the session_id from response
-      const resultsResponse = await api.get(`/api/audit/sessions/${sessionData.session_id}/results`);
-      setAuditResults(resultsResponse.data);
+      if (sessionData.session_id) {
+        const resultsResponse = await api.get(`/api/audit/sessions/${sessionData.session_id}/results`);
+        console.log('Results:', resultsResponse.data);
+        setAuditResults(resultsResponse.data);
+      }
 
     } catch (err) {
-      setError(err.response?.data?.detail || 'Audit execution failed');
-      console.error(err);
+      console.error('Audit error:', err);
+      const errorMsg = err.response?.data?.detail || err.message || 'Audit execution failed';
+      setError(errorMsg);
     } finally {
       setExecuting(false);
     }
   };
 
   const assetOptions = assets.map(asset => ({
-    value: asset.asset_id,
+    value: asset.id || asset.asset_id,
     label: `${asset.asset_name} (${asset.ip_address || asset.hostname || 'No IP'})`
   }));
 
@@ -149,7 +159,7 @@ const Auditing = () => {
           <Select
             label="Select Asset"
             value={selectedAssetId}
-            onChange={setSelectedAssetId}
+            onChange={(e) => setSelectedAssetId(e.target.value)}
             options={assetOptions}
             disabled={loading || executing}
             placeholder="Choose an asset..."
