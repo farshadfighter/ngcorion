@@ -732,6 +732,48 @@
   max-width: 480px;
 }
 
+.modal-scan-options .modal-body {
+  overflow-y: auto;
+  max-height: calc(85vh - 140px);
+}
+
+/* Scan Target Info */
+.scan-target-info {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.target-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-500);
+  margin-bottom: 6px;
+}
+
+.target-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.target-name {
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.target-ip {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 13px;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
 .modal-sm {
   max-width: 440px;
 }
