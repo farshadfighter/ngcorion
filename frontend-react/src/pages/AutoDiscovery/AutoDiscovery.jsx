@@ -21,6 +21,7 @@ import PendingHostsTable from './components/PendingHostsTable';
 import ScanHistoryTable from './components/ScanHistoryTable';
 import ScanResultsModal from './components/ScanResultsModal';
 import ApproveHostModal from './components/ApproveHostModal';
+import AssetListTable from './components/AssetListTable';
 
 import './AutoDiscovery.css';
 
@@ -44,7 +45,7 @@ const AutoDiscovery = () => {
   const [selectedScan, setSelectedScan] = useState(null);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [selectedHostForApproval, setSelectedHostForApproval] = useState(null);
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
+  const [activeTab, setActiveTab] = useState('assets'); // 'assets', 'pending', or 'history'
 
   // Polling ref
   const pollIntervalRef = useRef(null);
@@ -288,6 +289,16 @@ const AutoDiscovery = () => {
       {/* Tab Navigation */}
       <div className="tab-navigation">
         <button
+          className={`tab-btn ${activeTab === 'assets' ? 'active' : ''}`}
+          onClick={() => setActiveTab('assets')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <path d="M8 21h8M12 17v4" />
+          </svg>
+          Asset List
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
           onClick={() => setActiveTab('pending')}
         >
@@ -313,6 +324,12 @@ const AutoDiscovery = () => {
 
       {/* Tab Content */}
       <div className="tab-content">
+        {activeTab === 'assets' && (
+          <AssetListTable
+            onScanAsset={handleStartScan}
+            isScanning={loading.scan}
+          />
+        )}
         {activeTab === 'pending' && (
           <PendingHostsTable
             hosts={pendingHosts}
