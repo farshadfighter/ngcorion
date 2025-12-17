@@ -336,3 +336,73 @@ class PortManagementResponse(BaseModel):
     ports_added: int
     ports_removed: int
     message: str
+
+
+# ========================================
+# Apply Discovery with Modes
+# ========================================
+
+class ApplyDiscoveryMode(BaseModel):
+    """
+    Request to apply discovery results with a specific mode
+
+    Modes:
+    - overwrite: Replace all existing data with discovered data
+    - merge: Keep existing data + add new discovered data (fill empty fields, add new ports)
+    - create_new: Create a new asset with the discovered data
+    """
+    mode: str  # overwrite, merge, create_new
+    host_id: int  # Discovered host ID
+    asset_id: Optional[int] = None  # Required for overwrite and merge modes
+    # For create_new mode
+    asset_name: Optional[str] = None
+    asset_type_id: Optional[int] = None
+    location_id: Optional[int] = None
+    owner_id: Optional[int] = None
+
+    @field_validator('mode')
+    @classmethod
+    def validate_mode(cls, v):
+        allowed = ['overwrite', 'merge', 'create_new']
+        if v not in allowed:
+            raise ValueError(f'mode must be one of: {allowed}')
+        return v
+
+
+class ApplyDiscoveryModeResponse(BaseModel):
+    """Response after applying discovery with mode"""
+    success: bool
+    mode: str
+    asset_id: int
+    asset_name: str
+    message: str
+    # Details about what was applied
+    fields_updated: List[str] = []
+    fields_overwritten: List[str] = []
+    ports_added: int = 0
+    ports_removed: int = 0
+    # Comparison data for confirmation UI
+    before: Optional[Dict[str, Any]] = None
+    after: Optional[Dict[str, Any]] = None
+
+
+class DiscoveryPreviewRequest(BaseModel):
+    """Request to preview what changes will be made"""
+    host_id: int
+    asset_id: Optional[int] = None  # If provided, shows comparison with existing asset
+
+
+class DiscoveryPreviewResponse(BaseModel):
+    """Preview of changes that will be made"""
+    host_id: int
+    discovered_data: Dict[str, Any]
+    asset_id: Optional[int] = None
+    asset_name: Optional[str] = None
+    # If asset_id provided, show comparison
+    existing_data: Optional[Dict[str, Any]] = None
+    # What will happen in each mode
+    overwrite_changes: Optional[Dict[str, Any]] = None
+    merge_changes: Optional[Dict[str, Any]] = None
+    has_existing_data: bool = False
+    existing_ports_count: int = 0
+    discovered_ports_count: int = 0

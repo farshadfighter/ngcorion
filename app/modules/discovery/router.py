@@ -22,7 +22,8 @@ from .schemas import (
     ApplyDiscoveryRequest, ApplyDiscoveryResponse,
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
     DiscoveredHost as DiscoveredHostSchema, PendingHostsListResponse, PendingHostResponse,
-    AddPortsRequest, OverwritePortsRequest, PortManagementResponse
+    AddPortsRequest, OverwritePortsRequest, PortManagementResponse,
+    ApplyDiscoveryMode, ApplyDiscoveryModeResponse, DiscoveryPreviewResponse
 )
 from .service import DiscoveryService
 from .port_service import PortService
