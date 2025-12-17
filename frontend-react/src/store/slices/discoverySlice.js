@@ -413,6 +413,37 @@ const discoverySlice = createSlice({
       .addCase(bulkApproveHosts.rejected, (state, action) => {
         state.loading.approve = false;
         state.error = action.payload;
+      })
+
+      // ===== Preview Discovery Application =====
+      .addCase(previewDiscoveryApplication.pending, (state) => {
+        state.loading.preview = true;
+        state.previewData = null;
+      })
+      .addCase(previewDiscoveryApplication.fulfilled, (state, action) => {
+        state.loading.preview = false;
+        state.previewData = action.payload;
+      })
+      .addCase(previewDiscoveryApplication.rejected, (state, action) => {
+        state.loading.preview = false;
+        state.error = action.payload;
+      })
+
+      // ===== Apply Discovery With Mode =====
+      .addCase(applyDiscoveryWithMode.pending, (state) => {
+        state.loading.applyMode = true;
+      })
+      .addCase(applyDiscoveryWithMode.fulfilled, (state, action) => {
+        state.loading.applyMode = false;
+        // Remove from pending list
+        state.pendingHosts = state.pendingHosts.filter(h => h.id !== action.payload.hostId);
+        state.selectedHost = null;
+        state.matchResults = null;
+        state.previewData = null;
+      })
+      .addCase(applyDiscoveryWithMode.rejected, (state, action) => {
+        state.loading.applyMode = false;
+        state.error = action.payload;
       });
   },
 });
