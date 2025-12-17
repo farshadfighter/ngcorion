@@ -728,6 +728,10 @@
   max-height: calc(85vh - 140px);
 }
 
+.modal-scan-options {
+  max-width: 480px;
+}
+
 .modal-sm {
   max-width: 440px;
 }

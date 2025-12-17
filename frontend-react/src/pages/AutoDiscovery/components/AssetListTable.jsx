@@ -14,6 +14,13 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
   const [filterType, setFilterType] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
 
+  // Scan options modal state
+  const [showScanOptions, setShowScanOptions] = useState(false);
+  const [assetToScan, setAssetToScan] = useState(null);
+  const [scanType, setScanType] = useState('well_known_ports');
+  const [customPorts, setCustomPorts] = useState('');
+  const [protocol, setProtocol] = useState('TCP');
+
   // Load assets on mount
   useEffect(() => {
     dispatch(fetchAssets());
@@ -51,18 +58,48 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
     }
   };
 
-  // Handle scan single asset
-  const handleScanAsset = (asset) => {
+  // Open scan options modal
+  const openScanOptions = (asset) => {
     if (!asset.ip_address) {
       alert('This asset does not have an IP address configured.');
       return;
     }
-    onScanAsset({
-      target: asset.ip_address,
-      job_name: `Scan: ${asset.asset_name}`,
-      scan_type: 'well_known_ports',
-      protocol: 'TCP',
-    });
+    setAssetToScan(asset);
+    setScanType('well_known_ports');
+    setCustomPorts('');
+    setProtocol('TCP');
+    setShowScanOptions(true);
+  };
+
+  // Handle scan submission
+  const handleScanSubmit = () => {
+    if (!assetToScan) return;
+
+    if (scanType === 'custom_ports' && !customPorts.trim()) {
+      alert('Please specify custom ports');
+      return;
+    }
+
+    const scanData = {
+      target: assetToScan.ip_address,
+      job_name: `Scan: ${assetToScan.asset_name}`,
+      scan_type: scanType,
+      protocol: protocol,
+    };
+
+    if (scanType === 'custom_ports' && customPorts.trim()) {
+      scanData.ports = customPorts.trim();
+    }
+
+    onScanAsset(scanData);
+    setShowScanOptions(false);
+    setAssetToScan(null);
+  };
+
+  // Close scan options modal
+  const closeScanOptions = () => {
+    setShowScanOptions(false);
+    setAssetToScan(null);
   };
 
   // Handle scan selected assets
@@ -76,11 +113,9 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
     }
 
     if (assetsWithIp.length === 1) {
-      handleScanAsset(assetsWithIp[0]);
+      openScanOptions(assetsWithIp[0]);
     } else {
-      // Create IP range for multiple assets
-      const ips = assetsWithIp.map((a) => a.ip_address).join(',');
-      // For multiple IPs, we'll scan them individually or show a note
+      // For multiple IPs, show a note
       alert(`Selected ${assetsWithIp.length} assets with IPs. Please scan them individually or use the New Scan button with a CIDR range.`);
     }
   };
@@ -223,7 +258,7 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
                   <td className="col-actions">
                     <button
                       className="btn btn-sm btn-ghost"
-                      onClick={() => handleScanAsset(asset)}
+                      onClick={() => openScanOptions(asset)}
                       disabled={!asset.ip_address || isScanning}
                       title={asset.ip_address ? 'Run discovery scan' : 'No IP address configured'}
                     >
@@ -247,6 +282,141 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
           Showing {filteredAssets.length} of {assets.length} assets
         </span>
       </div>
+
+      {/* Scan Options Modal */}
+      {showScanOptions && assetToScan && (
+        <div className="modal-overlay" onClick={closeScanOptions}>
+          <div className="modal modal-scan-options" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Scan Options</h2>
+              <button className="modal-close" onClick={closeScanOptions}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* Asset Info */}
+              <div className="scan-target-info">
+                <div className="target-label">Target Asset</div>
+                <div className="target-details">
+                  <span className="target-name">{assetToScan.asset_name}</span>
+                  <span className="target-ip">{assetToScan.ip_address}</span>
+                </div>
+              </div>
+
+              {/* Scan Type */}
+              <div className="form-group">
+                <label>Scan Type</label>
+                <div className="radio-group">
+                  <label className={`radio-card ${scanType === 'well_known_ports' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="scan_type"
+                      value="well_known_ports"
+                      checked={scanType === 'well_known_ports'}
+                      onChange={(e) => setScanType(e.target.value)}
+                    />
+                    <div className="radio-content">
+                      <span className="radio-title">Well-Known Ports</span>
+                      <span className="radio-desc">Ports 1-1024 (Fast)</span>
+                    </div>
+                    <span className="radio-badge recommended">Recommended</span>
+                  </label>
+
+                  <label className={`radio-card ${scanType === 'all_ports' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="scan_type"
+                      value="all_ports"
+                      checked={scanType === 'all_ports'}
+                      onChange={(e) => setScanType(e.target.value)}
+                    />
+                    <div className="radio-content">
+                      <span className="radio-title">All Ports</span>
+                      <span className="radio-desc">Ports 1-65535 (Thorough but slow)</span>
+                    </div>
+                  </label>
+
+                  <label className={`radio-card ${scanType === 'custom_ports' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="scan_type"
+                      value="custom_ports"
+                      checked={scanType === 'custom_ports'}
+                      onChange={(e) => setScanType(e.target.value)}
+                    />
+                    <div className="radio-content">
+                      <span className="radio-title">Custom Ports</span>
+                      <span className="radio-desc">Specify ports below</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Custom Ports Input */}
+              {scanType === 'custom_ports' && (
+                <div className="form-group">
+                  <label htmlFor="custom-ports">Custom Ports</label>
+                  <input
+                    type="text"
+                    id="custom-ports"
+                    value={customPorts}
+                    onChange={(e) => setCustomPorts(e.target.value)}
+                    placeholder="e.g., 80,443,8080 or 1-1000"
+                    className="form-input"
+                  />
+                  <p className="form-hint">
+                    Examples: Single (80), List (80,443,8080), Range (1-1000)
+                  </p>
+                </div>
+              )}
+
+              {/* Protocol */}
+              <div className="form-group">
+                <label htmlFor="protocol">Protocol</label>
+                <select
+                  id="protocol"
+                  value={protocol}
+                  onChange={(e) => setProtocol(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="TCP">TCP (Recommended)</option>
+                  <option value="UDP">UDP</option>
+                  <option value="BOTH">Both TCP & UDP</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={closeScanOptions}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleScanSubmit}
+                disabled={isScanning || (scanType === 'custom_ports' && !customPorts.trim())}
+              >
+                {isScanning ? (
+                  <>
+                    <span className="spinner" />
+                    Starting...
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    Start Scan
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
