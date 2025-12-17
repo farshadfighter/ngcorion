@@ -20,6 +20,7 @@ import { fetchOwners } from '../../store/slices/ownersSlice';
 import { fetchLocations } from '../../store/slices/locationsSlice';
 import { fetchAllEnums } from '../../store/slices/enumsSlice';
 import { useAuth } from '../../hooks/useAuth';
+import api from '../../api/axios';
 import Button from '../../components/common/Button';
 import Tabs from '../../components/common/Tabs';
 import Table from '../../components/common/Table';
@@ -315,55 +316,47 @@ const AssetList = () => {
 
   const handleExport = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/assets/export/excel', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await api.get('/api/assets/export/excel', {
+        responseType: 'blob'
       });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else {
-        console.error('Export failed');
-      }
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
+      alert('Failed to export assets: ' + (error.response?.data?.detail || error.message));
     }
   };
 
   const handleDownloadTemplate = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/assets/export/template', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await api.get('/api/assets/export/template', {
+        responseType: 'blob'
       });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'asset_import_template.xlsx';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      } else {
-        console.error('Template download failed');
-      }
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'asset_import_template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Template download error:', error);
+      alert('Failed to download template: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -379,28 +372,19 @@ const AssetList = () => {
       formData.append('file', file);
 
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:8000/api/assets/import/excel', {
-          method: 'POST',
+        const response = await api.post('/api/assets/import/excel', formData, {
           headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData
+            'Content-Type': 'multipart/form-data'
+          }
         });
 
-        if (response.ok) {
-          const result = await response.json();
-          alert(`Import successful!\n${JSON.stringify(result.summary, null, 2)}`);
+        alert(`Import successful!\n${JSON.stringify(response.data.summary, null, 2)}`);
 
-          // Refresh asset list
-          loadViewData(currentView);
-        } else {
-          const error = await response.json();
-          alert('Failed to import: ' + (error.detail || 'Unknown error'));
-        }
+        // Refresh asset list
+        loadViewData(currentView);
       } catch (err) {
         console.error('Import failed:', err);
-        alert('Failed to import: ' + err.message);
+        alert('Failed to import: ' + (err.response?.data?.detail || err.message));
       }
     };
     input.click();
