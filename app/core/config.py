@@ -6,6 +6,7 @@ SECURITY: Override all sensitive defaults in production via .env file.
 """
 from pydantic_settings import BaseSettings
 from typing import List
+import json
 
 
 class Settings(BaseSettings):
@@ -39,6 +40,16 @@ class Settings(BaseSettings):
     # In production, set to specific frontend URLs like:
     # BACKEND_CORS_ORIGINS=["https://yourdomain.com","https://app.yourdomain.com"]
     BACKEND_CORS_ORIGINS: List[str] = ["*"]  # Must be restricted in production
+
+    @property
+    def cors_origins(self) -> List[str]:
+        """Parse CORS origins from string or list."""
+        if isinstance(self.BACKEND_CORS_ORIGINS, str):
+            try:
+                return json.loads(self.BACKEND_CORS_ORIGINS)
+            except:
+                return [self.BACKEND_CORS_ORIGINS]
+        return self.BACKEND_CORS_ORIGINS
 
     # Server
     HOST: str = "0.0.0.0"

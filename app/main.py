@@ -45,10 +45,11 @@ app = FastAPI(
 # WARNING: Default allows all origins - configure BACKEND_CORS_ORIGINS in .env for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,  # Must be restricted in production
+    allow_origins=settings.cors_origins if hasattr(settings, 'cors_origins') else settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],  # Allow all response headers to be accessible
 )
 
 # Authentication routes (no auth required)
