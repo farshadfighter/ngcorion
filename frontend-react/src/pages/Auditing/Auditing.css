@@ -244,6 +244,41 @@
   font-weight: 600;
 }
 
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.toggle-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.toggle-btn.active {
+  background: white;
+  color: #212529;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .form-grid {
@@ -256,5 +291,13 @@
 
   .card-value {
     font-size: 24px;
+  }
+
+  .view-toggle {
+    width: 100%;
+  }
+
+  .toggle-btn {
+    flex: 1;
   }
 }

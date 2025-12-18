@@ -16,7 +16,8 @@ from datetime import datetime
 from app.models import AuditSession, AuditResult, Asset, User
 from app.models.audit import DeviceType, CheckStatus
 from .ssh_client import CiscoSSHClient, redact_sensitive_data
-from .cisco_rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile
+from .cisco_rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
+from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
 
 
 class AuditService:
@@ -213,3 +214,191 @@ class AuditService:
             },
             "connection_error": session.connection_error
         }
+
+    @staticmethod
+    def get_cis_benchmark_table(db: Session, session_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get CIS Benchmark table format results.
+
+        Returns results in the official CIS Benchmark table format with
+        section numbers (1.1.1, 1.1.2, etc.) and Yes/No checkmarks.
+
+        Args:
+            db: Database session
+            session_id: Audit session ID
+
+        Returns:
+            Dict with:
+            - session info
+            - benchmark_version
+            - sections: list of {section, recommendation, set_correctly}
+            - summary with compliance percentage
+        """
+        session = AuditService.get_audit_session(db, session_id)
+        if not session:
+            return None
+
+        # Get asset details
+        asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
+
+        # Get audit results indexed by check_number
+        results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+        results_by_id = {r.check_number: r for r in results}
+
+        # Build the CIS Benchmark table
+        sections = []
+        passed = 0
+        failed = 0
+
+        for sec in CIS_BENCHMARK_SECTIONS:
+            rule_id = sec["rule_id"]
+            result = results_by_id.get(rule_id)
+
+            if result:
+                set_correctly = result.status == CheckStatus.PASS
+                if set_correctly:
+                    passed += 1
+                else:
+                    failed += 1
+            else:
+                # Rule not found in results - mark as not evaluated
+                set_correctly = None
+
+            sections.append({
+                "section": sec["section"],
+                "recommendation": sec["recommendation"],
+                "set_correctly": set_correctly
+            })
+
+        total = passed + failed
+        compliance_pct = round(100.0 * passed / total, 2) if total > 0 else 0.0
+
+        return {
+            "session_id": session.id,
+            "asset_id": session.asset_id,
+            "asset_name": asset.asset_name if asset else None,
+            "target_ip": session.target_ip,
+            "audit_date": session.completed_at.isoformat() if session.completed_at else session.started_at.isoformat() if session.started_at else None,
+            "benchmark_version": CIS_BENCHMARK_VERSION,
+            "sections": sections,
+            "summary": {
+                "total_checks": total,
+                "passed": passed,
+                "failed": failed,
+                "compliance_percentage": compliance_pct
+            }
+        }
+
+    @staticmethod
+    def execute_cis_benchmark_audit(
+        db: Session,
+        asset_id: int,
+        user_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str] = None
+    ) -> AuditSession:
+        """
+        Execute CIS Benchmark audit using official section numbers.
+
+        Similar to execute_cisco_audit but uses CIS Benchmark section IDs
+        (1.1.1, 1.1.2, etc.) instead of internal rule IDs.
+
+        Args:
+            db: Database session
+            asset_id: Target asset ID
+            user_id: User performing audit
+            ssh_username: SSH username (not stored)
+            ssh_password: SSH password (not stored)
+            ssh_secret: Enable secret (optional, not stored)
+
+        Returns:
+            AuditSession: Completed audit session with results
+
+        Raises:
+            ValueError: If asset not found or missing IP
+            Exception: If SSH connection or audit fails
+        """
+        # 1. Fetch asset details
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if not asset:
+            raise ValueError(f"Asset ID {asset_id} not found")
+
+        if not asset.ip_address:
+            raise ValueError(f"Asset '{asset.asset_name}' has no IP address configured")
+
+        target_ip = asset.ip_address
+
+        # 2. Create audit session (status: running)
+        session = AuditSession(
+            template_id=None,
+            user_id=user_id,
+            asset_id=asset_id,
+            target_ip=target_ip,
+            device_type=DeviceType.CISCO,
+            status="running",
+            started_at=datetime.utcnow()
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+
+        try:
+            # 3. Establish SSH connection and collect turbo dump
+            with CiscoSSHClient(
+                ip=target_ip,
+                username=ssh_username,
+                password=ssh_password,
+                secret=ssh_secret
+            ) as ssh_client:
+                raw_dump = ssh_client.collect_turbo()
+
+            # 4. Redact sensitive data
+            redacted_dump = redact_sensitive_data(raw_dump)
+
+            # 5. Build CIS Benchmark rules (uses CIS- prefixed IDs)
+            rules = build_cis_benchmark_rules()
+
+            # 6. Evaluate compliance
+            report = evaluate_compliance(redacted_dump, rules)
+
+            # 7. Update session with results
+            session.status = "completed"
+            session.completed_at = datetime.utcnow()
+            session.total_checks = report["summary"]["total_rules_scored"]
+            session.passed_checks = report["summary"]["passed_scored"]
+            session.failed_checks = report["summary"]["failed_scored"]
+            session.error_checks = 0
+            session.compliance_pct = report["summary"]["compliance_pct"]
+            session.weighted_compliance_pct = report["summary"]["weighted_compliance_pct"]
+            session.turbo_dump = redacted_dump
+
+            # 8. Store individual check results
+            for finding in report["findings"]:
+                result = AuditResult(
+                    session_id=session.id,
+                    check_id=None,
+                    check_number=finding["id"],
+                    check_title=finding["title"],
+                    severity=finding["severity"],
+                    level=finding["level"],
+                    status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
+                    evidence_snippet=finding["evidence"],
+                    checked_at=datetime.utcnow()
+                )
+                db.add(result)
+
+            db.commit()
+            db.refresh(session)
+
+            return session
+
+        except Exception as e:
+            # Mark session as failed
+            session.status = "failed"
+            session.completed_at = datetime.utcnow()
+            session.connection_error = f"{type(e).__name__}: {str(e)}"
+            db.commit()
+            db.refresh(session)
+
+            raise

@@ -227,3 +227,148 @@ def get_asset_audit_history(
         AuditService.get_session_summary(db, s.id)
         for s in sessions
     ]
+
+
+# ========================= CIS BENCHMARK TABLE ENDPOINTS =========================
+
+class CISBenchmarkTableSection(BaseModel):
+    """Single row in the CIS Benchmark table."""
+    section: str = Field(..., description="CIS section number (e.g., '1.1.1')")
+    recommendation: str = Field(..., description="CIS recommendation text")
+    set_correctly: Optional[bool] = Field(None, description="True=Yes, False=No, None=Not evaluated")
+
+
+class CISBenchmarkTableSummary(BaseModel):
+    """Summary statistics for CIS Benchmark compliance."""
+    total_checks: int
+    passed: int
+    failed: int
+    compliance_percentage: float
+
+
+class CISBenchmarkTableResponse(BaseModel):
+    """Full CIS Benchmark table response matching PDF format."""
+    session_id: int
+    asset_id: Optional[int]
+    asset_name: Optional[str]
+    target_ip: str
+    audit_date: Optional[str]
+    benchmark_version: str
+    sections: List[CISBenchmarkTableSection]
+    summary: CISBenchmarkTableSummary
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/sessions/{session_id}/cis-table", response_model=CISBenchmarkTableResponse)
+def get_cis_benchmark_table(
+    session_id: int,
+    current_user: User = Depends(require_permission("AUDIT", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Get CIS Benchmark table format results for an audit session.
+
+    Returns results in the official CIS Benchmark table format (pages 210-213)
+    with section numbers (1.1.1, 1.1.2, etc.) and Yes/No checkmarks.
+
+    **Response Format:**
+    ```
+    | Section | Recommendation                          | Set Correctly |
+    |---------|----------------------------------------|---------------|
+    | 1.1.1   | Enable 'aaa new-model'                 | Yes ☑ / No ☐  |
+    | 1.1.2   | Enable 'aaa authentication login'      | Yes ☑ / No ☐  |
+    ...
+    ```
+
+    **Compliance Percentage:** Calculated as (passed / total) * 100
+
+    **Permissions:** Requires AUDIT read permission
+    """
+    table = AuditService.get_cis_benchmark_table(db, session_id)
+
+    if not table:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Audit session {session_id} not found"
+        )
+
+    return table
+
+
+class CISBenchmarkAuditRequest(BaseModel):
+    """Request to execute CIS Benchmark audit."""
+    asset_id: int = Field(..., description="Target asset ID from Asset List")
+    ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
+    ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
+    ssh_secret: Optional[str] = Field(None, description="Enable secret (optional, not stored)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "asset_id": 25,
+                "ssh_username": "admin",
+                "ssh_password": "********",
+                "ssh_secret": "********"
+            }
+        }
+
+
+@router.post("/cisco/cis-benchmark/execute", response_model=CISBenchmarkTableResponse)
+def execute_cis_benchmark_audit(
+    request: CISBenchmarkAuditRequest,
+    current_user: User = Depends(require_permission("AUDIT", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Execute CIS Benchmark audit on a Cisco device.
+
+    Uses the official CIS Cisco IOS 15 Benchmark v4.1.1 section numbers
+    (1.1.1, 1.1.2, etc.) and returns results in the PDF table format.
+
+    **Workflow:**
+    1. User selects asset from Asset List
+    2. User enters SSH credentials (not stored)
+    3. System connects via SSH and runs targeted commands
+    4. System evaluates 70+ CIS security checks
+    5. Results stored permanently in database
+    6. Returns CIS Benchmark table with Yes/No checkmarks
+
+    **Response:** CIS Benchmark table format with compliance percentage
+
+    **Permissions:** Requires AUDIT write permission
+
+    **Note:** SSH credentials are used only for the audit session and never stored.
+    """
+    try:
+        session = AuditService.execute_cis_benchmark_audit(
+            db=db,
+            asset_id=request.asset_id,
+            user_id=current_user.id,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_secret=request.ssh_secret
+        )
+
+        # Return results in CIS Benchmark table format
+        table = AuditService.get_cis_benchmark_table(db, session.id)
+
+        if not table:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate CIS Benchmark table"
+            )
+
+        return table
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"CIS Benchmark audit failed: {str(e)}"
+        )

@@ -8,6 +8,7 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import Table from '../../components/common/Table';
+import CISBenchmarkTable from './CISBenchmarkTable';
 import './Auditing.css';
 
 const Auditing = () => {
@@ -23,6 +24,7 @@ const Auditing = () => {
   const [auditSession, setAuditSession] = useState(null);
   const [auditResults, setAuditResults] = useState([]);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState('detailed'); // 'detailed' or 'cis-table'
 
   useEffect(() => {
     fetchAssets();
@@ -204,6 +206,22 @@ const Auditing = () => {
 
       {auditSession && (
         <div className="audit-results">
+          {/* View Toggle */}
+          <div className="view-toggle">
+            <button
+              className={`toggle-btn ${viewMode === 'detailed' ? 'active' : ''}`}
+              onClick={() => setViewMode('detailed')}
+            >
+              Detailed View
+            </button>
+            <button
+              className={`toggle-btn ${viewMode === 'cis-table' ? 'active' : ''}`}
+              onClick={() => setViewMode('cis-table')}
+            >
+              CIS Benchmark Table
+            </button>
+          </div>
+
           <div className="results-summary">
             <div className="summary-cards">
               <div className={`summary-card ${getComplianceColor(auditSession.compliance?.compliance_pct || 0)}`}>
@@ -245,14 +263,22 @@ const Auditing = () => {
             </div>
           </div>
 
-          <div className="card">
-            <h3>Detailed Results ({auditResults.length} checks)</h3>
-            <Table
-              columns={resultsColumns}
-              data={auditResults}
-              emptyMessage="No results available"
+          {/* Conditional View Rendering */}
+          {viewMode === 'detailed' ? (
+            <div className="card">
+              <h3>Detailed Results ({auditResults.length} checks)</h3>
+              <Table
+                columns={resultsColumns}
+                data={auditResults}
+                emptyMessage="No results available"
+              />
+            </div>
+          ) : (
+            <CISBenchmarkTable
+              sessionId={auditSession.session_id}
+              apiClient={api}
             />
-          </div>
+          )}
         </div>
       )}
 
