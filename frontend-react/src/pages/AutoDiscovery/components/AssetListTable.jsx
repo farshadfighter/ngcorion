@@ -153,8 +153,8 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
             className="filter-select"
           >
             <option value="">All Types</option>
-            {assetTypeOptions.map((type) => (
-              <option key={type?.id || type} value={type?.id}>
+            {assetTypeOptions.map((type, index) => (
+              <option key={type?.id ?? `type-${index}`} value={type?.id}>
                 {type?.type_name || type}
               </option>
             ))}
