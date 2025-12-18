@@ -9,6 +9,7 @@ import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import Table from '../../components/common/Table';
 import CISBenchmarkTable from './CISBenchmarkTable';
+import { mockAuditSession, mockAuditResults } from './mockCISData';
 import './Auditing.css';
 
 const Auditing = () => {
@@ -91,6 +92,13 @@ const Auditing = () => {
     } finally {
       setExecuting(false);
     }
+  };
+
+  const handleLoadDemoData = () => {
+    setError('');
+    setAuditSession(mockAuditSession);
+    setAuditResults(mockAuditResults);
+    console.log('Demo data loaded');
   };
 
   const assetOptions = assets.map(asset => ({
@@ -195,6 +203,13 @@ const Auditing = () => {
         </div>
 
         <div className="form-actions">
+          <Button
+            onClick={handleLoadDemoData}
+            variant="secondary"
+            disabled={executing}
+          >
+            Load Demo Data
+          </Button>
           <Button
             onClick={handleExecuteAudit}
             disabled={executing || !selectedAssetId}

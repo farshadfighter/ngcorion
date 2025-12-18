@@ -4,6 +4,7 @@
    ========================================== */
 
 import { useState, useEffect } from 'react';
+import { mockCISTable } from './mockCISData';
 import './CISBenchmarkTable.css';
 
 const CISBenchmarkTable = ({ sessionId, apiClient }) => {
@@ -21,6 +22,14 @@ const CISBenchmarkTable = ({ sessionId, apiClient }) => {
     try {
       setLoading(true);
       setError('');
+
+      // Use mock data for demo session (ID 999)
+      if (sessionId === 999) {
+        setBenchmarkData(mockCISTable);
+        setLoading(false);
+        return;
+      }
+
       const response = await apiClient.get(`/api/audit/sessions/${sessionId}/cis-table`);
       setBenchmarkData(response.data);
     } catch (err) {
