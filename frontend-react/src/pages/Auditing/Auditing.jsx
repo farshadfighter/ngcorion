@@ -2,7 +2,7 @@
    NGCORION - Auditing Page
    ========================================== */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/axios';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -11,6 +11,41 @@ import Table from '../../components/common/Table';
 import CISBenchmarkTable from './CISBenchmarkTable';
 import { mockAuditSession, mockAuditResults } from './mockCISData';
 import './Auditing.css';
+
+// ============================================
+// LocalStorage Persistence Helpers
+// ============================================
+const AUDIT_STORAGE_KEY = 'audit_session';
+
+const loadAuditFromStorage = () => {
+  try {
+    const saved = localStorage.getItem(AUDIT_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Failed to load audit from localStorage:', e);
+  }
+  return null;
+};
+
+const saveAuditToStorage = (session, results) => {
+  try {
+    if (session) {
+      localStorage.setItem(AUDIT_STORAGE_KEY, JSON.stringify({ session, results }));
+    }
+  } catch (e) {
+    console.warn('Failed to save audit to localStorage:', e);
+  }
+};
+
+const clearAuditFromStorage = () => {
+  try {
+    localStorage.removeItem(AUDIT_STORAGE_KEY);
+  } catch (e) {
+    console.warn('Failed to clear audit from localStorage:', e);
+  }
+};
 
 const Auditing = () => {
   const [assets, setAssets] = useState([]);
@@ -27,8 +62,20 @@ const Auditing = () => {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed' or 'cis-table'
 
+  // Restore audit session from localStorage on mount
   useEffect(() => {
     fetchAssets();
+
+    // Restore saved audit session
+    const saved = loadAuditFromStorage();
+    if (saved && saved.session) {
+      setAuditSession(saved.session);
+      setAuditResults(saved.results || []);
+      // Set the selected asset to match the restored session
+      if (saved.session.asset_id) {
+        setSelectedAssetId(String(saved.session.asset_id));
+      }
+    }
   }, []);
 
   const fetchAssets = async () => {
@@ -83,6 +130,8 @@ const Auditing = () => {
         const resultsResponse = await api.get(`/api/audit/sessions/${sessionData.session_id}/results`);
         console.log('Results:', resultsResponse.data);
         setAuditResults(resultsResponse.data);
+        // Save to localStorage for persistence across page refreshes
+        saveAuditToStorage(sessionData, resultsResponse.data);
       }
 
     } catch (err) {
@@ -98,7 +147,15 @@ const Auditing = () => {
     setError('');
     setAuditSession(mockAuditSession);
     setAuditResults(mockAuditResults);
+    saveAuditToStorage(mockAuditSession, mockAuditResults);
     console.log('Demo data loaded');
+  };
+
+  // Clear audit session and localStorage
+  const handleClearSession = () => {
+    setAuditSession(null);
+    setAuditResults([]);
+    clearAuditFromStorage();
   };
 
   const assetOptions = assets.map(asset => ({
@@ -210,6 +267,15 @@ const Auditing = () => {
           >
             Load Demo Data
           </Button>
+          {auditSession && (
+            <Button
+              onClick={handleClearSession}
+              variant="secondary"
+              disabled={executing}
+            >
+              Clear Results
+            </Button>
+          )}
           <Button
             onClick={handleExecuteAudit}
             disabled={executing || !selectedAssetId}

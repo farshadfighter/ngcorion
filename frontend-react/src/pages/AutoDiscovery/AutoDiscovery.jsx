@@ -50,18 +50,23 @@ const AutoDiscovery = () => {
   // Polling ref
   const pollIntervalRef = useRef(null);
 
-  // Load initial data
+  // Load initial data and restore running scan state
   useEffect(() => {
     dispatch(fetchScanHistory());
     dispatch(fetchPendingHosts());
     dispatch(fetchAssetTypes());
+
+    // If there's a restored scan from localStorage, immediately check its status
+    if (currentScan && currentScan.status === 'running') {
+      dispatch(checkScanStatus(currentScan.scan_id));
+    }
 
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [dispatch]);
+  }, [dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Poll for scan status when running
   useEffect(() => {

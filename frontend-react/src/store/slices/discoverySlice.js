@@ -7,11 +7,52 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../api/axios';
 
 // ============================================
+// LocalStorage Persistence Helpers
+// ============================================
+const STORAGE_KEY = 'discovery_currentScan';
+
+const loadScanFromStorage = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Only restore if scan was running (not completed/failed)
+      if (parsed && parsed.status === 'running') {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load scan from localStorage:', e);
+  }
+  return null;
+};
+
+const saveScanToStorage = (scan) => {
+  try {
+    if (scan && scan.status === 'running') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(scan));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch (e) {
+    console.warn('Failed to save scan to localStorage:', e);
+  }
+};
+
+const clearScanFromStorage = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    console.warn('Failed to clear scan from localStorage:', e);
+  }
+};
+
+// ============================================
 // Initial State
 // ============================================
 const initialState = {
-  // Scan state
-  currentScan: null,
+  // Scan state - try to restore from localStorage
+  currentScan: loadScanFromStorage(),
   scanHistory: [],
 
   // Pending hosts awaiting approval
@@ -269,6 +310,7 @@ const discoverySlice = createSlice({
     // Clear current scan
     clearCurrentScan: (state) => {
       state.currentScan = null;
+      clearScanFromStorage();
     },
 
     // Set selected host for details/approval
@@ -298,6 +340,7 @@ const discoverySlice = createSlice({
       if (state.currentScan) {
         state.currentScan.status = 'stopped';
       }
+      clearScanFromStorage();
     },
   },
 
@@ -308,13 +351,16 @@ const discoverySlice = createSlice({
         state.loading.scan = true;
         state.error = null;
         state.currentScan = null;
+        clearScanFromStorage();
       })
       .addCase(startScan.fulfilled, (state, action) => {
         state.currentScan = action.payload;
+        saveScanToStorage(action.payload);
       })
       .addCase(startScan.rejected, (state, action) => {
         state.loading.scan = false;
         state.error = action.payload;
+        clearScanFromStorage();
       })
 
       // ===== Check Scan Status =====
@@ -322,11 +368,15 @@ const discoverySlice = createSlice({
         state.currentScan = action.payload;
         if (action.payload.status === 'completed' || action.payload.status === 'failed') {
           state.loading.scan = false;
+          clearScanFromStorage();
+        } else {
+          saveScanToStorage(action.payload);
         }
       })
       .addCase(checkScanStatus.rejected, (state, action) => {
         state.loading.scan = false;
         state.error = action.payload;
+        clearScanFromStorage();
       })
 
       // ===== Fetch Scan History =====
