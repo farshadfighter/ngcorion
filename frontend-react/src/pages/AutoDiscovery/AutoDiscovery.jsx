@@ -17,11 +17,10 @@ import {
 import { fetchAssetTypes } from '../../store/slices/assetsSlice';
 
 import NewScanModal from './components/NewScanModal';
-import PendingHostsTable from './components/PendingHostsTable';
 import ScanHistoryTable from './components/ScanHistoryTable';
 import ScanResultsModal from './components/ScanResultsModal';
 import ApplyDiscoveryModal from './components/ApplyDiscoveryModal';
-import AssetListTable from './components/AssetListTable';
+import AutoDiscoveryAssetListModal from './components/AutoDiscoveryAssetListModal';
 
 import './AutoDiscovery.css';
 
@@ -45,7 +44,7 @@ const AutoDiscovery = () => {
   const [selectedScan, setSelectedScan] = useState(null);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [selectedHostForApproval, setSelectedHostForApproval] = useState(null);
-  const [activeTab, setActiveTab] = useState('assets'); // 'assets', 'pending', or 'history'
+  const [showAssetListModal, setShowAssetListModal] = useState(false);
 
   // Polling ref
   const pollIntervalRef = useRef(null);
@@ -116,6 +115,15 @@ const AutoDiscovery = () => {
     }
   }, [dispatch]);
 
+  // Handle clearing all history
+  const handleClearHistory = useCallback(() => {
+    if (window.confirm('Are you sure you want to clear all scan history?')) {
+      scanHistory.forEach(scan => {
+        dispatch(deleteScan(scan.scan_id));
+      });
+    }
+  }, [dispatch, scanHistory]);
+
   // Handle host approval workflow
   const handleApproveHost = useCallback((host) => {
     setSelectedHostForApproval(host);
@@ -148,13 +156,20 @@ const AutoDiscovery = () => {
       <div className="discovery-header">
         <div className="header-content">
           <h1 className="page-title">Auto Discovery</h1>
-          <p className="page-subtitle">
-            Scan your network to discover and manage assets automatically
-          </p>
         </div>
         <div className="header-actions">
           <button
-            className="btn btn-icon"
+            className="btn btn-primary"
+            onClick={() => setShowScanModal(true)}
+            disabled={loading.scan}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            New Scan
+          </button>
+          <button
+            className="btn btn-secondary"
             onClick={handleRefresh}
             disabled={loading.history || loading.pending}
             title="Refresh"
@@ -162,17 +177,25 @@ const AutoDiscovery = () => {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
             </svg>
+            Refresh
           </button>
+          {scanHistory.length > 0 && (
+            <button
+              className="btn btn-secondary"
+              onClick={handleClearHistory}
+              disabled={loading.history}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+              </svg>
+              Clear History
+            </button>
+          )}
           <button
-            className="btn btn-primary"
-            onClick={() => setShowScanModal(true)}
-            disabled={loading.scan}
+            className="btn btn-dark"
+            onClick={() => setShowAssetListModal(true)}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            New Scan
+            Auto Discovery Asset list
           </button>
         </div>
       </div>
@@ -193,8 +216,8 @@ const AutoDiscovery = () => {
         </div>
       )}
 
-      {/* Active Scan Progress */}
-      {currentScan && currentScan.status === 'running' && (
+      {/* Active Scan Progress or Scan History */}
+      {currentScan && currentScan.status === 'running' ? (
         <div className="scan-progress-card">
           <div className="scan-progress-header">
             <div className="scan-info">
@@ -205,8 +228,8 @@ const AutoDiscovery = () => {
                 </svg>
               </div>
               <div className="scan-details">
-                <h3>{currentScan.job_name || 'Network Scan'}</h3>
-                <p>Target: <strong>{currentScan.target}</strong></p>
+                <h3>Scanning: {currentScan.target}</h3>
+                <p>please wait ... Scan started at {new Date(currentScan.started_at).toLocaleTimeString()}</p>
               </div>
             </div>
             <div className="scan-meta">
@@ -220,7 +243,7 @@ const AutoDiscovery = () => {
                   }
                 }}
               >
-                Stop
+                Stop Scan
               </button>
             </div>
           </div>
@@ -230,127 +253,78 @@ const AutoDiscovery = () => {
               style={{ width: `${getScanProgress()}%` }}
             />
           </div>
-          <p className="scan-progress-text">
-            Scanning in progress... Started at {new Date(currentScan.started_at).toLocaleTimeString()}
-          </p>
+        </div>
+      ) : (
+        <div className="scan-history-section">
+          {scanHistory.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              </div>
+              <h3>No scans yet. Start your first scan!</h3>
+            </div>
+          ) : (
+            <ScanHistoryTable
+              scans={scanHistory}
+              loading={loading.history}
+              onViewResults={handleViewResults}
+              onDelete={handleDeleteScan}
+            />
+          )}
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon pending">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{pendingHosts.length}</span>
-            <span className="stat-label">Pending Approval</span>
-          </div>
+      {/* Activity Log Section */}
+      <div className="activity-log-section">
+        <div className="activity-log-header">
+          <h3>Activity Log</h3>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon scans">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-            </svg>
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">{scanHistory.length}</span>
-            <span className="stat-label">Total Scans</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon completed">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-              <path d="M22 4L12 14.01l-3-3" />
-            </svg>
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">
-              {scanHistory.filter(s => s.status === 'completed').length}
-            </span>
-            <span className="stat-label">Completed</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon hosts">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-              <path d="M8 21h8M12 17v4" />
-            </svg>
-          </div>
-          <div className="stat-content">
-            <span className="stat-value">
-              {scanHistory.reduce((acc, s) => acc + (s.hosts_up || 0), 0)}
-            </span>
-            <span className="stat-label">Hosts Found</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="tab-navigation">
-        <button
-          className={`tab-btn ${activeTab === 'assets' ? 'active' : ''}`}
-          onClick={() => setActiveTab('assets')}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
-          Asset List
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
-          </svg>
-          Pending Hosts
-          {pendingHosts.length > 0 && (
-            <span className="tab-badge">{pendingHosts.length}</span>
+        <div className="activity-log-content">
+          {scanHistory.length === 0 && !currentScan ? (
+            <div className="activity-empty">
+              <p>No activity yet. Start a scan to see logs here.</p>
+            </div>
+          ) : (
+            <div className="activity-log-list">
+              {currentScan && currentScan.status === 'running' && (
+                <div className="activity-item activity-running">
+                  <div className="activity-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="10" />
+                    </svg>
+                  </div>
+                  <div className="activity-content">
+                    <p className="activity-message">Scan in progress: {currentScan.target}</p>
+                    <span className="activity-time">{new Date(currentScan.started_at).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+              )}
+              {scanHistory.slice(0, 10).map((scan) => (
+                <div key={scan.scan_id} className={`activity-item activity-${scan.status}`}>
+                  <div className="activity-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="12" cy="12" r="10" />
+                    </svg>
+                  </div>
+                  <div className="activity-content">
+                    <p className="activity-message">
+                      {scan.status === 'completed' && `Scan completed: Found ${scan.hosts_up || 0} hosts`}
+                      {scan.status === 'failed' && `Scan failed: ${scan.target}`}
+                      {scan.status === 'running' && `Scanning: ${scan.target}`}
+                    </p>
+                    <p className="activity-details">{scan.target}</p>
+                    <span className="activity-time">
+                      {scan.completed_at ? new Date(scan.completed_at).toLocaleTimeString() : new Date(scan.started_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 6v6l4 2" />
-          </svg>
-          Scan History
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div className="tab-content">
-        {activeTab === 'assets' && (
-          <AssetListTable
-            onScanAsset={handleStartScan}
-            isScanning={loading.scan}
-          />
-        )}
-        {activeTab === 'pending' && (
-          <PendingHostsTable
-            hosts={pendingHosts}
-            loading={loading.pending}
-            onApprove={handleApproveHost}
-            assetTypes={assetTypes}
-          />
-        )}
-        {activeTab === 'history' && (
-          <ScanHistoryTable
-            scans={scanHistory}
-            loading={loading.history}
-            onViewResults={handleViewResults}
-            onDelete={handleDeleteScan}
-          />
-        )}
+        </div>
       </div>
 
       {/* Modals */}
@@ -379,8 +353,16 @@ const AutoDiscovery = () => {
           onClose={() => {
             setShowApproveModal(false);
             setSelectedHostForApproval(null);
-            dispatch(fetchPendingHosts()); // Refresh the list
+            dispatch(fetchPendingHosts());
           }}
+        />
+      )}
+
+      {showAssetListModal && (
+        <AutoDiscoveryAssetListModal
+          onClose={() => setShowAssetListModal(false)}
+          onScanAsset={handleStartScan}
+          isScanning={loading.scan}
         />
       )}
     </div>
@@ -391,7 +373,7 @@ const AutoDiscovery = () => {
 const getScanTypeLabel = (type) => {
   const labels = {
     all_ports: 'All Ports',
-    well_known_ports: 'Well-Known',
+    well_known_ports: 'Well-Know Ports(1-1024)',
     custom_ports: 'Custom',
   };
   return labels[type] || type;

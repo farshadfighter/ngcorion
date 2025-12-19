@@ -308,7 +308,7 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
 
               {/* Scan Type */}
               <div className="form-group">
-                <label>Scan Type</label>
+                <div className="form-label">Scan Type</div>
                 <div className="radio-group">
                   <label className={`radio-card ${scanType === 'well_known_ports' ? 'selected' : ''}`}>
                     <input
