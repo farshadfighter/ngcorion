@@ -148,6 +148,25 @@ class AuditService:
         return db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
 
     @staticmethod
+    def get_all_sessions(db: Session, limit: int = 50) -> List[AuditSession]:
+        """
+        Get all audit sessions.
+
+        Args:
+            db: Database session
+            limit: Maximum number of sessions to return
+
+        Returns:
+            List of audit sessions (most recent first)
+        """
+        return (
+            db.query(AuditSession)
+            .order_by(AuditSession.started_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    @staticmethod
     def get_asset_audit_history(db: Session, asset_id: int, limit: int = 10) -> List[AuditSession]:
         """
         Get audit history for an asset.

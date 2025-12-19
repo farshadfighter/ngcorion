@@ -133,6 +133,28 @@ def execute_cisco_audit(
         )
 
 
+@router.get("/sessions", response_model=List[AuditSessionResponse])
+def list_audit_sessions(
+    limit: int = 50,
+    current_user: User = Depends(require_permission("AUDIT", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    List all audit sessions.
+
+    Returns most recent audit sessions (up to limit).
+
+    **Permissions:** Requires AUDIT read permission
+    """
+    sessions = AuditService.get_all_sessions(db, limit)
+
+    return [
+        AuditService.get_session_summary(db, s.id)
+        for s in sessions
+        if AuditService.get_session_summary(db, s.id)  # Filter out None values
+    ]
+
+
 @router.get("/sessions/{session_id}", response_model=AuditSessionResponse)
 def get_audit_session(
     session_id: int,
