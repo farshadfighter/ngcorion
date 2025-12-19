@@ -61,6 +61,7 @@ const Auditing = () => {
   const [auditResults, setAuditResults] = useState([]);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed' or 'cis-table'
+  const [auditCategory, setAuditCategory] = useState('device'); // 'device' or 'service'
 
   // Restore audit session from localStorage on mount
   useEffect(() => {
@@ -210,7 +211,31 @@ const Auditing = () => {
   return (
     <div className="auditing-page">
       <div className="page-header">
-        <h1 className="page-title">Security Auditing - Cisco CIS Compliance</h1>
+        <h1 className="page-title">Security Auditing</h1>
+      </div>
+
+      {/* Category Tabs */}
+      <div className="category-tabs">
+        <button
+          className={`category-tab ${auditCategory === 'device' ? 'active' : ''}`}
+          onClick={() => setAuditCategory('device')}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <path d="M8 21h8M12 17v4" />
+          </svg>
+          Operation and Device
+        </button>
+        <button
+          className={`category-tab ${auditCategory === 'service' ? 'active' : ''}`}
+          onClick={() => setAuditCategory('service')}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24" />
+          </svg>
+          Service
+        </button>
       </div>
 
       {error && (
@@ -219,7 +244,28 @@ const Auditing = () => {
         </div>
       )}
 
-      <div className="card audit-form-card">
+      {/* Service Section - Coming Soon */}
+      {auditCategory === 'service' && (
+        <div className="card">
+          <div className="coming-soon-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="coming-soon-icon">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+            <h2>Service Auditing</h2>
+            <p className="coming-soon-text">Coming Soon</p>
+            <p className="coming-soon-description">
+              Service-level security auditing features including Apache, IIS, Active Directory,
+              and SQL Server compliance checks will be available in a future release.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Operation and Device Section */}
+      {auditCategory === 'device' && (
+        <>
+          <div className="card audit-form-card">
         <h3>Execute Audit</h3>
 
         <div className="form-grid">
@@ -363,16 +409,18 @@ const Auditing = () => {
         </div>
       )}
 
-      {!auditSession && !executing && (
-        <div className="card">
-          <div className="placeholder-content">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="placeholder-icon">
-              <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
-            </svg>
-            <h3>No Audit Results</h3>
-            <p>Select an asset and execute an audit to see results here.</p>
-          </div>
-        </div>
+          {!auditSession && !executing && (
+            <div className="card">
+              <div className="placeholder-content">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="placeholder-icon">
+                  <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/>
+                </svg>
+                <h3>No Audit Results</h3>
+                <p>Select an asset and execute an audit to see results here.</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
