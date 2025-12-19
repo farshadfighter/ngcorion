@@ -63,6 +63,9 @@ const initialState = {
   // Preview state for apply modes
   previewData: null,
 
+  // Asset ports state
+  assetPorts: [],
+
   // Loading states
   loading: {
     scan: false,
@@ -72,6 +75,7 @@ const initialState = {
     matches: false,
     preview: false,
     applyMode: false,
+    ports: false,
   },
 
   // Error state
@@ -295,6 +299,78 @@ export const bulkApproveHosts = createAsyncThunk(
   }
 );
 
+/**
+ * Add ports to an asset (non-destructive merge)
+ */
+export const addPortsToAsset = createAsyncThunk(
+  'discovery/addPorts',
+  async ({ assetId, ports, scanId }, { rejectWithValue }) => {
+    try {
+      const requestBody = {
+        asset_id: assetId,
+        ports,
+      };
+      if (scanId) requestBody.scan_id = scanId;
+
+      const response = await api.post('/api/discovery/ports/add', requestBody);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to add ports');
+    }
+  }
+);
+
+/**
+ * Overwrite all ports for an asset (destructive)
+ */
+export const overwriteAssetPorts = createAsyncThunk(
+  'discovery/overwritePorts',
+  async ({ assetId, ports, scanId }, { rejectWithValue }) => {
+    try {
+      const requestBody = {
+        asset_id: assetId,
+        ports,
+      };
+      if (scanId) requestBody.scan_id = scanId;
+
+      const response = await api.post('/api/discovery/ports/overwrite', requestBody);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to overwrite ports');
+    }
+  }
+);
+
+/**
+ * Get all ports for an asset
+ */
+export const fetchAssetPorts = createAsyncThunk(
+  'discovery/fetchAssetPorts',
+  async (assetId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/discovery/assets/${assetId}/ports`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to fetch asset ports');
+    }
+  }
+);
+
+/**
+ * Delete a specific port
+ */
+export const deletePort = createAsyncThunk(
+  'discovery/deletePort',
+  async (portId, { rejectWithValue }) => {
+    try {
+      await api.delete(`/api/discovery/ports/${portId}`);
+      return portId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.detail || 'Failed to delete port');
+    }
+  }
+);
+
 // ============================================
 // Slice Definition
 // ============================================
@@ -493,6 +569,58 @@ const discoverySlice = createSlice({
       })
       .addCase(applyDiscoveryWithMode.rejected, (state, action) => {
         state.loading.applyMode = false;
+        state.error = action.payload;
+      })
+
+      // ===== Add Ports to Asset =====
+      .addCase(addPortsToAsset.pending, (state) => {
+        state.loading.ports = true;
+      })
+      .addCase(addPortsToAsset.fulfilled, (state) => {
+        state.loading.ports = false;
+      })
+      .addCase(addPortsToAsset.rejected, (state, action) => {
+        state.loading.ports = false;
+        state.error = action.payload;
+      })
+
+      // ===== Overwrite Asset Ports =====
+      .addCase(overwriteAssetPorts.pending, (state) => {
+        state.loading.ports = true;
+      })
+      .addCase(overwriteAssetPorts.fulfilled, (state) => {
+        state.loading.ports = false;
+      })
+      .addCase(overwriteAssetPorts.rejected, (state, action) => {
+        state.loading.ports = false;
+        state.error = action.payload;
+      })
+
+      // ===== Fetch Asset Ports =====
+      .addCase(fetchAssetPorts.pending, (state) => {
+        state.loading.ports = true;
+        state.assetPorts = [];
+      })
+      .addCase(fetchAssetPorts.fulfilled, (state, action) => {
+        state.loading.ports = false;
+        state.assetPorts = action.payload.ports || [];
+      })
+      .addCase(fetchAssetPorts.rejected, (state, action) => {
+        state.loading.ports = false;
+        state.error = action.payload;
+      })
+
+      // ===== Delete Port =====
+      .addCase(deletePort.pending, (state) => {
+        state.loading.ports = true;
+      })
+      .addCase(deletePort.fulfilled, (state, action) => {
+        state.loading.ports = false;
+        // Remove deleted port from assetPorts array
+        state.assetPorts = state.assetPorts.filter(p => p.id !== action.payload);
+      })
+      .addCase(deletePort.rejected, (state, action) => {
+        state.loading.ports = false;
         state.error = action.payload;
       });
   },

@@ -761,17 +761,24 @@ def evaluate_compliance(config_text: str, rules: List[CISRule]) -> Dict[str, Any
         - findings: List of individual rule results
     """
     findings = []
+    check_errors = 0
 
     for rule in rules:
         try:
             compliant = bool(rule.check(config_text))
-        except Exception:
+        except Exception as e:
             compliant = False
+            check_errors += 1
 
         try:
-            evidence = rule.evidence(config_text).strip()
+            evidence = rule.evidence(config_text)
+            if evidence is None:
+                evidence = "(no evidence)"
+            else:
+                evidence = str(evidence).strip()
         except Exception:
-            evidence = "(no evidence)"
+            evidence = "(error extracting evidence)"
+            check_errors += 1
 
         # Truncate long evidence
         if len(evidence) > 2500:
@@ -808,7 +815,8 @@ def evaluate_compliance(config_text: str, rules: List[CISRule]) -> Dict[str, Any
             "failed_scored": failed,
             "compliance_pct": simple_pct,
             "weighted_compliance_pct": weighted_pct,
-            "total_findings_including_info": len(findings)
+            "total_findings_including_info": len(findings),
+            "check_errors": check_errors
         },
         "findings": findings
     }

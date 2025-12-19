@@ -12,12 +12,15 @@ Orchestrates the complete audit workflow:
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
+import logging
 
 from app.models import AuditSession, AuditResult, Asset, User
 from app.models.audit import DeviceType, CheckStatus
 from .ssh_client import CiscoSSHClient, redact_sensitive_data
 from .cisco_rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
 from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
+
+logger = logging.getLogger(__name__)
 
 
 class AuditService:
@@ -125,16 +128,31 @@ class AuditService:
             db.commit()
             db.refresh(session)
 
+            logger.info(f"Audit completed for asset {asset_id} ({target_ip}): {report['summary']['compliance_pct']}% compliance")
             return session
 
         except Exception as e:
             # Mark session as failed
             session.status = "failed"
             session.completed_at = datetime.utcnow()
-            session.connection_error = f"{type(e).__name__}: {str(e)}"
+
+            # Sanitize error message to avoid exposing credentials
+            error_msg = str(e)
+            # Remove any potential credential leaks from error message
+            if "password" in error_msg.lower() or "secret" in error_msg.lower():
+                error_msg = f"{type(e).__name__}: Authentication or connection error"
+            else:
+                error_msg = f"{type(e).__name__}: {error_msg}"
+
+            # Truncate very long error messages
+            if len(error_msg) > 500:
+                error_msg = error_msg[:500] + "..."
+
+            session.connection_error = error_msg
             db.commit()
             db.refresh(session)
 
+            logger.error(f"Audit failed for asset {asset_id} ({target_ip}): {type(e).__name__}")
             raise
 
     @staticmethod
@@ -148,13 +166,14 @@ class AuditService:
         return db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
 
     @staticmethod
-    def get_all_sessions(db: Session, limit: int = 50) -> List[AuditSession]:
+    def get_all_sessions(db: Session, limit: int = 50, offset: int = 0) -> List[AuditSession]:
         """
-        Get all audit sessions.
+        Get all audit sessions with pagination.
 
         Args:
             db: Database session
             limit: Maximum number of sessions to return
+            offset: Number of sessions to skip
 
         Returns:
             List of audit sessions (most recent first)
@@ -162,9 +181,23 @@ class AuditService:
         return (
             db.query(AuditSession)
             .order_by(AuditSession.started_at.desc())
+            .offset(offset)
             .limit(limit)
             .all()
         )
+
+    @staticmethod
+    def get_sessions_count(db: Session) -> int:
+        """
+        Get total count of audit sessions.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Total number of audit sessions
+        """
+        return db.query(AuditSession).count()
 
     @staticmethod
     def get_asset_audit_history(db: Session, asset_id: int, limit: int = 10) -> List[AuditSession]:
@@ -235,6 +268,31 @@ class AuditService:
         }
 
     @staticmethod
+    def delete_audit_session(db: Session, session_id: int) -> bool:
+        """
+        Delete an audit session and all its results.
+
+        Args:
+            db: Database session
+            session_id: Audit session ID to delete
+
+        Returns:
+            bool: True if deleted successfully
+
+        Raises:
+            ValueError: If session not found
+        """
+        session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+        if not session:
+            raise ValueError(f"Audit session {session_id} not found")
+
+        # Results are deleted automatically via cascade
+        db.delete(session)
+        db.commit()
+
+        return True
+
+    @staticmethod
     def get_cis_benchmark_table(db: Session, session_id: int) -> Optional[Dict[str, Any]]:
         """
         Get CIS Benchmark table format results.
@@ -271,7 +329,15 @@ class AuditService:
 
         for sec in CIS_BENCHMARK_SECTIONS:
             rule_id = sec["rule_id"]
+            section_num = sec["section"]
+
+            # Try both formats: IOS-L1-* (internal) and CIS-* (CIS benchmark)
+            # The execute_cis_benchmark_audit uses CIS-* format
             result = results_by_id.get(rule_id)
+            if not result:
+                # Try CIS section format (e.g., CIS-1.1.1)
+                cis_id = f"CIS-{section_num}"
+                result = results_by_id.get(cis_id)
 
             if result:
                 set_correctly = result.status == CheckStatus.PASS
@@ -284,7 +350,7 @@ class AuditService:
                 set_correctly = None
 
             sections.append({
-                "section": sec["section"],
+                "section": section_num,
                 "recommendation": sec["recommendation"],
                 "set_correctly": set_correctly
             })
@@ -410,14 +476,27 @@ class AuditService:
             db.commit()
             db.refresh(session)
 
+            logger.info(f"CIS Benchmark audit completed for asset {asset_id} ({target_ip}): {report['summary']['compliance_pct']}% compliance")
             return session
 
         except Exception as e:
             # Mark session as failed
             session.status = "failed"
             session.completed_at = datetime.utcnow()
-            session.connection_error = f"{type(e).__name__}: {str(e)}"
+
+            # Sanitize error message to avoid exposing credentials
+            error_msg = str(e)
+            if "password" in error_msg.lower() or "secret" in error_msg.lower():
+                error_msg = f"{type(e).__name__}: Authentication or connection error"
+            else:
+                error_msg = f"{type(e).__name__}: {error_msg}"
+
+            if len(error_msg) > 500:
+                error_msg = error_msg[:500] + "..."
+
+            session.connection_error = error_msg
             db.commit()
             db.refresh(session)
 
+            logger.error(f"CIS Benchmark audit failed for asset {asset_id} ({target_ip}): {type(e).__name__}")
             raise

@@ -7,7 +7,12 @@ Based on netmiko library with "turbo" command collection strategy.
 
 from typing import List, Optional
 from netmiko import ConnectHandler
+from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
 import re
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Turbo Commands - Targeted snippets instead of full running-config
 CISCO_TURBO_COMMANDS: List[str] = [
@@ -93,7 +98,12 @@ class CiscoSSHClient:
     SSH client for Cisco IOS/IOS-XE devices.
 
     Handles connection, command execution, and cleanup with proper error handling.
+    Includes retry logic for transient failures.
     """
+
+    # Default retry settings
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2  # seconds
 
     def __init__(self,
                  ip: str,
@@ -101,8 +111,9 @@ class CiscoSSHClient:
                  password: str,
                  secret: Optional[str] = None,
                  device_type: str = "cisco_ios",
-                 timeout: int = 20,
-                 fast_cli: bool = True):
+                 timeout: int = 30,
+                 fast_cli: bool = True,
+                 max_retries: int = 3):
         """
         Initialize SSH client parameters.
 
@@ -114,6 +125,7 @@ class CiscoSSHClient:
             device_type: Netmiko device type (default: cisco_ios)
             timeout: Connection/command timeout in seconds
             fast_cli: Enable fast CLI mode (reduces delays)
+            max_retries: Maximum number of connection retries
         """
         self.ip = ip
         self.username = username
@@ -122,39 +134,87 @@ class CiscoSSHClient:
         self.device_type = device_type
         self.timeout = timeout
         self.fast_cli = fast_cli
+        self.max_retries = max_retries
         self.connection = None
+        self._in_enable_mode = False
 
     def connect(self) -> None:
         """
-        Establish SSH connection to device.
+        Establish SSH connection to device with retry logic.
 
         Raises:
-            Exception: If connection fails
+            NetmikoAuthenticationException: If authentication fails
+            NetmikoTimeoutException: If connection times out after all retries
+            Exception: For other connection failures
         """
-        self.connection = ConnectHandler(
-            device_type=self.device_type,
-            ip=self.ip,
-            username=self.username,
-            password=self.password,
-            secret=self.secret,
-            fast_cli=self.fast_cli,
-            timeout=self.timeout,
-            global_delay_factor=1
-        )
+        last_exception = None
 
-        # Try to enter enable mode if secret provided
-        if self.secret:
+        for attempt in range(1, self.max_retries + 1):
             try:
-                self.connection.enable()
-            except Exception:
-                # Continue even if enable fails - some commands still work
-                pass
+                logger.debug(f"SSH connection attempt {attempt}/{self.max_retries} to {self.ip}")
 
-        # Disable paging
+                self.connection = ConnectHandler(
+                    device_type=self.device_type,
+                    ip=self.ip,
+                    username=self.username,
+                    password=self.password,
+                    secret=self.secret,
+                    fast_cli=self.fast_cli,
+                    timeout=self.timeout,
+                    global_delay_factor=1,
+                    banner_timeout=20,  # Longer banner timeout for slow devices
+                    auth_timeout=20     # Longer auth timeout
+                )
+
+                # Try to enter enable mode if secret provided
+                if self.secret:
+                    try:
+                        self.connection.enable()
+                        self._in_enable_mode = True
+                        logger.debug(f"Entered enable mode on {self.ip}")
+                    except Exception as e:
+                        logger.warning(f"Failed to enter enable mode on {self.ip}: {e}")
+                        # Continue even if enable fails - some commands still work
+
+                # Disable paging
+                try:
+                    self.connection.send_command("terminal length 0", cmd_verify=False)
+                except Exception:
+                    pass
+
+                logger.info(f"Successfully connected to {self.ip}")
+                return  # Success - exit retry loop
+
+            except NetmikoAuthenticationException:
+                # Don't retry on auth failures - credentials are wrong
+                logger.error(f"Authentication failed for {self.ip}")
+                raise
+
+            except NetmikoTimeoutException as e:
+                last_exception = e
+                logger.warning(f"Connection timeout to {self.ip} (attempt {attempt}/{self.max_retries})")
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+            except Exception as e:
+                last_exception = e
+                logger.warning(f"Connection error to {self.ip} (attempt {attempt}/{self.max_retries}): {type(e).__name__}")
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+        # All retries exhausted
+        error_msg = f"Failed to connect to {self.ip} after {self.max_retries} attempts"
+        logger.error(error_msg)
+        raise last_exception or Exception(error_msg)
+
+    def is_connected(self) -> bool:
+        """Check if the SSH connection is still active."""
+        if not self.connection:
+            return False
         try:
-            self.connection.send_command("terminal length 0", cmd_verify=False)
+            return self.connection.is_alive()
         except Exception:
-            pass
+            return False
 
     def collect_turbo(self) -> str:
         """
@@ -169,14 +229,33 @@ class CiscoSSHClient:
         if not self.connection:
             raise RuntimeError("Not connected. Call connect() first.")
 
+        if not self.is_connected():
+            raise RuntimeError("SSH connection is no longer active.")
+
         chunks: List[str] = []
+        failed_commands = 0
+        total_commands = len(CISCO_TURBO_COMMANDS)
 
         for cmd in CISCO_TURBO_COMMANDS:
             try:
-                out = self.connection.send_command(cmd, cmd_verify=False)
+                out = self.connection.send_command(
+                    cmd,
+                    cmd_verify=False,
+                    read_timeout=30  # Per-command timeout
+                )
                 chunks.append(f"!! {cmd}\n{out}\n")
             except Exception as e:
-                chunks.append(f"!! {cmd}\n<<ERROR: {type(e).__name__}: {e}>>\n")
+                failed_commands += 1
+                error_msg = str(e)
+                # Truncate very long error messages
+                if len(error_msg) > 200:
+                    error_msg = error_msg[:200] + "..."
+                chunks.append(f"!! {cmd}\n<<ERROR: {type(e).__name__}: {error_msg}>>\n")
+                logger.warning(f"Command failed on {self.ip}: {cmd[:50]}... - {type(e).__name__}")
+
+        # Log summary
+        success_rate = ((total_commands - failed_commands) / total_commands) * 100
+        logger.info(f"Turbo collection on {self.ip}: {total_commands - failed_commands}/{total_commands} commands succeeded ({success_rate:.1f}%)")
 
         return "\n".join(chunks).strip()
 

@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAssets } from '../../../store/slices/assetsSlice';
+import ViewAssetPortsModal from './ViewAssetPortsModal';
 
 // Tab definitions
 const TABS = [
@@ -29,6 +30,10 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
   const [scanType, setScanType] = useState('well_known_ports');
   const [customPorts, setCustomPorts] = useState('');
   const [protocol, setProtocol] = useState('TCP');
+
+  // View ports modal state
+  const [showViewPorts, setShowViewPorts] = useState(false);
+  const [assetToViewPorts, setAssetToViewPorts] = useState(null);
 
   // Load assets on mount
   useEffect(() => {
@@ -379,6 +384,19 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
                       </button>
                       <button
                         className="btn btn-sm btn-icon"
+                        onClick={() => {
+                          setAssetToViewPorts(asset);
+                          setShowViewPorts(true);
+                        }}
+                        title="View ports"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                          <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-icon"
                         title="Edit asset"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -543,6 +561,17 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* View Asset Ports Modal */}
+      {showViewPorts && assetToViewPorts && (
+        <ViewAssetPortsModal
+          asset={assetToViewPorts}
+          onClose={() => {
+            setShowViewPorts(false);
+            setAssetToViewPorts(null);
+          }}
+        />
       )}
     </div>
   );

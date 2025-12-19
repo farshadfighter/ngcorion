@@ -9,7 +9,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { applyDiscoveryWithMode, previewDiscoveryApplication } from '../../../store/slices/discoverySlice';
+import {
+  applyDiscoveryWithMode,
+  previewDiscoveryApplication,
+  addPortsToAsset,
+  overwriteAssetPorts
+} from '../../../store/slices/discoverySlice';
 import { fetchAssets, fetchAssetTypes } from '../../../store/slices/assetsSlice';
 import api from '../../../api/axios';
 import './ManagePortsModal.css';
@@ -154,19 +159,20 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
 
         // Add ports if any
         if (openPorts.length > 0) {
-          const portsPayload = {
-            asset_id: newAsset.id,
-            ports: openPorts.map(p => ({
-              port_number: p.port,
-              protocol: (p.protocol || 'tcp').toUpperCase(),
-              service_name: p.service,
-              service_product: p.product,
-              service_version: p.version,
-              state: p.state || 'open'
-            })),
-            scan_id: host.scan_id
-          };
-          await api.post('/api/discovery/ports/add', portsPayload);
+          const ports = openPorts.map(p => ({
+            port_number: p.port,
+            protocol: (p.protocol || 'tcp').toUpperCase(),
+            service_name: p.service,
+            service_product: p.product,
+            service_version: p.version,
+            state: p.state || 'open'
+          }));
+
+          await dispatch(addPortsToAsset({
+            assetId: newAsset.id,
+            ports,
+            scanId: host.scan_id
+          })).unwrap();
         }
 
         if (onSuccess) {
@@ -182,24 +188,26 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
           return;
         }
 
-        const portsPayload = {
-          asset_id: matchingAsset.id,
-          ports: openPorts.map(p => ({
-            port_number: p.port,
-            protocol: (p.protocol || 'tcp').toUpperCase(),
-            service_name: p.service,
-            service_product: p.product,
-            service_version: p.version,
-            state: p.state || 'open'
-          })),
-          scan_id: host.scan_id
+        const ports = openPorts.map(p => ({
+          port_number: p.port,
+          protocol: (p.protocol || 'tcp').toUpperCase(),
+          service_name: p.service,
+          service_product: p.product,
+          service_version: p.version,
+          state: p.state || 'open'
+        }));
+
+        const portPayload = {
+          assetId: matchingAsset.id,
+          ports,
+          scanId: host.scan_id
         };
 
-        const endpoint = selectedMode === 'overwrite'
-          ? '/api/discovery/ports/overwrite'
-          : '/api/discovery/ports/add';
-
-        await api.post(endpoint, portsPayload);
+        if (selectedMode === 'overwrite') {
+          await dispatch(overwriteAssetPorts(portPayload)).unwrap();
+        } else {
+          await dispatch(addPortsToAsset(portPayload)).unwrap();
+        }
 
         // Update asset fields if needed
         if (selectedMode === 'merge') {

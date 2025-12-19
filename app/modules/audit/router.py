@@ -136,23 +136,50 @@ def execute_cisco_audit(
 @router.get("/sessions", response_model=List[AuditSessionResponse])
 def list_audit_sessions(
     limit: int = 50,
+    offset: int = 0,
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
     """
-    List all audit sessions.
+    List all audit sessions with pagination.
 
-    Returns most recent audit sessions (up to limit).
+    Returns most recent audit sessions.
+
+    **Query Parameters:**
+    - limit: Maximum number of sessions to return (default: 50, max: 100)
+    - offset: Number of sessions to skip (default: 0)
 
     **Permissions:** Requires AUDIT read permission
     """
-    sessions = AuditService.get_all_sessions(db, limit)
+    # Cap limit at 100 to prevent excessive queries
+    limit = min(limit, 100)
 
-    return [
-        AuditService.get_session_summary(db, s.id)
-        for s in sessions
-        if AuditService.get_session_summary(db, s.id)  # Filter out None values
-    ]
+    sessions = AuditService.get_all_sessions(db, limit, offset)
+
+    # Build summaries efficiently (single call per session)
+    summaries = []
+    for s in sessions:
+        summary = AuditService.get_session_summary(db, s.id)
+        if summary:
+            summaries.append(summary)
+
+    return summaries
+
+
+@router.get("/sessions/count")
+def get_audit_sessions_count(
+    current_user: User = Depends(require_permission("AUDIT", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Get total count of audit sessions.
+
+    Useful for pagination when combined with the sessions list endpoint.
+
+    **Permissions:** Requires AUDIT read permission
+    """
+    count = AuditService.get_sessions_count(db)
+    return {"total": count}
 
 
 @router.get("/sessions/{session_id}", response_model=AuditSessionResponse)
@@ -245,10 +272,45 @@ def get_asset_audit_history(
 
     sessions = AuditService.get_asset_audit_history(db, asset_id, limit)
 
-    return [
-        AuditService.get_session_summary(db, s.id)
-        for s in sessions
-    ]
+    # Build summaries efficiently
+    summaries = []
+    for s in sessions:
+        summary = AuditService.get_session_summary(db, s.id)
+        if summary:
+            summaries.append(summary)
+
+    return summaries
+
+
+@router.delete("/sessions/{session_id}")
+def delete_audit_session(
+    session_id: int,
+    current_user: User = Depends(require_permission("AUDIT", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an audit session and all its results.
+
+    **Permissions:** Requires AUDIT write permission
+
+    **Note:** This permanently deletes the audit session and all associated results.
+    """
+    session = AuditService.get_audit_session(db, session_id)
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Audit session {session_id} not found"
+        )
+
+    try:
+        AuditService.delete_audit_session(db, session_id)
+        return {"message": f"Audit session {session_id} deleted successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete audit session: {str(e)}"
+        )
 
 
 # ========================= CIS BENCHMARK TABLE ENDPOINTS =========================
