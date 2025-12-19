@@ -858,7 +858,7 @@ async def add_ports_to_asset(
     This is useful when you want to add newly discovered ports without affecting existing ones.
     """
     # Check permission
-    check_discovery_permission(current_user, "edit", db)
+    check_discovery_permission(current_user, "write", db)
 
     # Verify asset belongs to user (if not admin)
     if current_user.role != UserRole.ADMIN:
@@ -905,7 +905,7 @@ async def overwrite_asset_ports(
     This is useful when you want the scan results to be the single source of truth for ports.
     """
     # Check permission
-    check_discovery_permission(current_user, "edit", db)
+    check_discovery_permission(current_user, "write", db)
 
     # Verify asset belongs to user (if not admin)
     if current_user.role != UserRole.ADMIN:
@@ -949,7 +949,7 @@ async def get_asset_ports(
     Get all ports for an asset
     """
     # Check permission
-    check_discovery_permission(current_user, "view", db)
+    check_discovery_permission(current_user, "read", db)
 
     # Verify asset belongs to user (if not admin)
     if current_user.role != UserRole.ADMIN:
