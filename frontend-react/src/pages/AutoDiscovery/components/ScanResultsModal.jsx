@@ -2,12 +2,28 @@
  * ScanResultsModal - Display detailed scan results
  */
 
-import React from 'react';
+import React, { useState } from 'react';
+import ManagePortsModal from './ManagePortsModal';
 
 const ScanResultsModal = ({ scan, onClose }) => {
+  const [selectedHost, setSelectedHost] = useState(null);
+  const [showManagePorts, setShowManagePorts] = useState(false);
+
   if (!scan) return null;
 
   const hosts = scan.hosts || [];
+
+  // Handle opening Manage Ports modal
+  const handleManagePorts = (host) => {
+    setSelectedHost(host);
+    setShowManagePorts(true);
+  };
+
+  // Handle successful port management
+  const handleManageSuccess = (result) => {
+    console.log('Port management successful:', result);
+    // Optionally refresh scan results or show success message
+  };
 
   // Format date
   const formatDate = (dateStr) => {
@@ -99,6 +115,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     <th>OS Info</th>
                     <th>Open Ports</th>
                     <th>State</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,6 +170,15 @@ const ScanResultsModal = ({ scan, onClose }) => {
                           {host.state || 'unknown'}
                         </span>
                       </td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleManagePorts(host)}
+                          title="Manage ports for this host"
+                        >
+                          Manage Port
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,6 +224,18 @@ const ScanResultsModal = ({ scan, onClose }) => {
           </button>
         </div>
       </div>
+
+      {/* Manage Ports Modal */}
+      {showManagePorts && selectedHost && (
+        <ManagePortsModal
+          host={selectedHost}
+          onClose={() => {
+            setShowManagePorts(false);
+            setSelectedHost(null);
+          }}
+          onSuccess={handleManageSuccess}
+        />
+      )}
     </div>
   );
 };
