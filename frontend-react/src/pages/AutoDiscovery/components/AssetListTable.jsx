@@ -310,7 +310,7 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
               <div className="form-group">
                 <div className="form-label">Scan Type</div>
                 <div className="radio-group">
-                  <label className={`radio-card ${scanType === 'well_known_ports' ? 'selected' : ''}`}>
+                  <label key="well_known_ports" className={`radio-card ${scanType === 'well_known_ports' ? 'selected' : ''}`}>
                     <input
                       type="radio"
                       name="scan_type"
@@ -325,7 +325,7 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
                     <span className="radio-badge recommended">Recommended</span>
                   </label>
 
-                  <label className={`radio-card ${scanType === 'all_ports' ? 'selected' : ''}`}>
+                  <label key="all_ports" className={`radio-card ${scanType === 'all_ports' ? 'selected' : ''}`}>
                     <input
                       type="radio"
                       name="scan_type"
@@ -339,7 +339,7 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
                     </div>
                   </label>
 
-                  <label className={`radio-card ${scanType === 'custom_ports' ? 'selected' : ''}`}>
+                  <label key="custom_ports" className={`radio-card ${scanType === 'custom_ports' ? 'selected' : ''}`}>
                     <input
                       type="radio"
                       name="scan_type"
