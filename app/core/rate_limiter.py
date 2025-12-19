@@ -2,7 +2,7 @@
 Rate Limiter for Discovery Scans
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.user import User
@@ -53,7 +53,7 @@ class RateLimiter:
             )
 
         # Check hourly scan limit
-        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         recent_scans = db.query(DiscoveryScan).filter(
             DiscoveryScan.user_id == user_id,
             DiscoveryScan.started_at > one_hour_ago
@@ -89,7 +89,7 @@ class RateLimiter:
         ).count()
 
         # Hourly scans
-        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         recent_scans = db.query(DiscoveryScan).filter(
             DiscoveryScan.user_id == user_id,
             DiscoveryScan.started_at > one_hour_ago

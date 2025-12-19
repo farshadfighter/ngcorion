@@ -8,7 +8,7 @@ Provides FastAPI dependency functions for:
 """
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+from jose import JWTError, ExpiredSignatureError, jwt
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
@@ -32,7 +32,8 @@ def get_current_user(
         User: Authenticated user object
 
     Raises:
-        HTTPException: 401 if token is invalid or user not found
+        HTTPException: 401 if token is invalid, expired, or user not found
+        HTTPException: 403 if user account is disabled
     """
     token = credentials.credentials
 
@@ -42,12 +43,20 @@ def get_current_user(
         if username is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token: missing subject"
+                detail="Invalid token: missing subject",
+                headers={"WWW-Authenticate": "Bearer"}
             )
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}"
+            detail=f"Invalid token: {str(e)}",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
     user = db.query(User).filter(User.username == username).first()
@@ -55,6 +64,13 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
+        )
+
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is disabled"
         )
 
     return user

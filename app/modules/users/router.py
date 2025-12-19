@@ -198,24 +198,17 @@ def delete_user(
 ):
     """
     Delete user
-    
+
     Requires: user_management.delete permission (or admin role)
-    
+
     - **user_id**: User ID
-    
+
     Note: This operation is irreversible! User's permissions are also deleted.
-    
+
     Warning: Cannot delete yourself or the last admin user.
     """
     check_user_management_permission(current_user, "delete", db)
-    
-    # Prevent self-deletion
-    if user_id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot delete yourself"
-        )
-    
+
     service = UserService(db)
-    result = service.delete_user(user_id)
+    result = service.delete_user(user_id, current_user_id=current_user.id)
     return result

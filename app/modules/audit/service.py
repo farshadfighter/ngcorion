@@ -11,7 +11,7 @@ Orchestrates the complete audit workflow:
 
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.models import AuditSession, AuditResult, Asset, User
@@ -73,7 +73,7 @@ class AuditService:
             target_ip=target_ip,
             device_type=DeviceType.CISCO,
             status="running",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         db.add(session)
         db.commit()
@@ -101,7 +101,7 @@ class AuditService:
 
             # 7. Update session with results
             session.status = "completed"
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(timezone.utc)
             session.total_checks = report["summary"]["total_rules_scored"]
             session.passed_checks = report["summary"]["passed_scored"]
             session.failed_checks = report["summary"]["failed_scored"]
@@ -121,7 +121,7 @@ class AuditService:
                     level=finding["level"],
                     status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
                     evidence_snippet=finding["evidence"],
-                    checked_at=datetime.utcnow()
+                    checked_at=datetime.now(timezone.utc)
                 )
                 db.add(result)
 
@@ -134,7 +134,7 @@ class AuditService:
         except Exception as e:
             # Mark session as failed
             session.status = "failed"
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(timezone.utc)
 
             # Sanitize error message to avoid exposing credentials
             error_msg = str(e)
@@ -422,7 +422,7 @@ class AuditService:
             target_ip=target_ip,
             device_type=DeviceType.CISCO,
             status="running",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         db.add(session)
         db.commit()
@@ -449,7 +449,7 @@ class AuditService:
 
             # 7. Update session with results
             session.status = "completed"
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(timezone.utc)
             session.total_checks = report["summary"]["total_rules_scored"]
             session.passed_checks = report["summary"]["passed_scored"]
             session.failed_checks = report["summary"]["failed_scored"]
@@ -469,7 +469,7 @@ class AuditService:
                     level=finding["level"],
                     status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
                     evidence_snippet=finding["evidence"],
-                    checked_at=datetime.utcnow()
+                    checked_at=datetime.now(timezone.utc)
                 )
                 db.add(result)
 
@@ -482,7 +482,7 @@ class AuditService:
         except Exception as e:
             # Mark session as failed
             session.status = "failed"
-            session.completed_at = datetime.utcnow()
+            session.completed_at = datetime.now(timezone.utc)
 
             # Sanitize error message to avoid exposing credentials
             error_msg = str(e)

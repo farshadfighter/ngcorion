@@ -8,10 +8,10 @@ API endpoints for network scanning and asset discovery
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.dependencies import get_current_user
 from app.models.user import User, UserRole
 from app.models.asset import Asset
 from app.models.discovery import DiscoveredHost as DiscoveredHostModel
@@ -366,7 +366,7 @@ async def approve_discovered_host(
         host.status = "merged"
         host.matched_asset_id = asset_id
         host.approved_by_user_id = current_user.id
-        host.approved_at = datetime.utcnow()
+        host.approved_at = datetime.now(timezone.utc)
 
         db.commit()
 
@@ -405,7 +405,7 @@ async def approve_discovered_host(
         host.status = "approved"
         host.matched_asset_id = asset.id
         host.approved_by_user_id = current_user.id
-        host.approved_at = datetime.utcnow()
+        host.approved_at = datetime.now(timezone.utc)
 
         db.commit()
 
@@ -419,7 +419,7 @@ async def approve_discovered_host(
         # Mark as reviewed but don't do anything
         host.status = "skipped"
         host.approved_by_user_id = current_user.id
-        host.approved_at = datetime.utcnow()
+        host.approved_at = datetime.now(timezone.utc)
         db.commit()
 
         return {
@@ -455,7 +455,7 @@ async def reject_discovered_host(
     # Mark as rejected
     host.status = "rejected"
     host.approved_by_user_id = current_user.id
-    host.approved_at = datetime.utcnow()
+    host.approved_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -531,7 +531,7 @@ async def bulk_approve_hosts(
             host.status = "approved"
             host.matched_asset_id = asset.id
             host.approved_by_user_id = current_user.id
-            host.approved_at = datetime.utcnow()
+            host.approved_at = datetime.now(timezone.utc)
 
             created_assets.append({
                 "host_id": host_id,
@@ -1200,7 +1200,7 @@ async def apply_discovery_with_mode(
         host.status = "approved"
         host.matched_asset_id = asset.id
         host.approved_by_user_id = current_user.id
-        host.approved_at = datetime.utcnow()
+        host.approved_at = datetime.now(timezone.utc)
 
         db.commit()
 
@@ -1335,7 +1335,7 @@ async def apply_discovery_with_mode(
         host.status = "merged"
         host.matched_asset_id = asset.id
         host.approved_by_user_id = current_user.id
-        host.approved_at = datetime.utcnow()
+        host.approved_at = datetime.now(timezone.utc)
 
         db.commit()
 

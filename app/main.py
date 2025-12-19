@@ -80,17 +80,24 @@ app.include_router(audit_router.router)
 
 @app.get("/")
 def root():
+    """Application root endpoint with basic info."""
     return {
-        "project": "Ngicorn",
-        "version": "1.0.6",
+        "project": settings.PROJECT_NAME,
+        "version": settings.VERSION,
         "status": "running",
-        "features": ["Auditing", "Hardening"]
+        "features": ["Asset Management", "Network Discovery", "Security Auditing"]
     }
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    """
+    Health check endpoint for monitoring.
+
+    Returns basic health status. For production, consider adding
+    database connectivity check.
+    """
+    return {"status": "ok", "version": settings.VERSION}
 
 
 if __name__ == "__main__":

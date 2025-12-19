@@ -163,16 +163,45 @@ class UserService:
         
         return user
     
-    def delete_user(self, user_id: int) -> dict:
-        """Delete user (permissions are deleted automatically via CASCADE)"""
+    def delete_user(self, user_id: int, current_user_id: int = None) -> dict:
+        """
+        Delete user (permissions are deleted automatically via CASCADE)
+
+        Args:
+            user_id: ID of the user to delete
+            current_user_id: ID of the user performing the deletion (optional)
+
+        Raises:
+            HTTPException: If trying to delete self or the last admin
+        """
         user = self.get_user_by_id(user_id)
         username = user.username
-        
+
+        # Prevent self-deletion if current_user_id is provided
+        if current_user_id and user_id == current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You cannot delete yourself"
+            )
+
+        # Prevent deleting the last admin user
+        if user.role == UserRole.ADMIN:
+            admin_count = self.db.query(User).filter(
+                User.role == UserRole.ADMIN,
+                User.is_active == True
+            ).count()
+
+            if admin_count <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Cannot delete the last admin user. Create another admin first."
+                )
+
         self.db.delete(user)
         self.db.commit()
-        
+
         print(f"[-] User deleted: {username}")
-        
+
         return {
             "success": True,
             "message": f"User '{username}' deleted successfully"

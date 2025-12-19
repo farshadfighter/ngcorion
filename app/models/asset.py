@@ -10,7 +10,7 @@ the Asset Requirement form (5 pages) and view in Asset List.
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, Enum, Numeric
 from sqlalchemy.orm import relationship
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import Optional, Dict, Any, List
 import re
 from app.core.database import Base
@@ -471,7 +471,7 @@ class Asset(Base):
     @property
     def age_days(self) -> int:
         """Days since asset creation."""
-        return (datetime.utcnow() - self.created_at).days
+        return (datetime.now(timezone.utc) - self.created_at).days
 
     @property
     def days_since_audit(self) -> Optional[int]:

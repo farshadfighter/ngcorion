@@ -5,7 +5,7 @@ Handles all network discovery operations with database persistence
 
 import uuid
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
@@ -83,7 +83,7 @@ class DiscoveryService:
             ports=ports,
             protocol=protocol,
             status="pending",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
 
         db.add(scan)
@@ -143,7 +143,7 @@ class DiscoveryService:
             if error_message:
                 scan.error_message = error_message
             if status in ["completed", "failed"]:
-                scan.completed_at = datetime.utcnow()
+                scan.completed_at = datetime.now(timezone.utc)
             db.commit()
 
     # ==========================================
@@ -167,7 +167,7 @@ class DiscoveryService:
         try:
             # Update status to running
             scan.status = "running"
-            scan.started_at = datetime.utcnow()
+            scan.started_at = datetime.now(timezone.utc)
             db.commit()
 
             logger.info(f"Executing scan {scan_id}: {scan.target}")
@@ -185,7 +185,7 @@ class DiscoveryService:
                 # Scan failed
                 scan.status = "failed"
                 scan.error_message = result.get("error", "Unknown error")
-                scan.completed_at = datetime.utcnow()
+                scan.completed_at = datetime.now(timezone.utc)
                 db.commit()
 
                 log_scan_failed(db, scan.user_id, scan_id, scan.error_message)
@@ -212,7 +212,7 @@ class DiscoveryService:
                     state=host_data.get("state", "unknown"),
                     discovery_source="nmap",
                     additional_info=host_data,
-                    discovered_at=datetime.utcnow()
+                    discovered_at=datetime.now(timezone.utc)
                 )
 
                 db.add(discovered_host)
@@ -221,7 +221,7 @@ class DiscoveryService:
             scan.status = "completed"
             scan.hosts_discovered = hosts_total
             scan.hosts_up = hosts_up
-            scan.completed_at = datetime.utcnow()
+            scan.completed_at = datetime.now(timezone.utc)
             db.commit()
 
             log_scan_completed(db, scan.user_id, scan_id, hosts_up, hosts_total)
@@ -239,7 +239,7 @@ class DiscoveryService:
             logger.exception(f"Scan execution failed for {scan_id}")
             scan.status = "failed"
             scan.error_message = str(e)
-            scan.completed_at = datetime.utcnow()
+            scan.completed_at = datetime.now(timezone.utc)
             db.commit()
 
             log_scan_failed(db, scan.user_id, scan_id, str(e))
@@ -322,7 +322,7 @@ class DiscoveryService:
 
         host.status = "rejected"
         host.approved_by_user_id = user_id
-        host.approved_at = datetime.utcnow()
+        host.approved_at = datetime.now(timezone.utc)
         db.commit()
 
         logger.info(f"Host {host_id} ({host.ip_address}) rejected by user {user_id}")
@@ -476,8 +476,8 @@ class DiscoveryService:
                     location_id=asset_data.get("location_id"),
                     owner_id=asset_data.get("owner_id"),
                     status="ACTIVE",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow()
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc)
                 )
 
                 db.add(new_asset)
@@ -512,7 +512,7 @@ class DiscoveryService:
                     existing_asset.os_name = host.os_info
                     fields_applied.append("os_name")
 
-                existing_asset.updated_at = datetime.utcnow()
+                existing_asset.updated_at = datetime.now(timezone.utc)
                 action_taken = "merged"
 
                 log_discovery_applied(db, user_id, host.scan_id, asset_id,
@@ -524,7 +524,7 @@ class DiscoveryService:
             # Update discovered host status
             host.status = "approved"
             host.approved_by_user_id = user_id
-            host.approved_at = datetime.utcnow()
+            host.approved_at = datetime.now(timezone.utc)
             host.matched_asset_id = asset_id
 
             # Create DiscoveryApplication record
@@ -534,7 +534,7 @@ class DiscoveryService:
                 applied_by_user_id=user_id,
                 ip_address=host.ip_address,
                 fields_applied={f: True for f in fields_applied},
-                applied_at=datetime.utcnow()
+                applied_at=datetime.now(timezone.utc)
             )
             db.add(application)
 

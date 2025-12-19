@@ -3,7 +3,7 @@ Auth Router - Login API with Permissions
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.security import create_access_token
@@ -30,7 +30,7 @@ def log_login_attempt(
         ip_address=ip_address,
         user_agent=user_agent,
         message=message,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.now(timezone.utc)
     )
     db.add(log_entry)
     db.commit()
