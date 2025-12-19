@@ -6,10 +6,19 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAssets } from '../../../store/slices/assetsSlice';
 
+// Tab definitions
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'network', label: 'Network & System' },
+  { id: 'location', label: 'Location & Owner' },
+  { id: 'security', label: 'Security & Audit' },
+];
+
 const AssetListTable = ({ onScanAsset, isScanning }) => {
   const dispatch = useDispatch();
   const { assets, loading } = useSelector((state) => state.assets);
 
+  const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -129,8 +138,35 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
     );
   }
 
+  // Get columns based on active tab
+  const getTableColumns = () => {
+    switch (activeTab) {
+      case 'network':
+        return ['checkbox', 'Asset Name', 'IP Address', 'MAC Address', 'Hostname', 'FQDN', 'Actions'];
+      case 'location':
+        return ['checkbox', 'Asset Name', 'Location', 'Zone', 'Owner', 'Department', 'Actions'];
+      case 'security':
+        return ['checkbox', 'Asset Name', 'Criticality', 'Last Audit', 'Compliance', 'Actions'];
+      default: // overview
+        return ['checkbox', 'ID', 'Asset Name', 'Hostname', 'Type', 'Role', 'Vendor', 'Model', 'Actions'];
+    }
+  };
+
   return (
     <div className="asset-list-container">
+      {/* Tabs Navigation */}
+      <div className="tabs-nav">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Search and Filter Bar */}
       <div className="asset-toolbar">
         <div className="search-box">
@@ -203,18 +239,49 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th>Asset Name</th>
-                <th>IP Address</th>
-                <th>Hostname</th>
-                <th>Type</th>
-                <th>OS</th>
-                <th>Status</th>
+                {activeTab === 'overview' && (
+                  <>
+                    <th>ID</th>
+                    <th>Asset Name</th>
+                    <th>Hostname</th>
+                    <th>Type</th>
+                    <th>Role</th>
+                    <th>Vendor</th>
+                    <th>Model</th>
+                  </>
+                )}
+                {activeTab === 'network' && (
+                  <>
+                    <th>Asset Name</th>
+                    <th>IP Address</th>
+                    <th>MAC Address</th>
+                    <th>Hostname</th>
+                    <th>FQDN</th>
+                  </>
+                )}
+                {activeTab === 'location' && (
+                  <>
+                    <th>Asset Name</th>
+                    <th>Location</th>
+                    <th>Zone</th>
+                    <th>Owner</th>
+                    <th>Department</th>
+                  </>
+                )}
+                {activeTab === 'security' && (
+                  <>
+                    <th>Asset Name</th>
+                    <th>Criticality</th>
+                    <th>Last Audit</th>
+                    <th>Compliance</th>
+                  </>
+                )}
                 <th className="col-actions">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredAssets.map((asset) => (
-                <tr key={asset.id}>
+                <tr key={asset.id} className={asset.highlight ? 'row-highlight' : ''}>
                   <td className="col-checkbox">
                     <input
                       type="checkbox"
@@ -222,52 +289,112 @@ const AssetListTable = ({ onScanAsset, isScanning }) => {
                       onChange={() => toggleSelect(asset.id)}
                     />
                   </td>
-                  <td>
-                    <div className="asset-name-cell">
-                      <span className="asset-name">{asset.asset_name}</span>
-                      <span className="asset-id">#{asset.id}</span>
-                    </div>
-                  </td>
-                  <td>
-                    {asset.ip_address ? (
-                      <span className="ip-address">{asset.ip_address}</span>
-                    ) : (
-                      <span className="text-muted">Not set</span>
-                    )}
-                  </td>
-                  <td>{asset.hostname || <span className="text-muted">-</span>}</td>
-                  <td>
-                    {asset.asset_type ? (
-                      <span className="type-badge">{asset.asset_type.type_name}</span>
-                    ) : (
-                      <span className="text-muted">-</span>
-                    )}
-                  </td>
-                  <td>
-                    {asset.os_name ? (
-                      <span className="os-name">{asset.os_name}</span>
-                    ) : (
-                      <span className="text-muted">Unknown</span>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`status-badge status-${asset.status?.toLowerCase() || 'active'}`}>
-                      {asset.status || 'Active'}
-                    </span>
-                  </td>
+                  {activeTab === 'overview' && (
+                    <>
+                      <td className="id-cell">{asset.id}</td>
+                      <td>
+                        <span className="asset-name">{asset.asset_name}</span>
+                      </td>
+                      <td>{asset.hostname || <span className="text-muted">-</span>}</td>
+                      <td>
+                        {asset.asset_type ? (
+                          <span className="type-badge">{asset.asset_type.type_name}</span>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
+                      <td>{asset.role || <span className="text-muted">-</span>}</td>
+                      <td>{asset.manufacturer || <span className="text-muted">-</span>}</td>
+                      <td>{asset.model || <span className="text-muted">-</span>}</td>
+                    </>
+                  )}
+                  {activeTab === 'network' && (
+                    <>
+                      <td>
+                        <span className="asset-name">{asset.asset_name}</span>
+                      </td>
+                      <td>
+                        {asset.ip_address ? (
+                          <span className="ip-address">{asset.ip_address}</span>
+                        ) : (
+                          <span className="text-muted">Not set</span>
+                        )}
+                      </td>
+                      <td>
+                        {asset.mac_address ? (
+                          <code className="mac-address">{asset.mac_address}</code>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
+                      <td>{asset.hostname || <span className="text-muted">-</span>}</td>
+                      <td>{asset.fqdn || <span className="text-muted">-</span>}</td>
+                    </>
+                  )}
+                  {activeTab === 'location' && (
+                    <>
+                      <td>
+                        <span className="asset-name">{asset.asset_name}</span>
+                      </td>
+                      <td>{asset.location?.name || <span className="text-muted">-</span>}</td>
+                      <td>{asset.zone?.name || <span className="text-muted">-</span>}</td>
+                      <td>{asset.owner?.full_name || asset.owner?.name || <span className="text-muted">-</span>}</td>
+                      <td>{asset.department || <span className="text-muted">-</span>}</td>
+                    </>
+                  )}
+                  {activeTab === 'security' && (
+                    <>
+                      <td>
+                        <span className="asset-name">{asset.asset_name}</span>
+                      </td>
+                      <td>
+                        <span className={`criticality-badge criticality-${(asset.criticality || 'medium').toLowerCase()}`}>
+                          {asset.criticality || 'Medium'}
+                        </span>
+                      </td>
+                      <td>{asset.last_audit_date || <span className="text-muted">Never</span>}</td>
+                      <td>
+                        {asset.compliance_status ? (
+                          <span className={`compliance-badge compliance-${asset.compliance_status.toLowerCase()}`}>
+                            {asset.compliance_status}
+                          </span>
+                        ) : (
+                          <span className="text-muted">N/A</span>
+                        )}
+                      </td>
+                    </>
+                  )}
                   <td className="col-actions">
-                    <button
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => openScanOptions(asset)}
-                      disabled={!asset.ip_address || isScanning}
-                      title={asset.ip_address ? 'Run discovery scan' : 'No IP address configured'}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="M21 21l-4.35-4.35" />
-                      </svg>
-                      Scan
-                    </button>
+                    <div className="action-buttons">
+                      <button
+                        className="btn btn-sm btn-icon"
+                        onClick={() => openScanOptions(asset)}
+                        disabled={!asset.ip_address || isScanning}
+                        title={asset.ip_address ? 'Run discovery scan' : 'No IP address configured'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="M21 21l-4.35-4.35" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-icon"
+                        title="Edit asset"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        className="btn btn-sm btn-icon btn-danger"
+                        title="Delete asset"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

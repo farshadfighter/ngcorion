@@ -10,7 +10,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { applyDiscoveryWithMode, previewDiscoveryApplication } from '../../../store/slices/discoverySlice';
-import { fetchAssets } from '../../../store/slices/assetsSlice';
+import { fetchAssets, fetchAssetTypes } from '../../../store/slices/assetsSlice';
+import api from '../../../api/axios';
 import './ManagePortsModal.css';
 
 const ManagePortsModal = ({ host, onClose, onSuccess }) => {
@@ -22,10 +23,18 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
   const [selectedMode, setSelectedMode] = useState(null); // null, 'overwrite', 'merge', 'create'
   const [matchingAsset, setMatchingAsset] = useState(null);
   const [checkingMatch, setCheckingMatch] = useState(true);
+  const [isApplying, setIsApplying] = useState(false);
 
   // Create mode form data
   const [assetName, setAssetName] = useState('');
   const [assetTypeId, setAssetTypeId] = useState('');
+
+  // Load asset types if not already loaded
+  useEffect(() => {
+    if (!assetTypes || assetTypes.length === 0) {
+      dispatch(fetchAssetTypes());
+    }
+  }, [dispatch, assetTypes]);
 
   // Check if IP exists in asset list
   useEffect(() => {
@@ -64,9 +73,11 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
 
   // Handle mode selection and application
   const handleApplyMode = async () => {
-    if (!selectedMode) return;
+    if (!selectedMode || isApplying) return;
 
     try {
+      setIsApplying(true);
+
       // For hosts without ID (direct from scan), we need to create the asset manually
       if (!host.id) {
         await handleDirectApply();
@@ -82,10 +93,12 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
       if (selectedMode === 'create_new') {
         if (!assetName.trim()) {
           alert('Please enter an asset name');
+          setIsApplying(false);
           return;
         }
         if (!assetTypeId) {
           alert('Please select an asset type');
+          setIsApplying(false);
           return;
         }
         payload.assetName = assetName.trim();
@@ -93,6 +106,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
       } else {
         if (!matchingAsset) {
           alert('No matching asset found');
+          setIsApplying(false);
           return;
         }
         payload.assetId = matchingAsset.id;
@@ -106,13 +120,13 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
       onClose();
     } catch (error) {
       alert(error || 'Failed to apply changes');
+      setIsApplying(false);
     }
   };
 
   // Handle direct apply for hosts without database ID
   const handleDirectApply = async () => {
     try {
-      const api = (await import('../../../api/axios')).default;
       const openPorts = host.ports || host.open_ports || [];
 
       if (selectedMode === 'create_new') {
@@ -442,16 +456,16 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={isApplying}>
             Cancel
           </button>
           {selectedMode && !checkingMatch && (
             <button
               className="btn btn-primary"
               onClick={handleApplyMode}
-              disabled={loading.applyMode}
+              disabled={isApplying || loading.applyMode}
             >
-              {loading.applyMode ? (
+              {isApplying || loading.applyMode ? (
                 <>
                   <span className="spinner" />
                   Applying...
