@@ -15,9 +15,3 @@ i use runit init system in local and systemd in server.
   - IIS CIS checks
   - Active Directory auditing
   - SQL Server compliance
-
-  Phase 3: Advanced Features
-  - Real-time progress updates (WebSocket)
-  - Scheduled audits (cron jobs)
-  
-  
