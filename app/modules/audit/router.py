@@ -357,17 +357,6 @@ def get_cis_benchmark_table(
     Returns results in the official CIS Benchmark table format (pages 210-213)
     with section numbers (1.1.1, 1.1.2, etc.) and Yes/No checkmarks.
 
-    **Response Format:**
-    ```
-    | Section | Recommendation                          | Set Correctly |
-    |---------|----------------------------------------|---------------|
-    | 1.1.1   | Enable 'aaa new-model'                 | Yes ☑ / No ☐  |
-    | 1.1.2   | Enable 'aaa authentication login'      | Yes ☑ / No ☐  |
-    ...
-    ```
-
-    **Compliance Percentage:** Calculated as (passed / total) * 100
-
     **Permissions:** Requires AUDIT read permission
     """
     table = AuditService.get_cis_benchmark_table(db, session_id)
