@@ -162,12 +162,7 @@ class DiscoveredHost(Base):
 
     This table holds scan results before they're approved and added to the
     main asset inventory. Provides a staging area for review and approval.
-
-    Hosts are highlighted in the UI (orange) to indicate they need review.
-    Once approved, they're either:
-    - Matched to existing assets (update)
-    - Created as new assets
-
+    
     Attributes:
         id: Primary key
         scan_id: Reference to the scan that found this host
@@ -312,10 +307,6 @@ class DiscoveredHost(Base):
 class DiscoveryApplication(Base):
     """
     Track when scan results are applied to assets
-
-    Provides audit trail of which discovered data was applied
-    to which assets, by whom, and when. Critical for compliance
-    and change tracking.
 
     Attributes:
         id: Primary key
