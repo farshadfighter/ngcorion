@@ -259,6 +259,97 @@ class CiscoSSHClient:
 
         return "\n".join(chunks).strip()
 
+    def send_command(self, command: str, timeout: int = 30) -> str:
+        """
+        Send a single command to the device and return output.
+
+        Args:
+            command: Command to execute
+            timeout: Command timeout in seconds
+
+        Returns:
+            str: Command output
+
+        Raises:
+            RuntimeError: If not connected
+        """
+        if not self.connection:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        if not self.is_connected():
+            raise RuntimeError("SSH connection is no longer active.")
+
+        try:
+            output = self.connection.send_command(
+                command,
+                cmd_verify=False,
+                read_timeout=timeout
+            )
+            return output
+        except Exception as e:
+            logger.error(f"Command execution failed on {self.ip}: {command} - {str(e)}")
+            raise RuntimeError(f"Command execution failed: {str(e)}")
+
+    def send_config_commands(self, commands: List[str]) -> str:
+        """
+        Send configuration commands to device using netmiko's send_config_set().
+
+        This method automatically:
+        - Enters configuration mode
+        - Executes all commands
+        - Exits configuration mode
+        - Returns combined output
+
+        Args:
+            commands: List of configuration commands
+
+        Returns:
+            str: Combined output from all commands
+
+        Raises:
+            RuntimeError: If not connected or commands fail
+
+        Example:
+            >>> client.send_config_commands([
+            ...     "hostname Router1",
+            ...     "ip domain-name example.com"
+            ... ])
+        """
+        if not self.connection:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        if not self.is_connected():
+            raise RuntimeError("SSH connection is no longer active.")
+
+        try:
+            # Ensure we're in enable mode before entering config mode
+            if not self._in_enable_mode and self.secret:
+                try:
+                    self.connection.enable()
+                    self._in_enable_mode = True
+                except Exception as e:
+                    logger.warning(f"Failed to enter enable mode: {e}")
+
+            # Send config commands as a set
+            # netmiko's send_config_set handles config mode entry/exit automatically
+            output = self.connection.send_config_set(
+                commands,
+                exit_config_mode=True,  # Automatically exit config mode
+                cmd_verify=False,
+                read_timeout=60  # Longer timeout for config commands
+            )
+
+            logger.info(f"Successfully executed {len(commands)} config commands on {self.ip}")
+            return output
+
+        except Exception as e:
+            logger.error(f"Config command execution failed on {self.ip}: {str(e)}")
+            raise RuntimeError(f"Config command execution failed: {str(e)}")
+
+    def close(self) -> None:
+        """Alias for disconnect() for compatibility."""
+        self.disconnect()
+
     def disconnect(self) -> None:
         """Disconnect from device."""
         if self.connection:

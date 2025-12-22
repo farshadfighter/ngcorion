@@ -14,6 +14,7 @@ from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
 from app.modules.audit import router as audit_router
+from app.modules.hardening import router as hardening_router
 
 # Import authenticated routers
 from app.modules.assets.router_with_auth import (
@@ -77,6 +78,9 @@ app.include_router(discovery_router.router)
 # NEW: Cisco CIS Audit routes
 app.include_router(audit_router.router)
 
+# NEW: Cisco Hardening routes
+app.include_router(hardening_router.router)
+
 
 @app.get("/")
 def root():
@@ -85,7 +89,7 @@ def root():
         "project": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "status": "running",
-        "features": ["Asset Management", "Network Discovery", "Security Auditing"]
+        "features": ["Asset Management", "Network Discovery", "Security Auditing", "Device Hardening"]
     }
 
 

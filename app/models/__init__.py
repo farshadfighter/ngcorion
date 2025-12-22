@@ -47,7 +47,7 @@ from app.models.discovery import (
     DiscoveryAuditLog
 )
 
-# Import audit models LAST (depend on User and Asset)
+# Import audit models (depend on User and Asset)
 from app.models.audit import (
     DeviceType,
     CheckStatus,
@@ -56,6 +56,9 @@ from app.models.audit import (
     AuditSession,
     AuditResult
 )
+
+# Import hardening models LAST (depend on Audit)
+from app.models.hardening import HardeningAction
 
 # Export all
 __all__ = [
@@ -97,4 +100,6 @@ __all__ = [
     "AuditCheck",
     "AuditSession",
     "AuditResult",
+    # Hardening models
+    "HardeningAction",
 ]
