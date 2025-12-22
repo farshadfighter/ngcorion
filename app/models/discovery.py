@@ -4,14 +4,9 @@ Discovery Models
 Persistent storage for network scans, discovery applications, and audit trails.
 Replaces the in-memory storage pattern with proper database persistence.
 
-Enhanced to support:
-- IP ranges and CIDR notation
-- Port and protocol configuration
-- Pending approval workflow for discovered hosts
-- Detailed host information storage
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from datetime import datetime
