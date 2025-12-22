@@ -1,8 +1,19 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Enum as SQLEnum, Float
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey,
+    Boolean,
+    Enum as SQLEnum,
+    Float,
+)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 from app.core.database import Base
+
 
 class DeviceType(str, enum.Enum):
     CISCO = "cisco"
@@ -10,11 +21,13 @@ class DeviceType(str, enum.Enum):
     WINDOWS = "windows"
     FORTINET = "fortinet"
 
+
 class CheckStatus(str, enum.Enum):
     PASS = "pass"  # Yes
     FAIL = "fail"  # No
     NOT_APPLICABLE = "not_applicable"
     ERROR = "error"  # Connection/Command error
+
 
 # Template for check categories (CIS sections)
 class AuditTemplate(Base):
@@ -30,8 +43,11 @@ class AuditTemplate(Base):
     is_active = Column(Boolean, default=True)  # NEW: Enable/disable templates
     profile = Column(String(20), default="L1")  # NEW: L1, L2, FULL
 
-    checks = relationship("AuditCheck", back_populates="template", cascade="all, delete-orphan")
+    checks = relationship(
+        "AuditCheck", back_populates="template", cascade="all, delete-orphan"
+    )
     sessions = relationship("AuditSession", back_populates="template")
+
 
 # Individual check items (1.1.1, 1.1.2, ...)
 class AuditCheck(Base):
@@ -50,14 +66,19 @@ class AuditCheck(Base):
     template = relationship("AuditTemplate", back_populates="checks")
     results = relationship("AuditResult", back_populates="check")
 
+
 # Audit execution session
 class AuditSession(Base):
     __tablename__ = "audit_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    template_id = Column(Integer, ForeignKey("audit_templates.id"), nullable=True)  # Can be null for direct CIS scans
+    template_id = Column(
+        Integer, ForeignKey("audit_templates.id"), nullable=True
+    )  # Can be null for direct CIS scans
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    asset_id = Column(Integer, ForeignKey("asset_inventory.id"), nullable=True)  # Optional: link to asset
+    asset_id = Column(
+        Integer, ForeignKey("asset_inventory.id"), nullable=True
+    )  # Optional: link to asset
 
     target_ip = Column(String(50), nullable=False)
     device_type = Column(SQLEnum(DeviceType), nullable=False)
@@ -82,7 +103,10 @@ class AuditSession(Base):
     turbo_dump = Column(Text, nullable=True)  # Full command outputs
 
     template = relationship("AuditTemplate", back_populates="sessions")
-    results = relationship("AuditResult", back_populates="session", cascade="all, delete-orphan")
+    results = relationship(
+        "AuditResult", back_populates="session", cascade="all, delete-orphan"
+    )
+
 
 # Results of each check
 class AuditResult(Base):
@@ -90,7 +114,9 @@ class AuditResult(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("audit_sessions.id"), nullable=False)
-    check_id = Column(Integer, ForeignKey("audit_checks.id"), nullable=True)  # Nullable for runtime checks
+    check_id = Column(
+        Integer, ForeignKey("audit_checks.id"), nullable=True
+    )  # Nullable for runtime checks
 
     # Check details (stored here for runtime CIS checks without check_id)
     check_number = Column(String(20), nullable=True)  # "IOS-L1-001"
