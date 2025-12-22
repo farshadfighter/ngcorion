@@ -4,7 +4,7 @@ CIS Cisco IOS 15 Benchmark v4.1.1 - Section Mapping
 Maps CIS Benchmark section numbers (1.1.1, 1.1.2, etc.) to internal rule IDs.
 Based on Appendix: CIS Controls v8 IG 3 Mapped Recommendations (pages 210-213)
 """
-
+# بر اساس کدی که مهندس علیزاده فرستادن ساخته شده
 from typing import List, Dict, Any, Optional
 
 
