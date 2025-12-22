@@ -2,7 +2,7 @@
 Port and Protocol Models
 
 These models store port and protocol information for assets.
-Each asset can have multiple ports, and each port has associated protocol information.
+Each asset can have multiple ports, and each port has associated protocol information (TCP/UDP).
 """
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime, Text
