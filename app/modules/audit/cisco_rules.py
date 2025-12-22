@@ -1,3 +1,4 @@
+# بر اساس فایل بنچمارک CIS CISCO
 """
 Cisco IOS/IOS-XE CIS Benchmark Rules
 
@@ -766,7 +767,7 @@ def evaluate_compliance(config_text: str, rules: List[CISRule]) -> Dict[str, Any
     for rule in rules:
         try:
             compliant = bool(rule.check(config_text))
-        except Exception as e:
+        except Exception:
             compliant = False
             check_errors += 1
 
