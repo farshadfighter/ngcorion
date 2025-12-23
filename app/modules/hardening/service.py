@@ -552,7 +552,7 @@ class HardeningService:
         Perform audit on device without requiring pre-existing asset.
 
         Steps:
-        1. Connect to device via SSH
+        1. Create temporary asset if needed OR use provided asset_id
         2. Run CIS audit (reuse audit service logic)
         3. Store audit session + results in DB
         4. Return summary with fixable failures
@@ -580,19 +580,36 @@ class HardeningService:
 
         logger.info(f"Starting auto-audit for device {ip_address}")
 
+        # If no asset_id provided, create a temporary asset
+        temp_asset_created = False
+        if asset_id is None:
+            logger.info(f"Creating temporary asset for {ip_address}")
+            temp_asset = Asset(
+                asset_name=f"Auto-Audit-{ip_address}",
+                hostname=f"auto-{ip_address}",
+                ip_address=ip_address,
+                asset_type_id=1,  # Assuming type 1 exists (network device)
+                status="active"
+            )
+            db.add(temp_asset)
+            db.commit()
+            db.refresh(temp_asset)
+            asset_id = temp_asset.id
+            temp_asset_created = True
+            logger.info(f"Created temporary asset ID {asset_id}")
+
         # Execute audit using existing audit service
-        audit_result = AuditService.execute_cisco_audit(
+        session = AuditService.execute_cisco_audit(
             db=db,
+            asset_id=asset_id,
             user_id=user_id,
-            asset_id=asset_id,  # Can be None
-            target_ip=ip_address,
             ssh_username=ssh_username,
             ssh_password=ssh_password,
             ssh_secret=ssh_secret,
             profile=profile
         )
 
-        session_id = audit_result["session_id"]
+        session_id = session.id
 
         # Get the audit session
         session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
