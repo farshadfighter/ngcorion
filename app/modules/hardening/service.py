@@ -458,3 +458,383 @@ class HardeningService:
                 return rule
 
         raise ValueError(f"CIS rule {check_number} not found")
+
+    # ==================== AUTO-HARDENING METHODS ====================
+
+    @staticmethod
+    def _is_check_fixable(
+        check_number: str,
+        provided_params: Optional[Dict[str, str]] = None
+    ) -> tuple[bool, List[str]]:
+        """
+        Determine if a check can be auto-fixed.
+
+        Args:
+            check_number: CIS check number
+            provided_params: Parameters user provided upfront
+
+        Returns:
+            (is_fixable: bool, missing_params: List[str])
+
+        Logic:
+            - If no template exists: NOT fixable
+            - If template has no required params: fixable
+            - If all required params provided: fixable
+            - Otherwise: NOT fixable
+        """
+        from .command_templates import has_template, get_template
+
+        if not has_template(check_number):
+            return False, ["NO_TEMPLATE"]
+
+        template = get_template(check_number)
+        required = template.get("required_params", [])
+
+        if not required:
+            return True, []
+
+        if provided_params:
+            missing = [p for p in required if p not in provided_params]
+            return len(missing) == 0, missing
+
+        return False, required
+
+    @staticmethod
+    def _categorize_failures(
+        failures: List[AuditResult],
+        provided_params: Optional[Dict[str, str]] = None
+    ) -> Dict[str, List[Dict]]:
+        """
+        Categorize failures into fixable and unfixable.
+
+        Returns:
+            {
+                "fixable": [{"id": ..., "check_number": ..., ...}],
+                "unfixable": [{"id": ..., "check_number": ..., "missing_params": [...]}]
+            }
+        """
+        fixable = []
+        unfixable = []
+
+        for result in failures:
+            is_fixable, missing_params = HardeningService._is_check_fixable(
+                result.check_number,
+                provided_params
+            )
+
+            result_dict = {
+                "result_id": result.id,
+                "check_number": result.check_number,
+                "check_title": result.check_title,
+                "severity": result.severity
+            }
+
+            if is_fixable:
+                fixable.append(result_dict)
+            else:
+                result_dict["missing_params"] = missing_params
+                unfixable.append(result_dict)
+
+        return {"fixable": fixable, "unfixable": unfixable}
+
+    @staticmethod
+    def auto_audit_device(
+        db: Session,
+        user_id: int,
+        ip_address: str,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str] = None,
+        profile: str = "L1",
+        asset_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Perform audit on device without requiring pre-existing asset.
+
+        Steps:
+        1. Connect to device via SSH
+        2. Run CIS audit (reuse audit service logic)
+        3. Store audit session + results in DB
+        4. Return summary with fixable failures
+
+        Args:
+            ip_address: Device IP (required)
+            ssh_username/password/secret: Fresh credentials
+            profile: CIS profile (L1 or FULL)
+            asset_id: Optional link to existing asset
+
+        Returns:
+            {
+                "audit_session_id": int,
+                "device_ip": str,
+                "total_checks": int,
+                "passed": int,
+                "failed": int,
+                "compliance_pct": float,
+                "fixable_failures": List[Dict],  # Checks we can auto-fix
+                "unfixable_failures": List[Dict]  # Need parameters
+            }
+        """
+        from app.modules.audit.service import AuditService
+        from app.models.audit import DeviceType
+
+        logger.info(f"Starting auto-audit for device {ip_address}")
+
+        # Execute audit using existing audit service
+        audit_result = AuditService.execute_cisco_audit(
+            db=db,
+            user_id=user_id,
+            asset_id=asset_id,  # Can be None
+            target_ip=ip_address,
+            ssh_username=ssh_username,
+            ssh_password=ssh_password,
+            ssh_secret=ssh_secret,
+            profile=profile
+        )
+
+        session_id = audit_result["session_id"]
+
+        # Get the audit session
+        session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+        if not session:
+            raise ValueError(f"Audit session {session_id} not found after audit")
+
+        # Get all failed results
+        failed_results = db.query(AuditResult).filter(
+            AuditResult.session_id == session_id,
+            AuditResult.status == CheckStatus.FAIL
+        ).all()
+
+        # Categorize failures into fixable and unfixable
+        categorized = HardeningService._categorize_failures(failed_results, None)
+
+        logger.info(
+            f"Auto-audit complete for {ip_address}: "
+            f"{len(categorized['fixable'])} fixable, "
+            f"{len(categorized['unfixable'])} unfixable"
+        )
+
+        return {
+            "audit_session_id": session_id,
+            "device_ip": ip_address,
+            "total_checks": session.total_checks,
+            "passed": session.passed_checks,
+            "failed": session.failed_checks,
+            "compliance_pct": session.compliance_pct,
+            "fixable_failures": categorized["fixable"],
+            "unfixable_failures": categorized["unfixable"]
+        }
+
+    @staticmethod
+    def auto_fix_all_failures(
+        db: Session,
+        audit_session_id: int,
+        user_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str] = None,
+        parameters: Optional[Dict[str, str]] = None,
+        skip_backup: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Automatically fix all failures from an audit session.
+
+        Steps:
+        1. Get all failed results from audit session
+        2. For each failure:
+           a. Check if we have a template
+           b. Check if parameters are needed
+           c. If fixable: apply fix
+           d. If needs params: skip or use provided params
+        3. Re-audit fixed checks to verify
+        4. Return summary
+
+        Args:
+            db: Database session
+            audit_session_id: Audit session to fix
+            user_id: User performing fixes
+            ssh_username/password/secret: Fresh SSH credentials
+            parameters: Optional parameters for checks that need them
+            skip_backup: Skip config backup (NOT RECOMMENDED)
+
+        Returns:
+            {
+                "audit_session_id": int,
+                "total_failures": int,
+                "fixed_count": int,
+                "skipped_count": int,
+                "failed_count": int,
+                "actions": List[int],  # HardeningAction IDs
+                "final_compliance_pct": float
+            }
+        """
+        logger.info(f"Starting auto-fix for audit session {audit_session_id}")
+
+        # Get audit session
+        session = db.query(AuditSession).filter(
+            AuditSession.id == audit_session_id
+        ).first()
+        if not session:
+            raise ValueError(f"Audit session {audit_session_id} not found")
+
+        # Get device IP
+        device_ip = session.target_ip
+        if not device_ip:
+            raise ValueError(f"Audit session {audit_session_id} has no target IP")
+
+        # Get all failed results
+        failed_results = db.query(AuditResult).filter(
+            AuditResult.session_id == audit_session_id,
+            AuditResult.status == CheckStatus.FAIL
+        ).all()
+
+        total_failures = len(failed_results)
+        logger.info(f"Found {total_failures} failed checks to fix")
+
+        # Categorize into fixable and unfixable
+        categorized = HardeningService._categorize_failures(failed_results, parameters)
+        fixable = categorized["fixable"]
+        unfixable = categorized["unfixable"]
+
+        fixed_count = 0
+        failed_count = 0
+        action_ids = []
+
+        # Connect to device once for all fixes
+        with CiscoHardeningExecutor(
+            ip=device_ip,
+            username=ssh_username,
+            password=ssh_password,
+            secret=ssh_secret
+        ) as executor:
+            # Test connectivity
+            executor.test_connectivity()
+
+            # Backup config once before all fixes
+            backup = None
+            if not skip_backup:
+                logger.info(f"Creating backup for {device_ip}")
+                backup = executor.backup_config()
+
+            # Process each fixable check
+            for fix_item in fixable:
+                result_id = fix_item["result_id"]
+                check_number = fix_item["check_number"]
+
+                try:
+                    logger.info(f"Fixing check {check_number} (result {result_id})")
+
+                    # Get the audit result
+                    audit_result = db.query(AuditResult).filter(
+                        AuditResult.id == result_id
+                    ).first()
+
+                    # Get CIS rule
+                    rule = HardeningService._get_rule_by_check_number(check_number)
+
+                    # Parse remediation
+                    parsed = RemediationParser.parse_remediation(
+                        remediation=rule.remediation,
+                        check_number=check_number
+                    )
+
+                    # Apply parameters
+                    params_with_defaults = apply_defaults(parameters or {}, parsed.defaults)
+                    final_commands = RemediationParser.substitute_parameters(
+                        parsed.commands,
+                        params_with_defaults
+                    )
+
+                    # Create hardening action record
+                    action = HardeningAction(
+                        audit_result_id=result_id,
+                        user_id=user_id,
+                        asset_id=session.asset_id,  # May be None
+                        audit_session_id=audit_session_id,
+                        check_number=check_number,
+                        check_title=audit_result.check_title,
+                        action_type="execute",
+                        status="executing",
+                        commands_json=json.dumps(final_commands),
+                        requires_config_mode=parsed.requires_config_mode,
+                        credentials_provided=True,
+                        backup_config=backup if not skip_backup else None,
+                        executed_at=datetime.now(timezone.utc)
+                    )
+                    db.add(action)
+                    db.commit()
+                    db.refresh(action)
+
+                    action_ids.append(action.id)
+
+                    # Execute commands
+                    exec_result = executor.execute_commands(
+                        final_commands,
+                        requires_config_mode=parsed.requires_config_mode
+                    )
+
+                    if not exec_result["success"]:
+                        action.status = "failed"
+                        action.error_message = "; ".join(exec_result["errors"])
+                        action.output = redact_secrets_in_output(exec_result["output"])
+                        action.completed_at = datetime.now(timezone.utc)
+                        db.commit()
+                        failed_count += 1
+                        logger.warning(f"Fix failed for {check_number}: {action.error_message}")
+                        continue
+
+                    # Store output
+                    action.output = redact_secrets_in_output(exec_result["output"])
+
+                    # Verify fix
+                    passed, evidence = executor.verify_check(rule)
+                    action.verification_passed = passed
+                    action.verification_evidence = evidence
+
+                    if passed:
+                        action.status = "success"
+                        fixed_count += 1
+                        logger.info(f"Successfully fixed {check_number}")
+                    else:
+                        action.status = "failed"
+                        action.error_message = "Verification failed: check still failing after fix"
+                        failed_count += 1
+                        logger.warning(f"Fix applied but verification failed for {check_number}")
+
+                    action.completed_at = datetime.now(timezone.utc)
+                    db.commit()
+
+                except Exception as e:
+                    logger.error(f"Exception fixing {check_number}: {str(e)}")
+                    failed_count += 1
+                    # Action may or may not exist - update if it does
+                    if 'action' in locals():
+                        action.status = "failed"
+                        action.error_message = f"{type(e).__name__}: {str(e)}"
+                        action.completed_at = datetime.now(timezone.utc)
+                        db.commit()
+
+            # Save config once after all fixes
+            if fixed_count > 0:
+                logger.info(f"Saving configuration for {device_ip}")
+                executor.save_config()
+
+        # Calculate final compliance
+        session_updated = db.query(AuditSession).filter(
+            AuditSession.id == audit_session_id
+        ).first()
+
+        logger.info(
+            f"Auto-fix complete: {fixed_count} fixed, "
+            f"{failed_count} failed, {len(unfixable)} skipped"
+        )
+
+        return {
+            "audit_session_id": audit_session_id,
+            "total_failures": total_failures,
+            "fixed_count": fixed_count,
+            "skipped_count": len(unfixable),
+            "failed_count": failed_count,
+            "actions": action_ids,
+            "final_compliance_pct": session_updated.compliance_pct
+        }

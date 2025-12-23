@@ -13,7 +13,7 @@ Endpoints:
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
@@ -23,6 +23,8 @@ from .service import HardeningService, CheckAlreadyPassingError, MissingParamete
 
 
 # ========================= SCHEMAS =========================
+
+# --- Existing hardening schemas ---
 
 class HardeningPreviewRequest(BaseModel):
     """Request to preview hardening commands."""
@@ -152,6 +154,121 @@ class HardeningActionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Auto-hardening schemas ---
+
+class AutoAuditRequest(BaseModel):
+    """Request to auto-audit a device."""
+    ip_address: str = Field(..., description="Device IP address")
+    ssh_username: str = Field(..., min_length=1)
+    ssh_password: str = Field(..., min_length=1)
+    ssh_secret: Optional[str] = None
+    profile: str = Field(default="L1", pattern="^(L1|FULL)$")
+    asset_id: Optional[int] = Field(None, description="Optional: link to existing asset")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "ip_address": "192.168.1.1",
+                "ssh_username": "admin",
+                "ssh_password": "cisco123",
+                "ssh_secret": "cisco123",
+                "profile": "L1"
+            }
+        }
+
+
+class AutoAuditResponse(BaseModel):
+    """Response from auto-audit."""
+    audit_session_id: int
+    device_ip: str
+    total_checks: int
+    passed: int
+    failed: int
+    compliance_pct: float
+    fixable_failures: List[Dict[str, Any]]
+    unfixable_failures: List[Dict[str, Any]]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "device_ip": "192.168.1.1",
+                "total_checks": 50,
+                "passed": 42,
+                "failed": 8,
+                "compliance_pct": 84.0,
+                "fixable_failures": [
+                    {
+                        "result_id": 1001,
+                        "check_number": "IOS-L1-007",
+                        "check_title": "SSH version 2 enabled",
+                        "severity": "medium"
+                    }
+                ],
+                "unfixable_failures": [
+                    {
+                        "result_id": 1002,
+                        "check_number": "IOS-L1-001",
+                        "check_title": "Use 'enable secret' only",
+                        "severity": "high",
+                        "missing_params": ["STRONG_SECRET"]
+                    }
+                ]
+            }
+        }
+
+
+class AutoFixRequest(BaseModel):
+    """Request to auto-fix all failures."""
+    audit_session_id: int
+    ssh_username: str
+    ssh_password: str
+    ssh_secret: Optional[str] = None
+    parameters: Optional[Dict[str, str]] = Field(
+        default_factory=dict,
+        description="Optional parameters for checks that need them"
+    )
+    skip_backup: bool = False
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "ssh_username": "admin",
+                "ssh_password": "cisco123",
+                "ssh_secret": "cisco123",
+                "parameters": {
+                    "STRONG_SECRET": "MyNewSecret123!"
+                },
+                "skip_backup": False
+            }
+        }
+
+
+class AutoFixResponse(BaseModel):
+    """Response from auto-fix."""
+    audit_session_id: int
+    total_failures: int
+    fixed_count: int
+    skipped_count: int
+    failed_count: int
+    actions: List[int]
+    final_compliance_pct: float
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "total_failures": 8,
+                "fixed_count": 6,
+                "skipped_count": 1,
+                "failed_count": 1,
+                "actions": [4567, 4568, 4569, 4570, 4571, 4572],
+                "final_compliance_pct": 96.0
+            }
+        }
 
 
 # ========================= ROUTER =========================
@@ -408,4 +525,119 @@ def delete_hardening_action(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete action: {str(e)}"
+        )
+
+
+# ==================== AUTO-HARDENING ENDPOINTS ====================
+
+@router.post("/auto-audit", response_model=AutoAuditResponse)
+def auto_audit_device(
+    request: AutoAuditRequest,
+    current_user: User = Depends(require_permission("HARDENING", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Auto-audit a device without requiring pre-existing asset or audit.
+
+    **Workflow:**
+    1. Connects to device via SSH
+    2. Runs full CIS audit
+    3. Stores audit session and results
+    4. Identifies which failures can be auto-fixed
+    5. Returns summary with fixable vs unfixable checks
+
+    **Use Case:** Quick audit + fix for devices not in asset inventory
+
+    **Permissions:** Requires HARDENING write permission
+
+    **Response:** Audit summary with fixable failures list
+
+    **Errors:**
+    - 400: Invalid request parameters
+    - 500: SSH connection failure or audit execution error
+    """
+    try:
+        result = HardeningService.auto_audit_device(
+            db=db,
+            user_id=current_user.id,
+            ip_address=request.ip_address,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_secret=request.ssh_secret,
+            profile=request.profile,
+            asset_id=request.asset_id
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Auto-audit failed: {str(e)}"
+        )
+
+
+@router.post("/auto-fix", response_model=AutoFixResponse)
+def auto_fix_all_failures(
+    request: AutoFixRequest,
+    current_user: User = Depends(require_permission("HARDENING", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Automatically fix all failures from an auto-audit session.
+
+    **Workflow:**
+    1. Retrieves all failed checks from audit session
+    2. For each failure:
+       - Checks if template exists
+       - Checks if parameters needed
+       - Applies fix if possible
+       - Skips if parameters required (unless provided)
+    3. Verifies each fix by re-running the check
+    4. Returns summary of what was fixed
+
+    **Strategy:** Only fixes checks that don't require user input
+
+    **Permissions:** Requires HARDENING write permission
+
+    **Note:**
+    - Creates backup before applying fixes (unless skip_backup=True)
+    - All fixes are logged in hardening_actions table
+    - Each fix is verified after execution
+
+    **Response:** Summary of fixes applied with verification results
+
+    **Errors:**
+    - 400: Invalid audit session or missing parameters
+    - 404: Audit session not found
+    - 500: SSH connection failure or execution error
+    """
+    try:
+        result = HardeningService.auto_fix_all_failures(
+            db=db,
+            audit_session_id=request.audit_session_id,
+            user_id=current_user.id,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_secret=request.ssh_secret,
+            parameters=request.parameters,
+            skip_backup=request.skip_backup
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Auto-fix failed: {str(e)}"
         )
