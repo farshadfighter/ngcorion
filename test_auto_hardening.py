@@ -120,21 +120,34 @@ def test_categorization():
         )
         db.add(result3)
 
-        # Unfixable: Exec timeout (requires TIMEOUT_MIN parameter)
+        # Fixable: Password encryption (no parameters needed)
         result4 = AuditResult(
             session_id=session.id,
-            check_number="IOS-L1-002",
-            check_title="Set exec timeout",
+            check_number="IOS-L1-010",
+            check_title="Enable password encryption",
             severity="medium",
             level="L1",
             status=CheckStatus.FAIL,
-            evidence_snippet="exec-timeout 0 0",
+            evidence_snippet="",
             checked_at=datetime.now(timezone.utc)
         )
         db.add(result4)
 
+        # Unfixable: VTY access-class (requires ACL_NUMBER parameter)
+        result5 = AuditResult(
+            session_id=session.id,
+            check_number="IOS-L1-003",
+            check_title="Configure VTY access-class",
+            severity="high",
+            level="L1",
+            status=CheckStatus.FAIL,
+            evidence_snippet="",
+            checked_at=datetime.now(timezone.utc)
+        )
+        db.add(result5)
+
         db.commit()
-        print(f"   ✓ Created 4 failed audit results")
+        print(f"   ✓ Created 5 failed audit results")
 
         # Test categorization
         print("\n5. Testing categorization logic...")
@@ -159,16 +172,17 @@ def test_categorization():
             print(f"        Missing params: {item['missing_params']}")
 
         # Verify expected results
-        assert len(categorized['fixable']) == 2, "Expected 2 fixable checks"
+        assert len(categorized['fixable']) == 3, "Expected 3 fixable checks"
         assert len(categorized['unfixable']) == 2, "Expected 2 unfixable checks"
 
         fixable_checks = {item['check_number'] for item in categorized['fixable']}
         assert 'IOS-L1-007' in fixable_checks, "SSH v2 should be fixable"
         assert 'IOS-L1-018' in fixable_checks, "CDP disable should be fixable"
+        assert 'IOS-L1-010' in fixable_checks, "Password encryption should be fixable"
 
         unfixable_checks = {item['check_number'] for item in categorized['unfixable']}
         assert 'IOS-L1-001' in unfixable_checks, "Enable secret should be unfixable"
-        assert 'IOS-L1-002' in unfixable_checks, "Exec timeout should be unfixable"
+        assert 'IOS-L1-003' in unfixable_checks, "VTY access-class should be unfixable"
 
         print("\n   ✓ Categorization logic verified!")
 
@@ -186,7 +200,7 @@ def test_categorization_with_params():
 
         # Get most recent session
         session = db.query(AuditSession).order_by(
-            AuditSession.created_at.desc()
+            AuditSession.started_at.desc()
         ).first()
 
         if not session:
@@ -213,7 +227,7 @@ def test_categorization_with_params():
         print("\n3. Categorization with parameters:")
         parameters = {
             "STRONG_SECRET": "MySecret123!",
-            "TIMEOUT_MIN": "10"
+            "ACL_NUMBER": "99"
         }
         categorized_with_params = HardeningService._categorize_failures(
             failed_results,
