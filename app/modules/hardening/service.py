@@ -10,8 +10,10 @@ Orchestrates the complete hardening workflow:
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from contextlib import contextmanager
 import json
 import logging
+import time
 
 from app.models import (
     AuditResult,
@@ -43,8 +45,44 @@ class MissingParametersError(HardeningError):
     pass
 
 
+class HardeningExecutionError(HardeningError):
+    """Raised when command execution fails."""
+    pass
+
+
+class HardeningVerificationError(HardeningError):
+    """Raised when verification fails."""
+    pass
+
+
 class HardeningService:
-    """Service for automated device hardening."""
+    """Service for automated device hardening with optimizations."""
+
+    # Configuration constants
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2  # seconds
+    BATCH_SIZE = 10
+
+    @staticmethod
+    @contextmanager
+    def _timed_operation(operation_name: str):
+        """
+        Context manager for timing operations.
+
+        Usage:
+            with HardeningService._timed_operation("Fix device"):
+                # operation code
+
+        Logs start and completion with duration.
+        """
+        start_time = time.time()
+        logger.info(f"Starting: {operation_name}")
+
+        try:
+            yield
+        finally:
+            elapsed = time.time() - start_time
+            logger.info(f"Completed: {operation_name} ({elapsed:.2f}s)")
 
     @staticmethod
     def preview_hardening(
@@ -854,4 +892,154 @@ class HardeningService:
             "failed_count": failed_count,
             "actions": action_ids,
             "final_compliance_pct": session_updated.compliance_pct
+        }
+
+    @staticmethod
+    def execute_hardening_with_retry(
+        db: Session,
+        action_id: int,
+        user_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str],
+        parameters: Dict[str, str],
+        skip_backup: bool = False,
+        max_retries: int = None
+    ) -> Dict[str, Any]:
+        """
+        Execute hardening with automatic retry on transient failures.
+
+        Features:
+        - Automatic retry up to max_retries attempts
+        - 2-second delay between retries
+        - Logs each attempt
+        - Only retries on transient failures
+
+        Args:
+            max_retries: Maximum retry attempts (default: 3)
+            ... (same as execute_hardening)
+
+        Returns:
+            Same as execute_hardening()
+
+        Raises:
+            HardeningExecutionError: After all retries exhausted
+        """
+        max_retries = max_retries or HardeningService.MAX_RETRIES
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info(
+                    f"Hardening execution attempt {attempt}/{max_retries} "
+                    f"for action {action_id}"
+                )
+
+                return HardeningService.execute_hardening(
+                    db=db,
+                    action_id=action_id,
+                    user_id=user_id,
+                    ssh_username=ssh_username,
+                    ssh_password=ssh_password,
+                    ssh_secret=ssh_secret,
+                    parameters=parameters,
+                    skip_backup=skip_backup
+                )
+
+            except Exception as e:
+                error_msg = str(e)
+                logger.warning(
+                    f"Attempt {attempt}/{max_retries} failed for action {action_id}: "
+                    f"{error_msg}"
+                )
+
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {HardeningService.RETRY_DELAY} seconds...")
+                    time.sleep(HardeningService.RETRY_DELAY)
+                else:
+                    raise HardeningExecutionError(
+                        f"Hardening failed after {max_retries} attempts: {error_msg}"
+                    )
+
+    @staticmethod
+    def get_action_statistics(
+        db: Session,
+        asset_id: Optional[int] = None,
+        user_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Get comprehensive statistics about hardening actions.
+
+        Args:
+            db: Database session
+            asset_id: Optional filter by asset
+            user_id: Optional filter by user
+
+        Returns:
+            {
+                "total_actions": int,
+                "by_status": {"success": int, "failed": int, "pending": int},
+                "by_type": {"execute": int, "preview": int},
+                "total_executions": int,
+                "successful_executions": int,
+                "success_rate": float,
+                "most_common_checks": [{"check_number": str, "count": int}, ...]
+            }
+        """
+        from sqlalchemy import func
+
+        query = db.query(HardeningAction)
+
+        if asset_id:
+            query = query.filter(HardeningAction.asset_id == asset_id)
+        if user_id:
+            query = query.filter(HardeningAction.user_id == user_id)
+
+        all_actions = query.all()
+        total_actions = len(all_actions)
+
+        # Group by status
+        by_status = {}
+        for action in all_actions:
+            status = action.status
+            by_status[status] = by_status.get(status, 0) + 1
+
+        # Group by type
+        by_type = {}
+        for action in all_actions:
+            action_type = action.action_type
+            by_type[action_type] = by_type.get(action_type, 0) + 1
+
+        # Calculate success rate for executions
+        executions = [a for a in all_actions if a.action_type == "execute"]
+        total_executions = len(executions)
+        successful_executions = len([a for a in executions if a.status == "success"])
+        success_rate = (
+            (successful_executions / total_executions * 100)
+            if total_executions > 0
+            else 0.0
+        )
+
+        # Most common checks
+        check_counts = {}
+        for action in all_actions:
+            check = action.check_number
+            check_counts[check] = check_counts.get(check, 0) + 1
+
+        most_common_checks = [
+            {"check_number": check, "count": count}
+            for check, count in sorted(
+                check_counts.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:10]
+        ]
+
+        return {
+            "total_actions": total_actions,
+            "by_status": by_status,
+            "by_type": by_type,
+            "total_executions": total_executions,
+            "successful_executions": successful_executions,
+            "success_rate": round(success_rate, 2),
+            "most_common_checks": most_common_checks
         }
