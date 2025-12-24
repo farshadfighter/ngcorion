@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
 from app.models import User, Asset, AuditSession, AuditResult
 from app.models.audit import DeviceType, CheckStatus
 from app.core.database import SessionLocal
-from app.modules.audit.service_optimized import OptimizedAuditService
+from app.modules.audit.service import AuditService
 from datetime import datetime, timezone, timedelta
 import time
 
@@ -116,12 +116,12 @@ def test_caching_mechanism():
     print_test(1, "Rules Cache Performance")
 
     # Clear cache first
-    OptimizedAuditService.clear_rules_cache()
+    AuditService.clear_rules_cache()
     print("   ✓ Cache cleared")
 
     # First call - should build rules
     start = time.time()
-    rules_l1_1 = OptimizedAuditService._get_cached_rules("L1")
+    rules_l1_1 = AuditService._get_cached_rules("L1")
     first_call_time = time.time() - start
 
     print(f"   First call (build): {first_call_time:.3f}s")
@@ -129,7 +129,7 @@ def test_caching_mechanism():
 
     # Second call - should use cache
     start = time.time()
-    rules_l1_2 = OptimizedAuditService._get_cached_rules("L1")
+    rules_l1_2 = AuditService._get_cached_rules("L1")
     second_call_time = time.time() - start
 
     print(f"   Second call (cache): {second_call_time:.3f}s")
@@ -146,24 +146,24 @@ def test_caching_mechanism():
 
     # Check cache timestamp
     cache_key = "cisco_L1"
-    assert cache_key in OptimizedAuditService._cache_timestamp
-    print(f"   Cache timestamp set: {OptimizedAuditService._cache_timestamp[cache_key]}")
+    assert cache_key in AuditService._cache_timestamp
+    print(f"   Cache timestamp set: {AuditService._cache_timestamp[cache_key]}")
 
     # Verify cache entry exists
-    assert cache_key in OptimizedAuditService._rules_cache
+    assert cache_key in AuditService._rules_cache
     print("   ✓ Cache entry exists")
 
     print_test(3, "Multiple Profile Caching")
 
     # Cache L1 rules
-    rules_l1 = OptimizedAuditService._get_cached_rules("L1")
+    rules_l1 = AuditService._get_cached_rules("L1")
 
     # Cache FULL rules
-    rules_full = OptimizedAuditService._get_cached_rules("FULL")
+    rules_full = AuditService._get_cached_rules("FULL")
 
     # Verify both are cached separately
-    assert "cisco_L1" in OptimizedAuditService._rules_cache
-    assert "cisco_FULL" in OptimizedAuditService._rules_cache
+    assert "cisco_L1" in AuditService._rules_cache
+    assert "cisco_FULL" in AuditService._rules_cache
 
     print(f"   L1 rules cached: {len(rules_l1)}")
     print(f"   FULL rules cached: {len(rules_full)}")
@@ -182,7 +182,7 @@ def test_service_methods():
         session = db.query(AuditSession).first()
 
         if session:
-            result = OptimizedAuditService.get_audit_session(
+            result = AuditService.get_audit_session(
                 db=db,
                 session_id=session.id,
                 include_results=False
@@ -194,7 +194,7 @@ def test_service_methods():
             print("   ✓ Get session working")
 
             # With results
-            result_with_data = OptimizedAuditService.get_audit_session(
+            result_with_data = AuditService.get_audit_session(
                 db=db,
                 session_id=session.id,
                 include_results=True
@@ -209,7 +209,7 @@ def test_service_methods():
 
         print_test(2, "Get Sessions with Filtering")
 
-        sessions = OptimizedAuditService.get_all_sessions(
+        sessions = AuditService.get_all_sessions(
             db=db,
             status="completed",
             limit=5
@@ -217,7 +217,7 @@ def test_service_methods():
 
         print(f"   Completed sessions: {len(sessions)}")
 
-        sessions = OptimizedAuditService.get_all_sessions(
+        sessions = AuditService.get_all_sessions(
             db=db,
             status="failed",
             limit=5
@@ -228,16 +228,16 @@ def test_service_methods():
 
         print_test(3, "Get Sessions Count")
 
-        total = OptimizedAuditService.get_sessions_count(db=db)
+        total = AuditService.get_sessions_count(db=db)
         print(f"   Total sessions: {total}")
 
-        completed = OptimizedAuditService.get_sessions_count(
+        completed = AuditService.get_sessions_count(
             db=db,
             status="completed"
         )
         print(f"   Completed sessions: {completed}")
 
-        failed = OptimizedAuditService.get_sessions_count(
+        failed = AuditService.get_sessions_count(
             db=db,
             status="failed"
         )
@@ -248,14 +248,14 @@ def test_service_methods():
 
         if session:
             # Get all results
-            all_results = OptimizedAuditService.get_audit_results(
+            all_results = AuditService.get_audit_results(
                 db=db,
                 session_id=session.id
             )
             print(f"   Total results: {len(all_results)}")
 
             # Get only failures
-            failures = OptimizedAuditService.get_audit_results(
+            failures = AuditService.get_audit_results(
                 db=db,
                 session_id=session.id,
                 status_filter=CheckStatus.FAIL
@@ -263,7 +263,7 @@ def test_service_methods():
             print(f"   Failed checks: {len(failures)}")
 
             # Get high severity
-            high_severity = OptimizedAuditService.get_audit_results(
+            high_severity = AuditService.get_audit_results(
                 db=db,
                 session_id=session.id,
                 severity_filter="high"
@@ -283,7 +283,7 @@ def test_statistics():
     try:
         print_test(1, "Get Audit Statistics")
 
-        stats = OptimizedAuditService.get_audit_statistics(db=db)
+        stats = AuditService.get_audit_statistics(db=db)
 
         print(f"   Total sessions: {stats['total_sessions']}")
         print(f"   Completed: {stats['completed_sessions']}")
@@ -303,7 +303,7 @@ def test_statistics():
         ).first()
 
         if session:
-            summary = OptimizedAuditService.get_session_summary(
+            summary = AuditService.get_session_summary(
                 db=db,
                 session_id=session.id
             )
@@ -374,7 +374,7 @@ def test_bulk_insert_performance():
 
         # Test bulk insert
         start = time.time()
-        OptimizedAuditService._bulk_insert_results(
+        AuditService._bulk_insert_results(
             db=db,
             session_id=test_session.id,
             findings=mock_findings,
@@ -411,7 +411,7 @@ def test_error_handling():
         print_test(1, "Invalid Asset ID")
 
         try:
-            OptimizedAuditService.execute_cisco_audit(
+            AuditService.execute_cisco_audit(
                 db=db,
                 asset_id=999999,
                 user_id=1,
@@ -424,7 +424,7 @@ def test_error_handling():
 
         print_test(2, "Session Not Found")
 
-        result = OptimizedAuditService.get_audit_session(
+        result = AuditService.get_audit_session(
             db=db,
             session_id=999999
         )
@@ -435,7 +435,7 @@ def test_error_handling():
         print_test(3, "Delete Non-existent Session")
 
         try:
-            OptimizedAuditService.delete_session(db=db, session_id=999999)
+            AuditService.delete_session(db=db, session_id=999999)
             assert False, "Should have raised ValueError"
         except ValueError as e:
             print(f"   ✓ Correctly raised: {str(e)}")
@@ -461,7 +461,7 @@ def test_progress_tracking():
 
     # Show how it would be used
     print("\n   Example usage:")
-    print("   OptimizedAuditService.execute_cisco_audit(")
+    print("   AuditService.execute_cisco_audit(")
     print("       ...,")
     print("       progress_callback=my_callback")
     print("   )")
@@ -473,7 +473,7 @@ def test_timing_operations():
 
     print_test(1, "Timed Operation Context Manager")
 
-    with OptimizedAuditService._timed_operation("Test operation", session_id=123):
+    with AuditService._timed_operation("Test operation", session_id=123):
         time.sleep(0.1)
 
     print("   ✓ Timing context manager working")
@@ -481,14 +481,14 @@ def test_timing_operations():
     print_test(2, "Performance Metrics")
 
     # Test cache timing
-    OptimizedAuditService.clear_rules_cache()
+    AuditService.clear_rules_cache()
 
     start = time.time()
-    rules = OptimizedAuditService._get_cached_rules("L1")
+    rules = AuditService._get_cached_rules("L1")
     build_time = time.time() - start
 
     start = time.time()
-    rules = OptimizedAuditService._get_cached_rules("L1")
+    rules = AuditService._get_cached_rules("L1")
     cache_time = time.time() - start
 
     print(f"   Build time: {build_time:.3f}s")

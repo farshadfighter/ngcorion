@@ -9,10 +9,12 @@ Orchestrates the complete audit workflow:
 5. Store results in database
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from contextlib import contextmanager
 import logging
+import time
 
 from app.models import AuditSession, AuditResult, Asset, User
 from app.models.audit import DeviceType, CheckStatus
@@ -23,8 +25,152 @@ from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
 logger = logging.getLogger(__name__)
 
 
+class AuditError(Exception):
+    """Base exception for audit errors."""
+    pass
+
+
+class AuditConnectionError(AuditError):
+    """Raised when SSH connection fails."""
+    pass
+
+
+class AuditEvaluationError(AuditError):
+    """Raised when rule evaluation fails."""
+    pass
+
+
+class AuditValidationError(AuditError):
+    """Raised when input validation fails."""
+    pass
+
+
 class AuditService:
-    """Service for executing and managing security audits."""
+    """Service for executing and managing security audits with optimizations."""
+
+    # Configuration constants
+    CACHE_TTL = 3600  # 1 hour cache for CIS rules
+    BATCH_SIZE = 100  # Bulk insert batch size
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2  # seconds
+
+    # Class-level cache for CIS rules
+    _rules_cache: Dict[str, List] = {}
+    _cache_timestamp: Dict[str, float] = {}
+
+    @staticmethod
+    @contextmanager
+    def _timed_operation(operation_name: str):
+        """
+        Context manager for timing operations.
+
+        Usage:
+            with AuditService._timed_operation("Evaluate rules"):
+                # operation code
+
+        Logs start and completion with duration.
+        """
+        start_time = time.time()
+        logger.info(f"Starting: {operation_name}")
+
+        try:
+            yield
+        finally:
+            elapsed = time.time() - start_time
+            logger.info(f"Completed: {operation_name} ({elapsed:.2f}s)")
+
+    @staticmethod
+    def _get_cached_rules(profile: str) -> List:
+        """
+        Get CIS rules from cache or build fresh.
+
+        Args:
+            profile: CIS profile (L1 or FULL)
+
+        Returns:
+            List of filtered CIS rules
+
+        Cache is invalidated after CACHE_TTL seconds.
+        """
+        cache_key = f"cisco_{profile}"
+        current_time = time.time()
+
+        # Check if cache exists and is still valid
+        if (cache_key in AuditService._rules_cache and
+            cache_key in AuditService._cache_timestamp):
+
+            cache_age = current_time - AuditService._cache_timestamp[cache_key]
+
+            if cache_age < AuditService.CACHE_TTL:
+                logger.debug(
+                    f"Using cached rules for {profile} "
+                    f"(age: {cache_age:.1f}s, {len(AuditService._rules_cache[cache_key])} rules)"
+                )
+                return AuditService._rules_cache[cache_key]
+            else:
+                logger.debug(f"Cache expired for {profile} (age: {cache_age:.1f}s)")
+
+        # Build fresh rules and cache
+        logger.info(f"Building fresh CIS rules for {profile}")
+        with AuditService._timed_operation(f"Build CIS rules ({profile})"):
+            all_rules = build_all_cisco_cis_rules()
+            filtered_rules = filter_rules_by_profile(all_rules, profile)
+
+        AuditService._rules_cache[cache_key] = filtered_rules
+        AuditService._cache_timestamp[cache_key] = current_time
+
+        logger.info(f"Cached {len(filtered_rules)} rules for {profile}")
+        return filtered_rules
+
+    @staticmethod
+    def _bulk_insert_results(
+        db: Session,
+        session_id: int,
+        findings: List[Dict],
+        batch_size: int = None
+    ):
+        """
+        Bulk insert audit results for better performance.
+
+        Args:
+            db: Database session
+            session_id: Audit session ID
+            findings: List of finding dictionaries
+            batch_size: Records per batch (default: BATCH_SIZE)
+
+        Inserts records in batches to reduce database round trips.
+        """
+        batch_size = batch_size or AuditService.BATCH_SIZE
+        results = []
+
+        logger.info(f"Bulk inserting {len(findings)} audit results (batch size: {batch_size})")
+
+        for idx, finding in enumerate(findings, 1):
+            result = AuditResult(
+                audit_session_id=session_id,
+                check_number=finding["check_number"],
+                check_title=finding["title"],
+                severity=finding["severity"],
+                status=CheckStatus.PASS if finding["passed"] else CheckStatus.FAIL,
+                evidence=finding["evidence"],
+                remediation=finding.get("remediation")
+            )
+            results.append(result)
+
+            # Commit batch
+            if len(results) >= batch_size:
+                db.bulk_save_objects(results)
+                db.commit()
+                logger.debug(f"Committed batch: {idx - len(results) + 1} to {idx}")
+                results = []
+
+        # Commit final batch
+        if results:
+            db.bulk_save_objects(results)
+            db.commit()
+            logger.debug(f"Committed final batch: {len(results)} records")
+
+        logger.info(f"Successfully inserted {len(findings)} audit results")
 
     @staticmethod
     def execute_cisco_audit(
@@ -81,23 +227,24 @@ class AuditService:
 
         try:
             # 3. Establish SSH connection and collect turbo dump
-            with CiscoSSHClient(
-                ip=target_ip,
-                username=ssh_username,
-                password=ssh_password,
-                secret=ssh_secret
-            ) as ssh_client:
-                raw_dump = ssh_client.collect_turbo()
+            with AuditService._timed_operation("SSH connection and turbo dump"):
+                with CiscoSSHClient(
+                    ip=target_ip,
+                    username=ssh_username,
+                    password=ssh_password,
+                    secret=ssh_secret
+                ) as ssh_client:
+                    raw_dump = ssh_client.collect_turbo()
 
             # 4. Redact sensitive data
             redacted_dump = redact_sensitive_data(raw_dump)
 
-            # 5. Build and filter CIS rules
-            all_rules = build_all_cisco_cis_rules()
-            rules = filter_rules_by_profile(all_rules, profile)
+            # 5. Get CIS rules from cache
+            rules = AuditService._get_cached_rules(profile)
 
             # 6. Evaluate compliance
-            report = evaluate_compliance(redacted_dump, rules)
+            with AuditService._timed_operation(f"Evaluate {len(rules)} CIS rules"):
+                report = evaluate_compliance(redacted_dump, rules)
 
             # 7. Update session with results
             session.status = "completed"
@@ -109,23 +256,22 @@ class AuditService:
             session.compliance_pct = report["summary"]["compliance_pct"]
             session.weighted_compliance_pct = report["summary"]["weighted_compliance_pct"]
             session.turbo_dump = redacted_dump
-
-            # 8. Store individual check results
-            for finding in report["findings"]:
-                result = AuditResult(
-                    session_id=session.id,
-                    check_id=None,  # Runtime check (not stored in audit_checks table)
-                    check_number=finding["id"],
-                    check_title=finding["title"],
-                    severity=finding["severity"],
-                    level=finding["level"],
-                    status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
-                    evidence_snippet=finding["evidence"],
-                    checked_at=datetime.now(timezone.utc)
-                )
-                db.add(result)
-
             db.commit()
+
+            # 8. Bulk insert check results for better performance
+            findings_for_insert = []
+            for finding in report["findings"]:
+                findings_for_insert.append({
+                    "check_number": finding["id"],
+                    "title": finding["title"],
+                    "severity": finding["severity"],
+                    "passed": finding["compliant"],
+                    "evidence": finding["evidence"],
+                    "remediation": finding.get("remediation")
+                })
+
+            with AuditService._timed_operation("Insert audit results"):
+                AuditService._bulk_insert_results(db, session.id, findings_for_insert)
             db.refresh(session)
 
             logger.info(f"Audit completed for asset {asset_id} ({target_ip}): {report['summary']['compliance_pct']}% compliance")
@@ -500,3 +646,184 @@ class AuditService:
 
             logger.error(f"CIS Benchmark audit failed for asset {asset_id} ({target_ip}): {type(e).__name__}")
             raise
+
+    @staticmethod
+    def execute_cisco_audit_with_retry(
+        db: Session,
+        asset_id: int,
+        user_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str] = None,
+        profile: str = "L1",
+        max_retries: int = None
+    ) -> AuditSession:
+        """
+        Execute Cisco audit with automatic retry on transient failures.
+
+        Features:
+        - Retries up to max_retries times on connection errors
+        - 2-second delay between retries
+        - Logs each attempt
+        - Only retries on connection errors, not validation errors
+
+        Args:
+            max_retries: Maximum retry attempts (default: 3)
+            ... (same as execute_cisco_audit)
+
+        Returns:
+            AuditSession: Completed audit session
+
+        Raises:
+            AuditConnectionError: After all retries exhausted
+        """
+        max_retries = max_retries or AuditService.MAX_RETRIES
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info(
+                    f"Audit attempt {attempt}/{max_retries} for asset {asset_id}"
+                )
+
+                return AuditService.execute_cisco_audit(
+                    db=db,
+                    asset_id=asset_id,
+                    user_id=user_id,
+                    ssh_username=ssh_username,
+                    ssh_password=ssh_password,
+                    ssh_secret=ssh_secret,
+                    profile=profile
+                )
+
+            except (ConnectionError, TimeoutError, OSError) as e:
+                logger.warning(
+                    f"Connection attempt {attempt}/{max_retries} failed: {str(e)}"
+                )
+
+                if attempt < max_retries:
+                    logger.info(f"Retrying in {AuditService.RETRY_DELAY} seconds...")
+                    time.sleep(AuditService.RETRY_DELAY)
+                else:
+                    raise AuditConnectionError(
+                        f"Audit failed after {max_retries} connection attempts: {str(e)}"
+                    )
+
+            except ValueError as e:
+                # Don't retry validation errors
+                logger.error(f"Validation error (not retrying): {str(e)}")
+                raise AuditValidationError(str(e))
+
+    @staticmethod
+    def get_audit_statistics(
+        db: Session,
+        asset_id: Optional[int] = None,
+        user_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Get comprehensive statistics about audit sessions.
+
+        Args:
+            db: Database session
+            asset_id: Optional filter by asset
+            user_id: Optional filter by user
+
+        Returns:
+            {
+                "total_sessions": int,
+                "by_status": {"completed": int, "failed": int, "running": int},
+                "success_rate": float,
+                "average_compliance": float,
+                "total_checks_run": int,
+                "total_failures": int,
+                "most_common_failures": [{"check_number": str, "count": int}, ...],
+                "most_recent_session": {...}
+            }
+        """
+        from sqlalchemy import func
+
+        # Query sessions
+        query = db.query(AuditSession)
+        if asset_id:
+            query = query.filter(AuditSession.asset_id == asset_id)
+        if user_id:
+            query = query.filter(AuditSession.user_id == user_id)
+
+        sessions = query.all()
+        total_sessions = len(sessions)
+
+        # Group by status
+        by_status = {}
+        for session in sessions:
+            status = session.status
+            by_status[status] = by_status.get(status, 0) + 1
+
+        # Calculate success rate
+        completed = by_status.get("completed", 0)
+        success_rate = (
+            (completed / total_sessions * 100)
+            if total_sessions > 0
+            else 0.0
+        )
+
+        # Calculate average compliance
+        compliances = [s.compliance_pct for s in sessions if s.compliance_pct is not None]
+        average_compliance = (
+            sum(compliances) / len(compliances)
+            if compliances
+            else 0.0
+        )
+
+        # Total checks and failures
+        total_checks = sum(s.total_checks or 0 for s in sessions)
+        total_failures = sum(s.failed_checks or 0 for s in sessions)
+
+        # Most common failures
+        failure_query = db.query(AuditResult).filter(
+            AuditResult.status == CheckStatus.FAIL
+        )
+        if asset_id:
+            failure_query = failure_query.join(AuditSession).filter(
+                AuditSession.asset_id == asset_id
+            )
+
+        failures = failure_query.all()
+        failure_counts = {}
+        for failure in failures:
+            check = failure.check_number
+            failure_counts[check] = failure_counts.get(check, 0) + 1
+
+        most_common_failures = [
+            {"check_number": check, "count": count}
+            for check, count in sorted(
+                failure_counts.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )[:10]
+        ]
+
+        # Most recent session
+        most_recent = (
+            query.order_by(AuditSession.started_at.desc()).first()
+            if sessions
+            else None
+        )
+
+        most_recent_data = None
+        if most_recent:
+            most_recent_data = {
+                "id": most_recent.id,
+                "status": most_recent.status,
+                "compliance_pct": most_recent.compliance_pct,
+                "started_at": most_recent.started_at.isoformat() if most_recent.started_at else None
+            }
+
+        return {
+            "total_sessions": total_sessions,
+            "by_status": by_status,
+            "success_rate": round(success_rate, 2),
+            "average_compliance": round(average_compliance, 2),
+            "total_checks_run": total_checks,
+            "total_failures": total_failures,
+            "most_common_failures": most_common_failures,
+            "most_recent_session": most_recent_data
+        }
