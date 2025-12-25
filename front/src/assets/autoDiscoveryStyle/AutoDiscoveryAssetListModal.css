@@ -1,0 +1,120 @@
+/**
+ * Auto Discovery Asset List Modal - Full screen popup styles
+ */
+
+/* Full Screen Overlay */
+.asset-list-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* Modal Container */
+.asset-list-modal {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 1400px;
+  height: 90vh;
+  max-height: 900px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+/* Modal Header */
+.asset-list-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 2px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modal-header-left h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #212529;
+  margin: 0;
+}
+
+.modal-back-btn,
+.modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: white;
+  color: #495057;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-back-btn:hover,
+.modal-close-btn:hover {
+  background: #e9ecef;
+  color: #212529;
+}
+
+.modal-back-btn:active,
+.modal-close-btn:active {
+  transform: scale(0.95);
+}
+
+.modal-back-btn svg,
+.modal-close-btn svg {
+  flex-shrink: 0;
+}
+
+/* Modal Body */
+.asset-list-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .asset-list-modal-overlay {
+    padding: 0;
+  }
+
+  .asset-list-modal {
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .asset-list-modal-header {
+    padding: 16px;
+  }
+
+  .modal-header-left h2 {
+    font-size: 18px;
+  }
+
+  .asset-list-modal-body {
+    padding: 16px;
+  }
+}
