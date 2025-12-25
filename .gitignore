@@ -30,9 +30,20 @@ Thumbs.db
 test/
 *-test/
 
-# Claude
-node_modules/  
-package.json
-package-lock.json
-CLAUDE.md
+# Node.js / Frontend
+node_modules/
+dist/
+build/
+*.local
+.vite/
+
+# Lock files (keep package.json, ignore lock files optionally)
+# Uncomment the line below if you want to ignore lock files
+# package-lock.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
