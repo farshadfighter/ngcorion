@@ -1,0 +1,187 @@
+* [33maed4f45[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m fix front
+* [33m234ab9d[m abayta
+* [33m9c8aac7[m a
+* [33m8fd8610[m update
+* [33mcc6df8a[m Configure frontend for server deployment
+* [33mdc5bb25[m base fromt
+* [33m860278c[m md
+* [33m26fa6ac[m OP
+* [33m5ebb9ce[m update
+* [33m00026c7[m remove extras
+* [33m44115fd[m optimize auditing
+* [33m2d63987[m update
+* [33md656e37[m update
+* [33m414f8d0[m md
+* [33m248bf09[m test
+* [33m78ec4fe[m fix file
+* [33me3614a4[m update hardening for automatic harden
+* [33m55ecd26[m harden test
+* [33m05c3ebc[m update alembic
+* [33m4a7aae4[m HARDENING
+* [33me373475[m update
+* [33m19b03b3[m fix error in exeption part 'as e' +++
+* [33m7188843[m update
+* [33m51d3f7c[m up
+* [33m0b17ffd[m uc
+* [33m3c08bbf[m uc
+* [33m1df2648[m BLACK
+* [33m83f84fa[m UC
+* [33m419e473[m up
+* [33md78a231[m update
+* [33m61109a9[m update
+* [33m74ca2f5[m update req
+* [33mb428536[m fix core BUG
+* [33m9e3b1d4[m last updat in night
+* [33m66d4fef[m fix
+* [33md5ce4c0[m update
+* [33m728c500[m update dir
+* [33mb41dd5c[m fix bugs (for add audit modules)
+* [33m0d97a80[m add ADD to asset list
+* [33m64efc3d[m add 3 option
+* [33m76d2ec1[m update
+* [33mab60875[m BEFORE THE BIG EDITgit status git status git status git status git status git status git status
+* [33m4fa7fe5[m add service tab
+* [33m537ee9e[m update frontend
+* [33mbfbc59f[m update
+* [33mabca524[m add
+* [33m1aecea0[m update front
+* [33meee56a6[m frontend
+* [33m1a24f04[m update
+* [33m728c73f[m cis
+* [33m42d1f94[m motmaen nistam
+* [33m18b1488[m update
+* [33mec6d0d3[m update
+* [33mc00ba75[m update
+* [33m13257be[m update
+* [33m558136f[m update backend for autodiscovery 3 method
+* [33m9ddf1da[m update backend for autodiscovery 3 method
+* [33md139419[m update
+* [33m088d12e[m a
+* [33m1d30c3f[m update
+* [33m06389bc[m update for discovery
+* [33md9ad6a7[m 0
+* [33m45adb59[m audit front
+* [33mf11a9a0[m Fix AssetList API calls to use axios instance
+* [33macd1995[m Fix CORS configuration for frontend access
+* [33m90ad156[m audit front
+* [33ma0a367c[m help file
+* [33m2090999[m audit VERSION 1
+* [33mefe6f3a[m help file
+* [33m823860b[m audit VERSION 1
+* [33m55f65e8[m audit VERSION 1
+* [33m66746e1[m audit
+* [33m32f99d5[m edit schema
+* [33m1e069be[m remove extra fields
+* [33m3d0cf49[m remove server log
+* [33m445e01b[m 0000
+* [33m7b5cf60[m audit ques
+* [33m8c63ab5[m hostname field will be populated in the Network & System tab
+* [33md8e0133[m ----
+* [33m54a5784[m remove cm
+* [33m9f823dc[m Frontend changes (AssetList.jsx):   - Moved Asset Name column to first position (primary identifier)   - Moved ID column to end with de-emphasized styling (muted, smaller font)   - Reordered Network view: Asset Name → IP → Hostname → ...   - Removed duplicate hostname in Overview view
+* [33md295036[m edit asset list ID
+* [33mf6cd929[m update
+* [33m69540e0[m downgrade bcrypt
+* [33m4544a29[m fix
+* [33m37b5aa5[m update
+*   [33ma09ea06[m update
+[32m|[m[33m\[m  
+[32m|[m *   [33m1b748c3[m Merge remote-tracking branch 'refs/remotes/origin/main'
+[32m|[m [34m|[m[35m\[m  
+[32m|[m * [35m|[m [33m69cba11[m front
+* [35m|[m [35m|[m [33mdbbad80[m update
+[35m|[m [35m|[m[35m/[m  
+[35m|[m[35m/[m[35m|[m   
+* [35m|[m [33m008122e[m update mac address filter
+* [35m|[m [33me11dcf2[m update
+* [35m|[m [33mbb9a41c[m up
+* [35m|[m [33ma8d7dea[m fix update schema bug
+* [35m|[m [33m49d35aa[m comment spyder
+* [35m|[m [33m70bdfb2[m fix
+* [35m|[m [33mdc9683a[m update git ignore
+* [35m|[m [33m499e540[m move to doc
+* [35m|[m [33m77b00cc[m fix
+* [35m|[m [33m582175b[m fix export
+* [35m|[m [33m49bfb4a[m jsx
+* [35m|[m [33m85930eb[m fix
+* [35m|[m [33mcae88e9[m auth
+* [35m|[m [33m42e840b[m user permision error fix
+* [35m|[m [33me5f7fab[m fix
+* [35m|[m [33m9b9f53c[m add import and export to asset requirement and fix import in asset list
+* [35m|[m [33m0fb17bc[m autodiscovery
+* [35m|[m [33mb166ec3[m update front
+* [35m|[m [33m69b94c0[m import export
+* [35m|[m [33mb8bf2c2[m update
+[35m|[m[35m/[m  
+* [33m506f13c[m deploy to vps
+* [33m4503c5c[m test
+* [33m8e157ff[m move files
+* [33m77d8510[m nmap
+* [33m573c2a4[m discovery front
+* [33mcd0b38b[m update discovery
+* [33m0d98056[m r
+* [33m7d27dd2[m discovery
+* [33mc1721b0[m update
+* [33mf059977[m update for discovery
+* [33me30e2f8[m auto discovery
+* [33m128964f[m fix doc
+* [33m0eff8a7[m   1. Replaced wildcard import (line 10)
+* [33m81e3837[m fix delete user bug
+* [33m95842f3[m sql
+* [33mb461148[m sql backup
+* [33m7995059[m file path
+* [33md75804f[m Backend updae
+* [33mbf031e1[m optimize backend and fix persian comments
+* [33md8e2983[m optimize backend and fix persian comments
+* [33m1e31385[m front update
+* [33md528b33[m update doc v2
+* [33m30fd37f[m update doc
+* [33me32a64c[m edit
+* [33mb7f8611[m asset form
+* [33mc1461c0[m update fronted
+* [33mca8c429[m UPDATE
+* [33m818ff3f[m update
+[35m|[m * [33m43294fd[m[33m ([m[1;31morigin/frontend[m[33m)[m add ali project
+[35m|[m[35m/[m  
+* [33mbbb36d0[m Update front
+* [33m13bf6b3[m update
+* [33m6442434[m delete OS detection from asset auto discovey
+* [33mb28ce83[m update security
+* [33mc45aa29[m add discovery first ver
+* [33m728e310[m front
+* [33mbbf0ad8[m update vite config
+* [33m15182af[m add front pages
+* [33m15f2077[m update
+* [33mf0fe604[m front with react
+* [33maa1cef4[m react
+* [33m19a9cc6[m enums
+* [33mcac79a3[m update DIR
+* [33m2fca8b6[m init
+* [33m5559d7e[m init
+* [33m16d4ca3[m front
+* [33m51852af[m UPDATE
+* [33m6ae1de1[m Update front
+* [33m6c81642[m update
+* [33m8db1556[m frontend
+* [33m6f2e4ec[m user permission
+* [33m94cffe6[m fix BUG
+* [33m1525d45[m update
+* [33ma782d78[m user permission
+* [33m2259f6b[m fix Buges
+* [33m92198d8[m update test_frontend
+* [33m88a84c4[m update auth
+* [33m24910b8[m asset management api
+* [33me64c8f4[m front test
+* [33mc3283f7[m api test
+* [33m6fc7f3e[m alembic
+* [33mb4e3b49[m __init__ file update
+* [33m0bfe5ef[m create sql tables
+* [33m0764014[m asset management sql
+* [33m35ee331[m debuge
+* [33m8f3b8bd[m add files to doc dir
+* [33md5fb959[m update .gitignore ---- del log
+* [33mc6717d7[m Add logs module
+* [33m74f5e67[m change farsi words
+* [33m57bb9cc[m requirement file
+* [33m832f72d[m Add files via upload
+* [33m138f013[m initial commit - Netease
