@@ -136,6 +136,12 @@ class AssetService:
         # Extract security_status if present
         security_status_data = data.pop('security_status', None)
 
+        # Validate asset_type_id if provided
+        if 'asset_type_id' in data and data['asset_type_id'] is not None:
+            asset_type = db.query(AssetType).filter(AssetType.id == data['asset_type_id']).first()
+            if not asset_type:
+                raise ValueError(f"Asset type with id {data['asset_type_id']} does not exist")
+
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if asset:
             # Update asset fields

@@ -158,10 +158,13 @@ def update_asset(
     db: Session = Depends(get_db)
 ):
     """Update asset (requires write permission)"""
-    asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
-    if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
-    return asset
+    try:
+        asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
+        if not asset:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return asset
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @assets_router.delete("/{asset_id}")
