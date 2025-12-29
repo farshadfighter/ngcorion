@@ -162,6 +162,7 @@ textarea {
       border-radius: 8px;
       background: #ffffff;
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      margin-bottom: 15px;
   }
 
   .search-box-container .search-input:hover {

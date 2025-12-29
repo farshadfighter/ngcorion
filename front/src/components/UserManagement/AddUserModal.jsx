@@ -6,7 +6,7 @@ const MODULES = [
     { name: "dashboard", label: "Dashboard" },
     { name: "asset_requirement", label: "Asset Requirement" },
     { name: "asset_list", label: "Asset List" },
-    { name: "auto_discovery", label: "Auto Discovery" },
+    { name: "asset_auto_discovery", label: "Auto Discovery" },
     { name: "user_management", label: "User Management" },
 ];
 
@@ -17,6 +17,7 @@ export const AddUserModal = ({ onClose }) => {
         email: "",
         password: "",
         role: "user",
+        is_active: true,
     });
 
     const [permissions, setPermissions] = useState(
@@ -40,6 +41,13 @@ export const AddUserModal = ({ onClose }) => {
                 ...permissions[moduleName],
                 [permissionType]: !permissions[moduleName][permissionType],
             },
+        });
+    };
+
+    const handleActiveToggle = () => {
+        setFormData({
+            ...formData,
+            is_active: !formData.is_active,
         });
     };
 
@@ -136,6 +144,27 @@ export const AddUserModal = ({ onClose }) => {
                                     <option value="admin">admin</option>
                                     <option value="guest">guest</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        {/* Active Status Toggle */}
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>Status</label>
+                                <div className="active-toggle-container">
+                                    <button
+                                        type="button"
+                                        className={`active-toggle-btn ${formData.is_active ? 'active' : 'inactive'}`}
+                                        onClick={handleActiveToggle}
+                                    >
+                                        <span className="toggle-label">
+                                            {formData.is_active ? 'Active' : 'Inactive'}
+                                        </span>
+                                        <span className={`toggle-switch ${formData.is_active ? 'active' : 'inactive'}`}>
+                                            <span className="toggle-slider"></span>
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

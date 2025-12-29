@@ -9,11 +9,7 @@ const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
 const RISK_FALLBACK = ["low", "medium", "high", "critical"];
 
-/**
- * هر ورودی enum رو تبدیل می‌کنیم به آرایه‌ای از:
- * [{ value: 'active', label: 'active' }, ...]
- * تا دیگه تو JSX هرگز به [object Object] برنخوریم.
- */
+
 function mapEnumOptions(raw, fallbackArray) {
     let source = [];
 
@@ -24,12 +20,12 @@ function mapEnumOptions(raw, fallbackArray) {
     }
 
     return source.map((item) => {
-        // اگر رشته بود
+
         if (typeof item === "string") {
             return { value: item, label: item };
         }
 
-        // اگر object بود (مثلاً { value, label } یا فرم‌های دیگه)
+
         if (item && typeof item === "object") {
             if ("value" in item && "label" in item) {
                 return { value: String(item.value), label: String(item.label) };
@@ -68,7 +64,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     const [locations, setLocations] = useState([]);
     const [owners, setOwners] = useState([]);
 
-    // این سه تا *همیشه* آرایه‌ای از {value,label} هستند
     const [statusOptions, setStatusOptions] = useState(
         () => mapEnumOptions(null, STATUS_FALLBACK)
     );
@@ -360,7 +355,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>Role</label>
+                            <label>Security zone</label>
                             <input
                                 type="text"
                                 name="asset_role"
@@ -371,7 +366,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             />
                         </div>
                         <div className="form-group">
-                            <label>Manufacturer</label>
+                            <label>Vendor</label>
                             <input
                                 type="text"
                                 name="manufacturer"

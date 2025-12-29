@@ -1,7 +1,7 @@
 export const DeleteConfirmModal = ({ user, onConfirm, onCancel }) => {
     return (
-        <div className="modal-overlay" onClick={onCancel}>
-            <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={onCancel} >
+            <div className="modal-content modal-small"  onClick={(e) => e.stopPropagation()} >
                 <div className="modal-header">
                     <h3>Confirm Delete</h3>
                     <button className="modal-close" onClick={onCancel}>✕</button>
@@ -16,7 +16,9 @@ export const DeleteConfirmModal = ({ user, onConfirm, onCancel }) => {
                     <button className="btn-cancel" onClick={onCancel}>
                         Cancel
                     </button>
-                    <button className="btn-delete" onClick={onConfirm}>
+                    <button className="btn-delete" onClick={onConfirm} style={{ backgroundColor: "#0A234E",paddingLeft: 23, paddingRight: 23,color: "white"
+                    }}
+                    >
                         Delete
                     </button>
                 </div>

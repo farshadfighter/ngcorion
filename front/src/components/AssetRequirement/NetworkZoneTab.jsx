@@ -76,13 +76,25 @@ export const NetworkZoneTab = () => {
     return (
         <div className="tab-content">
             <div className="tab-header">
-                <input
-                    type="text"
-                    placeholder="Search zones..."
-                    className="search-input"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <div className="search-wrapper">
+                    <input
+                        type="text"
+
+                        placeholder="Search asset types..."
+                        className="search-input"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{
+                            width: "240px",
+                            padding: "8px 14px",
+                            fontSize: "13px",
+                            border: "1px solid #d0d5dd",
+                            borderRadius: "8px",
+                            background: "#ffffff",
+                            outline: "none",
+                        }}
+                    />
+                </div>
                 <button className="btn-add" onClick={handleAdd}>
                     + Add Zone
                 </button>
@@ -122,7 +134,7 @@ export const NetworkZoneTab = () => {
                                         className="btn-delete"
                                         onClick={() => handleDelete(item)}
                                     >
-                                        🗑️ Delete
+                                        <img src={"/icons/delete.svg"} alt={"delete"} />
                                     </button>
                                 </td>
                             </tr>

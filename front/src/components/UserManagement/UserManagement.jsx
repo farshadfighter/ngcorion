@@ -98,14 +98,14 @@ export const UserManagement = () => {
                                         onClick={() => handleEdit(user)}
                                         title="Edit"
                                     >
-                                        ✏️
+                                        <img src="/icons/edetie.svg" alt="edit" />
                                     </button>
                                     <button
                                         className="btn-icon btn-delete"
                                         onClick={() => handleDeleteClick(user)}
                                         title="Delete"
                                     >
-                                        🗑️
+                                        <img src={"/icons/delete.svg"} alt={"delete"} />
                                     </button>
                                 </td>
                             </tr>

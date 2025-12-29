@@ -80,6 +80,7 @@ export const AssetTypeTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
+
                         placeholder="Search asset types..."
                         className="search-input"
                         value={searchTerm}

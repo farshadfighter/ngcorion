@@ -223,14 +223,13 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 13px;
+    background: transparent;
+    color: #0A234E;
     transition: all 0.3s;
 }
 
 
-.btn-delete {
-    background: #fff;
-    color: white;
-}
+
 
 .btn-delete:hover {
     background: #163a7a;
@@ -438,9 +437,7 @@
         gap: 10px;
     }
 
-    .search-input {
-        width: 100%;
-    }
+
 
     .modal-content {
         width: 95%;
