@@ -31,6 +31,25 @@ class NmapScanner:
             return False
 
     @staticmethod
+    def is_ip_range(target: str) -> bool:
+        """
+        Check if target is an IP range (CIDR or dash notation)
+
+        Examples:
+            192.168.1.1 -> False (single IP)
+            192.168.1.0/24 -> True (CIDR range)
+            192.168.1.1-254 -> True (dash range)
+            192.168.1.1-192.168.1.254 -> True (full dash range)
+        """
+        # CIDR notation
+        if '/' in target:
+            return True
+        # Dash notation for ranges
+        if '-' in target:
+            return True
+        return False
+
+    @staticmethod
     def build_nmap_command(
         target: str,
         ports: Optional[str] = None,
@@ -78,13 +97,26 @@ class NmapScanner:
             # Default to well-known ports
             cmd.extend(["-p", "1-1024"])
 
-        # Additional options for faster scanning
-        cmd.extend([
-            "--max-retries=1",  # Reduce retries for faster scan
-            "--host-timeout=30s",  # Max time per host (30 seconds)
-            "--min-rate=100",  # Minimum packets per second
-            "-T4"  # Aggressive timing (faster)
-        ])
+        # Adjust scan settings based on whether target is a single IP or a range
+        is_range = NmapScanner.is_ip_range(target)
+
+        if is_range:
+            # More conservative settings for IP ranges to ensure all hosts are scanned properly
+            cmd.extend([
+                "--max-retries=3",  # More retries for range scans
+                "--host-timeout=120s",  # Longer timeout per host (2 minutes)
+                "--min-rate=50",  # Lower packet rate to avoid drops
+                "-T3"  # Normal timing (more reliable for ranges)
+            ])
+            logger.info(f"Target '{target}' detected as IP range, using conservative scan settings")
+        else:
+            # Aggressive settings for single IP (faster)
+            cmd.extend([
+                "--max-retries=1",  # Reduce retries for faster scan
+                "--host-timeout=30s",  # Max time per host (30 seconds)
+                "--min-rate=100",  # Minimum packets per second
+                "-T4"  # Aggressive timing (faster)
+            ])
 
         cmd.append(target)
         return cmd
