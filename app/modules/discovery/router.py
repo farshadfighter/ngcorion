@@ -191,6 +191,7 @@ async def get_pending_hosts(
             "hostname": host.hostname,
             "os_info": host.os_info,
             "os_accuracy": host.os_accuracy,
+            "os_guessed": host.os_guessed,  # OS guessed from service detection (-sV)
             "open_ports": host.open_ports or [],
             "status": host.status,
             "state": host.state,
@@ -300,6 +301,7 @@ async def check_host_matches(
             "mac_address": host.mac_address,
             "hostname": host.hostname,
             "os_info": host.os_info,
+            "os_guessed": host.os_guessed,  # OS guessed from service detection (-sV)
             "open_ports": host.open_ports
         },
         "matches": matches,

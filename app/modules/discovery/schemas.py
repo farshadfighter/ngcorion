@@ -104,12 +104,13 @@ class DiscoveredPort(BaseModel):
     service: Optional[str] = None
     version: Optional[str] = None
     product: Optional[str] = None
+    ostype: Optional[str] = None  # OS type guessed from service detection (-sV)
 
 
 class DiscoveredHost(BaseModel):
     """
     Information about a discovered host
-    
+
     Maps to Asset fields:
         hostname → hostname
         ip_address → ip_address
@@ -125,9 +126,10 @@ class DiscoveredHost(BaseModel):
     os_name: Optional[str] = None
     os_version: Optional[str] = None
     os_accuracy: Optional[int] = None  # 0-100 confidence
+    os_guessed: Optional[str] = None  # OS guessed from service detection (-sV)
     ports: List[DiscoveredPort] = []
     state: str = "up"  # up, down
-    
+
     # Asset mapping hints
     suggested_asset_type: Optional[str] = None  # server, router, switch, etc.
 
@@ -207,6 +209,7 @@ class PendingHostResponse(BaseModel):
     hostname: Optional[str] = None
     os_info: Optional[str] = None
     os_accuracy: Optional[int] = None
+    os_guessed: Optional[str] = None  # OS guessed from service detection (-sV)
     open_ports: List[DiscoveredPort] = []
     status: str  # pending, approved, rejected, merged
     state: Optional[str] = None  # up, down, unknown

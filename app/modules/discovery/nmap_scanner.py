@@ -207,6 +207,7 @@ class NmapScanner:
                 "hostname": None,
                 "state": None,
                 "os": {"name": None, "accuracy": None, "all_matches": []},
+                "os_guessed": None,  # OS guessed from service detection (-sV)
                 "ports": []
             }
 
@@ -262,6 +263,8 @@ class NmapScanner:
 
             # Ports and Services
             ports_elem = host.find("ports")
+            os_types_found = set()  # Collect OS types from service detection
+
             if ports_elem is not None:
                 for port in ports_elem.findall("port"):
                     try:
@@ -279,7 +282,8 @@ class NmapScanner:
                         "service": None,
                         "product": None,
                         "version": None,
-                        "extrainfo": None
+                        "extrainfo": None,
+                        "ostype": None
                     }
 
                     if service_elem is not None:
@@ -287,6 +291,11 @@ class NmapScanner:
                         service_info["product"] = service_elem.get("product")
                         service_info["version"] = service_elem.get("version")
                         service_info["extrainfo"] = service_elem.get("extrainfo")
+                        # Extract OS type from service detection (-sV)
+                        ostype = service_elem.get("ostype")
+                        if ostype:
+                            service_info["ostype"] = ostype
+                            os_types_found.add(ostype)
 
                     host_data["ports"].append({
                         "port": port_id,
@@ -294,6 +303,14 @@ class NmapScanner:
                         "state": state,
                         **service_info
                     })
+
+            # Set os_guessed from service detection if available
+            if os_types_found:
+                # Use the most common OS type found, or first one if all unique
+                host_data["os_guessed"] = list(os_types_found)[0]
+                if len(os_types_found) > 1:
+                    # If multiple OS types detected, store all of them
+                    host_data["os_guessed"] = ", ".join(sorted(os_types_found))
 
             # Only include hosts that were actually discovered (have an IP)
             if host_data["ip"]:

@@ -207,6 +207,7 @@ class DiscoveryService:
                     hostname=host_data.get("hostname"),
                     os_info=host_data.get("os", {}).get("name"),
                     os_accuracy=host_data.get("os", {}).get("accuracy"),
+                    os_guessed=host_data.get("os_guessed"),  # OS guessed from service detection (-sV)
                     open_ports=host_data.get("ports", []),
                     status="pending",
                     state=host_data.get("state", "unknown"),

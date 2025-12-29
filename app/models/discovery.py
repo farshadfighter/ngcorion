@@ -225,6 +225,12 @@ class DiscoveredHost(Base):
         comment="OS detection accuracy percentage"
     )
 
+    os_guessed = Column(
+        String(255),
+        nullable=True,
+        comment="OS guessed from service detection (-sV)"
+    )
+
     # Port Information
     open_ports = Column(
         JSON,
