@@ -693,6 +693,7 @@ class DiscoveryService:
                 "os_name": host.os_info,
                 "os_version": None,
                 "os_accuracy": host.os_accuracy,
+                "os_guessed": host.os_guessed,  # OS guessed from service detection (-sV)
                 "ports": host.open_ports or [],
                 "state": host.state or "unknown"
             }
