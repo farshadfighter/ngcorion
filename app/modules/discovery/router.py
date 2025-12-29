@@ -1015,6 +1015,7 @@ async def preview_discovery_application(
         "mac_address": host.mac_address,
         "os_info": host.os_info,
         "os_accuracy": host.os_accuracy,
+        "os_guessed": host.os_guessed,  # OS guessed from service detection (-sV)
         "open_ports": host.open_ports or [],
         "state": host.state
     }
