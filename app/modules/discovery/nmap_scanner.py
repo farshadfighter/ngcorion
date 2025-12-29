@@ -78,8 +78,8 @@ class NmapScanner:
 
         cmd = ["nmap", "-oX", "-"]  # XML output to stdout
 
-        # Always use -sT (TCP connect scan), -sV (version detection), -Pn (skip host discovery)
-        cmd.extend(["-sT", "-sV", "-Pn"])
+        # Always use -v (verbose), -sT (TCP connect scan), -sV (version detection), -Pn (skip host discovery)
+        cmd.extend(["-v", "-sT", "-sV", "-Pn"])
 
         # Determine port range based on scan type
         if scan_type == "all_ports":
