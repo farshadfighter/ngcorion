@@ -11,6 +11,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         scan_type: 'well_known_ports',
         ports: '',
         protocol: 'TCP',
+        version_detection: false,
     });
     const [errors, setErrors] = useState({});
 
@@ -67,8 +68,9 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
     // Handle input change
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        const fieldValue = type === 'checkbox' ? checked : value;
+        setFormData((prev) => ({ ...prev, [name]: fieldValue }));
         // Clear error when user types
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: null }));
@@ -100,6 +102,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
             target: formData.target.trim(),
             scan_type: formData.scan_type,
             protocol: formData.protocol,
+            version_detection: formData.version_detection,
         };
 
         if (formData.job_name.trim()) {
@@ -249,6 +252,23 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                             </select>
                         </div>
 
+                        {/* Version Detection */}
+                        <div className="form-group">
+                            <label className="checkbox-label">
+                                <input
+                                    type="checkbox"
+                                    name="version_detection"
+                                    checked={formData.version_detection}
+                                    onChange={handleChange}
+                                    className="form-checkbox"
+                                />
+                                <span>Enable Service Version Detection (-sV)</span>
+                            </label>
+                            <p className="form-hint form-hint-warning">
+                                WARNING: Version detection is much slower but provides detailed service and version information
+                            </p>
+                        </div>
+
                         {/* Scan Info Box */}
                         <div className="info-box">
                             <div className="info-box-header">
@@ -259,10 +279,10 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                 <span>Scan Details</span>
                             </div>
                             <ul className="info-list">
-                                <li>Service version detection enabled (-sV)</li>
+                                <li>Service version detection {formData.version_detection ? 'enabled' : 'disabled'} (-sV)</li>
                                 <li>TCP connect scan method (-sT)</li>
                                 <li>Host discovery skipped (-Pn)</li>
-                                <li>Results include open ports, OS info, and MAC address</li>
+                                <li>Results include open ports{formData.version_detection ? ', service versions' : ''}, OS info, and MAC address</li>
                             </ul>
                         </div>
                     </div>
