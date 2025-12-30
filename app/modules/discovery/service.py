@@ -45,7 +45,8 @@ class DiscoveryService:
         scan_type: str = "well_known_ports",
         ports: Optional[str] = None,
         protocol: str = "TCP",
-        job_name: Optional[str] = None
+        job_name: Optional[str] = None,
+        version_detection: bool = False
     ) -> DiscoveryScan:
         """
         Create a new scan record in database
@@ -58,6 +59,7 @@ class DiscoveryService:
             ports: Port specification (required for custom_ports)
             protocol: TCP, UDP, or BOTH
             job_name: User-friendly name for the scan job
+            version_detection: Enable service version detection (-sV) - WARNING: much slower
 
         Returns:
             DiscoveryScan object with pending status
@@ -82,6 +84,7 @@ class DiscoveryService:
             scan_type=scan_type,
             ports=ports,
             protocol=protocol,
+            version_detection=1 if version_detection else 0,
             status="pending",
             started_at=datetime.now(timezone.utc)
         )
@@ -172,14 +175,19 @@ class DiscoveryService:
 
             logger.info(f"Executing scan {scan_id}: {scan.target}")
 
-            # Run nmap scan
+            # Run nmap scan with smart timeout
+            version_detection = bool(getattr(scan, 'version_detection', 0))
+
             result = NmapScanner.scan_and_parse(
                 target=scan.target,
                 ports=scan.ports,
                 protocol=scan.protocol,
                 scan_type=scan.scan_type,
-                timeout=600
+                timeout=None,  # Auto-calculate based on target size
+                version_detection=version_detection
             )
+
+            logger.info(f"Scan {scan_id} used timeout: {result.get('timeout_used')}s (version_detection={version_detection})")
 
             if not result["success"]:
                 # Scan failed
@@ -731,7 +739,8 @@ class DiscoveryService:
             scan_type=request.scan_type,
             ports=request.ports,
             protocol=request.protocol,
-            job_name=request.job_name
+            job_name=request.job_name,
+            version_detection=getattr(request, 'version_detection', False)
         )
 
         # Execute scan in background (for now, run synchronously)

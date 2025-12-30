@@ -77,6 +77,12 @@ class DiscoveryScan(Base):
         comment="Protocol to scan: TCP, UDP, or BOTH"
     )
 
+    version_detection = Column(
+        Integer,
+        default=0,
+        comment="Enable service version detection (-sV): 0=disabled, 1=enabled. WARNING: much slower"
+    )
+
     # Scan Status and Results
     status = Column(
         String(20),

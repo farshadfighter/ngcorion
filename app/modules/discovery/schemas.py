@@ -19,7 +19,8 @@ class ScanRequest(BaseModel):
             "target": "192.168.1.0/24",
             "scan_type": "well_known_ports",
             "ports": "80,443,8080",
-            "protocol": "TCP"
+            "protocol": "TCP",
+            "version_detection": false
         }
     """
     job_name: Optional[str] = None  # User-friendly name for the scan job
@@ -27,6 +28,7 @@ class ScanRequest(BaseModel):
     scan_type: str = "well_known_ports"  # all_ports, well_known_ports, custom_ports
     ports: Optional[str] = None  # Port specification: "80,443,8080" or "1-1000" (required for custom_ports)
     protocol: str = "TCP"  # TCP, UDP, or BOTH
+    version_detection: bool = False  # Enable service version detection (-sV) - WARNING: much slower
     
     @field_validator('target')
     @classmethod

@@ -50,11 +50,65 @@ class NmapScanner:
         return False
 
     @staticmethod
+    def calculate_timeout(target: str, scan_type: str, version_detection: bool) -> int:
+        """
+        Calculate appropriate timeout based on scan parameters
+
+        Args:
+            target: IP address, CIDR, or range
+            scan_type: all_ports, well_known_ports, or custom_ports
+            version_detection: Whether -sV is enabled
+
+        Returns:
+            Timeout in seconds
+        """
+        # Estimate number of hosts
+        num_hosts = 1
+        if '/' in target:
+            # CIDR notation
+            prefix = int(target.split('/')[1])
+            num_hosts = 2 ** (32 - prefix) - 2  # Subtract network and broadcast
+            num_hosts = max(1, num_hosts)
+        elif '-' in target:
+            # Range notation like 192.168.1.1-254
+            parts = target.split('-')
+            if len(parts) == 2:
+                try:
+                    start = int(parts[0].split('.')[-1])
+                    end = int(parts[1])
+                    num_hosts = end - start + 1
+                except ValueError:
+                    num_hosts = 254  # Default assumption
+
+        # Base time per host (in seconds)
+        if version_detection:
+            time_per_host = 60  # -sV is slow
+        else:
+            time_per_host = 10  # Without -sV is fast
+
+        # Adjust for scan type
+        if scan_type == "all_ports":
+            time_per_host *= 3  # 65535 ports takes longer
+        elif scan_type == "well_known_ports":
+            time_per_host *= 1.5  # 1024 ports
+        # custom_ports depends on how many ports, assume moderate
+
+        # Calculate total timeout with buffer
+        calculated_timeout = int(num_hosts * time_per_host * 1.2)  # 20% buffer
+
+        # Set reasonable bounds
+        min_timeout = 60  # At least 1 minute
+        max_timeout = 3600  # Max 1 hour
+
+        return max(min_timeout, min(calculated_timeout, max_timeout))
+
+    @staticmethod
     def build_nmap_command(
         target: str,
         ports: Optional[str] = None,
         protocol: str = "TCP",
-        scan_type: str = "well_known_ports"
+        scan_type: str = "well_known_ports",
+        version_detection: bool = False
     ) -> List[str]:
         """
         Build nmap command based on parameters
@@ -64,22 +118,27 @@ class NmapScanner:
             ports: Port specification (e.g., "80,443", "1-1000")
             protocol: TCP, UDP, or BOTH
             scan_type: all_ports, well_known_ports, or custom_ports
+            version_detection: Enable service version detection (-sV) - much slower
 
         Returns:
             List of command arguments
 
         Examples:
-            all_ports: nmap -sT -sV -Pn -p- 192.168.1.0/24
-            well_known_ports: nmap -sT -sV -Pn -p 1-1024 192.168.1.0/24
-            custom_ports: nmap -sT -sV -Pn -p 80,443,8080 192.168.1.0/24
+            all_ports: nmap -sT -Pn -p- 192.168.1.0/24
+            well_known_ports: nmap -sT -Pn -p 1-1024 192.168.1.0/24
+            with version: nmap -sT -sV -Pn -p 1-1024 192.168.1.1
         """
         if not NmapScanner.is_nmap_available():
             raise FileNotFoundError("nmap is not installed or not in PATH")
 
         cmd = ["nmap", "-oX", "-"]  # XML output to stdout
 
-        # Always use -v (verbose), -sT (TCP connect scan), -sV (version detection), -Pn (skip host discovery)
-        cmd.extend(["-v", "-sT", "-sV", "-Pn"])
+        # Always use -v (verbose), -sT (TCP connect scan), -Pn (skip host discovery)
+        cmd.extend(["-v", "-sT", "-Pn"])
+
+        # Only add -sV if explicitly requested (it's MUCH slower)
+        if version_detection:
+            cmd.append("-sV")
 
         # Determine port range based on scan type
         if scan_type == "all_ports":
@@ -101,22 +160,40 @@ class NmapScanner:
         is_range = NmapScanner.is_ip_range(target)
 
         if is_range:
-            # More conservative settings for IP ranges to ensure all hosts are scanned properly
-            cmd.extend([
-                "--max-retries=3",  # More retries for range scans
-                "--host-timeout=120s",  # Longer timeout per host (2 minutes)
-                "--min-rate=50",  # Lower packet rate to avoid drops
-                "-T3"  # Normal timing (more reliable for ranges)
-            ])
-            logger.info(f"Target '{target}' detected as IP range, using conservative scan settings")
+            if version_detection:
+                # With version detection on ranges - need more time per host
+                cmd.extend([
+                    "--max-retries=2",
+                    "--host-timeout=90s",  # 90 seconds per host with -sV
+                    "--min-rate=100",
+                    "-T4"  # Aggressive timing
+                ])
+                logger.info(f"Target '{target}' is IP range with version detection, using balanced settings")
+            else:
+                # Without version detection - can be faster
+                cmd.extend([
+                    "--max-retries=2",
+                    "--host-timeout=30s",  # 30 seconds per host without -sV
+                    "--min-rate=200",  # Higher packet rate
+                    "-T4"  # Aggressive timing
+                ])
+                logger.info(f"Target '{target}' is IP range without version detection, using fast settings")
         else:
-            # Aggressive settings for single IP (faster)
-            cmd.extend([
-                "--max-retries=1",  # Reduce retries for faster scan
-                "--host-timeout=30s",  # Max time per host (30 seconds)
-                "--min-rate=100",  # Minimum packets per second
-                "-T4"  # Aggressive timing (faster)
-            ])
+            # Single IP - can be aggressive
+            if version_detection:
+                cmd.extend([
+                    "--max-retries=2",
+                    "--host-timeout=60s",  # More time for version detection
+                    "--min-rate=100",
+                    "-T4"
+                ])
+            else:
+                cmd.extend([
+                    "--max-retries=1",
+                    "--host-timeout=20s",
+                    "--min-rate=200",
+                    "-T4"
+                ])
 
         cmd.append(target)
         return cmd
@@ -325,7 +402,8 @@ class NmapScanner:
         ports: Optional[str] = None,
         protocol: str = "TCP",
         scan_type: str = "well_known_ports",
-        timeout: int = 600
+        timeout: Optional[int] = None,
+        version_detection: bool = False
     ) -> Dict[str, Any]:
         """
         Convenience method: build, execute, and parse in one call
@@ -335,7 +413,8 @@ class NmapScanner:
             ports: Port specification
             protocol: TCP, UDP, or BOTH
             scan_type: all_ports, well_known_ports, or custom_ports
-            timeout: Maximum execution time
+            timeout: Maximum execution time (auto-calculated if None)
+            version_detection: Enable service version detection (-sV)
 
         Returns:
             Dictionary with:
@@ -344,7 +423,8 @@ class NmapScanner:
                 "returncode": int,
                 "command": str,
                 "hosts": List[Dict],
-                "error": Optional[str]
+                "error": Optional[str],
+                "timeout_used": int
             }
         """
         result = {
@@ -352,13 +432,20 @@ class NmapScanner:
             "returncode": None,
             "command": None,
             "hosts": [],
-            "error": None
+            "error": None,
+            "timeout_used": None
         }
 
         try:
             # Build command
-            cmd = NmapScanner.build_nmap_command(target, ports, protocol, scan_type)
+            cmd = NmapScanner.build_nmap_command(target, ports, protocol, scan_type, version_detection)
             result["command"] = " ".join(cmd)
+
+            # Calculate timeout if not provided
+            if timeout is None:
+                timeout = NmapScanner.calculate_timeout(target, scan_type, version_detection)
+            result["timeout_used"] = timeout
+            logger.info(f"Using timeout: {timeout}s for target '{target}'")
 
             # Execute scan
             returncode, stdout, stderr = NmapScanner.execute_scan(cmd, timeout)
