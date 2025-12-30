@@ -389,6 +389,12 @@ class NmapScanner:
                     # If multiple OS types detected, store all of them
                     host_data["os_guessed"] = ", ".join(sorted(os_types_found))
 
+                # If -sV found OS info and there's no OS from -O detection,
+                # assign the service-detected OS to the main OS field
+                if not host_data["os"]["name"]:
+                    host_data["os"]["name"] = host_data["os_guessed"]
+                    host_data["os"]["accuracy"] = 50  # Lower confidence for service-based detection
+
             # Only include hosts that were actually discovered (have an IP)
             if host_data["ip"]:
                 hosts.append(host_data)
