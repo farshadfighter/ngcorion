@@ -164,20 +164,20 @@ class NmapScanner:
                 # With version detection on ranges - need more time per host
                 cmd.extend([
                     "--max-retries=2",
-                    "--host-timeout=90s",  # 90 seconds per host with -sV
+                    "--host-timeout=120s",  # 120 seconds per host with -sV
                     "--min-rate=100",
                     "-T4"  # Aggressive timing
                 ])
                 logger.info(f"Target '{target}' is IP range with version detection, using balanced settings")
             else:
-                # Without version detection - can be faster
+                # Without version detection - increased timeout for slow-responding hosts
                 cmd.extend([
                     "--max-retries=2",
-                    "--host-timeout=30s",  # 30 seconds per host without -sV
-                    "--min-rate=200",  # Higher packet rate
+                    "--host-timeout=60s",  # Increased from 30s to 60s for slow hosts
+                    "--min-rate=150",  # Slightly reduced packet rate for reliability
                     "-T4"  # Aggressive timing
                 ])
-                logger.info(f"Target '{target}' is IP range without version detection, using fast settings")
+                logger.info(f"Target '{target}' is IP range without version detection, using reliable settings")
         else:
             # Single IP - can be aggressive
             if version_detection:
