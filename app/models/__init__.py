@@ -57,6 +57,27 @@ from app.models.audit import (
     AuditResult
 )
 
+# Import module-specific audit logs
+from app.models.asset_requirement_log import (
+    AssetRequirementLog,
+    log_requirement_import,
+    log_requirement_create,
+    log_requirement_update,
+    log_requirement_delete
+)
+from app.models.asset_log import (
+    AssetLog,
+    log_asset_created,
+    log_asset_updated,
+    log_asset_deleted,
+    log_asset_import
+)
+from app.models.audit_log import (
+    AuditModuleLog,
+    log_audit_executed,
+    log_audit_session_deleted
+)
+
 # Import hardening models LAST (depend on Audit)
 from app.models.hardening import HardeningAction
 
@@ -102,4 +123,18 @@ __all__ = [
     "AuditResult",
     # Hardening models
     "HardeningAction",
+    # Module audit logs
+    "AssetRequirementLog",
+    "log_requirement_import",
+    "log_requirement_create",
+    "log_requirement_update",
+    "log_requirement_delete",
+    "AssetLog",
+    "log_asset_created",
+    "log_asset_updated",
+    "log_asset_deleted",
+    "log_asset_import",
+    "AuditModuleLog",
+    "log_audit_executed",
+    "log_audit_session_deleted",
 ]

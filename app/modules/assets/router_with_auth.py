@@ -23,6 +23,10 @@ from .schemas import (
 from .service import AssetService
 from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission
 from app.models import User
+from app.models import (
+    log_requirement_create, log_requirement_update, log_requirement_delete, log_requirement_import,
+    log_asset_created, log_asset_updated, log_asset_deleted, log_asset_import
+)
 
 
 # === Asset Types Router ===
@@ -45,7 +49,9 @@ def create_asset_type(
     db: Session = Depends(get_db)
 ):
     """Create asset type (admin only)"""
-    return AssetService.create_asset_type(db, data)
+    result = AssetService.create_asset_type(db, data)
+    log_requirement_create(db, current_user.id, "asset_type", result.id, result.type_name)
+    return result
 
 
 @asset_types_router.get("/{type_id}", response_model=AssetTypeResponse)
@@ -72,6 +78,7 @@ def update_asset_type(
     asset_type = AssetService.update_asset_type(db, type_id, data.model_dump())
     if not asset_type:
         raise HTTPException(status_code=404, detail="Asset type not found")
+    log_requirement_update(db, current_user.id, "asset_type", asset_type.id, asset_type.type_name, data.model_dump())
     return asset_type
 
 
@@ -82,8 +89,14 @@ def delete_asset_type(
     db: Session = Depends(get_db)
 ):
     """Delete asset type (admin only)"""
+    # Get asset type info before deletion
+    asset_type = AssetService.get_asset_type(db, type_id)
+    if not asset_type:
+        raise HTTPException(status_code=404, detail="Asset type not found")
+    type_name = asset_type.type_name
     if not AssetService.delete_asset_type(db, type_id):
         raise HTTPException(status_code=404, detail="Asset type not found")
+    log_requirement_delete(db, current_user.id, "asset_type", type_id, type_name)
     return {"message": "Deleted successfully"}
 
 
@@ -133,7 +146,9 @@ def create_asset(
     # If user_id not provided, use current user
     if not asset_data.get('user_id'):
         asset_data['user_id'] = current_user.id
-    return AssetService.create_asset(db, asset_data)
+    result = AssetService.create_asset(db, asset_data)
+    log_asset_created(db, current_user.id, result.id, result.asset_name, result.ip_address)
+    return result
 
 
 @assets_router.get("/{asset_id}", response_model=AssetResponse)
@@ -159,9 +174,11 @@ def update_asset(
 ):
     """Update asset (requires write permission)"""
     try:
-        asset = AssetService.update_asset(db, asset_id, data.dict(exclude_unset=True))
+        changes = data.dict(exclude_unset=True)
+        asset = AssetService.update_asset(db, asset_id, changes)
         if not asset:
             raise HTTPException(status_code=404, detail="Asset not found")
+        log_asset_updated(db, current_user.id, asset.id, asset.asset_name, changes, asset.ip_address)
         return asset
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -174,8 +191,15 @@ def delete_asset(
     db: Session = Depends(get_db)
 ):
     """Delete asset (requires delete permission)"""
+    # Get asset info before deletion
+    asset = AssetService.get_asset(db, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset_name = asset.asset_name
+    ip_address = asset.ip_address
     if not AssetService.delete_asset(db, asset_id):
         raise HTTPException(status_code=404, detail="Asset not found")
+    log_asset_deleted(db, current_user.id, asset_id, asset_name, ip_address)
     return {"message": "Deleted successfully"}
 
 
