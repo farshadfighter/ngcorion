@@ -329,6 +329,9 @@ async def import_assets_excel_upload(
         # Import assets
         results = import_assets_from_excel(file_buffer, db, current_user)
 
+        # Log the import
+        log_asset_import(db, current_user.id, results["created"], results["updated"], results["skipped"], results["errors"])
+
         return {
             "status": "success",
             "created": results["created"],
@@ -366,7 +369,9 @@ def create_owner(
     db: Session = Depends(get_db)
 ):
     """Create owner (requires write permission) - uses current_user.id dynamically"""
-    return AssetService.create_owner(db, data.model_dump(), user_id=current_user.id)
+    result = AssetService.create_owner(db, data.model_dump(), user_id=current_user.id)
+    log_requirement_create(db, current_user.id, "owner", result.id, result.owner_name)
+    return result
 
 
 @owners_router.get("/{owner_id}", response_model=AssetOwnerResponse)
@@ -394,6 +399,7 @@ def update_owner(
     owner = AssetService.update_owner(db, owner_id, data.model_dump())
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
+    log_requirement_update(db, current_user.id, "owner", owner.id, owner.owner_name, data.model_dump())
     return owner
 
 
@@ -404,8 +410,14 @@ def delete_owner(
     db: Session = Depends(get_db)
 ):
     """Delete owner (requires delete permission)"""
+    # Get owner info before deletion
+    owner = AssetService.get_owner(db, owner_id)
+    if not owner:
+        raise HTTPException(status_code=404, detail="Owner not found")
+    owner_name = owner.owner_name
     if not AssetService.delete_owner(db, owner_id):
         raise HTTPException(status_code=404, detail="Owner not found")
+    log_requirement_delete(db, current_user.id, "owner", owner_id, owner_name)
     return {"message": "Deleted successfully"}
 
 
@@ -429,7 +441,9 @@ def create_location(
     db: Session = Depends(get_db)
 ):
     """Create location (requires write permission) - uses current_user.id dynamically"""
-    return AssetService.create_location(db, data.model_dump(), user_id=current_user.id)
+    result = AssetService.create_location(db, data.model_dump(), user_id=current_user.id)
+    log_requirement_create(db, current_user.id, "location", result.id, result.location_name)
+    return result
 
 
 @locations_router.get("/{location_id}", response_model=AssetLocationResponse)
