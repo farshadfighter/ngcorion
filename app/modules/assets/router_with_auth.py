@@ -471,6 +471,7 @@ def update_location(
     location = AssetService.update_location(db, location_id, data.model_dump())
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
+    log_requirement_update(db, current_user.id, "location", location.id, location.location_name, data.model_dump())
     return location
 
 
@@ -481,8 +482,14 @@ def delete_location(
     db: Session = Depends(get_db)
 ):
     """Delete location (requires delete permission)"""
+    # Get location info before deletion
+    location = AssetService.get_location(db, location_id)
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    location_name = location.location_name
     if not AssetService.delete_location(db, location_id):
         raise HTTPException(status_code=404, detail="Location not found")
+    log_requirement_delete(db, current_user.id, "location", location_id, location_name)
     return {"message": "Deleted successfully"}
 
 
@@ -506,7 +513,9 @@ def create_zone(
     db: Session = Depends(get_db)
 ):
     """Create zone (admin only)"""
-    return AssetService.create_zone(db, data.model_dump())
+    result = AssetService.create_zone(db, data.model_dump())
+    log_requirement_create(db, current_user.id, "zone", result.id, result.zone_name)
+    return result
 
 
 @zones_router.delete("/{zone_id}")
@@ -516,8 +525,15 @@ def delete_zone(
     db: Session = Depends(get_db)
 ):
     """Delete zone (admin only)"""
+    # Get zone info before deletion
+    from app.models import NetworkZone
+    zone = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    zone_name = zone.zone_name
     if not AssetService.delete_zone(db, zone_id):
         raise HTTPException(status_code=404, detail="Zone not found")
+    log_requirement_delete(db, current_user.id, "zone", zone_id, zone_name)
     return {"message": "Deleted successfully"}
 
 
