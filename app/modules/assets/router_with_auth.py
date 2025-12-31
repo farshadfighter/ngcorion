@@ -557,7 +557,9 @@ def create_os(
     db: Session = Depends(get_db)
 ):
     """Create OS entry (admin only)"""
-    return AssetService.create_os(db, data.model_dump())
+    result = AssetService.create_os(db, data.model_dump())
+    log_requirement_create(db, current_user.id, "os_catalog", result.id, result.os_name)
+    return result
 
 
 @os_router.delete("/{os_id}")
@@ -567,8 +569,15 @@ def delete_os(
     db: Session = Depends(get_db)
 ):
     """Delete OS entry (admin only)"""
+    # Get OS info before deletion
+    from app.models import OSCatalog
+    os_entry = db.query(OSCatalog).filter(OSCatalog.id == os_id).first()
+    if not os_entry:
+        raise HTTPException(status_code=404, detail="OS not found")
+    os_name = os_entry.os_name
     if not AssetService.delete_os(db, os_id):
         raise HTTPException(status_code=404, detail="OS not found")
+    log_requirement_delete(db, current_user.id, "os_catalog", os_id, os_name)
     return {"message": "Deleted successfully"}
 
 
@@ -592,7 +601,9 @@ def create_vendor(
     db: Session = Depends(get_db)
 ):
     """Create vendor (admin only)"""
-    return AssetService.create_vendor(db, data.model_dump())
+    result = AssetService.create_vendor(db, data.model_dump())
+    log_requirement_create(db, current_user.id, "vendor", result.id, result.vendor_name)
+    return result
 
 
 @vendors_router.delete("/{vendor_id}")
@@ -602,8 +613,15 @@ def delete_vendor(
     db: Session = Depends(get_db)
 ):
     """Delete vendor (admin only)"""
+    # Get vendor info before deletion
+    from app.models import VendorCatalog
+    vendor = db.query(VendorCatalog).filter(VendorCatalog.id == vendor_id).first()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    vendor_name = vendor.vendor_name
     if not AssetService.delete_vendor(db, vendor_id):
         raise HTTPException(status_code=404, detail="Vendor not found")
+    log_requirement_delete(db, current_user.id, "vendor", vendor_id, vendor_name)
     return {"message": "Deleted successfully"}
 
 
