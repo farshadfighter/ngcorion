@@ -875,6 +875,9 @@ async def import_requirements_excel(
         # Import requirements
         results = import_asset_requirements_from_excel(file_buffer, db, current_user)
 
+        # Log the import
+        log_requirement_import(db, current_user.id, results)
+
         # Calculate totals
         total_created = sum(r["created"] for r in results.values())
         total_updated = sum(r["updated"] for r in results.values())
