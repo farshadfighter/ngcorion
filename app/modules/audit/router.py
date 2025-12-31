@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
-from app.models import User
+from app.models import User, log_audit_executed, log_audit_session_deleted
 from .service import AuditService
 
 
@@ -99,6 +99,12 @@ def execute_cisco_audit(
 
     **Note:** SSH credentials are used only for the audit session and never stored.
     """
+    # Get asset info for logging
+    from app.models import Asset
+    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset_name = asset.asset_name if asset else None
+    target_ip = asset.ip_address if asset else None
+
     try:
         session = AuditService.execute_cisco_audit(
             db=db,
@@ -119,14 +125,31 @@ def execute_cisco_audit(
                 detail="Failed to retrieve audit summary"
             )
 
+        # Log successful audit
+        log_audit_executed(
+            db, current_user.id, session.id, request.asset_id, asset_name,
+            session.target_ip, "cisco_cis", request.profile,
+            session.compliance_pct, "success"
+        )
+
         return summary
 
     except ValueError as e:
+        # Log failed audit
+        log_audit_executed(
+            db, current_user.id, None, request.asset_id, asset_name,
+            target_ip, "cisco_cis", request.profile, None, "failed", str(e)
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        # Log failed audit
+        log_audit_executed(
+            db, current_user.id, None, request.asset_id, asset_name,
+            target_ip, "cisco_cis", request.profile, None, "failed", str(e)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Audit execution failed: {str(e)}"
@@ -303,8 +326,20 @@ def delete_audit_session(
             detail=f"Audit session {session_id} not found"
         )
 
+    # Get session info for logging before deletion
+    from app.models import Asset
+    asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
+    asset_name = asset.asset_name if asset else None
+
     try:
         AuditService.delete_audit_session(db, session_id)
+
+        # Log successful deletion
+        log_audit_session_deleted(
+            db, current_user.id, session_id, session.asset_id,
+            asset_name, session.target_ip
+        )
+
         return {"message": f"Audit session {session_id} deleted successfully"}
     except Exception as e:
         raise HTTPException(
@@ -414,6 +449,12 @@ def execute_cis_benchmark_audit(
 
     **Note:** SSH credentials are used only for the audit session and never stored.
     """
+    # Get asset info for logging
+    from app.models import Asset
+    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset_name = asset.asset_name if asset else None
+    target_ip = asset.ip_address if asset else None
+
     try:
         session = AuditService.execute_cis_benchmark_audit(
             db=db,
@@ -433,14 +474,31 @@ def execute_cis_benchmark_audit(
                 detail="Failed to generate CIS Benchmark table"
             )
 
+        # Log successful audit
+        log_audit_executed(
+            db, current_user.id, session.id, request.asset_id, asset_name,
+            session.target_ip, "cis_benchmark", "FULL",
+            session.compliance_pct, "success"
+        )
+
         return table
 
     except ValueError as e:
+        # Log failed audit
+        log_audit_executed(
+            db, current_user.id, None, request.asset_id, asset_name,
+            target_ip, "cis_benchmark", "FULL", None, "failed", str(e)
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        # Log failed audit
+        log_audit_executed(
+            db, current_user.id, None, request.asset_id, asset_name,
+            target_ip, "cis_benchmark", "FULL", None, "failed", str(e)
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"CIS Benchmark audit failed: {str(e)}"
