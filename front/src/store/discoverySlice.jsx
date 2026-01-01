@@ -159,6 +159,21 @@ export const fetchScanHistory = createAsyncThunk(
 );
 
 /**
+ * Cancel a running scan
+ */
+export const cancelScan = createAsyncThunk(
+    'discovery/cancelScan',
+    async (scanId, { rejectWithValue }) => {
+        try {
+            const response = await api.post(`/api/discovery/scan/${scanId}/cancel`);
+            return { ...response.data, scanId };
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to cancel scan');
+        }
+    }
+);
+
+/**
  * Delete a scan
  */
 export const deleteScan = createAsyncThunk(
@@ -497,6 +512,28 @@ const discoverySlice = createSlice({
             })
             .addCase(fetchScanHistory.rejected, (state, action) => {
                 state.loading.history = false;
+                state.error = action.payload;
+            })
+
+            // Cancel Scan
+            .addCase(cancelScan.pending, (state) => {
+                state.loading.scan = true;
+            })
+            .addCase(cancelScan.fulfilled, (state, action) => {
+                state.loading.scan = false;
+                if (state.currentScan && state.currentScan.scan_id === action.payload.scanId) {
+                    state.currentScan.status = 'cancelled';
+                    state.currentScan = null;
+                    clearScanFromStorage();
+                }
+                // Update in history if present
+                const historyIndex = state.scanHistory.findIndex(s => s.scan_id === action.payload.scanId);
+                if (historyIndex >= 0) {
+                    state.scanHistory[historyIndex].status = 'cancelled';
+                }
+            })
+            .addCase(cancelScan.rejected, (state, action) => {
+                state.loading.scan = false;
                 state.error = action.payload;
             })
 

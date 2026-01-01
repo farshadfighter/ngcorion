@@ -143,6 +143,32 @@ async def get_all_scans(
     return DiscoveryService.get_all_scans(db)
 
 
+@router.post("/scan/{scan_id}/cancel")
+async def cancel_scan(
+    scan_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Cancel a running scan
+
+    Terminates the nmap process and marks the scan as cancelled.
+    Only works on scans with status 'pending' or 'running'.
+
+    **Permissions:** Requires write permission for asset_auto_discovery module
+    """
+    check_discovery_permission(current_user, "write", db)
+
+    result = DiscoveryService.cancel_scan(db, scan_id)
+
+    if result["success"]:
+        return result
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=result.get("error", "Failed to cancel scan")
+        )
+
+
 @router.delete("/scan/{scan_id}")
 async def delete_scan(
     scan_id: str,

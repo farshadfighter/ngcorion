@@ -11,6 +11,7 @@ import {
     fetchScanHistory,
     fetchPendingHosts,
     deleteScan,
+    cancelScan,
     clearError,
     stopScanning,
 } from '../../store/discoverySlice.jsx';
@@ -240,10 +241,21 @@ const AutoDiscovery = () => {
                             <span className="scan-type-badge">{getScanTypeLabel(currentScan.scan_type)}</span>
                             <button
                                 className="btn btn-sm btn-danger"
-                                onClick={() => {
-                                    dispatch(stopScanning());
-                                    if (pollIntervalRef.current) {
-                                        clearInterval(pollIntervalRef.current);
+                                onClick={async () => {
+                                    if (currentScan?.scan_id) {
+                                        try {
+                                            await dispatch(cancelScan(currentScan.scan_id)).unwrap();
+                                            if (pollIntervalRef.current) {
+                                                clearInterval(pollIntervalRef.current);
+                                            }
+                                        } catch (error) {
+                                            console.error('Failed to cancel scan:', error);
+                                            // Fallback to local stop if API call fails
+                                            dispatch(stopScanning());
+                                            if (pollIntervalRef.current) {
+                                                clearInterval(pollIntervalRef.current);
+                                            }
+                                        }
                                     }
                                 }}
                             >

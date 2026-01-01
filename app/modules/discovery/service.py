@@ -184,10 +184,20 @@ class DiscoveryService:
                 protocol=scan.protocol,
                 scan_type=scan.scan_type,
                 timeout=None,  # Auto-calculate based on target size
-                version_detection=version_detection
+                version_detection=version_detection,
+                scan_id=scan_id  # Pass scan_id for cancellation tracking
             )
 
             logger.info(f"Scan {scan_id} used timeout: {result.get('timeout_used')}s (version_detection={version_detection})")
+
+            # Check if scan was cancelled
+            if result.get("cancelled"):
+                scan.status = "cancelled"
+                scan.error_message = "Scan was cancelled by user"
+                scan.completed_at = datetime.now(timezone.utc)
+                db.commit()
+                log_scan_failed(db, scan.user_id, scan_id, "Scan cancelled")
+                return result
 
             if not result["success"]:
                 # Scan failed
@@ -720,6 +730,59 @@ class DiscoveryService:
             "hosts": hosts_list,
             "error": scan.error_message
         }
+
+    @staticmethod
+    def cancel_scan(db: Session, scan_id: str) -> Dict[str, Any]:
+        """
+        Cancel a running scan
+
+        Args:
+            db: Database session
+            scan_id: The scan ID to cancel
+
+        Returns:
+            Dict with success status and message
+        """
+        # Get the scan record
+        scan = DiscoveryService.get_scan(db, scan_id)
+        if not scan:
+            return {"success": False, "error": "Scan not found"}
+
+        # Check if scan is in a cancellable state
+        if scan.status not in ["pending", "running"]:
+            return {
+                "success": False,
+                "error": f"Cannot cancel scan with status '{scan.status}'"
+            }
+
+        # Try to cancel the nmap process
+        cancelled = NmapScanner.cancel_scan(scan_id)
+
+        if cancelled:
+            # Update scan status in database
+            scan.status = "cancelled"
+            scan.error_message = "Scan was cancelled by user"
+            scan.completed_at = datetime.now(timezone.utc)
+            db.commit()
+
+            logger.info(f"Scan {scan_id} cancelled successfully")
+            return {
+                "success": True,
+                "message": f"Scan {scan_id} cancelled successfully",
+                "scan_id": scan_id
+            }
+        else:
+            # Process might have already finished
+            if not NmapScanner.is_scan_running(scan_id):
+                return {
+                    "success": False,
+                    "error": "Scan is not currently running"
+                }
+
+            return {
+                "success": False,
+                "error": "Failed to cancel scan process"
+            }
 
     @staticmethod
     async def start_scan(db: Session, request: ScanRequest, user_id: int) -> Dict[str, Any]:

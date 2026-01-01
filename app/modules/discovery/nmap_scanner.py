@@ -12,6 +12,9 @@ from typing import List, Dict, Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+# Global registry to track running scan processes
+_running_scans: Dict[str, subprocess.Popen] = {}
+
 
 class NmapScanner:
     """Wrapper for nmap network scanning operations"""
@@ -199,39 +202,115 @@ class NmapScanner:
         return cmd
 
     @staticmethod
-    def execute_scan(cmd: List[str], timeout: int = 600) -> Tuple[int, Optional[str], Optional[str]]:
+    def execute_scan(cmd: List[str], timeout: int = 600, scan_id: Optional[str] = None) -> Tuple[int, Optional[str], Optional[str]]:
         """
         Execute nmap command and return results
 
         Args:
             cmd: Command list from build_nmap_command
             timeout: Maximum execution time in seconds
+            scan_id: Optional scan ID to track the process for cancellation
 
         Returns:
             Tuple of (returncode, stdout, stderr)
-            returncode: 0 for success, -1 for timeout, >0 for error
+            returncode: 0 for success, -1 for timeout, -9 for cancelled, >0 for error
             stdout: XML output from nmap
             stderr: Error messages if any
         """
+        process = None
         try:
             logger.info(f"Executing nmap: {' '.join(cmd)}")
-            result = subprocess.run(
+            process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
-                timeout=timeout
+                text=True
             )
-            logger.info(f"Nmap completed with return code: {result.returncode}")
-            return result.returncode, result.stdout, result.stderr
 
-        except subprocess.TimeoutExpired:
-            logger.error(f"Nmap scan timeout after {timeout} seconds")
-            return -1, None, f"Scan timeout exceeded ({timeout}s)"
+            # Register the process if scan_id is provided
+            if scan_id:
+                _running_scans[scan_id] = process
+                logger.info(f"Registered scan {scan_id} with PID {process.pid}")
+
+            try:
+                stdout, stderr = process.communicate(timeout=timeout)
+                returncode = process.returncode
+
+                logger.info(f"Nmap completed with return code: {returncode}")
+                return returncode, stdout, stderr
+
+            except subprocess.TimeoutExpired:
+                logger.error(f"Nmap scan timeout after {timeout} seconds")
+                process.kill()
+                process.communicate()  # Clean up
+                return -1, None, f"Scan timeout exceeded ({timeout}s)"
 
         except Exception as e:
             logger.exception("Nmap execution failed")
+            if process:
+                try:
+                    process.kill()
+                    process.communicate()
+                except:
+                    pass
             return 1, None, str(e)
+
+        finally:
+            # Unregister the process
+            if scan_id and scan_id in _running_scans:
+                del _running_scans[scan_id]
+                logger.info(f"Unregistered scan {scan_id}")
+
+    @staticmethod
+    def cancel_scan(scan_id: str) -> bool:
+        """
+        Cancel a running scan by scan_id
+
+        Args:
+            scan_id: The scan ID to cancel
+
+        Returns:
+            True if scan was found and terminated, False otherwise
+        """
+        if scan_id not in _running_scans:
+            logger.warning(f"Cannot cancel scan {scan_id}: not found in running scans")
+            return False
+
+        process = _running_scans[scan_id]
+        try:
+            logger.info(f"Cancelling scan {scan_id} with PID {process.pid}")
+            process.terminate()  # Send SIGTERM first
+            try:
+                process.wait(timeout=5)  # Wait up to 5 seconds
+            except subprocess.TimeoutExpired:
+                logger.warning(f"Scan {scan_id} didn't terminate gracefully, killing it")
+                process.kill()  # Send SIGKILL if SIGTERM didn't work
+                process.wait()
+
+            logger.info(f"Successfully cancelled scan {scan_id}")
+            return True
+
+        except Exception as e:
+            logger.exception(f"Failed to cancel scan {scan_id}: {e}")
+            return False
+
+    @staticmethod
+    def is_scan_running(scan_id: str) -> bool:
+        """
+        Check if a scan is currently running
+
+        Args:
+            scan_id: The scan ID to check
+
+        Returns:
+            True if scan is running, False otherwise
+        """
+        if scan_id not in _running_scans:
+            return False
+
+        process = _running_scans[scan_id]
+        # Check if process is still running
+        return process.poll() is None
 
     @staticmethod
     def parse_nmap_xml(xml_text: str) -> List[Dict[str, Any]]:
@@ -409,7 +488,8 @@ class NmapScanner:
         protocol: str = "TCP",
         scan_type: str = "well_known_ports",
         timeout: Optional[int] = None,
-        version_detection: bool = False
+        version_detection: bool = False,
+        scan_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Convenience method: build, execute, and parse in one call
@@ -421,6 +501,7 @@ class NmapScanner:
             scan_type: all_ports, well_known_ports, or custom_ports
             timeout: Maximum execution time (auto-calculated if None)
             version_detection: Enable service version detection (-sV)
+            scan_id: Optional scan ID to track the process for cancellation
 
         Returns:
             Dictionary with:
@@ -430,7 +511,8 @@ class NmapScanner:
                 "command": str,
                 "hosts": List[Dict],
                 "error": Optional[str],
-                "timeout_used": int
+                "timeout_used": int,
+                "cancelled": bool
             }
         """
         result = {
@@ -439,7 +521,8 @@ class NmapScanner:
             "command": None,
             "hosts": [],
             "error": None,
-            "timeout_used": None
+            "timeout_used": None,
+            "cancelled": False
         }
 
         try:
@@ -454,8 +537,14 @@ class NmapScanner:
             logger.info(f"Using timeout: {timeout}s for target '{target}'")
 
             # Execute scan
-            returncode, stdout, stderr = NmapScanner.execute_scan(cmd, timeout)
+            returncode, stdout, stderr = NmapScanner.execute_scan(cmd, timeout, scan_id)
             result["returncode"] = returncode
+
+            # Check if scan was cancelled (process terminated by signal)
+            if returncode and returncode < 0:
+                result["cancelled"] = True
+                result["error"] = "Scan was cancelled"
+                return result
 
             if returncode != 0:
                 result["error"] = stderr or f"Nmap failed with code {returncode}"
