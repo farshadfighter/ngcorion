@@ -370,7 +370,7 @@ def create_owner(
 ):
     """Create owner (requires write permission) - uses current_user.id dynamically"""
     result = AssetService.create_owner(db, data.model_dump(), user_id=current_user.id)
-    log_requirement_create(db, current_user.id, "owner", result.id, result.owner_name)
+    log_requirement_create(db, current_user.id, "owner", result.id, result.full_name)
     return result
 
 
@@ -399,7 +399,7 @@ def update_owner(
     owner = AssetService.update_owner(db, owner_id, data.model_dump())
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
-    log_requirement_update(db, current_user.id, "owner", owner.id, owner.owner_name, data.model_dump())
+    log_requirement_update(db, current_user.id, "owner", owner.id, owner.full_name, data.model_dump())
     return owner
 
 
@@ -414,7 +414,7 @@ def delete_owner(
     owner = AssetService.get_owner(db, owner_id)
     if not owner:
         raise HTTPException(status_code=404, detail="Owner not found")
-    owner_name = owner.owner_name
+    owner_name = owner.full_name
     if not AssetService.delete_owner(db, owner_id):
         raise HTTPException(status_code=404, detail="Owner not found")
     log_requirement_delete(db, current_user.id, "owner", owner_id, owner_name)
