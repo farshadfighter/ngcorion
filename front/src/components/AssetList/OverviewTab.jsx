@@ -1,6 +1,8 @@
-export const OverviewTab = ({ assets, onEdit, onDelete }) => {
+import React from "react";
+
+export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
     return (
-        <div className="table-container">
+        <div className="asset-table-container">
             <table className="assets-table">
                 <thead>
                 <tr>
@@ -16,28 +18,23 @@ export const OverviewTab = ({ assets, onEdit, onDelete }) => {
                 </thead>
                 <tbody>
                 {assets.map((asset) => (
-                    <tr key={asset.id}>
+                    <tr 
+                        key={asset.id}
+                        className={isNewAsset(asset) ? "row-new" : "row-normal"}
+                    >
                         <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.hostname || "-"}</td>
                         <td>{asset.asset_type_id || "-"}</td>
                         <td>{asset.asset_role || "-"}</td>
-                        <td>{asset.manufacturer || "-"}</td>
+                        <td>{asset.vendor || "-"}</td>
                         <td>{asset.model || "-"}</td>
                         <td>
-                            <button
-                                className="btn-icon btn-edit"
-                                onClick={() => onEdit(asset)}
-                                title="Edit"
-                            >
-                                <img src="/icons/edetie.svg" alt="edit" />
+                            <button className="btn-icon btn-edit" onClick={() => onEdit(asset)}>
+                                <img src={"/icons/edetie.svg"} alt={"edit"} />
                             </button>
-                            <button
-                                className="btn-icon btn-delete"
-                                onClick={() => onDelete(asset)}
-                                title="Delete"
-                            >
-                                <img src="/icons/delete.svg" alt="delete" />
+                            <button className="btn-icon btn-delete" onClick={() => onDelete(asset)}>
+                                <img src={"/icons/delete.svg"} alt={"delete"} />
                             </button>
                         </td>
                     </tr>

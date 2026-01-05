@@ -1,7 +1,7 @@
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState ,useEffect} from "react";
 import { UserManagement } from "./UserManagement/UserManagement";
 import { AssetList } from "./AssetList/AssetList";
 import { AssetRequirement } from "./AssetRequirement/AssetRequirement";
@@ -12,20 +12,30 @@ export const Dashboard = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [activeMenu, setActiveMenu] = useState("dashboard");
-
+    const [currentTime, setCurrentTime] = useState(new Date());
     const handleLogout = () => {
         dispatch(logout());
 
         navigate("/");
     };
 
-    const currentDate = new Date().toLocaleDateString("en-US", {
+
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
+        return () => clearInterval(timer); // cleanup
+    }, []);
+
+    const currentDate = currentTime.toLocaleDateString("en-US", {
         weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
     });
-    const currentTime = new Date().toLocaleTimeString("en-US", {
+    const currentTimeString = currentTime.toLocaleTimeString("en-US", {
         hour12: false,
         hour: "2-digit",
         minute: "2-digit",
@@ -143,7 +153,9 @@ export const Dashboard = () => {
                     <div className="header-right">
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
-                            <div className="current-time">🕐 {currentTime}</div>
+                            <div className="current-time">
+
+                               , {currentTimeString}</div>
                         </div>
                     </div>
                 </header>

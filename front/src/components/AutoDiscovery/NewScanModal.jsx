@@ -1,8 +1,10 @@
 /**
- * NewScanModal - Modal for starting a new network scan
+ * NewScanModal - مطابق Figma
+ * تغییرات: Dropdown به جای Radio, Scan Details باکس خاکستری، دکمه‌های درست
  */
 
 import React, { useState } from 'react';
+import '../../assets/autoDiscoveryStyle/NewScanModal.css';
 
 const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
     const [formData, setFormData] = useState({
@@ -15,49 +17,41 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
     });
     const [errors, setErrors] = useState({});
 
-    // 🔧 IMPROVED: Validate IP/Range format با چک کردن دقیق مقادیر
+    // Validate IP/Range format
     const validateTarget = (value) => {
         value = value.trim();
 
-        // Helper: بررسی یک octet (0-255)
         const isValidOctet = (octet) => {
             const num = parseInt(octet, 10);
             return octet === num.toString() && num >= 0 && num <= 255;
         };
 
-        // Helper: بررسی یک IP آدرس کامل
         const isValidIP = (ip) => {
             const octets = ip.split('.');
             if (octets.length !== 4) return false;
             return octets.every(isValidOctet);
         };
 
-        // Format 1: Single IP (192.168.1.1)
+        // Format 1: Single IP
         if (/^(\d{1,3}\.){3}\d{1,3}$/.test(value)) {
             return isValidIP(value);
         }
 
-        // Format 2: CIDR notation (192.168.1.0/24)
+        // Format 2: CIDR
         const cidrMatch = value.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})$/);
         if (cidrMatch) {
             const [, ip, cidr] = cidrMatch;
             const cidrNum = parseInt(cidr, 10);
             return isValidIP(ip) && cidrNum >= 0 && cidrNum <= 32;
-        }
+        };
 
-        // Format 3: IP Range (192.168.1.1-254)
+        // Format 3: Range
         const rangeMatch = value.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.)(\d{1,3})-(\d{1,3})$/);
         if (rangeMatch) {
             const [, baseIP, startOctet, endOctet] = rangeMatch;
             const fullStartIP = baseIP + startOctet;
-
-            // بررسی IP شروع
             if (!isValidIP(fullStartIP)) return false;
-
-            // بررسی octet پایانی
             if (!isValidOctet(endOctet)) return false;
-
-            // بررسی اینکه end >= start
             const start = parseInt(startOctet, 10);
             const end = parseInt(endOctet, 10);
             return end >= start;
@@ -66,18 +60,15 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         return false;
     };
 
-    // Handle input change
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         const fieldValue = type === 'checkbox' ? checked : value;
         setFormData((prev) => ({ ...prev, [name]: fieldValue }));
-        // Clear error when user types
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: null }));
         }
     };
 
-    // Validate and submit
     const handleSubmit = (e) => {
         e.preventDefault();
         const newErrors = {};
@@ -89,7 +80,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         }
 
         if (formData.scan_type === 'custom_ports' && !formData.ports.trim()) {
-            newErrors.ports = 'Custom ports are required for this scan type';
+            newErrors.ports = 'Custom ports are required';
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -97,7 +88,6 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
             return;
         }
 
-        // Build scan data
         const scanData = {
             target: formData.target.trim(),
             scan_type: formData.scan_type,
@@ -109,16 +99,36 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
             scanData.job_name = formData.job_name.trim();
         }
 
-        if (formData.ports.trim()) {
+        if (formData.scan_type === 'custom_ports' && formData.ports.trim()) {
             scanData.ports = formData.ports.trim();
         }
 
         onSubmit(scanData);
     };
 
+    // Get scan details based on scan type
+    const getScanDetails = () => {
+        const details = [];
+
+        if (formData.scan_type === 'well_known_ports') {
+            details.push('Scan ports 1-1024 (well-know)');
+        } else if (formData.scan_type === 'all_ports') {
+            details.push('Scan ports 1-65535 (all ports)');
+        } else {
+            details.push(`Scan ports: ${formData.ports || 'custom'}`);
+        }
+
+        details.push('Service version detection (-sV)');
+        details.push(`${formData.protocol} connect scan (-sT)` );
+        details.push('Balanced speed and coverage');
+        details.push('Using Flags: -sT -sV -Pn');
+
+        return details;
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal modal-scan" onClick={(e) => e.stopPropagation()}>
+            <div className="new-scan-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>New Network Scan</h2>
                     <button className="modal-close" onClick={onClose}>
@@ -130,19 +140,17 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
-                        {/* Job Name */}
+                        {/* Scan Name */}
                         <div className="form-group">
-                            <label htmlFor="job_name">Scan Name (Optional)</label>
+                            <label htmlFor="job_name">Scan Name</label>
                             <input
                                 type="text"
                                 id="job_name"
                                 name="job_name"
                                 value={formData.job_name}
                                 onChange={handleChange}
-                                placeholder="e.g., Office Network Scan"
                                 className="form-input"
                             />
-                            <p className="form-hint">A friendly name to identify this scan</p>
                         </div>
 
                         {/* Target */}
@@ -156,62 +164,28 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                 name="target"
                                 value={formData.target}
                                 onChange={handleChange}
-                                placeholder="e.g., 192.168.1.0/24"
                                 className={`form-input ${errors.target ? 'error' : ''}`}
                             />
                             {errors.target && <p className="form-error">{errors.target}</p>}
                             <p className="form-hint">
-                                Supported formats: Single IP (192.168.1.1), CIDR (192.168.1.0/24), Range (192.168.1.1-254)
+                                Formats: Single IP (192.168.1.1), CIDR (192.168.1.0/24), Range (192.168.1.1-254)
                             </p>
                         </div>
 
-                        {/* Scan Type */}
+                        {/* Scan Type - Dropdown */}
                         <div className="form-group">
                             <label htmlFor="scan_type">Scan Type</label>
-                            <div className="radio-group">
-                                <label className={`radio-card ${formData.scan_type === 'well_known_ports' ? 'selected' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        name="scan_type"
-                                        value="well_known_ports"
-                                        checked={formData.scan_type === 'well_known_ports'}
-                                        onChange={handleChange}
-                                    />
-                                    <div className="radio-content">
-                                        <span className="radio-title">Well-Known Ports</span>
-                                        <span className="radio-desc">Ports 1-1024 (Recommended)</span>
-                                    </div>
-                                    <span className="radio-badge recommended">Recommended</span>
-                                </label>
-
-                                <label className={`radio-card ${formData.scan_type === 'all_ports' ? 'selected' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        name="scan_type"
-                                        value="all_ports"
-                                        checked={formData.scan_type === 'all_ports'}
-                                        onChange={handleChange}
-                                    />
-                                    <div className="radio-content">
-                                        <span className="radio-title">All Ports</span>
-                                        <span className="radio-desc">Ports 1-65535 (Slowest)</span>
-                                    </div>
-                                </label>
-
-                                <label className={`radio-card ${formData.scan_type === 'custom_ports' ? 'selected' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        name="scan_type"
-                                        value="custom_ports"
-                                        checked={formData.scan_type === 'custom_ports'}
-                                        onChange={handleChange}
-                                    />
-                                    <div className="radio-content">
-                                        <span className="radio-title">Custom Ports</span>
-                                        <span className="radio-desc">Specify ports below</span>
-                                    </div>
-                                </label>
-                            </div>
+                            <select
+                                id="scan_type"
+                                name="scan_type"
+                                value={formData.scan_type}
+                                onChange={handleChange}
+                                className="form-select"
+                            >
+                                <option value="well_known_ports">Well-Know Port(1-1024)- Recommended</option>
+                                <option value="all_ports">All Ports (1-65535) - Slowest</option>
+                                <option value="custom_ports">Custom Ports - Specify below</option>
+                            </select>
                         </div>
 
                         {/* Custom Ports */}
@@ -230,27 +204,9 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                     className={`form-input ${errors.ports ? 'error' : ''}`}
                                 />
                                 {errors.ports && <p className="form-error">{errors.ports}</p>}
-                                <p className="form-hint">
-                                    Examples: Single (80), List (80,443,8080), Range (1-1000)
-                                </p>
                             </div>
                         )}
 
-                        {/* Protocol */}
-                        <div className="form-group">
-                            <label htmlFor="protocol">Protocol</label>
-                            <select
-                                id="protocol"
-                                name="protocol"
-                                value={formData.protocol}
-                                onChange={handleChange}
-                                className="form-select"
-                            >
-                                <option value="TCP">TCP (Recommended)</option>
-                                <option value="UDP">UDP</option>
-                                <option value="BOTH">Both TCP & UDP</option>
-                            </select>
-                        </div>
 
                         {/* Version Detection */}
                         <div className="form-group">
@@ -264,48 +220,43 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                 />
                                 <span>Enable Service Version Detection (-sV)</span>
                             </label>
-                            <p className="form-hint form-hint-warning">
-                                WARNING: Version detection is much slower but provides detailed service and version information
+                            <p className="form-hint" style={{color: '#f59e0b', marginTop: '4px'}}>
+                                ⚠️ Version detection is slower but provides detailed service information
                             </p>
                         </div>
+                        {/* Protocol */}
+                        <div className="form-group">
+                            <label htmlFor="protocol">protocol</label>
+                            <select
+                                id="protocol"
+                                name="protocol"
+                                value={formData.protocol}
+                                onChange={handleChange}
+                                className="form-select"
+                            >
+                                <option value="TCP">TCP</option>
+                                <option value="UDP">UDP</option>
+                                <option value="BOTH">Both TCP & UDP</option>
+                            </select>
+                        </div>
 
-                        {/* Scan Info Box */}
-                        <div className="info-box">
-                            <div className="info-box-header">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <circle cx="12" cy="12" r="10" />
-                                    <path d="M12 16v-4M12 8h.01" />
-                                </svg>
-                                <span>Scan Details</span>
-                            </div>
-                            <ul className="info-list">
-                                <li>Service version detection {formData.version_detection ? 'enabled' : 'disabled'} (-sV)</li>
-                                <li>TCP connect scan method (-sT)</li>
-                                <li>Host discovery skipped (-Pn)</li>
-                                <li>Results include open ports{formData.version_detection ? ', service versions' : ''}, OS info, and MAC address</li>
+                        {/* Scan Details Box */}
+                        <div className="scan-details-box">
+                            <h4>Scan Details</h4>
+                            <ul>
+                                {getScanDetails().map((detail, index) => (
+                                    <li key={index}>{detail}</li>
+                                ))}
                             </ul>
                         </div>
                     </div>
 
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={onClose}>
-                            Cancel
+                        <button type="button" className="btn btn-cancel" onClick={onClose} disabled={isLoading}>
+                            cancel
                         </button>
-                        <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                            {isLoading ? (
-                                <>
-                                    <span className="spinner" />
-                                    Starting...
-                                </>
-                            ) : (
-                                <>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <circle cx="11" cy="11" r="8" />
-                                        <path d="M21 21l-4.35-4.35" />
-                                    </svg>
-                                    Start Scan
-                                </>
-                            )}
+                        <button type="submit" className="btn btn-start-scan" disabled={isLoading}>
+                            {isLoading ? 'Starting...' : 'Start Scan'}
                         </button>
                     </div>
                 </form>

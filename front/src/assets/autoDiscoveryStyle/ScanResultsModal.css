@@ -1,0 +1,544 @@
+/**
+ * Scan Results Modal Styles
+ * Based on Figma: دیسکاور_ریسالت.png
+ */
+
+/* ============================================
+   Modal Overlay
+   ============================================ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+/* ============================================
+   Modal Container
+   ============================================ */
+.modal {
+    background: white;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.modal-lg {
+    max-width: 1000px;
+}
+
+/* ============================================
+   Modal Header
+   ============================================ */
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    background: white;
+}
+
+.modal-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modal-title-group h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.modal-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 400;
+}
+
+.modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    margin-left: 12px;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.modal-close svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ============================================
+   Modal Body
+   ============================================ */
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    background: #fafafa;
+}
+
+/* ============================================
+   Summary Stats - 3 کارت بالا
+   ============================================ */
+.results-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.summary-stat .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.summary-stat .stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: capitalize;
+}
+
+/* Status value colors */
+.stat-value.status-text-completed {
+    color: #22c55e;
+}
+
+.stat-value.status-text-failed {
+    color: #ef4444;
+}
+
+.stat-value.status-text-running {
+    color: #3b82f6;
+}
+
+/* ============================================
+   Results Table
+   ============================================ */
+.results-table-container {
+    background: #f5f5f5;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    padding: 16px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.data-table thead {
+    background: #f5f5f5;
+}
+
+.data-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background 0.15s;
+}
+
+.data-table tbody tr:hover {
+    background: #fafafa;
+}
+
+.data-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.data-table td {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #111827;
+    vertical-align: middle;
+}
+
+/* ============================================
+   Table Cell Styles
+   ============================================ */
+
+/* IP Address */
+.ip-address {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+}
+
+/* MAC Address */
+code.mac-address {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    background: #f3f4f6;
+    padding: 3px 8px;
+    border-radius: 4px;
+    color: #374151;
+}
+
+/* OS Info */
+.os-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.os-info span:first-child {
+    font-size: 13px;
+    color: #111827;
+}
+
+.os-accuracy {
+    font-size: 11px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+/* Ports Display */
+.ports-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.port-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    border: 1px solid #93c5fd;
+}
+
+.port-more {
+    font-size: 11px;
+    color: #6b7280;
+    padding: 3px 6px;
+}
+
+/* Status Badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-badge.status-up {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.status-down {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge.status-unknown {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+/* Text Muted */
+.text-muted {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background: #1e3a5f;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #2d4a7c;
+}
+
+.btn-secondary {
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #f9fafb;
+}
+
+.btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* ============================================
+   Scan Details Section
+   ============================================ */
+.scan-details {
+    background: #f5f5f5;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 0;
+}
+
+.scan-details h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 12px 0;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 20px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: capitalize;
+}
+
+.detail-value {
+    font-size: 13px;
+    color: #111827;
+    font-weight: 400;
+}
+
+.detail-value code {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    background: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #e5e7eb;
+}
+
+/* ============================================
+   Empty State
+   ============================================ */
+.empty-state {
+    text-align: center;
+    padding: 60px 32px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.empty-state.small {
+    padding: 40px 24px;
+}
+
+.empty-state p {
+    font-size: 14px;
+    color: #374151;
+    margin: 0 0 8px 0;
+}
+
+.empty-state p:last-child {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* ============================================
+   Alert
+   ============================================ */
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 13px;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+}
+
+.alert svg {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+/* ============================================
+   Modal Footer
+   ============================================ */
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+}
+
+.modal-footer .btn {
+    min-width: 160px;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 768px) {
+    .modal {
+        max-width: 95vw;
+    }
+
+    .results-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .data-table {
+        font-size: 12px;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 10px 12px;
+    }
+
+    .ports-display {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .results-summary {
+        gap: 12px;
+    }
+
+    .summary-stat {
+        padding: 16px 12px;
+    }
+
+    .summary-stat .stat-value {
+        font-size: 24px;
+    }
+}
+
+/* ============================================
+   OK Button - Dark Navy
+   ============================================ */
+.btn-ok {
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 160px;
+}
+
+.btn-ok:hover {
+    background: #2d4a7c;
+}

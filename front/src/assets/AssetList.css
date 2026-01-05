@@ -1,185 +1,170 @@
+/* ============================================
+   ASSET LIST - STYLES
+   ============================================ */
 
-  /* ASSET LIST CONTAINER */
+/* Container */
 .asset-list-container {
-    padding: 20px 0;
+    padding: 50px !important;
+    background: transparent;
+    min-height: 100vh;
+    border-radius: 16px;
 }
 
-/* HEADER */
+/* Header */
 .asset-list-header {
     display: flex;
-    justify-content: flex-end;
-    margin-bottom: 20px;
-}
-
-.btn-add-asset {
-    background: #0A234E;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 15px;
-    cursor: pointer;
-}
-
-/* TABS */
-.tabs-container {
-
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid #E9ECEF;
-    margin-bottom: 20px;
-}
-
-.tab {
-    padding: 12px 24px;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    font-size: 14px;
-    color: #495057;
-}
-
-.tab.active {
-    border-bottom: 3px solid #0A234E;
-    color: #0A234E;
-    font-weight: 600;
-}
-
-/* MODAL TABS */
-.modal-tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid #E9ECEF;
-    margin-bottom: 20px;
-}
-
-.modal-tab {
-    padding: 10px 20px;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    font-size: 13px;
-    color: #495057;
-}
-
-.modal-tab.active {
-    border-bottom: 3px solid #0A234E;
-    color: #0A234E;
-    font-weight: 600;
-}
-
-/* FULL WIDTH FORM GROUP */
-.form-group.full-width {
-    grid-column: 1 / -1;
-}
-
-textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #D6D6D6;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-    resize: vertical;
-}
-
-/* STEP INDICATOR */
-.step-indicator {
-    display: flex;
     justify-content: space-between;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #E9ECEF;
+    align-items: center;
+    margin-bottom: 28px;
 }
 
-.step-indicator .step {
-    flex: 1;
-    text-align: center;
-    padding: 10px;
-    font-size: 13px;
-    color: #7F8C8D;
-    position: relative;
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
 }
 
-.step-indicator .step.active {
-    color: #0A234E;
-    font-weight: 600;
+.header-actions {
+    display: flex;
+    gap: 12px;
 }
 
-.step-indicator .step.active::after {
-    content: "";
-    position: absolute;
-    bottom: -17px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: #0A234E;
-}
-
-/* FORM GRID */
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.form-grid .full-width {
-    grid-column: 1 / -1;
-}
-
-/* BUTTON SECONDARY */
-.btn-secondary {
+/* Header Buttons */
+.btn-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     padding: 10px 20px;
-    border-radius: 6px;
+    border-radius: 10px;
+    border: none;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
-    border: 1px solid #D6D6D6;
-    background: white;
-    color: #495057;
-    transition: all 0.2s;
+    background: #1e3a5f;
+    color: white;
 }
 
-.btn-secondary:hover {
-    background: #F8F9FA;
+.btn-header.btn-primary {
+    background: #1e3a5f;
 }
 
-.btn-secondary:disabled {
-    opacity: 0.5;
+.btn-header:disabled {
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
-/* REQUIRED INDICATOR */
-.required {
-    color: #E74C3C;
-    margin-left: 3px;
+/* ============================================
+   TABS - BEAUTIFUL STYLE
+   ============================================ */
+
+.asset-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 24px;
+    background: transparent;
 }
 
-/* SEARCH BOX */
-  .search-box-container .search-input {
-      width: 360px;
-      padding: 8px 14px;
-      font-size: 13px;
-      border: 1px solid #d0d5dd;
-      border-radius: 8px;
-      background: #ffffff;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-      margin-bottom: 15px;
-  }
+.asset-tab {
+    padding: 14px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 15px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+}
 
-  .search-box-container .search-input:hover {
-      border-color: #667085;
-  }
+.asset-tab:hover {
+    color: #374151;
+}
 
-  .search-box-container .search-input:focus {
-      border-color: #0A234E;
-      box-shadow: 0 0 0 3px rgba(10, 35, 78, 0.1);
-      outline: none;
-  }
+.asset-tab.active {
+    color: #1e3a5f;
+    font-weight: 600;
+    border-bottom-color: #1e3a5f;
+    background: transparent;
+}
 
-/* TABLE */
-.table-container {
+/* ============================================
+   SEARCH + SORT
+   ============================================ */
+
+.search-sort-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.search-box {
+    position: relative;
+    flex: 0 0 350px;
+    max-width: 350px;
+}
+
+.search-box svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #374151;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+.search-input::placeholder {
+    color: #9ca3af;
+}
+
+.btn-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
     background: white;
-    border-radius: 12px;
-    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.btn-sort:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
+
+.asset-table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+
 }
 
 .assets-table {
@@ -188,112 +173,667 @@ textarea {
 }
 
 .assets-table thead {
-    background: #F8F9FA;
+    background: #f9fafb;
 }
 
 .assets-table th {
-    padding: 16px;
+    padding: 14px 16px;
     text-align: left;
-    font-weight: 600;
-    font-size: 13px;
-    color: #2C3E50;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.assets-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.assets-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* ROW COLORS - GREEN & ORANGE */
+.assets-table tbody tr.row-new {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+}
+
+.assets-table tbody tr.row-new:hover {
+    background: #fef3c7;
+}
+
+.assets-table tbody tr.row-normal {
+    border-left: 4px solid #10b981;
+    background: transparent;
+}
+
+.assets-table tbody tr.row-normal:hover {
+    background: #d1fae5;
 }
 
 .assets-table td {
-    padding: 16px;
-    border-top: 1px solid #E9ECEF;
+    padding: 14px 16px;
     font-size: 14px;
-    color: #495057;
+    color: #374151;
 }
 
-.assets-table tbody tr:hover {
-    background: #F8F9FA;
+/* ============================================
+   ACTION BUTTONS
+   ============================================ */
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    font-size: 18px;
+    transition: transform 0.2s;
 }
 
-/* BADGES */
-.badge {
+.btn-icon:hover {
+    transform: scale(1.2);
+}
+
+.btn-edit {
+    margin-right: 8px;
+}
+
+/* ============================================
+   STATUS & RISK BADGES
+   ============================================ */
+
+.status-badge {
     display: inline-block;
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
+    text-transform: capitalize;
 }
 
-.badge-active {
-    background: #E8F5E9;
-    color: #2E7D32;
+.status-badge.status-active {
+    background: #d1fae5;
+    color: #065f46;
 }
 
-.badge-standby {
-    background: #FFF3E0;
-    color: #F57C00;
+.status-badge.status-standby {
+    background: #fef3c7;
+    color: #92400e;
 }
 
-.badge-inactive {
-    background: #FFEBEE;
-    color: #C62828;
+.status-badge.status-decommissioned {
+    background: #fee2e2;
+    color: #991b1b;
 }
 
-.badge-public {
-    background: #E3F2FD;
-    color: #1976D2;
+.risk-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
 }
 
-.badge-confidential {
-    background: #FFF3E0;
-    color: #F57C00;
+.risk-badge.risk-low {
+    background: #d1fae5;
+    color: #065f46;
 }
 
-.badge-critical {
-    background: #FFEBEE;
-    color: #C62828;
+.risk-badge.risk-medium {
+    background: #fef3c7;
+    color: #92400e;
 }
 
-.badge-risk-low {
-    background: #E8F5E9;
-    color: #2E7D32;
+.risk-badge.risk-high {
+    background: #fed7aa;
+    color: #9a3412;
 }
 
-.badge-risk-medium {
-    background: #FFF3E0;
-    color: #F57C00;
+.risk-badge.risk-critical {
+    background: #fee2e2;
+    color: #991b1b;
 }
 
-.badge-risk-high {
-    background: #FFE0B2;
-    color: #E65100;
+/* ============================================
+   ALERTS
+   ============================================ */
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 14px;
 }
 
-.badge-risk-critical {
-    background: #FFEBEE;
-    color: #C62828;
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
 }
 
-/* ACTION BUTTONS */
-.btn-icon {
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 6px 10px;
-    margin: 0 4px;
-    border-radius: 6px;
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #ef4444;
 }
 
-.btn-icon:hover {
-    background: #F0F0F0;
-}
+/* ============================================
+   LOADING
+   ============================================ */
 
-/* NO DATA */
-.no-data {
-    text-align: center;
-    padding: 40px;
-    color: #7F8C8D;
-}
-
-/* LOADING */
 .loading-spinner {
     text-align: center;
-    padding: 40px;
-    color: #7F8C8D;
+    padding: 60px 20px;
+    color: #6b7280;
+    font-size: 16px;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modal-body {
+    margin-bottom: 24px;
+}
+
+.modal-body p {
+    margin: 0 0 12px 0;
+    color: #374151;
+    font-size: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-cancel,
+.btn-delete {
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .asset-list-container {
+        padding: 16px 20px;
+    }
+
+    .asset-list-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .search-sort-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-box {
+        flex: 1;
+        max-width: 100%;
+    }
+
+    .btn-sort {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .assets-table {
+        font-size: 13px;
+    }
+
+    .assets-table th,
+    .assets-table td {
+        padding: 10px 12px;
+    }
+}
+
+/* ============================================
+   MANAGE PORTS MODAL
+   ============================================ */
+
+/* Main Modal */
+.manage-ports-modal {
+    background: white;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.manage-ports-modal .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.manage-ports-modal .modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* Add Port Button Section */
+.ports-actions {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-add-port {
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add-port:hover {
+    background: #2d4a7c;
+}
+
+/* Ports Table Container */
+.ports-table-container {
+    padding: 0 24px 24px 24px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 200px;
+}
+
+/* ============================================
+   PORTS TABLE - با border بین ردیف‌ها + Actions راست‌چین
+   ============================================ */
+
+
+
+/* Actions column - راست‌چین */
+.ports-table td:last-child {
+    text-align: right;
+}
+
+/* Small Icon Buttons */
+.btn-icon-small {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    margin: 0 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit-port {
+    color: #6b7280;
+}
+
+.btn-edit-port:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-delete-port {
+    color: #ef4444;
+}
+
+.btn-delete-port:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* No Ports / Loading */
+.no-ports {
+    text-align: center;
+    padding: 40px 20px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+/* Modal Footer */
+.manage-ports-modal .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-next {
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    padding: 12px 48px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-next:hover {
+    background: #2d4a7c;
+}
+
+/* ============================================
+   PORT MODAL (Add/Edit)
+   ============================================ */
+
+.port-modal {
+    background: white;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+.port-modal .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.port-modal .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.port-modal .modal-body {
+    padding: 20px 24px;
+}
+
+.port-modal .form-group {
+    margin-bottom: 16px;
+}
+
+.port-modal .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.port-modal .form-input,
+.port-modal .form-select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    color: #111827;
+    transition: all 0.2s;
+}
+
+.port-modal .form-input:focus,
+.port-modal .form-select:focus {
+    outline: none;
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+.port-modal .form-input.error {
+    border-color: #ef4444;
+}
+
+.port-modal .form-error {
+    font-size: 12px;
+    color: #ef4444;
+    margin-top: 4px;
+}
+
+.port-modal .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-save {
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-save:hover {
+    background: #2d4a7c;
+}
+
+/* ============================================
+   DELETE CONFIRMATION MODAL
+   ============================================ */
+
+.confirm-delete-modal {
+    background: white;
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-delete-modal .modal-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.confirm-delete-modal .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.confirm-delete-modal .modal-body p {
+    margin: 0;
+    color: #374151;
+    font-size: 14px;
+}
+
+.confirm-delete-modal .modal-actions {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .manage-ports-modal {
+        max-width: 95vw;
+        max-height: 90vh;
+    }
+
+    .ports-table th,
+    .ports-table td {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .btn-next {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   PORTS TABLE - با Grid کامل (افقی + عمودی)
+   ============================================ */
+
+.ports-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.ports-table thead {
+    background: #f9fafb;
+}
+
+.ports-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+}
+
+.ports-table th:last-child {
+    text-align: right;
+    border-right: none;
+}
+
+.ports-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background 0.15s;
+}
+
+.ports-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.ports-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.ports-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
+    border-right: 1px solid #e5e7eb;
+}
+
+.ports-table td:last-child {
+    text-align: right;
+    border-right: none;
+}
+
+.ports-table td:first-child {
+    font-weight: 500;
+    color: #111827;
 }

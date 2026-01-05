@@ -9,7 +9,7 @@ import {
     clearMatchResults,
     fetchPendingHosts,
 } from '../../store/discoverySlice.jsx';
-
+import "../../assets/autoDiscoveryStyle/ApplyDiscoveryModal.css"
 const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
     const dispatch = useDispatch();
     const { matchResults, previewData, loading } = useSelector((state) => state.discovery);

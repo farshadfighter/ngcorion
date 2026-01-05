@@ -1,14 +1,12 @@
-// src/components/assets/AddAssetModal.jsx
+// src/components/assets/AddAssetModal.jsx - FIXED VERSION
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAsset, fetchAssets } from "../../store/assetSlice";
 import api from "../../config/api";
 
-// فقط برای fallback (رشته‌ای)
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
 const RISK_FALLBACK = ["low", "medium", "high", "critical"];
-
 
 function mapEnumOptions(raw, fallbackArray) {
     let source = [];
@@ -20,11 +18,9 @@ function mapEnumOptions(raw, fallbackArray) {
     }
 
     return source.map((item) => {
-
         if (typeof item === "string") {
             return { value: item, label: item };
         }
-
 
         if (item && typeof item === "object") {
             if ("value" in item && "label" in item) {
@@ -47,7 +43,6 @@ function mapEnumOptions(raw, fallbackArray) {
             return { value: String(value), label: String(label) };
         }
 
-        // سایر حالت‌ها
         return { value: String(item), label: String(item) };
     });
 }
@@ -63,6 +58,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     const [assetTypes, setAssetTypes] = useState([]);
     const [locations, setLocations] = useState([]);
     const [owners, setOwners] = useState([]);
+    const [zones, setZones] = useState([]);
+    const [vendors, setVendors] = useState([]);
 
     const [statusOptions, setStatusOptions] = useState(
         () => mapEnumOptions(null, STATUS_FALLBACK)
@@ -79,6 +76,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         hostname: "",
         asset_type_id: "",
         asset_role: "",
+        security_zone: "",
+        vendor: "",
         manufacturer: "",
         model: "",
         serial_number: "",
@@ -97,7 +96,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         description: ""
     });
 
-    // وقتی مودال بسته میشه → همه چیز ریست
     const resetModal = () => {
         setCurrentStep(1);
         setError(null);
@@ -107,6 +105,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             hostname: "",
             asset_type_id: "",
             asset_role: "",
+            security_zone: "",
+            vendor: "",
             manufacturer: "",
             model: "",
             serial_number: "",
@@ -134,7 +134,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         loadDropdownOptions();
     }, [isOpen]);
 
-    // گرفتن options از API
     const loadDropdownOptions = async () => {
         setIsLoadingOptions(true);
         setError(null);
@@ -144,6 +143,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 typesRes,
                 locsRes,
                 ownersRes,
+                zonesRes,
+                vendorsRes,
                 statusRes,
                 confRes,
                 riskRes
@@ -151,6 +152,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 api.get("/api/asset-types/"),
                 api.get("/api/locations/"),
                 api.get("/api/owners/"),
+                api.get("/api/zones/"),
+                api.get("/api/vendors/"),
                 api.get("/api/enums/status"),
                 api.get("/api/enums/confidentiality"),
                 api.get("/api/enums/risk")
@@ -177,11 +180,28 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 setOwners([]);
             }
 
-            // Status (ممکنه آرایه string یا آرایه object باشه)
+            // Zones
+            if (zonesRes.status === "fulfilled" && Array.isArray(zonesRes.value.data)) {
+                console.log("✅ Zones loaded:", zonesRes.value.data);
+                setZones(zonesRes.value.data);
+            } else {
+                console.log("❌ Zones failed:", zonesRes);
+                setZones([]);
+            }
+
+            // Vendors
+            if (vendorsRes.status === "fulfilled" && Array.isArray(vendorsRes.value.data)) {
+                console.log("✅ Vendors loaded:", vendorsRes.value.data);
+                setVendors(vendorsRes.value.data);
+            } else {
+                console.log("❌ Vendors failed:", vendorsRes);
+                setVendors([]);
+            }
+
+            // Status
             let statusRaw = null;
             if (statusRes.status === "fulfilled") {
                 statusRaw = statusRes.value.data;
-                console.log("📊 Status API Response:", statusRaw);
             }
             setStatusOptions(mapEnumOptions(statusRaw, STATUS_FALLBACK));
 
@@ -189,7 +209,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             let confRaw = null;
             if (confRes.status === "fulfilled") {
                 confRaw = confRes.value.data;
-                console.log("📊 Confidentiality API Response:", confRaw);
             }
             setConfidentialityOptions(
                 mapEnumOptions(confRaw, CONFIDENTIALITY_FALLBACK)
@@ -199,7 +218,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             let riskRaw = null;
             if (riskRes.status === "fulfilled") {
                 riskRaw = riskRes.value.data;
-                console.log("📊 Risk API Response:", riskRaw);
             }
             setRiskOptions(mapEnumOptions(riskRaw, RISK_FALLBACK));
 
@@ -213,99 +231,50 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    // Validation Step 1 (اسم و نوع اجباری)
-    const validateStep1 = () => {
-        if (!formData.asset_name.trim()) {
-            setError("Asset Name is required");
-            return false;
-        }
-        if (!formData.asset_type_id) {
-            setError("Asset Type is required");
-            return false;
-        }
-        setError(null);
-        return true;
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleNext = () => {
-        console.log("📍 Current Step:", currentStep);
-
-        if (currentStep === 1 && !validateStep1()) {
-            console.log("🛑 Cannot proceed to next step");
-            return;
-        }
-
-        setError(null);
-        const nextStep = Math.min(currentStep + 1, 4);
-        console.log("➡️ Moving to step:", nextStep);
-        setCurrentStep(nextStep);
+        setCurrentStep((prev) => Math.min(prev + 1, 4));
     };
 
     const handleBack = () => {
-        setError(null);
         setCurrentStep((prev) => Math.max(prev - 1, 1));
     };
 
     const handleClose = () => {
-        if (isSubmitting) return;
-        onClose();
+        if (!isSubmitting) {
+            onClose();
+        }
     };
 
     const handleSubmit = async () => {
-        if (!validateStep1()) {
-            setCurrentStep(1);
-            return;
-        }
-
-        setError(null);
         setIsSubmitting(true);
-
-        const payload = {
-            asset_name: formData.asset_name.trim(),
-            asset_type_id: Number(formData.asset_type_id),
-            hostname: formData.hostname.trim() || null,
-            asset_role: formData.asset_role.trim() || null,
-            manufacturer: formData.manufacturer.trim() || null,
-            model: formData.model.trim() || null,
-            serial_number: formData.serial_number.trim() || null,
-            os_name: formData.os_name.trim() || null,
-            os_version: formData.os_version.trim() || null,
-            ip_address: formData.ip_address.trim() || null,
-            mac_address: formData.mac_address.trim() || null,
-            location_id: formData.location_id ? Number(formData.location_id) : null,
-            owner_id: formData.owner_id ? Number(formData.owner_id) : null,
-            status: formData.status || "active",
-            confidentiality_level: formData.confidentiality_level || null,
-            risk_level: formData.risk_level || null,
-            last_audit_date: formData.last_audit_date || null,
-            last_patch_date: formData.last_patch_date || null,
-            asset_value: formData.asset_value ? Number(formData.asset_value) : null,
-            description: formData.description.trim() || null
-        };
+        setError(null);
 
         try {
-            await dispatch(createAsset(payload)).unwrap();
-            dispatch(fetchAssets());
-            onClose();
+            const submitData = { ...formData };
+            
+            Object.keys(submitData).forEach(key => {
+                if (submitData[key] === "") {
+                    submitData[key] = null;
+                }
+            });
+
+            const result = await dispatch(createAsset(submitData));
+
+            if (result.type === "assets/createAsset/fulfilled") {
+                await dispatch(fetchAssets());
+                onClose();
+            } else {
+                setError(result.payload || "Failed to create asset");
+            }
         } catch (err) {
-            console.error("Failed to create asset:", err);
-            setError(
-                typeof err === "string"
-                    ? err
-                    : "Failed to create asset. Please try again."
-            );
+            setError(err.message || "An unexpected error occurred");
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    if (!isOpen) return null;
 
     const renderStepContent = () => {
         switch (currentStep) {
@@ -322,6 +291,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                                 value={formData.asset_name}
                                 onChange={handleChange}
                                 placeholder="e.g. Web Server 01"
+                                required
                                 disabled={isLoadingOptions}
                             />
                         </div>
@@ -344,6 +314,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                                 name="asset_type_id"
                                 value={formData.asset_type_id}
                                 onChange={handleChange}
+                                required
                                 disabled={isLoadingOptions}
                             >
                                 <option value="">Select type</option>
@@ -355,18 +326,55 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>Security zone</label>
+                            <label>Asset Role</label>
                             <input
                                 type="text"
                                 name="asset_role"
                                 value={formData.asset_role}
                                 onChange={handleChange}
-                                placeholder="e.g. Application Server"
+                                placeholder="e.g. Web Server"
                                 disabled={isLoadingOptions}
                             />
                         </div>
+                        
+                        {/* Security Zone - Dropdown */}
+                        <div className="form-group">
+                            <label>Security Zone</label>
+                            <select
+                                name="security_zone"
+                                value={formData.security_zone}
+                                onChange={handleChange}
+                                disabled={isLoadingOptions}
+                            >
+                                <option value="">Select zone</option>
+                                {zones.map((zone) => (
+                                    <option key={zone.id} value={zone.zone_name}>
+                                        {zone.zone_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Vendor - Dropdown */}
                         <div className="form-group">
                             <label>Vendor</label>
+                            <select
+                                name="vendor"
+                                value={formData.vendor}
+                                onChange={handleChange}
+                                disabled={isLoadingOptions}
+                            >
+                                <option value="">Select vendor</option>
+                                {vendors.map((vendor) => (
+                                    <option key={vendor.id} value={vendor.vendor_name}>
+                                        {vendor.vendor_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>Manufacturer</label>
                             <input
                                 type="text"
                                 name="manufacturer"
@@ -403,28 +411,20 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                                 disabled={isLoadingOptions}
                             />
                         </div>
+                        
+                        {/* 🔄 OS - ترکیب شده */}
                         <div className="form-group">
-                            <label>OS Name</label>
+                            <label>Operating System</label>
                             <input
                                 type="text"
                                 name="os_name"
                                 value={formData.os_name}
                                 onChange={handleChange}
-                                placeholder="e.g. Windows Server, Ubuntu"
+                                placeholder="e.g. Windows Server 2019, Ubuntu 22.04"
                                 disabled={isLoadingOptions}
                             />
                         </div>
-                        <div className="form-group">
-                            <label>OS Version</label>
-                            <input
-                                type="text"
-                                name="os_version"
-                                value={formData.os_version}
-                                onChange={handleChange}
-                                placeholder="e.g. 22.04, 2019"
-                                disabled={isLoadingOptions}
-                            />
-                        </div>
+
                         <div className="form-group">
                             <label>IP Address</label>
                             <input
@@ -558,17 +558,26 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                                 disabled={isLoadingOptions}
                             />
                         </div>
+                        
+                        {/* Asset Value با آیکون دلار */}
                         <div className="form-group">
-                            <label>Asset Value</label>
-                            <input
-                                type="number"
-                                name="asset_value"
-                                value={formData.asset_value}
-                                onChange={handleChange}
-                                min="0"
-                                disabled={isLoadingOptions}
-                            />
+                            <label>Asset Value (USD)</label>
+                            <div className="input-with-icon">
+                                <span className="input-icon">$</span>
+                                <input
+                                    type="number"
+                                    name="asset_value"
+                                    value={formData.asset_value}
+                                    onChange={handleChange}
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    disabled={isLoadingOptions}
+                                    className="input-with-prefix"
+                                />
+                            </div>
                         </div>
+
                         <div className="form-group full-width">
                             <label>Description</label>
                             <textarea
@@ -587,6 +596,9 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 return null;
         }
     };
+
+    // 🔥 CRITICAL FIX: اگر modal باز نیست، چیزی render نکن!
+    if (!isOpen) return null;
 
     return (
         <div className="modal-overlay" onClick={handleClose}>

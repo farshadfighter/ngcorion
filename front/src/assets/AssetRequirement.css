@@ -1,128 +1,99 @@
-/* ==================== Container ==================== */
+/* ============================================
+   ASSET REQUIREMENT - STYLES
+   ============================================ */
+
+/* Container */
 .asset-requirement-container {
-    padding: 20px;
-    background: #E8E7E3;
+    padding: 32px 40px;
+    background: transparent;
     min-height: 100vh;
 }
 
-/* ==================== Header ==================== */
+/* Header */
 .requirement-header {
     display: flex;
-    justify-content: flex-end;
-    margin-bottom: 20px;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
 }
 
 .requirement-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
 }
 
-.btn-import,
-.btn-export {
+/* Header Buttons */
+.btn-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     padding: 10px 20px;
-    background: #0A234E;
-    color: white;
+    border-radius: 10px;
     border: none;
-    border-radius: 5px;
-    cursor: pointer;
     font-size: 14px;
-    transition: background 0.3s;
-}
-
-.btn-import:hover,
-.btn-export:hover {
-    background: #163a7a;
-}
-
-.btn-add-requirement {
-    padding: 10px 20px;
-    background: #28a745;
+    font-weight: 600;
+    cursor: pointer;
+    background: #1e3a5f;
     color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.3s;
 }
 
-.btn-add-requirement:hover {
-    background: #218838;
+.btn-header:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-/* ==================== Alerts ==================== */
-.alert {
-    padding: 12px 20px;
-    border-radius: 5px;
-    margin-bottom: 15px;
-    font-size: 14px;
-    animation: slideDown 0.3s ease;
-}
+/* ============================================
+   TABS - BEAUTIFUL STYLE
+   ============================================ */
 
-.alert-success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.alert-error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* ==================== Tabs ==================== */
 .requirement-tabs {
     display: flex;
-    gap: 5px;
-    background: white;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    overflow-x: auto;
-    margin-bottom: 20px;
+    gap: 0;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 24px;
+    background: transparent;
 }
 
 .requirement-tab {
-    padding: 10px 20px;
-    background: #f0f0f0;
+    padding: 14px 24px;
+    background: transparent;
     border: none;
-    border-radius: 5px;
+    border-bottom: 3px solid transparent;
+    font-size: 15px;
+    font-weight: 500;
+    color: #6b7280;
     cursor: pointer;
-    font-size: 14px;
-    white-space: nowrap;
-    transition: all 0.3s;
+    transition: all 0.2s;
 }
 
 .requirement-tab:hover {
-    background: #e0e0e0;
+    color: #374151;
 }
 
 .requirement-tab.active {
-    background: #0A234E;
-    color: white;
+    color: #1e3a5f;
+    font-weight: 600;
+    border-bottom-color: #1e3a5f;
+    background: transparent;
 }
 
-/* ==================== Tab Content ==================== */
+/* ============================================
+   CONTENT
+   ============================================ */
+
 .requirement-content {
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
 }
 
 .tab-content {
-    width: 100%;
+    padding: 0;
 }
 
 .tab-header {
@@ -131,111 +102,171 @@
     align-items: center;
     margin-bottom: 20px;
 }
-.search-wrapper {
-    width: 240px;
-}
-.search-wrapper .search-input {
-    width: 100%;
-}
 
-.btn-add {
-    padding: 10px 20px;
-    background: #0A234E;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.3s;
-}
+/* ============================================
+   TABLES
+   ============================================ */
 
-.btn-add:hover {
-    background: #163a7a;
-}
-
-/* ==================== Enum Info ==================== */
-.enum-info {
-    background: #e3f2fd;
-    border-left: 4px solid #2196f3;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-}
-
-.enum-info p {
-    margin: 0;
-    color: #1976d2;
-    font-size: 14px;
-}
-
-/* ==================== Table ==================== */
 .table-container {
-    overflow-x: auto;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
 }
 
 .requirement-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
 }
 
 .requirement-table thead {
-    background: #f8f9fa;
+    background: #f9fafb;
 }
 
 .requirement-table th {
-    padding: 12px;
+    padding: 14px 16px;
     text-align: left;
-    font-weight: 600;
-    color: #0A234E;
-    border-bottom: 2px solid #dee2e6;
-    font-size: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-.requirement-table td {
-    padding: 12px;
-    border-bottom: 1px solid #dee2e6;
-    font-size: 14px;
-    color: #333;
+.requirement-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.requirement-table tbody tr:last-child {
+    border-bottom: none;
 }
 
 .requirement-table tbody tr:hover {
-    background: #f8f9fa;
+    background: #f9fafb;
+}
+
+.requirement-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
 }
 
 .no-data {
     text-align: center;
-    color: #666;
+    color: #9ca3af;
     font-style: italic;
-    padding: 40px !important;
 }
 
-/* ==================== Actions ==================== */
-.actions {
-    display: flex;
-    gap: 10px;
+/* ============================================
+   OTHERS TAB - SECTIONS
+   ============================================ */
+
+.others-section {
+    margin-bottom: 32px;
 }
 
-.btn-edit,
-.btn-delete {
-    padding: 6px 12px;
+.others-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 16px 0;
+    padding-left: 4px;
+}
+
+.enum-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+}
+
+.enum-info p {
+    margin: 0;
+    color: #1e40af;
+    font-size: 14px;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.btn-add {
+    background: #1e3a5f;
+    color: white;
     border: none;
-    border-radius: 4px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 13px;
+}
+
+.btn-add:hover {
+    background: #2d4a7c;
+}
+
+.btn-icon {
     background: transparent;
-    color: #0A234E;
-    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    font-size: 18px;
+    transition: transform 0.2s;
 }
 
-
-
-
-.btn-delete:hover {
-    background: #163a7a;
+.btn-icon:hover {
+    transform: scale(1.2);
 }
 
-/* ==================== Modal ==================== */
+.btn-edit {
+    margin-right: 8px;
+}
+
+/* ============================================
+   ALERTS
+   ============================================ */
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.alert-success {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #ef4444;
+}
+
+/* ============================================
+   LOADING
+   ============================================ */
+
+.loading-spinner {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+    font-size: 16px;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -243,229 +274,168 @@
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     z-index: 1000;
-    animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
 }
 
 .modal-content {
     background: white;
-    border-radius: 10px;
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 500px;
     width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    animation: slideUp 0.3s ease;
-}
-
-.modal-small {
-    max-width: 400px;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 20px;
 }
 
-.modal-header h2 {
+.modal-header h3 {
     margin: 0;
     font-size: 20px;
-    color: #0A234E;
+    font-weight: 700;
+    color: #1f2937;
 }
 
 .modal-close {
     background: none;
     border: none;
-    font-size: 28px;
+    font-size: 24px;
     cursor: pointer;
-    color: #666;
-    transition: color 0.3s;
-    line-height: 1;
+    color: #9ca3af;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
 .modal-close:hover {
-    color: #000;
+    background: #f3f4f6;
+    color: #374151;
 }
 
 .modal-body {
-    padding: 20px;
+    margin-bottom: 24px;
 }
 
-.form-group {
-    margin-bottom: 20px;
+.modal-body p {
+    margin: 0 0 12px 0;
+    color: #374151;
+    font-size: 15px;
 }
 
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: #333;
-    font-size: 14px;
-}
-
-.required {
-    color: #dc3545;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    box-sizing: border-box;
-    font-family: inherit;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #0A234E;
-}
-
-.form-group input.error,
-.form-group select.error,
-.form-group textarea.error {
-    border-color: #dc3545;
-}
-
-.error-message {
-    display: block;
-    color: #dc3545;
-    font-size: 12px;
-    margin-top: 5px;
-}
-
-.delete-message {
-    margin: 0;
-    font-size: 16px;
-    color: #333;
-}
-
-.modal-footer {
+.modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
-    padding: 20px;
-    border-top: 1px solid #dee2e6;
+    gap: 12px;
 }
 
 .btn-cancel,
-.btn-submit,
-.btn-delete-confirm {
+.btn-delete {
     padding: 10px 20px;
+    border-radius: 10px;
     border: none;
-    border-radius: 5px;
-    cursor: pointer;
     font-size: 14px;
-    transition: all 0.3s;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .btn-cancel {
-    background: #6c757d;
-    color: white;
+    background: #f3f4f6;
+    color: #374151;
 }
 
 .btn-cancel:hover {
-    background: #5a6268;
+    background: #e5e7eb;
 }
 
-.btn-submit {
-    background: #0A234E;
-    color: white;
-}
-
-.btn-submit:hover {
-    background: #163a7a;
-}
-
-.btn-delete-confirm {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-delete-confirm:hover {
-    background: #c82333;
-}
-
-/* ==================== Loading ==================== */
-.loading-spinner {
-    text-align: center;
-    padding: 40px;
-    font-size: 16px;
-    color: #666;
-}
-
-/* ==================== Responsive ==================== */
-@media (max-width: 768px) {
-    .requirement-tabs {
-        flex-wrap: wrap;
-    }
-
-    .tab-header {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-
-
-    .modal-content {
-        width: 95%;
-        max-height: 95vh;
-    }
-
-    .actions {
-        flex-direction: column;
-    }
-
-    .btn-edit,
-    .btn-delete {
-        width: 100%;
-    }
-}
-.btn-download-template {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 14px;
-    background: #ffffff;
+.btn-delete {
+    background: transparent;
     border: none;
-    border-radius: 6px;
-    font-size: 15px;
-    color: #344054;
+    cursor: pointer;
+    padding: 6px;
+    font-size: 18px;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+.btn-delete-confirm {
+    background: #ef4444 !important;
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
 }
 
-.btn-download-template:hover {
-    background: #f9fafb;
+.btn-delete-confirm:hover {
+    background: #dc2626 !important;
+}
+
+/* ============================================
+   SEARCH INPUT (for tabs that have search)
+   ============================================ */
+
+.search-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    padding: 8px 14px;
+    font-size: 13px;
+    border: 1px solid #d0d5dd;
+    border-radius: 10px;
+    background: #ffffff;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .asset-requirement-container {
+        padding: 16px 20px;
+    }
+
+    .requirement-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .requirement-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .requirement-table {
+        font-size: 13px;
+    }
+
+    .requirement-table th,
+    .requirement-table td {
+        padding: 10px 12px;
+    }
 }

@@ -8,22 +8,17 @@ import { LocationsTab } from "./LocationsTab";
 import { NetworkZoneTab } from "./NetworkZoneTab";
 import { OSCatalogTab } from "./OSCatalogTab";
 import { VendorsTab } from "./VendorsTab";
-import { DependenciesTab } from "./DependenciesTab";
-import { StatusTab } from "./StatusTab";
-import { ConfidentialityTab } from "./ConfidentialityTab";
-import { RiskLevelsTab } from "./RiskLevelsTab";
+import { OthersTab } from "./OthersTab"; // 🆕 Combined tab
 
+// 🔥 Updated TABS - Dependencies حذف شد، 3 تب ترکیب شدند
 const TABS = [
     { id: "asset-type", label: "Asset Type" },
     { id: "owners", label: "Owners" },
     { id: "location", label: "Location" },
     { id: "network-zone", label: "Network Zone" },
-    { id: "os-catalog", label: "Os Catalog" },
+    { id: "os-catalog", label: "OS Catalog" },
     { id: "vendors", label: "Vendors" },
-    { id: "dependencies", label: "Dependencies" },
-    { id: "status", label: "Status" },
-    { id: "confidentiality", label: "Confidentiality Levels" },
-    { id: "risk", label: "Risk Levels" },
+    { id: "others", label: "Others" }, // 🆕 Status + Confidentiality + Risk
 ];
 
 export const AssetRequirement = () => {
@@ -34,7 +29,6 @@ export const AssetRequirement = () => {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
 
-    // Auto-clear messages after 3 seconds
     useEffect(() => {
         if (successMessage || error) {
             const timer = setTimeout(() => dispatch(clearMessages()), 3000);
@@ -42,7 +36,6 @@ export const AssetRequirement = () => {
         }
     }, [successMessage, error, dispatch]);
 
-    // =============== IMPORT ===============
     const handleImport = () => {
         fileInputRef.current?.click();
     };
@@ -64,7 +57,7 @@ export const AssetRequirement = () => {
             });
 
             alert("Import successful! " + JSON.stringify(response.data));
-            window.location.reload(); // Simple reload; consider fetching data instead in production
+            window.location.reload();
         } catch (err) {
             console.error("Import failed:", err);
             alert("Import failed: " + (err.response?.data?.detail || err.message));
@@ -74,7 +67,6 @@ export const AssetRequirement = () => {
         }
     };
 
-    // =============== EXPORT ===============
     const handleExport = async () => {
         try {
             const response = await api.get("/api/asset-requirements/export/excel", {
@@ -97,27 +89,23 @@ export const AssetRequirement = () => {
         }
     };
 
-    // =============== DOWNLOAD TEMPLATE ===============
     const handleDownloadTemplate = async () => {
         try {
             const response = await api.get("/api/asset-requirements/export/template", {
                 responseType: "blob",
             });
 
-            // Create blob with correct MIME type
             const blob = new Blob([response.data], {
                 type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             });
             const url = window.URL.createObjectURL(blob);
 
-            // Create and trigger download
             const link = document.createElement("a");
             link.href = url;
             link.setAttribute("download", "asset-requirements-template.xlsx");
             document.body.appendChild(link);
             link.click();
 
-            // Cleanup
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
         } catch (err) {
@@ -132,7 +120,6 @@ export const AssetRequirement = () => {
         }
     };
 
-    // =============== RENDER TABS ===============
     const renderTabContent = () => {
         switch (activeTab) {
             case "asset-type":
@@ -147,14 +134,8 @@ export const AssetRequirement = () => {
                 return <OSCatalogTab />;
             case "vendors":
                 return <VendorsTab />;
-            case "dependencies":
-                return <DependenciesTab />;
-            case "status":
-                return <StatusTab />;
-            case "confidentiality":
-                return <ConfidentialityTab />;
-            case "risk":
-                return <RiskLevelsTab />;
+            case "others":
+                return <OthersTab />; // 🆕 Combined tab
             default:
                 return <AssetTypeTab />;
         }
@@ -162,27 +143,27 @@ export const AssetRequirement = () => {
 
     return (
         <div className="asset-requirement-container">
-            {/* Header with buttons */}
+            {/* Header */}
             <div className="requirement-header">
+                <h1 className="page-title">Asset Requirement</h1>
                 <div className="requirement-actions">
                     <button
-                        className="btn-import"
+                        className="btn-header"
                         onClick={handleImport}
                         disabled={uploading}
                     >
                         {uploading ? "⏳ Importing..." : "⬇ Import"}
                     </button>
-                    <button className="btn-export" onClick={handleExport}>
+                    <button className="btn-header" onClick={handleExport}>
                         ⬆ Export
                     </button>
-                    {/* ✅ NEW: Download Template Button */}
-                    <button className="btn-download-template" onClick={handleDownloadTemplate}>
-                        📥 Download Template
+                    <button className="btn-header" onClick={handleDownloadTemplate}>
+
+                        Download Template
                     </button>
                 </div>
             </div>
 
-            {/* Hidden file input */}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -191,24 +172,22 @@ export const AssetRequirement = () => {
                 style={{ display: "none" }}
             />
 
-            {/* Success/Error Messages */}
             {successMessage && <div className="alert alert-success">{successMessage}</div>}
             {error && <div className="alert alert-error">{error}</div>}
 
-            {/* Tabs */}
+            {/* 🎨 Beautiful Tabs - Same style as Asset List */}
             <div className="requirement-tabs">
                 {TABS.map((tab) => (
-                    <div
+                    <button
                         key={tab.id}
                         className={`requirement-tab ${activeTab === tab.id ? "active" : ""}`}
                         onClick={() => setActiveTab(tab.id)}
                     >
                         {tab.label}
-                    </div>
+                    </button>
                 ))}
             </div>
 
-            {/* Tab Content */}
             <div className="requirement-content">{renderTabContent()}</div>
         </div>
     );
