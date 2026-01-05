@@ -442,7 +442,7 @@ def create_location(
 ):
     """Create location (requires write permission) - uses current_user.id dynamically"""
     result = AssetService.create_location(db, data.model_dump(), user_id=current_user.id)
-    log_requirement_create(db, current_user.id, "location", result.id, result.location_name)
+    log_requirement_create(db, current_user.id, "location", result.id, result.site_name)
     return result
 
 
@@ -471,7 +471,7 @@ def update_location(
     location = AssetService.update_location(db, location_id, data.model_dump())
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    log_requirement_update(db, current_user.id, "location", location.id, location.location_name, data.model_dump())
+    log_requirement_update(db, current_user.id, "location", location.id, location.site_name, data.model_dump())
     return location
 
 
@@ -486,10 +486,10 @@ def delete_location(
     location = AssetService.get_location(db, location_id)
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
-    location_name = location.location_name
+    site_name = location.site_name
     if not AssetService.delete_location(db, location_id):
         raise HTTPException(status_code=404, detail="Location not found")
-    log_requirement_delete(db, current_user.id, "location", location_id, location_name)
+    log_requirement_delete(db, current_user.id, "location", location_id, site_name)
     return {"message": "Deleted successfully"}
 
 
