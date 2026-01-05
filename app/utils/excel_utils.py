@@ -526,8 +526,8 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
         Dictionary with import results for each sheet
     """
     from openpyxl import load_workbook
-    from app.models import AssetType, AssetOwner, AssetLocation, NetworkZone, OSCatalog, VendorCatalog, AssetDependency
-    from app.models.enums import RelationTypeEnum
+    from app.models import AssetType, AssetOwner, AssetLocation, NetworkZone, OSCatalog, VendorCatalog #AssetDependency
+    #from app.models.enums import RelationTypeEnum
 
     results = {
         "asset_types": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
