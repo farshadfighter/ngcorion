@@ -16,14 +16,14 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                 </thead>
                 <tbody>
                 {assets.map((asset) => (
-                    <tr 
+                    <tr
                         key={asset.id}
                         className={isNewAsset(asset) ? "row-new" : "row-normal"}
                     >
                         <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
-                        <td>{asset.location_id || "-"}</td>
-                        <td>{asset.owner_id || "-"}</td>
+                        <td>{asset.location_name || "-"}</td>
+                        <td>{asset.owner_name || "-"}</td>
                         <td>
                             <span className={`status-badge status-${asset.status}`}>
                                 {asset.status || "unknown"}

@@ -208,7 +208,7 @@
 
 .assets-table tbody tr.row-normal {
     border-left: 4px solid #10b981;
-    background: transparent;
+    background: #ecfdf5;
 }
 
 .assets-table tbody tr.row-normal:hover {
@@ -334,7 +334,7 @@
 }
 
 /* ============================================
-   MODALS
+   MODALS - UPDATED FOR AddAssetModal
    ============================================ */
 
 .modal-overlay {
@@ -350,13 +350,18 @@
     z-index: 1000;
 }
 
-.modal-content {
+.modal-content2 {
     background: white;
     border-radius: 14px;
     padding: 24px;
-    max-width: 500px;
+    max-width: 700px;
+    max-height: 95vh;
     width: 90%;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modal-large {
+    max-width: 700px;
 }
 
 .modal-header {
@@ -366,7 +371,8 @@
     margin-bottom: 20px;
 }
 
-.modal-header h3 {
+.modal-header h3,
+.modal-header h2 {
     margin: 0;
     font-size: 20px;
     font-weight: 700;
@@ -396,6 +402,7 @@
 
 .modal-body {
     margin-bottom: 24px;
+    max-height: 60vh;
 }
 
 .modal-body p {
@@ -410,9 +417,117 @@
     gap: 12px;
 }
 
+/* STEP INDICATOR - COMPACT DESIGN */
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 0;
+    gap: 40px;
+}
+
+.step-indicator .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #6B7280;
+    position: relative;
+}
+
+.step-indicator .step::before {
+    content: attr(data-step-number);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #F3F4F6;
+    color: #6B7280;
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.step-indicator .step.active::before {
+    background: #0A234E;
+    color: white;
+    border-color: #0A234E;
+}
+
+.step-indicator .step.active {
+    color: #0A234E;
+    font-weight: 600;
+}
+
+.step-indicator .step.completed::before {
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+    content: "✓";
+}
+
+/* FORM GRID */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+}
+
+.form-grid .full-width {
+    grid-column: 1 / -1;
+}
+
+/* FORM GROUP */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 4px;
+    gap: 10px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    color: #111827;
+    transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+/* MODAL BUTTONS */
 .btn-cancel,
-.btn-delete {
-    padding: 10px 20px;
+.btn-submit,
+.btn-secondary {
+    padding: 10px 30px;
     border-radius: 10px;
     border: none;
     font-size: 14px;
@@ -430,13 +545,58 @@
     background: #e5e7eb;
 }
 
+.btn-submit {
+    background: #1e3a5f;
+    color: white;
+}
+
+.btn-submit:hover {
+    background: #2d4a7c;
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .btn-delete {
     background: #ef4444;
     color: white;
 }
+.btn-delete2{
+    background: #ef4444;
+    color: white;
+    border-radius: 5px;
+    padding: 10px 30px;
+    border: none;
+}
 
+.btn-delete2:hover {
+    background: #dc2626;
+}
 .btn-delete:hover {
     background: #dc2626;
+}
+
+/* REQUIRED INDICATOR */
+.required {
+    color: #E74C3C;
+    margin-left: 3px;
 }
 
 /* ============================================

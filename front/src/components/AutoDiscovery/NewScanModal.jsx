@@ -201,6 +201,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                     value={formData.ports}
                                     onChange={handleChange}
                                     placeholder="e.g., 80,443,8080 or 1-1000"
+
                                     className={`form-input ${errors.ports ? 'error' : ''}`}
                                 />
                                 {errors.ports && <p className="form-error">{errors.ports}</p>}

@@ -10,7 +10,7 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                     <th>Asset Name</th>
                     <th>Hostname</th>
                     <th>Type</th>
-                    <th>Role</th>
+                    <th>Network Zone</th>
                     <th>Vendor</th>
                     <th>Model</th>
                     <th>Actions</th>
@@ -18,16 +18,16 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                 </thead>
                 <tbody>
                 {assets.map((asset) => (
-                    <tr 
+                    <tr
                         key={asset.id}
                         className={isNewAsset(asset) ? "row-new" : "row-normal"}
                     >
                         <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.hostname || "-"}</td>
-                        <td>{asset.asset_type_id || "-"}</td>
+                        <td>{asset.asset_type_name || "-"}</td>
                         <td>{asset.asset_role || "-"}</td>
-                        <td>{asset.vendor || "-"}</td>
+                        <td>{asset.manufacturer || "-"}</td>
                         <td>{asset.model || "-"}</td>
                         <td>
                             <button className="btn-icon btn-edit" onClick={() => onEdit(asset)}>

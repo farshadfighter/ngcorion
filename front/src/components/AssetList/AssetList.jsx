@@ -6,8 +6,12 @@ import { OverviewTab } from "./OverviewTab";
 import { NetworkSystemTab } from "./NetworkSystemTab";
 import { LocationOwnerTab } from "./LocationOwnerTab";
 import { SecurityAuditTab } from "./SecurityAuditTab";
-import { EditAssetModal } from "./EditAssetModal";
+import { EditOverviewModal } from "./EditOverviewModal";
+import { EditNetworkModal } from "./EditNetworkModal";
+import { EditLocationModal } from "./EditLocationModal";
+import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
+import { useAssetFormOptions } from "./useAssetFormOptions";
 import "../../assets/AssetList.css"
 export const AssetList = () => {
     const dispatch = useDispatch();
@@ -15,12 +19,18 @@ export const AssetList = () => {
         (state) => state.assets
     );
 
+    // Get lookup data for displaying names instead of IDs
+    const { assetTypes, locations, owners } = useAssetFormOptions();
+
     const [activeTab, setActiveTab] = useState("overview");
     const [searchQuery, setSearchQuery] = useState("");
     const [sortDir, setSortDir] = useState("asc");
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
+    const [showEditOverviewModal, setShowEditOverviewModal] = useState(false);
+    const [showEditNetworkModal, setShowEditNetworkModal] = useState(false);
+    const [showEditLocationModal, setShowEditLocationModal] = useState(false);
+    const [showEditSecurityModal, setShowEditSecurityModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [uploading, setUploading] = useState(false);
 
@@ -55,9 +65,39 @@ export const AssetList = () => {
         return sortDir === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
 
+    // Enrich assets with lookup data (convert IDs to names)
+    const enrichedAssets = sortedAssets.map(asset => {
+        const assetType = assetTypes.find(t => t.id === asset.asset_type_id);
+        const location = locations.find(l => l.id === asset.location_id);
+        const owner = owners.find(o => o.id === asset.owner_id);
+
+        return {
+            ...asset,
+            asset_type_name: assetType?.type_name || asset.asset_type_id || "-",
+            location_name: location?.site_name || location?.location_name || asset.location_id || "-",
+            owner_name: owner?.full_name || asset.owner_id || "-"
+        };
+    });
+
     const handleEdit = (asset) => {
         setSelectedAsset(asset);
-        setShowEditModal(true);
+
+        switch(activeTab) {
+            case "overview":
+                setShowEditOverviewModal(true);
+                break;
+            case "network":
+                setShowEditNetworkModal(true);
+                break;
+            case "location":
+                setShowEditLocationModal(true);
+                break;
+            case "security":
+                setShowEditSecurityModal(true);
+                break;
+            default:
+                setShowEditOverviewModal(true);
+        }
     };
 
     const handleDeleteClick = (asset) => {
@@ -188,7 +228,7 @@ export const AssetList = () => {
 
             {!isLoading && activeTab === "overview" && (
                 <OverviewTab
-                    assets={sortedAssets}
+                    assets={enrichedAssets}
                     onEdit={handleEdit}
                     onDelete={handleDeleteClick}
                     isNewAsset={isNewAsset}
@@ -196,7 +236,7 @@ export const AssetList = () => {
             )}
             {!isLoading && activeTab === "network" && (
                 <NetworkSystemTab
-                    assets={sortedAssets}
+                    assets={enrichedAssets}
                     onEdit={handleEdit}
                     onDelete={handleDeleteClick}
                     isNewAsset={isNewAsset}
@@ -204,7 +244,7 @@ export const AssetList = () => {
             )}
             {!isLoading && activeTab === "location" && (
                 <LocationOwnerTab
-                    assets={sortedAssets}
+                    assets={enrichedAssets}
                     onEdit={handleEdit}
                     onDelete={handleDeleteClick}
                     isNewAsset={isNewAsset}
@@ -212,7 +252,7 @@ export const AssetList = () => {
             )}
             {!isLoading && activeTab === "security" && (
                 <SecurityAuditTab
-                    assets={sortedAssets}
+                    assets={enrichedAssets}
                     onEdit={handleEdit}
                     onDelete={handleDeleteClick}
                     isNewAsset={isNewAsset}
@@ -239,7 +279,7 @@ export const AssetList = () => {
                             <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>
                                 Cancel
                             </button>
-                            <button className="btn-delete" onClick={handleDeleteConfirm}>
+                            <button className="btn-delete2" onClick={handleDeleteConfirm}>
                                 Delete
                             </button>
                         </div>
@@ -247,12 +287,45 @@ export const AssetList = () => {
                 </div>
             )}
 
-            {showEditModal && selectedAsset && (
-                <EditAssetModal
+            {showEditOverviewModal && selectedAsset && (
+                <EditOverviewModal
                     asset={selectedAsset}
-                    isOpen={showEditModal}
+                    isOpen={showEditOverviewModal}
                     onClose={() => {
-                        setShowEditModal(false);
+                        setShowEditOverviewModal(false);
+                        setSelectedAsset(null);
+                    }}
+                />
+            )}
+
+            {showEditNetworkModal && selectedAsset && (
+                <EditNetworkModal
+                    asset={selectedAsset}
+                    isOpen={showEditNetworkModal}
+                    onClose={() => {
+                        setShowEditNetworkModal(false);
+                        setSelectedAsset(null);
+                    }}
+                />
+            )}
+
+            {showEditLocationModal && selectedAsset && (
+                <EditLocationModal
+                    asset={selectedAsset}
+                    isOpen={showEditLocationModal}
+                    onClose={() => {
+                        setShowEditLocationModal(false);
+                        setSelectedAsset(null);
+                    }}
+                />
+            )}
+
+            {showEditSecurityModal && selectedAsset && (
+                <EditSecurityModal
+                    asset={selectedAsset}
+                    isOpen={showEditSecurityModal}
+                    onClose={() => {
+                        setShowEditSecurityModal(false);
                         setSelectedAsset(null);
                     }}
                 />

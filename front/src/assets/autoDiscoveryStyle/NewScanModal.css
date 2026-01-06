@@ -5,7 +5,8 @@
 
 /* Modal Container */
 .new-scan-modal {
-    max-width: 580px;
+    max-width: 800px;
+    width: 80vh;
     max-height: 650px;
     display: flex;
     flex-direction: column;
@@ -102,7 +103,7 @@
 /* Form Inputs */
 .form-input,
 .form-select {
-    width: 100%;
+    width: 200px;
     padding: 8px 12px;
     font-size: 14px;
     border: 1px solid #d1d5db;
@@ -259,19 +260,5 @@
     background: #152a45;
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-    .new-scan-modal {
-        max-width: 95vw;
-        margin: 20px;
-    }
 
-    .new-scan-modal .modal-footer {
-        flex-direction: column-reverse;
-    }
 
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}

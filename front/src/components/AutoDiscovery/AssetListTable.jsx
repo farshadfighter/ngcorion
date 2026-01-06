@@ -1,13 +1,9 @@
-/**
- * AssetListTable - داخل Auto Discovery Asset List Modal
- * نمایش assetهای ساخته‌شده از Discovery با امکان Edit و Delete
- */
+
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAssets, deleteAsset } from '../../store/assetSlice.jsx';
 import { selectDiscoveryCreatedAssetIds } from '../../store/discoverySlice.jsx';
-import { EditAssetModal } from '../AssetList/EditAssetModal';
 import '../../assets/autoDiscoveryStyle/Assetlisttable.css';
 
 // Tab definitions

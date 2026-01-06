@@ -39,14 +39,28 @@ export const LocationModal = ({ onClose }) => {
 
         try {
             const payload = {
-                ...formData,
+                site_name: formData.site_name,
+                rack_name: formData.rack_name || null,
+                room: formData.room || null,
+                floor: formData.floor || null,
+                network_zone: formData.network_zone || null,
                 vlan_id: formData.vlan_id ? parseInt(formData.vlan_id) : null,
+                subnet: formData.subnet || null,
             };
 
+            console.log("Sending payload:", JSON.stringify(payload, null, 2));
             await dispatch(createLocation(payload)).unwrap();
             onClose();
         } catch (error) {
             console.error("Failed to create location:", error);
+            console.error("Full error object:", JSON.stringify(error, null, 2));
+            if (error.response) {
+                console.error("Response status:", error.response.status);
+                console.error("Response data:", JSON.stringify(error.response.data, null, 2));
+            }
+            if (Array.isArray(error)) {
+                console.error("Error array details:", JSON.stringify(error, null, 2));
+            }
         }
     };
 
