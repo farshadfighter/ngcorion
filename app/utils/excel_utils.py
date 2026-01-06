@@ -436,17 +436,17 @@ def export_asset_requirements_to_excel(data_dict: Dict[str, List[Any]]) -> Bytes
             ws.cell(row=row_idx, column=2, value=item.vendor_name)
 
     # Export Dependencies
-    if "dependencies" in data_dict and data_dict["dependencies"]:
-        ws = wb.create_sheet("Dependencies")
-        columns = ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"]
-        style_header_row(ws, columns)
+    # if "dependencies" in data_dict and data_dict["dependencies"]:
+    #     ws = wb.create_sheet("Dependencies")
+    #     columns = ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"]
+    #     style_header_row(ws, columns)
 
-        for row_idx, item in enumerate(data_dict["dependencies"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.asset_id)
-            ws.cell(row=row_idx, column=3, value=item.depends_on_id)
-            ws.cell(row=row_idx, column=4, value=item.relation_type.value if hasattr(item.relation_type, 'value') else item.relation_type)
-            ws.cell(row=row_idx, column=5, value=item.description)
+    #     for row_idx, item in enumerate(data_dict["dependencies"], 2):
+    #         ws.cell(row=row_idx, column=1, value=item.id)
+    #         ws.cell(row=row_idx, column=2, value=item.asset_id)
+    #         ws.cell(row=row_idx, column=3, value=item.depends_on_id)
+    #         ws.cell(row=row_idx, column=4, value=item.relation_type.value if hasattr(item.relation_type, 'value') else item.relation_type)
+    #         ws.cell(row=row_idx, column=5, value=item.description)
 
     # If no sheets were created, create an empty one
     if len(wb.worksheets) == 0:
@@ -502,9 +502,9 @@ def create_asset_requirements_template() -> BytesIO:
     style_header_row(ws, columns)
 
     # Dependencies template
-    ws = wb.create_sheet("Dependencies")
-    columns = ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"]
-    style_header_row(ws, columns)
+    # ws = wb.create_sheet("Dependencies")
+    # columns = ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"]
+    # style_header_row(ws, columns)
 
     # Save to BytesIO
     output = BytesIO()
@@ -526,8 +526,8 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
         Dictionary with import results for each sheet
     """
     from openpyxl import load_workbook
-    from app.models import AssetType, AssetOwner, AssetLocation, NetworkZone, OSCatalog, VendorCatalog, AssetDependency
-    from app.models.enums import RelationTypeEnum
+    from app.models import AssetType, AssetOwner, AssetLocation, NetworkZone, OSCatalog, VendorCatalog #AssetDependency
+    #from app.models.enums import RelationTypeEnum
 
     results = {
         "asset_types": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
@@ -536,7 +536,7 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
         "zones": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
         "os_catalog": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
         "vendors": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
-        "dependencies": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
+        # "dependencies": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
     }
 
     try:
@@ -756,50 +756,50 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                     results["vendors"]["errors"].append(f"Row {row_idx}: {str(e)}")
 
         # Process Dependencies sheet
-        if "Dependencies" in wb.sheetnames:
-            ws = wb["Dependencies"]
-            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-                try:
-                    if not row[1] or not row[2]:  # Skip if Asset ID or Depends On ID is empty
-                        results["dependencies"]["skipped"] += 1
-                        continue
+        # if "Dependencies" in wb.sheetnames:
+        #     ws = wb["Dependencies"]
+        #     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        #         try:
+        #             if not row[1] or not row[2]:  # Skip if Asset ID or Depends On ID is empty
+        #                 results["dependencies"]["skipped"] += 1
+        #                 continue
 
-                    # Convert relation type to enum
-                    relation_type = row[3] if len(row) > 3 else None
-                    if relation_type and isinstance(relation_type, str):
-                        try:
-                            relation_type = RelationTypeEnum(relation_type)
-                        except ValueError:
-                            relation_type = None
+        #             # Convert relation type to enum
+        #             relation_type = row[3] if len(row) > 3 else None
+        #             if relation_type and isinstance(relation_type, str):
+        #                 try:
+        #                     relation_type = RelationTypeEnum(relation_type)
+        #                 except ValueError:
+        #                     relation_type = None
 
-                    data = {
-                        "asset_id": int(row[1]),
-                        "depends_on_id": int(row[2]),
-                        "relation_type": relation_type,
-                        "description": row[4] if len(row) > 4 else None
-                    }
+        #             data = {
+        #                 "asset_id": int(row[1]),
+        #                 "depends_on_id": int(row[2]),
+        #                 "relation_type": relation_type,
+        #                 "description": row[4] if len(row) > 4 else None
+        #             }
 
-                    existing = None
-                    if row[0]:
-                        existing = db_session.query(AssetDependency).filter(AssetDependency.id == row[0]).first()
-                    if not existing:
-                        existing = db_session.query(AssetDependency).filter(
-                            AssetDependency.asset_id == data["asset_id"],
-                            AssetDependency.depends_on_id == data["depends_on_id"]
-                        ).first()
+        #             existing = None
+        #             if row[0]:
+        #                 existing = db_session.query(AssetDependency).filter(AssetDependency.id == row[0]).first()
+        #             if not existing:
+        #                 existing = db_session.query(AssetDependency).filter(
+        #                     AssetDependency.asset_id == data["asset_id"],
+        #                     AssetDependency.depends_on_id == data["depends_on_id"]
+        #                 ).first()
 
-                    if existing:
-                        for key, value in data.items():
-                            if value is not None:
-                                setattr(existing, key, value)
-                        results["dependencies"]["updated"] += 1
-                    else:
-                        new_item = AssetDependency(**data)
-                        db_session.add(new_item)
-                        results["dependencies"]["created"] += 1
+        #             if existing:
+        #                 for key, value in data.items():
+        #                     if value is not None:
+        #                         setattr(existing, key, value)
+        #                 results["dependencies"]["updated"] += 1
+        #             else:
+        #                 new_item = AssetDependency(**data)
+        #                 db_session.add(new_item)
+        #                 results["dependencies"]["created"] += 1
 
-                except Exception as e:
-                    results["dependencies"]["errors"].append(f"Row {row_idx}: {str(e)}")
+        #         except Exception as e:
+        #             results["dependencies"]["errors"].append(f"Row {row_idx}: {str(e)}")
 
         # Commit all changes
         db_session.commit()

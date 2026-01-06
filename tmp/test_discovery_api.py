@@ -1,351 +1,452 @@
 #!/usr/bin/env python3
 """
-Comprehensive API Tests for Auto Discovery Backend
-Tests the complete workflow through API endpoints
+Test script for Auto Discovery APIs
+Tests all discovery endpoints with proper authentication
 """
 
 import requests
 import json
-from datetime import datetime
+import time
+from typing import Dict, Any
 
-BASE_URL = "http://127.0.0.1:8000/api/discovery"
+# Configuration
+BASE_URL = "http://localhost:8000"
+USERNAME = "admin"
+PASSWORD = "123456"
 
-def print_test(message, status="INFO"):
-    symbols = {"PASS": "✓", "FAIL": "✗", "INFO": "→", "WARN": "⚠"}
-    print(f"{symbols.get(status, '→')} {message}")
+# Colors for output
+class Colors:
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
 
-def print_section(title):
-    print("\n" + "="*60)
-    print(title)
-    print("="*60)
+def print_header(text: str):
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*60}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{text}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'='*60}{Colors.RESET}\n")
 
-def test_api_availability():
-    """Test if the API server is running"""
-    print_section("TEST 1: API SERVER AVAILABILITY")
+def print_success(text: str):
+    print(f"{Colors.GREEN}✓ {text}{Colors.RESET}")
 
-    try:
-        response = requests.get("http://127.0.0.1:8000/health", timeout=5)
-        if response.status_code == 200:
-            print_test("API server is running", "PASS")
-            return True
-        else:
-            print_test(f"API server returned status {response.status_code}", "FAIL")
-            return False
-    except requests.exceptions.ConnectionError:
-        print_test("API server is not running", "FAIL")
-        print_test("Please start the server with: uvicorn app.main:app --reload", "INFO")
-        return False
-    except Exception as e:
-        print_test(f"Error checking API: {e}", "FAIL")
-        return False
+def print_error(text: str):
+    print(f"{Colors.RED}✗ {text}{Colors.RESET}")
 
-def test_get_scans():
-    """Test retrieving scan history"""
-    print_section("TEST 2: GET SCAN HISTORY")
+def print_info(text: str):
+    print(f"{Colors.BLUE}ℹ {text}{Colors.RESET}")
 
-    try:
-        response = requests.get(f"{BASE_URL}/scans")
-        print_test(f"Status Code: {response.status_code}", "INFO")
+def print_warning(text: str):
+    print(f"{Colors.YELLOW}⚠ {text}{Colors.RESET}")
 
-        if response.status_code == 200:
-            scans = response.json()
-            print_test(f"Retrieved {len(scans)} scan(s)", "PASS")
+def print_json(data: Any):
+    print(json.dumps(data, indent=2))
 
-            if scans:
-                latest = scans[0]
-                print_test(f"Latest scan: {latest.get('scan_id')} - {latest.get('target')}", "INFO")
-                print_test(f"Status: {latest.get('status')}", "INFO")
-            return True
-        else:
-            print_test(f"Failed to get scans: {response.text}", "FAIL")
-            return False
-    except Exception as e:
-        print_test(f"Error: {e}", "FAIL")
-        return False
+class DiscoveryAPITester:
+    def __init__(self):
+        self.base_url = BASE_URL
+        self.token = None
+        self.scan_id = None
+        self.host_id = None
+        self.asset_id = None
 
-def test_get_pending_hosts():
-    """Test retrieving pending discovered hosts"""
-    print_section("TEST 3: GET PENDING HOSTS")
+    def login(self) -> bool:
+        """Login and get access token"""
+        print_header("1. Authentication")
 
-    try:
-        response = requests.get(f"{BASE_URL}/pending-hosts")
-        print_test(f"Status Code: {response.status_code}", "INFO")
+        try:
+            response = requests.post(
+                f"{self.base_url}/auth/login",
+                json={
+                    "username": USERNAME,
+                    "password": PASSWORD
+                }
+            )
 
-        if response.status_code == 200:
-            hosts = response.json()
-            print_test(f"Found {len(hosts)} pending host(s)", "PASS")
+            if response.status_code == 200:
+                self.token = response.json()["access_token"]
+                print_success(f"Logged in as {USERNAME}")
+                print_info(f"Token: {self.token[:20]}...")
+                return True
+            else:
+                print_error(f"Login failed: {response.status_code}")
+                print_json(response.json())
+                return False
 
-            if hosts:
-                for i, host in enumerate(hosts[:3], 1):  # Show first 3
-                    print_test(
-                        f"Host {i}: {host.get('ip_address')} - "
-                        f"{host.get('hostname', 'no hostname')} "
-                        f"(ports: {len(host.get('ports', []))})",
-                        "INFO"
-                    )
-            return hosts
-        else:
-            print_test(f"Failed to get pending hosts: {response.text}", "FAIL")
-            return []
-    except Exception as e:
-        print_test(f"Error: {e}", "FAIL")
-        return []
-
-def test_check_matches(host_id):
-    """Test checking for matching assets"""
-    print_section(f"TEST 4: CHECK MATCHES FOR HOST {host_id}")
-
-    try:
-        response = requests.get(f"{BASE_URL}/hosts/{host_id}/check-matches")
-        print_test(f"Status Code: {response.status_code}", "INFO")
-
-        if response.status_code == 200:
-            data = response.json()
-            matches = data.get('matches', [])
-            print_test(f"Found {len(matches)} matching asset(s)", "PASS")
-
-            if matches:
-                for match in matches:
-                    print_test(
-                        f"Match: Asset #{match.get('id')} - "
-                        f"{match.get('hostname')} ({match.get('ip_address')})",
-                        "INFO"
-                    )
-            return True
-        else:
-            print_test(f"Failed to check matches: {response.text}", "FAIL")
-            return False
-    except Exception as e:
-        print_test(f"Error: {e}", "FAIL")
-        return False
-
-def test_get_scan_by_id():
-    """Test retrieving a specific scan by ID"""
-    print_section("TEST 5: GET SPECIFIC SCAN")
-
-    try:
-        # First get all scans to find one
-        response = requests.get(f"{BASE_URL}/scans")
-        if response.status_code != 200:
-            print_test("No scans available to test", "WARN")
+        except Exception as e:
+            print_error(f"Login error: {e}")
             return False
 
-        scans = response.json()
-        if not scans:
-            print_test("No scans available to test", "WARN")
-            return False
+    def get_headers(self) -> Dict[str, str]:
+        """Get headers with auth token"""
+        return {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json"
+        }
 
-        scan_id = scans[0]['scan_id']
+    def test_start_scan(self):
+        """Test POST /api/discovery/scan"""
+        print_header("2. Start Network Scan")
 
-        # Get specific scan
-        response = requests.get(f"{BASE_URL}/scans/{scan_id}")
-        print_test(f"Status Code: {response.status_code}", "INFO")
+        # Test 1: Basic scan with well-known ports
+        print_info("Test 2.1: Scanning localhost with well-known ports")
+        try:
+            payload = {
+                "job_name": "Test Scan - Localhost",
+                "target": "127.0.0.1",
+                "scan_type": "well_known_ports",
+                "protocol": "TCP"
+            }
 
-        if response.status_code == 200:
-            scan = response.json()
-            print_test(f"Retrieved scan: {scan.get('scan_id')}", "PASS")
-            print_test(f"Target: {scan.get('target')}", "INFO")
-            print_test(f"Status: {scan.get('status')}", "INFO")
-            print_test(f"Hosts discovered: {scan.get('hosts_discovered', 0)}", "INFO")
-            return True
-        else:
-            print_test(f"Failed to get scan: {response.text}", "FAIL")
-            return False
-    except Exception as e:
-        print_test(f"Error: {e}", "FAIL")
-        return False
+            response = requests.post(
+                f"{self.base_url}/api/discovery/scan",
+                headers=self.get_headers(),
+                json=payload
+            )
 
-def test_get_host_by_id():
-    """Test retrieving a specific discovered host"""
-    print_section("TEST 6: GET SPECIFIC DISCOVERED HOST")
+            if response.status_code == 200:
+                data = response.json()
+                self.scan_id = data.get("scan_id")
+                print_success(f"Scan started successfully")
+                print_json(data)
+            else:
+                print_error(f"Scan failed: {response.status_code}")
+                print_json(response.json())
 
-    try:
-        # First get pending hosts to find one
-        response = requests.get(f"{BASE_URL}/pending-hosts")
-        if response.status_code != 200:
-            print_test("No hosts available to test", "WARN")
-            return False
+        except Exception as e:
+            print_error(f"Error: {e}")
 
-        hosts = response.json()
-        if not hosts:
-            print_test("No hosts available to test", "WARN")
-            return False
+    def test_get_scan_status(self):
+        """Test GET /api/discovery/scan/{scan_id}"""
+        print_header("3. Get Scan Status")
 
-        host_id = hosts[0]['id']
+        if not self.scan_id:
+            print_warning("No scan_id available, skipping...")
+            return
 
-        # Get specific host
-        response = requests.get(f"{BASE_URL}/hosts/{host_id}")
-        print_test(f"Status Code: {response.status_code}", "INFO")
+        try:
+            # Poll for scan completion
+            max_attempts = 30
+            attempt = 0
 
-        if response.status_code == 200:
-            host = response.json()
-            print_test(f"Retrieved host: {host.get('ip_address')}", "PASS")
-            print_test(f"Hostname: {host.get('hostname', 'N/A')}", "INFO")
-            print_test(f"OS: {host.get('os_info', 'N/A')}", "INFO")
-            print_test(f"Ports: {len(host.get('ports', []))}", "INFO")
-            print_test(f"Status: {host.get('status')}", "INFO")
-            return True
-        else:
-            print_test(f"Failed to get host: {response.text}", "FAIL")
-            return False
-    except Exception as e:
-        print_test(f"Error: {e}", "FAIL")
-        return False
+            while attempt < max_attempts:
+                response = requests.get(
+                    f"{self.base_url}/api/discovery/scan/{self.scan_id}",
+                    headers=self.get_headers()
+                )
 
-def test_scan_status():
-    """Test getting overall scan status"""
-    print_section("TEST 7: GET SCAN STATUS SUMMARY")
+                if response.status_code == 200:
+                    data = response.json()
+                    status = data.get("status")
 
-    try:
-        response = requests.get(f"{BASE_URL}/status")
-        print_test(f"Status Code: {response.status_code}", "INFO")
+                    print_info(f"Attempt {attempt + 1}/{max_attempts}: Status = {status}")
 
-        if response.status_code == 200:
-            status = response.json()
-            print_test("Retrieved scan status summary", "PASS")
-            print_test(f"Running scans: {status.get('running_scans', 0)}", "INFO")
-            print_test(f"Pending hosts: {status.get('pending_hosts', 0)}", "INFO")
-            print_test(f"Total scans: {status.get('total_scans', 0)}", "INFO")
-            return True
-        else:
-            print_test(f"Failed to get status: {response.text}", "FAIL")
-            return False
-    except Exception as e:
-        print_test(f"Error: {e}", "FAIL")
-        return False
+                    if status == "completed":
+                        print_success("Scan completed!")
+                        print_json(data)
 
-def test_nmap_availability():
-    """Test if nmap is available on the system"""
-    print_section("TEST 8: NMAP AVAILABILITY")
+                        # Extract host_id if available
+                        if data.get("hosts"):
+                            self.host_id = data["hosts"][0].get("id") if data["hosts"] else None
 
-    import subprocess
+                        break
+                    elif status == "failed":
+                        print_error("Scan failed!")
+                        print_json(data)
+                        break
 
-    try:
-        result = subprocess.run(
-            ['nmap', '--version'],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-
-        if result.returncode == 0:
-            version_line = result.stdout.split('\n')[0]
-            print_test(f"Nmap installed: {version_line}", "PASS")
-            return True
-        else:
-            print_test("Nmap not found", "FAIL")
-            return False
-    except FileNotFoundError:
-        print_test("Nmap not installed", "FAIL")
-        return False
-    except Exception as e:
-        print_test(f"Error checking nmap: {e}", "FAIL")
-        return False
-
-def test_database_models():
-    """Test database models and relationships"""
-    print_section("TEST 9: DATABASE MODELS")
-
-    try:
-        # Test importing models
-        from app.models.discovery import DiscoveryScan, DiscoveredHost
-        print_test("DiscoveryScan model imported", "PASS")
-        print_test("DiscoveredHost model imported", "PASS")
-
-        from app.models.asset import Asset
-        from app.models.port import Port, Protocol
-        print_test("Asset, Port, Protocol models imported", "PASS")
-
-        # Check Asset.ports relationship
-        if hasattr(Asset, 'ports'):
-            print_test("Asset.ports relationship exists", "PASS")
-        else:
-            print_test("Asset.ports relationship missing", "FAIL")
-
-        return True
-    except ImportError as e:
-        print_test(f"Failed to import models: {e}", "FAIL")
-        return False
-    except Exception as e:
-        print_test(f"Error testing models: {e}", "FAIL")
-        return False
-
-def test_endpoint_registration():
-    """Test that all expected endpoints are registered"""
-    print_section("TEST 10: ENDPOINT REGISTRATION")
-
-    expected_endpoints = [
-        ("GET", "/scans", "List all scans"),
-        ("GET", "/scans/{scan_id}", "Get specific scan"),
-        ("GET", "/pending-hosts", "List pending hosts"),
-        ("GET", "/hosts/{host_id}", "Get specific host"),
-        ("GET", "/hosts/{host_id}/check-matches", "Check for matches"),
-        ("POST", "/hosts/{host_id}/approve", "Approve host"),
-        ("POST", "/hosts/{host_id}/reject", "Reject host"),
-        ("POST", "/bulk-approve", "Bulk approve hosts"),
-        ("GET", "/status", "Get scan status"),
-    ]
-
-    passed = 0
-    failed = 0
-
-    for method, path, description in expected_endpoints:
-        # We can't test POST endpoints without data, so just verify GET endpoints
-        if method == "GET" and not "{" in path:
-            try:
-                response = requests.get(f"{BASE_URL}{path}", timeout=5)
-                # 200 or 404 are both OK - means endpoint exists
-                if response.status_code in [200, 404, 422]:
-                    print_test(f"{method} {path}: registered", "PASS")
-                    passed += 1
+                    time.sleep(2)
+                    attempt += 1
                 else:
-                    print_test(f"{method} {path}: unexpected status {response.status_code}", "WARN")
-                    passed += 1
-            except Exception as e:
-                print_test(f"{method} {path}: not accessible ({e})", "FAIL")
-                failed += 1
-        else:
-            print_test(f"{method} {path}: {description}", "INFO")
+                    print_error(f"Failed to get status: {response.status_code}")
+                    print_json(response.json())
+                    break
 
-    print_test(f"Verified {passed} endpoints, {failed} failed",
-               "PASS" if failed == 0 else "WARN")
-    return failed == 0
+        except Exception as e:
+            print_error(f"Error: {e}")
 
-def main():
-    print("\n" + "="*60)
-    print("AUTO DISCOVERY BACKEND - API INTEGRATION TESTS")
-    print("="*60)
+    def test_get_all_scans(self):
+        """Test GET /api/discovery/scans"""
+        print_header("4. Get All Scans")
 
-    # Check API availability first
-    if not test_api_availability():
-        print("\n" + "="*60)
-        print("⚠ API SERVER NOT RUNNING - TESTS ABORTED")
-        print("="*60)
-        print("Start the server with: cd /home/zi/Desktop/main_app/netease && source venv/bin/activate && uvicorn app.main:app --reload")
-        return
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/discovery/scans",
+                headers=self.get_headers()
+            )
 
-    # Run all tests
-    test_database_models()
-    test_nmap_availability()
-    test_endpoint_registration()
-    test_get_scans()
-    test_get_scan_by_id()
-    test_get_pending_hosts()
-    test_get_host_by_id()
-    test_scan_status()
+            if response.status_code == 200:
+                data = response.json()
+                print_success(f"Retrieved {len(data)} scans")
+                print_json(data)
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
 
-    # Test check matches if there are pending hosts
-    response = requests.get(f"{BASE_URL}/pending-hosts")
-    if response.status_code == 200:
-        hosts = response.json()
-        if hosts:
-            test_check_matches(hosts[0]['id'])
+        except Exception as e:
+            print_error(f"Error: {e}")
 
-    print("\n" + "="*60)
-    print("✓ API INTEGRATION TESTS COMPLETED")
-    print("="*60)
-    print("\nNOTE: Some tests may show WARN status if there's no test data.")
-    print("This is expected and doesn't indicate a problem with the system.")
+    def test_get_pending_hosts(self):
+        """Test GET /api/discovery/pending"""
+        print_header("5. Get Pending Hosts")
+
+        try:
+            # Test without filter
+            print_info("Test 5.1: Get all pending hosts")
+            response = requests.get(
+                f"{self.base_url}/api/discovery/pending",
+                headers=self.get_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print_success(f"Retrieved {data.get('total', 0)} pending hosts")
+                print_json(data)
+
+                # Get host_id from pending list if not already set
+                if not self.host_id and data.get('pending'):
+                    self.host_id = data['pending'][0].get('id')
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+            # Test with scan_id filter
+            if self.scan_id:
+                print_info(f"Test 5.2: Get pending hosts for scan {self.scan_id}")
+                response = requests.get(
+                    f"{self.base_url}/api/discovery/pending?scan_id={self.scan_id}",
+                    headers=self.get_headers()
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    print_success(f"Retrieved {data.get('total', 0)} pending hosts for this scan")
+                    print_json(data)
+                else:
+                    print_error(f"Failed: {response.status_code}")
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def test_check_host_matches(self):
+        """Test GET /api/discovery/hosts/{host_id}/check-matches"""
+        print_header("6. Check Host Matches")
+
+        if not self.host_id:
+            print_warning("No host_id available, skipping...")
+            return
+
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/discovery/hosts/{self.host_id}/check-matches",
+                headers=self.get_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print_success(f"Found {data.get('match_count', 0)} matches")
+                print_json(data)
+
+                # Store asset_id if there's a match
+                if data.get('matches'):
+                    self.asset_id = data['matches'][0].get('asset_id')
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def test_preview_discovery(self):
+        """Test GET /api/discovery/hosts/{host_id}/preview"""
+        print_header("7. Preview Discovery Application")
+
+        if not self.host_id:
+            print_warning("No host_id available, skipping...")
+            return
+
+        try:
+            # Test without asset_id
+            print_info("Test 7.1: Preview without asset comparison")
+            response = requests.get(
+                f"{self.base_url}/api/discovery/hosts/{self.host_id}/preview",
+                headers=self.get_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print_success("Preview generated successfully")
+                print_json(data)
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+            # Test with asset_id if available
+            if self.asset_id:
+                print_info(f"Test 7.2: Preview with asset {self.asset_id} comparison")
+                response = requests.get(
+                    f"{self.base_url}/api/discovery/hosts/{self.host_id}/preview?asset_id={self.asset_id}",
+                    headers=self.get_headers()
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    print_success("Preview with comparison generated successfully")
+                    print_json(data)
+                else:
+                    print_error(f"Failed: {response.status_code}")
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def test_approve_host_skip(self):
+        """Test POST /api/discovery/hosts/{host_id}/approve - skip action"""
+        print_header("8. Approve Host (Skip)")
+
+        if not self.host_id:
+            print_warning("No host_id available, skipping...")
+            return
+
+        try:
+            payload = {
+                "action": "skip"
+            }
+
+            response = requests.post(
+                f"{self.base_url}/api/discovery/hosts/{self.host_id}/approve",
+                headers=self.get_headers(),
+                json=payload
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print_success("Host marked as reviewed (skipped)")
+                print_json(data)
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def test_reject_host(self):
+        """Test POST /api/discovery/hosts/{host_id}/reject"""
+        print_header("9. Reject Host")
+
+        if not self.host_id:
+            print_warning("No host_id available, skipping...")
+            return
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/api/discovery/hosts/{self.host_id}/reject",
+                headers=self.get_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print_success("Host rejected successfully")
+                print_json(data)
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def test_find_matching_asset(self):
+        """Test GET /api/discovery/match/{ip_address}"""
+        print_header("10. Find Matching Asset")
+
+        try:
+            test_ip = "127.0.0.1"
+            print_info(f"Searching for asset with IP: {test_ip}")
+
+            response = requests.get(
+                f"{self.base_url}/api/discovery/match/{test_ip}",
+                headers=self.get_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("found"):
+                    print_success("Asset found!")
+                else:
+                    print_info("No matching asset found")
+                print_json(data)
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def test_delete_scan(self):
+        """Test DELETE /api/discovery/scan/{scan_id}"""
+        print_header("11. Delete Scan")
+
+        if not self.scan_id:
+            print_warning("No scan_id available, skipping...")
+            return
+
+        try:
+            print_warning(f"Deleting scan: {self.scan_id}")
+            response = requests.delete(
+                f"{self.base_url}/api/discovery/scan/{self.scan_id}",
+                headers=self.get_headers()
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print_success("Scan deleted successfully")
+                print_json(data)
+            else:
+                print_error(f"Failed: {response.status_code}")
+                print_json(response.json())
+
+        except Exception as e:
+            print_error(f"Error: {e}")
+
+    def run_all_tests(self):
+        """Run all API tests in sequence"""
+        print(f"\n{Colors.BOLD}{Colors.BLUE}{'='*60}")
+        print("Auto Discovery API Test Suite")
+        print(f"{'='*60}{Colors.RESET}\n")
+
+        # Login
+        if not self.login():
+            print_error("Login failed, cannot continue tests")
+            return
+
+        # Run tests in order
+        self.test_start_scan()
+        time.sleep(2)  # Give scan time to start
+
+        self.test_get_scan_status()
+        self.test_get_all_scans()
+        self.test_get_pending_hosts()
+        self.test_check_host_matches()
+        self.test_preview_discovery()
+        self.test_approve_host_skip()
+        # self.test_reject_host()  # Skip to avoid marking host as rejected
+        self.test_find_matching_asset()
+        # self.test_delete_scan()  # Uncomment to clean up
+
+        print_header("Test Suite Completed")
+        print_success("All tests executed!")
+
+        # Summary
+        print(f"\n{Colors.BOLD}Test Summary:{Colors.RESET}")
+        if self.scan_id:
+            print_info(f"Scan ID: {self.scan_id}")
+        if self.host_id:
+            print_info(f"Host ID: {self.host_id}")
+        if self.asset_id:
+            print_info(f"Asset ID: {self.asset_id}")
+
 
 if __name__ == "__main__":
-    main()
+    tester = DiscoveryAPITester()
+    tester.run_all_tests()
