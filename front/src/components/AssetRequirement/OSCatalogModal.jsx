@@ -7,8 +7,6 @@ export const OSCatalogModal = ({ onClose }) => {
 
     const [formData, setFormData] = useState({
         os_name: "",
-        os_version: "",
-        os_family: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -65,34 +63,12 @@ export const OSCatalogModal = ({ onClose }) => {
                             name="os_name"
                             value={formData.os_name}
                             onChange={handleChange}
-                            placeholder="Enter OS name"
+                            placeholder="Enter OS name (e.g., Ubuntu 22.04, Windows Server 2022)"
                             className={errors.os_name ? "error" : ""}
                         />
                         {errors.os_name && (
                             <span className="error-message">{errors.os_name}</span>
                         )}
-                    </div>
-
-                    <div className="form-group">
-                        <label>OS Version</label>
-                        <input
-                            type="text"
-                            name="os_version"
-                            value={formData.os_version}
-                            onChange={handleChange}
-                            placeholder="Enter OS version"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>OS Family</label>
-                        <input
-                            type="text"
-                            name="os_family"
-                            value={formData.os_family}
-                            onChange={handleChange}
-                            placeholder="Enter OS family (e.g., Linux, Windows)"
-                        />
                     </div>
 
                     <div className="modal-footer">

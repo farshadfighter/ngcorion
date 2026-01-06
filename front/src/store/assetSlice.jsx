@@ -50,7 +50,7 @@ export const fetchAssetTypes = createAsyncThunk(
     }
 );
 
-// Create asset
+// Create asset - IMPROVED ERROR HANDLING
 export const createAsset = createAsyncThunk(
     "assets/create",
     async (assetData, { rejectWithValue }) => {
@@ -58,14 +58,54 @@ export const createAsset = createAsyncThunk(
             const res = await api.post("/api/assets/", assetData);
             return res.data;
         } catch (err) {
+            // Enhanced error handling for different error types
+            if (err.response) {
+                const { status, data } = err.response;
+
+                // Handle 500 errors (like unique constraint violations)
+                if (status === 500) {
+                    // Try to extract meaningful error from data
+                    if (data && typeof data === 'object') {
+                        if (data.detail) {
+                            return rejectWithValue(data.detail);
+                        }
+                        // Sometimes error is in other fields
+                        if (data.message) {
+                            return rejectWithValue(data.message);
+                        }
+                    }
+                    // Fallback: check error message
+                    if (err.message && err.message.includes('500')) {
+                        return rejectWithValue("Server error: Please check if the data is unique (serial number, IP, MAC)");
+                    }
+                    return rejectWithValue("Internal server error occurred");
+                }
+
+                // Handle 422 validation errors
+                if (status === 422 && data.detail) {
+                    return rejectWithValue(data.detail);
+                }
+
+                // Handle 400 bad request
+                if (status === 400 && data.detail) {
+                    return rejectWithValue(data.detail);
+                }
+
+                // Generic error with detail
+                if (data && data.detail) {
+                    return rejectWithValue(data.detail);
+                }
+            }
+
+            // Network or other errors
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to create asset"
+                err.message || "Failed to create asset"
             );
         }
     }
 );
 
-// Update asset
+// Update asset - IMPROVED ERROR HANDLING
 export const updateAsset = createAsyncThunk(
     "assets/update",
     async ({ assetId, assetData }, { rejectWithValue }) => {
@@ -73,8 +113,24 @@ export const updateAsset = createAsyncThunk(
             const res = await api.put(`/api/assets/${assetId}`, assetData);
             return res.data;
         } catch (err) {
+            // Enhanced error handling
+            if (err.response) {
+                const { status, data } = err.response;
+
+                if (status === 500) {
+                    if (data && data.detail) {
+                        return rejectWithValue(data.detail);
+                    }
+                    return rejectWithValue("Internal server error occurred");
+                }
+
+                if (data && data.detail) {
+                    return rejectWithValue(data.detail);
+                }
+            }
+
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to update asset"
+                err.message || "Failed to update asset"
             );
         }
     }
@@ -105,24 +161,9 @@ export const fetchAssetPorts = createAsyncThunk(
     async (assetId, { rejectWithValue }) => {
         try {
             const res = await api.get(`/api/discovery/assets/${assetId}/ports`);
-            // Handle different response formats
             const data = res.data;
-
-            // If response is already an array, return it
-            if (Array.isArray(data)) {
-                return data;
-            }
-
-            // If response is an object with ports property, return that
-            if (data && typeof data === 'object') {
-                if (Array.isArray(data.ports)) {
-                    return data.ports;
-                }
-                // If it's an object but not array structure, return empty array
-                return [];
-            }
-
-            // Default to empty array
+            if (Array.isArray(data)) return data;
+            if (data && typeof data === 'object' && Array.isArray(data.ports)) return data.ports;
             return [];
         } catch (err) {
             return rejectWithValue(
@@ -137,11 +178,7 @@ export const createAssetPort = createAsyncThunk(
     "assets/createPort",
     async ({ assetId, portData }, { rejectWithValue }) => {
         try {
-            // API expects: {asset_id, ports: [...]}
-            const payload = {
-                asset_id: assetId,
-                ports: [portData]
-            };
+            const payload = { asset_id: assetId, ports: [portData] };
             const res = await api.post(`/api/discovery/ports/add`, payload);
             return res.data;
         } catch (err) {
@@ -157,15 +194,8 @@ export const updateAssetPort = createAsyncThunk(
     "assets/updatePort",
     async ({ assetId, portId, portData }, { rejectWithValue }) => {
         try {
-            // Since API doesn't have direct update, we delete and re-add
-            // First delete the old port
             await api.delete(`/api/discovery/ports/${portId}`);
-
-            // Then add the updated port
-            const payload = {
-                asset_id: assetId,
-                ports: [portData]
-            };
+            const payload = { asset_id: assetId, ports: [portData] };
             const res = await api.post(`/api/discovery/ports/add`, payload);
             return { portId, newPort: res.data };
         } catch (err) {
@@ -279,30 +309,25 @@ const assetSlice = createSlice({
             })
             .addCase(fetchAssetPorts.fulfilled, (state, action) => {
                 state.isLoadingPorts = false;
-                // Ensure ports is always an array
                 state.ports = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchAssetPorts.rejected, (state, action) => {
                 state.isLoadingPorts = false;
                 state.error = action.payload;
-                state.ports = []; // Reset to empty array on error
+                state.ports = [];
             })
 
             // create port
             .addCase(createAssetPort.fulfilled, (state, action) => {
-                // API returns {success, asset_id, ports_added, message}
-                // We should refetch ports to get the actual new port data
                 state.successMessage = action.payload.message || "Port added successfully!";
             })
 
             // update port
             .addCase(updateAssetPort.fulfilled, (state, action) => {
-                // Remove old port and add new one
                 const { portId, newPort } = action.payload;
                 state.ports = state.ports.filter(p => p.id !== portId);
                 if (newPort && newPort.ports_added > 0) {
                     // Refresh the ports list after update
-                    // The actual new port will be fetched in next fetchAssetPorts call
                 }
                 state.successMessage = "Port updated successfully!";
             })

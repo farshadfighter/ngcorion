@@ -154,8 +154,8 @@ export const Dashboard = () => {
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
                             <div className="current-time">
-
-                               , {currentTimeString}</div>
+<img src={"/icons/watch.png"} style={{width:"15px", height:"15px",margin:"15px 8px -1px 1px"}} alt={"logo"} />
+                                {currentTimeString}</div>
                         </div>
                     </div>
                 </header>

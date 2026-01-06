@@ -94,6 +94,7 @@
     font-weight: 500;
     color: #374151;
     margin-bottom: 6px;
+
 }
 
 .required {
@@ -101,9 +102,9 @@
 }
 
 /* Form Inputs */
-.form-input,
-.form-select {
-    width: 200px;
+.new-scan-modal .form-input,
+.new-scan-modal .form-select  {
+    width: 400px;
     padding: 8px 12px;
     font-size: 14px;
     border: 1px solid #d1d5db;

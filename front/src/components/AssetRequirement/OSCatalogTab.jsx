@@ -46,9 +46,7 @@ export const OSCatalogTab = () => {
     };
 
     const filteredData = osCatalog.filter((item) =>
-        item.os_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.os_version?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.os_family?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.os_name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const sortedData = [...filteredData].sort((a, b) => {
@@ -80,8 +78,7 @@ export const OSCatalogTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-
-                        placeholder="Search asset types..."
+                        placeholder="Search OS..."
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -111,19 +108,13 @@ export const OSCatalogTab = () => {
                         <th onClick={() => handleSort("os_name")} style={{ cursor: "pointer" }}>
                             OS Name{renderSortIcon("os_name")}
                         </th>
-                        <th onClick={() => handleSort("os_version")} style={{ cursor: "pointer" }}>
-                            OS Version{renderSortIcon("os_version")}
-                        </th>
-                        <th onClick={() => handleSort("os_family")} style={{ cursor: "pointer" }}>
-                            OS Family{renderSortIcon("os_family")}
-                        </th>
                         <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {sortedData.length === 0 ? (
                         <tr>
-                            <td colSpan="5" className="no-data">
+                            <td colSpan="3" className="no-data">
                                 No OS found
                             </td>
                         </tr>
@@ -132,8 +123,6 @@ export const OSCatalogTab = () => {
                             <tr key={item.id}>
                                 <td>{item.id}</td>
                                 <td>{item.os_name}</td>
-                                <td>{item.os_version || "-"}</td>
-                                <td>{item.os_family || "-"}</td>
                                 <td className="actions">
                                     <button
                                         className="btn-delete"

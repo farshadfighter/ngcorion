@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAssets, deleteAsset } from '../../store/assetSlice.jsx';
@@ -24,10 +22,6 @@ const AssetListTable = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('');
-
-    // Edit modal state
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [assetToEdit, setAssetToEdit] = useState(null);
 
     // Load assets
     useEffect(() => {
@@ -71,14 +65,6 @@ const AssetListTable = () => {
 
         return result;
     }, [discoveryAssets, searchTerm, filterType]);
-
-    /**
-     * Handle Edit
-     */
-    const handleEdit = (asset) => {
-        setAssetToEdit(asset);
-        setShowEditModal(true);
-    };
 
     /**
      * Handle Delete
@@ -295,13 +281,6 @@ const AssetListTable = () => {
                                     {/* Action Buttons */}
                                     <button
                                         className="btn-icon"
-                                        onClick={() => handleEdit(asset)}
-                                        title="Edit asset"
-                                    >
-                                        <img src={"/icons/edetie.svg"} alt={"edit"} />
-                                    </button>
-                                    <button
-                                        className="btn-icon"
                                         onClick={() => handleDelete(asset)}
                                         title="Delete asset"
                                         style={{ color: '#C62828' }}
@@ -326,18 +305,6 @@ const AssetListTable = () => {
             }}>
                 Showing {filteredAssets.length} of {discoveryAssets.length} discovery assets
             </div>
-
-            {/* Edit Modal */}
-            {showEditModal && assetToEdit && (
-                <EditAssetModal
-                    asset={assetToEdit}
-                    onClose={() => {
-                        setShowEditModal(false);
-                        setAssetToEdit(null);
-                        dispatch(fetchAssets());
-                    }}
-                />
-            )}
         </div>
     );
 };

@@ -25,25 +25,33 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
         setError(null);
         try {
             const submitData = { ...formData };
-            Object.keys(submitData).forEach(key => {
-                if (submitData[key] === "") submitData[key] = null;
-            });
+            Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
+
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
+
             if (result.type === "assets/update/fulfilled") {
                 await dispatch(fetchAssets());
                 onClose();
             } else {
                 let errorMessage = "Failed to update asset";
+
                 if (result.payload) {
-                    if (Array.isArray(result.payload)) {
-                        errorMessage = result.payload.map(err => `${err.loc?.join('.') || 'field'}: ${err.msg}`).join(' | ');
-                    } else if (typeof result.payload === 'string') {
-                        errorMessage = result.payload;
-                    } else if (result.payload.detail) {
-                        if (Array.isArray(result.payload.detail)) {
-                            errorMessage = result.payload.detail.map(err => `${err.loc?.join('.') || 'field'}: ${err.msg}`).join(' | ');
+                    if (typeof result.payload === 'string') {
+                        if (result.payload.includes('duplicate key') || result.payload.includes('UniqueViolation')) {
+                            errorMessage = 'A duplicate value was detected. Please check your inputs.';
                         } else {
-                            errorMessage = typeof result.payload.detail === 'string' ? result.payload.detail : JSON.stringify(result.payload.detail);
+                            errorMessage = result.payload;
+                        }
+                    } else if (Array.isArray(result.payload)) {
+                        errorMessage = result.payload.map(err => `${err.loc?.join('.') || 'field'}: ${err.msg}`).join(' | ');
+                    } else if (result.payload.detail) {
+                        const detail = result.payload.detail;
+                        if (typeof detail === 'string' && (detail.includes('duplicate key') || detail.includes('UniqueViolation'))) {
+                            errorMessage = 'A duplicate value was detected. Please check your inputs.';
+                        } else if (Array.isArray(detail)) {
+                            errorMessage = detail.map(err => `${err.loc?.join('.') || 'field'}: ${err.msg}`).join(' | ');
+                        } else {
+                            errorMessage = typeof detail === 'string' ? detail : JSON.stringify(detail);
                         }
                     } else {
                         errorMessage = JSON.stringify(result.payload);
