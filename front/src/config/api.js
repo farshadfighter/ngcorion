@@ -1,8 +1,6 @@
 import axios from 'axios';
 
-// Use VITE_API_URL env variable, or fallback to production server
-// For local dev with proxy, create .env with: VITE_API_URL=
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://172.16.200.90:8000';
+const API_BASE_URL = 'http://172.16.200.90:8000';
 
 const api = axios.create({
     baseURL: API_BASE_URL,

@@ -210,17 +210,20 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
 
                         {/* Version Detection */}
+                        {/* Version Detection */}
                         <div className="form-group">
-                            <label className="checkbox-label">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <input
                                     type="checkbox"
                                     name="version_detection"
                                     checked={formData.version_detection}
                                     onChange={handleChange}
-                                    className="form-checkbox"
+                                    style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0, flexShrink: 0 }}
                                 />
-                                <span>Enable Service Version Detection (-sV)</span>
-                            </label>
+                                <label style={{ margin: 0, cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                                    Enable Service Version Detection (-sV)
+                                </label>
+                            </div>
                             <p className="form-hint" style={{color: '#f59e0b', marginTop: '4px'}}>
                                 ⚠️ Version detection is slower but provides detailed service information
                             </p>
