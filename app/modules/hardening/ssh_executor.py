@@ -224,7 +224,7 @@ class CiscoHardeningExecutor:
         try:
             logger.info(f"Saving config on {self.ip}")
             output = self.ssh_client.send_command("write memory")
-            logger.info(f"Config saved successfully")
+            logger.info("Config saved successfully")
             return output
 
         except Exception as e:
