@@ -613,7 +613,7 @@ class HardeningService:
                 "unfixable_failures": List[Dict]  # Need parameters
             }
         """
-        from app.modules.audit.service import AuditService
+        from app.modules.audit.cisco_service import AuditService
         from app.models.audit import DeviceType
 
         logger.info(f"Starting auto-audit for device {ip_address}")
