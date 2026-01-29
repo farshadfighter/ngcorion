@@ -2,8 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-NGCorion — FortiGate (FortiOS) Auditing Engine (Enterprise v4)
-==============================================================
+NGCorion — FortiGate (FortiOS) Auditing CLI Tool (Enterprise v4)
+=================================================================
+
+Full-featured CLI tool for comprehensive FortiGate security auditing.
 
 Enhanced Features in v4:
 ✅ Expanded security controls (~120+ checks, enhanced CIS coverage)
@@ -22,7 +24,7 @@ Install:
   pip install pyyaml
 
 Run:
-  python fg_ngcorion_audit_enterprise_v4.py --host 192.0.2.10 --username admin --password '***' --out-prefix rpt_fg
+  python scripts/fortinet_audit_cli.py --host 192.0.2.10 --username admin --password '***' --out-prefix rpt_fg
 
 Options:
   --all-vdoms              Audit all VDOMs in parallel

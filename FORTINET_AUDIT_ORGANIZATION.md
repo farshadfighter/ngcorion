@@ -19,7 +19,7 @@ The FortiGate audit functionality has been reorganized to follow the application
 │   └── README.md                       # Complete module documentation
 │
 ├── /scripts/                           # Standalone CLI tools
-│   ├── fortinet_audit_standalone.py    # ✅ MOVED: Enhanced v4 auditor (2200+ lines)
+│   ├── fortinet_audit_cli.py           # ✅ MOVED: Enhanced v4 auditor (2200+ lines)
 │   └── fortinet_audit_legacy_v3.py     # ✅ MOVED: Legacy v3 auditor (1350+ lines)
 │
 └── FORTINET_AUDIT_ORGANIZATION.md     # This file
@@ -30,7 +30,7 @@ The FortiGate audit functionality has been reorganized to follow the application
 | Original Location | New Location | Description |
 |-------------------|--------------|-------------|
 | `fg_ngcorion_audit_enterprise_v3.py` | `scripts/fortinet_audit_legacy_v3.py` | Legacy v3 auditor |
-| `fg_ngcorion_audit_enterprise_v4.py` | `scripts/fortinet_audit_standalone.py` | Enhanced v4 auditor |
+| `fg_ngcorion_audit_enterprise_v4.py` | `scripts/fortinet_audit_cli.py` | Enhanced v4 auditor |
 | (new) | `app/modules/fortinet/` | Modular components for FastAPI |
 
 ## Architecture Comparison
@@ -61,7 +61,7 @@ Modular (for integration):
 
 Standalone (for CLI use):
 /scripts/
-├── fortinet_audit_standalone.py    # Full-featured CLI tool
+├── fortinet_audit_cli.py           # Full-featured CLI tool
 └── fortinet_audit_legacy_v3.py     # Backward compatibility
 
 Benefits:
@@ -201,20 +201,20 @@ async def list_audit_templates():
 
 ## Standalone CLI Usage
 
-The standalone script remains fully functional for users who prefer CLI-based auditing:
+The CLI tool remains fully functional for users who prefer CLI-based auditing:
 
 ### Basic Usage
 
 ```bash
 # Single VDOM audit
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
   --out-prefix fg_prod
 
 # Multi-VDOM audit (parallel)
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
@@ -222,18 +222,18 @@ python scripts/fortinet_audit_standalone.py \
   --workers 4
 
 # Export control catalog for customization
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --export-catalog fortinet_controls.yaml
 
 # Use custom catalog
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
   --catalog custom_controls.yaml
 
 # Exclude evidence from reports (smaller files)
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
@@ -306,7 +306,7 @@ The FortiGate module follows the same architectural pattern as the Cisco audit m
 | **Router** | `audit_router.py` | `fortinet_router.py` | 📝 TODO |
 | **CIS Map** | `cis_benchmark_map.py` | `fortinet_cis_map.py` | 📝 TODO |
 | **Database** | `audit_*` tables | Same tables (reused) | ✅ Ready |
-| **Standalone** | N/A | `fortinet_audit_standalone.py` | ✅ Complete |
+| **CLI Tool** | N/A | `fortinet_audit_cli.py` | ✅ Complete |
 
 ## Key Differences from Cisco
 
@@ -319,7 +319,7 @@ The FortiGate module follows the same architectural pattern as the Cisco audit m
 | **Parallel Processing** | Sequential | Parallel VDOM audits (ThreadPoolExecutor) |
 | **Caching** | Rules only | Rules + command output (5-min TTL) |
 | **Reporting** | JSON/CSV | JSON/CSV/HTML with dashboard |
-| **CLI Tool** | No standalone | Full-featured CLI auditor |
+| **CLI Tool** | No CLI tool | Full-featured CLI auditor |
 
 ## Database Schema
 
@@ -409,8 +409,8 @@ def test_vdom_discovery():
 
 ### Integration Tests
 ```bash
-# Test standalone CLI
-python scripts/fortinet_audit_standalone.py \
+# Test CLI tool
+python scripts/fortinet_audit_cli.py \
   --host <test-device> \
   --username <test-user> \
   --password <test-pass> \
@@ -437,10 +437,10 @@ def test_execute_fortinet_audit(client, db_session):
 
 For users of the legacy scripts:
 
-### Option 1: Continue Using Standalone CLI
+### Option 1: Continue Using CLI Tool
 ```bash
 # No changes needed - scripts moved to /scripts/
-python scripts/fortinet_audit_standalone.py --host <IP> ...
+python scripts/fortinet_audit_cli.py --host <IP> ...
 ```
 
 ### Option 2: Migrate to API (Future)
@@ -502,13 +502,13 @@ client._connection.global_delay_factor = 2  # Default: 1
 - **FortiGate Documentation**: https://docs.fortinet.com
 - **CIS FortiGate Benchmark**: Available in `/documents/`
 - **Cisco Audit Reference**: `/app/modules/audit/`
-- **Standalone CLI Help**: `python scripts/fortinet_audit_standalone.py --help`
+- **CLI Tool Help**: `python scripts/fortinet_audit_cli.py --help`
 
 ## Support
 
 For issues or questions:
 1. Check module README: `/app/modules/fortinet/README.md`
-2. Review standalone script: `/scripts/fortinet_audit_standalone.py`
+2. Review CLI tool: `/scripts/fortinet_audit_cli.py`
 3. Compare with Cisco implementation: `/app/modules/audit/`
 4. Check database logs: `SELECT * FROM audit_logs WHERE module = 'fortinet'`
 

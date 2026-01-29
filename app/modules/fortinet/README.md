@@ -89,21 +89,21 @@ FastAPI endpoints:
 
 ## Standalone CLI Tool
 
-For immediate use, a standalone audit script is available:
+For immediate use, a full-featured CLI tool is available:
 
-**Location:** `/scripts/fortinet_audit_standalone.py`
+**Location:** `/scripts/fortinet_audit_cli.py`
 
 **Usage:**
 ```bash
 # Basic audit
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
   --out-prefix fg_audit
 
 # Audit all VDOMs in parallel
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
@@ -111,7 +111,7 @@ python scripts/fortinet_audit_standalone.py \
   --workers 4
 
 # Export control catalog
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --export-catalog controls.yaml
 ```
 
@@ -282,8 +282,8 @@ client.disconnect()
 
 ### Integration Testing
 ```bash
-# Run standalone audit
-python scripts/fortinet_audit_standalone.py \
+# Run CLI tool audit
+python scripts/fortinet_audit_cli.py \
   --host <test-fortigate> \
   --username <user> \
   --password <pass> \
@@ -311,7 +311,7 @@ pip install -r requirements.txt
 
 ## Related Files
 
-- **Standalone CLI**: `/scripts/fortinet_audit_standalone.py` (v4, 2200+ lines)
+- **CLI Tool**: `/scripts/fortinet_audit_cli.py` (v4, 2200+ lines)
 - **Legacy CLI**: `/scripts/fortinet_audit_legacy_v3.py` (v3, 1350+ lines)
 - **Database Models**: `/app/models/audit.py`
 - **Cisco Reference**: `/app/modules/audit/` (similar pattern)

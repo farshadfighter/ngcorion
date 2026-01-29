@@ -28,7 +28,7 @@ Following the Cisco audit pattern, created a new modular structure:
 | Old Path | New Path | Size | Status |
 |----------|----------|------|--------|
 | `fg_ngcorion_audit_enterprise_v3.py` | `scripts/fortinet_audit_legacy_v3.py` | 45 KB | ✅ Moved |
-| `fg_ngcorion_audit_enterprise_v4.py` | `scripts/fortinet_audit_standalone.py` | 79 KB | ✅ Moved |
+| `fg_ngcorion_audit_enterprise_v4.py` | `scripts/fortinet_audit_cli.py` | 79 KB | ✅ Moved |
 
 ### 3. Created Documentation
 
@@ -64,7 +64,7 @@ Following the Cisco audit pattern, created a new modular structure:
 │           └── README.md
 │
 ├── /scripts/                       # Standalone CLI tools
-│   ├── fortinet_audit_standalone.py    # ✅ v4 full-featured (79 KB)
+│   ├── fortinet_audit_cli.py           # ✅ v4 full-featured (79 KB)
 │   └── fortinet_audit_legacy_v3.py     # ✅ v3 legacy (45 KB)
 │
 ├── FORTINET_AUDIT_ORGANIZATION.md  # ✅ Complete reorganization guide
@@ -87,9 +87,9 @@ Following the Cisco audit pattern, created a new modular structure:
 
 ### 3. **Dual Usage Model**
 
-**Option A: Standalone CLI (Ready Now)**
+**Option A: CLI Tool (Ready Now)**
 ```bash
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
@@ -148,7 +148,7 @@ with FortiGateSSHClient("192.168.1.1", "admin", "password") as client:
 ✅ FastAPI integration ready
 ✅ Database schema ready (DeviceType.FORTINET)
 ✅ Consistent naming (fortinet_*)
-✅ Standalone CLI still available
+✅ CLI tool still available
 ✅ Comprehensive documentation
 ```
 
@@ -190,18 +190,18 @@ with FortiGateSSHClient("192.168.1.1", "admin", "password") as client:
 
 ## 🔧 Usage Examples
 
-### Standalone CLI (Available Now)
+### CLI Tool (Available Now)
 
 ```bash
 # Basic audit
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
   --out-prefix fg_prod
 
 # Multi-VDOM parallel audit (4 workers)
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
@@ -209,11 +209,11 @@ python scripts/fortinet_audit_standalone.py \
   --workers 4
 
 # Export control catalog for customization
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --export-catalog controls.yaml
 
 # Use custom catalog
-python scripts/fortinet_audit_standalone.py \
+python scripts/fortinet_audit_cli.py \
   --host 192.168.1.1 \
   --username admin \
   --password 'SecurePass123' \
@@ -301,7 +301,7 @@ with FortiGateSSHClient("192.168.1.1", "admin", "password") as client:
 
 | File | Lines | Purpose | Status |
 |------|-------|---------|--------|
-| `fortinet_audit_standalone.py` | 2200+ | Full-featured v4 auditor | ✅ Complete |
+| `fortinet_audit_cli.py` | 2200+ | Full-featured v4 auditor | ✅ Complete |
 | `fortinet_audit_legacy_v3.py` | 1350+ | Legacy v3 auditor | ✅ Complete |
 
 ---
@@ -325,7 +325,7 @@ with FortiGateSSHClient("192.168.1.1", "admin", "password") as client:
 ## 🚀 Next Steps
 
 ### Immediate (Phase 2):
-1. Extract controls from `fortinet_audit_standalone.py`
+1. Extract controls from `fortinet_audit_cli.py`
 2. Create `fortinet_rules.py` with proper structure
 3. Add CIS benchmark mapping
 4. Test control evaluation logic
@@ -349,7 +349,7 @@ with FortiGateSSHClient("192.168.1.1", "admin", "password") as client:
 - **Module Documentation**: `/app/modules/fortinet/README.md`
 - **Reorganization Guide**: `/FORTINET_AUDIT_ORGANIZATION.md`
 - **Cisco Reference**: `/app/modules/audit/` (similar pattern)
-- **Standalone CLI Help**: `python scripts/fortinet_audit_standalone.py --help`
+- **CLI Tool Help**: `python scripts/fortinet_audit_cli.py --help`
 - **Database Schema**: `/app/models/audit.py`
 
 ---

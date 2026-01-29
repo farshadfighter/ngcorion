@@ -60,8 +60,8 @@
 
     📁 /scripts/
     │
-    ├── 🚀 fortinet_audit_standalone.py        [✅ COMPLETE - v4, 79 KB]
-    │   ├── Full-featured auditor with 120+ controls
+    ├── 🚀 fortinet_audit_cli.py               [✅ COMPLETE - v4, 79 KB]
+    │   ├── Full-featured CLI auditor with 120+ controls
     │   ├── Parallel VDOM processing (ThreadPoolExecutor)
     │   ├── HTML report generation with dashboard
     │   ├── Analytics: shadow rules, unused objects, UTM coverage
@@ -131,18 +131,18 @@
 │ USAGE EXAMPLES                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-    [A] STANDALONE CLI (Available Now)
+    [A] CLI TOOL (Available Now)
     ────────────────────────────────────────────────────────────────────────
 
     # Basic audit
-    python scripts/fortinet_audit_standalone.py \
+    python scripts/fortinet_audit_cli.py \
       --host 192.168.1.1 \
       --username admin \
       --password 'SecurePass123' \
       --out-prefix fg_prod
 
     # Multi-VDOM parallel audit
-    python scripts/fortinet_audit_standalone.py \
+    python scripts/fortinet_audit_cli.py \
       --host 192.168.1.1 \
       --username admin \
       --password 'SecurePass123' \
@@ -273,7 +273,7 @@
     app/modules/fortinet/__init__.py            1 KB    20      ✅ Complete
     app/modules/fortinet/fortinet_ssh_client.py 15 KB   450     ✅ Complete
     app/modules/fortinet/README.md              30 KB   450+    ✅ Complete
-    scripts/fortinet_audit_standalone.py        79 KB   2200+   ✅ Complete
+    scripts/fortinet_audit_cli.py               79 KB   2200+   ✅ Complete
     scripts/fortinet_audit_legacy_v3.py         45 KB   1350+   ✅ Complete
     FORTINET_AUDIT_ORGANIZATION.md              40 KB   600+    ✅ Complete
     REORGANIZATION_SUMMARY.md                   20 KB   400+    ✅ Complete
