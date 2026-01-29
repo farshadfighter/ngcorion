@@ -5,6 +5,6 @@ This module provides automated security compliance auditing for network devices.
 Currently supports: Cisco IOS/IOS-XE devices
 """
 
-from . import router
+from . import cisco_router as router
 
 __all__ = ["router"]
