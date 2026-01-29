@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models import User
-from .service import HardeningService, CheckAlreadyPassingError, MissingParametersError
+from .cisco_service import HardeningService, CheckAlreadyPassingError, MissingParametersError
 
 
 # ========================= SCHEMAS =========================
