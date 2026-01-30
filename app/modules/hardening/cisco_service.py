@@ -1043,3 +1043,681 @@ class HardeningService:
             "success_rate": round(success_rate, 2),
             "most_common_checks": most_common_checks
         }
+
+    # ==================== THREE-MODE HARDENING METHODS ====================
+
+    @staticmethod
+    def get_session_parameters(
+        db: Session,
+        audit_session_id: int,
+        check_ids: Optional[List[int]] = None
+    ) -> Dict[str, Any]:
+        """
+        Get aggregated parameters for hardening an audit session.
+
+        This endpoint supports the "Fix All" mode by collecting all required
+        parameters across selected failed checks.
+
+        Args:
+            db: Database session
+            audit_session_id: Audit session to analyze
+            check_ids: Optional list of specific check result IDs to include
+                      (if None, includes all failed checks)
+
+        Returns:
+            {
+                "session_id": 123,
+                "total_failed": 8,
+                "selected_count": 5,
+                "fixable_count": 4,
+                "unfixable_count": 1,
+                "required_parameters": {...},
+                "auto_fixable_checks": [...],
+                "needs_params_checks": [...]
+            }
+        """
+        from .cisco_parameter_metadata import (
+            aggregate_parameters_for_checks,
+            categorize_checks_by_fixability,
+            check_has_required_params
+        )
+        from .cisco_command_templates import has_template
+
+        # Validate session exists
+        session = db.query(AuditSession).filter(
+            AuditSession.id == audit_session_id
+        ).first()
+        if not session:
+            raise ValueError(f"Audit session {audit_session_id} not found")
+
+        # Get failed results
+        query = db.query(AuditResult).filter(
+            AuditResult.session_id == audit_session_id,
+            AuditResult.status == CheckStatus.FAIL
+        )
+
+        # Filter by specific check IDs if provided
+        if check_ids:
+            query = query.filter(AuditResult.id.in_(check_ids))
+
+        failed_results = query.all()
+
+        if not failed_results:
+            return {
+                "session_id": audit_session_id,
+                "total_failed": 0,
+                "selected_count": 0,
+                "fixable_count": 0,
+                "unfixable_count": 0,
+                "required_parameters": {},
+                "auto_fixable_checks": [],
+                "needs_params_checks": []
+            }
+
+        # Extract check numbers
+        check_numbers = [r.check_number for r in failed_results]
+
+        # Filter to only checks with templates
+        templated_checks = [cn for cn in check_numbers if has_template(cn)]
+        no_template_checks = [cn for cn in check_numbers if not has_template(cn)]
+
+        # Categorize checks
+        categorized = categorize_checks_by_fixability(templated_checks)
+
+        # Aggregate parameters for all templated checks
+        aggregated_params = aggregate_parameters_for_checks(templated_checks)
+
+        # Build result ID map for frontend
+        check_result_map = {r.check_number: r.id for r in failed_results}
+
+        return {
+            "session_id": audit_session_id,
+            "total_failed": len(check_numbers),
+            "selected_count": len(check_numbers) if not check_ids else len(check_ids),
+            "fixable_count": len(templated_checks),
+            "unfixable_count": len(no_template_checks),
+            "required_parameters": aggregated_params,
+            "auto_fixable_checks": [
+                {
+                    "check_number": cn,
+                    "result_id": check_result_map.get(cn)
+                }
+                for cn in categorized["auto_fixable"]
+            ],
+            "needs_params_checks": [
+                {
+                    "check_number": cn,
+                    "result_id": check_result_map.get(cn)
+                }
+                for cn in categorized["needs_params"]
+            ],
+            "no_template_checks": [
+                {
+                    "check_number": cn,
+                    "result_id": check_result_map.get(cn),
+                    "reason": "No remediation template available"
+                }
+                for cn in no_template_checks
+            ]
+        }
+
+    @staticmethod
+    def get_auto_harden_preview(
+        db: Session,
+        audit_session_id: int
+    ) -> Dict[str, Any]:
+        """
+        Get preview of automatic hardening with CIS defaults.
+
+        Shows what will be applied and what will be skipped before user confirms.
+
+        Args:
+            db: Database session
+            audit_session_id: Audit session to preview
+
+        Returns:
+            {
+                "auto_fixable_count": 5,
+                "skipped_count": 3,
+                "checks_with_defaults": [
+                    {
+                        "check_number": "IOS-L1-002",
+                        "check_title": "Set exec timeout",
+                        "result_id": 123,
+                        "defaults": {"TIMEOUT_MIN": "5", "TIMEOUT_SEC": "0"}
+                    },
+                    ...
+                ],
+                "skipped_checks": [
+                    {
+                        "check_number": "IOS-L1-001",
+                        "check_title": "Use enable secret",
+                        "result_id": 124,
+                        "reason": "Requires STRONG_SECRET parameter"
+                    },
+                    ...
+                ]
+            }
+        """
+        from .cisco_parameter_metadata import (
+            is_check_auto_fixable,
+            get_check_defaults,
+            get_required_parameters_for_check
+        )
+        from .cisco_command_templates import has_template
+
+        # Validate session exists
+        session = db.query(AuditSession).filter(
+            AuditSession.id == audit_session_id
+        ).first()
+        if not session:
+            raise ValueError(f"Audit session {audit_session_id} not found")
+
+        # Get failed results
+        failed_results = db.query(AuditResult).filter(
+            AuditResult.session_id == audit_session_id,
+            AuditResult.status == CheckStatus.FAIL
+        ).all()
+
+        checks_with_defaults = []
+        skipped_checks = []
+
+        for result in failed_results:
+            check_number = result.check_number
+
+            # Skip checks without templates
+            if not has_template(check_number):
+                skipped_checks.append({
+                    "check_number": check_number,
+                    "check_title": result.check_title,
+                    "result_id": result.id,
+                    "reason": "No remediation template available"
+                })
+                continue
+
+            # Check if auto-fixable
+            if is_check_auto_fixable(check_number):
+                defaults = get_check_defaults(check_number)
+                checks_with_defaults.append({
+                    "check_number": check_number,
+                    "check_title": result.check_title,
+                    "result_id": result.id,
+                    "defaults": defaults
+                })
+            else:
+                # Get required parameters for explanation
+                required_params = get_required_parameters_for_check(check_number)
+                param_names = [p.name for p in required_params]
+                skipped_checks.append({
+                    "check_number": check_number,
+                    "check_title": result.check_title,
+                    "result_id": result.id,
+                    "reason": f"Requires {', '.join(param_names)} parameter(s)"
+                })
+
+        return {
+            "session_id": audit_session_id,
+            "auto_fixable_count": len(checks_with_defaults),
+            "skipped_count": len(skipped_checks),
+            "checks_with_defaults": checks_with_defaults,
+            "skipped_checks": skipped_checks
+        }
+
+    @staticmethod
+    def auto_harden_with_defaults(
+        db: Session,
+        audit_session_id: int,
+        user_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str] = None,
+        skip_backup: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Automatically harden device using only CIS default values.
+
+        This differs from auto_fix_all_failures by:
+        - ONLY applying checks where all parameters have defaults
+        - NOT accepting user-provided parameters
+        - Skipping ALL checks that require user input
+
+        Args:
+            db: Database session
+            audit_session_id: Audit session to fix
+            user_id: User performing the hardening
+            ssh_username/password/secret: SSH credentials
+            skip_backup: Skip config backup (NOT RECOMMENDED)
+
+        Returns:
+            {
+                "audit_session_id": int,
+                "fixed_count": int,
+                "skipped_count": int,
+                "failed_count": int,
+                "actions": List[int],
+                "fixed_checks": List[Dict],
+                "skipped_checks": List[Dict]
+            }
+        """
+        from .cisco_parameter_metadata import (
+            is_check_auto_fixable,
+            get_check_defaults
+        )
+        from .cisco_command_templates import has_template
+
+        logger.info(f"Starting auto-harden with defaults for session {audit_session_id}")
+
+        # Get session
+        session = db.query(AuditSession).filter(
+            AuditSession.id == audit_session_id
+        ).first()
+        if not session:
+            raise ValueError(f"Audit session {audit_session_id} not found")
+
+        device_ip = session.target_ip
+        if not device_ip:
+            raise ValueError(f"Audit session {audit_session_id} has no target IP")
+
+        # Get failed results
+        failed_results = db.query(AuditResult).filter(
+            AuditResult.session_id == audit_session_id,
+            AuditResult.status == CheckStatus.FAIL
+        ).all()
+
+        # Separate auto-fixable from skipped
+        auto_fixable = []
+        skipped = []
+
+        for result in failed_results:
+            check_number = result.check_number
+            if has_template(check_number) and is_check_auto_fixable(check_number):
+                auto_fixable.append(result)
+            else:
+                reason = "No template" if not has_template(check_number) else "Requires user input"
+                skipped.append({
+                    "check_number": check_number,
+                    "check_title": result.check_title,
+                    "result_id": result.id,
+                    "reason": reason
+                })
+
+        if not auto_fixable:
+            logger.info("No auto-fixable checks found")
+            return {
+                "audit_session_id": audit_session_id,
+                "fixed_count": 0,
+                "skipped_count": len(skipped),
+                "failed_count": 0,
+                "actions": [],
+                "fixed_checks": [],
+                "skipped_checks": skipped
+            }
+
+        fixed_count = 0
+        failed_count = 0
+        action_ids = []
+        fixed_checks = []
+
+        # Connect to device
+        with CiscoHardeningExecutor(
+            ip=device_ip,
+            username=ssh_username,
+            password=ssh_password,
+            secret=ssh_secret
+        ) as executor:
+            executor.test_connectivity()
+
+            # Backup once
+            backup = None
+            if not skip_backup:
+                logger.info(f"Creating backup for {device_ip}")
+                backup = executor.backup_config()
+
+            # Process each auto-fixable check
+            for result in auto_fixable:
+                check_number = result.check_number
+
+                try:
+                    logger.info(f"Auto-fixing {check_number}")
+
+                    # Get rule and parse
+                    rule = HardeningService._get_rule_by_check_number(check_number)
+                    parsed = RemediationParser.parse_remediation(
+                        remediation=rule.remediation,
+                        check_number=check_number
+                    )
+
+                    # Get defaults and substitute
+                    defaults = get_check_defaults(check_number)
+                    final_commands = RemediationParser.substitute_parameters(
+                        parsed.commands,
+                        apply_defaults({}, defaults)
+                    )
+
+                    # Create action record
+                    action = HardeningAction(
+                        audit_result_id=result.id,
+                        user_id=user_id,
+                        asset_id=session.asset_id,
+                        audit_session_id=audit_session_id,
+                        check_number=check_number,
+                        check_title=result.check_title,
+                        action_type="execute",
+                        status="executing",
+                        commands_json=json.dumps(final_commands),
+                        requires_config_mode=parsed.requires_config_mode,
+                        credentials_provided=True,
+                        backup_config=backup if not skip_backup else None,
+                        executed_at=datetime.now(timezone.utc)
+                    )
+                    db.add(action)
+                    db.commit()
+                    db.refresh(action)
+                    action_ids.append(action.id)
+
+                    # Execute commands
+                    exec_result = executor.execute_commands(
+                        final_commands,
+                        requires_config_mode=parsed.requires_config_mode
+                    )
+
+                    if not exec_result["success"]:
+                        action.status = "failed"
+                        action.error_message = "; ".join(exec_result["errors"])
+                        action.output = redact_secrets_in_output(exec_result["output"])
+                        action.completed_at = datetime.now(timezone.utc)
+                        db.commit()
+                        failed_count += 1
+                        continue
+
+                    # Store output
+                    action.output = redact_secrets_in_output(exec_result["output"])
+
+                    # Verify
+                    passed, evidence = executor.verify_check(rule)
+                    action.verification_passed = passed
+                    action.verification_evidence = evidence
+
+                    if passed:
+                        action.status = "success"
+                        fixed_count += 1
+                        fixed_checks.append({
+                            "check_number": check_number,
+                            "check_title": result.check_title,
+                            "action_id": action.id,
+                            "defaults_applied": defaults
+                        })
+                        logger.info(f"Successfully auto-fixed {check_number}")
+                    else:
+                        action.status = "failed"
+                        action.error_message = "Verification failed after fix"
+                        failed_count += 1
+
+                    action.completed_at = datetime.now(timezone.utc)
+                    db.commit()
+
+                except Exception as e:
+                    logger.error(f"Error auto-fixing {check_number}: {str(e)}")
+                    failed_count += 1
+
+            # Save config once after all fixes
+            if fixed_count > 0:
+                logger.info(f"Saving configuration for {device_ip}")
+                executor.save_config()
+
+        logger.info(
+            f"Auto-harden complete: {fixed_count} fixed, "
+            f"{failed_count} failed, {len(skipped)} skipped"
+        )
+
+        return {
+            "audit_session_id": audit_session_id,
+            "fixed_count": fixed_count,
+            "skipped_count": len(skipped),
+            "failed_count": failed_count,
+            "actions": action_ids,
+            "fixed_checks": fixed_checks,
+            "skipped_checks": skipped
+        }
+
+    @staticmethod
+    def batch_execute_selected(
+        db: Session,
+        audit_session_id: int,
+        user_id: int,
+        check_ids: List[int],
+        parameters: Dict[str, str],
+        ssh_username: str,
+        ssh_password: str,
+        ssh_secret: Optional[str] = None,
+        skip_backup: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Execute hardening for selected checks with user-provided parameters.
+
+        This is the "Fix All" mode where users select specific checks and
+        provide all required parameters.
+
+        Args:
+            db: Database session
+            audit_session_id: Audit session ID
+            user_id: User performing hardening
+            check_ids: List of AuditResult IDs to fix
+            parameters: User-provided parameters for all checks
+            ssh_username/password/secret: SSH credentials
+            skip_backup: Skip config backup
+
+        Returns:
+            {
+                "audit_session_id": int,
+                "total_selected": int,
+                "fixed_count": int,
+                "failed_count": int,
+                "skipped_count": int,
+                "actions": List[int],
+                "results": List[Dict]
+            }
+        """
+        from .cisco_parameter_metadata import get_check_defaults
+        from .cisco_command_templates import has_template
+
+        logger.info(f"Starting batch execute for {len(check_ids)} selected checks")
+
+        # Get session
+        session = db.query(AuditSession).filter(
+            AuditSession.id == audit_session_id
+        ).first()
+        if not session:
+            raise ValueError(f"Audit session {audit_session_id} not found")
+
+        device_ip = session.target_ip
+        if not device_ip:
+            raise ValueError(f"Audit session {audit_session_id} has no target IP")
+
+        # Get selected results
+        results = db.query(AuditResult).filter(
+            AuditResult.id.in_(check_ids),
+            AuditResult.session_id == audit_session_id
+        ).all()
+
+        if not results:
+            raise ValueError("No valid checks selected")
+
+        fixed_count = 0
+        failed_count = 0
+        skipped_count = 0
+        action_ids = []
+        execution_results = []
+
+        with CiscoHardeningExecutor(
+            ip=device_ip,
+            username=ssh_username,
+            password=ssh_password,
+            secret=ssh_secret
+        ) as executor:
+            executor.test_connectivity()
+
+            # Backup once
+            backup = None
+            if not skip_backup:
+                logger.info(f"Creating backup for {device_ip}")
+                backup = executor.backup_config()
+
+            for result in results:
+                check_number = result.check_number
+
+                # Skip if no template
+                if not has_template(check_number):
+                    skipped_count += 1
+                    execution_results.append({
+                        "check_number": check_number,
+                        "check_title": result.check_title,
+                        "status": "skipped",
+                        "reason": "No template available"
+                    })
+                    continue
+
+                # Skip if already passing
+                if result.status == CheckStatus.PASS:
+                    skipped_count += 1
+                    execution_results.append({
+                        "check_number": check_number,
+                        "check_title": result.check_title,
+                        "status": "skipped",
+                        "reason": "Already passing"
+                    })
+                    continue
+
+                try:
+                    logger.info(f"Fixing {check_number}")
+
+                    # Get rule and parse
+                    rule = HardeningService._get_rule_by_check_number(check_number)
+                    parsed = RemediationParser.parse_remediation(
+                        remediation=rule.remediation,
+                        check_number=check_number
+                    )
+
+                    # Merge user parameters with defaults
+                    defaults = get_check_defaults(check_number)
+                    merged_params = apply_defaults(parameters, defaults)
+
+                    # Substitute parameters
+                    try:
+                        final_commands = RemediationParser.substitute_parameters(
+                            parsed.commands,
+                            merged_params
+                        )
+                    except ValueError as e:
+                        skipped_count += 1
+                        execution_results.append({
+                            "check_number": check_number,
+                            "check_title": result.check_title,
+                            "status": "skipped",
+                            "reason": f"Missing parameters: {str(e)}"
+                        })
+                        continue
+
+                    # Create action record
+                    action = HardeningAction(
+                        audit_result_id=result.id,
+                        user_id=user_id,
+                        asset_id=session.asset_id,
+                        audit_session_id=audit_session_id,
+                        check_number=check_number,
+                        check_title=result.check_title,
+                        action_type="execute",
+                        status="executing",
+                        commands_json=json.dumps(final_commands),
+                        requires_config_mode=parsed.requires_config_mode,
+                        credentials_provided=True,
+                        backup_config=backup if not skip_backup else None,
+                        executed_at=datetime.now(timezone.utc)
+                    )
+                    db.add(action)
+                    db.commit()
+                    db.refresh(action)
+                    action_ids.append(action.id)
+
+                    # Execute
+                    exec_result = executor.execute_commands(
+                        final_commands,
+                        requires_config_mode=parsed.requires_config_mode
+                    )
+
+                    if not exec_result["success"]:
+                        action.status = "failed"
+                        action.error_message = "; ".join(exec_result["errors"])
+                        action.output = redact_secrets_in_output(exec_result["output"])
+                        action.completed_at = datetime.now(timezone.utc)
+                        db.commit()
+                        failed_count += 1
+                        execution_results.append({
+                            "check_number": check_number,
+                            "check_title": result.check_title,
+                            "status": "failed",
+                            "action_id": action.id,
+                            "error": action.error_message
+                        })
+                        continue
+
+                    action.output = redact_secrets_in_output(exec_result["output"])
+
+                    # Verify
+                    passed, evidence = executor.verify_check(rule)
+                    action.verification_passed = passed
+                    action.verification_evidence = evidence
+
+                    if passed:
+                        action.status = "success"
+                        fixed_count += 1
+                        execution_results.append({
+                            "check_number": check_number,
+                            "check_title": result.check_title,
+                            "status": "success",
+                            "action_id": action.id,
+                            "verification_passed": True
+                        })
+                    else:
+                        action.status = "failed"
+                        action.error_message = "Verification failed"
+                        failed_count += 1
+                        execution_results.append({
+                            "check_number": check_number,
+                            "check_title": result.check_title,
+                            "status": "failed",
+                            "action_id": action.id,
+                            "verification_passed": False
+                        })
+
+                    action.completed_at = datetime.now(timezone.utc)
+                    db.commit()
+
+                except Exception as e:
+                    logger.error(f"Error fixing {check_number}: {str(e)}")
+                    failed_count += 1
+                    execution_results.append({
+                        "check_number": check_number,
+                        "check_title": result.check_title,
+                        "status": "failed",
+                        "error": str(e)
+                    })
+
+            # Save config after all fixes
+            if fixed_count > 0:
+                executor.save_config()
+
+        logger.info(
+            f"Batch execute complete: {fixed_count} fixed, "
+            f"{failed_count} failed, {skipped_count} skipped"
+        )
+
+        return {
+            "audit_session_id": audit_session_id,
+            "total_selected": len(check_ids),
+            "fixed_count": fixed_count,
+            "failed_count": failed_count,
+            "skipped_count": skipped_count,
+            "actions": action_ids,
+            "results": execution_results
+        }

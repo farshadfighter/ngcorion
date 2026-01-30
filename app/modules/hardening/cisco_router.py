@@ -271,6 +271,202 @@ class AutoFixResponse(BaseModel):
         }
 
 
+# --- Three-Mode Hardening Schemas ---
+
+class SessionParametersResponse(BaseModel):
+    """Response with aggregated parameters for a session."""
+    session_id: int
+    total_failed: int
+    selected_count: int
+    fixable_count: int
+    unfixable_count: int
+    required_parameters: Dict[str, Any]
+    auto_fixable_checks: List[Dict[str, Any]]
+    needs_params_checks: List[Dict[str, Any]]
+    no_template_checks: Optional[List[Dict[str, Any]]] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "session_id": 123,
+                "total_failed": 8,
+                "selected_count": 8,
+                "fixable_count": 6,
+                "unfixable_count": 2,
+                "required_parameters": {
+                    "STRONG_SECRET": {
+                        "type": "password",
+                        "label": "Enable Secret",
+                        "description": "New enable secret password",
+                        "required": True,
+                        "checks": ["IOS-L1-001"]
+                    }
+                },
+                "auto_fixable_checks": [
+                    {"check_number": "IOS-L1-002", "result_id": 101}
+                ],
+                "needs_params_checks": [
+                    {"check_number": "IOS-L1-001", "result_id": 102}
+                ]
+            }
+        }
+
+
+class AutoHardenPreviewResponse(BaseModel):
+    """Preview of automatic hardening with defaults."""
+    session_id: int
+    auto_fixable_count: int
+    skipped_count: int
+    checks_with_defaults: List[Dict[str, Any]]
+    skipped_checks: List[Dict[str, Any]]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "session_id": 123,
+                "auto_fixable_count": 5,
+                "skipped_count": 3,
+                "checks_with_defaults": [
+                    {
+                        "check_number": "IOS-L1-002",
+                        "check_title": "Set exec timeout",
+                        "result_id": 101,
+                        "defaults": {"TIMEOUT_MIN": "5", "TIMEOUT_SEC": "0"}
+                    }
+                ],
+                "skipped_checks": [
+                    {
+                        "check_number": "IOS-L1-001",
+                        "check_title": "Use enable secret",
+                        "result_id": 102,
+                        "reason": "Requires STRONG_SECRET parameter"
+                    }
+                ]
+            }
+        }
+
+
+class AutoHardenDefaultsRequest(BaseModel):
+    """Request to auto-harden with CIS defaults only."""
+    audit_session_id: int
+    ssh_username: str = Field(..., min_length=1)
+    ssh_password: str = Field(..., min_length=1)
+    ssh_secret: Optional[str] = None
+    confirmed: bool = Field(
+        default=False,
+        description="User must confirm they reviewed the defaults"
+    )
+    skip_backup: bool = False
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "ssh_username": "admin",
+                "ssh_password": "cisco123",
+                "confirmed": True,
+                "skip_backup": False
+            }
+        }
+
+
+class AutoHardenDefaultsResponse(BaseModel):
+    """Response from auto-harden with defaults."""
+    audit_session_id: int
+    fixed_count: int
+    skipped_count: int
+    failed_count: int
+    actions: List[int]
+    fixed_checks: List[Dict[str, Any]]
+    skipped_checks: List[Dict[str, Any]]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "fixed_count": 5,
+                "skipped_count": 3,
+                "failed_count": 0,
+                "actions": [101, 102, 103, 104, 105],
+                "fixed_checks": [
+                    {
+                        "check_number": "IOS-L1-002",
+                        "action_id": 101,
+                        "defaults_applied": {"TIMEOUT_MIN": "5"}
+                    }
+                ],
+                "skipped_checks": [
+                    {
+                        "check_number": "IOS-L1-001",
+                        "reason": "Requires user input"
+                    }
+                ]
+            }
+        }
+
+
+class BatchExecuteRequest(BaseModel):
+    """Request to batch execute selected checks."""
+    audit_session_id: int
+    check_ids: List[int] = Field(
+        ...,
+        description="List of AuditResult IDs to fix"
+    )
+    parameters: Dict[str, str] = Field(
+        default_factory=dict,
+        description="User-provided parameters for all checks"
+    )
+    ssh_username: str = Field(..., min_length=1)
+    ssh_password: str = Field(..., min_length=1)
+    ssh_secret: Optional[str] = None
+    skip_backup: bool = False
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "check_ids": [101, 102, 103],
+                "parameters": {
+                    "STRONG_SECRET": "MyNewSecret123!",
+                    "BANNER_TEXT": "Authorized access only"
+                },
+                "ssh_username": "admin",
+                "ssh_password": "cisco123",
+                "skip_backup": False
+            }
+        }
+
+
+class BatchExecuteResponse(BaseModel):
+    """Response from batch execute."""
+    audit_session_id: int
+    total_selected: int
+    fixed_count: int
+    failed_count: int
+    skipped_count: int
+    actions: List[int]
+    results: List[Dict[str, Any]]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_session_id": 123,
+                "total_selected": 5,
+                "fixed_count": 4,
+                "failed_count": 1,
+                "skipped_count": 0,
+                "actions": [201, 202, 203, 204],
+                "results": [
+                    {
+                        "check_number": "IOS-L1-001",
+                        "status": "success",
+                        "action_id": 201
+                    }
+                ]
+            }
+        }
+
+
 # ========================= ROUTER =========================
 
 router = APIRouter(prefix="/api/hardening", tags=["Hardening - Cisco"])
@@ -640,4 +836,230 @@ def auto_fix_all_failures(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Auto-fix failed: {str(e)}"
+        )
+
+
+# ==================== THREE-MODE HARDENING ENDPOINTS ====================
+
+@router.get("/session/{session_id}/parameters", response_model=SessionParametersResponse)
+def get_session_parameters(
+    session_id: int,
+    check_ids: Optional[str] = None,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Get aggregated parameters needed for hardening a session.
+
+    **Use Case:** "Fix All" mode - collect all required parameters
+    before batch execution.
+
+    **Query Parameters:**
+    - check_ids: Optional comma-separated list of AuditResult IDs
+                 (if not provided, includes all failed checks)
+
+    **Response:**
+    - required_parameters: All unique parameters with UI metadata
+    - auto_fixable_checks: Checks that can be fixed without user input
+    - needs_params_checks: Checks requiring user-provided parameters
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    try:
+        # Parse check_ids if provided
+        parsed_check_ids = None
+        if check_ids:
+            try:
+                parsed_check_ids = [int(id.strip()) for id in check_ids.split(",")]
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="check_ids must be comma-separated integers"
+                )
+
+        result = HardeningService.get_session_parameters(
+            db=db,
+            audit_session_id=session_id,
+            check_ids=parsed_check_ids
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get session parameters: {str(e)}"
+        )
+
+
+@router.get("/session/{session_id}/auto-preview", response_model=AutoHardenPreviewResponse)
+def get_auto_harden_preview(
+    session_id: int,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Preview automatic hardening with CIS defaults.
+
+    **Use Case:** "Automatic Hardening" mode - show user what will be
+    applied before execution.
+
+    **Response:**
+    - checks_with_defaults: Checks that will be fixed with their default values
+    - skipped_checks: Checks that require user input (will be skipped)
+
+    **Important:** User should review this before confirming auto-harden.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    try:
+        result = HardeningService.get_auto_harden_preview(
+            db=db,
+            audit_session_id=session_id
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get auto-harden preview: {str(e)}"
+        )
+
+
+@router.post("/auto-harden-defaults", response_model=AutoHardenDefaultsResponse)
+def auto_harden_with_defaults(
+    request: AutoHardenDefaultsRequest,
+    current_user: User = Depends(require_permission("HARDENING", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Automatically harden device using CIS default values only.
+
+    **Use Case:** "Automatic Hardening" mode - apply all checks that
+    have default values without requiring user input.
+
+    **Workflow:**
+    1. User previews via GET /session/{id}/auto-preview
+    2. User reviews default values that will be applied
+    3. User confirms and calls this endpoint
+    4. System applies only auto-fixable checks
+    5. Checks requiring parameters are skipped
+
+    **Important:**
+    - confirmed must be true to proceed
+    - Only applies checks where ALL parameters have defaults
+    - Skips ALL checks requiring user input
+
+    **Permissions:** Requires HARDENING write permission
+
+    **Errors:**
+    - 400: confirmed=false or invalid session
+    - 500: SSH or execution error
+    """
+    if not request.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must confirm by setting confirmed=true after reviewing defaults"
+        )
+
+    try:
+        result = HardeningService.auto_harden_with_defaults(
+            db=db,
+            audit_session_id=request.audit_session_id,
+            user_id=current_user.id,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_secret=request.ssh_secret,
+            skip_backup=request.skip_backup
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Auto-harden failed: {str(e)}"
+        )
+
+
+@router.post("/batch-execute", response_model=BatchExecuteResponse)
+def batch_execute_selected(
+    request: BatchExecuteRequest,
+    current_user: User = Depends(require_permission("HARDENING", "write")),
+    db: Session = Depends(get_db)
+):
+    """
+    Execute hardening for selected checks with user-provided parameters.
+
+    **Use Case:** "Fix All" mode - user selects specific checks and
+    provides all required parameters before execution.
+
+    **Workflow:**
+    1. User fetches parameters via GET /session/{id}/parameters
+    2. User fills in required parameters
+    3. User selects which checks to fix
+    4. User calls this endpoint with check_ids and parameters
+    5. System executes selected checks
+
+    **Request:**
+    - check_ids: List of AuditResult IDs to fix
+    - parameters: All required parameter values
+
+    **Permissions:** Requires HARDENING write permission
+
+    **Errors:**
+    - 400: Invalid check IDs or missing parameters
+    - 500: SSH or execution error
+    """
+    if not request.check_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No checks selected for execution"
+        )
+
+    try:
+        result = HardeningService.batch_execute_selected(
+            db=db,
+            audit_session_id=request.audit_session_id,
+            user_id=current_user.id,
+            check_ids=request.check_ids,
+            parameters=request.parameters,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_secret=request.ssh_secret,
+            skip_backup=request.skip_backup
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except MissingParametersError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Batch execute failed: {str(e)}"
         )
