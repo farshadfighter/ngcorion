@@ -11,8 +11,7 @@ Provides SSH connection management for FortiGate devices with:
 import re
 import time
 from typing import Dict, List, Optional, Tuple
-from netmiko import ConnectHandler
-from netmiko.ssh_exception import NetmikoAuthenticationException, NetmikoTimeoutException
+from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 
 
 class ConnectionPool:

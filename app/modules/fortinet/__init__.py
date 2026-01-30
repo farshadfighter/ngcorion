@@ -14,9 +14,11 @@ Components:
 
 from .fortinet_ssh_client import FortiGateSSHClient, ConnectionPool
 from .fortinet_service import FortinetAuditService
+from . import fortinet_router as router
 
 __all__ = [
     "FortiGateSSHClient",
     "ConnectionPool",
     "FortinetAuditService",
+    "router",
 ]

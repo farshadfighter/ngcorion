@@ -12,10 +12,10 @@ The module follows the same pattern as the Cisco audit module:
 /app/modules/fortinet/
 ├── __init__.py                    # Module initialization
 ├── fortinet_ssh_client.py         # SSH connection management
-├── fortinet_rules.py              # CIS benchmark control catalog (planned)
-├── fortinet_service.py            # Audit orchestration (planned)
-├── fortinet_router.py             # FastAPI API endpoints (planned)
-├── fortinet_cis_map.py            # CIS benchmark mapping (planned)
+├── fortinet_rules.py              # CIS benchmark control catalog (65+ controls)
+├── fortinet_service.py            # Audit orchestration service
+├── fortinet_router.py             # FastAPI API endpoints
+├── fortinet_cis_map.py            # CIS benchmark mapping
 └── README.md                      # This file
 ```
 
@@ -79,13 +79,119 @@ Orchestration layer providing:
 - Parallel VDOM processing
 - HTML/JSON/CSV report generation
 
-### 4. API Router (`fortinet_router.py`) - Planned
+### 4. API Router (`fortinet_router.py`)
 
 FastAPI endpoints:
-- `POST /api/fortinet/audit` - Execute audit
-- `GET /api/fortinet/audit/{session_id}` - Get results
-- `GET /api/fortinet/templates` - List control templates
-- `GET /api/fortinet/vdoms/{asset_id}` - Discover VDOMs
+- `POST /api/fortinet/audit/execute` - Execute FortiGate audit
+- `POST /api/fortinet/vdoms/discover` - Discover VDOMs
+- `GET /api/fortinet/audit/sessions` - List audit sessions
+- `GET /api/fortinet/audit/sessions/{session_id}` - Get session details
+- `GET /api/fortinet/audit/sessions/{session_id}/results` - Get audit results
+- `DELETE /api/fortinet/audit/sessions/{session_id}` - Delete session
+
+## API Usage
+
+### 1. Discover VDOMs
+```bash
+curl -X POST http://localhost:8000/api/fortinet/vdoms/discover \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "asset_id": 42,
+    "ssh_username": "admin",
+    "ssh_password": "password"
+  }'
+```
+
+**Response:**
+```json
+{
+  "asset_id": 42,
+  "asset_name": "fw-hq-01",
+  "target_ip": "192.168.1.1",
+  "vdoms": ["root", "VDOM_1", "VDOM_2"]
+}
+```
+
+### 2. Execute Audit
+```bash
+curl -X POST http://localhost:8000/api/fortinet/audit/execute \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "asset_id": 42,
+    "ssh_username": "admin",
+    "ssh_password": "password",
+    "vdom": "root",
+    "profile": "L1"
+  }'
+```
+
+**Response:**
+```json
+{
+  "session_id": 123,
+  "asset_id": 42,
+  "asset_name": "fw-hq-01",
+  "target_ip": "192.168.1.1",
+  "device_type": "fortinet",
+  "status": "completed",
+  "started_at": "2026-01-29T10:00:00Z",
+  "completed_at": "2026-01-29T10:02:30Z",
+  "duration_seconds": 150.5,
+  "compliance": {
+    "total_checks": 65,
+    "passed": 52,
+    "failed": 13,
+    "compliance_pct": 80.0
+  },
+  "connection_error": null
+}
+```
+
+### 3. Get Audit Results
+```bash
+curl http://localhost:8000/api/fortinet/audit/sessions/123/results \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "check_number": "FG-BL-001",
+    "check_title": "Admin HTTPS enabled",
+    "severity": "high",
+    "level": "L1",
+    "status": "pass",
+    "evidence_snippet": "set admin-https enable",
+    "checked_at": "2026-01-29T10:01:00Z"
+  },
+  {
+    "id": 2,
+    "check_number": "FG-BL-002",
+    "check_title": "Admin HTTP disabled",
+    "severity": "high",
+    "level": "L1",
+    "status": "fail",
+    "evidence_snippet": "set admin-http enable",
+    "checked_at": "2026-01-29T10:01:00Z"
+  }
+]
+```
+
+### 4. List Sessions
+```bash
+curl http://localhost:8000/api/fortinet/audit/sessions?limit=10 \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 5. Delete Session
+```bash
+curl -X DELETE http://localhost:8000/api/fortinet/audit/sessions/123 \
+  -H "Authorization: Bearer $TOKEN"
+```
 
 ## Standalone CLI Tool
 
@@ -237,21 +343,21 @@ Analyzes security profile usage across policies.
 - ✅ VDOM discovery and context switching
 - ✅ Command caching and pagination handling
 
-### Phase 3: Control Catalog (In Progress)
-- Extract controls from standalone script
-- Map to CIS benchmark sections
-- Create `fortinet_rules.py`
+### Phase 3: Control Catalog (Completed)
+- ✅ 65+ controls extracted and organized
+- ✅ CIS benchmark mapping implemented
+- ✅ `fortinet_rules.py` created
 
-### Phase 4: Service Layer (Planned)
-- Implement `FortinetAuditService`
-- Add analytics (shadow, unused, coverage)
-- Parallel VDOM processing
-- HTML report generation
+### Phase 4: Service Layer (Completed)
+- ✅ `FortinetAuditService` implemented
+- ✅ Control evaluation and scoring
+- ✅ VDOM context support
+- ✅ Data redaction and security
 
-### Phase 5: API Endpoints (Planned)
-- Create `fortinet_router.py`
-- Define request/response schemas
-- Register routes in `app/main.py`
+### Phase 5: API Endpoints (Completed)
+- ✅ `fortinet_router.py` created
+- ✅ Request/response schemas defined
+- ✅ Routes registered in `app/main.py`
 
 ### Phase 6: Frontend Integration (Planned)
 - Add FortiGate audit UI component
