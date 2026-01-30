@@ -35,7 +35,7 @@ from app.modules.assets.router_with_auth import (
 # Import module audit log routers
 from app.modules.assets.requirement_logs_router import router as requirement_logs_router
 from app.modules.assets.asset_logs_router import router as asset_logs_router
-from app.modules.audit.audit_logs_router import router as audit_logs_router
+from app.modules.audit.cisco_audit_logs_router import router as cisco_audit_logs_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -93,7 +93,7 @@ app.include_router(fortinet_router.router)
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)
 app.include_router(asset_logs_router)
-app.include_router(audit_logs_router)
+app.include_router(cisco_audit_logs_router)
 
 
 @app.get("/")

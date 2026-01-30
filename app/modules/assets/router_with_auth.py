@@ -506,6 +506,20 @@ def get_zones(
     return AssetService.get_all_zones(db)
 
 
+@zones_router.get("/{zone_id}", response_model=NetworkZoneResponse)
+def get_zone(
+    zone_id: int,
+    _current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get zone by id (authenticated users)"""
+    from app.models import NetworkZone
+    zone = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
+    if not zone:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    return zone
+
+
 @zones_router.post("/", response_model=NetworkZoneResponse)
 def create_zone(
     data: NetworkZoneCreate,
