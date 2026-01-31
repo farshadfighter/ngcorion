@@ -14,7 +14,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import logging
 
-from app.modules.audit.ssh_client import CiscoSSHClient
+from app.modules.audit.cisco_ssh_client import CiscoSSHClient
 from app.modules.audit.cisco_rules import CISRule
 
 logger = logging.getLogger(__name__)
@@ -224,7 +224,7 @@ class CiscoHardeningExecutor:
         try:
             logger.info(f"Saving config on {self.ip}")
             output = self.ssh_client.send_command("write memory")
-            logger.info(f"Config saved successfully")
+            logger.info("Config saved successfully")
             return output
 
         except Exception as e:

@@ -6,7 +6,11 @@ import { UserManagement } from "./UserManagement/UserManagement";
 import { AssetList } from "./AssetList/AssetList";
 import { AssetRequirement } from "./AssetRequirement/AssetRequirement";
 import AutoDiscovery from "./AutoDiscovery/AutoDiscovery";
+<<<<<<< HEAD
 import { AuditingList } from "./Auditing/AuditingList";
+=======
+import { Hardening } from "./Hardening/Hardening";
+>>>>>>> 6d229e121da18fd32dcba0f9cd74367bfd1b0fd1
 
 export const Dashboard = () => {
     const { username,role } = useSelector((state) => state.auth);
@@ -255,12 +259,7 @@ export const Dashboard = () => {
                     </div>
                 )}
 
-                {activeMenu === "hardening" && (
-                    <div className="placeholder-content">
-                        <h3>Hardening</h3>
-                        <p>Coming soon...</p>
-                    </div>
-                )}
+                {activeMenu === "hardening" && <Hardening />}
 
                 {activeMenu === "logs" && (
                     <div className="placeholder-content">

@@ -10,6 +10,6 @@ Provides:
 - Complete audit trail of all hardening actions
 """
 
-from . import router
+from . import cisco_router as router
 
 __all__ = ["router"]

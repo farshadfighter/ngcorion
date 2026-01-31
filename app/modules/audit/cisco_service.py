@@ -18,9 +18,9 @@ import time
 
 from app.models import AuditSession, AuditResult, Asset, User
 from app.models.audit import DeviceType, CheckStatus
-from .ssh_client import CiscoSSHClient, redact_sensitive_data
+from .cisco_ssh_client import CiscoSSHClient, redact_sensitive_data
 from .cisco_rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
-from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
+from .cisco_cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
 
 logger = logging.getLogger(__name__)
 

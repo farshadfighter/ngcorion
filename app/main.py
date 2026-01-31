@@ -15,6 +15,7 @@ from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
 from app.modules.audit import router as audit_router
 from app.modules.hardening import router as hardening_router
+from app.modules.fortinet import router as fortinet_router
 
 # Import authenticated routers
 from app.modules.assets.router_with_auth import (
@@ -34,7 +35,7 @@ from app.modules.assets.router_with_auth import (
 # Import module audit log routers
 from app.modules.assets.requirement_logs_router import router as requirement_logs_router
 from app.modules.assets.asset_logs_router import router as asset_logs_router
-from app.modules.audit.audit_logs_router import router as audit_logs_router
+from app.modules.audit.cisco_audit_logs_router import router as cisco_audit_logs_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -86,10 +87,13 @@ app.include_router(audit_router.router)
 # NEW: Cisco Hardening routes
 app.include_router(hardening_router.router)
 
+# NEW: FortiGate Audit routes
+app.include_router(fortinet_router.router)
+
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)
 app.include_router(asset_logs_router)
-app.include_router(audit_logs_router)
+app.include_router(cisco_audit_logs_router)
 
 
 @app.get("/")
