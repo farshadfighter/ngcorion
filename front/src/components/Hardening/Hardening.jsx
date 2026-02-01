@@ -1,0 +1,249 @@
+/**
+ * Hardening - Main container component for Cisco hardening operations
+ *
+ * Three modes:
+ * 1. Fix Single - Fix individual checks
+ * 2. Fix All - Batch fix selected checks with user parameters
+ * 3. Automatic - Apply CIS defaults without user input
+ */
+
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+    fetchAuditSessions,
+    fetchSessionResults,
+    setSelectedSession,
+    clearSelectedSession,
+    clearError,
+    clearSuccessMessage,
+    selectAuditSessions,
+    selectSelectedSession,
+    selectFailedChecks,
+    selectSelectedCheckIds,
+    selectLoading,
+    selectError,
+    selectSuccessMessage,
+} from '../../store/hardeningSlice';
+import { AuditResultsTable } from './AuditResultsTable';
+import { FixSingleModal } from './FixSingleModal';
+import { FixAllModal } from './FixAllModal';
+import { AutoHardenModal } from './AutoHardenModal';
+import { HardeningHistory } from './HardeningHistory';
+import '../../assets/Hardening.css';
+
+export const Hardening = () => {
+    const dispatch = useDispatch();
+
+    // Redux state
+    const auditSessions = useSelector(selectAuditSessions);
+    const selectedSession = useSelector(selectSelectedSession);
+    const failedChecks = useSelector(selectFailedChecks);
+    const selectedCheckIds = useSelector(selectSelectedCheckIds);
+    const loading = useSelector(selectLoading);
+    const error = useSelector(selectError);
+    const successMessage = useSelector(selectSuccessMessage);
+
+    // Local state
+    const [activeTab, setActiveTab] = useState('results'); // 'results' | 'history'
+    const [showFixSingleModal, setShowFixSingleModal] = useState(false);
+    const [showFixAllModal, setShowFixAllModal] = useState(false);
+    const [showAutoHardenModal, setShowAutoHardenModal] = useState(false);
+    const [selectedCheckForFix, setSelectedCheckForFix] = useState(null);
+
+    // Load audit sessions on mount
+    useEffect(() => {
+        dispatch(fetchAuditSessions());
+    }, [dispatch]);
+
+    // Clear messages after timeout
+    useEffect(() => {
+        if (error || successMessage) {
+            const timer = setTimeout(() => {
+                if (error) dispatch(clearError());
+                if (successMessage) dispatch(clearSuccessMessage());
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [error, successMessage, dispatch]);
+
+    // Handle session selection
+    const handleSessionChange = (e) => {
+        const sessionId = parseInt(e.target.value);
+        if (sessionId) {
+            const session = auditSessions.find(s => s.id === sessionId);
+            dispatch(setSelectedSession(session));
+            dispatch(fetchSessionResults(sessionId));
+        } else {
+            dispatch(clearSelectedSession());
+        }
+    };
+
+    // Handle Fix Single click
+    const handleFixSingle = (check) => {
+        setSelectedCheckForFix(check);
+        setShowFixSingleModal(true);
+    };
+
+    // Handle Fix All click
+    const handleFixAll = () => {
+        if (selectedCheckIds.length === 0) {
+            alert('Please select at least one check to fix.');
+            return;
+        }
+        setShowFixAllModal(true);
+    };
+
+    // Handle Automatic Hardening click
+    const handleAutoHarden = () => {
+        setShowAutoHardenModal(true);
+    };
+
+    // Format date for display
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleString();
+    };
+
+    return (
+        <div className="hardening-container">
+            {/* Messages */}
+            {error && (
+                <div className="alert alert-error">
+                    <span>{error}</span>
+                    <button onClick={() => dispatch(clearError())}>×</button>
+                </div>
+            )}
+            {successMessage && (
+                <div className="alert alert-success">
+                    <span>{successMessage}</span>
+                    <button onClick={() => dispatch(clearSuccessMessage())}>×</button>
+                </div>
+            )}
+
+            {/* Tab Navigation */}
+            <div className="hardening-tabs">
+                <button
+                    className={`tab-btn ${activeTab === 'results' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('results')}
+                >
+                    Audit Results
+                </button>
+                <button
+                    className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('history')}
+                >
+                    Hardening History
+                </button>
+            </div>
+
+            {/* Results Tab */}
+            {activeTab === 'results' && (
+                <div className="results-tab">
+                    {/* Session Selector */}
+                    <div className="session-selector">
+                        <label htmlFor="session-select">Select Audit Session:</label>
+                        <select
+                            id="session-select"
+                            value={selectedSession?.id || ''}
+                            onChange={handleSessionChange}
+                            disabled={loading.sessions}
+                        >
+                            <option value="">-- Select a session --</option>
+                            {auditSessions.map(session => (
+                                <option key={session.id} value={session.id}>
+                                    {session.target_ip} - {formatDate(session.created_at)} -
+                                    Compliance: {session.compliance_pct?.toFixed(1)}%
+                                </option>
+                            ))}
+                        </select>
+                        {loading.sessions && <span className="loading-spinner">Loading...</span>}
+                    </div>
+
+                    {/* Session Summary */}
+                    {selectedSession && (
+                        <div className="session-summary">
+                            <div className="summary-item">
+                                <span className="label">Device:</span>
+                                <span className="value">{selectedSession.target_ip}</span>
+                            </div>
+                            <div className="summary-item">
+                                <span className="label">Total Checks:</span>
+                                <span className="value">{selectedSession.total_checks}</span>
+                            </div>
+                            <div className="summary-item passed">
+                                <span className="label">Passed:</span>
+                                <span className="value">{selectedSession.passed_checks}</span>
+                            </div>
+                            <div className="summary-item failed">
+                                <span className="label">Failed:</span>
+                                <span className="value">{selectedSession.failed_checks}</span>
+                            </div>
+                            <div className="summary-item">
+                                <span className="label">Compliance:</span>
+                                <span className="value">{selectedSession.compliance_pct?.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Mode Buttons */}
+                    {selectedSession && failedChecks.length > 0 && (
+                        <div className="mode-buttons">
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleFixAll}
+                                disabled={selectedCheckIds.length === 0}
+                            >
+                                Fix Selected ({selectedCheckIds.length})
+                            </button>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={handleAutoHarden}
+                            >
+                                Automatic Hardening
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Results Table */}
+                    {selectedSession && (
+                        <AuditResultsTable onFixSingle={handleFixSingle} />
+                    )}
+
+                    {!selectedSession && (
+                        <div className="no-session-message">
+                            <p>Select an audit session to view results and perform hardening.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* History Tab */}
+            {activeTab === 'history' && <HardeningHistory />}
+
+            {/* Modals */}
+            {showFixSingleModal && selectedCheckForFix && (
+                <FixSingleModal
+                    check={selectedCheckForFix}
+                    onClose={() => {
+                        setShowFixSingleModal(false);
+                        setSelectedCheckForFix(null);
+                    }}
+                />
+            )}
+
+            {showFixAllModal && (
+                <FixAllModal
+                    onClose={() => setShowFixAllModal(false)}
+                />
+            )}
+
+            {showAutoHardenModal && (
+                <AutoHardenModal
+                    onClose={() => setShowAutoHardenModal(false)}
+                />
+            )}
+        </div>
+    );
+};
+
+export default Hardening;

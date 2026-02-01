@@ -605,7 +605,7 @@ async def find_matching_asset(
     query = db.query(Asset).filter(Asset.ip_address == ip_address)
     
     # Non-admin users only see their own assets
-    if current_user.role != 'admin':
+    if current_user.role != UserRole.ADMIN:
         query = query.filter(Asset.user_id == current_user.id)
     
     asset = query.first()
@@ -672,7 +672,7 @@ async def apply_discovery_to_asset(
         raise HTTPException(status_code=404, detail="Asset not found")
     
     # Check ownership
-    if current_user.role != 'admin' and asset.user_id != current_user.id:
+    if current_user.role != UserRole.ADMIN and asset.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your asset")
     
     # Get discovered host from scan
@@ -1000,6 +1000,18 @@ async def delete_port(
     """
     # Check permission
     check_discovery_permission(current_user, "delete", db)
+
+    # Add ownership verification
+    from app.models import Port
+    port = db.query(Port).filter(Port.id == port_id).first()
+    if not port:
+        raise HTTPException(status_code=404, detail="Port not found")
+
+    # Non-admin users can only delete ports from assets they own
+    if current_user.role != UserRole.ADMIN:
+        asset = db.query(Asset).filter(Asset.id == port.asset_id).first()
+        if not asset or asset.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this port")
 
     success = PortService.delete_port(db, port_id)
     if not success:

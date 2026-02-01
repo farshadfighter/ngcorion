@@ -13,10 +13,15 @@ from .config import settings
 # max_overflow: Additional connections allowed beyond pool_size
 # pool_pre_ping: Test connections before use (handles stale connections)
 # pool_recycle: Recycle connections after N seconds (prevents timeout issues)
+#
+# Configuration adjusted for concurrent audit operations:
+# - pool_size=20: Support up to 20 concurrent database connections
+# - max_overflow=30: Allow up to 30 additional temporary connections under load
+# - This allows ~50 concurrent operations before connection queueing
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=getattr(settings, 'DB_POOL_SIZE', 20),  # Increased from 5 for concurrent audits
+    max_overflow=getattr(settings, 'DB_MAX_OVERFLOW', 30),  # Increased from 10
     pool_pre_ping=True,
     pool_recycle=3600,  # Recycle connections after 1 hour
 )

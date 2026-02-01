@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models import User, log_audit_executed, log_audit_session_deleted
-from .service import AuditService
+from .cisco_service import AuditService
 
 
 # ========================= SCHEMAS =========================
@@ -38,7 +38,7 @@ class CiscoAuditRequest(BaseModel):
         }
 
 
-class AuditSessionResponse(BaseModel):
+class CiscoAuditSessionResponse(BaseModel):
     """Audit session response."""
 
     session_id: int
@@ -57,7 +57,7 @@ class AuditSessionResponse(BaseModel):
         from_attributes = True
 
 
-class AuditResultResponse(BaseModel):
+class CiscoAuditResultResponse(BaseModel):
     """Individual audit result."""
 
     id: int
@@ -78,7 +78,7 @@ class AuditResultResponse(BaseModel):
 router = APIRouter(prefix="/api/audit", tags=["Audit - Cisco CIS"])
 
 
-@router.post("/cisco/execute", response_model=AuditSessionResponse)
+@router.post("/cisco/execute", response_model=CiscoAuditSessionResponse)
 def execute_cisco_audit(
     request: CiscoAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
@@ -156,7 +156,7 @@ def execute_cisco_audit(
         )
 
 
-@router.get("/sessions", response_model=List[AuditSessionResponse])
+@router.get("/sessions", response_model=List[CiscoAuditSessionResponse])
 def list_audit_sessions(
     limit: int = 50,
     offset: int = 0,
@@ -205,7 +205,7 @@ def get_audit_sessions_count(
     return {"total": count}
 
 
-@router.get("/sessions/{session_id}", response_model=AuditSessionResponse)
+@router.get("/sessions/{session_id}", response_model=CiscoAuditSessionResponse)
 def get_audit_session(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
@@ -227,7 +227,7 @@ def get_audit_session(
     return summary
 
 
-@router.get("/sessions/{session_id}/results", response_model=List[AuditResultResponse])
+@router.get("/sessions/{session_id}/results", response_model=List[CiscoAuditResultResponse])
 def get_audit_results(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
@@ -269,7 +269,7 @@ def get_audit_results(
     ]
 
 
-@router.get("/asset/{asset_id}/history", response_model=List[AuditSessionResponse])
+@router.get("/asset/{asset_id}/history", response_model=List[CiscoAuditSessionResponse])
 def get_asset_audit_history(
     asset_id: int,
     limit: int = 10,
