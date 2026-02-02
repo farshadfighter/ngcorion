@@ -6,11 +6,11 @@ import { UserManagement } from "./UserManagement/UserManagement";
 import { AssetList } from "./AssetList/AssetList";
 import { AssetRequirement } from "./AssetRequirement/AssetRequirement";
 import AutoDiscovery from "./AutoDiscovery/AutoDiscovery";
-<<<<<<< HEAD
+
 import { AuditingList } from "./Auditing/AuditingList";
-=======
+
 import { Hardening } from "./Hardening/Hardening";
->>>>>>> 6d229e121da18fd32dcba0f9cd74367bfd1b0fd1
+
 
 export const Dashboard = () => {
     const { username,role } = useSelector((state) => state.auth);
