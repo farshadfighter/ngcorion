@@ -57,6 +57,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],  # Allow all response headers to be accessible
+    # hatman avaz shavad
 )
 
 # Authentication routes (no auth required)
