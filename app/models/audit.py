@@ -20,6 +20,7 @@ class DeviceType(str, enum.Enum):
     LINUX = "linux"
     WINDOWS = "windows"
     FORTINET = "fortinet"
+    APACHE = "apache"
 
 
 class CheckStatus(str, enum.Enum):

@@ -10,12 +10,17 @@ export const executeAudit = createAsyncThunk(
     "audit/execute",
     async ({ deviceType, formData }, { rejectWithValue }) => {
         try {
-            const endpoint = `/api/audit/${deviceType}/execute`;
+            // Handle FortiGate's different endpoint structure
+            const endpoint = deviceType === "fortinet"
+                ? "/api/fortinet/audit/execute"
+                : `/api/audit/${deviceType}/execute`;
+
             const res = await api.post(endpoint, {
                 asset_id: formData.asset_id,
                 ssh_username: formData.ssh_username,
                 ssh_password: formData.ssh_password,
                 ssh_secret: formData.ssh_secret || null,
+                vdom: formData.vdom || null,  // FortiGate specific
                 profile: "L1" // Always L1 for now
             });
             return res.data;

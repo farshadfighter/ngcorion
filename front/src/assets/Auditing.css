@@ -1046,6 +1046,46 @@
 }
 
 /* ============================================
+   DEVICE TYPE SELECTOR & COMING SOON
+   ============================================ */
+
+/* Device Type Selector */
+.device-type-selector {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.device-type-selector option:disabled {
+    color: #999;
+    font-style: italic;
+}
+
+/* Coming Soon Message */
+.coming-soon-message {
+    grid-column: 1 / -1;
+    padding: 20px;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.coming-soon-message p {
+    margin: 5px 0;
+    color: #856404;
+}
+
+.coming-soon-message p:first-child {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 
