@@ -43,6 +43,61 @@ class SchemaLoader:
     # This maps CIS check numbers to control IDs
     CHECK_TO_CONTROL_MAP: Dict[str, Dict[str, str]] = {}
 
+    # Static audit check number to control ID mapping
+    # Maps audit rule IDs (IOS-L1-xxx) to schema control IDs
+    AUDIT_CHECK_TO_CONTROL: Dict[str, Dict[str, str]] = {
+        "cisco": {
+            # Authentication & Authorization
+            "IOS-L1-020": "1.1.1",      # AAA new-model enabled
+            "IOS-L1-021": "1.1.2",      # AAA authentication for login defined
+            "IOS-L1-022": "1.1.6",      # AAA accounting commands 15 configured
+
+            # SSH & VTY Access
+            "IOS-L1-010": "1.2.2",      # Telnet disabled; SSH only on VTY
+            "IOS-L1-011": "2.1.1.4",    # SSH version 2 enforced -> ip ssh timeout
+            "IOS-L1-007": "2.1.1.4",    # SSH version 2 -> ip ssh timeout (closest match)
+            "IOS-L1-003": "1.2.5",      # VTY restricted by access-class
+            "IOS-L1-004": "1.1.4",      # Explicit login method on VTY
+            "IOS-L1-0112": "1.2.6",     # SSH timeout configured
+            "IOS-L1-0113": "1.2.7",     # SSH auth-retries configured
+            "IOS-L1-0120": "1.2.8",     # SSH/RSA key size >= 2048
+
+            # Passwords & Secrets
+            "IOS-L1-001": "1.4.1",      # Use 'enable secret' only
+            "IOS-L1-002": "1.3.1",      # Console & VTY exec-timeout
+
+            # Banners
+            "IOS-L1-005": "1.4.2",      # MOTD banner configured
+            "IOS-L1-0051": "1.4.3",     # Login banner configured
+
+            # Logging
+            "IOS-L1-024": "2.2.1",      # Remote syslog configured
+            "IOS-L1-0241": "2.2.2",     # Log timestamps configured
+            "IOS-L1-0242": "2.2.3",     # Logging buffered size configured
+            "IOS-L1-0243": "2.2.4",     # Logging trap level configured
+            "IOS-L1-0244": "2.2.5",     # Archive config logging enabled
+
+            # System Hardening
+            "IOS-L1-0010": "1.5.1",     # Hostname configured
+            "IOS-L1-0011": "1.5.2",     # IP domain-name configured
+            "IOS-L1-0012": "1.5.3",     # DNS lookup disabled in exec mode
+            "IOS-L1-0130": "1.3.3",     # Login block-for configured
+            "IOS-L1-0131": "1.3.4",     # Login on-failure/on-success logging
+
+            # Services & Protocols
+            # "IOS-L1-018": No matching control - CDP disable not in schema
+            # "IOS-L1-061": No matching control - Interface ACL not in schema
+
+            # SNMP
+            "IOS-L1-030A": "2.3.1",     # SNMPv3 configured
+            "IOS-L1-030B": "2.3.2",     # SNMP community with ACL
+
+            # Network Hardening
+            "IOS-INFO-043": "3.1.1",    # Directed broadcast disabled
+            "IOS-INFO-050": "3.1.2",    # Source routing disabled
+        }
+    }
+
     _schemas: Dict[str, ControlSchema] = {}
     _base_path: Path = Path(__file__).parent
 
@@ -128,7 +183,7 @@ class SchemaLoader:
 
         Args:
             device_type: Device type
-            check_numbers: List of CIS check numbers from audit results
+            check_numbers: List of CIS check numbers from audit results (e.g., IOS-L1-001)
 
         Returns:
             List of matching ControlDefinitions
@@ -137,15 +192,22 @@ class SchemaLoader:
         if not schema:
             return []
 
-        check_map = cls.CHECK_TO_CONTROL_MAP.get(device_type, {})
+        # Get static audit check mapping
+        audit_check_map = cls.AUDIT_CHECK_TO_CONTROL.get(device_type, {})
+        # Get dynamic mapping from schema (check_number fields)
+        schema_check_map = cls.CHECK_TO_CONTROL_MAP.get(device_type, {})
+
         control_ids = set()
 
         for check_num in check_numbers:
-            # Try direct match first
-            if check_num in check_map:
-                control_ids.add(check_map[check_num])
+            # Try static audit check mapping first (IOS-L1-xxx -> 1.x.x)
+            if check_num in audit_check_map:
+                control_ids.add(audit_check_map[check_num])
+            # Try schema-defined check_number mapping
+            elif check_num in schema_check_map:
+                control_ids.add(schema_check_map[check_num])
             else:
-                # Try to find control by ID match
+                # Try to find control by ID match (if check_num is already a control_id)
                 for control in schema.controls:
                     if control.control_id == check_num:
                         control_ids.add(control.control_id)

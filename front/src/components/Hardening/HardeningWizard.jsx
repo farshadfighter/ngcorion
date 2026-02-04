@@ -73,8 +73,8 @@ const HardeningWizard = ({
     const [deviceType, setDeviceType] = useState('cisco');
     const [deviceIp, setDeviceIp] = useState('');
     const [sshCredentials, setSshCredentials] = useState({
-        username: '',
-        password: '',
+        username: 'admin',  // Default from CLAUDE.md
+        password: '123456', // Default from CLAUDE.md
         secret: '',
     });
     const [executionResults, setExecutionResults] = useState(null);
