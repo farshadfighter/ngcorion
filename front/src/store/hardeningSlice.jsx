@@ -43,6 +43,17 @@ const initialState = {
     // Hardening history
     hardeningHistory: [],
 
+    // ============================================
+    // Schema-driven Wizard State (NEW)
+    // ============================================
+    formSchema: null,           // Control definitions from backend
+    sharedFields: [],           // Shared field definitions
+    controlStates: {},          // { control_id: { state: "APPLY", inputs: {...} } }
+    sharedFieldValues: {},      // Values for shared fields
+    validationErrors: {},       // { control_id: { field_id: message } }
+    hardeningMode: null,        // 'post_audit' | 'full'
+    wizardExecutionResult: null, // Result from schema-driven execution
+
     // Loading states
     loading: {
         sessions: false,
@@ -54,6 +65,10 @@ const initialState = {
         autoPreview: false,
         autoExecute: false,
         history: false,
+        // Schema wizard loading states
+        form: false,
+        validate: false,
+        wizardExecute: false,
     },
 
     // Error/success messages
@@ -250,6 +265,84 @@ export const fetchActionDetails = createAsyncThunk(
 );
 
 // ============================================
+// Schema-driven Wizard Thunks (NEW)
+// ============================================
+
+/**
+ * Fetch hardening form schema for a device type
+ */
+export const fetchHardeningForm = createAsyncThunk(
+    'hardening/fetchHardeningForm',
+    async ({ deviceType, mode, sessionId = null, checkNumbers = null }, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/api/hardening/schema/form', {
+                device_type: deviceType,
+                mode,
+                session_id: sessionId,
+                check_numbers: checkNumbers,
+            });
+            return { ...response.data, mode };
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to fetch hardening form');
+        }
+    }
+);
+
+/**
+ * Validate hardening inputs against schema
+ */
+export const validateHardeningInputs = createAsyncThunk(
+    'hardening/validateHardeningInputs',
+    async ({ deviceType, controlStates, sharedFields }, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/api/hardening/schema/validate', {
+                device_type: deviceType,
+                control_states: controlStates,
+                shared_fields: sharedFields,
+            });
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.detail || 'Validation failed');
+        }
+    }
+);
+
+/**
+ * Execute hardening controls via schema-driven API
+ */
+export const executeHardeningControls = createAsyncThunk(
+    'hardening/executeHardeningControls',
+    async ({
+        deviceType,
+        deviceIp,
+        sessionId,
+        controlStates,
+        sharedFields,
+        sshCredentials,
+        skipBackup = false
+    }, { rejectWithValue }) => {
+        try {
+            const response = await api.post('/api/hardening/schema/execute', {
+                device_type: deviceType,
+                device_ip: deviceIp,
+                session_id: sessionId,
+                control_states: controlStates,
+                shared_fields: sharedFields,
+                ssh_credentials: {
+                    username: sshCredentials.username,
+                    password: sshCredentials.password,
+                    secret: sshCredentials.secret || null,
+                },
+                skip_backup: skipBackup,
+            });
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.detail || 'Execution failed');
+        }
+    }
+);
+
+// ============================================
 // Slice
 // ============================================
 const hardeningSlice = createSlice({
@@ -343,6 +436,57 @@ const hardeningSlice = createSlice({
 
         setSuccessMessage: (state, action) => {
             state.successMessage = action.payload;
+        },
+
+        // ============================================
+        // Schema-driven Wizard Reducers (NEW)
+        // ============================================
+
+        // Set control state (SKIP/AUDIT/APPLY)
+        setControlState: (state, action) => {
+            const { controlId, controlState } = action.payload;
+            if (!state.controlStates[controlId]) {
+                state.controlStates[controlId] = { state: 'AUDIT', inputs: {} };
+            }
+            state.controlStates[controlId].state = controlState;
+            // Clear validation errors for this control when state changes
+            delete state.validationErrors[controlId];
+        },
+
+        // Set control input value
+        setControlInput: (state, action) => {
+            const { controlId, inputName, value } = action.payload;
+            if (!state.controlStates[controlId]) {
+                state.controlStates[controlId] = { state: 'AUDIT', inputs: {} };
+            }
+            state.controlStates[controlId].inputs[inputName] = value;
+        },
+
+        // Set shared field value
+        setSharedFieldValue: (state, action) => {
+            const { fieldName, value } = action.payload;
+            state.sharedFieldValues[fieldName] = value;
+        },
+
+        // Clear all wizard state
+        clearWizardState: (state) => {
+            state.formSchema = null;
+            state.sharedFields = [];
+            state.controlStates = {};
+            state.sharedFieldValues = {};
+            state.validationErrors = {};
+            state.hardeningMode = null;
+            state.wizardExecutionResult = null;
+        },
+
+        // Clear validation errors
+        clearValidationErrors: (state) => {
+            state.validationErrors = {};
+        },
+
+        // Set validation errors
+        setValidationErrors: (state, action) => {
+            state.validationErrors = action.payload;
         },
     },
 
@@ -479,6 +623,91 @@ const hardeningSlice = createSlice({
             .addCase(fetchHardeningHistory.rejected, (state, action) => {
                 state.loading.history = false;
                 state.error = action.payload;
+            })
+
+            // ============================================
+            // Schema-driven Wizard Extra Reducers (NEW)
+            // ============================================
+
+            // Fetch Hardening Form
+            .addCase(fetchHardeningForm.pending, (state) => {
+                state.loading.form = true;
+                state.error = null;
+            })
+            .addCase(fetchHardeningForm.fulfilled, (state, action) => {
+                state.loading.form = false;
+                state.formSchema = action.payload;
+                state.sharedFields = action.payload.shared_fields || [];
+                state.hardeningMode = action.payload.mode;
+
+                // Initialize control states with default state
+                const defaultState = action.payload.defaults?.state || 'AUDIT';
+                state.controlStates = {};
+                action.payload.controls.forEach(control => {
+                    state.controlStates[control.control_id] = {
+                        state: defaultState,
+                        inputs: {},
+                    };
+                    // Set default values for inputs
+                    control.inputs.forEach(input => {
+                        if (input.default !== undefined && input.default !== null) {
+                            state.controlStates[control.control_id].inputs[input.name] = input.default;
+                        }
+                    });
+                });
+
+                // Initialize shared field values with defaults
+                state.sharedFieldValues = {};
+                (action.payload.shared_fields || []).forEach(field => {
+                    if (field.default !== undefined && field.default !== null) {
+                        state.sharedFieldValues[field.name] = field.default;
+                    }
+                });
+            })
+            .addCase(fetchHardeningForm.rejected, (state, action) => {
+                state.loading.form = false;
+                state.error = action.payload;
+            })
+
+            // Validate Hardening Inputs
+            .addCase(validateHardeningInputs.pending, (state) => {
+                state.loading.validate = true;
+                state.validationErrors = {};
+            })
+            .addCase(validateHardeningInputs.fulfilled, (state, action) => {
+                state.loading.validate = false;
+                if (!action.payload.valid) {
+                    // Convert errors to field-keyed format for each control
+                    const errors = {};
+                    Object.entries(action.payload.errors || {}).forEach(([controlId, controlErrors]) => {
+                        errors[controlId] = {};
+                        controlErrors.forEach(err => {
+                            errors[controlId][err.field] = err.message;
+                        });
+                    });
+                    state.validationErrors = errors;
+                } else {
+                    state.validationErrors = {};
+                }
+            })
+            .addCase(validateHardeningInputs.rejected, (state, action) => {
+                state.loading.validate = false;
+                state.error = action.payload;
+            })
+
+            // Execute Hardening Controls
+            .addCase(executeHardeningControls.pending, (state) => {
+                state.loading.wizardExecute = true;
+                state.error = null;
+            })
+            .addCase(executeHardeningControls.fulfilled, (state, action) => {
+                state.loading.wizardExecute = false;
+                state.wizardExecutionResult = action.payload;
+                state.successMessage = `Hardening complete: ${action.payload.applied_count} applied, ${action.payload.skipped_count} skipped.`;
+            })
+            .addCase(executeHardeningControls.rejected, (state, action) => {
+                state.loading.wizardExecute = false;
+                state.error = action.payload;
             });
     },
 });
@@ -503,6 +732,13 @@ export const {
     clearError,
     clearSuccessMessage,
     setSuccessMessage,
+    // Schema-driven wizard actions
+    setControlState,
+    setControlInput,
+    setSharedFieldValue,
+    clearWizardState,
+    clearValidationErrors,
+    setValidationErrors,
 } = hardeningSlice.actions;
 
 export default hardeningSlice.reducer;
@@ -532,3 +768,18 @@ export const selectFailedChecksCount = (state) => state.hardening.failedChecks.l
 export const selectAllFailedSelected = (state) =>
     state.hardening.failedChecks.length > 0 &&
     state.hardening.selectedCheckIds.length === state.hardening.failedChecks.length;
+
+// Schema-driven wizard selectors
+export const selectFormSchema = (state) => state.hardening.formSchema;
+export const selectSharedFields = (state) => state.hardening.sharedFields;
+export const selectControlStates = (state) => state.hardening.controlStates;
+export const selectSharedFieldValues = (state) => state.hardening.sharedFieldValues;
+export const selectValidationErrors = (state) => state.hardening.validationErrors;
+export const selectHardeningMode = (state) => state.hardening.hardeningMode;
+export const selectWizardExecutionResult = (state) => state.hardening.wizardExecutionResult;
+export const selectWizardLoading = (state) => ({
+    form: state.hardening.loading.form,
+    validate: state.hardening.loading.validate,
+    execute: state.hardening.loading.wizardExecute,
+});
+export const selectWizardError = (state) => state.hardening.error;

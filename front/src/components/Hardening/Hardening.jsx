@@ -29,6 +29,7 @@ import { FixSingleModal } from './FixSingleModal';
 import { FixAllModal } from './FixAllModal';
 import { AutoHardenModal } from './AutoHardenModal';
 import { HardeningHistory } from './HardeningHistory';
+import HardeningWizard from './HardeningWizard';
 import '../../assets/Hardening.css';
 
 export const Hardening = () => {
@@ -44,11 +45,13 @@ export const Hardening = () => {
     const successMessage = useSelector(selectSuccessMessage);
 
     // Local state
-    const [activeTab, setActiveTab] = useState('results'); // 'results' | 'history'
+    const [activeTab, setActiveTab] = useState('results'); // 'results' | 'history' | 'wizard'
     const [showFixSingleModal, setShowFixSingleModal] = useState(false);
     const [showFixAllModal, setShowFixAllModal] = useState(false);
     const [showAutoHardenModal, setShowAutoHardenModal] = useState(false);
     const [selectedCheckForFix, setSelectedCheckForFix] = useState(null);
+    const [showWizard, setShowWizard] = useState(false);
+    const [wizardMode, setWizardMode] = useState(null); // 'post_audit' | 'full'
 
     // Load audit sessions on mount
     useEffect(() => {
@@ -98,6 +101,39 @@ export const Hardening = () => {
         setShowAutoHardenModal(true);
     };
 
+    // Handle Full Hardening wizard
+    const handleFullHardening = () => {
+        setWizardMode('full');
+        setShowWizard(true);
+    };
+
+    // Handle Post-Audit wizard
+    const handlePostAuditWizard = () => {
+        if (!selectedSession) {
+            alert('Please select an audit session first.');
+            return;
+        }
+        setWizardMode('post_audit');
+        setShowWizard(true);
+    };
+
+    // Handle wizard close
+    const handleWizardClose = (action) => {
+        if (action === 'select_session') {
+            // User needs to select a session for post-audit mode
+            setShowWizard(false);
+            setWizardMode(null);
+            return;
+        }
+        setShowWizard(false);
+        setWizardMode(null);
+        // Refresh sessions after wizard completes
+        dispatch(fetchAuditSessions());
+        if (selectedSession) {
+            dispatch(fetchSessionResults(selectedSession.id));
+        }
+    };
+
     // Format date for display
     const formatDate = (dateStr) => {
         if (!dateStr) return 'N/A';
@@ -133,6 +169,13 @@ export const Hardening = () => {
                     onClick={() => setActiveTab('history')}
                 >
                     Hardening History
+                </button>
+                <div className="tab-spacer"></div>
+                <button
+                    className="btn btn-primary full-hardening-btn"
+                    onClick={handleFullHardening}
+                >
+                    Full Hardening Wizard
                 </button>
             </div>
 
@@ -201,6 +244,12 @@ export const Hardening = () => {
                             >
                                 Automatic Hardening
                             </button>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={handlePostAuditWizard}
+                            >
+                                Schema Wizard (Post-Audit)
+                            </button>
                         </div>
                     )}
 
@@ -241,6 +290,20 @@ export const Hardening = () => {
                 <AutoHardenModal
                     onClose={() => setShowAutoHardenModal(false)}
                 />
+            )}
+
+            {/* Schema-driven Hardening Wizard */}
+            {showWizard && (
+                <div className="modal-overlay">
+                    <div className="modal wizard-modal">
+                        <HardeningWizard
+                            onClose={handleWizardClose}
+                            initialMode={wizardMode}
+                            sessionId={wizardMode === 'post_audit' ? selectedSession?.id : null}
+                            checkNumbers={wizardMode === 'post_audit' ? failedChecks.map(c => c.check_number) : null}
+                        />
+                    </div>
+                </div>
             )}
         </div>
     );
