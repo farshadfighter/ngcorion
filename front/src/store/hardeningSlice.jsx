@@ -444,11 +444,11 @@ const hardeningSlice = createSlice({
 
         // Set control state (SKIP/AUDIT/APPLY)
         setControlState: (state, action) => {
-            const { controlId, controlState } = action.payload;
+            const { controlId, state: newState } = action.payload;
             if (!state.controlStates[controlId]) {
                 state.controlStates[controlId] = { state: 'AUDIT', inputs: {} };
             }
-            state.controlStates[controlId].state = controlState;
+            state.controlStates[controlId].state = newState;
             // Clear validation errors for this control when state changes
             delete state.validationErrors[controlId];
         },
