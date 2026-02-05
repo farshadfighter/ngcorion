@@ -429,6 +429,7 @@ class NmapScanner:
                         continue
 
                     # Skip Ident/Auth port - filtered from discovery results
+                    # Just edit from backend
                     if port_id == 113:
                         continue
 
