@@ -428,6 +428,10 @@ class NmapScanner:
                     except (ValueError, TypeError):
                         continue
 
+                    # Skip Ident/Auth port - filtered from discovery results
+                    if port_id == 113:
+                        continue
+
                     protocol = port.get("protocol", "tcp")
 
                     state_elem = port.find("state")
