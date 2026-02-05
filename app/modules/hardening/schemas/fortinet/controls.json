@@ -1,0 +1,424 @@
+{
+  "schema_version": "1.0",
+  "device_type": "fortinet",
+  "profile": "CIS_FortiGate_ControlBased_UI",
+  "ui_mode": "control_by_control",
+  "defaults": {
+    "state": "AUDIT",
+    "show_preview_config": true,
+    "auto_fill_from_previous_inputs": true
+  },
+  "shared_fields": {
+    "vdom": {
+      "type": "string",
+      "label": "VDOM Name",
+      "required": false,
+      "hint": "Leave empty for global context, or specify VDOM name"
+    },
+    "wan_interface": {
+      "type": "string",
+      "label": "WAN Interface",
+      "required": false,
+      "hint": "e.g., wan1, port1"
+    },
+    "mgmt_interface": {
+      "type": "string",
+      "label": "Management Interface",
+      "required": false,
+      "hint": "e.g., port1, mgmt"
+    }
+  },
+  "controls": [
+    {
+      "control_id": "FG-BL-001",
+      "title": "Enable Admin HTTPS",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-001"
+    },
+    {
+      "control_id": "FG-BL-002",
+      "title": "Disable Admin HTTP",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-002"
+    },
+    {
+      "control_id": "FG-BL-003",
+      "title": "Disable Admin Telnet",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-003"
+    },
+    {
+      "control_id": "FG-BL-004",
+      "title": "Set Admin Idle Timeout",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "admin_timeout",
+          "type": "int",
+          "required": false,
+          "label": "Timeout (minutes)",
+          "default": 10,
+          "min": 1,
+          "max": 480,
+          "hint": "Recommended: 10 minutes or less"
+        }
+      ],
+      "check_number": "FG-BL-004"
+    },
+    {
+      "control_id": "FG-BL-005",
+      "title": "Disable TLS 1.0/1.1 for Admin HTTPS",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-005"
+    },
+    {
+      "control_id": "FG-BL-006",
+      "title": "Disable Weak SSH Ciphers",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-006"
+    },
+    {
+      "control_id": "FG-BL-007",
+      "title": "Change Admin HTTPS Port",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "admin_https_port",
+          "type": "int",
+          "required": false,
+          "label": "HTTPS Port",
+          "default": 10443,
+          "min": 1,
+          "max": 65535,
+          "hint": "Non-default port recommended (not 443)"
+        }
+      ],
+      "check_number": "FG-BL-007"
+    },
+    {
+      "control_id": "FG-BL-008",
+      "title": "Enable Admin SSH",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-008"
+    },
+    {
+      "control_id": "FG-BL-020",
+      "title": "Configure Admin Trusthost",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "admin_trusthost",
+          "type": "string",
+          "required": true,
+          "label": "Management Subnet (CIDR)",
+          "hint": "e.g., 192.168.1.0/24"
+        }
+      ],
+      "check_number": "FG-BL-020"
+    },
+    {
+      "control_id": "FG-BL-030",
+      "title": "Enable Password Policy",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-030"
+    },
+    {
+      "control_id": "FG-BL-031",
+      "title": "Set Minimum Password Length",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "password_min_length",
+          "type": "int",
+          "required": false,
+          "label": "Minimum Length",
+          "default": 12,
+          "min": 8,
+          "max": 128
+        }
+      ],
+      "check_number": "FG-BL-031"
+    },
+    {
+      "control_id": "FG-BL-032",
+      "title": "Require Uppercase in Password",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-032"
+    },
+    {
+      "control_id": "FG-BL-033",
+      "title": "Require Lowercase in Password",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-033"
+    },
+    {
+      "control_id": "FG-BL-034",
+      "title": "Require Number in Password",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-034"
+    },
+    {
+      "control_id": "FG-BL-035",
+      "title": "Require Special Character in Password",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-035"
+    },
+    {
+      "control_id": "FG-BL-036",
+      "title": "Set Minimum Changed Characters for Password",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "password_min_changed_chars",
+          "type": "int",
+          "required": false,
+          "label": "Minimum Changed Characters",
+          "default": 4,
+          "min": 0,
+          "max": 128
+        }
+      ],
+      "check_number": "FG-BL-036"
+    },
+    {
+      "control_id": "FG-BL-040",
+      "title": "Enable NTP",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-040"
+    },
+    {
+      "control_id": "FG-BL-041",
+      "title": "Configure NTP Server",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "ntp_server",
+          "type": "string",
+          "required": true,
+          "label": "NTP Server IP/Hostname",
+          "hint": "e.g., 192.168.1.10 or time.nist.gov"
+        }
+      ],
+      "check_number": "FG-BL-041"
+    },
+    {
+      "control_id": "FG-BL-042",
+      "title": "Set NTP Source Interface",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "ntp_interface",
+          "type": "string",
+          "required": false,
+          "label": "NTP Source Interface",
+          "default": "port1",
+          "hint": "e.g., port1, mgmt"
+        }
+      ],
+      "check_number": "FG-BL-042"
+    },
+    {
+      "control_id": "FG-BL-043",
+      "title": "Configure Primary DNS Server",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "dns_primary",
+          "type": "string",
+          "required": true,
+          "label": "Primary DNS Server IP",
+          "hint": "e.g., 8.8.8.8"
+        }
+      ],
+      "check_number": "FG-BL-043"
+    },
+    {
+      "control_id": "FG-BL-044",
+      "title": "Configure Secondary DNS Server",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "dns_secondary",
+          "type": "string",
+          "required": true,
+          "label": "Secondary DNS Server IP",
+          "hint": "e.g., 8.8.4.4"
+        }
+      ],
+      "check_number": "FG-BL-044"
+    },
+    {
+      "control_id": "FG-BL-052",
+      "title": "Set SNMP Contact and Location",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "snmp_contact",
+          "type": "string",
+          "required": false,
+          "label": "SNMP Contact",
+          "default": "admin@company.com"
+        },
+        {
+          "name": "snmp_location",
+          "type": "string",
+          "required": false,
+          "label": "SNMP Location",
+          "default": "Data Center"
+        }
+      ],
+      "check_number": "FG-BL-052"
+    },
+    {
+      "control_id": "FG-BL-060",
+      "title": "Enable Remote Syslog",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "syslog_server",
+          "type": "string",
+          "required": true,
+          "label": "Syslog Server IP",
+          "hint": "e.g., 192.168.1.100"
+        }
+      ],
+      "check_number": "FG-BL-060"
+    },
+    {
+      "control_id": "FG-BL-062",
+      "title": "Set Syslog Facility",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "syslog_facility",
+          "type": "enum",
+          "required": false,
+          "label": "Syslog Facility",
+          "default": "local7",
+          "options": ["kernel", "user", "mail", "daemon", "auth", "syslog", "lpr", "news", "uucp", "cron", "authpriv", "ftp", "ntp", "audit", "alert", "clock", "local0", "local1", "local2", "local3", "local4", "local5", "local6", "local7"]
+        }
+      ],
+      "check_number": "FG-BL-062"
+    },
+    {
+      "control_id": "FG-BL-063",
+      "title": "Enable Local Disk Logging",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-063"
+    },
+    {
+      "control_id": "FG-BL-064",
+      "title": "Enable Invalid Packet Logging",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-064"
+    },
+    {
+      "control_id": "FG-BL-065",
+      "title": "Enable User Event Logging",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-065"
+    },
+    {
+      "control_id": "FG-BL-090",
+      "title": "Enable Strong Encryption",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-090"
+    },
+    {
+      "control_id": "FG-BL-091",
+      "title": "Disable FGFM Auto-Update",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-091"
+    },
+    {
+      "control_id": "FG-BL-092",
+      "title": "Configure Pre-Login Banner",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "banner_text",
+          "type": "text_multiline",
+          "required": true,
+          "label": "Banner Text",
+          "hint": "Warning message displayed before login"
+        }
+      ],
+      "check_number": "FG-BL-092"
+    },
+    {
+      "control_id": "FG-BL-093",
+      "title": "Enable GUI Display Hostname",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-BL-093"
+    },
+    {
+      "control_id": "FG-HA-002",
+      "title": "Disable HA Override",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-HA-002"
+    },
+    {
+      "control_id": "FG-HA-003",
+      "title": "Set HA Heartbeat Password",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "ha_password",
+          "type": "secret",
+          "required": true,
+          "label": "HA Heartbeat Password",
+          "hint": "Must match on all HA cluster members"
+        }
+      ],
+      "check_number": "FG-HA-003"
+    },
+    {
+      "control_id": "FG-HA-004",
+      "title": "Set HA Mode (Active-Passive)",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-HA-004"
+    },
+    {
+      "control_id": "FG-VPN-SSL-001",
+      "title": "Disable TLS 1.0/1.1 for SSL-VPN",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [],
+      "check_number": "FG-VPN-SSL-001"
+    },
+    {
+      "control_id": "FG-FAZ-001",
+      "title": "Enable FortiAnalyzer Logging",
+      "state_options": ["SKIP", "AUDIT", "APPLY"],
+      "inputs": [
+        {
+          "name": "faz_server",
+          "type": "string",
+          "required": true,
+          "label": "FortiAnalyzer Server IP",
+          "hint": "e.g., 192.168.1.200"
+        }
+      ],
+      "check_number": "FG-FAZ-001"
+    }
+  ]
+}
