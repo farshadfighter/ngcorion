@@ -811,6 +811,17 @@ export const selectLoading = (state) => state.hardening.loading;
 export const selectError = (state) => state.hardening.error;
 export const selectSuccessMessage = (state) => state.hardening.successMessage;
 
+// Device type selector - extracts device type from selected session
+export const selectDeviceType = (state) => {
+    const session = state.hardening.selectedSession;
+    if (!session) return 'cisco';
+    // Check for device_type field first, then fallback based on session properties
+    if (session.device_type) return session.device_type;
+    // Infer from session type or default to cisco
+    if (session.session_type === 'fortinet' || session.target_type === 'fortinet') return 'fortinet';
+    return 'cisco';
+};
+
 // Computed selectors
 export const selectSelectedChecksCount = (state) => state.hardening.selectedCheckIds.length;
 export const selectFailedChecksCount = (state) => state.hardening.failedChecks.length;
