@@ -1,7 +1,7 @@
 """
 Hardening Module
 
-Automated remediation for Cisco CIS audit failures.
+Automated remediation for Cisco and FortiGate CIS audit failures.
 
 Provides:
 - Command preview functionality
@@ -13,5 +13,6 @@ Provides:
 
 from . import cisco_router as router
 from . import hardening_router as schema_router
+from . import fortinet_router
 
-__all__ = ["router", "schema_router"]
+__all__ = ["router", "schema_router", "fortinet_router"]

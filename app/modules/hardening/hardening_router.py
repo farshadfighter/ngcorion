@@ -664,7 +664,7 @@ async def get_supported_devices(
     return {
         "devices": [
             {"type": "cisco", "name": "Cisco IOS/IOS-XE", "status": "available"},
-            {"type": "fortinet", "name": "FortiGate", "status": "coming_soon"},
+            {"type": "fortinet", "name": "FortiGate", "status": "available"},
             {"type": "linux", "name": "Linux", "status": "coming_soon"},
             {"type": "windows", "name": "Windows Server", "status": "coming_soon"},
             {"type": "apache", "name": "Apache HTTP Server", "status": "coming_soon"},
