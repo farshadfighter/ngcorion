@@ -221,6 +221,12 @@ export const Hardening = () => {
                     {selectedSession && (
                         <div className="session-summary">
                             <div className="summary-item">
+                                <span className="label">Device Type:</span>
+                                <span className={`value device-badge device-${deviceType}`}>
+                                    {deviceTypeLabels[deviceType] || deviceType}
+                                </span>
+                            </div>
+                            <div className="summary-item">
                                 <span className="label">Device:</span>
                                 <span className="value">{selectedSession.target_ip}</span>
                             </div>
