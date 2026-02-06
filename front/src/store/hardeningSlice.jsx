@@ -1,5 +1,10 @@
 /**
- * Hardening Slice - Redux state management for Cisco hardening operations
+ * Hardening Slice - Redux state management for multi-device hardening operations
+ *
+ * Supports multiple device types:
+ * - Cisco IOS routers/switches
+ * - FortiGate firewalls
+ * - (Future) Linux, Windows, Apache
  *
  * Supports three hardening modes:
  * 1. Fix Single - Fix individual failed checks
@@ -9,6 +14,27 @@
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from "../config/api.js";
+
+// ============================================
+// Device Type API Path Helper
+// ============================================
+
+/**
+ * Get the API base path for a device type
+ * @param {string} deviceType - Device type (cisco, fortinet, linux, windows, apache)
+ * @param {string} endpoint - API endpoint (e.g., '/preview', '/execute')
+ * @returns {string} Full API path
+ */
+const getHardeningApiPath = (deviceType, endpoint) => {
+    const prefixes = {
+        cisco: '/api/hardening',
+        fortinet: '/api/hardening/fortinet',
+        linux: '/api/hardening/linux',      // Future
+        windows: '/api/hardening/windows',  // Future
+        apache: '/api/hardening/apache',    // Future
+    };
+    return `${prefixes[deviceType] || prefixes.cisco}${endpoint}`;
+};
 
 // ============================================
 // Initial State
@@ -115,9 +141,10 @@ export const fetchSessionResults = createAsyncThunk(
  */
 export const fetchSessionParameters = createAsyncThunk(
     'hardening/fetchSessionParameters',
-    async ({ sessionId, checkIds = null }, { rejectWithValue }) => {
+    async ({ sessionId, checkIds = null, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            let url = `/api/hardening/session/${sessionId}/parameters`;
+            const basePath = getHardeningApiPath(deviceType, `/session/${sessionId}/parameters`);
+            let url = basePath;
             if (checkIds && checkIds.length > 0) {
                 url += `?check_ids=${checkIds.join(',')}`;
             }
@@ -134,9 +161,10 @@ export const fetchSessionParameters = createAsyncThunk(
  */
 export const previewSingleCheck = createAsyncThunk(
     'hardening/previewSingleCheck',
-    async ({ auditResultId, parameters = {} }, { rejectWithValue }) => {
+    async ({ auditResultId, parameters = {}, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const response = await api.post('/api/hardening/preview', {
+            const url = getHardeningApiPath(deviceType, '/preview');
+            const response = await api.post(url, {
                 audit_result_id: auditResultId,
                 parameters
             });
@@ -152,16 +180,22 @@ export const previewSingleCheck = createAsyncThunk(
  */
 export const executeSingleCheck = createAsyncThunk(
     'hardening/executeSingleCheck',
-    async ({ actionId, sshCredentials, parameters = {} }, { rejectWithValue }) => {
+    async ({ actionId, sshCredentials, parameters = {}, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
         try {
-            const response = await api.post('/api/hardening/execute', {
+            const url = getHardeningApiPath(deviceType, '/execute');
+            const payload = {
                 action_id: actionId,
                 ssh_username: sshCredentials.username,
                 ssh_password: sshCredentials.password,
                 ssh_secret: sshCredentials.secret || null,
                 parameters,
                 skip_backup: false
-            });
+            };
+            // Add VDOM for FortiGate devices
+            if (deviceType === 'fortinet' && vdom) {
+                payload.vdom = vdom;
+            }
+            const response = await api.post(url, payload);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Execution failed');
@@ -174,9 +208,10 @@ export const executeSingleCheck = createAsyncThunk(
  */
 export const fetchAutoHardenPreview = createAsyncThunk(
     'hardening/fetchAutoHardenPreview',
-    async (sessionId, { rejectWithValue }) => {
+    async ({ sessionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const response = await api.get(`/api/hardening/session/${sessionId}/auto-preview`);
+            const url = getHardeningApiPath(deviceType, `/session/${sessionId}/auto-preview`);
+            const response = await api.get(url);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch auto-harden preview');
@@ -189,16 +224,22 @@ export const fetchAutoHardenPreview = createAsyncThunk(
  */
 export const executeAutoHarden = createAsyncThunk(
     'hardening/executeAutoHarden',
-    async ({ sessionId, sshCredentials, skipBackup = false }, { rejectWithValue }) => {
+    async ({ sessionId, sshCredentials, skipBackup = false, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
         try {
-            const response = await api.post('/api/hardening/auto-harden-defaults', {
+            const url = getHardeningApiPath(deviceType, '/auto-harden-defaults');
+            const payload = {
                 audit_session_id: sessionId,
                 ssh_username: sshCredentials.username,
                 ssh_password: sshCredentials.password,
                 ssh_secret: sshCredentials.secret || null,
                 confirmed: true,
                 skip_backup: skipBackup
-            });
+            };
+            // Add VDOM for FortiGate devices
+            if (deviceType === 'fortinet' && vdom) {
+                payload.vdom = vdom;
+            }
+            const response = await api.post(url, payload);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Auto-harden failed');
@@ -211,9 +252,10 @@ export const executeAutoHarden = createAsyncThunk(
  */
 export const executeBatchHarden = createAsyncThunk(
     'hardening/executeBatchHarden',
-    async ({ sessionId, checkIds, parameters, sshCredentials, skipBackup = false }, { rejectWithValue }) => {
+    async ({ sessionId, checkIds, parameters, sshCredentials, skipBackup = false, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
         try {
-            const response = await api.post('/api/hardening/batch-execute', {
+            const url = getHardeningApiPath(deviceType, '/batch-execute');
+            const payload = {
                 audit_session_id: sessionId,
                 check_ids: checkIds,
                 parameters,
@@ -221,7 +263,12 @@ export const executeBatchHarden = createAsyncThunk(
                 ssh_password: sshCredentials.password,
                 ssh_secret: sshCredentials.secret || null,
                 skip_backup: skipBackup
-            });
+            };
+            // Add VDOM for FortiGate devices
+            if (deviceType === 'fortinet' && vdom) {
+                payload.vdom = vdom;
+            }
+            const response = await api.post(url, payload);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Batch execution failed');
@@ -234,14 +281,15 @@ export const executeBatchHarden = createAsyncThunk(
  */
 export const fetchHardeningHistory = createAsyncThunk(
     'hardening/fetchHistory',
-    async ({ assetId = null, limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
+    async ({ assetId = null, limit = 50, offset = 0, deviceType = 'cisco' } = {}, { rejectWithValue }) => {
         try {
             const params = new URLSearchParams();
             if (assetId) params.append('asset_id', assetId);
             params.append('limit', limit);
             params.append('offset', offset);
 
-            const response = await api.get(`/api/hardening/actions?${params}`);
+            const url = getHardeningApiPath(deviceType, `/actions?${params}`);
+            const response = await api.get(url);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch hardening history');
@@ -254,9 +302,10 @@ export const fetchHardeningHistory = createAsyncThunk(
  */
 export const fetchActionDetails = createAsyncThunk(
     'hardening/fetchActionDetails',
-    async (actionId, { rejectWithValue }) => {
+    async ({ actionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const response = await api.get(`/api/hardening/actions/${actionId}`);
+            const url = getHardeningApiPath(deviceType, `/actions/${actionId}`);
+            const response = await api.get(url);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch action details');
