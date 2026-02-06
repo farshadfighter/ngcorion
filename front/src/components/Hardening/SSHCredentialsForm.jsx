@@ -15,6 +15,10 @@ export const SSHCredentialsForm = ({
     // Controlled mode props
     credentials: externalCredentials,
     onChange: externalOnChange,
+    // FortiGate VDOM support
+    deviceType = 'cisco',
+    vdom = '',
+    onVdomChange,
 }) => {
     // Internal state for uncontrolled mode
     const [internalCredentials, setInternalCredentials] = useState({
@@ -129,6 +133,25 @@ export const SSHCredentialsForm = ({
                     Required if the device uses enable mode with a secret.
                 </small>
             </div>
+
+            {/* FortiGate VDOM field */}
+            {deviceType === 'fortinet' && (
+                <div className="form-group">
+                    <label htmlFor="fortigate-vdom">VDOM (optional)</label>
+                    <input
+                        type="text"
+                        id="fortigate-vdom"
+                        name="vdom"
+                        value={vdom}
+                        onChange={(e) => onVdomChange && onVdomChange(e.target.value)}
+                        placeholder="root"
+                        disabled={loading}
+                    />
+                    <small className="form-hint">
+                        Virtual Domain for FortiGate. Leave empty for root VDOM or single VDOM mode.
+                    </small>
+                </div>
+            )}
 
             {/* Only show form actions in uncontrolled mode or when onSubmit is provided */}
             {(!isControlled || onSubmit || onCancel) && (

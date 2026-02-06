@@ -28,7 +28,7 @@ import {
 import { SSHCredentialsForm } from './SSHCredentialsForm';
 import { ConfigurationForm } from './ConfigurationForm';
 
-export const FixAllModal = ({ onClose }) => {
+export const FixAllModal = ({ deviceType = 'cisco', onClose }) => {
     const dispatch = useDispatch();
 
     const selectedSession = useSelector(selectSelectedSession);
@@ -42,6 +42,7 @@ export const FixAllModal = ({ onClose }) => {
     // Steps: 'summary' | 'params' | 'credentials' | 'executing' | 'result'
     const [step, setStep] = useState('summary');
     const [sshCredentials, setSshCredentials] = useState(null);
+    const [vdom, setVdom] = useState(''); // FortiGate VDOM support
 
     // Get selected check details
     const selectedChecks = failedChecks.filter(c => selectedCheckIds.includes(c.id));
@@ -51,12 +52,13 @@ export const FixAllModal = ({ onClose }) => {
         dispatch(fetchSessionParameters({
             sessionId: selectedSession.id,
             checkIds: selectedCheckIds,
+            deviceType,
         }));
         return () => {
             dispatch(clearBatchResult());
             dispatch(clearUserParameters());
         };
-    }, [selectedSession.id, selectedCheckIds, dispatch]);
+    }, [selectedSession.id, selectedCheckIds, deviceType, dispatch]);
 
     // Handle close
     const handleClose = () => {
@@ -97,6 +99,8 @@ export const FixAllModal = ({ onClose }) => {
             parameters: userParameters,
             sshCredentials: credentials,
             skipBackup: false,
+            deviceType,
+            vdom: deviceType === 'fortinet' ? vdom : null,
         }));
     };
 
@@ -204,6 +208,9 @@ export const FixAllModal = ({ onClose }) => {
                                     }
                                 }}
                                 loading={false}
+                                deviceType={deviceType}
+                                vdom={vdom}
+                                onVdomChange={setVdom}
                             />
                         </div>
                     )}

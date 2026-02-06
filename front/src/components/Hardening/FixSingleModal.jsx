@@ -23,7 +23,7 @@ import {
 import { SSHCredentialsForm } from './SSHCredentialsForm';
 import { ConfigurationForm } from './ConfigurationForm';
 
-export const FixSingleModal = ({ check, onClose }) => {
+export const FixSingleModal = ({ check, deviceType = 'cisco', onClose }) => {
     const dispatch = useDispatch();
 
     const preview = useSelector(selectSinglePreview);
@@ -34,15 +34,16 @@ export const FixSingleModal = ({ check, onClose }) => {
     const [step, setStep] = useState('preview');
     const [userParams, setUserParams] = useState({});
     const [sshCredentials, setSshCredentials] = useState(null);
+    const [vdom, setVdom] = useState(''); // FortiGate VDOM support
 
     // Request preview on mount
     useEffect(() => {
-        dispatch(previewSingleCheck({ auditResultId: check.id }));
+        dispatch(previewSingleCheck({ auditResultId: check.id, deviceType }));
         return () => {
             dispatch(clearPreview());
             dispatch(clearExecutionResult());
         };
-    }, [check.id, dispatch]);
+    }, [check.id, deviceType, dispatch]);
 
     // Handle close
     const handleClose = () => {
@@ -85,6 +86,8 @@ export const FixSingleModal = ({ check, onClose }) => {
             actionId: preview.action_id,
             sshCredentials: credentials,
             parameters: userParams,
+            deviceType,
+            vdom: deviceType === 'fortinet' ? vdom : null,
         }));
     };
 
@@ -218,6 +221,9 @@ export const FixSingleModal = ({ check, onClose }) => {
                                     }
                                 }}
                                 loading={false}
+                                deviceType={deviceType}
+                                vdom={vdom}
+                                onVdomChange={setVdom}
                             />
                         </div>
                     )}

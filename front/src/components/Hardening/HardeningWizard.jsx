@@ -44,7 +44,7 @@ const STEPS = {
 
 const SUPPORTED_DEVICES = [
     { type: 'cisco', name: 'Cisco IOS', status: 'available' },
-    { type: 'fortinet', name: 'FortiGate', status: 'coming_soon' },
+    { type: 'fortinet', name: 'FortiGate', status: 'available' },
     { type: 'linux', name: 'Linux', status: 'coming_soon' },
     { type: 'windows', name: 'Windows', status: 'coming_soon' },
     { type: 'apache', name: 'Apache', status: 'coming_soon' },
@@ -72,6 +72,7 @@ const HardeningWizard = ({
     const [currentStep, setCurrentStep] = useState(initialMode ? STEPS.CONTROLS : STEPS.MODE);
     const [deviceType, setDeviceType] = useState('cisco');
     const [deviceIp, setDeviceIp] = useState('');
+    const [vdom, setVdom] = useState(''); // FortiGate VDOM
     const [sshCredentials, setSshCredentials] = useState({
         username: 'admin',  // Default from CLAUDE.md
         password: '123456', // Default from CLAUDE.md
@@ -382,6 +383,9 @@ const HardeningWizard = ({
                         <SSHCredentialsForm
                             credentials={sshCredentials}
                             onChange={setSshCredentials}
+                            deviceType={deviceType}
+                            vdom={vdom}
+                            onVdomChange={setVdom}
                         />
                     </div>
                 );

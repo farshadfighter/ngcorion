@@ -23,7 +23,7 @@ import {
 } from '../../store/hardeningSlice';
 import { SSHCredentialsForm } from './SSHCredentialsForm';
 
-export const AutoHardenModal = ({ onClose }) => {
+export const AutoHardenModal = ({ deviceType = 'cisco', onClose }) => {
     const dispatch = useDispatch();
 
     const selectedSession = useSelector(selectSelectedSession);
@@ -35,15 +35,16 @@ export const AutoHardenModal = ({ onClose }) => {
     const [step, setStep] = useState('preview');
     const [confirmed, setConfirmed] = useState(false);
     const [sshCredentials, setSshCredentials] = useState(null);
+    const [vdom, setVdom] = useState(''); // FortiGate VDOM support
 
     // Fetch preview on mount
     useEffect(() => {
-        dispatch(fetchAutoHardenPreview(selectedSession.id));
+        dispatch(fetchAutoHardenPreview({ sessionId: selectedSession.id, deviceType }));
         return () => {
             dispatch(clearAutoHardenPreview());
             dispatch(clearBatchResult());
         };
-    }, [selectedSession.id, dispatch]);
+    }, [selectedSession.id, deviceType, dispatch]);
 
     // Handle close
     const handleClose = () => {
@@ -71,6 +72,8 @@ export const AutoHardenModal = ({ onClose }) => {
             sessionId: selectedSession.id,
             sshCredentials: credentials,
             skipBackup: false,
+            deviceType,
+            vdom: deviceType === 'fortinet' ? vdom : null,
         }));
     };
 
@@ -245,6 +248,9 @@ export const AutoHardenModal = ({ onClose }) => {
                                 onSubmit={handleCredentialsSubmit}
                                 onCancel={() => setStep('preview')}
                                 loading={false}
+                                deviceType={deviceType}
+                                vdom={vdom}
+                                onVdomChange={setVdom}
                             />
                         </div>
                     )}

@@ -294,6 +294,7 @@ export const Hardening = () => {
             {showFixSingleModal && selectedCheckForFix && (
                 <FixSingleModal
                     check={selectedCheckForFix}
+                    deviceType={deviceType}
                     onClose={() => {
                         setShowFixSingleModal(false);
                         setSelectedCheckForFix(null);
@@ -303,12 +304,14 @@ export const Hardening = () => {
 
             {showFixAllModal && (
                 <FixAllModal
+                    deviceType={deviceType}
                     onClose={() => setShowFixAllModal(false)}
                 />
             )}
 
             {showAutoHardenModal && (
                 <AutoHardenModal
+                    deviceType={deviceType}
                     onClose={() => setShowAutoHardenModal(false)}
                 />
             )}

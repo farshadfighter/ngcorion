@@ -2181,3 +2181,62 @@
         gap: 12px;
     }
 }
+
+/* ============================================
+   Device Type Badges
+   ============================================ */
+
+.device-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.device-cisco {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+
+.device-fortinet {
+    background-color: #fce7f3;
+    color: #be185d;
+}
+
+.device-linux {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.device-windows {
+    background-color: #e0e7ff;
+    color: #4f46e5;
+}
+
+.device-apache {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+/* History controls */
+.history-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.device-type-filter {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    background-color: white;
+}
+
+.device-type-filter:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
