@@ -23,6 +23,7 @@ import {
     selectLoading,
     selectError,
     selectSuccessMessage,
+    selectDeviceType,
 } from '../../store/hardeningSlice';
 import { AuditResultsTable } from './AuditResultsTable';
 import { FixSingleModal } from './FixSingleModal';
@@ -43,6 +44,16 @@ export const Hardening = () => {
     const loading = useSelector(selectLoading);
     const error = useSelector(selectError);
     const successMessage = useSelector(selectSuccessMessage);
+    const deviceType = useSelector(selectDeviceType);
+
+    // Device type display names
+    const deviceTypeLabels = {
+        cisco: 'Cisco IOS',
+        fortinet: 'FortiGate',
+        linux: 'Linux',
+        windows: 'Windows',
+        apache: 'Apache',
+    };
 
     // Local state
     const [activeTab, setActiveTab] = useState('results'); // 'results' | 'history' | 'wizard'
@@ -192,12 +203,16 @@ export const Hardening = () => {
                             disabled={loading.sessions}
                         >
                             <option value="">-- Select a session --</option>
-                            {auditSessions.map(session => (
-                                <option key={session.id} value={session.id}>
-                                    {session.target_ip} - {formatDate(session.created_at)} -
-                                    Compliance: {session.compliance_pct?.toFixed(1)}%
-                                </option>
-                            ))}
+                            {auditSessions.map(session => {
+                                const sessionDeviceType = session.device_type || session.session_type || 'cisco';
+                                const deviceLabel = deviceTypeLabels[sessionDeviceType] || sessionDeviceType;
+                                return (
+                                    <option key={session.id} value={session.id}>
+                                        [{deviceLabel}] {session.target_ip} - {formatDate(session.created_at)} -
+                                        Compliance: {session.compliance_pct?.toFixed(1)}%
+                                    </option>
+                                );
+                            })}
                         </select>
                         {loading.sessions && <span className="loading-spinner">Loading...</span>}
                     </div>
