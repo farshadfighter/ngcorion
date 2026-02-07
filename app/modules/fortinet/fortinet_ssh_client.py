@@ -13,6 +13,31 @@ import time
 from typing import Dict, List, Optional, Tuple
 from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 
+# Import paramiko exceptions for algorithm/key errors
+try:
+    from paramiko.ssh_exception import (
+        SSHException,
+        BadHostKeyException,
+        NoValidConnectionsError
+    )
+    from paramiko.transport import IncompatiblePeer
+except ImportError:
+    # Fallback if paramiko structure changes
+    SSHException = Exception
+    BadHostKeyException = Exception
+    NoValidConnectionsError = Exception
+    IncompatiblePeer = Exception
+
+from app.core.ssh_exceptions import (
+    SSHConnectionError,
+    SSHAuthenticationError,
+    SSHConnectionTimeoutError,
+    SSHNetworkError,
+    SSHAlgorithmMismatchError,
+    SSHHostKeyError,
+    map_ssh_exception
+)
+
 
 class ConnectionPool:
     """Thread-safe connection pool for parallel VDOM processing"""
@@ -92,7 +117,17 @@ class FortiGateSSHClient:
         self._current_vdom: Optional[str] = None
 
     def connect(self) -> None:
-        """Establish SSH connection to FortiGate"""
+        """
+        Establish SSH connection to FortiGate.
+
+        Raises:
+            SSHAuthenticationError: If authentication fails
+            SSHConnectionTimeoutError: If connection times out
+            SSHNetworkError: If device is unreachable
+            SSHAlgorithmMismatchError: If SSH algorithm negotiation fails
+            SSHHostKeyError: If host key verification fails
+            SSHConnectionError: For other SSH failures
+        """
         if self._connection:
             return
 
@@ -112,10 +147,46 @@ class FortiGateSSHClient:
                 params["device_type"] = device_type
                 self._connection = ConnectHandler(**params)
                 return
+
+            except NetmikoAuthenticationException as e:
+                # Don't retry on auth failures
+                raise SSHAuthenticationError(self.host, original_error=e)
+
+            except IncompatiblePeer as e:
+                # Don't retry on algorithm mismatch
+                raise SSHAlgorithmMismatchError(self.host, original_error=e)
+
+            except BadHostKeyException as e:
+                # Don't retry on host key errors
+                raise SSHHostKeyError(self.host, original_error=e)
+
+            except NoValidConnectionsError as e:
+                # Don't retry on connection refused
+                raise SSHNetworkError(self.host, original_error=e)
+
+            except NetmikoTimeoutException as e:
+                last_error = e
+                # Try next device type
+
+            except OSError as e:
+                # Socket-level errors - check if retryable
+                if hasattr(e, 'errno') and e.errno in (111, 113):
+                    raise SSHNetworkError(self.host, original_error=e)
+                last_error = e
+
             except Exception as e:
                 last_error = e
 
-        raise last_error if last_error else RuntimeError("Unable to connect to FortiGate")
+        # All device types failed - map the last exception
+        if last_error:
+            raise map_ssh_exception(last_error, self.host)
+        else:
+            raise SSHConnectionError(
+                message=f"Unable to connect to FortiGate at {self.host}",
+                device_ip=self.host,
+                suggestions=["Check network connectivity to the device"],
+                original_error=None
+            )
 
     def disconnect(self) -> None:
         """Close SSH connection"""

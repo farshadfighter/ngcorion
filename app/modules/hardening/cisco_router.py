@@ -18,6 +18,14 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
+from app.core.ssh_exceptions import (
+    SSHConnectionError,
+    SSHAuthenticationError,
+    SSHConnectionTimeoutError,
+    SSHNetworkError,
+    SSHAlgorithmMismatchError,
+    SSHHostKeyError
+)
 from app.models import User
 from .cisco_service import HardeningService, CheckAlreadyPassingError, MissingParametersError
 
@@ -551,8 +559,12 @@ def execute_hardening(
 
     **Errors:**
     - 400: Invalid action, check already passing, or missing parameters
+    - 401: SSH authentication failed
     - 404: Action not found
-    - 500: SSH connection failure or command execution error
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     try:
         result = HardeningService.execute_hardening(
@@ -577,6 +589,36 @@ def execute_hardening(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
         )
     except ValueError as e:
         raise HTTPException(
@@ -750,7 +792,11 @@ def auto_audit_device(
 
     **Errors:**
     - 400: Invalid request parameters
-    - 500: SSH connection failure or audit execution error
+    - 401: SSH authentication failed
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     try:
         result = HardeningService.auto_audit_device(
@@ -766,6 +812,36 @@ def auto_audit_device(
 
         return result
 
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -810,8 +886,12 @@ def auto_fix_all_failures(
 
     **Errors:**
     - 400: Invalid audit session or missing parameters
+    - 401: SSH authentication failed
     - 404: Audit session not found
-    - 500: SSH connection failure or execution error
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     try:
         result = HardeningService.auto_fix_all_failures(
@@ -827,6 +907,36 @@ def auto_fix_all_failures(
 
         return result
 
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -965,7 +1075,11 @@ def auto_harden_with_defaults(
 
     **Errors:**
     - 400: confirmed=false or invalid session
-    - 500: SSH or execution error
+    - 401: SSH authentication failed
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     if not request.confirmed:
         raise HTTPException(
@@ -986,6 +1100,36 @@ def auto_harden_with_defaults(
 
         return result
 
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1025,7 +1169,11 @@ def batch_execute_selected(
 
     **Errors:**
     - 400: Invalid check IDs or missing parameters
-    - 500: SSH or execution error
+    - 401: SSH authentication failed
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     if not request.check_ids:
         raise HTTPException(
@@ -1048,6 +1196,36 @@ def batch_execute_selected(
 
         return result
 
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

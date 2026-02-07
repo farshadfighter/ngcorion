@@ -12,6 +12,31 @@ import re
 import time
 import logging
 
+# Import paramiko exceptions for algorithm/key errors
+try:
+    from paramiko.ssh_exception import (
+        SSHException,
+        BadHostKeyException,
+        NoValidConnectionsError
+    )
+    from paramiko.transport import IncompatiblePeer
+except ImportError:
+    # Fallback if paramiko structure changes
+    SSHException = Exception
+    BadHostKeyException = Exception
+    NoValidConnectionsError = Exception
+    IncompatiblePeer = Exception
+
+from app.core.ssh_exceptions import (
+    SSHConnectionError,
+    SSHAuthenticationError,
+    SSHConnectionTimeoutError,
+    SSHNetworkError,
+    SSHAlgorithmMismatchError,
+    SSHHostKeyError,
+    map_ssh_exception
+)
+
 logger = logging.getLogger(__name__)
 
 # Turbo Commands - Targeted snippets instead of full running-config
@@ -143,9 +168,12 @@ class CiscoSSHClient:
         Establish SSH connection to device with retry logic.
 
         Raises:
-            NetmikoAuthenticationException: If authentication fails
-            NetmikoTimeoutException: If connection times out after all retries
-            Exception: For other connection failures
+            SSHAuthenticationError: If authentication fails
+            SSHConnectionTimeoutError: If connection times out after all retries
+            SSHNetworkError: If device is unreachable
+            SSHAlgorithmMismatchError: If SSH algorithm negotiation fails
+            SSHHostKeyError: If host key verification fails
+            SSHConnectionError: For other SSH failures
         """
         last_exception = None
 
@@ -185,14 +213,40 @@ class CiscoSSHClient:
                 logger.info(f"Successfully connected to {self.ip}")
                 return  # Success - exit retry loop
 
-            except NetmikoAuthenticationException:
+            except NetmikoAuthenticationException as e:
                 # Don't retry on auth failures - credentials are wrong
                 logger.error(f"Authentication failed for {self.ip}")
-                raise
+                raise SSHAuthenticationError(self.ip, original_error=e)
+
+            except IncompatiblePeer as e:
+                # Don't retry on algorithm mismatch - won't change
+                logger.error(f"SSH algorithm mismatch with {self.ip}")
+                raise SSHAlgorithmMismatchError(self.ip, original_error=e)
+
+            except BadHostKeyException as e:
+                # Don't retry on host key errors
+                logger.error(f"Host key verification failed for {self.ip}")
+                raise SSHHostKeyError(self.ip, original_error=e)
+
+            except NoValidConnectionsError as e:
+                # Don't retry on connection refused - service not available
+                logger.error(f"Connection refused by {self.ip}")
+                raise SSHNetworkError(self.ip, original_error=e)
 
             except NetmikoTimeoutException as e:
                 last_exception = e
                 logger.warning(f"Connection timeout to {self.ip} (attempt {attempt}/{self.max_retries})")
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+            except OSError as e:
+                # Socket-level errors - check if retryable
+                if hasattr(e, 'errno') and e.errno in (111, 113):  # Connection refused, No route
+                    logger.error(f"Network error connecting to {self.ip}: {e}")
+                    raise SSHNetworkError(self.ip, original_error=e)
+                # Other OS errors - retry
+                last_exception = e
+                logger.warning(f"Connection error to {self.ip} (attempt {attempt}/{self.max_retries}): {type(e).__name__}")
                 if attempt < self.max_retries:
                     time.sleep(self.RETRY_DELAY)
 
@@ -202,10 +256,18 @@ class CiscoSSHClient:
                 if attempt < self.max_retries:
                     time.sleep(self.RETRY_DELAY)
 
-        # All retries exhausted
+        # All retries exhausted - map the last exception to appropriate type
         error_msg = f"Failed to connect to {self.ip} after {self.max_retries} attempts"
         logger.error(error_msg)
-        raise last_exception or Exception(error_msg)
+        if last_exception:
+            raise map_ssh_exception(last_exception, self.ip)
+        else:
+            raise SSHConnectionError(
+                message=error_msg,
+                device_ip=self.ip,
+                suggestions=["Check network connectivity to the device"],
+                original_error=None
+            )
 
     def is_connected(self) -> bool:
         """Check if the SSH connection is still active."""

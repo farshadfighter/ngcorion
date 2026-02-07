@@ -17,6 +17,7 @@ import re
 
 from app.modules.fortinet.fortinet_ssh_client import FortiGateSSHClient
 from app.modules.fortinet.fortinet_rules import FortiGateControl
+from app.core.ssh_exceptions import SSHConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -81,13 +82,19 @@ class FortiGateHardeningExecutor:
         self.ssh_client: Optional[FortiGateSSHClient] = None
 
     def __enter__(self):
-        """Context manager entry - establish SSH connection."""
+        """
+        Context manager entry - establish SSH connection.
+
+        Raises:
+            SSHConnectionError subclasses: Propagated from FortiGateSSHClient.connect()
+        """
         self.ssh_client = FortiGateSSHClient(
             host=self.ip,
             username=self.username,
             password=self.password,
             port=self.port
         )
+        # Connect explicitly - SSH exceptions will propagate
         self.ssh_client.connect()
         return self
 

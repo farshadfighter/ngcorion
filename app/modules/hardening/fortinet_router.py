@@ -20,6 +20,14 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
+from app.core.ssh_exceptions import (
+    SSHConnectionError,
+    SSHAuthenticationError,
+    SSHConnectionTimeoutError,
+    SSHNetworkError,
+    SSHAlgorithmMismatchError,
+    SSHHostKeyError
+)
 from app.models import User
 from .fortinet_service import (
     FortiGateHardeningService,
@@ -403,6 +411,14 @@ def execute_fortinet_hardening(
     6. Returns execution results
 
     **Permissions:** Requires HARDENING write permission
+
+    **Errors:**
+    - 400: Invalid action or missing parameters
+    - 401: SSH authentication failed
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     try:
         result = FortiGateHardeningService.execute_hardening(
@@ -426,6 +442,36 @@ def execute_fortinet_hardening(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
         )
     except ValueError as e:
         raise HTTPException(
@@ -543,6 +589,14 @@ def auto_harden_fortinet_with_defaults(
     - Skips ALL checks requiring user input
 
     **Permissions:** Requires HARDENING write permission
+
+    **Errors:**
+    - 400: confirmed=false or invalid session
+    - 401: SSH authentication failed
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     if not request.confirmed:
         raise HTTPException(
@@ -562,6 +616,36 @@ def auto_harden_fortinet_with_defaults(
         )
         return result
 
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -594,6 +678,14 @@ def batch_execute_fortinet_selected(
     5. System executes selected checks
 
     **Permissions:** Requires HARDENING write permission
+
+    **Errors:**
+    - 400: Invalid check IDs or missing parameters
+    - 401: SSH authentication failed
+    - 502: SSH algorithm mismatch or host key error
+    - 503: Device unreachable
+    - 504: Connection timeout
+    - 500: Other execution errors
     """
     if not request.check_ids:
         raise HTTPException(
@@ -615,6 +707,36 @@ def batch_execute_fortinet_selected(
         )
         return result
 
+    except SSHAuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.to_dict()
+        )
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=e.to_dict()
+        )
+    except SSHNetworkError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=e.to_dict()
+        )
+    except SSHAlgorithmMismatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHHostKeyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
+    except SSHConnectionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=e.to_dict()
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

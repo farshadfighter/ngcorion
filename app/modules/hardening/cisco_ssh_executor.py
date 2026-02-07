@@ -16,6 +16,7 @@ import logging
 
 from app.modules.audit.cisco_ssh_client import CiscoSSHClient
 from app.modules.audit.cisco_rules import CISRule
+from app.core.ssh_exceptions import SSHConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +61,20 @@ class CiscoHardeningExecutor:
         self.ssh_client: Optional[CiscoSSHClient] = None
 
     def __enter__(self):
-        """Context manager entry - establish SSH connection."""
+        """
+        Context manager entry - establish SSH connection.
+
+        Raises:
+            SSHConnectionError subclasses: Propagated from CiscoSSHClient.connect()
+        """
         self.ssh_client = CiscoSSHClient(
             ip=self.ip,
             username=self.username,
             password=self.password,
             secret=self.secret
         )
-        # CiscoSSHClient connects automatically in __init__
+        # Connect explicitly - SSH exceptions will propagate
+        self.ssh_client.connect()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
