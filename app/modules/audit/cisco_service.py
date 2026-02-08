@@ -1,14 +1,6 @@
 """
 Audit Service Layer
-
-Orchestrates the complete audit workflow:
-1. Fetch asset details
-2. Establish SSH connection
-3. Collect turbo dump
-4. Evaluate CIS rules
-5. Store results in database
 """
-
 from typing import Dict, Any, List, Optional, Callable
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -147,7 +139,7 @@ class AuditService:
 
         for idx, finding in enumerate(findings, 1):
             result = AuditResult(
-                session_id=session_id,
+                session_id=session_id, #reason of "audit_session_id" BUG.
                 check_number=finding["check_number"],
                 check_title=finding["title"],
                 severity=finding["severity"],
