@@ -344,7 +344,7 @@ class FortinetAuditService:
 
         for idx, finding in enumerate(findings, 1):
             result = AuditResult(
-                audit_session_id=session_id,
+                session_id=session_id,
                 check_number=finding["control_id"],
                 check_title=finding["title"],
                 severity=finding["severity"],
@@ -604,7 +604,7 @@ class FortinetAuditService:
     def get_audit_results(db: Session, session_id: int) -> List[AuditResult]:
         """Get all results for an audit session."""
         return db.query(AuditResult).filter(
-            AuditResult.audit_session_id == session_id
+            AuditResult.session_id == session_id
         ).all()
 
     @staticmethod
@@ -697,7 +697,7 @@ class FortinetAuditService:
 
         # Delete all results first (cascade should handle this, but being explicit)
         db.query(AuditResult).filter(
-            AuditResult.audit_session_id == session_id
+            AuditResult.session_id == session_id
         ).delete()
 
         # Delete session

@@ -147,13 +147,13 @@ class AuditService:
 
         for idx, finding in enumerate(findings, 1):
             result = AuditResult(
-                audit_session_id=session_id,
+                session_id=session_id,
                 check_number=finding["check_number"],
                 check_title=finding["title"],
                 severity=finding["severity"],
+                level=finding.get("level", "L1"),
                 status=CheckStatus.PASS if finding["passed"] else CheckStatus.FAIL,
-                evidence=finding["evidence"],
-                remediation=finding.get("remediation")
+                evidence_snippet=finding["evidence"]
             )
             results.append(result)
 
