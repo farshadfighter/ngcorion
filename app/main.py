@@ -14,9 +14,11 @@ from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
 from app.modules.audit import router as audit_router
+from app.modules.audit import linux_router as linux_audit_router
 from app.modules.hardening import router as hardening_router
 from app.modules.hardening import schema_router as hardening_schema_router
 from app.modules.hardening import fortinet_router as fortinet_hardening_router
+from app.modules.hardening import linux_router as linux_hardening_router
 from app.modules.fortinet import router as fortinet_router
 
 # Import authenticated routers
@@ -98,6 +100,12 @@ app.include_router(fortinet_router.router)
 
 # NEW: FortiGate Hardening routes
 app.include_router(fortinet_hardening_router.router)
+
+# NEW: Linux CIS Audit routes
+app.include_router(linux_audit_router.router)
+
+# NEW: Linux Hardening routes
+app.include_router(linux_hardening_router.router)
 
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)
