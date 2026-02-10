@@ -149,6 +149,214 @@ def _check_sshd_setting_in_list(data: Dict[str, str], setting: str, valid_values
     return value.lower() in [v.lower() for v in valid_values]
 
 
+def _check_file_permissions(data: Dict[str, str], key: str, filename: str, max_mode: str,
+                            expected_owner: str = "root", expected_group: str = "root") -> bool:
+    """
+    Check file permissions don't exceed max_mode and ownership is correct.
+
+    Args:
+        data: Audit data dictionary
+        key: Key to get file stat output from
+        filename: The filename to look for in stat output
+        max_mode: Maximum allowed mode (e.g., "640", "600")
+        expected_owner: Expected owner (default: root)
+        expected_group: Expected group (default: root)
+
+    Returns:
+        True if file permissions are compliant
+    """
+    output = _get_output(data, key)
+    if not output:
+        return False
+
+    # Parse stat output for the specific file
+    # stat output includes Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+    lines = output.split('\n')
+    file_section = ""
+    in_file_section = False
+
+    for line in lines:
+        if filename in line:
+            in_file_section = True
+            file_section = line
+        elif in_file_section:
+            if "Access:" in line or "Uid:" in line:
+                file_section += " " + line
+            elif line.strip() and not line.startswith(" "):
+                break
+
+    if not file_section:
+        return False
+
+    # Extract mode
+    mode_match = re.search(r'Access:\s*\((\d+)', file_section)
+    if mode_match:
+        actual_mode = mode_match.group(1)[-3:]  # Get last 3 digits
+        # Compare numerically
+        try:
+            if int(actual_mode, 8) > int(max_mode, 8):
+                return False
+        except ValueError:
+            return False
+
+    # Check ownership
+    owner_match = re.search(r'Uid:\s*\(\s*\d+/\s*(\w+)\)', file_section)
+    group_match = re.search(r'Gid:\s*\(\s*\d+/\s*(\w+)\)', file_section)
+
+    if owner_match and owner_match.group(1) != expected_owner:
+        return False
+    if group_match and group_match.group(1) != expected_group:
+        return False
+
+    return True
+
+
+def _check_audit_rule_exists(data: Dict[str, str], pattern: str) -> bool:
+    """
+    Check if audit rules contain required pattern.
+
+    Args:
+        data: Audit data dictionary
+        pattern: Regex pattern to search for in audit rules
+
+    Returns:
+        True if pattern found in loaded audit rules
+    """
+    # Check both configured rules and loaded rules
+    rules_output = _get_output(data, "audit_rules")
+    loaded_output = _get_output(data, "audit_rules_loaded")
+
+    combined = f"{rules_output}\n{loaded_output}"
+
+    if re.search(pattern, combined, re.IGNORECASE):
+        return True
+    return False
+
+
+def _check_mount_option(data: Dict[str, str], mount_key: str, option: str) -> bool:
+    """
+    Check if mount point has specific option.
+
+    Args:
+        data: Audit data dictionary
+        mount_key: Key for mount options data
+        option: The option to check for (e.g., "nodev", "nosuid")
+
+    Returns:
+        True if the mount has the specified option
+    """
+    output = _get_output(data, mount_key)
+    if not output:
+        return False
+
+    # Mount options are comma-separated
+    options = output.lower().split(',')
+    return option.lower() in [o.strip() for o in options]
+
+
+def _check_pam_module(data: Dict[str, str], pam_key: str, module: str, required_args: List[str] = None) -> bool:
+    """
+    Check PAM configuration includes module with optional required arguments.
+
+    Args:
+        data: Audit data dictionary
+        pam_key: Key for PAM config data
+        module: PAM module name (e.g., "pam_faillock", "pam_pwhistory")
+        required_args: Optional list of arguments that must be present
+
+    Returns:
+        True if module is configured (with required args if specified)
+    """
+    output = _get_output(data, pam_key)
+    if not output:
+        return False
+
+    if module not in output:
+        return False
+
+    if required_args:
+        for arg in required_args:
+            if arg not in output:
+                return False
+
+    return True
+
+
+def _check_journald_setting(data: Dict[str, str], setting: str, expected: str) -> bool:
+    """Check if journald has a specific setting."""
+    output = _get_output(data, "journald_config")
+    if not output:
+        return False
+
+    # Look for setting=value pattern
+    pattern = rf'{setting}\s*=\s*{expected}'
+    return bool(re.search(pattern, output, re.IGNORECASE))
+
+
+def _check_login_defs_setting(data: Dict[str, str], setting: str, min_value: int = None, max_value: int = None) -> bool:
+    """Check login.defs setting against min/max thresholds."""
+    output = _get_output(data, "login_defs")
+    if not output:
+        return False
+
+    pattern = rf'{setting}\s+(\d+)'
+    match = re.search(pattern, output)
+    if not match:
+        return False
+
+    try:
+        value = int(match.group(1))
+        if min_value is not None and value < min_value:
+            return False
+        if max_value is not None and value > max_value:
+            return False
+        return True
+    except ValueError:
+        return False
+
+
+def _check_no_files_found(data: Dict[str, str], key: str) -> bool:
+    """Check that no files were found (for SUID, world-writable, unowned checks)."""
+    output = _get_output(data, key)
+    if not output:
+        return True
+
+    # Empty or just whitespace means no files found
+    if not output.strip():
+        return True
+
+    # "none found" or similar messages
+    lower = output.lower()
+    if "none found" in lower or "find failed" in lower or "no such file" in lower:
+        return True
+
+    return False
+
+
+def _check_home_dir_permissions(data: Dict[str, str]) -> bool:
+    """Check that all user home directories have correct permissions (750 or more restrictive)."""
+    output = _get_output(data, "user_home_dirs_permissions")
+    if not output or "check failed" in output.lower():
+        return False
+
+    # Parse output looking for permissions that are too open
+    # Format is typically: drwxr-xr-x /home/user
+    for line in output.split('\n'):
+        if not line.strip():
+            continue
+        # Look for permissions in format -rwxrwxrwx or similar
+        match = re.search(r'([d-][rwx-]{9})', line)
+        if match:
+            perms = match.group(1)
+            # Check group and other execute bits
+            if len(perms) >= 10:
+                # Other write permission is a fail
+                if perms[8] != '-':  # Other write
+                    return False
+
+    return True
+
+
 # ========================= RULE DEFINITIONS =========================
 
 def build_linux_cis_rules() -> List[LinuxCISRule]:
