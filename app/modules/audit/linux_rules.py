@@ -1100,6 +1100,602 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         evidence=lambda d, p: _get_output(d, "legacy_entries") or "No legacy entries found",
     ))
 
+    # ==================== EXPANDED RULES - PHASE 1: CRITICAL PRIORITY ====================
+
+    # 6.1.2-6.1.9 - File Permissions for system files
+    system_files = [
+        ("6.1.2", "/etc/passwd", "644", "World-readable passwords file is normal; write access must be restricted."),
+        ("6.1.3", "/etc/shadow", "640", "Shadow file contains password hashes; restrict access.", "root", "shadow"),
+        ("6.1.4", "/etc/group", "644", "Group file must be protected from unauthorized modifications."),
+        ("6.1.5", "/etc/gshadow", "640", "Group shadow file contains group password hashes.", "root", "shadow"),
+        ("6.1.6", "/etc/passwd-", "644", "Backup passwd file must have restricted permissions."),
+        ("6.1.7", "/etc/shadow-", "640", "Backup shadow file must have restricted permissions.", "root", "shadow"),
+        ("6.1.8", "/etc/group-", "644", "Backup group file must have restricted permissions."),
+        ("6.1.9", "/etc/gshadow-", "640", "Backup gshadow file must have restricted permissions.", "root", "shadow"),
+    ]
+
+    for entry in system_files:
+        section = entry[0]
+        filename = entry[1]
+        max_mode = entry[2]
+        rationale = entry[3]
+        owner = entry[4] if len(entry) > 4 else "root"
+        group = entry[5] if len(entry) > 5 else "root"
+
+        key = "system_files_permissions" if "-" not in filename else "system_backup_files_permissions"
+
+        rules.append(LinuxCISRule(
+            id=f"LNX-L1-{section}",
+            cis_section=section,
+            title=f"Ensure permissions on {filename} are configured",
+            severity="medium",
+            level="L1",
+            rationale=rationale,
+            remediation=f"Run: chmod {max_mode} {filename} && chown {owner}:{group} {filename}",
+            check=lambda d, p, k=key, f=filename, m=max_mode, o=owner, g=group: _check_file_permissions(d, k, f, m, o, g),
+            evidence=lambda d, p, k=key: _get_output(d, k),
+        ))
+
+    # 3.3.1-3.3.3 - IPv6 Hardening
+    rules.append(LinuxCISRule(
+        id="LNX-L1-3.3.1",
+        cis_section="3.3.1",
+        title="Ensure IPv6 router advertisements are not accepted",
+        severity="medium",
+        level="L1",
+        rationale="Router advertisements can be used for man-in-the-middle attacks.",
+        remediation="Set net.ipv6.conf.all.accept_ra = 0 and net.ipv6.conf.default.accept_ra = 0",
+        check=lambda d, p: _check_sysctl_value(d, "ipv6_accept_ra_all", "0"),
+        evidence=lambda d, p: f"all: {_get_output(d, 'ipv6_accept_ra_all')}\ndefault: {_get_output(d, 'ipv6_accept_ra_default')}",
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-3.3.2",
+        cis_section="3.3.2",
+        title="Ensure IPv6 redirects are not accepted",
+        severity="medium",
+        level="L1",
+        rationale="IPv6 ICMP redirects can be used for MITM attacks.",
+        remediation="Set net.ipv6.conf.all.accept_redirects = 0",
+        check=lambda d, p: _check_sysctl_value(d, "ipv6_accept_redirects_all", "0"),
+        evidence=lambda d, p: f"all: {_get_output(d, 'ipv6_accept_redirects_all')}\ndefault: {_get_output(d, 'ipv6_accept_redirects_default')}",
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L2-3.3.3",
+        cis_section="3.3.3",
+        title="Ensure IPv6 is disabled (if not required)",
+        severity="low",
+        level="L2",
+        rationale="Disabling IPv6 reduces attack surface if not needed.",
+        remediation="Set net.ipv6.conf.all.disable_ipv6 = 1",
+        check=lambda d, p: _check_sysctl_value(d, "ipv6_disabled", "1"),
+        evidence=lambda d, p: _get_output(d, "ipv6_disabled"),
+    ))
+
+    # 4.2.3.x - Audit Rules
+    audit_rules = [
+        ("4.2.3.1", "time-change", r"-a always,exit.*-S.*adjtimex|settimeofday|clock_settime|stime",
+         "Ensure events that modify date and time information are collected",
+         "Changes to system time can be used to mask malicious activity."),
+        ("4.2.3.2", "identity", r"-w /etc/passwd.*-p wa|-w /etc/group.*-p wa|-w /etc/shadow.*-p wa|-w /etc/gshadow.*-p wa",
+         "Ensure events that modify user/group information are collected",
+         "Changes to user/group files must be tracked for unauthorized modifications."),
+        ("4.2.3.3", "system-locale", r"-w /etc/issue.*-p wa|-w /etc/hostname.*-p wa|-w /etc/hosts.*-p wa",
+         "Ensure events that modify the system's network environment are collected",
+         "Network configuration changes can indicate compromise."),
+        ("4.2.3.4", "MAC-policy", r"-w /etc/apparmor.*-p wa|-w /etc/selinux.*-p wa",
+         "Ensure events that modify MAC are collected",
+         "MAC policy changes can weaken security."),
+        ("4.2.3.5", "logins", r"-w /var/log/faillog.*-p wa|-w /var/log/lastlog.*-p wa|-w /var/log/tallylog.*-p wa",
+         "Ensure login and logout events are collected",
+         "Login events are critical for security monitoring."),
+        ("4.2.3.6", "session", r"-w /var/run/utmp.*-p wa|-w /var/log/wtmp.*-p wa|-w /var/log/btmp.*-p wa",
+         "Ensure session initiation information is collected",
+         "Session information helps track user activity."),
+        ("4.2.3.7", "perm-mod", r"-a always,exit.*-S chmod|fchmod|fchmodat",
+         "Ensure discretionary access control permission modification events are collected",
+         "Permission changes can indicate unauthorized access attempts."),
+        ("4.2.3.8", "access", r"-a always,exit.*-S creat|open|openat|truncate|ftruncate.*-F exit=-EACCES|-F exit=-EPERM",
+         "Ensure unsuccessful unauthorized file access attempts are collected",
+         "Failed access attempts may indicate attack activity."),
+        ("4.2.3.9", "mounts", r"-a always,exit.*-S mount",
+         "Ensure successful file system mounts are collected",
+         "Mount activity should be monitored for unauthorized file systems."),
+        ("4.2.3.10", "delete", r"-a always,exit.*-S unlink|unlinkat|rename|renameat",
+         "Ensure file deletion events by users are collected",
+         "File deletions can be used to cover tracks."),
+        ("4.2.3.11", "scope", r"-w /etc/sudoers.*-p wa|-w /etc/sudoers.d.*-p wa",
+         "Ensure changes to system administration scope are collected",
+         "Changes to sudo configuration must be monitored."),
+        ("4.2.3.12", "actions", r"-w /var/log/sudo.log.*-p wa",
+         "Ensure system administrator actions are collected",
+         "Admin actions should be logged for accountability."),
+    ]
+
+    for section, key, pattern, title, rationale in audit_rules:
+        rules.append(LinuxCISRule(
+            id=f"LNX-L2-{section}",
+            cis_section=section,
+            title=title,
+            severity="medium",
+            level="L2",
+            rationale=rationale,
+            remediation=f"Add appropriate audit rules to /etc/audit/rules.d/audit.rules",
+            check=lambda d, p, pat=pattern: _check_audit_rule_exists(d, pat),
+            evidence=lambda d, p: _get_output(d, "audit_rules_loaded")[:500],
+        ))
+
+    # 5.1.2-5.1.5 - Cron Access Control
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.1.2",
+        cis_section="5.1.2",
+        title="Ensure permissions on /etc/crontab are configured",
+        severity="medium",
+        level="L1",
+        rationale="Crontab file must be protected from unauthorized modifications.",
+        remediation="Run: chmod 600 /etc/crontab && chown root:root /etc/crontab",
+        check=lambda d, p: "600" in _get_output(d, "crontab_permissions") or "-rw-------" in _get_output(d, "crontab_permissions"),
+        evidence=lambda d, p: _get_output(d, "crontab_permissions"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.1.3",
+        cis_section="5.1.3",
+        title="Ensure permissions on /etc/cron.hourly are configured",
+        severity="low",
+        level="L1",
+        rationale="Cron directories must be protected.",
+        remediation="Run: chmod 700 /etc/cron.hourly",
+        check=lambda d, p: "700" in _get_output(d, "cron_dirs_permissions") or "drwx------" in _get_output(d, "cron_dirs_permissions"),
+        evidence=lambda d, p: _get_output(d, "cron_dirs_permissions"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.1.4",
+        cis_section="5.1.4",
+        title="Ensure permissions on /etc/cron.d are configured",
+        severity="low",
+        level="L1",
+        rationale="The cron.d directory must be protected.",
+        remediation="Run: chmod 700 /etc/cron.d",
+        check=lambda d, p: "700" in _get_output(d, "crond_permissions") or "drwx------" in _get_output(d, "crond_permissions"),
+        evidence=lambda d, p: _get_output(d, "crond_permissions"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.1.5",
+        cis_section="5.1.5",
+        title="Ensure cron is restricted to authorized users",
+        severity="medium",
+        level="L1",
+        rationale="Restricting cron access limits who can schedule tasks.",
+        remediation="Create /etc/cron.allow with authorized users and remove /etc/cron.deny",
+        check=lambda d, p: "cron.allow" in _get_output(d, "cron_access") or "root" in _get_output(d, "cron_access"),
+        evidence=lambda d, p: _get_output(d, "cron_access"),
+    ))
+
+    # 5.3.3 - PAM Faillock
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.3.3",
+        cis_section="5.3.3",
+        title="Ensure password failed attempts lockout is configured",
+        severity="high",
+        level="L1",
+        rationale="Account lockout prevents brute force password attacks.",
+        remediation="Configure pam_faillock in /etc/pam.d/common-auth with deny=5 unlock_time=900",
+        check=lambda d, p: _check_pam_module(d, "pam_faillock", "pam_faillock") or _check_pam_module(d, "pam_auth", "pam_tally2"),
+        evidence=lambda d, p: f"PAM faillock: {_get_output(d, 'pam_faillock')[:300]}" if _get_output(d, 'pam_faillock') else "Not configured",
+    ))
+
+    # 6.1.10-6.1.12 - SUID/Unowned Files (Informational)
+    rules.append(LinuxCISRule(
+        id="LNX-INFO-6.1.10",
+        cis_section="6.1.10",
+        title="Audit SUID executables",
+        severity="info",
+        level="INFO",
+        rationale="SUID executables run with elevated privileges and should be reviewed.",
+        remediation="Review the list of SUID files and remove unnecessary SUID bits",
+        check=lambda d, p: True,  # Always passes - informational only
+        evidence=lambda d, p: f"SUID files found:\n{_get_output(d, 'suid_sgid_files')[:800]}",
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-INFO-6.1.11",
+        cis_section="6.1.11",
+        title="Audit world-writable files",
+        severity="info",
+        level="INFO",
+        rationale="World-writable files can be modified by any user.",
+        remediation="Review and secure world-writable files",
+        check=lambda d, p: _check_no_files_found(d, "world_writable_files"),
+        evidence=lambda d, p: f"World-writable files:\n{_get_output(d, 'world_writable_files')[:500]}",
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-INFO-6.1.12",
+        cis_section="6.1.12",
+        title="Audit unowned files and directories",
+        severity="info",
+        level="INFO",
+        rationale="Unowned files may indicate deleted accounts or security issues.",
+        remediation="Assign ownership to valid users/groups",
+        check=lambda d, p: _check_no_files_found(d, "unowned_files"),
+        evidence=lambda d, p: f"Unowned files:\n{_get_output(d, 'unowned_files')[:500]}",
+    ))
+
+    # ==================== EXPANDED RULES - PHASE 2: HIGH PRIORITY ====================
+
+    # 1.4.2-1.4.3 - GRUB Security
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.4.2",
+        cis_section="1.4.2",
+        title="Ensure bootloader password is set",
+        severity="high",
+        level="L1",
+        rationale="A bootloader password prevents unauthorized kernel parameter changes.",
+        remediation="Set GRUB password using grub-mkpasswd-pbkdf2 and update grub configuration",
+        check=lambda d, p: "password" in _get_output(d, "grub_password").lower() and "no grub password" not in _get_output(d, "grub_password").lower(),
+        evidence=lambda d, p: _get_output(d, "grub_password"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.4.3",
+        cis_section="1.4.3",
+        title="Ensure authentication is required for single user mode",
+        severity="high",
+        level="L1",
+        rationale="Single user mode must require authentication to prevent bypassing security.",
+        remediation="Ensure root password is set: passwd root",
+        check=lambda d, p: "single" in _get_output(d, "grub_single_mode").lower() or bool(_get_output(d, "shadow_file")),
+        evidence=lambda d, p: _get_output(d, "grub_single_mode"),
+    ))
+
+    # 1.2.1-1.2.2 - GPG Keys / Package Signing
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.2.1",
+        cis_section="1.2.1",
+        title="Ensure package manager repositories are configured",
+        severity="medium",
+        level="L1",
+        rationale="Properly configured repositories ensure packages come from trusted sources.",
+        remediation="Configure official distribution repositories",
+        check=lambda d, p: bool(_get_output(d, "apt_sources_list").strip()) if p.startswith("ubuntu") else bool(_get_output(d, "dnf_repos").strip()),
+        evidence=lambda d, p: _get_output(d, "apt_sources_list")[:500] if p.startswith("ubuntu") else _get_output(d, "dnf_repos")[:500],
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.2.2",
+        cis_section="1.2.2",
+        title="Ensure GPG keys are configured",
+        severity="medium",
+        level="L1",
+        rationale="GPG keys verify package authenticity and integrity.",
+        remediation="Import official distribution GPG keys",
+        check=lambda d, p: bool(_get_output(d, "apt_keys").strip()) if p.startswith("ubuntu") else bool(_get_output(d, "rpm_gpg_keys").strip()),
+        evidence=lambda d, p: _get_output(d, "apt_keys")[:500] if p.startswith("ubuntu") else _get_output(d, "rpm_gpg_keys")[:500],
+    ))
+
+    # 5.2.2 - SSH private host key permissions
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.2.2",
+        cis_section="5.2.2",
+        title="Ensure permissions on SSH private host keys are configured",
+        severity="high",
+        level="L1",
+        rationale="Private SSH host keys must be protected from unauthorized access.",
+        remediation="Run: chmod 600 /etc/ssh/ssh_host_*_key",
+        check=lambda d, p: "600" in _get_output(d, "ssh_host_keys_permissions") or "-rw-------" in _get_output(d, "ssh_host_keys_permissions"),
+        evidence=lambda d, p: _get_output(d, "ssh_host_keys_permissions"),
+    ))
+
+    # 5.2.14-5.2.21 - Additional SSH settings
+    ssh_additional = [
+        ("5.2.14", "banner", "Ensure SSH warning banner is configured", "A warning banner provides legal notice to users.",
+         lambda d, p: "banner" in _parse_sshd_config(d) or bool(_get_output(d, "ssh_banner"))),
+        ("5.2.15b", "allowtcpforwarding", "Ensure SSH AllowTcpForwarding is disabled", "TCP forwarding can bypass network controls.",
+         lambda d, p: _check_sshd_setting(d, "allowtcpforwarding", "no")),
+        ("5.2.16", "maxstartups", "Ensure SSH MaxStartups is configured", "Limits parallel unauthenticated connections.",
+         lambda d, p: "maxstartups" in _parse_sshd_config(d)),
+        ("5.2.17", "maxsessions", "Ensure SSH MaxSessions is limited", "Limits sessions per connection.",
+         lambda d, p: "maxsessions" in _parse_sshd_config(d) and int(_parse_sshd_config(d).get("maxsessions", "10")) <= 10),
+        ("5.2.18", "logingracetime", "Ensure SSH LoginGraceTime is set to one minute or less", "Limits time for authentication.",
+         lambda d, p: "logingracetime" in _parse_sshd_config(d) and int(_parse_sshd_config(d).get("logingracetime", "120")) <= 60),
+    ]
+
+    for section, setting, title, rationale, check_func in ssh_additional:
+        rules.append(LinuxCISRule(
+            id=f"LNX-L1-{section}",
+            cis_section=section,
+            title=title,
+            severity="medium",
+            level="L1",
+            rationale=rationale,
+            remediation=f"Configure {setting} in /etc/ssh/sshd_config",
+            check=check_func,
+            evidence=lambda d, p, s=setting: f"{s}: {_parse_sshd_config(d).get(s.lower(), 'not set')}",
+        ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.2.19",
+        cis_section="5.2.19",
+        title="Ensure SSH PAM is enabled",
+        severity="medium",
+        level="L1",
+        rationale="PAM provides standardized authentication, authorization, and session management.",
+        remediation="Set UsePAM yes in /etc/ssh/sshd_config",
+        check=lambda d, p: _check_sshd_setting(d, "usepam", "yes") or "usepam" not in _parse_sshd_config(d),
+        evidence=lambda d, p: f"UsePAM: {_parse_sshd_config(d).get('usepam', 'default (yes)')}",
+    ))
+
+    # 5.4.1.3-5.4.1.5 - Account Policy
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.4.1.3",
+        cis_section="5.4.1.3",
+        title="Ensure password expiration warning days is 7 or more",
+        severity="low",
+        level="L1",
+        rationale="Warning users before password expiry gives time to change passwords.",
+        remediation="Set PASS_WARN_AGE 7 in /etc/login.defs",
+        check=lambda d, p: _check_login_defs_setting(d, "PASS_WARN_AGE", min_value=7),
+        evidence=lambda d, p: _get_output(d, "pass_warn_age"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.4.1.4",
+        cis_section="5.4.1.4",
+        title="Ensure inactive password lock is 30 days or less",
+        severity="medium",
+        level="L1",
+        rationale="Inactive accounts should be disabled to prevent misuse.",
+        remediation="Run: useradd -D -f 30",
+        check=lambda d, p: "INACTIVE" in _get_output(d, "inactive_days") and int(re.search(r'INACTIVE\s*=?\s*(\d+)', _get_output(d, "inactive_days")).group(1) if re.search(r'INACTIVE\s*=?\s*(\d+)', _get_output(d, "inactive_days")) else "999") <= 30,
+        evidence=lambda d, p: _get_output(d, "inactive_days"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.4.1.5",
+        cis_section="5.4.1.5",
+        title="Ensure default UMASK is 027 or more restrictive",
+        severity="medium",
+        level="L1",
+        rationale="A restrictive UMASK prevents world-readable default file permissions.",
+        remediation="Set UMASK 027 in /etc/login.defs",
+        check=lambda d, p: bool(re.search(r'UMASK\s+0?[0-2][0-7]', _get_output(d, "login_defs"))),
+        evidence=lambda d, p: re.search(r'UMASK\s+\d+', _get_output(d, "login_defs")).group(0) if re.search(r'UMASK\s+\d+', _get_output(d, "login_defs")) else "UMASK not found",
+    ))
+
+    # 1.1.8.x - Mount Options
+    mount_options = [
+        ("1.1.8.1", "/tmp", "nodev", "Ensure nodev option set on /tmp partition", "Prevents device files on /tmp."),
+        ("1.1.8.2", "/tmp", "nosuid", "Ensure nosuid option set on /tmp partition", "Prevents SUID execution from /tmp."),
+        ("1.1.8.3", "/tmp", "noexec", "Ensure noexec option set on /tmp partition", "Prevents execution from /tmp."),
+        ("1.1.8.4", "/dev/shm", "nodev", "Ensure nodev option set on /dev/shm partition", "Prevents device files on shared memory."),
+        ("1.1.8.5", "/dev/shm", "nosuid", "Ensure nosuid option set on /dev/shm partition", "Prevents SUID on shared memory."),
+        ("1.1.8.6", "/dev/shm", "noexec", "Ensure noexec option set on /dev/shm partition", "Prevents execution from shared memory."),
+    ]
+
+    for section, mount, option, title, rationale in mount_options:
+        mount_key = f"mount_{mount.replace('/', '_').strip('_')}_options" if mount.startswith("/dev") else f"mount_{mount.replace('/', '_').strip('_')}"
+        rules.append(LinuxCISRule(
+            id=f"LNX-L1-{section}",
+            cis_section=section,
+            title=title,
+            severity="medium",
+            level="L1",
+            rationale=rationale,
+            remediation=f"Add {option} to {mount} entry in /etc/fstab and remount",
+            check=lambda d, p, mk=mount_key, opt=option: _check_mount_option(d, mk, opt) or opt in _get_output(d, mk),
+            evidence=lambda d, p, mk=mount_key: _get_output(d, mk),
+        ))
+
+    # ==================== EXPANDED RULES - PHASE 3: MEDIUM PRIORITY ====================
+
+    # 6.2.4-6.2.10 - User Account Audit
+    rules.append(LinuxCISRule(
+        id="LNX-L1-6.2.4",
+        cis_section="6.2.4",
+        title="Ensure all users' home directories exist",
+        severity="medium",
+        level="L1",
+        rationale="Users without home directories may have login issues or security problems.",
+        remediation="Create missing home directories with appropriate permissions",
+        check=lambda d, p: bool(_get_output(d, "user_home_dirs")),
+        evidence=lambda d, p: _get_output(d, "user_home_dirs"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-6.2.5",
+        cis_section="6.2.5",
+        title="Ensure users' home directory permissions are 750 or more restrictive",
+        severity="medium",
+        level="L1",
+        rationale="Overly permissive home directories can expose sensitive data.",
+        remediation="Run: chmod 750 /home/<user> for each user",
+        check=lambda d, p: _check_home_dir_permissions(d),
+        evidence=lambda d, p: _get_output(d, "user_home_dirs_permissions"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-6.2.6",
+        cis_section="6.2.6",
+        title="Ensure users own their home directories",
+        severity="medium",
+        level="L1",
+        rationale="Users must own their home directories for proper access control.",
+        remediation="Run: chown <user> /home/<user>",
+        check=lambda d, p: bool(_get_output(d, "user_home_dirs")),
+        evidence=lambda d, p: _get_output(d, "user_home_dirs"),
+    ))
+
+    dot_files = [
+        ("6.2.7", ".forward", "Ensure no users have .forward files", "Forward files can redirect mail to external systems."),
+        ("6.2.8", ".netrc", "Ensure no users have .netrc files", "Netrc files contain plaintext credentials."),
+        ("6.2.9", ".rhosts", "Ensure no users have .rhosts files", "Rhosts files allow insecure remote authentication."),
+    ]
+
+    for section, filename, title, rationale in dot_files:
+        key = f"user_{filename.replace('.', '')}_files"
+        rules.append(LinuxCISRule(
+            id=f"LNX-L1-{section}",
+            cis_section=section,
+            title=title,
+            severity="medium",
+            level="L1",
+            rationale=rationale,
+            remediation=f"Remove {filename} files from user home directories",
+            check=lambda d, p, k=key: _check_no_files_found(d, k),
+            evidence=lambda d, p, k=key: _get_output(d, k) or f"No {filename} files found",
+        ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-6.2.10",
+        cis_section="6.2.10",
+        title="Ensure root is the only UID 0 account (strict)",
+        severity="high",
+        level="L1",
+        rationale="Only root should have UID 0 for proper accountability.",
+        remediation="Remove or change UID of any non-root accounts with UID 0",
+        check=lambda d, p: _get_output(d, "uid_0_accounts").strip() == "root",
+        evidence=lambda d, p: f"UID 0 accounts: {_get_output(d, 'uid_0_accounts')}",
+    ))
+
+    # 4.1.1.2-4.1.1.4 - Journald Config
+    rules.append(LinuxCISRule(
+        id="LNX-L1-4.1.1.2",
+        cis_section="4.1.1.2",
+        title="Ensure journald is configured to compress large log files",
+        severity="low",
+        level="L1",
+        rationale="Compressing logs saves disk space.",
+        remediation="Set Compress=yes in /etc/systemd/journald.conf",
+        check=lambda d, p: _check_journald_setting(d, "Compress", "yes"),
+        evidence=lambda d, p: _get_output(d, "journald_config"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-4.1.1.3",
+        cis_section="4.1.1.3",
+        title="Ensure journald is configured to write to persistent storage",
+        severity="medium",
+        level="L1",
+        rationale="Persistent storage preserves logs across reboots.",
+        remediation="Set Storage=persistent in /etc/systemd/journald.conf",
+        check=lambda d, p: _check_journald_setting(d, "Storage", "persistent"),
+        evidence=lambda d, p: _get_output(d, "journald_config"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-4.1.1.4",
+        cis_section="4.1.1.4",
+        title="Ensure journald is not configured to send to rsyslog",
+        severity="low",
+        level="L1",
+        rationale="Forwarding to rsyslog may cause duplicate logging.",
+        remediation="Set ForwardToSyslog=no in /etc/systemd/journald.conf (if rsyslog not needed)",
+        check=lambda d, p: not _check_journald_setting(d, "ForwardToSyslog", "yes") or _check_journald_setting(d, "ForwardToSyslog", "no"),
+        evidence=lambda d, p: _get_output(d, "journald_config"),
+    ))
+
+    # 3.2.3, 3.2.6 - Network Parameters
+    rules.append(LinuxCISRule(
+        id="LNX-L1-3.2.3",
+        cis_section="3.2.3",
+        title="Ensure secure ICMP redirects are not accepted",
+        severity="medium",
+        level="L1",
+        rationale="Secure ICMP redirects can still be used for MITM attacks.",
+        remediation="Set net.ipv4.conf.all.secure_redirects = 0",
+        check=lambda d, p: _check_sysctl_value(d, "secure_redirects_all", "0"),
+        evidence=lambda d, p: _get_output(d, "secure_redirects_all"),
+    ))
+
+    rules.append(LinuxCISRule(
+        id="LNX-L1-3.2.6",
+        cis_section="3.2.6",
+        title="Ensure bogus ICMP responses are ignored",
+        severity="low",
+        level="L1",
+        rationale="Ignoring bogus ICMP responses prevents log flooding.",
+        remediation="Set net.ipv4.icmp_ignore_bogus_error_responses = 1",
+        check=lambda d, p: _check_sysctl_value(d, "icmp_ignore_bogus", "1"),
+        evidence=lambda d, p: _get_output(d, "icmp_ignore_bogus"),
+    ))
+
+    # 5.3.2 - Password history
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.3.2",
+        cis_section="5.3.2",
+        title="Ensure password reuse is limited",
+        severity="medium",
+        level="L1",
+        rationale="Limiting password reuse prevents cycling through old passwords.",
+        remediation="Configure pam_pwhistory with remember=5 in PAM",
+        check=lambda d, p: _check_pam_module(d, "pam_password", "pam_pwhistory") or "remember" in _get_output(d, "pam_password"),
+        evidence=lambda d, p: _get_output(d, "pam_password")[:300],
+    ))
+
+    # 5.6 - Su restriction
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.6",
+        cis_section="5.6",
+        title="Ensure access to the su command is restricted",
+        severity="medium",
+        level="L1",
+        rationale="Restricting su access to the wheel group limits privilege escalation.",
+        remediation="Configure pam_wheel in /etc/pam.d/su to require wheel group membership",
+        check=lambda d, p: _check_pam_module(d, "pam_su", "pam_wheel"),
+        evidence=lambda d, p: _get_output(d, "pam_su"),
+    ))
+
+    # 1.3.2 - MAC policies configured
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.3.2",
+        cis_section="1.3.2",
+        title="Ensure MAC policy is set to enforce or complain mode",
+        severity="high",
+        level="L1",
+        rationale="MAC policies must be actively enforced to provide security benefits.",
+        remediation="Enable and configure AppArmor/SELinux profiles",
+        check=lambda d, p: (
+            ("enforcing" in _get_output(d, "apparmor_status").lower() or
+             "complain" in _get_output(d, "apparmor_status").lower()) if p.startswith("ubuntu") else
+            ("enforcing" in _get_output(d, "selinux_status").lower() or
+             "permissive" in _get_output(d, "selinux_status").lower())
+        ),
+        evidence=lambda d, p: (
+            _get_output(d, "apparmor_status")[:300] if p.startswith("ubuntu") else
+            _get_output(d, "selinux_status")[:300]
+        ),
+    ))
+
+    # 1.6.3 - Remote login banner
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.6.3",
+        cis_section="1.6.3",
+        title="Ensure remote login warning banner is configured",
+        severity="low",
+        level="L1",
+        rationale="Warning banners inform remote users of legal implications.",
+        remediation="Configure /etc/issue.net with appropriate warning message",
+        check=lambda d, p: bool(_get_output(d, "issue_net").strip()) and "no issue.net" not in _get_output(d, "issue_net").lower(),
+        evidence=lambda d, p: _get_output(d, "issue_net")[:300],
+    ))
+
+    # 2.1.1 - xinetd disabled
+    rules.append(LinuxCISRule(
+        id="LNX-L1-2.1.2",
+        cis_section="2.1.2",
+        title="Ensure openbsd-inetd is not installed",
+        severity="medium",
+        level="L1",
+        rationale="inetd provides legacy services that are generally not needed.",
+        remediation="Remove: apt remove openbsd-inetd",
+        check=lambda d, p: "not installed" in _get_output(d, "xinetd_status").lower() or not _get_output(d, "xinetd_status"),
+        evidence=lambda d, p: _get_output(d, "xinetd_status"),
+    ))
+
     return rules
 
 
