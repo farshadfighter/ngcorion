@@ -363,6 +363,60 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         {"cmd": "find / -xdev -nouser -o -nogroup 2>/dev/null | head -30 || echo 'none found'", "sudo": True, "key": "unowned_files", "section": "6.1.12"},
     ])
 
+    # ==================== EXPANDED COMMANDS ====================
+
+    # PAM faillock / tally configuration
+    commands.extend([
+        {"cmd": "grep -E 'pam_faillock|pam_tally2' /etc/pam.d/* 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_faillock", "section": "5.3.3"},
+    ])
+
+    # Mount options for specific partitions
+    commands.extend([
+        {"cmd": "findmnt -n /tmp -o OPTIONS 2>/dev/null || mount | grep '/tmp' | awk '{print $6}' || echo 'not mounted'", "sudo": False, "key": "mount_tmp_options", "section": "1.1.8"},
+        {"cmd": "findmnt -n /var/tmp -o OPTIONS 2>/dev/null || mount | grep '/var/tmp' | awk '{print $6}' || echo 'not mounted'", "sudo": False, "key": "mount_var_tmp_options", "section": "1.1.8"},
+        {"cmd": "findmnt -n /dev/shm -o OPTIONS 2>/dev/null || mount | grep '/dev/shm' | awk '{print $6}' || echo 'not mounted'", "sudo": False, "key": "mount_dev_shm_options", "section": "1.1.8"},
+        {"cmd": "findmnt -n /home -o OPTIONS 2>/dev/null || mount | grep '/home' | awk '{print $6}' || echo 'not mounted'", "sudo": False, "key": "mount_home_options", "section": "1.1.8"},
+    ])
+
+    # User dot files checks
+    commands.extend([
+        {"cmd": "find /home -maxdepth 3 -name '.forward' 2>/dev/null | head -20 || echo 'none found'", "sudo": True, "key": "user_forward_files", "section": "6.2.7"},
+        {"cmd": "find /home -maxdepth 3 -name '.netrc' 2>/dev/null | head -20 || echo 'none found'", "sudo": True, "key": "user_netrc_files", "section": "6.2.8"},
+        {"cmd": "find /home -maxdepth 3 -name '.rhosts' 2>/dev/null | head -20 || echo 'none found'", "sudo": True, "key": "user_rhosts_files", "section": "6.2.9"},
+    ])
+
+    # Home directory permissions
+    commands.extend([
+        {"cmd": "awk -F: '($3 >= 1000 && $3 != 65534) { system(\"ls -ld \" $6 \" 2>/dev/null\") }' /etc/passwd 2>/dev/null | head -30 || echo 'check failed'", "sudo": False, "key": "user_home_dirs_permissions", "section": "6.2.5"},
+    ])
+
+    # SSH Banner
+    commands.extend([
+        {"cmd": "cat /etc/ssh/banner 2>/dev/null || cat /etc/ssh/sshd-banner 2>/dev/null || echo 'no banner file'", "sudo": False, "key": "ssh_banner", "section": "5.2.14"},
+    ])
+
+    # Journald specific settings
+    commands.extend([
+        {"cmd": "grep -E '^Compress=' /etc/systemd/journald.conf 2>/dev/null || echo 'not configured'", "sudo": False, "key": "journald_compress", "section": "4.1.1.2"},
+        {"cmd": "grep -E '^Storage=' /etc/systemd/journald.conf 2>/dev/null || echo 'not configured'", "sudo": False, "key": "journald_storage", "section": "4.1.1.3"},
+        {"cmd": "grep -E '^ForwardToSyslog=' /etc/systemd/journald.conf 2>/dev/null || echo 'not configured'", "sudo": False, "key": "journald_forward", "section": "4.1.1.4"},
+    ])
+
+    # UMASK check
+    commands.extend([
+        {"cmd": "grep -E '^UMASK' /etc/login.defs 2>/dev/null || echo 'not configured'", "sudo": False, "key": "umask_login_defs", "section": "5.4.1.5"},
+    ])
+
+    # Pam wheel/su restriction
+    commands.extend([
+        {"cmd": "grep -E 'pam_wheel' /etc/pam.d/su 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_wheel", "section": "5.6"},
+    ])
+
+    # Password history (pam_pwhistory)
+    commands.extend([
+        {"cmd": "grep -E 'pam_pwhistory|remember' /etc/pam.d/common-password /etc/pam.d/system-auth 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_pwhistory", "section": "5.3.2"},
+    ])
+
     return commands
 
 
