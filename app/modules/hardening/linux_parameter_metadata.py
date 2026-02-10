@@ -244,12 +244,40 @@ LINUX_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
 # Mapping of Linux check numbers to their required parameters
 LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     # Section 1 - Initial Setup
+    # 1.1.1.x - Disable unused filesystems (no params needed)
+    "LNX-L1-1.1.1.1": [],  # cramfs
+    "LNX-L1-1.1.1.2": [],  # freevxfs
+    "LNX-L1-1.1.1.3": [],  # jffs2
+    "LNX-L1-1.1.1.4": [],  # hfs
+    "LNX-L1-1.1.1.5": [],  # hfsplus
+    "LNX-L1-1.1.1.6": [],  # squashfs
+    "LNX-L1-1.1.1.7": [],  # udf
+    "LNX-L1-1.1.1.8": [],  # USB storage
+
     "LNX-L1-1.5.1": [],  # ASLR - no params, uses default
     "LNX-L1-1.5.4": [],  # Core dumps - no params
     "LNX-L1-1.6.1": ["MOTD_TEXT"],
     "LNX-L1-1.6.2": ["BANNER_TEXT"],
 
     # Section 2 - Services
+    # 2.2.x - Disable dangerous services (no params needed)
+    "LNX-L1-2.2.1": [],   # avahi-daemon
+    "LNX-L1-2.2.2": [],   # cups
+    "LNX-L1-2.2.3": [],   # dhcpd
+    "LNX-L1-2.2.4": [],   # slapd
+    "LNX-L1-2.2.5": [],   # nfs-server
+    "LNX-L1-2.2.6": [],   # rpcbind
+    "LNX-L1-2.2.7": [],   # named
+    "LNX-L1-2.2.8": [],   # vsftpd
+    "LNX-L1-2.2.9": [],   # httpd
+    "LNX-L1-2.2.10": [],  # dovecot
+    "LNX-L1-2.2.11": [],  # smb
+    "LNX-L1-2.2.12": [],  # squid
+    "LNX-L1-2.2.13": [],  # snmpd
+    "LNX-L1-2.2.14": [],  # rsync
+    "LNX-L1-2.2.15": [],  # nis
+    "LNX-L1-2.2.16": [],  # telnet.socket
+
     "LNX-L1-2.4.1": ["NTP_SERVER"],
 
     # Section 3 - Network
@@ -264,13 +292,15 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-3.4.1": ["FIREWALL_DEFAULT_POLICY"],
 
     # Section 4 - Logging
-    "LNX-L1-4.1.1": [],  # rsyslog enabled - no params
-    "LNX-L1-4.2.1": [],  # auditd enabled - no params
+    "LNX-L1-4.1.1": [],    # rsyslog enabled - no params
+    "LNX-L1-4.1.1.1": [],  # journald enabled - no params
+    "LNX-L1-4.2.1": [],    # auditd enabled - no params
     "LNX-L1-4.2.2": ["AUDIT_MAX_LOG_FILE", "AUDIT_SPACE_LEFT_ACTION"],
 
     # Section 5 - Access Control
-    "LNX-L1-5.2.1": [],  # sshd_config permissions - no params
-    "LNX-L1-5.2.6": [],  # X11 forwarding - no params
+    "LNX-L1-5.1.1": [],   # cron enabled - no params
+    "LNX-L1-5.2.1": [],   # sshd_config permissions - no params
+    "LNX-L1-5.2.6": [],   # X11 forwarding - no params
     "LNX-L1-5.2.7": ["SSH_MAX_AUTH_TRIES"],
     "LNX-L1-5.2.10": [],  # PermitRootLogin - no params
     "LNX-L1-5.2.11": [],  # PermitEmptyPasswords - no params
@@ -280,6 +310,7 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-5.3.1": ["PASS_MIN_LEN"],
     "LNX-L1-5.4.1.1": ["PASS_MAX_DAYS"],
     "LNX-L1-5.4.1.2": ["PASS_MIN_DAYS"],
+    "LNX-L1-5.5.1": [],   # Restrict root login - no params
 
     # Section 6 - System Maintenance
     "LNX-L1-6.1.1": [],  # passwd permissions - no params
