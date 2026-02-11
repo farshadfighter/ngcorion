@@ -1477,7 +1477,8 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     ]
 
     for section, mount, option, title, rationale in mount_options:
-        mount_key = f"mount_{mount.replace('/', '_').strip('_')}_options" if mount.startswith("/dev") else f"mount_{mount.replace('/', '_').strip('_')}"
+        # Always append _options suffix to match command keys (e.g., mount_tmp_options)
+        mount_key = f"mount_{mount.replace('/', '_').strip('_')}_options"
         rules.append(LinuxCISRule(
             id=f"LNX-L1-{section}",
             cis_section=section,

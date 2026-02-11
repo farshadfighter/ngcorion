@@ -159,6 +159,10 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         ("telnet.socket", "2.2.16"),
     ]
 
+    # Adjust service names for distro (httpd -> apache2 on Debian/Ubuntu)
+    if is_debian:
+        services_to_check = [(s if s != "httpd" else "apache2", sec) for s, sec in services_to_check]
+
     for service, section in services_to_check:
         commands.append({
             "cmd": f"systemctl is-enabled {service} 2>/dev/null || echo 'not installed'",
@@ -304,10 +308,19 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         {"cmd": "sshd -T 2>/dev/null | head -100 || echo 'sshd -T failed'", "sudo": True, "key": "sshd_effective_config", "section": "5.2"},
     ])
 
-    # 5.3 - Configure PAM
+    # 5.3 - Configure PAM (distro-aware paths)
+    # Ubuntu/Debian: /etc/pam.d/common-password, /etc/pam.d/common-auth
+    # Rocky/RHEL: /etc/pam.d/system-auth, /etc/pam.d/password-auth
+    if is_debian:
+        pam_password_file = "/etc/pam.d/common-password"
+        pam_auth_file = "/etc/pam.d/common-auth"
+    else:
+        pam_password_file = "/etc/pam.d/system-auth"
+        pam_auth_file = "/etc/pam.d/password-auth"
+
     commands.extend([
-        {"cmd": "cat /etc/pam.d/common-password 2>/dev/null || cat /etc/pam.d/system-auth 2>/dev/null || echo 'no pam config'", "sudo": True, "key": "pam_password", "section": "5.3.1"},
-        {"cmd": "cat /etc/pam.d/common-auth 2>/dev/null || echo 'no common-auth'", "sudo": True, "key": "pam_auth", "section": "5.3.2"},
+        {"cmd": f"cat {pam_password_file} 2>/dev/null || echo 'no pam password config'", "sudo": True, "key": "pam_password", "section": "5.3.1"},
+        {"cmd": f"cat {pam_auth_file} 2>/dev/null || echo 'no pam auth config'", "sudo": True, "key": "pam_auth", "section": "5.3.2"},
         {"cmd": "cat /etc/security/pwquality.conf 2>/dev/null | grep -v '^#' | grep -v '^$' || echo 'no pwquality config'", "sudo": True, "key": "pwquality_config", "section": "5.3.1"},
         {"cmd": "cat /etc/login.defs 2>/dev/null | grep -v '^#' | grep -v '^$' || echo 'no login.defs'", "sudo": False, "key": "login_defs", "section": "5.3.3"},
     ])
@@ -412,9 +425,9 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         {"cmd": "grep -E 'pam_wheel' /etc/pam.d/su 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_wheel", "section": "5.6"},
     ])
 
-    # Password history (pam_pwhistory)
+    # Password history (pam_pwhistory) - use distro-aware path
     commands.extend([
-        {"cmd": "grep -E 'pam_pwhistory|remember' /etc/pam.d/common-password /etc/pam.d/system-auth 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_pwhistory", "section": "5.3.2"},
+        {"cmd": f"grep -E 'pam_pwhistory|remember' {pam_password_file} 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_pwhistory", "section": "5.3.2"},
     ])
 
     return commands
