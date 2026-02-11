@@ -7,16 +7,23 @@ Provides:
 - Test utilities
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path for imports
+TESTS_DIR = Path(__file__).parent
+PROJECT_ROOT = TESTS_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import pytest
 import json
 import os
-from pathlib import Path
 from typing import Dict, Any, List
 from unittest.mock import Mock, MagicMock, patch
 
 
-# Get the tests directory path
-TESTS_DIR = Path(__file__).parent
+# Mock data directory
 MOCK_DATA_DIR = TESTS_DIR / "mock_data"
 
 
@@ -196,6 +203,12 @@ def mock_rocky_ssh_client(rocky_audit_data) -> MockLinuxSSHClient:
         mock_outputs=rocky_audit_data,
         distro_id="rocky"
     )
+
+
+@pytest.fixture
+def mock_ssh_client_class():
+    """Provide MockLinuxSSHClient class for tests that need to create multiple instances."""
+    return MockLinuxSSHClient
 
 
 # ==================== RULE AND COMMAND FIXTURES ====================

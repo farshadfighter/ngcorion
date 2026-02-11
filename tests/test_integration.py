@@ -204,11 +204,9 @@ class TestEvaluateComplianceFunction:
 class TestContextManagerUsage:
     """Test SSH client context manager usage."""
 
-    def test_context_manager_connects_disconnects(self, ubuntu_audit_data):
+    def test_context_manager_connects_disconnects(self, ubuntu_audit_data, mock_ssh_client_class):
         """Test context manager properly connects and disconnects."""
-        from tests.conftest import MockLinuxSSHClient
-
-        client = MockLinuxSSHClient(mock_outputs=ubuntu_audit_data, distro_id="ubuntu")
+        client = mock_ssh_client_class(mock_outputs=ubuntu_audit_data, distro_id="ubuntu")
 
         # Before context
         assert not client.is_connected()
@@ -291,11 +289,9 @@ class TestErrorHandling:
             # Should return False for error output
             assert result is False
 
-    def test_not_connected_raises_error(self):
+    def test_not_connected_raises_error(self, mock_ssh_client_class):
         """Test operations on unconnected client raise errors."""
-        from tests.conftest import MockLinuxSSHClient
-
-        client = MockLinuxSSHClient(distro_id="ubuntu")
+        client = mock_ssh_client_class(distro_id="ubuntu")
         # Don't connect
 
         with pytest.raises(RuntimeError, match="Not connected"):

@@ -5,6 +5,14 @@ Tests the distro detection logic that parses /etc/os-release
 and assigns the correct profile.
 """
 
+import sys
+from pathlib import Path
+
+# Ensure project root is in path
+PROJECT_ROOT = Path(__file__).parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import pytest
 import re
 
@@ -73,10 +81,8 @@ class TestDistroDetection:
 
         mock_rocky_ssh_client.disconnect()
 
-    def test_distro_profile_assignment(self):
+    def test_distro_profile_assignment(self, mock_ssh_client_class):
         """Test profile assignment for various distro versions."""
-        from tests.conftest import MockLinuxSSHClient
-
         test_cases = [
             ("ubuntu", "ubuntu_22", "22.04"),
             ("ubuntu", "ubuntu_24", "24.04"),
@@ -86,7 +92,7 @@ class TestDistroDetection:
         ]
 
         for distro_id, expected_profile_prefix, version in test_cases:
-            client = MockLinuxSSHClient(distro_id=distro_id)
+            client = mock_ssh_client_class(distro_id=distro_id)
             client.connect()
             distro = client.detect_distro()
 
@@ -98,12 +104,10 @@ class TestDistroDetection:
 
             client.disconnect()
 
-    def test_distro_id_normalization(self):
+    def test_distro_id_normalization(self, mock_ssh_client_class):
         """Test that distro IDs are normalized correctly."""
-        from tests.conftest import MockLinuxSSHClient
-
         # Rocky Linux might appear as "rocky" or "rockylinux"
-        rocky_client = MockLinuxSSHClient(distro_id="rocky")
+        rocky_client = mock_ssh_client_class(distro_id="rocky")
         rocky_client.connect()
         distro = rocky_client.detect_distro()
         assert distro["id"] == "rocky"
