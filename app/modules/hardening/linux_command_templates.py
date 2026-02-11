@@ -566,6 +566,511 @@ _register(LinuxHardeningTemplate(
     ]
 ))
 
+# ==================== EXPANDED TEMPLATES ====================
+
+# 6.1.2-6.1.9 - File Permissions for system files
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.2",
+    description="Set permissions on /etc/passwd",
+    commands=[
+        "chown root:root /etc/passwd",
+        "chmod 644 /etc/passwd"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/passwd | grep -q '644 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.3",
+    description="Set permissions on /etc/shadow",
+    commands=[
+        "chown root:shadow /etc/shadow 2>/dev/null || chown root:root /etc/shadow",
+        "chmod 640 /etc/shadow"
+    ],
+    verify_commands=["stat -c '%a' /etc/shadow | grep -q '640' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.4",
+    description="Set permissions on /etc/group",
+    commands=[
+        "chown root:root /etc/group",
+        "chmod 644 /etc/group"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/group | grep -q '644 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.5",
+    description="Set permissions on /etc/gshadow",
+    commands=[
+        "chown root:shadow /etc/gshadow 2>/dev/null || chown root:root /etc/gshadow",
+        "chmod 640 /etc/gshadow"
+    ],
+    verify_commands=["stat -c '%a' /etc/gshadow | grep -q '640' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.6",
+    description="Set permissions on /etc/passwd-",
+    commands=[
+        "chown root:root /etc/passwd-",
+        "chmod 644 /etc/passwd-"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/passwd- | grep -q '644 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.7",
+    description="Set permissions on /etc/shadow-",
+    commands=[
+        "chown root:shadow /etc/shadow- 2>/dev/null || chown root:root /etc/shadow-",
+        "chmod 640 /etc/shadow-"
+    ],
+    verify_commands=["stat -c '%a' /etc/shadow- | grep -q '640' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.8",
+    description="Set permissions on /etc/group-",
+    commands=[
+        "chown root:root /etc/group-",
+        "chmod 644 /etc/group-"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/group- | grep -q '644 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.1.9",
+    description="Set permissions on /etc/gshadow-",
+    commands=[
+        "chown root:shadow /etc/gshadow- 2>/dev/null || chown root:root /etc/gshadow-",
+        "chmod 640 /etc/gshadow-"
+    ],
+    verify_commands=["stat -c '%a' /etc/gshadow- | grep -q '640' && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 3.3.1-3.3.3 - IPv6 Hardening
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-3.3.1",
+    description="Disable IPv6 router advertisements",
+    commands=[
+        "echo 'net.ipv6.conf.all.accept_ra = 0' >> /etc/sysctl.d/60-netipv6_sysctl.conf",
+        "echo 'net.ipv6.conf.default.accept_ra = 0' >> /etc/sysctl.d/60-netipv6_sysctl.conf",
+        "sysctl -w net.ipv6.conf.all.accept_ra=0",
+        "sysctl -w net.ipv6.conf.default.accept_ra=0"
+    ],
+    verify_commands=["sysctl net.ipv6.conf.all.accept_ra | grep -q '= 0' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-3.3.2",
+    description="Disable IPv6 redirects",
+    commands=[
+        "echo 'net.ipv6.conf.all.accept_redirects = 0' >> /etc/sysctl.d/60-netipv6_sysctl.conf",
+        "echo 'net.ipv6.conf.default.accept_redirects = 0' >> /etc/sysctl.d/60-netipv6_sysctl.conf",
+        "sysctl -w net.ipv6.conf.all.accept_redirects=0",
+        "sysctl -w net.ipv6.conf.default.accept_redirects=0"
+    ],
+    verify_commands=["sysctl net.ipv6.conf.all.accept_redirects | grep -q '= 0' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-3.3.3",
+    description="Disable IPv6",
+    commands=[
+        "echo 'net.ipv6.conf.all.disable_ipv6 = 1' >> /etc/sysctl.d/60-netipv6_sysctl.conf",
+        "echo 'net.ipv6.conf.default.disable_ipv6 = 1' >> /etc/sysctl.d/60-netipv6_sysctl.conf",
+        "sysctl -w net.ipv6.conf.all.disable_ipv6=1",
+        "sysctl -w net.ipv6.conf.default.disable_ipv6=1"
+    ],
+    verify_commands=["sysctl net.ipv6.conf.all.disable_ipv6 | grep -q '= 1' && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 4.2.3.x - Audit Rules
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.1",
+    description="Configure audit rules for time changes",
+    commands=[
+        "cat >> /etc/audit/rules.d/time-change.rules << 'EOF'\n-a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change\n-a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change\n-a always,exit -F arch=b64 -S clock_settime -k time-change\n-a always,exit -F arch=b32 -S clock_settime -k time-change\n-w /etc/localtime -p wa -k time-change\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'time-change' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.2",
+    description="Configure audit rules for identity changes",
+    commands=[
+        "cat >> /etc/audit/rules.d/identity.rules << 'EOF'\n-w /etc/group -p wa -k identity\n-w /etc/passwd -p wa -k identity\n-w /etc/gshadow -p wa -k identity\n-w /etc/shadow -p wa -k identity\n-w /etc/security/opasswd -p wa -k identity\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'identity' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.3",
+    description="Configure audit rules for system locale changes",
+    commands=[
+        "cat >> /etc/audit/rules.d/system-locale.rules << 'EOF'\n-a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale\n-a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale\n-w /etc/issue -p wa -k system-locale\n-w /etc/issue.net -p wa -k system-locale\n-w /etc/hosts -p wa -k system-locale\n-w /etc/hostname -p wa -k system-locale\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'system-locale' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.4",
+    description="Configure audit rules for MAC policy changes",
+    commands=[
+        "cat >> /etc/audit/rules.d/MAC-policy.rules << 'EOF'\n-w /etc/apparmor/ -p wa -k MAC-policy\n-w /etc/apparmor.d/ -p wa -k MAC-policy\n-w /etc/selinux/ -p wa -k MAC-policy\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'MAC-policy' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.5",
+    description="Configure audit rules for login events",
+    commands=[
+        "cat >> /etc/audit/rules.d/logins.rules << 'EOF'\n-w /var/log/faillog -p wa -k logins\n-w /var/log/lastlog -p wa -k logins\n-w /var/log/tallylog -p wa -k logins\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'logins' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.6",
+    description="Configure audit rules for session events",
+    commands=[
+        "cat >> /etc/audit/rules.d/session.rules << 'EOF'\n-w /var/run/utmp -p wa -k session\n-w /var/log/wtmp -p wa -k session\n-w /var/log/btmp -p wa -k session\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'session' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.7",
+    description="Configure audit rules for permission changes",
+    commands=[
+        "cat >> /etc/audit/rules.d/perm-mod.rules << 'EOF'\n-a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod\n-a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod\n-a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod\n-a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'perm_mod' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.11",
+    description="Configure audit rules for sudo changes",
+    commands=[
+        "cat >> /etc/audit/rules.d/scope.rules << 'EOF'\n-w /etc/sudoers -p wa -k scope\n-w /etc/sudoers.d/ -p wa -k scope\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'scope' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+# 5.1.2-5.1.5 - Cron Access Control
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.1.2",
+    description="Set permissions on /etc/crontab",
+    commands=[
+        "chown root:root /etc/crontab",
+        "chmod 600 /etc/crontab"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/crontab | grep -q '600 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.1.3",
+    description="Set permissions on /etc/cron.hourly",
+    commands=[
+        "chown root:root /etc/cron.hourly",
+        "chmod 700 /etc/cron.hourly"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/cron.hourly | grep -q '700 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.1.4",
+    description="Set permissions on /etc/cron.d",
+    commands=[
+        "chown root:root /etc/cron.d",
+        "chmod 700 /etc/cron.d"
+    ],
+    verify_commands=["stat -c '%a %U:%G' /etc/cron.d | grep -q '700 root:root' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.1.5",
+    description="Restrict cron to authorized users",
+    commands=[
+        "rm -f /etc/cron.deny",
+        "echo 'root' > /etc/cron.allow",
+        "chown root:root /etc/cron.allow",
+        "chmod 640 /etc/cron.allow"
+    ],
+    verify_commands=["test -f /etc/cron.allow && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 5.3.3 - PAM Faillock
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.3.3",
+    description="Configure PAM faillock for brute force protection",
+    commands=[
+        "apt-get install -y libpam-modules 2>/dev/null || dnf install -y pam 2>/dev/null || true",
+        "cat > /etc/security/faillock.conf << 'EOF'\ndenial = {FAILLOCK_DENY}\nunlock_time = {FAILLOCK_UNLOCK_TIME}\nfail_interval = 900\naudit\nsilent\nEOF",
+        "grep -q 'pam_faillock' /etc/pam.d/common-auth 2>/dev/null || sed -i '/pam_unix.so/i auth required pam_faillock.so preauth' /etc/pam.d/common-auth 2>/dev/null || true"
+    ],
+    verify_commands=["test -f /etc/security/faillock.conf && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 5.2.14-5.2.19 - Additional SSH settings
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.14",
+    description="Configure SSH warning banner",
+    commands=[
+        "cat > /etc/ssh/banner << 'EOF'\n{SSH_BANNER_TEXT}\nEOF",
+        "sed -i 's/^#*Banner.*/Banner \\/etc\\/ssh\\/banner/' /etc/ssh/sshd_config",
+        "grep -q '^Banner' /etc/ssh/sshd_config || echo 'Banner /etc/ssh/banner' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["test -f /etc/ssh/banner && sshd -T | grep -q 'banner /etc/ssh/banner' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.15b",
+    description="Disable SSH TCP forwarding",
+    commands=[
+        "sed -i 's/^#*AllowTcpForwarding.*/AllowTcpForwarding no/' /etc/ssh/sshd_config",
+        "grep -q '^AllowTcpForwarding' /etc/ssh/sshd_config || echo 'AllowTcpForwarding no' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'allowtcpforwarding no' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.16",
+    description="Configure SSH MaxStartups",
+    commands=[
+        "sed -i 's/^#*MaxStartups.*/MaxStartups {SSH_MAX_STARTUPS}/' /etc/ssh/sshd_config",
+        "grep -q '^MaxStartups' /etc/ssh/sshd_config || echo 'MaxStartups {SSH_MAX_STARTUPS}' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'maxstartups' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.17",
+    description="Configure SSH MaxSessions",
+    commands=[
+        "sed -i 's/^#*MaxSessions.*/MaxSessions {SSH_MAX_SESSIONS}/' /etc/ssh/sshd_config",
+        "grep -q '^MaxSessions' /etc/ssh/sshd_config || echo 'MaxSessions {SSH_MAX_SESSIONS}' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'maxsessions' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.18",
+    description="Configure SSH LoginGraceTime",
+    commands=[
+        "sed -i 's/^#*LoginGraceTime.*/LoginGraceTime {SSH_LOGIN_GRACE_TIME}/' /etc/ssh/sshd_config",
+        "grep -q '^LoginGraceTime' /etc/ssh/sshd_config || echo 'LoginGraceTime {SSH_LOGIN_GRACE_TIME}' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'logingracetime' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.19",
+    description="Enable SSH PAM",
+    commands=[
+        "sed -i 's/^#*UsePAM.*/UsePAM yes/' /etc/ssh/sshd_config",
+        "grep -q '^UsePAM' /etc/ssh/sshd_config || echo 'UsePAM yes' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'usepam yes' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+# 5.4.1.3-5.4.1.5 - Account Policy
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.4.1.3",
+    description="Set password warning age",
+    commands=[
+        "sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE\\t{PASS_WARN_AGE}/' /etc/login.defs"
+    ],
+    verify_commands=["grep -q 'PASS_WARN_AGE.*{PASS_WARN_AGE}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.4.1.4",
+    description="Set inactive password lock",
+    commands=[
+        "useradd -D -f {INACTIVE_DAYS}"
+    ],
+    verify_commands=["useradd -D | grep -q 'INACTIVE={INACTIVE_DAYS}' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.4.1.5",
+    description="Set default UMASK",
+    commands=[
+        "sed -i 's/^UMASK.*/UMASK\\t{UMASK_VALUE}/' /etc/login.defs"
+    ],
+    verify_commands=["grep -q 'UMASK.*{UMASK_VALUE}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 1.1.8.x - Mount Options
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.1.8.1",
+    description="Set nodev option on /tmp",
+    commands=[
+        "sed -i '/\\/tmp/s/defaults/defaults,nodev/' /etc/fstab",
+        "mount -o remount,nodev /tmp 2>/dev/null || true"
+    ],
+    verify_commands=["mount | grep '/tmp' | grep -q 'nodev' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.1.8.2",
+    description="Set nosuid option on /tmp",
+    commands=[
+        "sed -i '/\\/tmp/s/defaults/defaults,nosuid/' /etc/fstab",
+        "mount -o remount,nosuid /tmp 2>/dev/null || true"
+    ],
+    verify_commands=["mount | grep '/tmp' | grep -q 'nosuid' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.1.8.3",
+    description="Set noexec option on /tmp",
+    commands=[
+        "sed -i '/\\/tmp/s/defaults/defaults,noexec/' /etc/fstab",
+        "mount -o remount,noexec /tmp 2>/dev/null || true"
+    ],
+    verify_commands=["mount | grep '/tmp' | grep -q 'noexec' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.1.8.4",
+    description="Set nodev option on /dev/shm",
+    commands=[
+        "grep -q '/dev/shm' /etc/fstab && sed -i '/\\/dev\\/shm/s/defaults/defaults,nodev/' /etc/fstab || echo 'tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0' >> /etc/fstab",
+        "mount -o remount,nodev /dev/shm 2>/dev/null || true"
+    ],
+    verify_commands=["mount | grep '/dev/shm' | grep -q 'nodev' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.1.8.5",
+    description="Set nosuid option on /dev/shm",
+    commands=[
+        "grep -q '/dev/shm' /etc/fstab && sed -i '/\\/dev\\/shm/s/defaults/defaults,nosuid/' /etc/fstab || echo 'tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0' >> /etc/fstab",
+        "mount -o remount,nosuid /dev/shm 2>/dev/null || true"
+    ],
+    verify_commands=["mount | grep '/dev/shm' | grep -q 'nosuid' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.1.8.6",
+    description="Set noexec option on /dev/shm",
+    commands=[
+        "grep -q '/dev/shm' /etc/fstab && sed -i '/\\/dev\\/shm/s/defaults/defaults,noexec/' /etc/fstab || echo 'tmpfs /dev/shm tmpfs defaults,nodev,nosuid,noexec 0 0' >> /etc/fstab",
+        "mount -o remount,noexec /dev/shm 2>/dev/null || true"
+    ],
+    verify_commands=["mount | grep '/dev/shm' | grep -q 'noexec' && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 4.1.1.2-4.1.1.4 - Journald Configuration
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-4.1.1.2",
+    description="Enable journald compression",
+    commands=[
+        "sed -i 's/^#*Compress=.*/Compress=yes/' /etc/systemd/journald.conf",
+        "grep -q '^Compress=' /etc/systemd/journald.conf || echo 'Compress=yes' >> /etc/systemd/journald.conf",
+        "systemctl restart systemd-journald"
+    ],
+    verify_commands=["grep -q '^Compress=yes' /etc/systemd/journald.conf && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="systemd-journald"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-4.1.1.3",
+    description="Configure journald persistent storage",
+    commands=[
+        "sed -i 's/^#*Storage=.*/Storage=persistent/' /etc/systemd/journald.conf",
+        "grep -q '^Storage=' /etc/systemd/journald.conf || echo 'Storage=persistent' >> /etc/systemd/journald.conf",
+        "mkdir -p /var/log/journal",
+        "systemctl restart systemd-journald"
+    ],
+    verify_commands=["grep -q '^Storage=persistent' /etc/systemd/journald.conf && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="systemd-journald"
+))
+
+# 3.2.3, 3.2.6 - Network Parameters
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-3.2.3",
+    description="Disable secure ICMP redirects",
+    commands=[
+        "echo 'net.ipv4.conf.all.secure_redirects = 0' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
+        "echo 'net.ipv4.conf.default.secure_redirects = 0' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
+        "sysctl -w net.ipv4.conf.all.secure_redirects=0",
+        "sysctl -w net.ipv4.conf.default.secure_redirects=0"
+    ],
+    verify_commands=["sysctl net.ipv4.conf.all.secure_redirects | grep -q '= 0' && echo 'PASS' || echo 'FAIL'"]
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-3.2.6",
+    description="Ignore bogus ICMP responses",
+    commands=[
+        "echo 'net.ipv4.icmp_ignore_bogus_error_responses = 1' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
+        "sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1"
+    ],
+    verify_commands=["sysctl net.ipv4.icmp_ignore_bogus_error_responses | grep -q '= 1' && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 5.3.2 - Password History
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.3.2",
+    description="Configure password reuse limit",
+    commands=[
+        "apt-get install -y libpam-pwquality 2>/dev/null || dnf install -y pam_pwquality 2>/dev/null || true",
+        "grep -q 'pam_pwhistory' /etc/pam.d/common-password 2>/dev/null || sed -i '/pam_unix.so/a password required pam_pwhistory.so remember={PASS_REMEMBER} use_authtok' /etc/pam.d/common-password 2>/dev/null || true",
+        "grep -q 'pam_pwhistory' /etc/pam.d/system-auth 2>/dev/null || sed -i '/pam_unix.so/a password required pam_pwhistory.so remember={PASS_REMEMBER} use_authtok' /etc/pam.d/system-auth 2>/dev/null || true"
+    ],
+    verify_commands=["grep -qE 'pam_pwhistory|remember=' /etc/pam.d/common-password /etc/pam.d/system-auth 2>/dev/null && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 5.6 - Su restriction
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.6",
+    description="Restrict su command to wheel group",
+    commands=[
+        "groupadd wheel 2>/dev/null || true",
+        "sed -i 's/^#.*pam_wheel.so$/auth required pam_wheel.so use_uid/' /etc/pam.d/su",
+        "grep -q '^auth.*pam_wheel.so' /etc/pam.d/su || echo 'auth required pam_wheel.so use_uid' >> /etc/pam.d/su"
+    ],
+    verify_commands=["grep -q 'pam_wheel.so' /etc/pam.d/su && echo 'PASS' || echo 'FAIL'"]
+))
+
+# 1.6.3 - Remote login banner
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.6.3",
+    description="Configure remote login warning banner",
+    commands=[
+        "cat > /etc/issue.net << 'EOF'\n{BANNER_TEXT}\nEOF",
+        "chmod 644 /etc/issue.net"
+    ],
+    verify_commands=["test -s /etc/issue.net && echo 'PASS' || echo 'FAIL'"]
+))
+
 
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
     """Get hardening template for a specific check."""

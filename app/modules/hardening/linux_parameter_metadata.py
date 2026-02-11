@@ -238,12 +238,114 @@ LINUX_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         options=["0", "1", "2"],
         default="0"
     ),
+
+    # ==================== EXPANDED PARAMETERS ====================
+
+    # PAM Faillock
+    "FAILLOCK_DENY": ParameterMetadata(
+        name="FAILLOCK_DENY",
+        input_type="number",
+        label="Failed Login Attempts",
+        description="Number of failed login attempts before lockout",
+        required=False,
+        default="5",
+        min_value=3,
+        max_value=10
+    ),
+
+    "FAILLOCK_UNLOCK_TIME": ParameterMetadata(
+        name="FAILLOCK_UNLOCK_TIME",
+        input_type="number",
+        label="Lockout Duration (seconds)",
+        description="Seconds before locked account is automatically unlocked",
+        required=False,
+        default="900",
+        min_value=300,
+        max_value=3600
+    ),
+
+    # SSH Additional Settings
+    "SSH_BANNER_TEXT": ParameterMetadata(
+        name="SSH_BANNER_TEXT",
+        input_type="textarea",
+        label="SSH Banner Text",
+        description="Warning banner displayed before SSH login",
+        required=False,
+        default="Authorized access only. All activity is monitored and logged.",
+        placeholder="Authorized users only. All access is logged."
+    ),
+
+    "SSH_MAX_STARTUPS": ParameterMetadata(
+        name="SSH_MAX_STARTUPS",
+        input_type="text",
+        label="SSH Max Startups",
+        description="Maximum concurrent unauthenticated connections (format: start:rate:full)",
+        required=False,
+        default="10:30:60",
+        placeholder="10:30:60"
+    ),
+
+    "SSH_MAX_SESSIONS": ParameterMetadata(
+        name="SSH_MAX_SESSIONS",
+        input_type="number",
+        label="SSH Max Sessions",
+        description="Maximum sessions per network connection",
+        required=False,
+        default="10",
+        min_value=1,
+        max_value=20
+    ),
+
+    "SSH_LOGIN_GRACE_TIME": ParameterMetadata(
+        name="SSH_LOGIN_GRACE_TIME",
+        input_type="number",
+        label="SSH Login Grace Time (seconds)",
+        description="Time allowed for authentication before disconnection",
+        required=False,
+        default="60",
+        min_value=30,
+        max_value=120
+    ),
+
+    # Account Policy
+    "INACTIVE_DAYS": ParameterMetadata(
+        name="INACTIVE_DAYS",
+        input_type="number",
+        label="Inactive Password Lock (days)",
+        description="Days after password expiry before account is locked",
+        required=False,
+        default="30",
+        min_value=1,
+        max_value=60
+    ),
+
+    "UMASK_VALUE": ParameterMetadata(
+        name="UMASK_VALUE",
+        input_type="text",
+        label="Default UMASK",
+        description="Default file creation mask for new files",
+        required=False,
+        default="027",
+        placeholder="027"
+    ),
+
+    "PASS_REMEMBER": ParameterMetadata(
+        name="PASS_REMEMBER",
+        input_type="number",
+        label="Password History Count",
+        description="Number of previous passwords to remember (prevent reuse)",
+        required=False,
+        default="5",
+        min_value=3,
+        max_value=24
+    ),
 }
 
 
 # Mapping of Linux check numbers to their required parameters
 LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
-    # Section 1 - Initial Setup
+    # ==================== SECTION 1: INITIAL SETUP ====================
+
     # 1.1.1.x - Disable unused filesystems (no params needed)
     "LNX-L1-1.1.1.1": [],  # cramfs
     "LNX-L1-1.1.1.2": [],  # freevxfs
@@ -254,12 +356,42 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-1.1.1.7": [],  # udf
     "LNX-L1-1.1.1.8": [],  # USB storage
 
-    "LNX-L1-1.5.1": [],  # ASLR - no params, uses default
+    # 1.1.8.x - Mount options (no params)
+    "LNX-L1-1.1.8.1": [],  # nodev on /tmp
+    "LNX-L1-1.1.8.2": [],  # nosuid on /tmp
+    "LNX-L1-1.1.8.3": [],  # noexec on /tmp
+    "LNX-L1-1.1.8.4": [],  # nodev on /dev/shm
+    "LNX-L1-1.1.8.5": [],  # nosuid on /dev/shm
+    "LNX-L1-1.1.8.6": [],  # noexec on /dev/shm
+
+    # 1.2.x - Package management
+    "LNX-L1-1.2.1": [],  # Repo configured - informational
+    "LNX-L1-1.2.2": [],  # GPG keys - informational
+
+    # 1.3.x - MAC
+    "LNX-L1-1.3.1": [],  # MAC installed - no params
+    "LNX-L1-1.3.2": [],  # MAC enforcing - no params
+
+    # 1.4.x - GRUB
+    "LNX-L1-1.4.1": [],  # GRUB permissions - no params
+    "LNX-L1-1.4.2": [],  # GRUB password - manual
+    "LNX-L1-1.4.3": [],  # Single user mode - no params
+
+    # 1.5.x - Process hardening
+    "LNX-L1-1.5.1": [],  # ASLR - no params
     "LNX-L1-1.5.4": [],  # Core dumps - no params
+
+    # 1.6.x - Banners
     "LNX-L1-1.6.1": ["MOTD_TEXT"],
     "LNX-L1-1.6.2": ["BANNER_TEXT"],
+    "LNX-L1-1.6.3": ["BANNER_TEXT"],  # Remote banner
 
-    # Section 2 - Services
+    # ==================== SECTION 2: SERVICES ====================
+
+    # 2.1.x - inetd services
+    "LNX-L1-2.1.1": [],   # xinetd
+    "LNX-L1-2.1.2": [],   # openbsd-inetd
+
     # 2.2.x - Disable dangerous services (no params needed)
     "LNX-L1-2.2.1": [],   # avahi-daemon
     "LNX-L1-2.2.2": [],   # cups
@@ -278,43 +410,148 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-2.2.15": [],  # nis
     "LNX-L1-2.2.16": [],  # telnet.socket
 
+    # 2.3.x - Service clients - informational
+    "LNX-L1-2.3.1": [],   # nis client
+    "LNX-L1-2.3.2": [],   # rsh client
+    "LNX-L1-2.3.3": [],   # talk client
+    "LNX-L1-2.3.4": [],   # telnet client
+    "LNX-L1-2.3.5": [],   # ldap-utils
+
+    # 2.4.x - Time sync
     "LNX-L1-2.4.1": ["NTP_SERVER"],
 
-    # Section 3 - Network
+    # ==================== SECTION 3: NETWORK ====================
+
     "LNX-L1-3.1.1": [],  # IP forwarding - no params
     "LNX-L1-3.1.2": [],  # Packet redirects - no params
+
     "LNX-L1-3.2.1": [],  # Source routing - no params
     "LNX-L1-3.2.2": [],  # ICMP redirects - no params
+    "LNX-L1-3.2.3": [],  # Secure redirects - no params
     "LNX-L1-3.2.4": [],  # Log martians - no params
     "LNX-L1-3.2.5": [],  # Broadcast ICMP - no params
+    "LNX-L1-3.2.6": [],  # Bogus ICMP - no params
     "LNX-L1-3.2.7": [],  # RP filter - no params
     "LNX-L1-3.2.8": [],  # TCP SYN cookies - no params
+
+    # 3.3.x - IPv6
+    "LNX-L1-3.3.1": [],  # IPv6 RA - no params
+    "LNX-L1-3.3.2": [],  # IPv6 redirects - no params
+    "LNX-L2-3.3.3": [],  # Disable IPv6 - no params
+
+    # 3.4.x - Firewall
     "LNX-L1-3.4.1": ["FIREWALL_DEFAULT_POLICY"],
 
-    # Section 4 - Logging
+    # ==================== SECTION 4: LOGGING ====================
+
     "LNX-L1-4.1.1": [],    # rsyslog enabled - no params
     "LNX-L1-4.1.1.1": [],  # journald enabled - no params
+    "LNX-L1-4.1.1.2": [],  # journald compress - no params
+    "LNX-L1-4.1.1.3": [],  # journald persistent - no params
+    "LNX-L1-4.1.1.4": [],  # journald forward - no params
+
     "LNX-L1-4.2.1": [],    # auditd enabled - no params
     "LNX-L1-4.2.2": ["AUDIT_MAX_LOG_FILE", "AUDIT_SPACE_LEFT_ACTION"],
 
-    # Section 5 - Access Control
+    # 4.2.3.x - Audit rules (no params - use CIS defaults)
+    "LNX-L2-4.2.3.1": [],   # time-change
+    "LNX-L2-4.2.3.2": [],   # identity
+    "LNX-L2-4.2.3.3": [],   # system-locale
+    "LNX-L2-4.2.3.4": [],   # MAC-policy
+    "LNX-L2-4.2.3.5": [],   # logins
+    "LNX-L2-4.2.3.6": [],   # session
+    "LNX-L2-4.2.3.7": [],   # perm-mod
+    "LNX-L2-4.2.3.8": [],   # access
+    "LNX-L2-4.2.3.9": [],   # mounts
+    "LNX-L2-4.2.3.10": [],  # delete
+    "LNX-L2-4.2.3.11": [],  # scope
+    "LNX-L2-4.2.3.12": [],  # actions
+
+    # ==================== SECTION 5: ACCESS CONTROL ====================
+
+    # 5.1.x - Cron
     "LNX-L1-5.1.1": [],   # cron enabled - no params
+    "LNX-L1-5.1.2": [],   # crontab permissions - no params
+    "LNX-L1-5.1.3": [],   # cron.hourly permissions - no params
+    "LNX-L1-5.1.4": [],   # cron.d permissions - no params
+    "LNX-L1-5.1.5": [],   # cron access - no params
+
+    # 5.2.x - SSH
     "LNX-L1-5.2.1": [],   # sshd_config permissions - no params
+    "LNX-L1-5.2.2": [],   # SSH host key permissions - no params
+    "LNX-L1-5.2.4": [],   # SSH Protocol - no params
+    "LNX-L1-5.2.5": [],   # SSH LogLevel - no params
     "LNX-L1-5.2.6": [],   # X11 forwarding - no params
     "LNX-L1-5.2.7": ["SSH_MAX_AUTH_TRIES"],
+    "LNX-L1-5.2.8": [],   # IgnoreRhosts - no params
+    "LNX-L1-5.2.9": [],   # HostbasedAuthentication - no params
     "LNX-L1-5.2.10": [],  # PermitRootLogin - no params
     "LNX-L1-5.2.11": [],  # PermitEmptyPasswords - no params
     "LNX-L1-5.2.12": [],  # PermitUserEnvironment - no params
     "LNX-L1-5.2.13": ["SSH_CLIENT_ALIVE_INTERVAL", "SSH_CLIENT_ALIVE_COUNT_MAX"],
+    "LNX-L1-5.2.14": ["SSH_BANNER_TEXT"],  # SSH banner
     "LNX-L1-5.2.15": ["ALLOWED_SSH_USERS", "ALLOWED_SSH_GROUPS"],
+    "LNX-L1-5.2.15b": [],  # AllowTcpForwarding - no params
+    "LNX-L1-5.2.16": ["SSH_MAX_STARTUPS"],
+    "LNX-L1-5.2.17": ["SSH_MAX_SESSIONS"],
+    "LNX-L1-5.2.18": ["SSH_LOGIN_GRACE_TIME"],
+    "LNX-L1-5.2.19": [],  # UsePAM - no params
+
+    # 5.3.x - PAM
     "LNX-L1-5.3.1": ["PASS_MIN_LEN"],
+    "LNX-L1-5.3.2": ["PASS_REMEMBER"],  # Password history
+    "LNX-L1-5.3.3": ["FAILLOCK_DENY", "FAILLOCK_UNLOCK_TIME"],  # Faillock
+
+    # 5.4.x - Account settings
     "LNX-L1-5.4.1.1": ["PASS_MAX_DAYS"],
     "LNX-L1-5.4.1.2": ["PASS_MIN_DAYS"],
+    "LNX-L1-5.4.1.3": ["PASS_WARN_AGE"],
+    "LNX-L1-5.4.1.4": ["INACTIVE_DAYS"],
+    "LNX-L1-5.4.1.5": ["UMASK_VALUE"],
+
+    # 5.5.x - Root login
     "LNX-L1-5.5.1": [],   # Restrict root login - no params
 
-    # Section 6 - System Maintenance
-    "LNX-L1-6.1.1": [],  # passwd permissions - no params
-    "LNX-L1-6.2.1": [],  # UID 0 check - manual review
+    # 5.6 - Su
+    "LNX-L1-5.6": [],     # Su restriction - no params
+
+    # ==================== SECTION 6: SYSTEM MAINTENANCE ====================
+
+    # 6.1.x - File permissions
+    "LNX-L1-6.1.1": [],   # passwd permissions - no params
+    "LNX-L1-6.1.2": [],   # passwd permissions - no params
+    "LNX-L1-6.1.3": [],   # shadow permissions - no params
+    "LNX-L1-6.1.4": [],   # group permissions - no params
+    "LNX-L1-6.1.5": [],   # gshadow permissions - no params
+    "LNX-L1-6.1.6": [],   # passwd- permissions - no params
+    "LNX-L1-6.1.7": [],   # shadow- permissions - no params
+    "LNX-L1-6.1.8": [],   # group- permissions - no params
+    "LNX-L1-6.1.9": [],   # gshadow- permissions - no params
+
+    # 6.1.10-12 - Informational checks (no hardening)
+    "LNX-INFO-6.1.10": [],  # SUID audit - informational
+    "LNX-INFO-6.1.11": [],  # World-writable - informational
+    "LNX-INFO-6.1.12": [],  # Unowned files - informational
+
+    # 6.2.x - User settings
+    "LNX-L1-6.2.1": [],   # UID 0 check - manual review
+    "LNX-L1-6.2.2": [],   # Empty passwords - manual
+    "LNX-L1-6.2.3": [],   # Legacy entries - manual
+    "LNX-L1-6.2.4": [],   # Home dirs exist - manual
+    "LNX-L1-6.2.5": [],   # Home dir permissions - manual
+    "LNX-L1-6.2.6": [],   # Home dir ownership - manual
+    "LNX-L1-6.2.7": [],   # .forward files - manual
+    "LNX-L1-6.2.8": [],   # .netrc files - manual
+    "LNX-L1-6.2.9": [],   # .rhosts files - manual
+    "LNX-L1-6.2.10": [],  # UID 0 strict - manual
+
+    # L2 Partition checks - informational
+    "LNX-L2-1.1.2": [],   # /tmp partition
+    "LNX-L2-1.1.3": [],   # /var partition
+    "LNX-L2-1.1.4": [],   # /var/tmp partition
+    "LNX-L2-1.1.5": [],   # /var/log partition
+    "LNX-L2-1.1.6": [],   # /var/log/audit partition
+    "LNX-L2-1.1.7": [],   # /home partition
 }
 
 
