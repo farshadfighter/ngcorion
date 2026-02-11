@@ -13,8 +13,11 @@ import time
 from app.modules.audit.linux_ssh_client import LinuxSSHClient
 from .linux_command_templates import (
     get_linux_hardening_template,
+    get_linux_hardening_template_for_distro,
     get_linux_template_commands,
+    get_linux_template_commands_for_distro,
     get_linux_verify_commands,
+    get_linux_verify_commands_for_distro,
     LinuxHardeningTemplate
 )
 
@@ -64,7 +67,8 @@ class LinuxSSHExecutor:
         username: str,
         password: str,
         sudo_password: Optional[str] = None,
-        port: int = 22
+        port: int = 22,
+        distro_id: Optional[str] = None
     ):
         """
         Initialize the executor.
@@ -75,17 +79,19 @@ class LinuxSSHExecutor:
             password: SSH password
             sudo_password: Sudo password (defaults to SSH password)
             port: SSH port
+            distro_id: Distribution ID (ubuntu, rocky, etc.). Auto-detected if not provided.
         """
         self.ip = ip
         self.username = username
         self.password = password
         self.sudo_password = sudo_password or password
         self.port = port
+        self.distro_id = distro_id
         self.ssh_client: Optional[LinuxSSHClient] = None
         self._connected = False
 
     def connect(self) -> None:
-        """Establish SSH connection."""
+        """Establish SSH connection and auto-detect distro if needed."""
         if self._connected:
             return
 
@@ -98,7 +104,18 @@ class LinuxSSHExecutor:
         )
         self.ssh_client.connect()
         self._connected = True
-        logger.info(f"Connected to {self.ip} for hardening")
+
+        # Auto-detect distro if not provided
+        if not self.distro_id:
+            try:
+                distro_info = self.ssh_client.detect_distro()
+                self.distro_id = distro_info.get("id", "ubuntu")
+                logger.info(f"Auto-detected distro on {self.ip}: {self.distro_id}")
+            except Exception as e:
+                logger.warning(f"Failed to detect distro on {self.ip}, defaulting to ubuntu: {e}")
+                self.distro_id = "ubuntu"
+
+        logger.info(f"Connected to {self.ip} for hardening (distro: {self.distro_id})")
 
     def disconnect(self) -> None:
         """Close SSH connection."""
@@ -141,7 +158,8 @@ class LinuxSSHExecutor:
         result = LinuxHardeningExecutionResult(check_id)
         parameters = parameters or {}
 
-        template = get_linux_hardening_template(check_id)
+        # Use distro-aware template
+        template = get_linux_hardening_template_for_distro(check_id, self.distro_id or "ubuntu")
         if not template:
             result.error_message = f"No hardening template found for {check_id}"
             logger.error(result.error_message)
@@ -151,11 +169,11 @@ class LinuxSSHExecutor:
             result.error_message = "Not connected to server"
             return result
 
-        logger.info(f"Executing hardening for {check_id}: {template.description}")
+        logger.info(f"Executing hardening for {check_id} (distro: {self.distro_id}): {template.description}")
 
         try:
-            # Get commands with parameter substitution
-            commands = get_linux_template_commands(check_id, parameters)
+            # Get commands with distro-specific paths and parameter substitution
+            commands = get_linux_template_commands_for_distro(check_id, self.distro_id or "ubuntu", parameters)
 
             # Execute each command
             for cmd in commands:
@@ -183,8 +201,8 @@ class LinuxSSHExecutor:
                 except Exception as e:
                     logger.warning(f"Failed to restart {service}: {str(e)}")
 
-            # Run verification commands
-            verify_commands = get_linux_verify_commands(check_id, parameters)
+            # Run verification commands with distro-specific paths
+            verify_commands = get_linux_verify_commands_for_distro(check_id, self.distro_id or "ubuntu", parameters)
             if verify_commands:
                 verification_outputs = []
                 for vcmd in verify_commands:
@@ -270,12 +288,14 @@ class LinuxHardeningBatchExecutor:
         ip: str,
         username: str,
         password: str,
-        sudo_password: Optional[str] = None
+        sudo_password: Optional[str] = None,
+        distro_id: Optional[str] = None
     ):
         self.ip = ip
         self.username = username
         self.password = password
         self.sudo_password = sudo_password or password
+        self.distro_id = distro_id  # Will be auto-detected if not provided
 
     def execute_auto_harden(
         self,
@@ -309,8 +329,11 @@ class LinuxHardeningBatchExecutor:
             ip=self.ip,
             username=self.username,
             password=self.password,
-            sudo_password=self.sudo_password
+            sudo_password=self.sudo_password,
+            distro_id=self.distro_id
         ) as executor:
+            # Store detected distro for result metadata
+            detected_distro = executor.distro_id
 
             for check_id in auto_fixable:
                 # Get defaults for this check
@@ -332,6 +355,7 @@ class LinuxHardeningBatchExecutor:
             "skipped": skipped,
             "successful": successful,
             "failed": failed,
+            "distro_id": detected_distro,
             "results": results
         }
 
@@ -356,8 +380,10 @@ class LinuxHardeningBatchExecutor:
             ip=self.ip,
             username=self.username,
             password=self.password,
-            sudo_password=self.sudo_password
+            sudo_password=self.sudo_password,
+            distro_id=self.distro_id
         ) as executor:
+            detected_distro = executor.distro_id
 
             for check in checks:
                 check_id = check.get("check_id")
@@ -375,6 +401,7 @@ class LinuxHardeningBatchExecutor:
             "total": len(checks),
             "successful": successful,
             "failed": failed,
+            "distro_id": detected_distro,
             "results": results
         }
 
@@ -397,8 +424,10 @@ class LinuxHardeningBatchExecutor:
             ip=self.ip,
             username=self.username,
             password=self.password,
-            sudo_password=self.sudo_password
+            sudo_password=self.sudo_password,
+            distro_id=self.distro_id
         ) as executor:
-
             result = executor.execute_hardening(check_id, parameters)
-            return result.to_dict()
+            result_dict = result.to_dict()
+            result_dict["distro_id"] = executor.distro_id
+            return result_dict

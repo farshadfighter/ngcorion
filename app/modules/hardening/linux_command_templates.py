@@ -13,6 +13,7 @@ Each template includes:
 
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
+import copy
 
 
 @dataclass
@@ -380,7 +381,7 @@ _register(LinuxHardeningTemplate(
         "systemctl start cron 2>/dev/null || systemctl start crond 2>/dev/null || true"
     ],
     verify_commands=[
-        "systemctl is-enabled cron 2>/dev/null || systemctl is-enabled crond 2>/dev/null | grep -q enabled && echo 'PASS' || echo 'FAIL'"
+        "(systemctl is-enabled cron 2>/dev/null || systemctl is-enabled crond 2>/dev/null) | grep -q enabled && echo 'PASS' || echo 'FAIL'"
     ]
 ))
 
@@ -819,13 +820,15 @@ _register(LinuxHardeningTemplate(
 ))
 
 # 5.3.3 - PAM Faillock
+# Note: The distro-aware template function will transform /etc/pam.d/common-auth
+# to /etc/pam.d/password-auth for RHEL-based systems
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.3.3",
     description="Configure PAM faillock for brute force protection",
     commands=[
         "apt-get install -y libpam-modules 2>/dev/null || dnf install -y pam 2>/dev/null || true",
         "cat > /etc/security/faillock.conf << 'EOF'\ndenial = {FAILLOCK_DENY}\nunlock_time = {FAILLOCK_UNLOCK_TIME}\nfail_interval = 900\naudit\nsilent\nEOF",
-        "grep -q 'pam_faillock' /etc/pam.d/common-auth 2>/dev/null || sed -i '/pam_unix.so/i auth required pam_faillock.so preauth' /etc/pam.d/common-auth 2>/dev/null || true"
+        "grep -q 'pam_faillock' /etc/pam.d/common-auth || sed -i '/pam_unix.so/i auth required pam_faillock.so preauth' /etc/pam.d/common-auth"
     ],
     verify_commands=["test -f /etc/security/faillock.conf && echo 'PASS' || echo 'FAIL'"]
 ))
@@ -1037,15 +1040,16 @@ _register(LinuxHardeningTemplate(
 ))
 
 # 5.3.2 - Password History
+# Note: The distro-aware template function will transform /etc/pam.d/common-password
+# to /etc/pam.d/system-auth for RHEL-based systems
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.3.2",
     description="Configure password reuse limit",
     commands=[
         "apt-get install -y libpam-pwquality 2>/dev/null || dnf install -y pam_pwquality 2>/dev/null || true",
-        "grep -q 'pam_pwhistory' /etc/pam.d/common-password 2>/dev/null || sed -i '/pam_unix.so/a password required pam_pwhistory.so remember={PASS_REMEMBER} use_authtok' /etc/pam.d/common-password 2>/dev/null || true",
-        "grep -q 'pam_pwhistory' /etc/pam.d/system-auth 2>/dev/null || sed -i '/pam_unix.so/a password required pam_pwhistory.so remember={PASS_REMEMBER} use_authtok' /etc/pam.d/system-auth 2>/dev/null || true"
+        "grep -q 'pam_pwhistory' /etc/pam.d/common-password || sed -i '/pam_unix.so/a password required pam_pwhistory.so remember={PASS_REMEMBER} use_authtok' /etc/pam.d/common-password"
     ],
-    verify_commands=["grep -qE 'pam_pwhistory|remember=' /etc/pam.d/common-password /etc/pam.d/system-auth 2>/dev/null && echo 'PASS' || echo 'FAIL'"]
+    verify_commands=["grep -qE 'pam_pwhistory|remember=' /etc/pam.d/common-password && echo 'PASS' || echo 'FAIL'"]
 ))
 
 # 5.6 - Su restriction
@@ -1075,6 +1079,212 @@ _register(LinuxHardeningTemplate(
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
     """Get hardening template for a specific check."""
     return LINUX_HARDENING_TEMPLATES.get(check_id)
+
+
+# ==================== DISTRO-AWARE TEMPLATE HELPERS ====================
+
+def get_distro_pam_paths(distro_id: str) -> Dict[str, str]:
+    """
+    Get distro-specific PAM file paths.
+
+    Args:
+        distro_id: Distribution ID (ubuntu, rocky, rhel, etc.)
+
+    Returns:
+        Dict with 'password' and 'auth' PAM file paths
+    """
+    is_debian = distro_id in ("ubuntu", "debian")
+    if is_debian:
+        return {
+            "password": "/etc/pam.d/common-password",
+            "auth": "/etc/pam.d/common-auth",
+        }
+    else:
+        # RHEL-based: Rocky, CentOS, RHEL, AlmaLinux, Fedora
+        return {
+            "password": "/etc/pam.d/system-auth",
+            "auth": "/etc/pam.d/password-auth",
+        }
+
+
+def get_distro_service_name(service: str, distro_id: str) -> str:
+    """
+    Get distro-specific service name.
+
+    Args:
+        service: Generic service name (cron, httpd)
+        distro_id: Distribution ID
+
+    Returns:
+        Distro-specific service name
+    """
+    is_debian = distro_id in ("ubuntu", "debian")
+    service_map = {
+        ("cron", True): "cron",
+        ("cron", False): "crond",
+        ("httpd", True): "apache2",
+        ("httpd", False): "httpd",
+        ("chrony", True): "chrony",
+        ("chrony", False): "chronyd",
+    }
+    return service_map.get((service, is_debian), service)
+
+
+def get_distro_mac_paths(distro_id: str) -> List[str]:
+    """
+    Get distro-specific MAC (Mandatory Access Control) paths.
+
+    Args:
+        distro_id: Distribution ID
+
+    Returns:
+        List of MAC-related paths for audit rules
+    """
+    is_debian = distro_id in ("ubuntu", "debian")
+    if is_debian:
+        return ["/etc/apparmor/", "/etc/apparmor.d/"]
+    else:
+        return ["/etc/selinux/"]
+
+
+def get_linux_hardening_template_for_distro(
+    check_id: str,
+    distro_id: str = "ubuntu"
+) -> Optional[LinuxHardeningTemplate]:
+    """
+    Get hardening template with distro-specific commands.
+
+    This transforms generic templates into distro-specific ones by:
+    - Replacing PAM file paths (common-password -> system-auth for RHEL-based)
+    - Replacing MAC paths (AppArmor -> SELinux for RHEL-based)
+    - Adjusting service names (cron -> crond for RHEL-based)
+
+    Args:
+        check_id: CIS check ID
+        distro_id: Distribution ID (ubuntu, rocky, rhel, etc.)
+
+    Returns:
+        LinuxHardeningTemplate with distro-specific commands, or None if not found
+    """
+    template = LINUX_HARDENING_TEMPLATES.get(check_id)
+    if not template:
+        return None
+
+    pam_paths = get_distro_pam_paths(distro_id)
+    is_debian = distro_id in ("ubuntu", "debian")
+
+    # Special handling for MAC policy rules (LNX-L2-4.2.3.4)
+    if check_id == "LNX-L2-4.2.3.4":
+        mac_paths = get_distro_mac_paths(distro_id)
+        mac_rules = "\n".join([f"-w {path} -p wa -k MAC-policy" for path in mac_paths])
+        return LinuxHardeningTemplate(
+            check_id=template.check_id,
+            description=template.description,
+            commands=[
+                f"cat > /etc/audit/rules.d/MAC-policy.rules << 'EOF'\n{mac_rules}\nEOF",
+                "augenrules --load 2>/dev/null || service auditd reload"
+            ],
+            requires_reboot=template.requires_reboot,
+            verify_commands=template.verify_commands.copy(),
+            distros=template.distros.copy(),
+            requires_service_restart=template.requires_service_restart
+        )
+
+    # Transform commands based on distro
+    transformed_commands = []
+    for cmd in template.commands:
+        new_cmd = cmd
+        if is_debian:
+            # Ubuntu/Debian: Use common-password and common-auth
+            # No changes needed - templates already use these paths
+            pass
+        else:
+            # RHEL-based: Replace Debian paths with RHEL paths
+            new_cmd = new_cmd.replace("/etc/pam.d/common-password", pam_paths["password"])
+            new_cmd = new_cmd.replace("/etc/pam.d/common-auth", pam_paths["auth"])
+        transformed_commands.append(new_cmd)
+
+    # Transform verify commands
+    transformed_verify = []
+    for cmd in template.verify_commands:
+        new_cmd = cmd
+        if not is_debian:
+            new_cmd = new_cmd.replace("/etc/pam.d/common-password", pam_paths["password"])
+            new_cmd = new_cmd.replace("/etc/pam.d/common-auth", pam_paths["auth"])
+        transformed_verify.append(new_cmd)
+
+    return LinuxHardeningTemplate(
+        check_id=template.check_id,
+        description=template.description,
+        commands=transformed_commands,
+        requires_reboot=template.requires_reboot,
+        verify_commands=transformed_verify,
+        distros=template.distros.copy() if template.distros else ["all"],
+        requires_service_restart=template.requires_service_restart
+    )
+
+
+def get_linux_template_commands_for_distro(
+    check_id: str,
+    distro_id: str = "ubuntu",
+    parameters: Dict[str, str] = None
+) -> List[str]:
+    """
+    Get commands for a check with distro-specific paths and parameter substitution.
+
+    Args:
+        check_id: CIS check ID
+        distro_id: Distribution ID
+        parameters: Dict of parameter name -> value
+
+    Returns:
+        List of commands with distro paths and parameters substituted
+    """
+    template = get_linux_hardening_template_for_distro(check_id, distro_id)
+    if not template:
+        return []
+
+    parameters = parameters or {}
+    commands = []
+
+    for cmd in template.commands:
+        # Substitute parameters
+        for param_name, param_value in parameters.items():
+            cmd = cmd.replace(f"{{{param_name}}}", str(param_value))
+        commands.append(cmd)
+
+    return commands
+
+
+def get_linux_verify_commands_for_distro(
+    check_id: str,
+    distro_id: str = "ubuntu",
+    parameters: Dict[str, str] = None
+) -> List[str]:
+    """
+    Get verification commands with distro-specific paths and parameter substitution.
+
+    Args:
+        check_id: CIS check ID
+        distro_id: Distribution ID
+        parameters: Dict of parameter name -> value
+
+    Returns:
+        List of verification commands with distro paths and parameters substituted
+    """
+    template = get_linux_hardening_template_for_distro(check_id, distro_id)
+    if not template:
+        return []
+
+    parameters = parameters or {}
+    commands = []
+
+    for cmd in template.verify_commands:
+        for param_name, param_value in parameters.items():
+            cmd = cmd.replace(f"{{{param_name}}}", str(param_value))
+        commands.append(cmd)
+
+    return commands
 
 
 def get_linux_template_commands(check_id: str, parameters: Dict[str, str] = None) -> List[str]:
