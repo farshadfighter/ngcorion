@@ -20,9 +20,9 @@ from app.models import AuditSession, AuditResult, Asset, HardeningAction
 from app.models.audit import CheckStatus
 
 from .schemas import SchemaLoader, SchemaValidator, ControlDefinition, InputDefinition
-from .cisco_service import HardeningService
-from .cisco_command_parser import RemediationParser, apply_defaults
-from .cisco_ssh_executor import CiscoHardeningExecutor, redact_secrets_in_output
+from app.modules.cisco.hardening.service import HardeningService
+from app.modules.cisco.hardening.command_parser import RemediationParser, apply_defaults
+from app.modules.cisco.hardening.ssh_executor import CiscoHardeningExecutor, redact_secrets_in_output
 
 logger = logging.getLogger(__name__)
 

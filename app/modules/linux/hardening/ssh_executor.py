@@ -10,8 +10,8 @@ import logging
 import re
 import time
 
-from app.modules.audit.linux_ssh_client import LinuxSSHClient
-from .linux_command_templates import (
+from app.modules.linux.common.ssh_client import LinuxSSHClient
+from .command_templates import (
     get_linux_hardening_template,
     get_linux_hardening_template_for_distro,
     get_linux_template_commands,

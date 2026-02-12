@@ -14,8 +14,8 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import logging
 
-from app.modules.audit.cisco_ssh_client import CiscoSSHClient
-from app.modules.audit.cisco_rules import CISRule
+from app.modules.cisco.audit.ssh_client import CiscoSSHClient
+from app.modules.cisco.audit.rules import CISRule
 from app.core.ssh_exceptions import SSHConnectionError
 
 logger = logging.getLogger(__name__)

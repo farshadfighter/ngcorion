@@ -15,8 +15,8 @@ from datetime import datetime
 import logging
 import re
 
-from app.modules.fortinet.fortinet_ssh_client import FortiGateSSHClient
-from app.modules.fortinet.fortinet_rules import FortiGateControl
+from app.modules.fortinet.audit.ssh_client import FortiGateSSHClient
+from app.modules.fortinet.audit.rules import FortiGateControl
 from app.core.ssh_exceptions import SSHConnectionError
 
 logger = logging.getLogger(__name__)

@@ -14,7 +14,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-from .cisco_command_templates import has_template, get_template
+from .command_templates import has_template, get_template
 
 
 @dataclass

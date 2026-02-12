@@ -18,9 +18,9 @@ import time
 
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
-from .linux_ssh_client import LinuxSSHClient, redact_sensitive_linux_data
-from .linux_audit_commands import get_linux_audit_commands
-from .linux_rules import (
+from app.modules.linux.common.ssh_client import LinuxSSHClient, redact_sensitive_linux_data
+from .audit_commands import get_linux_audit_commands
+from .rules import (
     build_linux_cis_rules,
     filter_rules_by_profile,
     filter_rules_by_distro,

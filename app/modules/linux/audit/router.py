@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models import User, log_audit_executed, log_audit_session_deleted
-from .linux_service import LinuxAuditService
+from .service import LinuxAuditService
 
 
 # ========================= SCHEMAS =========================

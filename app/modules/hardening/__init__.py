@@ -1,24 +1,14 @@
 """
 Hardening Module
 
-Automated remediation for Cisco, FortiGate, and Linux CIS audit failures.
-
-Provides:
-- Command preview functionality
-- SSH-based command execution
-- Configuration backup and verification
-- Complete audit trail of all hardening actions
-- Schema-driven input collection for all device types
-
-Supported platforms:
-- Cisco IOS/IOS-XE
-- FortiGate
-- Linux (Ubuntu 22.04, Ubuntu 24.04, Rocky Linux 8)
+This module has been reorganized. Hardening functionality is now under:
+- app.modules.cisco.hardening - Cisco IOS/IOS-XE hardening
+- app.modules.fortinet.hardening - FortiGate hardening
+- app.modules.linux.hardening - Linux hardening (Ubuntu 22.04, 24.04, Rocky Linux 8)
+- app.modules.shared - Unified schema-driven hardening infrastructure
 """
 
-from . import cisco_router as router
-from . import hardening_router as schema_router
-from . import fortinet_router
-from . import linux_router
+# Legacy imports have been removed after reorganization
+# Use the new module paths above
 
-__all__ = ["router", "schema_router", "fortinet_router", "linux_router"]
+__all__ = []

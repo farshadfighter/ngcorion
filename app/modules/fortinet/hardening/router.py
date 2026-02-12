@@ -29,7 +29,7 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError
 )
 from app.models import User
-from .fortinet_service import (
+from .service import (
     FortiGateHardeningService,
     FortiGateCheckAlreadyPassingError,
     FortiGateMissingParametersError

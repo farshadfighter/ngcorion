@@ -27,7 +27,7 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError
 )
 from app.models import User
-from .cisco_service import HardeningService, CheckAlreadyPassingError, MissingParametersError
+from .service import HardeningService, CheckAlreadyPassingError, MissingParametersError
 
 
 # ========================= SCHEMAS =========================

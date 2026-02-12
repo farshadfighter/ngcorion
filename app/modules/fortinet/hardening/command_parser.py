@@ -16,7 +16,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
-from .fortinet_command_templates import has_fortigate_template, get_fortigate_template
+from .command_templates import has_fortigate_template, get_fortigate_template
 
 
 @dataclass

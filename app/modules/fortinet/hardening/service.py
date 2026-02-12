@@ -28,14 +28,14 @@ from app.models import (
     HardeningAction
 )
 from app.models.audit import CheckStatus
-from app.modules.fortinet.fortinet_rules import get_fortinet_controls, FortiGateControl
-from .fortinet_command_parser import FortiGateRemediationParser, apply_fortigate_defaults
-from .fortinet_ssh_executor import (
+from app.modules.fortinet.audit.rules import get_fortinet_controls, FortiGateControl
+from .command_parser import FortiGateRemediationParser, apply_fortigate_defaults
+from .ssh_executor import (
     FortiGateHardeningExecutor,
     redact_fortigate_secrets,
     FortiGateHardeningExecutionError
 )
-from .fortinet_command_templates import has_fortigate_template
+from .command_templates import has_fortigate_template
 
 logger = logging.getLogger(__name__)
 

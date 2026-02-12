@@ -15,7 +15,7 @@ import logging
 
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
-from .linux_parameter_metadata import (
+from .parameter_metadata import (
     aggregate_linux_parameters_for_checks,
     categorize_linux_checks_by_fixability,
     get_linux_auto_fix_preview,
@@ -23,8 +23,8 @@ from .linux_parameter_metadata import (
     is_linux_check_auto_fixable,
     LINUX_CHECK_PARAMETER_MAP
 )
-from .linux_command_templates import get_linux_hardening_template, get_all_supported_checks
-from .linux_ssh_executor import LinuxHardeningBatchExecutor
+from .command_templates import get_linux_hardening_template, get_all_supported_checks
+from .ssh_executor import LinuxHardeningBatchExecutor
 
 logger = logging.getLogger(__name__)
 

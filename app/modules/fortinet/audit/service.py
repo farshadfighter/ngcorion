@@ -19,8 +19,8 @@ import re
 
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
-from .fortinet_ssh_client import FortiGateSSHClient
-from .fortinet_rules import (
+from .ssh_client import FortiGateSSHClient
+from .rules import (
     get_fortinet_controls,
     get_controls_by_level,
     get_controls_by_pack,

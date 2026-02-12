@@ -13,13 +13,22 @@ from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
-from app.modules.audit import router as audit_router
-from app.modules.audit import linux_router as linux_audit_router
-from app.modules.hardening import router as hardening_router
-from app.modules.hardening import schema_router as hardening_schema_router
-from app.modules.hardening import fortinet_router as fortinet_hardening_router
-from app.modules.hardening import linux_router as linux_hardening_router
-from app.modules.fortinet import router as fortinet_router
+
+# Cisco Audit and Hardening (new module structure)
+from app.modules.cisco.audit import router as cisco_audit_router
+from app.modules.cisco.audit import audit_logs_router as cisco_audit_logs_router
+from app.modules.cisco.hardening import router as cisco_hardening_router
+
+# Fortinet Audit and Hardening (new module structure)
+from app.modules.fortinet.audit import router as fortinet_audit_router
+from app.modules.fortinet.hardening import router as fortinet_hardening_router
+
+# Linux Audit and Hardening (new module structure)
+from app.modules.linux.audit import router as linux_audit_router
+from app.modules.linux.hardening import router as linux_hardening_router
+
+# Shared hardening infrastructure
+from app.modules.shared import hardening_router as unified_hardening_router
 
 # Import authenticated routers
 from app.modules.assets.router_with_auth import (
@@ -39,7 +48,6 @@ from app.modules.assets.router_with_auth import (
 # Import module audit log routers
 from app.modules.assets.requirement_logs_router import router as requirement_logs_router
 from app.modules.assets.asset_logs_router import router as asset_logs_router
-from app.modules.audit.cisco_audit_logs_router import router as cisco_audit_logs_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -83,29 +91,29 @@ app.include_router(views_router)
 app.include_router(requirements_router)
 app.include_router(enums_router)
 
-# NEW: Auto Discovery routes
+# Auto Discovery routes
 app.include_router(discovery_router.router)
 
-# NEW: Cisco CIS Audit routes
-app.include_router(audit_router.router)
+# Cisco CIS Audit routes
+app.include_router(cisco_audit_router)
 
-# NEW: Cisco Hardening routes
-app.include_router(hardening_router.router)
+# Cisco Hardening routes
+app.include_router(cisco_hardening_router)
 
-# NEW: Schema-driven Hardening routes
-app.include_router(hardening_schema_router.router)
+# FortiGate Audit routes
+app.include_router(fortinet_audit_router)
 
-# NEW: FortiGate Audit routes
-app.include_router(fortinet_router.router)
+# FortiGate Hardening routes
+app.include_router(fortinet_hardening_router)
 
-# NEW: FortiGate Hardening routes
-app.include_router(fortinet_hardening_router.router)
+# Linux CIS Audit routes
+app.include_router(linux_audit_router)
 
-# NEW: Linux CIS Audit routes
-app.include_router(linux_audit_router.router)
+# Linux Hardening routes
+app.include_router(linux_hardening_router)
 
-# NEW: Linux Hardening routes
-app.include_router(linux_hardening_router.router)
+# Schema-driven Hardening routes (unified)
+app.include_router(unified_hardening_router)
 
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)
