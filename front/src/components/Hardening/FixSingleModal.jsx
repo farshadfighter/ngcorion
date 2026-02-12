@@ -19,6 +19,7 @@ import {
     selectSinglePreview,
     selectExecutionResult,
     selectLoading,
+    selectSelectedSession,
 } from '../../store/hardeningSlice';
 import { SSHCredentialsForm } from './SSHCredentialsForm';
 import { ConfigurationForm } from './ConfigurationForm';
@@ -29,6 +30,7 @@ export const FixSingleModal = ({ check, deviceType = 'cisco', onClose }) => {
     const preview = useSelector(selectSinglePreview);
     const executionResult = useSelector(selectExecutionResult);
     const loading = useSelector(selectLoading);
+    const selectedSession = useSelector(selectSelectedSession);
 
     // Steps: 'preview' | 'params' | 'credentials' | 'executing' | 'result'
     const [step, setStep] = useState('preview');
@@ -38,12 +40,20 @@ export const FixSingleModal = ({ check, deviceType = 'cisco', onClose }) => {
 
     // Request preview on mount
     useEffect(() => {
-        dispatch(previewSingleCheck({ auditResultId: check.id, deviceType }));
+        if (deviceType === 'linux') {
+            // Linux uses template endpoint with check_number
+            dispatch(previewSingleCheck({
+                checkId: check.check_number,
+                deviceType
+            }));
+        } else {
+            dispatch(previewSingleCheck({ auditResultId: check.id, deviceType }));
+        }
         return () => {
             dispatch(clearPreview());
             dispatch(clearExecutionResult());
         };
-    }, [check.id, deviceType, dispatch]);
+    }, [check.id, check.check_number, deviceType, dispatch]);
 
     // Handle close
     const handleClose = () => {
@@ -54,16 +64,12 @@ export const FixSingleModal = ({ check, deviceType = 'cisco', onClose }) => {
 
     // Move to params step or credentials if no params needed
     const handlePreviewConfirm = () => {
-        if (preview?.required_parameters?.length > 0) {
-            // Build params metadata from preview
-            const paramsMetadata = {};
-            preview.required_parameters.forEach(param => {
-                paramsMetadata[param] = {
-                    type: param.includes('SECRET') || param.includes('PASSWORD') ? 'password' : 'text',
-                    label: param.replace(/_/g, ' '),
-                    required: true,
-                };
-            });
+        // Check for required parameters
+        const hasRequiredParams = deviceType === 'linux'
+            ? preview?.parameters_metadata?.some(p => p.required && !p.default)
+            : preview?.required_parameters?.length > 0;
+
+        if (hasRequiredParams) {
             setStep('params');
         } else {
             setStep('credentials');
@@ -83,7 +89,9 @@ export const FixSingleModal = ({ check, deviceType = 'cisco', onClose }) => {
 
         // Execute the fix
         dispatch(executeSingleCheck({
-            actionId: preview.action_id,
+            actionId: preview?.action_id,
+            assetId: selectedSession?.asset_id,  // Required for Linux
+            checkId: check.check_number,  // Required for Linux
             sshCredentials: credentials,
             parameters: userParams,
             deviceType,
@@ -101,6 +109,25 @@ export const FixSingleModal = ({ check, deviceType = 'cisco', onClose }) => {
     // Build required params metadata
     const getParamsMetadata = () => {
         const metadata = {};
+
+        // Linux returns full parameter metadata from template endpoint
+        if (deviceType === 'linux' && preview?.parameters_metadata) {
+            preview.parameters_metadata.forEach(param => {
+                metadata[param.name] = {
+                    type: param.type || 'text',
+                    label: param.label || param.name.replace(/_/g, ' '),
+                    description: param.description,
+                    required: param.required,
+                    default: param.default,
+                    options: param.options,
+                    min_value: param.min_value,
+                    max_value: param.max_value,
+                };
+            });
+            return metadata;
+        }
+
+        // Cisco/FortiGate - infer types from parameter names
         if (preview?.required_parameters) {
             preview.required_parameters.forEach(param => {
                 metadata[param] = {

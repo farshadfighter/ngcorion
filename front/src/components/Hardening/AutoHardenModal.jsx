@@ -70,6 +70,7 @@ export const AutoHardenModal = ({ deviceType = 'cisco', onClose }) => {
         // Execute auto-harden
         dispatch(executeAutoHarden({
             sessionId: selectedSession.id,
+            assetId: selectedSession.asset_id,  // Required for Linux
             sshCredentials: credentials,
             skipBackup: false,
             deviceType,

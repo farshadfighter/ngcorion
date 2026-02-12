@@ -92,10 +92,20 @@ export const FixAllModal = ({ deviceType = 'cisco', onClose }) => {
         setSshCredentials(credentials);
         setStep('executing');
 
+        // For Linux, build checks array with per-check parameters
+        const linuxChecks = deviceType === 'linux'
+            ? selectedChecks.map(check => ({
+                check_id: check.check_number,
+                parameters: userParameters
+            }))
+            : null;
+
         // Execute batch fix
         dispatch(executeBatchHarden({
             sessionId: selectedSession.id,
+            assetId: selectedSession.asset_id,  // Required for Linux
             checkIds: selectedCheckIds,
+            checks: linuxChecks,  // Linux-specific format
             parameters: userParameters,
             sshCredentials: credentials,
             skipBackup: false,

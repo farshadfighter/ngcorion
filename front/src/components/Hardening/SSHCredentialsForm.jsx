@@ -109,30 +109,61 @@ export const SSHCredentialsForm = ({
                 </div>
             </div>
 
-            <div className="form-group">
-                <label htmlFor="ssh-secret">Enable Secret (optional)</label>
-                <div className="password-input-wrapper">
-                    <input
-                        type={showSecret ? 'text' : 'password'}
-                        id="ssh-secret"
-                        name="secret"
-                        value={credentials.secret}
-                        onChange={handleChange}
-                        placeholder="Enter enable secret"
-                        disabled={loading}
-                    />
-                    <button
-                        type="button"
-                        className="toggle-password-btn"
-                        onClick={() => setShowSecret(!showSecret)}
-                    >
-                        {showSecret ? 'Hide' : 'Show'}
-                    </button>
+            {/* Enable Secret - Cisco/FortiGate only */}
+            {deviceType !== 'linux' && (
+                <div className="form-group">
+                    <label htmlFor="ssh-secret">Enable Secret (optional)</label>
+                    <div className="password-input-wrapper">
+                        <input
+                            type={showSecret ? 'text' : 'password'}
+                            id="ssh-secret"
+                            name="secret"
+                            value={credentials.secret}
+                            onChange={handleChange}
+                            placeholder="Enter enable secret"
+                            disabled={loading}
+                        />
+                        <button
+                            type="button"
+                            className="toggle-password-btn"
+                            onClick={() => setShowSecret(!showSecret)}
+                        >
+                            {showSecret ? 'Hide' : 'Show'}
+                        </button>
+                    </div>
+                    <small className="form-hint">
+                        Required if the device uses enable mode with a secret.
+                    </small>
                 </div>
-                <small className="form-hint">
-                    Required if the device uses enable mode with a secret.
-                </small>
-            </div>
+            )}
+
+            {/* Sudo Password - Linux only */}
+            {deviceType === 'linux' && (
+                <div className="form-group">
+                    <label htmlFor="ssh-sudo">Sudo Password (optional)</label>
+                    <div className="password-input-wrapper">
+                        <input
+                            type={showSecret ? 'text' : 'password'}
+                            id="ssh-sudo"
+                            name="sudo_password"
+                            value={credentials.sudo_password || ''}
+                            onChange={handleChange}
+                            placeholder="Enter sudo password"
+                            disabled={loading}
+                        />
+                        <button
+                            type="button"
+                            className="toggle-password-btn"
+                            onClick={() => setShowSecret(!showSecret)}
+                        >
+                            {showSecret ? 'Hide' : 'Show'}
+                        </button>
+                    </div>
+                    <small className="form-hint">
+                        Defaults to SSH password if left empty.
+                    </small>
+                </div>
+            )}
 
             {/* FortiGate VDOM field */}
             {deviceType === 'fortinet' && (

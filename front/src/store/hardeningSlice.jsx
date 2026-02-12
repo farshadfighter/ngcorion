@@ -161,8 +161,31 @@ export const fetchSessionParameters = createAsyncThunk(
  */
 export const previewSingleCheck = createAsyncThunk(
     'hardening/previewSingleCheck',
-    async ({ auditResultId, parameters = {}, deviceType = 'cisco' }, { rejectWithValue }) => {
+    async ({ auditResultId, checkId = null, parameters = {}, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
+            // Linux uses the template endpoint for preview
+            if (deviceType === 'linux' && checkId) {
+                const url = getHardeningApiPath(deviceType, `/check/${checkId}/template`);
+                const response = await api.get(url);
+                // Transform template response to preview format
+                return {
+                    check_id: checkId,
+                    commands: response.data.commands,
+                    verify_commands: response.data.verify_commands,
+                    required_parameters: response.data.parameters
+                        ?.filter(p => p.required)
+                        ?.map(p => p.name) || [],
+                    optional_parameters: response.data.parameters
+                        ?.filter(p => !p.required)
+                        ?.map(p => p.name) || [],
+                    parameters_metadata: response.data.parameters,
+                    auto_fixable: response.data.auto_fixable,
+                    defaults: response.data.defaults,
+                    warnings: response.data.requires_reboot ? ['Requires system reboot'] : []
+                };
+            }
+
+            // Cisco/FortiGate use POST /preview
             const url = getHardeningApiPath(deviceType, '/preview');
             const response = await api.post(url, {
                 audit_result_id: auditResultId,
@@ -180,8 +203,24 @@ export const previewSingleCheck = createAsyncThunk(
  */
 export const executeSingleCheck = createAsyncThunk(
     'hardening/executeSingleCheck',
-    async ({ actionId, sshCredentials, parameters = {}, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
+    async ({ actionId, sshCredentials, parameters = {}, deviceType = 'cisco', vdom = null, assetId = null, checkId = null }, { rejectWithValue }) => {
         try {
+            // Linux uses different endpoint and payload structure
+            if (deviceType === 'linux') {
+                const url = getHardeningApiPath(deviceType, '/execute-single');
+                const payload = {
+                    asset_id: assetId,
+                    ssh_username: sshCredentials.username,
+                    ssh_password: sshCredentials.password,
+                    sudo_password: sshCredentials.sudo_password || null,
+                    check_id: checkId,
+                    parameters
+                };
+                const response = await api.post(url, payload);
+                return response.data;
+            }
+
+            // Cisco/FortiGate use the standard /execute endpoint
             const url = getHardeningApiPath(deviceType, '/execute');
             const payload = {
                 action_id: actionId,
@@ -224,9 +263,24 @@ export const fetchAutoHardenPreview = createAsyncThunk(
  */
 export const executeAutoHarden = createAsyncThunk(
     'hardening/executeAutoHarden',
-    async ({ sessionId, sshCredentials, skipBackup = false, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
+    async ({ sessionId, assetId = null, sshCredentials, skipBackup = false, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
         try {
             const url = getHardeningApiPath(deviceType, '/auto-harden-defaults');
+
+            // Linux uses different payload structure
+            if (deviceType === 'linux') {
+                const payload = {
+                    session_id: sessionId,
+                    asset_id: assetId,
+                    ssh_username: sshCredentials.username,
+                    ssh_password: sshCredentials.password,
+                    sudo_password: sshCredentials.sudo_password || null
+                };
+                const response = await api.post(url, payload);
+                return response.data;
+            }
+
+            // Cisco/FortiGate payload
             const payload = {
                 audit_session_id: sessionId,
                 ssh_username: sshCredentials.username,
@@ -252,9 +306,30 @@ export const executeAutoHarden = createAsyncThunk(
  */
 export const executeBatchHarden = createAsyncThunk(
     'hardening/executeBatchHarden',
-    async ({ sessionId, checkIds, parameters, sshCredentials, skipBackup = false, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
+    async ({ sessionId, assetId = null, checkIds, checks, parameters, sshCredentials, skipBackup = false, deviceType = 'cisco', vdom = null }, { rejectWithValue }) => {
         try {
             const url = getHardeningApiPath(deviceType, '/batch-execute');
+
+            // Linux uses different payload structure
+            if (deviceType === 'linux') {
+                // Build checks array with parameters for Linux API
+                const linuxChecks = checks || checkIds.map(checkId => ({
+                    check_id: checkId,
+                    parameters: parameters || {}
+                }));
+                const payload = {
+                    session_id: sessionId,
+                    asset_id: assetId,
+                    ssh_username: sshCredentials.username,
+                    ssh_password: sshCredentials.password,
+                    sudo_password: sshCredentials.sudo_password || null,
+                    checks: linuxChecks
+                };
+                const response = await api.post(url, payload);
+                return response.data;
+            }
+
+            // Cisco/FortiGate payload
             const payload = {
                 audit_session_id: sessionId,
                 check_ids: checkIds,
@@ -819,6 +894,7 @@ export const selectDeviceType = (state) => {
     if (session.device_type) return session.device_type;
     // Infer from session type or default to cisco
     if (session.session_type === 'fortinet' || session.target_type === 'fortinet') return 'fortinet';
+    if (session.session_type === 'linux' || session.target_type === 'linux') return 'linux';
     return 'cisco';
 };
 

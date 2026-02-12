@@ -86,6 +86,7 @@ export const HardeningHistory = () => {
                         <option value="all">All Device Types</option>
                         <option value="cisco">Cisco IOS</option>
                         <option value="fortinet">FortiGate</option>
+                        <option value="linux">Linux</option>
                     </select>
                     <button
                         className="btn btn-small"
