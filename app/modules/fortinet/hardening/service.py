@@ -390,7 +390,7 @@ class FortiGateHardeningService:
         Returns:
             Dict with session parameters and check categorization
         """
-        from .fortinet_parameter_metadata import (
+        from .parameter_metadata import (
             aggregate_fortigate_parameters_for_checks,
             categorize_fortigate_checks_by_fixability
         )
@@ -479,7 +479,7 @@ class FortiGateHardeningService:
         Returns:
             Dict with checks_with_defaults and skipped_checks
         """
-        from .fortinet_parameter_metadata import (
+        from .parameter_metadata import (
             is_fortigate_check_auto_fixable,
             get_fortigate_check_defaults,
             get_fortigate_required_parameters_for_check
@@ -568,7 +568,7 @@ class FortiGateHardeningService:
         Returns:
             Dict with execution summary
         """
-        from .fortinet_parameter_metadata import (
+        from .parameter_metadata import (
             is_fortigate_check_auto_fixable,
             get_fortigate_check_defaults
         )
@@ -773,7 +773,7 @@ class FortiGateHardeningService:
         Returns:
             Dict with execution results
         """
-        from .fortinet_parameter_metadata import get_fortigate_check_defaults
+        from .parameter_metadata import get_fortigate_check_defaults
 
         logger.info(f"Starting FortiGate batch execute for {len(check_ids)} selected checks")
 

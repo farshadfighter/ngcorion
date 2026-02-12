@@ -520,7 +520,7 @@ class HardeningService:
             - If all required params provided: fixable
             - Otherwise: NOT fixable
         """
-        from .cisco_command_templates import has_template, get_template
+        from .command_templates import has_template, get_template
 
         if not has_template(check_number):
             return False, ["NO_TEMPLATE"]
@@ -613,7 +613,7 @@ class HardeningService:
                 "unfixable_failures": List[Dict]  # Need parameters
             }
         """
-        from app.modules.audit.cisco_service import AuditService
+        from app.modules.cisco.audit.service import AuditService
         from app.models.audit import DeviceType
 
         logger.info(f"Starting auto-audit for device {ip_address}")
@@ -1076,12 +1076,12 @@ class HardeningService:
                 "needs_params_checks": [...]
             }
         """
-        from .cisco_parameter_metadata import (
+        from .parameter_metadata import (
             aggregate_parameters_for_checks,
             categorize_checks_by_fixability,
             check_has_required_params
         )
-        from .cisco_command_templates import has_template
+        from .command_templates import has_template
 
         # Validate session exists
         session = db.query(AuditSession).filter(
@@ -1199,12 +1199,12 @@ class HardeningService:
                 ]
             }
         """
-        from .cisco_parameter_metadata import (
+        from .parameter_metadata import (
             is_check_auto_fixable,
             get_check_defaults,
             get_required_parameters_for_check
         )
-        from .cisco_command_templates import has_template
+        from .command_templates import has_template
 
         # Validate session exists
         session = db.query(AuditSession).filter(
@@ -1299,11 +1299,11 @@ class HardeningService:
                 "skipped_checks": List[Dict]
             }
         """
-        from .cisco_parameter_metadata import (
+        from .parameter_metadata import (
             is_check_auto_fixable,
             get_check_defaults
         )
-        from .cisco_command_templates import has_template
+        from .command_templates import has_template
 
         logger.info(f"Starting auto-harden with defaults for session {audit_session_id}")
 
@@ -1518,8 +1518,8 @@ class HardeningService:
                 "results": List[Dict]
             }
         """
-        from .cisco_parameter_metadata import get_check_defaults
-        from .cisco_command_templates import has_template
+        from .parameter_metadata import get_check_defaults
+        from .command_templates import has_template
 
         logger.info(f"Starting batch execute for {len(check_ids)} selected checks")
 

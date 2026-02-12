@@ -312,7 +312,7 @@ class LinuxHardeningBatchExecutor:
         Returns:
             Summary of execution with results
         """
-        from .linux_parameter_metadata import (
+        from .parameter_metadata import (
             get_linux_check_defaults,
             is_linux_check_auto_fixable
         )

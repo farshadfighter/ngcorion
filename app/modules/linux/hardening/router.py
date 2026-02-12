@@ -294,8 +294,8 @@ def get_check_template(
 
     **Permissions:** Requires HARDENING read permission
     """
-    from .linux_command_templates import get_linux_hardening_template
-    from .linux_parameter_metadata import (
+    from .command_templates import get_linux_hardening_template
+    from .parameter_metadata import (
         get_linux_parameters_for_check,
         is_linux_check_auto_fixable,
         get_linux_check_defaults
