@@ -75,10 +75,10 @@ class CiscoAuditResultResponse(BaseModel):
 
 # ========================= ROUTER =========================
 
-router = APIRouter(prefix="/api/audit", tags=["Audit - Cisco CIS"])
+router = APIRouter(prefix="/api/audit/cisco", tags=["Audit - Cisco CIS"])
 
 
-@router.post("/cisco/execute", response_model=CiscoAuditSessionResponse)
+@router.post("/execute", response_model=CiscoAuditSessionResponse)
 def execute_cisco_audit(
     request: CiscoAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
@@ -423,7 +423,7 @@ class CISBenchmarkAuditRequest(BaseModel):
         }
 
 
-@router.post("/cisco/cis-benchmark/execute", response_model=CISBenchmarkTableResponse)
+@router.post("/cis-benchmark/execute", response_model=CISBenchmarkTableResponse)
 def execute_cis_benchmark_audit(
     request: CISBenchmarkAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
