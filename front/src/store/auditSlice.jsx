@@ -10,10 +10,8 @@ export const executeAudit = createAsyncThunk(
     "audit/execute",
     async ({ deviceType, formData }, { rejectWithValue }) => {
         try {
-            // Handle FortiGate's different endpoint structure
-            const endpoint = deviceType === "fortinet"
-                ? "/api/fortinet/audit/execute"
-                : `/api/audit/${deviceType}/execute`;
+            // All device types now use consistent endpoint structure
+            const endpoint = `/api/audit/${deviceType}/execute`;
 
             const res = await api.post(endpoint, {
                 asset_id: formData.asset_id,
@@ -33,11 +31,13 @@ export const executeAudit = createAsyncThunk(
 );
 
 // Fetch all audit sessions (for main list)
+// Note: This fetches Cisco sessions by default. For device-specific sessions,
+// use the deviceType parameter.
 export const fetchAuditSessions = createAsyncThunk(
     "audit/fetchSessions",
-    async ({ limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
+    async ({ limit = 50, offset = 0, deviceType = 'cisco' } = {}, { rejectWithValue }) => {
         try {
-            const res = await api.get("/api/audit/sessions", {
+            const res = await api.get(`/api/audit/${deviceType}/sessions`, {
                 params: { limit, offset }
             });
             return res.data;
@@ -52,9 +52,9 @@ export const fetchAuditSessions = createAsyncThunk(
 // Fetch single audit session (for checking status)
 export const fetchAuditSession = createAsyncThunk(
     "audit/fetchSession",
-    async (sessionId, { rejectWithValue }) => {
+    async ({ sessionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const res = await api.get(`/api/audit/sessions/${sessionId}`);
+            const res = await api.get(`/api/audit/${deviceType}/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
@@ -67,9 +67,9 @@ export const fetchAuditSession = createAsyncThunk(
 // Fetch audit results (detailed results)
 export const fetchAuditResults = createAsyncThunk(
     "audit/fetchResults",
-    async (sessionId, { rejectWithValue }) => {
+    async ({ sessionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const res = await api.get(`/api/audit/sessions/${sessionId}/results`);
+            const res = await api.get(`/api/audit/${deviceType}/sessions/${sessionId}/results`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
@@ -82,9 +82,9 @@ export const fetchAuditResults = createAsyncThunk(
 // Delete audit session
 export const deleteAuditSession = createAsyncThunk(
     "audit/delete",
-    async (sessionId, { rejectWithValue }) => {
+    async ({ sessionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            await api.delete(`/api/audit/sessions/${sessionId}`);
+            await api.delete(`/api/audit/${deviceType}/sessions/${sessionId}`);
             return sessionId;
         } catch (err) {
             return rejectWithValue(
@@ -97,9 +97,9 @@ export const deleteAuditSession = createAsyncThunk(
 // Check audit status (for polling)
 export const checkAuditStatus = createAsyncThunk(
     "audit/checkStatus",
-    async (sessionId, { rejectWithValue }) => {
+    async ({ sessionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const res = await api.get(`/api/audit/sessions/${sessionId}`);
+            const res = await api.get(`/api/audit/${deviceType}/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
@@ -112,9 +112,9 @@ export const checkAuditStatus = createAsyncThunk(
 // Fetch audit sessions count
 export const fetchAuditSessionsCount = createAsyncThunk(
     "audit/fetchCount",
-    async (_, { rejectWithValue }) => {
+    async ({ deviceType = 'cisco' } = {}, { rejectWithValue }) => {
         try {
-            const res = await api.get("/api/audit/sessions/count");
+            const res = await api.get(`/api/audit/${deviceType}/sessions/count`);
             return res.data;
         } catch (err) {
             return rejectWithValue(

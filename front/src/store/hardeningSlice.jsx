@@ -27,9 +27,9 @@ import api from "../config/api.js";
  */
 const getHardeningApiPath = (deviceType, endpoint) => {
     const prefixes = {
-        cisco: '/api/hardening',
+        cisco: '/api/hardening/cisco',
         fortinet: '/api/hardening/fortinet',
-        linux: '/api/hardening/linux',      // Future
+        linux: '/api/hardening/linux',
         windows: '/api/hardening/windows',  // Future
         apache: '/api/hardening/apache',    // Future
     };
@@ -111,9 +111,9 @@ const initialState = {
  */
 export const fetchAuditSessions = createAsyncThunk(
     'hardening/fetchAuditSessions',
-    async (_, { rejectWithValue }) => {
+    async ({ deviceType = 'cisco' } = {}, { rejectWithValue }) => {
         try {
-            const response = await api.get('/api/audit/sessions');
+            const response = await api.get(`/api/audit/${deviceType}/sessions`);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch audit sessions');
@@ -126,9 +126,9 @@ export const fetchAuditSessions = createAsyncThunk(
  */
 export const fetchSessionResults = createAsyncThunk(
     'hardening/fetchSessionResults',
-    async (sessionId, { rejectWithValue }) => {
+    async ({ sessionId, deviceType = 'cisco' }, { rejectWithValue }) => {
         try {
-            const response = await api.get(`/api/audit/sessions/${sessionId}/results`);
+            const response = await api.get(`/api/audit/${deviceType}/sessions/${sessionId}/results`);
             return response.data;
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to fetch session results');
