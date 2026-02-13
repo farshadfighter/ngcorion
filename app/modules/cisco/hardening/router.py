@@ -477,7 +477,7 @@ class BatchExecuteResponse(BaseModel):
 
 # ========================= ROUTER =========================
 
-router = APIRouter(prefix="/api/hardening", tags=["Hardening - Cisco"])
+router = APIRouter(prefix="/api/hardening/cisco", tags=["Hardening - Cisco"])
 
 
 @router.post("/preview", response_model=HardeningPreviewResponse)
