@@ -111,10 +111,10 @@ class VDOMDiscoveryResponse(BaseModel):
 
 # ========================= ROUTER =========================
 
-router = APIRouter(prefix="/api/fortinet", tags=["Audit - FortiGate"])
+router = APIRouter(prefix="/api/audit/fortinet", tags=["Audit - FortiGate"])
 
 
-@router.post("/audit/execute", response_model=FortinetAuditSessionResponse)
+@router.post("/execute", response_model=FortinetAuditSessionResponse)
 def execute_fortinet_audit(
     request: FortinetAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
@@ -261,7 +261,7 @@ def discover_vdoms(
         )
 
 
-@router.get("/audit/sessions", response_model=List[FortinetAuditSessionResponse])
+@router.get("/sessions", response_model=List[FortinetAuditSessionResponse])
 def list_audit_sessions(
     limit: int = 50,
     offset: int = 0,
@@ -293,7 +293,7 @@ def list_audit_sessions(
     return summaries
 
 
-@router.get("/audit/sessions/{session_id}", response_model=FortinetAuditSessionResponse)
+@router.get("/sessions/{session_id}", response_model=FortinetAuditSessionResponse)
 def get_audit_session(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
@@ -321,7 +321,7 @@ def get_audit_session(
     return summary
 
 
-@router.get("/audit/sessions/{session_id}/results", response_model=List[FortinetAuditResultResponse])
+@router.get("/sessions/{session_id}/results", response_model=List[FortinetAuditResultResponse])
 def get_audit_results(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
@@ -367,7 +367,7 @@ def get_audit_results(
     ]
 
 
-@router.delete("/audit/sessions/{session_id}")
+@router.delete("/sessions/{session_id}")
 def delete_audit_session(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "write")),
