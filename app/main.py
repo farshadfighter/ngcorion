@@ -30,6 +30,9 @@ from app.modules.linux.hardening import router as linux_hardening_router
 # Shared hardening infrastructure
 from app.modules.shared import hardening_router as unified_hardening_router
 
+# Deprecated routes for backward compatibility
+from app.modules.deprecated_routes import deprecated_router
+
 # Import authenticated routers
 from app.modules.assets.router_with_auth import (
     asset_types_router,
@@ -119,6 +122,9 @@ app.include_router(unified_hardening_router)
 app.include_router(requirement_logs_router)
 app.include_router(asset_logs_router)
 app.include_router(cisco_audit_logs_router)
+
+# Deprecated routes (backward compatibility - 307 redirects)
+app.include_router(deprecated_router)
 
 
 @app.get("/")
