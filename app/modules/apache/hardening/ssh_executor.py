@@ -335,3 +335,140 @@ class ApacheHardeningBatchExecutor:
             "service_restarts": service_restarts,
             "results": [r.to_dict() for r in results]
         }
+
+    def execute_auto_harden(
+        self,
+        check_ids: List[str],
+        default_parameters: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute automatic hardening for checks with defaults only.
+
+        Args:
+            check_ids: List of check IDs to fix
+            default_parameters: Optional override parameters
+
+        Returns:
+            Summary of execution with results
+        """
+        from .parameter_metadata import (
+            get_apache_check_defaults,
+            is_apache_check_auto_fixable
+        )
+
+        # Filter to only auto-fixable checks
+        auto_fixable = [cid for cid in check_ids if is_apache_check_auto_fixable(cid)]
+        skipped = [cid for cid in check_ids if cid not in auto_fixable]
+
+        results = []
+        successful = 0
+        failed = 0
+
+        with ApacheSSHExecutor(
+            ip=self.ip,
+            username=self.username,
+            password=self.password,
+            sudo_password=self.sudo_password,
+            port=self.port,
+            distro_id=self.distro_id
+        ) as executor:
+            detected_distro = executor.distro_id
+
+            for check_id in auto_fixable:
+                # Get defaults for this check
+                params = get_apache_check_defaults(check_id)
+                if default_parameters:
+                    params.update(default_parameters)
+
+                result = executor.execute_hardening(check_id, params)
+                results.append(result.to_dict())
+
+                if result.success:
+                    successful += 1
+                else:
+                    failed += 1
+
+        return {
+            "total_requested": len(check_ids),
+            "auto_fixable": len(auto_fixable),
+            "skipped": skipped,
+            "successful": successful,
+            "failed": failed,
+            "distro_id": detected_distro,
+            "results": results
+        }
+
+    def execute_selected(
+        self,
+        checks: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Execute hardening for selected checks with user-provided parameters.
+
+        Args:
+            checks: List of dicts with check_id and parameters
+
+        Returns:
+            Summary of execution with results
+        """
+        results = []
+        successful = 0
+        failed = 0
+
+        with ApacheSSHExecutor(
+            ip=self.ip,
+            username=self.username,
+            password=self.password,
+            sudo_password=self.sudo_password,
+            port=self.port,
+            distro_id=self.distro_id
+        ) as executor:
+            detected_distro = executor.distro_id
+
+            for check in checks:
+                check_id = check.get("check_id")
+                parameters = check.get("parameters", {})
+
+                result = executor.execute_hardening(check_id, parameters)
+                results.append(result.to_dict())
+
+                if result.success:
+                    successful += 1
+                else:
+                    failed += 1
+
+        return {
+            "total": len(checks),
+            "successful": successful,
+            "failed": failed,
+            "distro_id": detected_distro,
+            "results": results
+        }
+
+    def execute_single(
+        self,
+        check_id: str,
+        parameters: Dict[str, str] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute hardening for a single check.
+
+        Args:
+            check_id: CIS check ID
+            parameters: Parameter values
+
+        Returns:
+            Execution result dict
+        """
+        with ApacheSSHExecutor(
+            ip=self.ip,
+            username=self.username,
+            password=self.password,
+            sudo_password=self.sudo_password,
+            port=self.port,
+            distro_id=self.distro_id
+        ) as executor:
+            result = executor.execute_hardening(check_id, parameters)
+            result_dict = result.to_dict()
+            result_dict["distro_id"] = executor.distro_id
+            return result_dict
