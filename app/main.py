@@ -27,6 +27,9 @@ from app.modules.fortinet.hardening import router as fortinet_hardening_router
 from app.modules.linux.audit import router as linux_audit_router
 from app.modules.linux.hardening import router as linux_hardening_router
 
+# Apache Audit (new module)
+from app.modules.apache.audit import router as apache_audit_router
+
 # Shared hardening infrastructure
 from app.modules.shared import hardening_router as unified_hardening_router
 
@@ -114,6 +117,9 @@ app.include_router(linux_audit_router)
 
 # Linux Hardening routes
 app.include_router(linux_hardening_router)
+
+# Apache CIS Audit routes
+app.include_router(apache_audit_router)
 
 # Schema-driven Hardening routes (unified)
 app.include_router(unified_hardening_router)
