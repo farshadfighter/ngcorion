@@ -1,0 +1,503 @@
+/**
+ * Auto Discovery Asset List Modal
+ * Exact match with Figma: لیستتتت.png
+ */
+
+/* ============================================
+   Modal Overlay
+   ============================================ */
+.asset-list-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+/* ============================================
+   Modal Container
+   ============================================ */
+.asset-list-modal {
+    background: #f5f5f5;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 1400px;
+    height: 90vh;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* ============================================
+   Modal Header - با دایره آبی تیره + تاریخ
+   ============================================ */
+.asset-list-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* دایره آبی تیره با فلش */
+.modal-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #1e3a5f;
+    color: white;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.15s ease;
+}
+
+.modal-back-btn:hover {
+    background: #2d4a7c;
+}
+
+.modal-back-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.modal-header-left h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+/* تاریخ و ساعت سمت راست */
+.modal-header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.header-date {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.header-time {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.header-time svg {
+    width: 14px;
+    height: 14px;
+}
+
+.modal-close-btn {
+    display: none;
+}
+
+/* ============================================
+   Modal Body
+   ============================================ */
+.asset-list-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    background: #f5f5f5;
+    padding: 0;
+}
+
+/* ============================================
+   Asset List Container
+   ============================================ */
+.asset-list-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* ============================================
+   Info Banner - پنهان کن!
+   ============================================ */
+.info-banner {
+    display: none;
+}
+
+/* ============================================
+   Tabs Navigation - مستقیم بعد از header
+   ============================================ */
+.tabs-nav {
+    display: flex;
+    gap: 0;
+    background: #f5f5f5;
+    padding: 0 24px;
+    border-bottom: 1px solid #d1d5db;
+}
+
+.tab-btn {
+    padding: 14px 20px;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+    color: #111827;
+}
+
+.tab-btn.active {
+    color: #111827;
+    border-bottom-color: #111827;
+    font-weight: 600;
+}
+
+/* ============================================
+   Toolbar - فقط Search کوچک
+   ============================================ */
+.asset-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 16px 24px;
+    background: #f5f5f5;
+}
+
+.search-box {
+    position: relative;
+    width: 300px;
+}
+
+.search-box svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    background: white;
+    color: #111827;
+    transition: all 0.15s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #6b7280;
+}
+
+.search-input::placeholder {
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+/* پنهان کردن filter controls */
+.filter-controls {
+    display: none;
+}
+
+/* ============================================
+   Table - با header خاکستری
+   ============================================ */
+.table-wrapper {
+    background: white;
+    margin: 0 24px 24px 24px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.asset-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Table Header - خاکستری */
+.asset-table thead {
+    background: #e5e7eb;
+}
+
+.asset-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    text-transform: none;
+    letter-spacing: 0;
+    border: none;
+}
+
+.asset-table th:first-child {
+    padding-left: 24px;
+}
+
+/* Table Body */
+.asset-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background 0.15s;
+    position: relative;
+}
+
+/* Border چپ رنگی */
+.asset-table tbody tr::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+}
+
+.asset-table tbody tr:nth-child(1)::before {
+    background: #22c55e;
+}
+
+.asset-table tbody tr:nth-child(2)::before {
+    background: #f97316;
+}
+
+.asset-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.asset-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.asset-table td {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #111827;
+    vertical-align: middle;
+}
+
+.asset-table td:first-child {
+    padding-left: 24px;
+}
+
+/* ============================================
+   Column Styles
+   ============================================ */
+.col-id {
+    width: 60px;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.col-asset-name {
+    font-weight: 500;
+    color: #111827;
+}
+
+.col-hostname,
+.col-type,
+.col-role,
+.col-vendor,
+.col-model {
+    color: #374151;
+}
+
+.col-actions {
+    width: 100px;
+    text-align: right;
+    padding-right: 24px;
+}
+
+.text-muted {
+    color: #9ca3af;
+}
+
+/* ============================================
+   Action Buttons
+   ============================================ */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-icon:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.btn-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* دایره نارنجی */
+.action-buttons .badge-orange {
+    width: 20px;
+    height: 20px;
+    background: #f97316;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ============================================
+   Empty State
+   ============================================ */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 32px;
+    background: white;
+    margin: 0 24px 24px 24px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.empty-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+    color: #d1d5db;
+}
+
+.empty-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.empty-state h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 8px 0;
+}
+
+.empty-state p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* ============================================
+   Footer - پنهان
+   ============================================ */
+.asset-list-footer {
+    display: none;
+}
+
+/* ============================================
+   Loading
+   ============================================ */
+.table-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 32px;
+    background: white;
+    margin: 0 24px 24px 24px;
+    border-radius: 8px;
+}
+
+.spinner-lg {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #1e293b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.table-loading p {
+    margin-top: 16px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+@media (max-width: 768px) {
+    .asset-list-modal-overlay {
+        padding: 0;
+    }
+
+    .asset-list-modal {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .tabs-nav {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .search-box {
+        width: 100%;
+    }
+
+    .table-wrapper {
+        margin: 0 16px 16px 16px;
+    }
+}
