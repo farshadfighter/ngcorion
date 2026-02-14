@@ -8,8 +8,12 @@ Supports:
 """
 from .audit import router as audit_router
 from .audit import ApacheAuditService
+from .hardening import router as hardening_router
+from .hardening import ApacheHardeningService
 
 __all__ = [
     "audit_router",
     "ApacheAuditService",
+    "hardening_router",
+    "ApacheHardeningService",
 ]
