@@ -50,7 +50,7 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose }) => {
                     {/* Step 1: Connection */}
                     <div className={`stepper-item ${currentStep >= 1 ? "active" : ""} ${currentStep > 1 ? "completed" : ""}`}>
                         <div className="stepper-circle">
-                            <div className="stepper-icon">🔌</div>
+                            <div className="stepper-icon">1</div>
                         </div>
                         <div className="stepper-label">Connection</div>
                     </div>
@@ -60,7 +60,7 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose }) => {
                     {/* Step 2: Process */}
                     <div className={`stepper-item ${currentStep >= 2 ? "active" : ""} ${currentStep > 2 ? "completed" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}>
                         <div className="stepper-circle">
-                            <div className="stepper-icon">⚙️</div>
+                            <div className="stepper-icon">2</div>
                         </div>
                         <div className="stepper-label">process</div>
                     </div>

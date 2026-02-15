@@ -10,33 +10,66 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     useEffect(() => {
         if (isOpen && session) {
             // Fetch fresh session details
-            dispatch(fetchAuditSession({ sessionId: session.session_id, deviceType: session.device_type }))
+            dispatch(fetchAuditSession(session.session_id))
                 .unwrap()
-                .then((data) => setSessionDetails(data))
+                .then((data) => {
+                    console.log("📊 Session details:", data);
+                    setSessionDetails(data);
+                })
                 .catch((err) => console.error("Failed to fetch session details:", err));
 
             // Fetch results
-            dispatch(fetchAuditResults({ sessionId: session.session_id, deviceType: session.device_type }));
+            dispatch(fetchAuditResults(session.session_id));
         }
     }, [isOpen, session, dispatch]);
 
     if (!isOpen) return null;
 
-    // Calculate statistics
-    const compliance = sessionDetails?.compliance || {};
-    const totalChecks = compliance.total_checks || 0;
-    const passedChecks = compliance.passed || 0;
-    const failedChecks = compliance.failed || 0;
+    // ✅ محاسبه آمار از دو منبع
+    let totalChecks = 0;
+    let passedChecks = 0;
+    let failedChecks = 0;
+
+    // اول: سعی کن از compliance بگیری
+    if (sessionDetails?.compliance) {
+        totalChecks = sessionDetails.compliance.total_checks || sessionDetails.compliance.total || 0;
+        passedChecks = sessionDetails.compliance.passed_checks || sessionDetails.compliance.passed || 0;
+        failedChecks = sessionDetails.compliance.failed_checks || sessionDetails.compliance.failed || 0;
+        console.log("📊 از compliance:", { totalChecks, passedChecks, failedChecks });
+    }
+
+    // دوم: اگه نبود، از results محاسبه کن
+    if (totalChecks === 0 && results && results.length > 0) {
+        totalChecks = results.length;
+        passedChecks = results.filter(r => {
+            const status = r.status?.toString().toUpperCase();
+            return status === 'PASS' || status === 'PASSED' || status === 'SUCCESS';
+        }).length;
+        failedChecks = results.filter(r => {
+            const status = r.status?.toString().toUpperCase();
+            return status === 'FAIL' || status === 'FAILED';
+        }).length;
+        console.log("📊 از results محاسبه شد:", { totalChecks, passedChecks, failedChecks });
+    }
+
+    // محاسبه درصدها
     const conformityPercent = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
     const nonConformityPercent = totalChecks > 0 ? Math.round((failedChecks / totalChecks) * 100) : 0;
 
+    console.log("✅ آمار نهایی:", {
+        totalChecks,
+        passedChecks,
+        failedChecks,
+        conformityPercent,
+        nonConformityPercent
+    });
+
     const getResultBadge = (status) => {
-        // Normalize status to uppercase for consistent comparison
         const normalizedStatus = status?.toString().toUpperCase();
 
-        if (normalizedStatus === "PASS") {
+        if (normalizedStatus === "PASS" || normalizedStatus === "PASSED") {
             return <span className="result-badge result-success">Successful</span>;
-        } else if (normalizedStatus === "FAIL") {
+        } else if (normalizedStatus === "FAIL" || normalizedStatus === "FAILED") {
             return <span className="result-badge result-fail">Failed</span>;
         } else if (normalizedStatus === "RUNNING") {
             return <span className="result-badge result-running">Running</span>;
@@ -86,14 +119,48 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         <div className="card-value">{sessionDetails?.status || "-"}</div>
                     </div>
 
+                    {/* ✅ Conformity Card با inline style */}
                     <div className="result-card result-card-success">
-                        <div className="card-percent">{conformityPercent}% | {passedChecks}</div>
-                        <div className="card-label">Conformity</div>
+                        <div className="card-percent" style={{
+                            fontSize: '28px',
+                            fontWeight: '700',
+                            color: '#059669',
+                            marginBottom: '8px',
+                            display: 'block',
+                            lineHeight: '1.2'
+                        }}>
+                            {conformityPercent}% | {passedChecks}
+                        </div>
+                        <div className="card-label" style={{
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            fontWeight: '500',
+                            display: 'block'
+                        }}>
+                            Conformity
+                        </div>
                     </div>
 
+                    {/* ✅ Non-Conformity Card با inline style */}
                     <div className="result-card result-card-danger">
-                        <div className="card-percent">{nonConformityPercent}% | {failedChecks}</div>
-                        <div className="card-label">Non-Conformity</div>
+                        <div className="card-percent" style={{
+                            fontSize: '28px',
+                            fontWeight: '700',
+                            color: '#dc2626',
+                            marginBottom: '8px',
+                            display: 'block',
+                            lineHeight: '1.2'
+                        }}>
+                            {nonConformityPercent}% | {failedChecks}
+                        </div>
+                        <div className="card-label" style={{
+                            fontSize: '14px',
+                            color: '#6b7280',
+                            fontWeight: '500',
+                            display: 'block'
+                        }}>
+                            Non-Conformity
+                        </div>
                     </div>
 
                     <div className="result-card result-card-total">
@@ -136,7 +203,9 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                             ) : (
                                 <tr>
                                     <td colSpan="3" style={{ textAlign: "center", padding: "40px" }}>
-                                        No results available
+                                        {totalChecks > 0
+                                            ? `Total: ${totalChecks} checks (${passedChecks} passed, ${failedChecks} failed)`
+                                            : "No results available"}
                                     </td>
                                 </tr>
                             )}
@@ -148,3 +217,5 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
         </div>
     );
 };
+
+export default AuditingResultModal;

@@ -3,12 +3,14 @@ import { AuditingForm } from "./AuditingForm";
 import { AuditingProcess } from "./AuditingProcess";
 import { AuditingSuccess } from "./AuditingSuccess";
 import { AuditingFailed } from "./AuditingFailed";
+import { AuditingResultModal } from "./AuditingResultModal";
 
 export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [sessionData, setSessionData] = useState(null);
     const [jobName, setJobName] = useState("");
     const [hasFailed, setHasFailed] = useState(false);
+    const [showResultModal, setShowResultModal] = useState(false); // ✅ NEW
 
     const handleFormSubmit = (data, name) => {
         setSessionData(data);
@@ -34,11 +36,18 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
         onClose();
     };
 
+    // ✅ NEW: Handler for See Result button
+    const handleSeeResult = () => {
+        console.log("🔍 Opening result modal for session:", sessionData);
+        setShowResultModal(true);
+    };
+
     const handleClose = () => {
         setCurrentStep(1);
         setSessionData(null);
         setJobName("");
         setHasFailed(false);
+        setShowResultModal(false); // ✅ Reset modal state
         onClose();
     };
 
@@ -101,7 +110,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                             sessionData={sessionData}
                             jobName={jobName}
                             onBackToHome={handleSuccess}
-                            onSeeResult={handleSuccess}
+                            onSeeResult={handleSeeResult}  // ✅ FIXED!
                         />
                     )}
 
@@ -115,6 +124,20 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                     )}
                 </div>
             </div>
+
+            {/* ✅ Result Modal - Opens when See Result is clicked */}
+            {showResultModal && sessionData && (
+                <AuditingResultModal
+                    session={sessionData}
+                    isOpen={showResultModal}
+                    onClose={() => {
+                        setShowResultModal(false);
+                        // Stay in wizard after closing modal
+                    }}
+                />
+            )}
         </div>
     );
 };
+
+export default AuditingWizard;
