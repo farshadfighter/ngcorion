@@ -4,6 +4,8 @@ import userReducer from "./userSlice";
 import assetReducer from "./assetSlice";
 import requirementReducer from "./requirementSlice";
 import discoveryReducer from "./discoverySlice";
+import auditReducer from "./auditSlice";
+import hardeningReducer from "./hardeningSlice";
 
 export const store = configureStore({
     reducer: {
@@ -12,5 +14,7 @@ export const store = configureStore({
         assets: assetReducer,
         requirements: requirementReducer,
         discovery: discoveryReducer,
+        audit: auditReducer,
+        hardening: hardeningReducer,
     },
 });

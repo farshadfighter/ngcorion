@@ -1,0 +1,774 @@
+/* =====================================================
+   HARDENING MAIN PAGE
+   ===================================================== */
+
+.hardening-main-container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+
+
+/* دو باکس انتخاب */
+.hardening-options-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    max-width: 1000px;
+    margin: 80px auto;
+    padding: 0 20px;
+}
+
+.hardening-option-box {
+    min-height: 350px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 50px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.hardening-option-box:hover:not(.disabled) {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.hardening-option-box.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #f8f9fa;
+}
+
+.hardening-option-icon {
+    font-size: 60px;
+    margin-bottom: 25px;
+}
+
+.hardening-option-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+.hardening-option-description {
+    font-size: 14px;
+    color: #7f8c8d;
+    margin-bottom: 35px;
+    line-height: 1.6;
+}
+
+.hardening-option-button {
+    background: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 40px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.hardening-option-button:hover:not(:disabled) {
+    background: #34495e;
+    transform: scale(1.05);
+}
+
+.hardening-option-button:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
+}
+
+/* =====================================================
+   HARDENING WIZARD MODAL
+   ===================================================== */
+
+.hardening-wizard-modal {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 40px;
+}
+
+/* =====================================================
+   STEPPER - شبیه Auditing
+   ===================================================== */
+
+.wizard-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 30px 40px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.stepper-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.stepper-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.stepper-item.active .stepper-circle {
+    background: #1e3a5f;
+    transform: scale(1.05);
+}
+
+.stepper-item.completed .stepper-circle {
+    background: #10b981;
+}
+
+.stepper-item.failed .stepper-circle {
+    background: #ef4444;
+}
+
+.stepper-icon {
+    font-size: 22px;
+    line-height: 1;
+}
+
+.stepper-item.active .stepper-icon,
+.stepper-item.completed .stepper-icon {
+    filter: brightness(0) invert(1);
+}
+
+.stepper-item.failed .stepper-icon {
+    filter: brightness(0) invert(1);
+}
+
+.stepper-label {
+    font-size: 13px;
+    color: #9ca3af;
+    font-weight: 500;
+    margin-bottom: 6px;
+    text-transform: lowercase;
+}
+
+.stepper-item.active .stepper-label {
+    color: #1e3a5f;
+    font-weight: 600;
+}
+
+.stepper-item.failed .stepper-label {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.stepper-line {
+    width: 130px;
+    height: 4px;
+    background: #e5e7eb;
+    margin: 0 20px;
+    margin-bottom: 35px;
+    position: relative;
+    overflow: hidden;
+}
+
+.stepper-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 100%;
+    background: #1e3a5f;
+    transition: width 0.5s ease;
+}
+
+.stepper-line.active::before {
+    width: 100%;
+}
+
+.stepper-line.failed::before {
+    width: 100%;
+    background: #ef4444;
+}
+
+/* =====================================================
+   HARDENING WIZARD CONTENT
+   ===================================================== */
+
+.wizard-content {
+    padding: 35px 40px 40px;
+}
+
+/* =====================================================
+   CONNECTION FORM (Step 1) - شبیه Auditing
+   ===================================================== */
+
+.auditing-form-container {
+    max-width: 650px;
+    margin: 0 auto;
+    padding: 5px 40px;
+}
+
+.auditing-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-grid-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px 50px;
+}
+
+.auditing-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auditing-form label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.auditing-form input,
+.auditing-form select {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #111827;
+    transition: all 0.2s;
+    box-sizing: border-box;
+}
+
+.auditing-form input:focus,
+.auditing-form select:focus {
+    outline: none;
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+
+.auditing-form input.error,
+.auditing-form select.error {
+    border-color: #ef4444;
+}
+
+.auditing-form input::placeholder {
+    color: #9ca3af;
+}
+
+.error-message {
+    font-size: 13px;
+    color: #ef4444;
+    margin-top: -4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    padding: 12px 28px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #f9fafb;
+}
+
+.btn-see-result {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-see-result:hover {
+    background: #2d4a7c;
+}
+
+.alert {
+    padding: 14px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+/* =====================================================
+   PROCESS (Step 2) - شبیه Auditing
+   ===================================================== */
+
+.auditing-process-container {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 20px 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Loading Animation */
+.process-animation {
+    order: 2;
+    margin-bottom: 40px;
+}
+
+.loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #1e3a5f;
+    animation: bounce 1.4s infinite ease-in-out;
+}
+
+.dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Status Message */
+.process-message {
+    order: 1;
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.message-icon {
+    font-size: 20px;
+}
+
+.process-message p {
+    margin: 0;
+    font-size: 15px;
+    color: #374151;
+    font-weight: 500;
+}
+
+/* Session Info */
+.process-info {
+    order: 3;
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.process-info p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #374151;
+    text-align: left;
+}
+
+.process-info strong {
+    color: #1f2937;
+}
+
+/* Process Actions */
+.process-actions {
+    order: 4;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-refresh {
+    padding: 10px 24px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.btn-refresh:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* =====================================================
+   SUCCESS (Step 3) - شبیه Auditing
+   ===================================================== */
+
+.auditing-success-container {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.success-icon-wrapper {
+    margin-bottom: 30px;
+}
+
+.success-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #d1fae5;
+    color: #065f46;
+    font-size: 48px;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.success-message {
+    margin-bottom: 30px;
+}
+
+.success-text {
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    border-radius: 10px;
+    padding: 16px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #065f46;
+}
+
+.success-info {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 40px;
+}
+
+.success-info p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #374151;
+    text-align: left;
+}
+
+.success-info strong {
+    color: #1f2937;
+}
+
+.success-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.btn-back-home {
+    padding: 12px 28px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-back-home:hover {
+    background: #f9fafb;
+}
+
+/* =====================================================
+   RESULTS (Step 4) - جدول
+   ===================================================== */
+
+.hardening-results-container {
+    padding: 20px;
+}
+
+/* باکس هشدار */
+.hardening-results-warning-box {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.hardening-warning-icon {
+    font-size: 24px;
+}
+
+.hardening-warning-text {
+    flex: 1;
+    font-size: 14px;
+    color: #856404;
+    line-height: 1.6;
+}
+
+.hardening-btn-auditing {
+    background: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 25px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.hardening-btn-auditing:hover {
+    background: #34495e;
+}
+
+/* جدول */
+.hardening-results-table-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.hardening-results-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.hardening-results-table-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.hardening-btn-harden-all {
+    background: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 25px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hardening-btn-harden-all:hover:not(:disabled) {
+    background: #34495e;
+    transform: scale(1.05);
+}
+
+.hardening-btn-harden-all:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.hardening-results-table-wrapper {
+    overflow-x: auto;
+}
+
+.hardening-results-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hardening-results-table thead {
+    background: #f8f9fa;
+}
+
+.hardening-results-table th {
+    padding: 15px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.hardening-results-table td {
+    padding: 15px;
+    font-size: 14px;
+    color: #2c3e50;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.hardening-results-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.hardening-recommendation-text {
+    line-height: 1.5;
+}
+
+/* Status Badges */
+.hardening-status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.hardening-status-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.hardening-status-fail {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.hardening-status-unknown {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* دکمه Harden تک */
+.hardening-btn-harden-single {
+    background: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hardening-btn-harden-single:hover {
+    background: #34495e;
+    transform: scale(1.05);
+}
+
+/* Loading Spinner */
+.hardening-loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: #7f8c8d;
+    font-size: 14px;
+}
+
+/* =====================================================
+   RESPONSIVE
+   ===================================================== */
+
+@media (max-width: 768px) {
+    .hardening-options-container {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .hardening-form-grid-two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .hardening-stepper {
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .hardening-stepper-line {
+        display: none;
+    }
+
+    .hardening-results-warning-box {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hardening-results-table-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+}
