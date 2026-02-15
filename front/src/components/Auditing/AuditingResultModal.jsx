@@ -10,7 +10,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     useEffect(() => {
         if (isOpen && session) {
             // Fetch fresh session details
-            dispatch(fetchAuditSession(session.session_id))
+            dispatch(fetchAuditSession({ sessionId: session.session_id, deviceType: session.device_type }))
                 .unwrap()
                 .then((data) => {
                     console.log("📊 Session details:", data);
@@ -19,7 +19,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 .catch((err) => console.error("Failed to fetch session details:", err));
 
             // Fetch results
-            dispatch(fetchAuditResults(session.session_id));
+            dispatch(fetchAuditResults({ sessionId: session.session_id, deviceType: session.device_type }));
         }
     }, [isOpen, session, dispatch]);
 
@@ -169,7 +169,11 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     </div>
 
                     <div className="result-card result-card-benchmark">
-                        <div className="card-title">{sessionDetails?.device_type === "fortinet" ? "FortiGate" : "Cisco"}</div>
+                        <div className="card-title">{
+                            sessionDetails?.device_type === "fortinet" ? "FortiGate" :
+                            sessionDetails?.device_type === "linux" ? "Linux" :
+                            sessionDetails?.device_type === "apache" ? "Apache" : "Cisco"
+                        }</div>
                         <div className="card-subtitle">CIS Benchmark</div>
                     </div>
                 </div>

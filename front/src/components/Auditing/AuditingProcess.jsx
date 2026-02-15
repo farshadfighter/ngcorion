@@ -10,13 +10,13 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
 
     const startPolling = useCallback(() => {
         // Check immediately
-        dispatch(checkAuditStatus(sessionData.session_id));
+        dispatch(checkAuditStatus({ sessionId: sessionData.session_id, deviceType: sessionData.device_type }));
 
         // Then poll every 3 seconds
         pollIntervalRef.current = setInterval(() => {
-            dispatch(checkAuditStatus(sessionData.session_id));
+            dispatch(checkAuditStatus({ sessionId: sessionData.session_id, deviceType: sessionData.device_type }));
         }, 3000);
-    }, [dispatch, sessionData.session_id]);
+    }, [dispatch, sessionData.session_id, sessionData.device_type]);
 
     useEffect(() => {
         // Start polling immediately
@@ -59,7 +59,7 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
 
     const handleRefresh = () => {
         setIsRefreshing(true);
-        dispatch(checkAuditStatus(sessionData.session_id));
+        dispatch(checkAuditStatus({ sessionId: sessionData.session_id, deviceType: sessionData.device_type }));
         setTimeout(() => {
             setIsRefreshing(false);
         }, 500);

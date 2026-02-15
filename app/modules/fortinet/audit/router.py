@@ -293,6 +293,21 @@ def list_audit_sessions(
     return summaries
 
 
+@router.get("/sessions/count")
+def get_fortinet_sessions_count(
+    current_user: User = Depends(require_permission("AUDIT", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Get total count of FortiGate audit sessions.
+
+    **Permissions:** Requires AUDIT read permission
+    """
+    from app.models.audit import DeviceType
+    count = FortinetAuditService.get_sessions_count(db, DeviceType.FORTINET)
+    return {"total": count}
+
+
 @router.get("/sessions/{session_id}", response_model=FortinetAuditSessionResponse)
 def get_audit_session(
     session_id: int,
@@ -388,12 +403,20 @@ def delete_audit_session(
             detail=f"Audit session {session_id} not found"
         )
 
+    # Get asset info for logging before deletion
+    from app.models import Asset
+    asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
+    asset_name = asset.asset_name if asset else None
+
     # Delete session
     deleted = FortinetAuditService.delete_audit_session(db, session_id)
 
     if deleted:
         # Log deletion
-        log_audit_session_deleted(db, current_user.id, session_id, session.target_ip)
+        log_audit_session_deleted(
+            db, current_user.id, session_id, session.asset_id,
+            asset_name, session.target_ip
+        )
 
         return {
             "message": f"Audit session {session_id} deleted successfully",
