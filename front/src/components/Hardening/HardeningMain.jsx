@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
-import "../../assets/Hardening/FixAll.css";
+import "../../assets/hardening/FixAll.css";
 
 export const HardeningMain = () => {
     const [showWizard, setShowWizard] = useState(false);
