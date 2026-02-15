@@ -241,7 +241,8 @@ export const autoHardenWithDefaults = createAsyncThunk(
             const apiPath = getDeviceApiPath(deviceType);
 
             const payload = {
-                session_id: sessionId,
+                audit_session_id: sessionId,
+                confirmed: true,
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
                 skip_backup: false

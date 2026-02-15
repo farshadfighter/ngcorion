@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchRequiredParameters,
     autoHardenWithDefaults,
+    batchExecuteChecks,
     clearRequiredParameters,
     clearMessages
 } from '../../store/hardeningSlice';
@@ -131,11 +132,30 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                 credentials.sudo_password = sshCredentials.sudo_password;
             }
 
-            const result = await dispatch(autoHardenWithDefaults({
-                sessionId: sessionId,
-                deviceType: deviceType,
-                credentials: credentials
-            })).unwrap();
+            // Check if user provided any parameter values
+            const hasUserParams = Object.values(paramValues).some(v => v && v.toString().trim());
+
+            let result;
+            if (hasUserParams) {
+                // Get failed check IDs from cisChecks
+                const failedCheckIds = cisChecks
+                    .filter(c => c.status?.toString().toUpperCase() === 'FAIL')
+                    .map(c => c.id);
+
+                result = await dispatch(batchExecuteChecks({
+                    sessionId: sessionId,
+                    deviceType: deviceType,
+                    credentials: credentials,
+                    checkIds: failedCheckIds,
+                    parameters: paramValues
+                })).unwrap();
+            } else {
+                result = await dispatch(autoHardenWithDefaults({
+                    sessionId: sessionId,
+                    deviceType: deviceType,
+                    credentials: credentials
+                })).unwrap();
+            }
 
             setExecutionResult(result);
             setStep(4);
@@ -327,9 +347,9 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
             );
         }
 
-        const successCount = executionResult.successful || 0;
-        const failedCount = executionResult.failed || 0;
-        const skippedCount = executionResult.skipped || 0;
+        const successCount = executionResult.fixed_count || 0;
+        const failedCount = executionResult.failed_count || 0;
+        const skippedCount = executionResult.skipped_count || 0;
 
         return (
             <div>

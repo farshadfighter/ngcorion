@@ -49,7 +49,7 @@ export const AuditingList = () => {
         if (sessionToDelete) {
             try {
                 // انجام delete و منتظر ماندن برای نتیجه
-                await dispatch(deleteAuditSession(sessionToDelete.session_id)).unwrap();
+                await dispatch(deleteAuditSession({ sessionId: sessionToDelete.session_id, deviceType: sessionToDelete.device_type })).unwrap();
 
                 // فقط اگه موفق بود، از localStorage پاک کن
                 const newJobNames = { ...jobNames };

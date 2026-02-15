@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAuditSessions } from "../../store/hardeningSlice";
+import { checkHardeningSessionStatus } from "../../store/hardeningSlice";
 
 export const FixUnsuccessfulProcess = ({ sessionData, onComplete, onError }) => {
     const dispatch = useDispatch();
-    const { auditSessions, isLoading } = useSelector((state) => state.hardening);
+    const { currentSession, isLoading } = useSelector((state) => state.hardening);
     const pollIntervalRef = useRef(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const checkSessionStatus = useCallback(() => {
         if (sessionData.session_id) {
-            // Fetch latest audit sessions to check status
-            dispatch(fetchAuditSessions());
+            dispatch(checkHardeningSessionStatus({
+                sessionId: sessionData.session_id,
+                deviceType: sessionData.device_type
+            }));
         }
-    }, [dispatch, sessionData.session_id]);
+    }, [dispatch, sessionData.session_id, sessionData.device_type]);
 
     useEffect(() => {
         // Check immediately
@@ -33,37 +35,30 @@ export const FixUnsuccessfulProcess = ({ sessionData, onComplete, onError }) => 
     }, [checkSessionStatus]);
 
     useEffect(() => {
-        // Find current session in audit sessions
-        if (auditSessions && auditSessions.length > 0) {
-            const currentAuditSession = auditSessions.find(
-                s => s.session_id === sessionData.session_id
-            );
-
-            if (currentAuditSession) {
-                if (currentAuditSession.status === "completed") {
-                    // Stop polling
-                    if (pollIntervalRef.current) {
-                        clearInterval(pollIntervalRef.current);
-                        pollIntervalRef.current = null;
-                    }
-                    // Move to next step
-                    setTimeout(() => {
-                        onComplete();
-                    }, 1000);
-                } else if (currentAuditSession.status === "failed") {
-                    // Stop polling
-                    if (pollIntervalRef.current) {
-                        clearInterval(pollIntervalRef.current);
-                        pollIntervalRef.current = null;
-                    }
-                    // Move to error step
-                    setTimeout(() => {
-                        onError();
-                    }, 1000);
+        if (currentSession) {
+            if (currentSession.status === "completed") {
+                // Stop polling
+                if (pollIntervalRef.current) {
+                    clearInterval(pollIntervalRef.current);
+                    pollIntervalRef.current = null;
                 }
+                // Move to next step
+                setTimeout(() => {
+                    onComplete();
+                }, 1000);
+            } else if (currentSession.status === "failed") {
+                // Stop polling
+                if (pollIntervalRef.current) {
+                    clearInterval(pollIntervalRef.current);
+                    pollIntervalRef.current = null;
+                }
+                // Move to error step
+                setTimeout(() => {
+                    onError();
+                }, 1000);
             }
         }
-    }, [auditSessions, sessionData.session_id, onComplete, onError]);
+    }, [currentSession, onComplete, onError]);
 
     const handleRefresh = () => {
         setIsRefreshing(true);

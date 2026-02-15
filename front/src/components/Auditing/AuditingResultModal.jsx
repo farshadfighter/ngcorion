@@ -10,13 +10,13 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     useEffect(() => {
         if (isOpen && session) {
             // Fetch fresh session details
-            dispatch(fetchAuditSession(session.session_id))
+            dispatch(fetchAuditSession({ sessionId: session.session_id, deviceType: session.device_type }))
                 .unwrap()
                 .then((data) => setSessionDetails(data))
                 .catch((err) => console.error("Failed to fetch session details:", err));
 
             // Fetch results
-            dispatch(fetchAuditResults(session.session_id));
+            dispatch(fetchAuditResults({ sessionId: session.session_id, deviceType: session.device_type }));
         }
     }, [isOpen, session, dispatch]);
 
@@ -25,8 +25,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     // Calculate statistics
     const compliance = sessionDetails?.compliance || {};
     const totalChecks = compliance.total_checks || 0;
-    const passedChecks = compliance.passed_checks || 0;
-    const failedChecks = compliance.failed_checks || 0;
+    const passedChecks = compliance.passed || 0;
+    const failedChecks = compliance.failed || 0;
     const conformityPercent = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
     const nonConformityPercent = totalChecks > 0 ? Math.round((failedChecks / totalChecks) * 100) : 0;
 
