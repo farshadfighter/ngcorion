@@ -147,13 +147,22 @@ export const checkAuditStatus = createAsyncThunk(
     }
 );
 
-// Fetch audit sessions count
+// Fetch audit sessions count (aggregate from all device types)
 export const fetchAuditSessionsCount = createAsyncThunk(
     "audit/fetchCount",
     async (_, { rejectWithValue }) => {
         try {
-            const res = await api.get("/api/audit/sessions/count");
-            return res.data;
+            const deviceTypes = ['cisco', 'fortinet', 'linux', 'apache'];
+            let total = 0;
+            for (const device of deviceTypes) {
+                try {
+                    const res = await api.get(`/api/audit/${device}/sessions/count`);
+                    total += res.data?.total || 0;
+                } catch (err) {
+                    console.warn(`Failed to fetch ${device} count:`, err.message);
+                }
+            }
+            return { total };
         } catch (err) {
             return rejectWithValue(
                 err.response?.data?.detail || "Failed to fetch sessions count"

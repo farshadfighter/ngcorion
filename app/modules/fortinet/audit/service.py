@@ -640,6 +640,11 @@ class FortinetAuditService:
         )
 
     @staticmethod
+    def get_sessions_count(db: Session, device_type: DeviceType = DeviceType.FORTINET) -> int:
+        """Get total count of FortiGate audit sessions."""
+        return db.query(AuditSession).filter(AuditSession.device_type == device_type).count()
+
+    @staticmethod
     def get_session_summary(db: Session, session_id: int) -> Optional[Dict[str, Any]]:
         """
         Get formatted summary of an audit session.

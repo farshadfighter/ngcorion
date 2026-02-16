@@ -147,8 +147,45 @@ class CiscoHardeningExecutor:
             logger.info(f"Executing {len(commands)} commands on {self.ip}")
 
             if requires_config_mode:
-                # Use send_config_commands for config mode commands
-                output = self.ssh_client.send_config_commands(commands)
+                # Strip meta-commands that conflict with Netmiko's send_config_set(),
+                # which automatically handles config mode entry/exit.
+                # Templates include "configure terminal", "end", "write memory"
+                # but Netmiko enters/exits config mode on its own, and
+                # save_config() is called separately after execution.
+                #
+                # Only strip the outer framing commands, NOT intermediate "exit"
+                # which is needed for sub-context transitions (e.g. exit from
+                # "line console 0" before entering "line vty 0 15").
+                enter_commands = {"configure terminal", "config t", "conf t"}
+                save_commands = {"write memory", "write mem", "wr",
+                                 "copy running-config startup-config"}
+                config_commands = []
+                for cmd in commands:
+                    cmd_lower = cmd.strip().lower()
+                    if cmd_lower in enter_commands:
+                        continue  # Netmiko handles config mode entry
+                    if cmd_lower in save_commands:
+                        continue  # save_config() handles this separately
+                    config_commands.append(cmd)
+
+                # Strip trailing "end" only (Netmiko handles config mode exit).
+                # Keep intermediate "end" if somehow present mid-sequence.
+                while config_commands and config_commands[-1].strip().lower() == "end":
+                    config_commands.pop()
+
+                if not config_commands:
+                    logger.warning("No config commands remaining after stripping meta-commands")
+                    return {
+                        "success": True,
+                        "output": "No configuration commands to execute",
+                        "errors": []
+                    }
+
+                logger.info(
+                    f"Sending {len(config_commands)} config commands "
+                    f"(stripped {len(commands) - len(config_commands)} meta-commands)"
+                )
+                output = self.ssh_client.send_config_commands(config_commands)
             else:
                 # Use send_command for non-config commands
                 outputs = []

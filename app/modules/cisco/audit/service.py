@@ -318,6 +318,7 @@ class AuditService:
         """
         return (
             db.query(AuditSession)
+            .filter(AuditSession.device_type == DeviceType.CISCO)
             .order_by(AuditSession.started_at.desc())
             .offset(offset)
             .limit(limit)
@@ -335,7 +336,7 @@ class AuditService:
         Returns:
             Total number of audit sessions
         """
-        return db.query(AuditSession).count()
+        return db.query(AuditSession).filter(AuditSession.device_type == DeviceType.CISCO).count()
 
     @staticmethod
     def get_asset_audit_history(db: Session, asset_id: int, limit: int = 10) -> List[AuditSession]:
@@ -352,7 +353,10 @@ class AuditService:
         """
         return (
             db.query(AuditSession)
-            .filter(AuditSession.asset_id == asset_id)
+            .filter(
+                AuditSession.asset_id == asset_id,
+                AuditSession.device_type == DeviceType.CISCO
+            )
             .order_by(AuditSession.started_at.desc())
             .limit(limit)
             .all()
