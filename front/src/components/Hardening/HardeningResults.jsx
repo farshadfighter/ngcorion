@@ -22,11 +22,9 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
 
     const handleAuditingClick = () => {
         onClose();
-        // Use callback if provided, otherwise fallback to hash navigation
         if (onNavigateToAuditing) {
             onNavigateToAuditing();
         } else {
-            // Fallback: Navigate to operation-device section
             window.location.hash = "#operation-device";
         }
     };
@@ -36,7 +34,6 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     };
 
     const handleModalSuccess = () => {
-        // Refresh results after successful hardening
         if (sessionData?.session_id && sessionData?.device_type) {
             dispatch(fetchAuditResults({
                 sessionId: sessionData.session_id,
@@ -52,7 +49,6 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     };
 
     const handleFixSingleSuccess = () => {
-        // Refresh results after successful fix
         if (sessionData?.session_id && sessionData?.device_type) {
             dispatch(fetchAuditResults({
                 sessionId: sessionData.session_id,
@@ -63,107 +59,158 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
         setSelectedCheck(null);
     };
 
-    const getStatusBadge = (status) => {
-        const normalizedStatus = status?.toString().toUpperCase();
-
-        if (normalizedStatus === "PASS") {
-            return <span className="hardening-status-badge hardening-status-success">Pass</span>;
-        } else if (normalizedStatus === "FAIL") {
-            return <span className="hardening-status-badge hardening-status-fail">Fail</span>;
-        } else {
-            return <span className="hardening-status-badge hardening-status-unknown">unknown</span>;
-        }
+    const getStatusBadge = () => {
+        return <span className="result-badge result-unknown">unknown</span>;
     };
 
-    // Count failed checks for Harden All button
-    const failedChecksCount = cisChecks?.filter(
-        check => check.status?.toString().toUpperCase() === 'FAIL'
-    ).length || 0;
+    const totalChecks = cisChecks?.length || 0;
 
     return (
-        <div className="hardening-results-container">
-            {/* Warning Box */}
-            <div className="hardening-results-warning-box">
-                <div className="hardening-warning-icon">ℹ️</div>
-                <div className="hardening-warning-text">
-                    Status of CIS Benchmark section is unknown, audit your asset to specify
-                    status
-                </div>
-                <button className="hardening-btn-auditing" onClick={handleAuditingClick}>
-                    🔍 Auditing
-                </button>
-            </div>
-
-            {/* CIS Benchmark Table */}
-            <div className="hardening-results-table-section">
-                <div className="hardening-results-table-header">
-                    <h3>{sessionData?.device_type || 'Device'} CIS Benchmark</h3>
-                    <button
-                        className="hardening-btn-harden-all"
-                        onClick={handleHardenAll}
-                        disabled={failedChecksCount === 0 || isLoading}
-                        title={failedChecksCount === 0 ? "No failed checks to harden" : `Harden ${failedChecksCount} failed checks`}
-                    >
-                        🛡️ Harden All {failedChecksCount > 0 && `(${failedChecksCount})`}
+        <div className="modal-overlay result-modal-overlay" onClick={onClose}>
+            <div className="result-modal-content" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="result-modal-header">
+                    <button className="result-back-btn" onClick={onClose}>
+                        ← Hardening Result
                     </button>
                 </div>
 
-                <div className="hardening-results-table-wrapper">
-                    {isLoading ? (
-                        <div className="hardening-loading-spinner">Loading results...</div>
-                    ) : (
-                        <table className="hardening-results-table">
-                            <thead>
-                            <tr>
-                                <th>Section</th>
-                                <th>Recommendation</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {cisChecks && cisChecks.length > 0 ? (
-                                cisChecks.map((check) => (
-                                    <tr key={check.id}>
-                                        <td>{check.check_number}</td>
-                                        <td>
-                                            <div className="hardening-recommendation-text">
-                                                {check.check_title}
-                                            </div>
-                                        </td>
-                                        <td>{getStatusBadge(check.status)}</td>
-                                        <td>
-                                            {check.status?.toString().toUpperCase() === 'FAIL' ? (
+                {/* Warning Box */}
+                <div style={{ padding: '40px' }}>
+                    <div style={{
+                        background: '#f9fafb',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        padding: '32px',
+                        textAlign: 'center',
+                        marginBottom: '40px'
+                    }}>
+                        <div style={{
+                            fontSize: '16px',
+                            color: '#374151',
+                            marginBottom: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px'
+                        }}>
+                            <span style={{ fontSize: '20px' }}>ℹ️</span>
+                            <span>Status of CIS Benchmark section is unknown, audit your asset to specify status</span>
+                        </div>
+                        <button
+                            onClick={handleAuditingClick}
+                            style={{
+                                padding: '12px 32px',
+                                background: '#1e3a5f',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            🔍 Auditing
+                        </button>
+                    </div>
+
+                    {/* Section Header with Harden All */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '20px',
+                        paddingBottom: '16px',
+                        borderBottom: '2px solid #e5e7eb'
+                    }}>
+                        <h3 style={{
+                            fontSize: '18px',
+                            fontWeight: '600',
+                            color: '#1f2937',
+                            margin: 0
+                        }}>
+                            {sessionData?.device_type === 'fortinet' ? 'FortiGate' :
+                                sessionData?.device_type?.startsWith('linux-') ? 'Linux' :
+                                    sessionData?.device_type === 'apache' ? 'Apache' : 'Cisco'} CIS Benchmark
+                        </h3>
+                        <button
+                            onClick={handleHardenAll}
+                            disabled={totalChecks === 0}
+                            style={{
+                                padding: '10px 24px',
+                                background: totalChecks === 0 ? '#9ca3af' : '#1e3a5f',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: totalChecks === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            🛡️ Harden All
+                        </button>
+                    </div>
+
+                    {/* Table */}
+                    <div className="result-table-wrapper">
+                        {isLoading ? (
+                            <div className="loading-spinner">Loading results...</div>
+                        ) : (
+                            <table className="result-table">
+                                <thead>
+                                <tr>
+                                    <th>Section</th>
+                                    <th>Recommendation</th>
+                                    <th>Status</th>
+                                    <th style={{ width: '120px' }}>Action</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {cisChecks && cisChecks.length > 0 ? (
+                                    cisChecks.map((check) => (
+                                        <tr key={check.id}>
+                                            <td style={{ color: '#6b7280', fontWeight: '600' }}>{check.check_number}</td>
+                                            <td>
+                                                <div className="recommendation-text">{check.check_title}</div>
+                                            </td>
+                                            <td>{getStatusBadge(check.status)}</td>
+                                            <td style={{ textAlign: 'center' }}>
                                                 <button
-                                                    className="hardening-btn-harden-single"
                                                     onClick={() => handleHardenSingle(check)}
-                                                    title={`Fix check ${check.check_number}`}
+                                                    style={{
+                                                        padding: '8px 18px',
+                                                        background: '#1e3a5f',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '6px',
+                                                        fontSize: '13px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer'
+                                                    }}
                                                 >
                                                     🛡️ Harden
                                                 </button>
-                                            ) : (
-                                                <span style={{ color: '#999', fontSize: '14px' }}>—</span>
-                                            )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" style={{ textAlign: 'center', padding: '40px' }}>
+                                            No checks available
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td
-                                        colSpan="4"
-                                        style={{ textAlign: "center", padding: "40px" }}
-                                    >
-                                        No results available
-                                    </td>
-                                </tr>
-                            )}
-                            </tbody>
-                        </table>
-                    )}
+                                )}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Harden All Modal */}
+            {/* Modals */}
             {showHardenAllModal && (
                 <HardenAllModal
                     sessionId={sessionData.session_id}
@@ -173,7 +220,6 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                 />
             )}
 
-            {/* Fix Single Modal */}
             {showFixSingleModal && selectedCheck && (
                 <FixSingleModal
                     check={selectedCheck}
