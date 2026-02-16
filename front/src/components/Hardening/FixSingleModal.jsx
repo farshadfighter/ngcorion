@@ -44,16 +44,17 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
         };
     }, [dispatch, check, deviceType]);
 
-    // Initialize param values when preview loads
+    // Initialize param values when preview loads (only once)
     useEffect(() => {
-        if (previewData?.required_parameters) {
+        if (previewData?.required_parameters && Object.keys(paramValues).length === 0) {
             const initialValues = {};
             previewData.required_parameters.forEach(param => {
                 initialValues[param] = '';
             });
             setParamValues(initialValues);
         }
-    }, [previewData]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [previewData?.required_parameters]);
 
     const handleParamChange = (key, value) => {
         setParamValues(prev => ({
@@ -240,6 +241,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                             value={paramValues[param] || ''}
                             onChange={(e) => handleParamChange(param, e.target.value)}
                             placeholder={`Enter ${param}`}
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                     </div>
                 ))}
@@ -263,6 +274,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                         onChange={handleSSHChange}
                         placeholder="Enter SSH username"
                         autoComplete="username"
+                        style={{
+                            width: '450px',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#111827',
+                            transition: 'all 0.2s',
+                            background: 'white'
+                        }}
                     />
                 </div>
 
@@ -278,6 +299,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                         onChange={handleSSHChange}
                         placeholder="Enter SSH password"
                         autoComplete="current-password"
+                        style={{
+                            width: '450px',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#111827',
+                            transition: 'all 0.2s',
+                            background: 'white'
+                        }}
                     />
                 </div>
 
@@ -294,6 +325,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Enter enable secret (optional)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Required for privileged commands
@@ -312,6 +353,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Virtual Domain (optional, default: root)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Leave empty for default VDOM
@@ -330,6 +381,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Sudo password (optional)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Required for root access (defaults to SSH password)
@@ -348,6 +409,16 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Sudo password (optional)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Required for root access (defaults to SSH password)

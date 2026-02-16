@@ -57,7 +57,8 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                 return hasChanged ? initialValues : prevValues;
             });
         }
-    }, [requiredParameters]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requiredParameters?.required_parameters]);
 
     const handleParamChange = (key, value) => {
         setParamValues(prev => ({
@@ -132,30 +133,11 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                 credentials.sudo_password = sshCredentials.sudo_password;
             }
 
-            // Check if user provided any parameter values
-            const hasUserParams = Object.values(paramValues).some(v => v && v.toString().trim());
-
-            let result;
-            if (hasUserParams) {
-                // Get failed check IDs from cisChecks
-                const failedCheckIds = cisChecks
-                    .filter(c => c.status?.toString().toUpperCase() === 'FAIL')
-                    .map(c => c.id);
-
-                result = await dispatch(batchExecuteChecks({
-                    sessionId: sessionId,
-                    deviceType: deviceType,
-                    credentials: credentials,
-                    checkIds: failedCheckIds,
-                    parameters: paramValues
-                })).unwrap();
-            } else {
-                result = await dispatch(autoHardenWithDefaults({
-                    sessionId: sessionId,
-                    deviceType: deviceType,
-                    credentials: credentials
-                })).unwrap();
-            }
+            const result = await dispatch(autoHardenWithDefaults({
+                sessionId: sessionId,
+                deviceType: deviceType,
+                credentials: credentials
+            })).unwrap();
 
             setExecutionResult(result);
             setStep(4);
@@ -205,6 +187,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                                 value={paramValues[key] || ''}
                                 onChange={(e) => handleParamChange(key, e.target.value)}
                                 placeholder={param.default || `Enter ${key}`}
+                                style={{
+                                    width: '450px',
+                                    padding: '8px 12px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    color: '#111827',
+                                    transition: 'all 0.2s',
+                                    background: 'white'
+                                }}
                             />
                             {param.usage && (
                                 <span className="hardening-param-usage">{param.usage}</span>
@@ -232,6 +224,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                         onChange={handleSSHChange}
                         placeholder="Enter SSH username"
                         autoComplete="username"
+                        style={{
+                            width: '450px',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#111827',
+                            transition: 'all 0.2s',
+                            background: 'white'
+                        }}
                     />
                 </div>
 
@@ -247,6 +249,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                         onChange={handleSSHChange}
                         placeholder="Enter SSH password"
                         autoComplete="current-password"
+                        style={{
+                            width: '450px',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#111827',
+                            transition: 'all 0.2s',
+                            background: 'white'
+                        }}
                     />
                 </div>
 
@@ -263,6 +275,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Enter enable secret (optional)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Required for privileged commands
@@ -281,6 +303,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Virtual Domain (optional, default: root)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Leave empty for default VDOM
@@ -299,6 +331,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Sudo password (optional)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Required for root access (defaults to SSH password)
@@ -317,6 +359,16 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                             onChange={handleSSHChange}
                             placeholder="Sudo password (optional)"
                             autoComplete="off"
+                            style={{
+                                width: '450px',
+                                padding: '8px 12px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                color: '#111827',
+                                transition: 'all 0.2s',
+                                background: 'white'
+                            }}
                         />
                         <span style={{fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px'}}>
                             Required for root access (defaults to SSH password)
@@ -347,9 +399,9 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
             );
         }
 
-        const successCount = executionResult.fixed_count || 0;
-        const failedCount = executionResult.failed_count || 0;
-        const skippedCount = executionResult.skipped_count || 0;
+        const successCount = executionResult.successful || 0;
+        const failedCount = executionResult.failed || 0;
+        const skippedCount = executionResult.skipped || 0;
 
         return (
             <div>
