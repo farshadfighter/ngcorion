@@ -5,7 +5,7 @@ Tracks all hardening actions (preview and execute operations) for device remedia
 """
 
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import datetime
 from app.core.database import Base
 
@@ -60,7 +60,7 @@ class HardeningAction(Base):
     completed_at = Column(DateTime, nullable=True)
 
     # Relationships
-    audit_result = relationship("AuditResult", backref="hardening_actions")
+    audit_result = relationship("AuditResult", backref=backref("hardening_actions", passive_deletes=True))
     user = relationship("User", backref="hardening_actions")
     asset = relationship("Asset", backref="hardening_actions")
-    audit_session = relationship("AuditSession", backref="hardening_actions")
+    audit_session = relationship("AuditSession", backref=backref("hardening_actions", passive_deletes=True))
