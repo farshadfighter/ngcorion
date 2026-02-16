@@ -891,7 +891,7 @@ class HardeningService:
             "skipped_count": len(unfixable),
             "failed_count": failed_count,
             "actions": action_ids,
-            "final_compliance_pct": session_updated.compliance_pct
+            "final_compliance_pct": session_updated.compliance_pct if session_updated else None
         }
 
     @staticmethod

@@ -10,7 +10,7 @@ Example:
 """
 
 from sqlalchemy import Column, Integer, ForeignKey, Text, Enum
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.core.database import Base
 from app.models.enums import RelationTypeEnum
 
@@ -100,14 +100,14 @@ class AssetDependency(Base):
     asset = relationship(
         "Asset",
         foreign_keys=[asset_id],
-        backref="dependencies"
+        backref=backref("dependencies", passive_deletes=True)
     )
     
     # Forward relationship: dependency -> depends_on
     depends_on = relationship(
         "Asset",
         foreign_keys=[depends_on_id],
-        backref="dependents"
+        backref=backref("dependents", passive_deletes=True)
     )
     
     

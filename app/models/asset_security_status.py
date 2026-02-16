@@ -18,7 +18,7 @@ Example:
 """
 
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, String, Date, Float, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import date
 from app.core.database import Base
 
@@ -146,8 +146,7 @@ class AssetSecurityStatus(Base):
     
     asset = relationship(
         "Asset",
-        backref="security_status",
-        uselist=False  # One-to-one relationship
+        backref=backref("security_status", passive_deletes=True, uselist=False)
     )
     
     

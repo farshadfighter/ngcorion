@@ -7,7 +7,7 @@ Replaces the in-memory storage pattern with proper database persistence.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from app.core.database import Base
 from datetime import datetime
 
@@ -379,7 +379,7 @@ class DiscoveryApplication(Base):
 
     # Relationships
     scan = relationship("DiscoveryScan", back_populates="applications")
-    asset = relationship("Asset", backref="discovery_applications")
+    asset = relationship("Asset", backref=backref("discovery_applications", passive_deletes=True))
     applied_by = relationship("User", backref="applied_discoveries")
 
     def __repr__(self):

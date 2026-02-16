@@ -724,7 +724,7 @@ def get_hardening_action(
         "check_title": action.check_title,
         "action_type": action.action_type,
         "status": action.status,
-        "commands": json.loads(action.commands_json),
+        "commands": json.loads(action.commands_json) if action.commands_json else [],
         "requires_config_mode": action.requires_config_mode,
         "output": action.output,
         "backup_config": action.backup_config,
