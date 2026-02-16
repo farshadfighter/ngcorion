@@ -267,7 +267,9 @@ class CiscoHardeningExecutor:
 
         try:
             logger.info(f"Saving config on {self.ip}")
-            output = self.ssh_client.send_command("write memory")
+            # Use Netmiko's built-in save_config() which handles
+            # the "write memory" prompt/pattern detection correctly
+            output = self.ssh_client.connection.save_config()
             logger.info("Config saved successfully")
             return output
 
