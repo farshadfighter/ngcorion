@@ -20,28 +20,43 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
-        console.log("📄 Fetching audit sessions..."); // Debug
         dispatch(fetchAuditSessions());
     }, [dispatch]);
+
+    // ✅ فقط session هایی که completed هستن و failed checks دارن
+    const failedAuditSessions = auditSessions?.filter(session =>
+        session.status === 'completed' &&
+        (
+            (session.compliance?.failed_checks > 0) ||
+            (session.compliance?.failed > 0)
+        )
+    ) || [];
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
 
-        // If session selected, save its details and extract device type
+        // اگه session انتخاب شد، اطلاعاتش رو استخراج کن
         if (name === "session_id" && value) {
-            const session = auditSessions.find((s) => s.session_id === parseInt(value));
-            console.log("📌 Selected session:", session); // Debug
-            setSelectedSession(session);
+            const session = failedAuditSessions.find(
+                (s) => s.session_id === parseInt(value)
+            );
+            setSelectedSession(session || null);
 
-            // ✅ AUTO-DETECT DEVICE TYPE from session
             if (session?.device_type) {
                 setDeviceType(session.device_type);
-                console.log("🎯 Device type detected:", session.device_type); // Debug
+            } else {
+                setDeviceType(null);
             }
         }
 
-        // Clear error
+        // اگه session پاک شد، اطلاعات انتخابی رو هم پاک کن
+        if (name === "session_id" && !value) {
+            setSelectedSession(null);
+            setDeviceType(null);
+        }
+
+        // پاک کردن error مربوطه
         if (errors[name]) {
             setErrors((prev) => {
                 const newErrors = { ...prev };
@@ -71,27 +86,21 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        console.log("🚀 Form submitted"); // Debug
-
-        if (!validate()) {
-            console.log("❌ Validation failed:", errors); // Debug
-            return;
-        }
+        if (!validate()) return;
 
         const sessionId = parseInt(formData.session_id);
         if (isNaN(sessionId) || !selectedSession) {
             setErrors({ session_id: "Please select a valid audit job" });
-            console.log("❌ Invalid session ID"); // Debug
             return;
         }
 
-        // Prepare credentials
+        // آماده‌سازی credentials
         const credentials = {
             ssh_username: formData.ssh_username,
             ssh_password: formData.ssh_password,
         };
 
-        // Add device-specific credentials
+        // اضافه کردن credentials مخصوص device type
         if (deviceType === "cisco" && formData.ssh_secret) {
             credentials.ssh_secret = formData.ssh_secret;
         }
@@ -102,46 +111,50 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
             credentials.sudo_password = formData.sudo_password;
         }
 
-        // Pass data to parent including device type
-        const dataToSubmit = {
+        // ارسال داده به والد
+        onSubmit({
             session_id: sessionId,
-            session: selectedSession,
-            device_type: deviceType, // IMPORTANT: Include device type
-            credentials
-        };
-
-        console.log("✅ Submitting data:", dataToSubmit); // Debug
-        onSubmit(dataToSubmit);
+            session: {
+                ...selectedSession,
+                device_type: deviceType,
+            },
+            device_type: deviceType,
+            credentials,
+        });
     };
 
-    // Helper function to get device name
-    const getDeviceName = (deviceType) => {
+    // تبدیل device type به نام قابل خواندن
+    const getDeviceName = (type) => {
         const names = {
             'cisco': 'Cisco Router/Switch',
             'fortinet': 'FortiGate Firewall',
             'linux-ubuntu-22.04': 'Ubuntu 22.04 LTS',
             'linux-ubuntu-24.04': 'Ubuntu 24.04 LTS',
             'linux-rocky-8': 'Rocky Linux 8',
-            'apache': 'Apache Web Server'
+            'apache': 'Apache Web Server',
         };
-        return names[deviceType] || deviceType || 'Unknown';
+        return names[type] || type || 'Unknown';
     };
 
-    // Filter only completed sessions
-    const completedSessions = auditSessions?.filter(
-        session => session.status === 'completed'
-    ) || [];
+    // تعداد failed checks
+    const getFailedCount = (session) => {
+        return session?.compliance?.failed_checks ||
+            session?.compliance?.failed ||
+            0;
+    };
 
     return (
         <div className="auditing-form-container">
             <form onSubmit={handleSubmit} className="auditing-form">
                 <div className="form-grid-two-column">
-                    {/* Session Selector */}
+
+                    {/* ── Audit Job Dropdown ── */}
                     <div className="form-group form-group-full">
                         <label htmlFor="session_id">
                             Audit Job Name
-                            <span className="required" style={{color: '#ef4444'}}>*</span>
+                            <span className="required" style={{ color: '#ef4444' }}>*</span>
                         </label>
+
                         {isLoading ? (
                             <div style={{
                                 padding: '10px 14px',
@@ -151,7 +164,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                                 fontSize: '13px',
                                 color: '#6b7280'
                             }}>
-                                <span>Loading sessions...</span>
+                                Loading sessions...
                             </div>
                         ) : (
                             <select
@@ -162,52 +175,96 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                                 className={errors.session_id ? "error" : ""}
                             >
                                 <option value="">Select an audit job</option>
-                                {completedSessions.map((session) => (
-                                    <option key={session.session_id} value={session.session_id}>
-                                        {session.asset_name || session.target_ip} - {session.completed_at ? new Date(session.completed_at).toLocaleDateString() : 'N/A'}
+                                {failedAuditSessions.map((session) => (
+                                    <option
+                                        key={session.session_id}
+                                        value={session.session_id}
+                                    >
+                                        {session.asset_name} | {session.target_ip} —{" "}
+                                        {session.completed_at
+                                            ? new Date(session.completed_at).toLocaleDateString()
+                                            : session.started_at
+                                                ? new Date(session.started_at).toLocaleDateString()
+                                                : 'N/A'
+                                        } ({getFailedCount(session)} Failed)
                                     </option>
                                 ))}
                             </select>
                         )}
+
                         {errors.session_id && (
                             <span className="error-message">{errors.session_id}</span>
                         )}
+
+                        {/* ✅ Empty State - هیچ session ناموفقی وجود ندارد */}
+                        {!isLoading && failedAuditSessions.length === 0 && (
+                            <div style={{
+                                marginTop: '10px',
+                                padding: '14px 16px',
+                                background: '#fef3c7',
+                                border: '1px solid #f59e0b',
+                                borderRadius: '8px',
+                            }}>
+                                <p style={{
+                                    margin: '0 0 4px 0',
+                                    fontWeight: '600',
+                                    fontSize: '13px',
+                                    color: '#92400e'
+                                }}>
+                                    ⚠️ No failed audit sessions found
+                                </p>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: '12px',
+                                    color: '#78350f'
+                                }}>
+                                    Please run an audit first. Only completed audits with failed checks appear here.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Display selected session info */}
+                    {/* ── Session Info Box ── */}
                     {selectedSession && (
                         <div className="form-group form-group-full" style={{
                             background: '#eff6ff',
                             borderLeft: '4px solid #3b82f6',
                             padding: '12px 16px',
                             borderRadius: '6px',
-                            marginTop: '8px'
                         }}>
-                            <p style={{margin: '4px 0', fontSize: '13px', color: '#1f2937'}}>
+                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#1f2937' }}>
+                                <strong>Asset:</strong> {selectedSession.asset_name || 'N/A'}
+                            </p>
+                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#1f2937' }}>
+                                <strong>IP Address:</strong> {selectedSession.target_ip || 'N/A'}
+                            </p>
+                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#1f2937' }}>
                                 <strong>Device Type:</strong> {getDeviceName(deviceType)}
                             </p>
-                            <p style={{margin: '4px 0', fontSize: '13px', color: '#1f2937'}}>
-                                <strong>Device:</strong> {selectedSession.target_ip}
-                            </p>
-                            <p style={{margin: '4px 0', fontSize: '13px', color: '#1f2937'}}>
-                                <strong>Type:</strong> {selectedSession.device_type || 'N/A'}
-                            </p>
-                            <p style={{margin: '4px 0', fontSize: '13px', color: '#1f2937'}}>
+                            <p style={{ margin: '4px 0', fontSize: '13px', color: '#1f2937' }}>
                                 <strong>Status:</strong> {selectedSession.status}
                             </p>
                             {selectedSession.compliance && (
-                                <p style={{margin: '4px 0', fontSize: '13px', color: '#1f2937'}}>
-                                    <strong>Failed Checks:</strong> {selectedSession.compliance.failed || 0}
-                                </p>
+                                <>
+                                    <p style={{ margin: '4px 0', fontSize: '13px', color: '#1f2937' }}>
+                                        <strong>Total Checks:</strong> {selectedSession.compliance.total_checks || selectedSession.compliance.total || 0}
+                                    </p>
+                                    <p style={{ margin: '4px 0', fontSize: '13px', color: '#dc2626' }}>
+                                        <strong>Failed Checks:</strong> {getFailedCount(selectedSession)}
+                                    </p>
+                                    <p style={{ margin: '4px 0', fontSize: '13px', color: '#059669' }}>
+                                        <strong>Passed Checks:</strong> {selectedSession.compliance.passed_checks || selectedSession.compliance.passed || 0}
+                                    </p>
+                                </>
                             )}
                         </div>
                     )}
 
-                    {/* SSH Username - Always visible */}
+                    {/* ── SSH Username ── */}
                     <div className="form-group">
                         <label htmlFor="ssh_username">
                             Username
-                            <span className="required" style={{color: '#ef4444'}}>*</span>
+                            <span className="required" style={{ color: '#ef4444' }}>*</span>
                         </label>
                         <input
                             id="ssh_username"
@@ -224,7 +281,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                         )}
                     </div>
 
-                    {/* CISCO ONLY: Enable Password */}
+                    {/* ── CISCO ONLY: Enable Password ── */}
                     {deviceType === "cisco" && (
                         <div className="form-group">
                             <label htmlFor="ssh_secret">Enable Password</label>
@@ -248,7 +305,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                         </div>
                     )}
 
-                    {/* FORTINET ONLY: VDOM */}
+                    {/* ── FORTINET ONLY: VDOM ── */}
                     {deviceType === "fortinet" && (
                         <div className="form-group">
                             <label htmlFor="vdom">VDOM</label>
@@ -272,7 +329,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                         </div>
                     )}
 
-                    {/* LINUX (ALL VARIANTS): Sudo Password */}
+                    {/* ── LINUX ALL VARIANTS: Sudo Password ── */}
                     {deviceType?.startsWith("linux-") && (
                         <div className="form-group">
                             <label htmlFor="sudo_password">Sudo Password</label>
@@ -296,7 +353,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                         </div>
                     )}
 
-                    {/* APACHE: Sudo Password */}
+                    {/* ── APACHE: Sudo Password ── */}
                     {deviceType === "apache" && (
                         <div className="form-group">
                             <label htmlFor="sudo_password">Sudo Password</label>
@@ -320,11 +377,11 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                         </div>
                     )}
 
-                    {/* SSH Password - Always Last */}
+                    {/* ── SSH Password - Always Last ── */}
                     <div className="form-group form-group-full">
                         <label htmlFor="ssh_password">
                             Password
-                            <span className="required" style={{color: '#ef4444'}}>*</span>
+                            <span className="required" style={{ color: '#ef4444' }}>*</span>
                         </label>
                         <input
                             id="ssh_password"
@@ -340,9 +397,10 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                             <span className="error-message">{errors.ssh_password}</span>
                         )}
                     </div>
+
                 </div>
 
-                {/* Actions */}
+                {/* ── Actions ── */}
                 <div className="form-actions">
                     <button
                         type="button"
@@ -355,11 +413,12 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                     <button
                         type="submit"
                         className="btn-see-result"
-                        disabled={isLoading}
+                        disabled={isLoading || failedAuditSessions.length === 0}
                     >
                         Next
                     </button>
                 </div>
+
             </form>
         </div>
     );

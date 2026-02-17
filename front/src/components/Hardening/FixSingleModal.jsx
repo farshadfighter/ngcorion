@@ -179,17 +179,78 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
 
         return (
             <div className="hardening-preview-section">
-                <h3>Hardening Preview</h3>
+                <h3 style={{
+                    fontSize: '18px',
+                    color: '#1e3a5f',
+                    margin: '0 0 20px 0',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    📋 Hardening Preview
+                </h3>
 
                 {/* Commands to be executed */}
                 {previewData.commands && previewData.commands.length > 0 && (
                     <div className="hardening-commands-preview">
-                        <h4>Commands to Execute:</h4>
-                        <div className="hardening-command-list">
+                        <h4 style={{
+                            fontSize: '15px',
+                            color: '#1e3a5f',
+                            margin: '0 0 12px 0',
+                            fontWeight: '700'
+                        }}>
+                            Commands to Execute:
+                        </h4>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%)',
+                            borderRadius: '10px',
+                            padding: '16px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px',
+                            border: '1px solid #e8edf5'
+                        }}>
                             {previewData.commands.map((cmd, index) => (
-                                <div key={index} className="hardening-command-item">
-                                    <div className="hardening-command-number">{index + 1}</div>
-                                    <code>{cmd}</code>
+                                <div key={index} style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px',
+                                    padding: '14px',
+                                    background: 'white',
+                                    borderRadius: '8px',
+                                    borderLeft: '4px solid #1e3a5f',
+                                    boxShadow: '0 2px 6px rgba(30, 58, 95, 0.06)',
+                                    transition: 'all 0.2s'
+                                }}>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)',
+                                        color: 'white',
+                                        minWidth: '26px',
+                                        height: '26px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        flexShrink: '0',
+                                        boxShadow: '0 2px 4px rgba(30, 58, 95, 0.3)'
+                                    }}>
+                                        {index + 1}
+                                    </div>
+                                    <code style={{
+                                        fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+                                        fontSize: '13px',
+                                        color: '#1f2937',
+                                        lineHeight: '1.6',
+                                        wordBreak: 'break-word',
+                                        background: '#f8f9fb',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px'
+                                    }}>
+                                        {cmd}
+                                    </code>
                                 </div>
                             ))}
                         </div>
@@ -453,38 +514,177 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
             executionResult.status === 'warning' ? 'warning' : 'error';
 
         return (
-            <div className="hardening-single-result">
-                <div className={`hardening-result-status ${statusClass}`}>
-                    <h3>
-                        {isSuccess ? '✓ Hardening Successful' :
+            <div className="hardening-single-result" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{
+                    padding: '24px',
+                    borderRadius: '12px',
+                    borderLeft: isSuccess ? '5px solid #1e3a5f' : statusClass === 'warning' ? '5px solid #f59e0b' : '5px solid #ef4444',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                    background: isSuccess ? 'linear-gradient(135deg, #e8edf5 0%, #f0f4f9 100%)' :
+                        statusClass === 'warning' ? 'linear-gradient(135deg, #fef3c7 0%, #fef9e7 100%)' :
+                            'linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%)'
+                }}>
+                    <h3 style={{
+                        fontSize: '20px',
+                        margin: '0 0 12px 0',
+                        fontWeight: '700',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        color: isSuccess ? '#1e3a5f' : statusClass === 'warning' ? '#92400e' : '#c0392b'
+                    }}>
+                        {isSuccess && <span style={{
+                            background: '#1e3a5f',
+                            color: 'white',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            fontWeight: 'bold'
+                        }}>✓</span>}
+                        {isSuccess ? 'Hardening Successful' :
                             executionResult.status === 'warning' ? '⚠ Completed with Warnings' :
                                 '✗ Hardening Failed'}
                     </h3>
-                    <p>{executionResult.message || 'Hardening operation completed.'}</p>
+                    <p style={{
+                        margin: 0,
+                        color: '#6b7280',
+                        fontSize: '14px',
+                        lineHeight: '1.6'
+                    }}>
+                        {executionResult.message || 'Hardening operation completed.'}
+                    </p>
                 </div>
 
                 {/* Verification */}
                 {executionResult.verification_passed !== undefined && (
-                    <div className="hardening-verification-box">
-                        <h4>Verification</h4>
-                        <p className={executionResult.verification_passed ? 'verified' : 'not-verified'}>
-                            {executionResult.verification_passed ? '✓ Verified' : '✗ Not Verified'}
+                    <div style={{
+                        background: 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)',
+                        padding: '18px',
+                        borderRadius: '10px',
+                        border: '2px solid #e8edf5'
+                    }}>
+                        <h4 style={{
+                            fontSize: '15px',
+                            color: '#1e3a5f',
+                            margin: '0 0 12px 0',
+                            fontWeight: '700',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            🔍 Verification
+                        </h4>
+                        <p style={{
+                            margin: '0 0 10px 0',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: executionResult.verification_passed ? '#1e3a5f' : '#ef4444'
+                        }}>
+                            {executionResult.verification_passed && <span style={{
+                                background: '#1e3a5f',
+                                color: 'white',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px'
+                            }}>✓</span>}
+                            {executionResult.verification_passed ? 'Verified' : '✗ Not Verified'}
                         </p>
                         {executionResult.verification_evidence && (
-                            <pre>{executionResult.verification_evidence}</pre>
+                            <pre style={{
+                                background: '#f8f9fb',
+                                padding: '12px',
+                                borderRadius: '6px',
+                                border: '1px solid #e8edf5',
+                                fontSize: '12px',
+                                overflowX: 'auto',
+                                margin: '10px 0 0 0',
+                                color: '#1f2937',
+                                fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace"
+                            }}>
+                                {executionResult.verification_evidence}
+                            </pre>
                         )}
                     </div>
                 )}
 
                 {/* Commands Executed */}
                 {executionResult.commands_executed && executionResult.commands_executed.length > 0 && (
-                    <div className="hardening-commands-executed">
-                        <h4>Commands Executed:</h4>
-                        <div className="hardening-command-list">
+                    <div style={{
+                        background: 'linear-gradient(135deg, #fafbfc 0%, #ffffff 100%)',
+                        padding: '18px',
+                        borderRadius: '10px',
+                        border: '2px solid #e8edf5'
+                    }}>
+                        <h4 style={{
+                            fontSize: '15px',
+                            color: '#1e3a5f',
+                            margin: '0 0 12px 0',
+                            fontWeight: '700',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            ⚙️ Commands Executed
+                        </h4>
+                        <div style={{
+                            background: 'linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%)',
+                            borderRadius: '10px',
+                            padding: '16px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px',
+                            border: '1px solid #e8edf5'
+                        }}>
                             {executionResult.commands_executed.map((cmd, index) => (
-                                <div key={index} className="hardening-command-item">
-                                    <div className="hardening-command-number">{index + 1}</div>
-                                    <code>{cmd}</code>
+                                <div key={index} style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px',
+                                    padding: '14px',
+                                    background: 'white',
+                                    borderRadius: '8px',
+                                    borderLeft: '4px solid #1e3a5f',
+                                    boxShadow: '0 2px 6px rgba(30, 58, 95, 0.06)'
+                                }}>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)',
+                                        color: 'white',
+                                        minWidth: '26px',
+                                        height: '26px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        flexShrink: '0',
+                                        boxShadow: '0 2px 4px rgba(30, 58, 95, 0.3)'
+                                    }}>
+                                        {index + 1}
+                                    </div>
+                                    <code style={{
+                                        fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
+                                        fontSize: '13px',
+                                        color: '#1f2937',
+                                        lineHeight: '1.6',
+                                        wordBreak: 'break-word',
+                                        background: '#f8f9fb',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px'
+                                    }}>
+                                        {cmd}
+                                    </code>
                                 </div>
                             ))}
                         </div>
@@ -493,8 +693,24 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
 
                 {/* Backup Info */}
                 {executionResult.backup_created && (
-                    <div className="hardening-backup-info">
-                        <p>✓ Configuration backup created successfully</p>
+                    <div style={{
+                        background: 'linear-gradient(135deg, #e8edf5 0%, #f0f4f9 100%)',
+                        borderLeft: '5px solid #1e3a5f',
+                        padding: '16px 20px',
+                        borderRadius: '10px',
+                        boxShadow: '0 2px 8px rgba(30, 58, 95, 0.1)'
+                    }}>
+                        <p style={{
+                            margin: 0,
+                            color: '#2d4a7c',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            💾 Configuration backup created successfully
+                        </p>
                     </div>
                 )}
 
