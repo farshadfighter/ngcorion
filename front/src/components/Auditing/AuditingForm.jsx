@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
 import { executeAudit } from "../../store/auditSlice";
 
-export const AuditingForm = ({ onSubmit, onCancel }) => {
+export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const dispatch = useDispatch();
     const { assets } = useSelector((state) => state.assets);
     const { isExecuting } = useSelector((state) => state.audit);
@@ -14,12 +14,11 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
         job_name: "",
         ssh_username: "",
         ssh_password: "",
-        enable_password: "",  // Cisco only
-        vdom: "",             // Fortinet only
-        sudo_password: "",    // Linux/Apache only
+        enable_password: "",
+        vdom: "",
+        sudo_password: "",
     });
 
-    // ✅ 6 Device Types - همه پیاده‌سازی شدن
     const deviceTypes = [
         { value: "cisco", label: "Cisco Router/Switch" },
         { value: "fortinet", label: "FortiGate Firewall" },
@@ -71,9 +70,7 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!validate()) {
-            return;
-        }
+        if (!validate()) return;
 
         const assetId = parseInt(formData.asset_id);
         if (isNaN(assetId)) {
@@ -81,14 +78,12 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
             return;
         }
 
-        // base credentials
         const credentials = {
             asset_id: assetId,
             ssh_username: formData.ssh_username,
             ssh_password: formData.ssh_password,
         };
 
-        // ✅ فیلدهای اختصاصی هر دستگاه
         if (formData.device_type === "cisco" && formData.enable_password) {
             credentials.ssh_secret = formData.enable_password;
         }
@@ -99,7 +94,7 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
             credentials.sudo_password = formData.sudo_password;
         }
 
-        // ✅ اول wizard رو به step 2 ببر (نمایش Process)
+        // ساخت tempSessionData برای نمایش فوری Process
         const selectedAsset = assets.find(a => a.id === assetId);
         const tempSessionData = {
             session_id: "pending",
@@ -109,9 +104,10 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
             status: "pending"
         };
 
+        // ✅ اول برو به step 2 (Process)
         onSubmit(tempSessionData, formData.job_name);
 
-        // ✅ بعد API رو dispatch کن (در پس‌زمینه)
+        // ✅ بعد API رو صدا بزن
         try {
             const result = await dispatch(
                 executeAudit({
@@ -120,12 +116,19 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                 })
             ).unwrap();
 
-            // وقتی API جواب داد، دوباره onSubmit رو صدا بزن با data واقعی
+            // ✅ موفق - session_id واقعی رو پاس بده
             onSubmit(result, formData.job_name);
+
         } catch (err) {
-            // در صورت خطا، به step 1 برگرد و ارور نشون بده
-            const errorMessage = err?.message || err?.toString() || "Failed to start audit";
-            setErrors({ submit: errorMessage });
+            // ✅ هر خطایی (500, network, timeout) → برو به صفحه Failed
+            const errorMessage =
+                err?.detail ||
+                err?.message ||
+                err?.toString() ||
+                "Failed to connect to server. Please check your connection and try again.";
+
+            // ✅ به جای نشون دادن خطا در فرم، برو به صفحه Failed
+            onError(errorMessage);
         }
     };
 
@@ -134,9 +137,8 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
             <form onSubmit={handleSubmit} className="auditing-form">
                 <input type="hidden" name="device_type" value={formData.device_type} />
 
-                {/* Two Column Grid */}
                 <div className="form-grid-two-column">
-                    {/* Device Type دراپ‌داون - بالای فرم */}
+                    {/* Device Type */}
                     <div className="form-group form-group-full">
                         <label>Device Type <span className="required">*</span></label>
                         <select
@@ -151,10 +153,9 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                                 </option>
                             ))}
                         </select>
-                        {errors.device_type && <span className="error-message">{errors.device_type}</span>}
                     </div>
 
-                    {/* Row 1 - Column 1 */}
+                    {/* Select Asset */}
                     <div className="form-group">
                         <label>Select Asset <span className="required">*</span></label>
                         <select
@@ -173,7 +174,7 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                         {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
                     </div>
 
-                    {/* Row 1 - Column 2 */}
+                    {/* Job Name */}
                     <div className="form-group">
                         <label>Job Name <span className="required">*</span></label>
                         <input
@@ -187,7 +188,7 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                         {errors.job_name && <span className="error-message">{errors.job_name}</span>}
                     </div>
 
-                    {/* Common Field: Username */}
+                    {/* Username */}
                     <div className="form-group">
                         <label>UserName <span className="required">*</span></label>
                         <input
@@ -202,7 +203,7 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                         {errors.ssh_username && <span className="error-message">{errors.ssh_username}</span>}
                     </div>
 
-                    {/* ✅ CISCO ONLY: Enable Password */}
+                    {/* CISCO ONLY: Enable Password */}
                     {formData.device_type === "cisco" && (
                         <div className="form-group">
                             <label>Enable Password</label>
@@ -214,13 +215,13 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                                 placeholder="Enter enable password (optional)"
                                 autoComplete="off"
                             />
-                            <span style={{fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px'}}>
+                            <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
                                 Required for privileged commands
                             </span>
                         </div>
                     )}
 
-                    {/* ✅ FORTINET ONLY: VDOM */}
+                    {/* FORTINET ONLY: VDOM */}
                     {formData.device_type === "fortinet" && (
                         <div className="form-group">
                             <label>VDOM</label>
@@ -232,13 +233,13 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                                 placeholder="Virtual Domain (optional, default: root)"
                                 autoComplete="off"
                             />
-                            <span style={{fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px'}}>
+                            <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
                                 Leave empty for default VDOM
                             </span>
                         </div>
                     )}
 
-                    {/* ✅ LINUX (ALL 3 VARIANTS): Sudo Password */}
+                    {/* LINUX: Sudo Password */}
                     {formData.device_type.startsWith("linux-") && (
                         <div className="form-group">
                             <label>Sudo Password</label>
@@ -250,13 +251,13 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                                 placeholder="Sudo password (optional)"
                                 autoComplete="off"
                             />
-                            <span style={{fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px'}}>
+                            <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
                                 Required for root access (defaults to SSH password)
                             </span>
                         </div>
                     )}
 
-                    {/* ✅ APACHE: Sudo Password */}
+                    {/* APACHE: Sudo Password */}
                     {formData.device_type === "apache" && (
                         <div className="form-group">
                             <label>Sudo Password</label>
@@ -268,13 +269,13 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                                 placeholder="Sudo password (optional)"
                                 autoComplete="off"
                             />
-                            <span style={{fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px'}}>
+                            <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
                                 Required for root access (defaults to SSH password)
                             </span>
                         </div>
                     )}
 
-                    {/* Common Password Field - Always Last */}
+                    {/* Password */}
                     <div className="form-group form-group-full">
                         <label>Password <span className="required">*</span></label>
                         <input
@@ -289,11 +290,6 @@ export const AuditingForm = ({ onSubmit, onCancel }) => {
                         {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
                     </div>
                 </div>
-
-                {/* Submit Error */}
-                {errors.submit && (
-                    <div className="alert alert-error">{errors.submit}</div>
-                )}
 
                 {/* Actions */}
                 <div className="form-actions">

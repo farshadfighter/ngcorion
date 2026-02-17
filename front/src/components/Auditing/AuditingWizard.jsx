@@ -10,22 +10,30 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
     const [sessionData, setSessionData] = useState(null);
     const [jobName, setJobName] = useState("");
     const [hasFailed, setHasFailed] = useState(false);
-    const [showResultModal, setShowResultModal] = useState(false); // ✅ NEW
+    const [errorMessage, setErrorMessage] = useState("");
+    const [showResultModal, setShowResultModal] = useState(false);
 
     const handleFormSubmit = (data, name) => {
         setSessionData(data);
         setJobName(name);
-        setHasFailed(false); // Reset failed state
+        setHasFailed(false);
+        setErrorMessage("");
         setCurrentStep(2);
+    };
+
+    // ✅ یک handler برای همه خطاها - از فرم یا از process
+    const handleError = (message) => {
+        setHasFailed(true);
+        setErrorMessage(
+            message ||
+            "An error occurred. Please check your connection and try again."
+        );
+        setCurrentStep(3);
     };
 
     const handleProcessComplete = () => {
         setHasFailed(false);
-        setCurrentStep(3);
-    };
-
-    const handleProcessError = () => {
-        setHasFailed(true);
+        setErrorMessage("");
         setCurrentStep(3);
     };
 
@@ -36,9 +44,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
         onClose();
     };
 
-    // ✅ NEW: Handler for See Result button
     const handleSeeResult = () => {
-        console.log("🔍 Opening result modal for session:", sessionData);
         setShowResultModal(true);
     };
 
@@ -47,7 +53,8 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
         setSessionData(null);
         setJobName("");
         setHasFailed(false);
-        setShowResultModal(false); // ✅ Reset modal state
+        setErrorMessage("");
+        setShowResultModal(false);
         onClose();
     };
 
@@ -93,6 +100,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                         <AuditingForm
                             onSubmit={handleFormSubmit}
                             onCancel={handleClose}
+                            onError={handleError}
                         />
                     )}
 
@@ -101,7 +109,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                             sessionData={sessionData}
                             jobName={jobName}
                             onComplete={handleProcessComplete}
-                            onError={handleProcessError}
+                            onError={handleError}
                         />
                     )}
 
@@ -110,7 +118,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                             sessionData={sessionData}
                             jobName={jobName}
                             onBackToHome={handleSuccess}
-                            onSeeResult={handleSeeResult}  // ✅ FIXED!
+                            onSeeResult={handleSeeResult}
                         />
                     )}
 
@@ -118,22 +126,19 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                         <AuditingFailed
                             sessionData={sessionData}
                             jobName={jobName}
-                            errorMessage="Audit process failed"
+                            errorMessage={errorMessage}
                             onBackToHome={handleClose}
                         />
                     )}
                 </div>
             </div>
 
-            {/* ✅ Result Modal - Opens when See Result is clicked */}
+            {/* Result Modal */}
             {showResultModal && sessionData && (
                 <AuditingResultModal
                     session={sessionData}
                     isOpen={showResultModal}
-                    onClose={() => {
-                        setShowResultModal(false);
-                        // Stay in wizard after closing modal
-                    }}
+                    onClose={() => setShowResultModal(false)}
                 />
             )}
         </div>

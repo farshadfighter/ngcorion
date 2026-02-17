@@ -7,67 +7,80 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
     const { currentSession } = useSelector((state) => state.audit);
     const pollIntervalRef = useRef(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isPending, setIsPending] = useState(
+        !sessionData.session_id || sessionData.session_id === "pending"
+    );
 
-    const startPolling = useCallback(() => {
-        // Check immediately
-        dispatch(checkAuditStatus(sessionData.session_id));
+    const startPolling = useCallback((sessionId) => {
+        if (!sessionId || sessionId === "pending") return;
 
-        // Then poll every 3 seconds
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+
+        dispatch(checkAuditStatus(sessionId));
+
         pollIntervalRef.current = setInterval(() => {
-            dispatch(checkAuditStatus(sessionData.session_id));
+            dispatch(checkAuditStatus(sessionId));
         }, 3000);
-    }, [dispatch, sessionData.session_id]);
+    }, [dispatch]);
 
+    // ✅ وقتی session_id از "pending" به مقدار واقعی تغییر کرد
     useEffect(() => {
-        // Start polling immediately
-        startPolling();
+        if (sessionData.session_id && sessionData.session_id !== "pending") {
+            setIsPending(false);
+            startPolling(sessionData.session_id);
+        } else {
+            setIsPending(true);
+        }
 
         return () => {
-            // Cleanup polling on unmount
             if (pollIntervalRef.current) {
                 clearInterval(pollIntervalRef.current);
             }
         };
-    }, [startPolling]);
+    }, [sessionData.session_id, startPolling]);
 
+    // ✅ چک status - هر چیزی غیر از completed و running → failed
     useEffect(() => {
-        // Check if audit is completed
-        if (currentSession) {
-            if (currentSession.status === "completed") {
-                // Stop polling
-                if (pollIntervalRef.current) {
-                    clearInterval(pollIntervalRef.current);
-                    pollIntervalRef.current = null;
-                }
-                // Move to next step
-                setTimeout(() => {
-                    onComplete();
-                }, 1000);
-            } else if (currentSession.status === "failed") {
-                // Stop polling
-                if (pollIntervalRef.current) {
-                    clearInterval(pollIntervalRef.current);
-                    pollIntervalRef.current = null;
-                }
-                // Move to error step
-                setTimeout(() => {
-                    onError();
-                }, 1000);
+        if (!currentSession) return;
+
+        if (
+            sessionData.session_id &&
+            sessionData.session_id !== "pending" &&
+            currentSession.session_id !== sessionData.session_id
+        ) return;
+
+        if (currentSession.status === "completed") {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
             }
+            setTimeout(() => onComplete(), 1000);
+
+        } else if (currentSession.status === "failed") {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+            const errorMsg =
+                currentSession.error_message ||
+                currentSession.error ||
+                "Audit failed. Please check your credentials and try again.";
+            setTimeout(() => onError(errorMsg), 1000);
         }
-    }, [currentSession, onComplete, onError]);
+    }, [currentSession, sessionData.session_id, onComplete, onError]);
 
     const handleRefresh = () => {
+        if (!sessionData.session_id || sessionData.session_id === "pending") return;
         setIsRefreshing(true);
         dispatch(checkAuditStatus(sessionData.session_id));
-        setTimeout(() => {
-            setIsRefreshing(false);
-        }, 500);
+        setTimeout(() => setIsRefreshing(false), 500);
     };
 
     return (
         <div className="auditing-process-container">
-            {/* Loading Animation - SIMPLE DOTS */}
             <div className="process-animation">
                 <div className="loading-dots">
                     <div className="dot"></div>
@@ -76,13 +89,15 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
                 </div>
             </div>
 
-            {/* Status Message */}
             <div className="process-message">
                 <div className="message-icon">ℹ️</div>
-                <p>Be patient, auditing is being processed, it may take a few minutes.</p>
+                {isPending ? (
+                    <p>Connecting to server, please wait...</p>
+                ) : (
+                    <p>Be patient, auditing is being processed, it may take a few minutes.</p>
+                )}
             </div>
 
-            {/* Job Info */}
             <div className="process-info">
                 <p>
                     <strong>job name :</strong> {jobName || `job number${sessionData?.session_id || ''}`}
@@ -90,24 +105,28 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
                 <p>
                     <strong>Asset :</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
                 </p>
+                {!isPending && (
+                    <p>
+                        <strong>Session ID :</strong> #{sessionData.session_id}
+                    </p>
+                )}
             </div>
 
-            {/* Refresh Button Only */}
             <div className="process-actions">
                 <button
-                    style={{    padding: '10px 24px',
-                        background: '#1e3a5f',
+                    style={{
+                        padding: '10px 24px',
+                        background: isPending ? '#9ca3af' : '#1e3a5f',
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
                         fontSize: '14px',
                         fontWeight: '600',
-                        cursor: 'pointer',
+                        cursor: isPending ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s'
-                }}
-                    className="btn-refresh"
+                    }}
                     onClick={handleRefresh}
-                    disabled={isRefreshing}
+                    disabled={isRefreshing || isPending}
                 >
                     {isRefreshing ? "Refreshing..." : "Refresh"}
                 </button>
@@ -115,3 +134,5 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
         </div>
     );
 };
+
+export default AuditingProcess;
