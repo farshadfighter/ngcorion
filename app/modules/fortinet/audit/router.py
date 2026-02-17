@@ -25,6 +25,7 @@ class FortinetAuditRequest(BaseModel):
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
     vdom: Optional[str] = Field(None, description="Optional VDOM name (root if omitted)")
     profile: str = Field("L1", pattern="^(L1|L2|FULL)$", description="Audit profile")
+    job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
 
     class Config:
         json_schema_extra = {
@@ -59,6 +60,7 @@ class FortinetAuditSessionResponse(BaseModel):
     """Audit session response."""
 
     session_id: int
+    job_name: Optional[str] = None
     asset_id: Optional[int]
     asset_name: Optional[str]
     target_ip: str
@@ -156,7 +158,8 @@ def execute_fortinet_audit(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             vdom=request.vdom,
-            profile=request.profile
+            profile=request.profile,
+            job_name=request.job_name
         )
 
         # Get formatted summary

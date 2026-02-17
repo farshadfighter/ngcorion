@@ -172,7 +172,8 @@ class AuditService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        profile: str = "L1"
+        profile: str = "L1",
+        job_name: Optional[str] = None
     ) -> AuditSession:
         """
         Execute CIS audit on a Cisco device.
@@ -185,6 +186,7 @@ class AuditService:
             ssh_password: SSH password (not stored)
             ssh_secret: Enable secret (optional, not stored)
             profile: CIS profile (L1 or FULL)
+            job_name: User-friendly job name
 
         Returns:
             AuditSession: Completed audit session with results
@@ -210,6 +212,7 @@ class AuditService:
             asset_id=asset_id,
             target_ip=target_ip,
             device_type=DeviceType.CISCO,
+            job_name=job_name,
             status="running",
             started_at=datetime.now(timezone.utc)
         )
@@ -386,6 +389,7 @@ class AuditService:
 
         return {
             "session_id": session.id,
+            "job_name": session.job_name,
             "asset_id": session.asset_id,
             "asset_name": asset.asset_name if asset else None,
             "target_ip": session.target_ip,
@@ -523,7 +527,8 @@ class AuditService:
         user_id: int,
         ssh_username: str,
         ssh_password: str,
-        ssh_secret: Optional[str] = None
+        ssh_secret: Optional[str] = None,
+        job_name: Optional[str] = None
     ) -> AuditSession:
         """
         Execute CIS Benchmark audit using official section numbers.
@@ -563,6 +568,7 @@ class AuditService:
             asset_id=asset_id,
             target_ip=target_ip,
             device_type=DeviceType.CISCO,
+            job_name=job_name,
             status="running",
             started_at=datetime.now(timezone.utc)
         )

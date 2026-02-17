@@ -146,7 +146,8 @@ class ApacheAuditService:
         ssh_username: str,
         ssh_password: str,
         sudo_password: Optional[str] = None,
-        profile: str = "L1"
+        profile: str = "L1",
+        job_name: Optional[str] = None
     ) -> AuditSession:
         """
         Execute CIS audit on Apache HTTP Server.
@@ -185,6 +186,7 @@ class ApacheAuditService:
             asset_id=asset_id,
             target_ip=target_ip,
             device_type=DeviceType.APACHE,
+            job_name=job_name,
             status="running",
             started_at=datetime.now(timezone.utc)
         )
@@ -353,6 +355,7 @@ class ApacheAuditService:
 
         return {
             "session_id": session.id,
+            "job_name": session.job_name,
             "asset_id": session.asset_id,
             "asset_name": asset.asset_name if asset else None,
             "target_ip": session.target_ip,

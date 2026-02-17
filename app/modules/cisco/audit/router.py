@@ -25,6 +25,7 @@ class CiscoAuditRequest(BaseModel):
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
     ssh_secret: Optional[str] = Field(None, description="Enable secret (optional, not stored)")
     profile: str = Field("L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL")
+    job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
 
     class Config:
         json_schema_extra = {
@@ -42,6 +43,7 @@ class CiscoAuditSessionResponse(BaseModel):
     """Audit session response."""
 
     session_id: int
+    job_name: Optional[str] = None
     asset_id: Optional[int]
     asset_name: Optional[str]
     target_ip: str
@@ -113,7 +115,8 @@ def execute_cisco_audit(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
-            profile=request.profile
+            profile=request.profile,
+            job_name=request.job_name
         )
 
         # Get formatted summary
@@ -411,6 +414,7 @@ class CISBenchmarkAuditRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
     ssh_secret: Optional[str] = Field(None, description="Enable secret (optional, not stored)")
+    job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
 
     class Config:
         json_schema_extra = {
@@ -462,7 +466,8 @@ def execute_cis_benchmark_audit(
             user_id=current_user.id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
-            ssh_secret=request.ssh_secret
+            ssh_secret=request.ssh_secret,
+            job_name=request.job_name
         )
 
         # Return results in CIS Benchmark table format

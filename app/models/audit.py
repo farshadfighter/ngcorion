@@ -83,6 +83,7 @@ class AuditSession(Base):
 
     target_ip = Column(String(50), nullable=False)
     device_type = Column(SQLEnum(DeviceType), nullable=False)
+    job_name = Column(String(200), nullable=True, comment="User-friendly job name for the audit")
 
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)

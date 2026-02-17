@@ -26,6 +26,7 @@ class LinuxAuditRequest(BaseModel):
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
     sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
     profile: str = Field("L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL")
+    job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
 
     class Config:
         json_schema_extra = {
@@ -43,6 +44,7 @@ class LinuxAuditSessionResponse(BaseModel):
     """Audit session response."""
 
     session_id: int
+    job_name: Optional[str] = None
     asset_id: Optional[int]
     asset_name: Optional[str]
     target_ip: str
@@ -149,7 +151,8 @@ def execute_linux_audit(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             sudo_password=request.sudo_password,
-            profile=request.profile
+            profile=request.profile,
+            job_name=request.job_name
         )
 
         summary = LinuxAuditService.get_session_summary(db, session.id)
