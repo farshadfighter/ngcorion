@@ -11,11 +11,6 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
         !sessionData.session_id || sessionData.session_id === "pending"
     );
 
-<<<<<<< HEAD
-    const startPolling = useCallback(() => {
-        // Check immediately
-        dispatch(checkAuditStatus({ sessionId: sessionData.session_id, deviceType: sessionData.device_type }));
-=======
     const startPolling = useCallback((sessionId) => {
         if (!sessionId || sessionId === "pending") return;
 
@@ -25,18 +20,11 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
         }
 
         dispatch(checkAuditStatus(sessionId));
->>>>>>> bde4ab805d5827e6f032e540b2a1629335e951c5
 
         pollIntervalRef.current = setInterval(() => {
-<<<<<<< HEAD
-            dispatch(checkAuditStatus({ sessionId: sessionData.session_id, deviceType: sessionData.device_type }));
-        }, 3000);
-    }, [dispatch, sessionData.session_id, sessionData.device_type]);
-=======
             dispatch(checkAuditStatus(sessionId));
         }, 3000);
     }, [dispatch]);
->>>>>>> bde4ab805d5827e6f032e540b2a1629335e951c5
 
     // ✅ وقتی session_id از "pending" به مقدار واقعی تغییر کرد
     useEffect(() => {
@@ -87,15 +75,8 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
     const handleRefresh = () => {
         if (!sessionData.session_id || sessionData.session_id === "pending") return;
         setIsRefreshing(true);
-<<<<<<< HEAD
-        dispatch(checkAuditStatus({ sessionId: sessionData.session_id, deviceType: sessionData.device_type }));
-        setTimeout(() => {
-            setIsRefreshing(false);
-        }, 500);
-=======
         dispatch(checkAuditStatus(sessionData.session_id));
         setTimeout(() => setIsRefreshing(false), 500);
->>>>>>> bde4ab805d5827e6f032e540b2a1629335e951c5
     };
 
     return (
