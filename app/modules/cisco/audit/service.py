@@ -658,6 +658,7 @@ class AuditService:
         ssh_password: str,
         ssh_secret: Optional[str] = None,
         profile: str = "L1",
+        job_name: Optional[str] = None,
         max_retries: int = None
     ) -> AuditSession:
         """
@@ -694,7 +695,8 @@ class AuditService:
                     ssh_username=ssh_username,
                     ssh_password=ssh_password,
                     ssh_secret=ssh_secret,
-                    profile=profile
+                    profile=profile,
+                    job_name=job_name
                 )
 
             except (ConnectionError, TimeoutError, OSError) as e:
