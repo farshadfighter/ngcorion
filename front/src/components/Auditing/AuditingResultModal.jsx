@@ -9,8 +9,18 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
     useEffect(() => {
         if (isOpen && session) {
+            // ✅ اطمینان از اینکه session_id عدد صحیح است
+            const sessionId = parseInt(session.session_id);
+            
+            if (isNaN(sessionId)) {
+                console.error("❌ Invalid session_id:", session);
+                return;
+            }
+
+            console.log("✅ Fetching session:", sessionId);
+
             // Fetch fresh session details
-            dispatch(fetchAuditSession({ sessionId: session.session_id, deviceType: session.device_type }))
+            dispatch(fetchAuditSession(sessionId))
                 .unwrap()
                 .then((data) => {
                     console.log("📊 Session details:", data);
@@ -19,7 +29,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 .catch((err) => console.error("Failed to fetch session details:", err));
 
             // Fetch results
-            dispatch(fetchAuditResults({ sessionId: session.session_id, deviceType: session.device_type }));
+            dispatch(fetchAuditResults(sessionId));
         }
     }, [isOpen, session, dispatch]);
 
@@ -169,11 +179,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     </div>
 
                     <div className="result-card result-card-benchmark">
-                        <div className="card-title">{
-                            sessionDetails?.device_type === "fortinet" ? "FortiGate" :
-                            sessionDetails?.device_type === "linux" ? "Linux" :
-                            sessionDetails?.device_type === "apache" ? "Apache" : "Cisco"
-                        }</div>
+                        <div className="card-title">{sessionDetails?.device_type === "fortinet" ? "FortiGate" : "Cisco"}</div>
                         <div className="card-subtitle">CIS Benchmark</div>
                     </div>
                 </div>
