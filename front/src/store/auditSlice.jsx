@@ -25,7 +25,6 @@ export const executeAudit = createAsyncThunk(
     "audit/execute",
     async ({ deviceType, formData }, { rejectWithValue }) => {
         try {
-            // ✅ FIX: Use consistent endpoint pattern for ALL devices
             const apiPath = getDeviceApiPath(deviceType);
             const endpoint = `/api/audit/${apiPath}/execute`;
 
@@ -35,6 +34,11 @@ export const executeAudit = createAsyncThunk(
                 ssh_password: formData.ssh_password,
                 profile: "L1"
             };
+
+            // ✅ اضافه کردن job_name (optional)
+            if (formData.job_name) {
+                payload.job_name = formData.job_name;
+            }
 
             // Add device-specific fields
             if (formData.ssh_secret) payload.ssh_secret = formData.ssh_secret;
@@ -51,30 +55,15 @@ export const executeAudit = createAsyncThunk(
     }
 );
 
-// Fetch all audit sessions (for main list) - queries all device types
+// Fetch all audit sessions (for main list)
 export const fetchAuditSessions = createAsyncThunk(
     "audit/fetchSessions",
     async ({ limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
         try {
-            const deviceTypes = ['cisco', 'fortinet', 'linux', 'apache'];
-            const allSessions = [];
-            for (const device of deviceTypes) {
-                try {
-                    const res = await api.get(`/api/audit/${device}/sessions`, {
-                        params: { limit, offset }
-                    });
-                    if (res.data && Array.isArray(res.data)) {
-                        allSessions.push(...res.data);
-                    }
-                } catch (err) {
-                    console.warn(`Failed to fetch ${device} sessions:`, err.message);
-                }
-            }
-            // Sort by started_at descending
-            allSessions.sort((a, b) =>
-                new Date(b.started_at || 0) - new Date(a.started_at || 0)
-            );
-            return allSessions;
+            const res = await api.get("/api/audit/sessions", {
+                params: { limit, offset }
+            });
+            return res.data;
         } catch (err) {
             return rejectWithValue(
                 err.response?.data?.detail || "Failed to fetch audit sessions"
@@ -86,10 +75,9 @@ export const fetchAuditSessions = createAsyncThunk(
 // Fetch single audit session (for checking status)
 export const fetchAuditSession = createAsyncThunk(
     "audit/fetchSession",
-    async ({ sessionId, deviceType }, { rejectWithValue }) => {
+    async (sessionId, { rejectWithValue }) => {
         try {
-            const apiPath = getDeviceApiPath(deviceType);
-            const res = await api.get(`/api/audit/${apiPath}/sessions/${sessionId}`);
+            const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
@@ -102,10 +90,9 @@ export const fetchAuditSession = createAsyncThunk(
 // Fetch audit results (detailed results)
 export const fetchAuditResults = createAsyncThunk(
     "audit/fetchResults",
-    async ({ sessionId, deviceType }, { rejectWithValue }) => {
+    async (sessionId, { rejectWithValue }) => {
         try {
-            const apiPath = getDeviceApiPath(deviceType);
-            const res = await api.get(`/api/audit/${apiPath}/sessions/${sessionId}/results`);
+            const res = await api.get(`/api/audit/sessions/${sessionId}/results`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
@@ -118,10 +105,9 @@ export const fetchAuditResults = createAsyncThunk(
 // Delete audit session
 export const deleteAuditSession = createAsyncThunk(
     "audit/delete",
-    async ({ sessionId, deviceType }, { rejectWithValue }) => {
+    async (sessionId, { rejectWithValue }) => {
         try {
-            const apiPath = getDeviceApiPath(deviceType);
-            await api.delete(`/api/audit/${apiPath}/sessions/${sessionId}`);
+            await api.delete(`/api/audit/sessions/${sessionId}`);
             return sessionId;
         } catch (err) {
             return rejectWithValue(
@@ -134,10 +120,9 @@ export const deleteAuditSession = createAsyncThunk(
 // Check audit status (for polling)
 export const checkAuditStatus = createAsyncThunk(
     "audit/checkStatus",
-    async ({ sessionId, deviceType }, { rejectWithValue }) => {
+    async (sessionId, { rejectWithValue }) => {
         try {
-            const apiPath = getDeviceApiPath(deviceType);
-            const res = await api.get(`/api/audit/${apiPath}/sessions/${sessionId}`);
+            const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
@@ -147,22 +132,13 @@ export const checkAuditStatus = createAsyncThunk(
     }
 );
 
-// Fetch audit sessions count (aggregate from all device types)
+// Fetch audit sessions count
 export const fetchAuditSessionsCount = createAsyncThunk(
     "audit/fetchCount",
     async (_, { rejectWithValue }) => {
         try {
-            const deviceTypes = ['cisco', 'fortinet', 'linux', 'apache'];
-            let total = 0;
-            for (const device of deviceTypes) {
-                try {
-                    const res = await api.get(`/api/audit/${device}/sessions/count`);
-                    total += res.data?.total || 0;
-                } catch (err) {
-                    console.warn(`Failed to fetch ${device} count:`, err.message);
-                }
-            }
-            return { total };
+            const res = await api.get("/api/audit/sessions/count");
+            return res.data;
         } catch (err) {
             return rejectWithValue(
                 err.response?.data?.detail || "Failed to fetch sessions count"

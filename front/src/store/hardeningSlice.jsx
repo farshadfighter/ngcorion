@@ -41,7 +41,7 @@ export const getDeviceName = (deviceType) => {
  */
 export const executeAuditWithDevice = createAsyncThunk(
     "hardening/executeAudit",
-    async ({ deviceType, assetId, credentials }, { rejectWithValue }) => {
+    async ({ deviceType, assetId, credentials, jobName }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const endpoint = `/api/audit/${apiPath}/execute`;
@@ -51,6 +51,11 @@ export const executeAuditWithDevice = createAsyncThunk(
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
             };
+
+            // ✅ اضافه کردن job_name (optional)
+            if (jobName) {
+                payload.job_name = jobName;
+            }
 
             // Add device-specific fields
             if (deviceType === 'cisco' && credentials.ssh_secret) {
@@ -241,8 +246,7 @@ export const autoHardenWithDefaults = createAsyncThunk(
             const apiPath = getDeviceApiPath(deviceType);
 
             const payload = {
-                audit_session_id: sessionId,
-                confirmed: true,
+                session_id: sessionId,
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
                 skip_backup: false

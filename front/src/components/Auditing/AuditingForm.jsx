@@ -82,6 +82,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             asset_id: assetId,
             ssh_username: formData.ssh_username,
             ssh_password: formData.ssh_password,
+            job_name: formData.job_name, // ✅ اضافه شد
         };
 
         if (formData.device_type === "cisco" && formData.enable_password) {

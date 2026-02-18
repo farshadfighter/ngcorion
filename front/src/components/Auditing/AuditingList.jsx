@@ -22,12 +22,6 @@ export const AuditingList = () => {
     const [sessionToDelete, setSessionToDelete] = useState(null);
     const [deleteError, setDeleteError] = useState(null);
 
-    // Local storage for job names (since backend doesn't store them)
-    const [jobNames, setJobNames] = useState(() => {
-        const stored = localStorage.getItem("auditJobNames");
-        return stored ? JSON.parse(stored) : {};
-    });
-
     useEffect(() => {
         dispatch(fetchAuditSessions());
     }, [dispatch]);
@@ -48,14 +42,7 @@ export const AuditingList = () => {
     const handleDeleteConfirm = async () => {
         if (sessionToDelete) {
             try {
-                // انجام delete و منتظر ماندن برای نتیجه
-                await dispatch(deleteAuditSession({ sessionId: sessionToDelete.session_id, deviceType: sessionToDelete.device_type })).unwrap();
-
-                // فقط اگه موفق بود، از localStorage پاک کن
-                const newJobNames = { ...jobNames };
-                delete newJobNames[sessionToDelete.session_id];
-                setJobNames(newJobNames);
-                localStorage.setItem("auditJobNames", JSON.stringify(newJobNames));
+                await dispatch(deleteAuditSession(sessionToDelete.session_id)).unwrap();
 
                 setShowDeleteModal(false);
                 setSessionToDelete(null);
@@ -64,7 +51,6 @@ export const AuditingList = () => {
                 // Refresh لیست sessions
                 dispatch(fetchAuditSessions());
             } catch (error) {
-                // نمایش خطا به کاربر
                 const errorMessage = error?.message || error?.toString() || "Failed to delete session";
                 setDeleteError(errorMessage);
                 console.error("Delete failed:", error);
@@ -78,11 +64,6 @@ export const AuditingList = () => {
     };
 
     const handleWizardComplete = (sessionId, jobName) => {
-        // Save job name to local storage
-        const newJobNames = { ...jobNames, [sessionId]: jobName };
-        setJobNames(newJobNames);
-        localStorage.setItem("auditJobNames", JSON.stringify(newJobNames));
-
         setShowWizard(false);
         dispatch(fetchAuditSessions());
     };
@@ -149,7 +130,7 @@ export const AuditingList = () => {
                         {sessions && sessions.length > 0 ? (
                             sessions.map((session) => (
                                 <tr key={session.session_id}>
-                                    <td>{jobNames[session.session_id] || `job number${session.session_id}`}</td>
+                                    <td>{session.job_name || `job number${session.session_id}`}</td>
                                     <td>{session.asset_name || "-"}
                                         {session.target_ip && ` (${session.target_ip})`}</td>
                                     <td>{getStatusBadge(session.status)}</td>

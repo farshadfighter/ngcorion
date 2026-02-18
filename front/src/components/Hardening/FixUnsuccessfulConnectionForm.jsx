@@ -180,7 +180,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                                         key={session.session_id}
                                         value={session.session_id}
                                     >
-                                        {session.asset_name} | {session.target_ip} —{" "}
+                                        {session.job_name || session.asset_name} | {session.target_ip} —{" "}
                                         {session.completed_at
                                             ? new Date(session.completed_at).toLocaleDateString()
                                             : session.started_at

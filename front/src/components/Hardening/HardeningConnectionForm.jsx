@@ -11,11 +11,12 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({
         device_type: "cisco",
         asset_id: "",
+        job_name: "", // ✅ اضافه شد
         ssh_username: "",
         ssh_password: "",
-        ssh_secret: "",      // Cisco only
-        vdom: "",            // Fortinet only
-        sudo_password: "",   // Linux/Apache only
+        ssh_secret: "",
+        vdom: "",
+        sudo_password: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -52,6 +53,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
 
         if (!formData.asset_id) {
             newErrors.asset_id = "Please select an asset";
+        }
+        if (!formData.job_name || formData.job_name.trim().length < 2) {
+            newErrors.job_name = "Job name must be at least 2 characters";
         }
         if (!formData.ssh_username || formData.ssh_username.trim().length < 1) {
             newErrors.ssh_username = "Username is required";
@@ -112,7 +116,8 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                 executeAuditWithDevice({
                     deviceType: formData.device_type,
                     assetId,
-                    credentials
+                    credentials,
+                    jobName: formData.job_name // ✅ اضافه شد
                 })
             ).unwrap();
 
@@ -168,6 +173,20 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                             ))}
                         </select>
                         {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
+                    </div>
+
+                    {/* Job Name */}
+                    <div className="form-group">
+                        <label>Job Name <span className="required" style={{color: '#ef4444'}}>*</span></label>
+                        <input
+                            type="text"
+                            name="job_name"
+                            value={formData.job_name}
+                            onChange={handleChange}
+                            className={errors.job_name ? "error" : ""}
+                            placeholder="Enter job name"
+                        />
+                        {errors.job_name && <span className="error-message">{errors.job_name}</span>}
                     </div>
 
                     {/* SSH Username */}
