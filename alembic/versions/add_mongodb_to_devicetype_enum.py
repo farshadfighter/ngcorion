@@ -21,7 +21,7 @@ def upgrade() -> None:
     """Add 'mongodb' value to the devicetype PostgreSQL enum."""
     # ALTER TYPE ... ADD VALUE cannot run inside a transaction in PostgreSQL
     with op.get_context().autocommit_block():
-        op.execute("ALTER TYPE devicetype ADD VALUE IF NOT EXISTS 'mongodb'")
+        op.execute("ALTER TYPE devicetype ADD VALUE IF NOT EXISTS 'MONGODB'")
 
 
 def downgrade() -> None:
