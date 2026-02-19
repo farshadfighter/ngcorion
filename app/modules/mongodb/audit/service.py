@@ -108,7 +108,7 @@ class MongoDBSHAuditService:
         batch_size = batch_size or MongoDBSHAuditService.BATCH_SIZE
         batch = []
 
-        for idx, finding in enumerate(findings, 1):
+        for finding in findings:
             result = AuditResult(
                 session_id=session_id,
                 check_number=finding["id"],

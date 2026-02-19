@@ -14,6 +14,7 @@ markers, which rules.py then evaluates using regex patterns.
 """
 
 import re
+import shlex
 import logging
 from typing import Optional, Dict
 
@@ -140,7 +141,10 @@ class MongoDBSSHClient:
             raise RuntimeError("SSH client is not connected")
         try:
             if use_sudo:
-                cmd = f"echo '{self.password}' | sudo -S sh -c {repr(cmd)} 2>/dev/null"
+                cmd = (
+                    f"echo {shlex.quote(self.password)}"
+                    f" | sudo -S sh -c {shlex.quote(cmd)} 2>/dev/null"
+                )
             output = self._conn.send_command(
                 cmd,
                 read_timeout=self.COMMAND_TIMEOUT,
@@ -161,8 +165,8 @@ class MongoDBSSHClient:
         auth = ""
         if self.mongo_username and self.mongo_password:
             auth = (
-                f" -u '{self.mongo_username}'"
-                f" -p '{self.mongo_password}'"
+                f" -u {shlex.quote(self.mongo_username)}"
+                f" -p {shlex.quote(self.mongo_password)}"
                 f" --authenticationDatabase admin"
             )
 
@@ -171,7 +175,7 @@ class MongoDBSSHClient:
             cmd = (
                 f"{cli} --port {self.mongo_port}{auth}"
                 f" --quiet --norc"
-                f" --eval '{js_expr}'"
+                f" --eval {shlex.quote(js_expr)}"
                 f" admin 2>/dev/null"
             )
             result = self._run(cmd)

@@ -46,9 +46,14 @@ class MongoDBCISRule:
 # ============================================================ #
 
 def _section(dump: str, name: str) -> str:
-    """Extract the content of a named section from the audit dump."""
+    """Extract the content of a named section from the audit dump.
+
+    The lookahead uses ``\n===SECTION:`` (newline + three equals) so that the
+    lazy ``.*?`` stops *before* the newline that precedes the next marker,
+    rather than consuming the first ``=`` of the next marker.
+    """
     pattern = re.compile(
-        rf"===SECTION:{re.escape(name)}===\n(.*?)(?===SECTION:|\Z)",
+        rf"===SECTION:{re.escape(name)}===\n(.*?)(?=\n===SECTION:|\Z)",
         re.S,
     )
     m = pattern.search(dump)
@@ -309,8 +314,14 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
         ),
         severity="low",
         level="L1",
-        check_fn=lambda d: not bool(
-            _RE.default_port.search(_section(d, "CONFIG_FILE"))
+        # PASS only when the config file exists AND has an explicit port that
+        # is not 27017.  A missing port line means MongoDB is using 27017 by
+        # default, which must also be treated as a failure.
+        check_fn=lambda d: bool(
+            _section(d, "CONFIG_FILE")
+            and "CONFIG_FILE_NOT_FOUND" not in _section(d, "CONFIG_FILE")
+            and not _RE.default_port.search(_section(d, "CONFIG_FILE"))
+            and re.search(r"port\s*:\s*\d+", _section(d, "CONFIG_FILE"), re.I)
         ),
         evidence_fn=lambda d: _ev_config(d, _RE.default_port),
         remediation=(
@@ -397,9 +408,14 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
         ),
         severity="high",
         level="L1",
+        # FAIL when the query could not run — inability to verify is NOT
+        # the same as verified compliance.  Only PASS when we got a valid
+        # users list AND confirmed no 'root' role assignment.
         check_fn=lambda d: (
-            "QUERY_FAILED" in _section(d, "USERS_LIST")
-            or not _RE.root_role.search(_section(d, "USERS_LIST"))
+            "QUERY_FAILED" not in _section(d, "USERS_LIST")
+            and "MONGOSH_UNAVAILABLE" not in _section(d, "USERS_LIST")
+            and bool(_section(d, "USERS_LIST"))
+            and not _RE.root_role.search(_section(d, "USERS_LIST"))
         ),
         evidence_fn=lambda d: _ev_section_content(d, "USERS_LIST", 500),
         remediation=(
@@ -418,12 +434,14 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
         ),
         severity="medium",
         level="L2",
+        # Same rationale as MONGO-L1-012: a failed query is not evidence of
+        # compliance — only PASS when we have a valid list to inspect.
         check_fn=lambda d: (
-            "QUERY_FAILED" in _section(d, "USERS_LIST")
-            or (
-                not _RE.dbadmin_all.search(_section(d, "USERS_LIST"))
-                and not _RE.readwrite_all.search(_section(d, "USERS_LIST"))
-            )
+            "QUERY_FAILED" not in _section(d, "USERS_LIST")
+            and "MONGOSH_UNAVAILABLE" not in _section(d, "USERS_LIST")
+            and bool(_section(d, "USERS_LIST"))
+            and not _RE.dbadmin_all.search(_section(d, "USERS_LIST"))
+            and not _RE.readwrite_all.search(_section(d, "USERS_LIST"))
         ),
         evidence_fn=lambda d: _ev_section_content(d, "USERS_LIST", 500),
         remediation=(

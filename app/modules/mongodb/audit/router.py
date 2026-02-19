@@ -201,11 +201,8 @@ def list_audit_sessions(
     """
     limit = min(limit, 100)
     sessions = MongoDBSHAuditService.get_all_sessions(db, limit, offset)
-    return [
-        MongoDBSHAuditService.get_session_summary(db, s.id)
-        for s in sessions
-        if MongoDBSHAuditService.get_session_summary(db, s.id)
-    ]
+    summaries = [MongoDBSHAuditService.get_session_summary(db, s.id) for s in sessions]
+    return [s for s in summaries if s]
 
 
 @router.get("/sessions/count")
@@ -313,11 +310,8 @@ def get_asset_audit_history(
         )
 
     sessions = MongoDBSHAuditService.get_asset_audit_history(db, asset_id, limit)
-    return [
-        MongoDBSHAuditService.get_session_summary(db, s.id)
-        for s in sessions
-        if MongoDBSHAuditService.get_session_summary(db, s.id)
-    ]
+    summaries = [MongoDBSHAuditService.get_session_summary(db, s.id) for s in sessions]
+    return [s for s in summaries if s]
 
 
 @router.delete("/sessions/{session_id}")
