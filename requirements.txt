@@ -31,3 +31,7 @@ httpx>=0.25.0
 
 #etc
 pydantic[email]
+
+# Packaging (compile to standalone binary)
+nuitka>=4.0.0
+ordered-set>=4.1.0
