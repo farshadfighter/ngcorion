@@ -31,8 +31,9 @@ from app.modules.linux.hardening import router as linux_hardening_router
 from app.modules.apache.audit import router as apache_audit_router
 from app.modules.apache.hardening import router as apache_hardening_router
 
-# MongoDB Audit
+# MongoDB Audit and Hardening
 from app.modules.mongodb.audit import router as mongodb_audit_router
+from app.modules.mongodb.hardening import router as mongodb_hardening_router
 
 # Shared hardening infrastructure
 from app.modules.shared import hardening_router as unified_hardening_router
@@ -130,6 +131,9 @@ app.include_router(apache_hardening_router)
 
 # MongoDB CIS Audit routes
 app.include_router(mongodb_audit_router)
+
+# MongoDB Hardening routes
+app.include_router(mongodb_hardening_router)
 
 # Schema-driven Hardening routes (unified)
 app.include_router(unified_hardening_router)
