@@ -122,7 +122,8 @@ def execute_linux_audit(
     **Supported Distributions:**
     - Ubuntu 22.04 LTS
     - Ubuntu 24.04 LTS
-    - Rocky Linux 8
+    - Rocky Linux 8 / 9
+    - Red Hat Enterprise Linux 8 / 9 / 10
 
     **Workflow:**
     1. User selects asset from Asset List
@@ -426,24 +427,35 @@ def get_supported_distros(
                 "id": "ubuntu",
                 "name": "Ubuntu",
                 "versions": ["22.04 LTS", "24.04 LTS"],
-                "benchmark": "CIS Ubuntu Linux Benchmark"
+                "benchmark": "CIS Ubuntu Linux Benchmark",
+                "mac": "AppArmor"
             },
             {
                 "id": "rocky",
                 "name": "Rocky Linux",
                 "versions": ["8", "9"],
-                "benchmark": "CIS Rocky Linux Benchmark"
+                "benchmark": "CIS Rocky Linux Benchmark",
+                "mac": "SELinux"
             },
             {
                 "id": "rhel",
                 "name": "Red Hat Enterprise Linux",
-                "versions": ["8", "9"],
-                "benchmark": "CIS RHEL Linux Benchmark"
+                "versions": ["8", "9", "10"],
+                "benchmark": "CIS Red Hat Enterprise Linux Benchmark",
+                "mac": "SELinux",
+                "rhel10_notes": [
+                    "Crypto policies enforced (no LEGACY/SHA1)",
+                    "authselect for PAM management",
+                    "pam_faillock replaces deprecated pam_tally2",
+                    "dnf5 as default package manager",
+                    "nftables as firewalld backend"
+                ]
             }
         ],
         "notes": [
             "Distribution is auto-detected during audit",
             "CIS rules are automatically adjusted for each distribution",
-            "Ubuntu uses AppArmor, Rocky/RHEL uses SELinux"
+            "Ubuntu uses AppArmor, Rocky/RHEL uses SELinux",
+            "RHEL 10 includes additional checks: crypto-policies, authselect, SELinux enforcement, sudo hardening"
         ]
     }
