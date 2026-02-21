@@ -35,6 +35,7 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
     # Determine distro-specific tools
     is_debian = distro_id in ("ubuntu", "debian")
     is_rhel = distro_id in ("rocky", "rhel", "centos", "fedora", "almalinux")
+    is_rhel_family = is_rhel  # alias for clarity in RHEL-specific blocks
     pkg_mgr = "apt" if is_debian else "dnf"
     firewall = "ufw" if is_debian else "firewalld"
     mac = "apparmor" if is_debian else "selinux"
@@ -86,6 +87,11 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         commands.extend([
             {"cmd": "dnf repolist 2>/dev/null || yum repolist 2>/dev/null || echo 'no repos'", "sudo": False, "key": "dnf_repos", "section": "1.2"},
             {"cmd": "rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release}\\n' 2>/dev/null || echo 'no keys'", "sudo": False, "key": "rpm_gpg_keys", "section": "1.2.1"},
+            # 1.2.3 - gpgcheck enabled in dnf.conf
+            {"cmd": "grep -E '^\\s*gpgcheck' /etc/dnf/dnf.conf 2>/dev/null || echo 'not configured'", "sudo": False, "key": "dnf_gpgcheck", "section": "1.2.3"},
+            # 1.2.4 - Crypto policies (RHEL 8+)
+            {"cmd": "update-crypto-policies --show 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy", "section": "1.2.4"},
+            {"cmd": "cat /etc/crypto-policies/state/current 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy_state", "section": "1.2.4"},
         ])
 
     # 1.3 - Mandatory Access Control
@@ -100,18 +106,37 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
     else:
         # SELinux for RHEL/Rocky
         commands.extend([
-            {"cmd": "rpm -q libselinux 2>/dev/null || echo 'not installed'", "sudo": False, "key": "selinux_installed", "section": "1.3.1"},
-            {"cmd": "getenforce 2>/dev/null || echo 'unknown'", "sudo": False, "key": "selinux_status", "section": "1.3.1"},
-            {"cmd": "sestatus 2>/dev/null || echo 'not available'", "sudo": False, "key": "sestatus", "section": "1.3.1"},
-            {"cmd": "cat /etc/selinux/config 2>/dev/null || echo 'no config'", "sudo": False, "key": "selinux_config", "section": "1.3.1"},
+            {"cmd": "rpm -q libselinux 2>/dev/null || echo 'not installed'", "sudo": False, "key": "selinux_installed", "section": "1.6.1"},
+            {"cmd": "getenforce 2>/dev/null || echo 'unknown'", "sudo": False, "key": "selinux_status", "section": "1.6.4"},
+            {"cmd": "sestatus 2>/dev/null || echo 'not available'", "sudo": False, "key": "sestatus", "section": "1.6.4"},
+            {"cmd": "cat /etc/selinux/config 2>/dev/null || echo 'no config'", "sudo": False, "key": "selinux_config", "section": "1.6.3"},
+            # 1.6.6 - Unconfined services
+            {"cmd": "ps -eZ 2>/dev/null | grep unconfined_service_t | head -20 || echo 'none'", "sudo": False, "key": "selinux_unconfined", "section": "1.6.6"},
+            # 1.6.7 - SETroubleshoot not installed
+            {"cmd": "rpm -q setroubleshoot 2>/dev/null || echo 'not installed'", "sudo": False, "key": "setroubleshoot_installed", "section": "1.6.7"},
+            # 1.6.8 - MCS Translation Service (mcstrans) not installed
+            {"cmd": "rpm -q mcstrans 2>/dev/null || echo 'not installed'", "sudo": False, "key": "mcstrans_installed", "section": "1.6.8"},
+            # 1.3 - Sudo configuration
+            {"cmd": "rpm -q sudo 2>/dev/null || echo 'not installed'", "sudo": False, "key": "sudo_installed", "section": "1.3.1"},
+            {"cmd": "grep -rE '^\\s*Defaults.*use_pty' /etc/sudoers /etc/sudoers.d/ 2>/dev/null || echo 'not configured'", "sudo": True, "key": "sudo_use_pty", "section": "1.3.2"},
+            {"cmd": "grep -rE '^\\s*Defaults.*logfile' /etc/sudoers /etc/sudoers.d/ 2>/dev/null || echo 'not configured'", "sudo": True, "key": "sudo_logfile", "section": "1.3.3"},
+            # authselect (RHEL 7.7+ / RHEL 8+)
+            {"cmd": "authselect current 2>/dev/null || echo 'authselect not configured'", "sudo": False, "key": "authselect_profile", "section": "5.3"},
+            {"cmd": "authselect list 2>/dev/null | head -20 || echo 'authselect not available'", "sudo": False, "key": "authselect_list", "section": "5.3"},
         ])
 
     # 1.4 - Boot Settings
+    # RHEL uses /boot/grub2/, Ubuntu/Debian uses /boot/grub/
+    if is_debian:
+        grub_cfg = "/boot/grub/grub.cfg"
+    else:
+        grub_cfg = "/boot/grub2/grub.cfg"
+
     commands.extend([
-        {"cmd": "cat /boot/grub/grub.cfg 2>/dev/null | head -100 || cat /boot/grub2/grub.cfg 2>/dev/null | head -100 || echo 'no grub config'", "sudo": True, "key": "grub_config", "section": "1.4"},
-        {"cmd": "stat /boot/grub/grub.cfg 2>/dev/null || stat /boot/grub2/grub.cfg 2>/dev/null || echo 'no grub config'", "sudo": True, "key": "grub_permissions", "section": "1.4.1"},
-        {"cmd": "grep -E '^\\s*password' /boot/grub/grub.cfg 2>/dev/null || echo 'no grub password'", "sudo": True, "key": "grub_password", "section": "1.4.2"},
-        {"cmd": "grep -E 'single|emergency' /boot/grub/grub.cfg 2>/dev/null || echo 'none'", "sudo": True, "key": "grub_single_mode", "section": "1.4.3"},
+        {"cmd": f"cat {grub_cfg} 2>/dev/null | head -100 || cat /boot/grub/grub.cfg 2>/dev/null | head -100 || echo 'no grub config'", "sudo": True, "key": "grub_config", "section": "1.4"},
+        {"cmd": f"stat {grub_cfg} 2>/dev/null || stat /boot/grub/grub.cfg 2>/dev/null || echo 'no grub config'", "sudo": True, "key": "grub_permissions", "section": "1.4.1"},
+        {"cmd": f"grep -E '^\\s*password' {grub_cfg} 2>/dev/null || echo 'no grub password'", "sudo": True, "key": "grub_password", "section": "1.4.2"},
+        {"cmd": f"grep -E 'single|emergency' {grub_cfg} 2>/dev/null || echo 'none'", "sudo": True, "key": "grub_single_mode", "section": "1.4.3"},
     ])
 
     # 1.5 - Additional Process Hardening
@@ -254,6 +279,9 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             {"cmd": "firewall-cmd --list-all 2>/dev/null || echo 'firewalld not installed'", "sudo": True, "key": "firewalld_rules", "section": "3.4"},
             {"cmd": "systemctl is-enabled firewalld 2>/dev/null || echo 'not enabled'", "sudo": False, "key": "firewalld_enabled", "section": "3.4"},
             {"cmd": "iptables -L -n -v 2>/dev/null || echo 'iptables not available'", "sudo": True, "key": "iptables_rules", "section": "3.4"},
+            # nftables (default backend for firewalld in RHEL 8+)
+            {"cmd": "nft list ruleset 2>/dev/null | head -50 || echo 'nft not available'", "sudo": True, "key": "nft_rules", "section": "3.4"},
+            {"cmd": "systemctl is-enabled nftables 2>/dev/null || echo 'not enabled'", "sudo": False, "key": "nftables_enabled", "section": "3.4"},
         ])
 
     # 3.5 - Wireless
@@ -429,6 +457,33 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
     commands.extend([
         {"cmd": f"grep -E 'pam_pwhistory|remember' {pam_password_file} 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_pwhistory", "section": "5.3.2"},
     ])
+
+    # ==================== RHEL-SPECIFIC EXPANDED CHECKS ====================
+    if is_rhel_family:
+        commands.extend([
+            # 1.2.3 - Ensure gpgcheck is enabled for all repos
+            {"cmd": "grep -rE '^\\s*gpgcheck\\s*=' /etc/yum.repos.d/ 2>/dev/null | grep -v 'gpgcheck=1' | head -20 || echo 'all repos have gpgcheck enabled'", "sudo": False, "key": "dnf_repo_gpgcheck", "section": "1.2.3"},
+            # 1.2.4/1.2.5 - Crypto policy detail
+            {"cmd": "update-crypto-policies --show 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy_current", "section": "1.2.4"},
+            # SELinux policy type
+            {"cmd": "grep -E '^\\s*SELINUXTYPE' /etc/selinux/config 2>/dev/null || echo 'not configured'", "sudo": False, "key": "selinux_policy_type", "section": "1.6.3"},
+            # 5.3 PAM - faillock configuration (RHEL 7+, replaces pam_tally2)
+            {"cmd": "grep -rE 'pam_faillock' /etc/pam.d/system-auth /etc/pam.d/password-auth 2>/dev/null || echo 'not configured'", "sudo": True, "key": "pam_faillock_rhel", "section": "5.3.3"},
+            {"cmd": "cat /etc/security/faillock.conf 2>/dev/null | grep -v '^#' | grep -v '^$' || echo 'no faillock.conf'", "sudo": True, "key": "faillock_conf", "section": "5.3.3"},
+            # 5.3 PAM - pwquality settings
+            {"cmd": "grep -E 'minlen|dcredit|ucredit|lcredit|ocredit' /etc/security/pwquality.conf 2>/dev/null || echo 'not configured'", "sudo": False, "key": "pwquality_detail", "section": "5.3.1"},
+            # GRUB2 specific permissions (RHEL path)
+            {"cmd": "stat /boot/grub2/grub.cfg 2>/dev/null || echo 'no grub2 config'", "sudo": True, "key": "grub2_permissions", "section": "1.4.1"},
+            {"cmd": "stat /boot/grub2/user.cfg 2>/dev/null || echo 'no grub2 user.cfg'", "sudo": True, "key": "grub2_user_cfg", "section": "1.4.2"},
+            # Check if GRUB has password set
+            {"cmd": "grep -E 'set superusers|password_pbkdf2' /boot/grub2/grub.cfg /boot/grub2/user.cfg /etc/grub.d/* 2>/dev/null | head -5 || echo 'no grub password'", "sudo": True, "key": "grub2_password", "section": "1.4.2"},
+            # 5.4.2 - Ensure system accounts are secured (shell set to nologin/false)
+            {"cmd": "awk -F: '($3 < 1000) {print $1\": \"$7}' /etc/passwd 2>/dev/null | grep -v '/sbin/nologin\\|/bin/false\\|halt\\|sync\\|shutdown' | head -20 || echo 'all system accounts secured'", "sudo": False, "key": "system_accounts_shell", "section": "5.4.2"},
+            # Check for any remaining pam_tally2 (should not be present in RHEL 10)
+            {"cmd": "grep -rE 'pam_tally2' /etc/pam.d/ 2>/dev/null | head -5 || echo 'pam_tally2 not found'", "sudo": True, "key": "pam_tally2_check", "section": "5.3"},
+            # DNF automatic updates
+            {"cmd": "systemctl is-enabled dnf-automatic.timer 2>/dev/null || systemctl is-enabled dnf-makecache.timer 2>/dev/null || echo 'dnf-automatic not enabled'", "sudo": False, "key": "dnf_automatic", "section": "1.2"},
+        ])
 
     return commands
 

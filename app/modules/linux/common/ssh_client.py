@@ -7,7 +7,8 @@ Uses netmiko with device_type="linux" for consistent patterns with Cisco/FortiGa
 Supported distributions:
 - Ubuntu 22.04 LTS
 - Ubuntu 24.04 LTS
-- Rocky Linux 8
+- Rocky Linux 8 / 9
+- Red Hat Enterprise Linux 8 / 9 / 10
 """
 
 from typing import List, Dict, Optional, Any
@@ -321,7 +322,14 @@ class LinuxSSHClient:
                 distro_info["profile"] = "rocky_generic"
         elif distro_id in ("rhel", "redhat"):
             distro_info["id"] = "rhel"
-            distro_info["profile"] = f"rhel_{distro_info['version']}"
+            if version.startswith("8"):
+                distro_info["profile"] = "rhel_8"
+            elif version.startswith("9"):
+                distro_info["profile"] = "rhel_9"
+            elif version.startswith("10"):
+                distro_info["profile"] = "rhel_10"
+            else:
+                distro_info["profile"] = f"rhel_{distro_info['version']}"
         elif distro_id == "centos":
             distro_info["profile"] = f"centos_{distro_info['version']}"
         else:

@@ -2,7 +2,7 @@
 Linux Audit API Router
 
 RESTful endpoints for Linux CIS security auditing.
-Supports Ubuntu 22.04, Ubuntu 24.04, and Rocky Linux 8.
+Supports Ubuntu 22.04, Ubuntu 24.04, Rocky Linux 8/9, and RHEL 8/9/10.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
