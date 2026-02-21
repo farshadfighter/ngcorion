@@ -1700,11 +1700,15 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     ))
 
     # ==================== RHEL / ROCKY-SPECIFIC CIS RULES ====================
-    # (distros=["rhel", "rocky"] — applied via family matching for rhel_10, rocky_8, etc.)
+    # IDs use "RHEL" infix (LNX-RHEL-L1-x.x.x) to avoid conflicts with universal
+    # rule IDs and to clearly identify rules sourced from the RHEL CIS benchmark.
+    # These rules only apply to RHEL/Rocky/CentOS family (SELinux-based distros).
 
-    # 1.2.3 - Ensure gpgcheck is globally activated (dnf.conf)
+    _RHEL_DISTROS = ["rhel", "rocky", "centos", "fedora", "almalinux"]
+
+    # CIS RHEL 1.2.3 - Ensure gpgcheck is globally activated (dnf.conf)
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.2.3",
+        id="LNX-RHEL-L1-1.2.3",
         cis_section="1.2.3",
         title="Ensure gpgcheck is globally activated",
         severity="high",
@@ -1713,12 +1717,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Set 'gpgcheck=1' in /etc/dnf/dnf.conf under the [main] section.",
         check=lambda d, p: "gpgcheck=1" in _get_output(d, "dnf_gpgcheck"),
         evidence=lambda d, p: _get_output(d, "dnf_gpgcheck"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.2.4 - Ensure crypto policies are not set to LEGACY
+    # CIS RHEL 1.2.4 - Ensure crypto policies are not set to LEGACY
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.2.4",
+        id="LNX-RHEL-L1-1.2.4",
         cis_section="1.2.4",
         title="Ensure crypto policies are not set to LEGACY",
         severity="high",
@@ -1736,12 +1740,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         evidence=lambda d, p: (
             f"crypto-policies: {_get_output(d, 'crypto_policy_current') or _get_output(d, 'crypto_policy')}"
         ),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.2.5 - Ensure crypto policies are not set to use SHA1
+    # CIS RHEL 1.2.5 - Ensure crypto policies are not set to use SHA1
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.2.5",
+        id="LNX-RHEL-L1-1.2.5",
         cis_section="1.2.5",
         title="Ensure crypto policies are not set to use SHA1",
         severity="medium",
@@ -1753,12 +1757,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             ":SHA1" not in _get_output(d, "crypto_policy_current").upper()
         ),
         evidence=lambda d, p: _get_output(d, "crypto_policy_current") or _get_output(d, "crypto_policy"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.3.1 - Ensure sudo is installed
+    # CIS RHEL 1.3.1 - Ensure sudo is installed
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.3.1",
+        id="LNX-RHEL-L1-1.3.1",
         cis_section="1.3.1",
         title="Ensure sudo is installed",
         severity="high",
@@ -1767,12 +1771,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Install sudo: dnf install sudo",
         check=lambda d, p: "not installed" not in _get_output(d, "sudo_installed").lower(),
         evidence=lambda d, p: _get_output(d, "sudo_installed"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.3.2 - Ensure sudo commands use pty
+    # CIS RHEL 1.3.2 - Ensure sudo commands use pty
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.3.2",
+        id="LNX-RHEL-L1-1.3.2",
         cis_section="1.3.2",
         title="Ensure sudo commands use pty",
         severity="medium",
@@ -1781,12 +1785,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Add 'Defaults use_pty' to /etc/sudoers or a file in /etc/sudoers.d/",
         check=lambda d, p: "use_pty" in _get_output(d, "sudo_use_pty").lower(),
         evidence=lambda d, p: _get_output(d, "sudo_use_pty"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.3.3 - Ensure sudo log file exists
+    # CIS RHEL 1.3.3 - Ensure sudo log file exists
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.3.3",
+        id="LNX-RHEL-L1-1.3.3",
         cis_section="1.3.3",
         title="Ensure sudo log file exists",
         severity="medium",
@@ -1795,12 +1799,29 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Add 'Defaults logfile=/var/log/sudo.log' to /etc/sudoers or /etc/sudoers.d/",
         check=lambda d, p: "logfile" in _get_output(d, "sudo_logfile").lower(),
         evidence=lambda d, p: _get_output(d, "sudo_logfile"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.6.1 - Ensure SELinux is installed
+    # CIS RHEL 1.4.2 - Ensure GRUB2 bootloader password is set
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.6.1",
+        id="LNX-RHEL-L1-1.4.2",
+        cis_section="1.4.2",
+        title="Ensure bootloader password is set",
+        severity="high",
+        level="L1",
+        rationale="A bootloader password prevents unauthorized users from changing boot parameters or booting into single-user mode.",
+        remediation="Run: grub2-setpassword to set a GRUB2 superuser password, then grub2-mkconfig -o /boot/grub2/grub.cfg",
+        check=lambda d, p: (
+            "password_pbkdf2" in _get_output(d, "grub2_password").lower() or
+            "superusers" in _get_output(d, "grub2_password").lower()
+        ),
+        evidence=lambda d, p: _get_output(d, "grub2_password"),
+        distros=_RHEL_DISTROS,
+    ))
+
+    # CIS RHEL 1.6.1 - Ensure SELinux is installed
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.6.1",
         cis_section="1.6.1",
         title="Ensure SELinux is installed",
         severity="high",
@@ -1809,12 +1830,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Install SELinux: dnf install libselinux",
         check=lambda d, p: "not installed" not in _get_output(d, "selinux_installed").lower(),
         evidence=lambda d, p: _get_output(d, "selinux_installed"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.6.3 - Ensure SELinux policy is configured to targeted
+    # CIS RHEL 1.6.3 - Ensure SELinux policy is configured to targeted or mls
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.6.3",
+        id="LNX-RHEL-L1-1.6.3",
         cis_section="1.6.3",
         title="Ensure SELinux policy is configured",
         severity="high",
@@ -1826,12 +1847,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             "mls" in _get_output(d, "selinux_policy_type").lower()
         ),
         evidence=lambda d, p: _get_output(d, "selinux_policy_type") or _get_output(d, "selinux_config"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.6.5 - Ensure SELinux is in enforcing mode
+    # CIS RHEL 1.6.5 - Ensure SELinux is in enforcing mode
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.6.5",
+        id="LNX-RHEL-L1-1.6.5",
         cis_section="1.6.5",
         title="Ensure SELinux mode is enforcing",
         severity="high",
@@ -1843,12 +1864,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             f"getenforce: {_get_output(d, 'selinux_status')}\n"
             f"sestatus: {_get_output(d, 'sestatus')[:200]}"
         ),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.6.6 - Ensure no unconfined services exist
+    # CIS RHEL 1.6.6 - Ensure no unconfined services exist
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.6.6",
+        id="LNX-RHEL-L1-1.6.6",
         cis_section="1.6.6",
         title="Ensure no unconfined services exist",
         severity="medium",
@@ -1860,12 +1881,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             not _get_output(d, "selinux_unconfined").strip()
         ),
         evidence=lambda d, p: _get_output(d, "selinux_unconfined") or "No unconfined services found",
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.6.7 - Ensure SETroubleshoot is not installed
+    # CIS RHEL 1.6.7 - Ensure SETroubleshoot is not installed
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.6.7",
+        id="LNX-RHEL-L1-1.6.7",
         cis_section="1.6.7",
         title="Ensure SETroubleshoot is not installed",
         severity="medium",
@@ -1874,12 +1895,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Remove: dnf remove setroubleshoot",
         check=lambda d, p: "not installed" in _get_output(d, "setroubleshoot_installed").lower(),
         evidence=lambda d, p: _get_output(d, "setroubleshoot_installed"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.6.8 - Ensure MCS Translation Service (mcstrans) is not installed
+    # CIS RHEL 1.6.8 - Ensure MCS Translation Service (mcstrans) is not installed
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.6.8",
+        id="LNX-RHEL-L1-1.6.8",
         cis_section="1.6.8",
         title="Ensure MCS Translation Service (mcstrans) is not installed",
         severity="low",
@@ -1888,36 +1909,30 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Remove: dnf remove mcstrans",
         check=lambda d, p: "not installed" in _get_output(d, "mcstrans_installed").lower(),
         evidence=lambda d, p: _get_output(d, "mcstrans_installed"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 1.4.2 - Ensure GRUB2 bootloader password is set (RHEL-specific path)
+    # CIS RHEL 5.3.1.1 - Ensure minimum password length is configured (pwquality)
     rules.append(LinuxCISRule(
-        id="LNX-L1-1.4.2",
-        cis_section="1.4.2",
-        title="Ensure bootloader password is set",
-        severity="high",
+        id="LNX-RHEL-L1-5.3.1.1",
+        cis_section="5.3.1.1",
+        title="Ensure minimum password length is configured",
+        severity="medium",
         level="L1",
-        rationale="A bootloader password prevents unauthorized users from changing boot parameters.",
-        remediation="Run grub2-setpassword to set a GRUB2 superuser password, then grub2-mkconfig -o /boot/grub2/grub.cfg",
-        check=lambda d, p: (
-            "password_pbkdf2" in _get_output(d, "grub2_password").lower() or
-            "superusers" in _get_output(d, "grub2_password").lower()
-        ) if not p.startswith("ubuntu") else (
-            "password" in _get_output(d, "grub_password").lower()
-        ),
-        evidence=lambda d, p: (
-            _get_output(d, "grub2_password") if not p.startswith("ubuntu") else
-            _get_output(d, "grub_password")
-        ),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        rationale="Enforcing a minimum password length makes brute force attacks significantly harder.",
+        remediation="Set 'minlen = 14' in /etc/security/pwquality.conf",
+        check=lambda d, p: bool(re.search(r'minlen\s*=\s*(\d+)', _get_output(d, "pwquality_detail"))) and (
+            lambda m: int(m.group(1)) >= 14 if m else False
+        )(re.search(r'minlen\s*=\s*(\d+)', _get_output(d, "pwquality_detail"))),
+        evidence=lambda d, p: _get_output(d, "pwquality_detail"),
+        distros=_RHEL_DISTROS,
     ))
 
-    # 5.3.3 - Ensure faillock is configured (RHEL — replaces pam_tally2)
+    # CIS RHEL 5.3.3 - Ensure faillock is configured (replaces pam_tally2 in RHEL 8+)
     rules.append(LinuxCISRule(
-        id="LNX-L1-5.3.3",
+        id="LNX-RHEL-L1-5.3.3",
         cis_section="5.3.3",
-        title="Ensure lockout for failed password attempts is configured",
+        title="Ensure lockout for failed password attempts is configured (pam_faillock)",
         severity="medium",
         level="L1",
         rationale="pam_faillock locks accounts after repeated failed login attempts, preventing brute force attacks.",
@@ -1930,12 +1945,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             f"PAM: {_get_output(d, 'pam_faillock_rhel')[:200]}\n"
             f"faillock.conf: {_get_output(d, 'faillock_conf')[:300]}"
         ),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 5.3 - Ensure authselect is configured (RHEL 8+/RHEL 10)
+    # CIS RHEL 5.3.4 - Ensure authselect is configured with a hardened profile
     rules.append(LinuxCISRule(
-        id="LNX-L1-5.3.4",
+        id="LNX-RHEL-L1-5.3.4",
         cis_section="5.3.4",
         title="Ensure authselect is configured with a hardened profile",
         severity="medium",
@@ -1948,12 +1963,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             bool(_get_output(d, "authselect_profile").strip())
         ),
         evidence=lambda d, p: _get_output(d, "authselect_profile"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 5.3 - Ensure pam_tally2 is not used (RHEL 9/10 — deprecated in favour of pam_faillock)
+    # CIS RHEL 5.3.5 - Ensure pam_tally2 is not used (deprecated since RHEL 8)
     rules.append(LinuxCISRule(
-        id="LNX-L1-5.3.5",
+        id="LNX-RHEL-L1-5.3.5",
         cis_section="5.3.5",
         title="Ensure pam_tally2 is not used (deprecated)",
         severity="medium",
@@ -1962,12 +1977,12 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Remove any pam_tally2 references from /etc/pam.d/ and configure pam_faillock.",
         check=lambda d, p: "pam_tally2 not found" in _get_output(d, "pam_tally2_check").lower(),
         evidence=lambda d, p: _get_output(d, "pam_tally2_check"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
-    # 5.4.2 - Ensure system accounts are not used for interactive login
+    # CIS RHEL 5.4.2 - Ensure system accounts are not used for interactive login
     rules.append(LinuxCISRule(
-        id="LNX-L2-5.4.2",
+        id="LNX-RHEL-L2-5.4.2",
         cis_section="5.4.2",
         title="Ensure system accounts are not used for interactive login",
         severity="medium",
@@ -1976,26 +1991,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Set the shell of all system accounts (UID < 1000) to /sbin/nologin or /bin/false.",
         check=lambda d, p: "all system accounts secured" in _get_output(d, "system_accounts_shell").lower(),
         evidence=lambda d, p: _get_output(d, "system_accounts_shell"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
-    ))
-
-    # 1.5.1 - Ensure ASLR is enabled (all distros — reinforced for RHEL 10)
-    # Already defined above as LNX-L1-1.5.1; RHEL 10 gets it via "all" distros
-
-    # 5.3.1 - Ensure password creation requirements are configured (pwquality — RHEL)
-    rules.append(LinuxCISRule(
-        id="LNX-L1-5.3.1.1",
-        cis_section="5.3.1.1",
-        title="Ensure minimum password length is configured",
-        severity="medium",
-        level="L1",
-        rationale="Enforcing a minimum password length makes brute force attacks significantly harder.",
-        remediation="Set 'minlen = 14' in /etc/security/pwquality.conf",
-        check=lambda d, p: bool(re.search(r'minlen\s*=\s*(\d+)', _get_output(d, "pwquality_detail"))) and (
-            lambda m: int(m.group(1)) >= 14 if m else False
-        )(re.search(r'minlen\s*=\s*(\d+)', _get_output(d, "pwquality_detail"))),
-        evidence=lambda d, p: _get_output(d, "pwquality_detail"),
-        distros=["rhel", "rocky", "centos", "fedora", "almalinux"],
+        distros=_RHEL_DISTROS,
     ))
 
     return rules
