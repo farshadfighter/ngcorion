@@ -451,7 +451,7 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
                 {/* Header */}
                 <div className="hardening-modal-header">
                     <div className="hardening-modal-title">
-                        <span className="hardening-modal-icon">🛡️</span>
+                        <span className="hardening-modal-icon"><img src="/icons/audit.svg" alt="" className="btn-icon" /></span>
                         <h2>Harden All Failed Checks</h2>
                     </div>
                     <button className="hardening-modal-close" onClick={onClose}>×</button>

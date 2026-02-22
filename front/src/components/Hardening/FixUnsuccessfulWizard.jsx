@@ -70,7 +70,7 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose }) => {
                     {/* Step 3: Result/Harden */}
                     <div className={`stepper-item ${currentStep >= 3 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}>
                         <div className="stepper-circle">
-                            <div className="stepper-icon">{hasFailed ? "✕" : (currentStep >= 4 ? "🛡️" : "✓")}</div>
+                            <div className="stepper-icon">{hasFailed ? "✕" : (currentStep >= 4 ? <img src="/icons/audit.svg" alt="" className="btn-icon" /> : "✓")}</div>
                         </div>
                         <div className="stepper-label">harden</div>
                     </div>
