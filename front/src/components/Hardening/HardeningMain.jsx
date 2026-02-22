@@ -3,7 +3,7 @@ import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
 import "../../assets/hardening/FixAll.css";
 
-export const HardeningMain = () => {
+export const HardeningMain = ({ onNavigateToAuditing }) => {
     const [showWizard, setShowWizard] = useState(false);
     const [wizardMode, setWizardMode] = useState(null);
 
@@ -31,7 +31,7 @@ export const HardeningMain = () => {
             <div className="hardening-options-container">
                 {/* باکس 1: Fix All Section */}
                 <div className="hardening-option-box" onClick={handleFixAllClick}>
-                    <div className="hardening-option-icon">🛡️</div>
+                    <div className="hardening-option-icon"><img src="/icons/audit.svg" alt="" className="btn-icon" /></div>
                     <div className="hardening-option-title">Fix all section</div>
                     <div className="hardening-option-description">
                         Hardening all section by CIS Benchmark
@@ -41,7 +41,7 @@ export const HardeningMain = () => {
 
                 {/* باکس 2: Fix Unsuccessful - فعال شد! */}
                 <div className="hardening-option-box" onClick={handleFixUnsuccessfulClick}>
-                    <div className="hardening-option-icon">🔧</div>
+                    <div className="hardening-option-icon"><img src="/icons/audit.svg" alt="" className="btn-icon" /></div>
                     <div className="hardening-option-title">Fix Unsuccessful section</div>
                     <div className="hardening-option-description">
                         Hardening Unsuccessful section by Auditing
@@ -56,6 +56,7 @@ export const HardeningMain = () => {
                     isOpen={showWizard}
                     mode={wizardMode}
                     onClose={handleWizardClose}
+                    onNavigateToAuditing={onNavigateToAuditing}
                 />
             )}
 

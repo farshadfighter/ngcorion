@@ -150,7 +150,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                 cursor: totalChecks === 0 ? 'not-allowed' : 'pointer'
                             }}
                         >
-                            🛡️ Harden All
+                            <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden All
                         </button>
                     </div>
 
@@ -191,7 +191,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                         cursor: 'pointer'
                                                     }}
                                                 >
-                                                    🛡️ Harden
+                                                    <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
                                                 </button>
                                             </td>
                                         </tr>
