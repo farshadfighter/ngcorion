@@ -4,7 +4,7 @@ Hardening Module
 This module has been reorganized. Hardening functionality is now under:
 - app.modules.cisco.hardening - Cisco IOS/IOS-XE hardening
 - app.modules.fortinet.hardening - FortiGate hardening
-- app.modules.linux.hardening - Linux hardening (Ubuntu 22.04, 24.04, Rocky Linux 8)
+- app.modules.linux.hardening - Linux hardening (Ubuntu 22.04, 24.04, Rocky Linux 8, RHEL 8/9/10)
 - app.modules.shared - Unified schema-driven hardening infrastructure
 """
 

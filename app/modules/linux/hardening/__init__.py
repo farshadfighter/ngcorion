@@ -5,6 +5,7 @@ Device hardening operations for Linux distributions:
 - Ubuntu 22.04 LTS
 - Ubuntu 24.04 LTS
 - Rocky Linux 8
+- Red Hat Enterprise Linux 8/9/10
 """
 from .router import router
 from .service import LinuxHardeningService

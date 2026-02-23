@@ -339,6 +339,49 @@ LINUX_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         min_value=3,
         max_value=24
     ),
+
+    # ==================== RHEL-SPECIFIC PARAMETERS ====================
+
+    "CRYPTO_POLICY": ParameterMetadata(
+        name="CRYPTO_POLICY",
+        input_type="select",
+        label="System-wide Crypto Policy",
+        description="RHEL system-wide cryptographic policy (must not be LEGACY)",
+        required=False,
+        options=["DEFAULT", "FUTURE", "FIPS"],
+        default="DEFAULT"
+    ),
+
+    "SELINUX_POLICY_TYPE": ParameterMetadata(
+        name="SELINUX_POLICY_TYPE",
+        input_type="select",
+        label="SELinux Policy Type",
+        description="SELinux policy type to configure",
+        required=False,
+        options=["targeted", "mls"],
+        default="targeted"
+    ),
+
+    "AUTHSELECT_PROFILE": ParameterMetadata(
+        name="AUTHSELECT_PROFILE",
+        input_type="text",
+        label="Authselect Profile",
+        description="Authselect profile name to select (e.g., sssd, winbind, minimal)",
+        required=False,
+        default="sssd",
+        placeholder="sssd"
+    ),
+
+    "PWQUALITY_MINLEN": ParameterMetadata(
+        name="PWQUALITY_MINLEN",
+        input_type="number",
+        label="Password Minimum Length (pwquality)",
+        description="Minimum password length enforced by pwquality on RHEL systems",
+        required=False,
+        default="14",
+        min_value=8,
+        max_value=128
+    ),
 }
 
 
@@ -552,6 +595,38 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L2-1.1.5": [],   # /var/log partition
     "LNX-L2-1.1.6": [],   # /var/log/audit partition
     "LNX-L2-1.1.7": [],   # /home partition
+
+    # ==================== RHEL-SPECIFIC CHECKS ====================
+
+    # 1.2.x - Package management (RHEL)
+    "LNX-RHEL-L1-1.2.3": [],                        # gpgcheck - no params
+    "LNX-RHEL-L1-1.2.4": ["CRYPTO_POLICY"],         # crypto policy not LEGACY
+    "LNX-RHEL-L1-1.2.5": ["CRYPTO_POLICY"],         # crypto policy no SHA1
+
+    # 1.3.x - Sudo (RHEL)
+    "LNX-RHEL-L1-1.3.1": [],                        # sudo installed - no params
+    "LNX-RHEL-L1-1.3.2": [],                        # sudo use_pty - no params
+    "LNX-RHEL-L1-1.3.3": [],                        # sudo log file - no params
+
+    # 1.4.x - Bootloader (RHEL)
+    "LNX-RHEL-L1-1.4.2": [],                        # bootloader password - manual
+
+    # 1.6.x - SELinux (RHEL)
+    "LNX-RHEL-L1-1.6.1": [],                        # SELinux installed - no params
+    "LNX-RHEL-L1-1.6.3": ["SELINUX_POLICY_TYPE"],   # SELinux policy type
+    "LNX-RHEL-L1-1.6.5": [],                        # SELinux enforcing - no params
+    "LNX-RHEL-L1-1.6.6": [],                        # unconfined services - manual
+    "LNX-RHEL-L1-1.6.7": [],                        # SETroubleshoot removed - no params
+    "LNX-RHEL-L1-1.6.8": [],                        # mcstrans removed - no params
+
+    # 5.3.x - PAM / Password (RHEL)
+    "LNX-RHEL-L1-5.3.1.1": ["PWQUALITY_MINLEN"],   # pwquality minlen
+    "LNX-RHEL-L1-5.3.3": ["FAILLOCK_DENY", "FAILLOCK_UNLOCK_TIME"],  # faillock
+    "LNX-RHEL-L1-5.3.4": ["AUTHSELECT_PROFILE"],    # authselect profile
+    "LNX-RHEL-L1-5.3.5": [],                        # pam_tally2 removal - no params
+
+    # 5.4.x - Account policy (RHEL)
+    "LNX-RHEL-L2-5.4.2": [],                        # system accounts - manual
 }
 
 

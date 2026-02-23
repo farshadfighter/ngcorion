@@ -1076,6 +1076,264 @@ _register(LinuxHardeningTemplate(
 ))
 
 
+# ==================== RHEL-SPECIFIC HARDENING TEMPLATES ====================
+# Templates for RHEL-specific CIS checks (LNX-RHEL-L1-* and LNX-RHEL-L2-*)
+# These apply to RHEL-based distros: rhel, rocky, centos, fedora, almalinux
+
+_RHEL_DISTROS = ["rhel", "rocky", "centos", "fedora", "almalinux"]
+
+# LNX-RHEL-L1-1.2.3 - Ensure gpgcheck is globally activated
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.2.3",
+    description="Ensure gpgcheck is globally activated",
+    commands=[
+        "sed -i 's/^gpgcheck=.*/gpgcheck=1/' /etc/yum.conf",
+        "grep -q '^gpgcheck' /etc/yum.conf || echo 'gpgcheck=1' >> /etc/yum.conf",
+        "for f in /etc/yum.repos.d/*.repo; do sed -i 's/^gpgcheck=.*/gpgcheck=1/' \"$f\"; done"
+    ],
+    verify_commands=[
+        "grep -q '^gpgcheck=1' /etc/yum.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -rq 'gpgcheck=0' /etc/yum.repos.d/ && echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.2.4 - Ensure crypto policies are not LEGACY
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.2.4",
+    description="Ensure system-wide crypto policy is not LEGACY",
+    commands=[
+        "update-crypto-policies --set {CRYPTO_POLICY}"
+    ],
+    verify_commands=[
+        "update-crypto-policies --show | grep -qiE 'DEFAULT|FUTURE|FIPS' && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.2.5 - Ensure crypto policies don't use SHA1
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.2.5",
+    description="Ensure system-wide crypto policy disables SHA1 in certificate verification",
+    commands=[
+        "update-crypto-policies --set {CRYPTO_POLICY}",
+        "update-crypto-policies"
+    ],
+    verify_commands=[
+        "update-crypto-policies --show | grep -qi 'LEGACY' && echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.3.1 - Ensure sudo is installed
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.3.1",
+    description="Ensure sudo is installed",
+    commands=[
+        "dnf install -y sudo"
+    ],
+    verify_commands=[
+        "rpm -q sudo >/dev/null 2>&1 && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.3.2 - Ensure sudo uses pty
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.3.2",
+    description="Ensure sudo commands use pty",
+    commands=[
+        "grep -q '^Defaults.*use_pty' /etc/sudoers || echo 'Defaults use_pty' >> /etc/sudoers.d/99-cis-use-pty",
+        "chmod 440 /etc/sudoers.d/99-cis-use-pty 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "grep -rqE '^Defaults.*use_pty' /etc/sudoers /etc/sudoers.d/ && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.3.3 - Ensure sudo log file exists
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.3.3",
+    description="Ensure sudo log file is configured",
+    commands=[
+        "grep -q '^Defaults.*logfile=' /etc/sudoers || echo 'Defaults logfile=\"/var/log/sudo.log\"' >> /etc/sudoers.d/99-cis-sudo-log",
+        "chmod 440 /etc/sudoers.d/99-cis-sudo-log 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "grep -rqE '^Defaults.*logfile=' /etc/sudoers /etc/sudoers.d/ && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.4.2 - Ensure bootloader password is set (MANUAL)
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.4.2",
+    description="Ensure bootloader password is set (manual - requires interactive grub2-setpassword)",
+    commands=[
+        "echo 'MANUAL: Run grub2-setpassword interactively to set the bootloader password'",
+        "echo 'Then run: grub2-mkconfig -o /boot/grub2/grub.cfg'"
+    ],
+    verify_commands=[
+        "test -f /boot/grub2/user.cfg && grep -q '^GRUB2_PASSWORD=' /boot/grub2/user.cfg && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.1 - Ensure SELinux is installed
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.1",
+    description="Ensure SELinux is installed",
+    commands=[
+        "dnf install -y libselinux"
+    ],
+    verify_commands=[
+        "rpm -q libselinux >/dev/null 2>&1 && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.3 - Ensure SELinux policy is configured
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.3",
+    description="Ensure SELinux policy is configured",
+    commands=[
+        "sed -i 's/^SELINUXTYPE=.*/SELINUXTYPE={SELINUX_POLICY_TYPE}/' /etc/selinux/config",
+        "grep -q '^SELINUXTYPE=' /etc/selinux/config || echo 'SELINUXTYPE={SELINUX_POLICY_TYPE}' >> /etc/selinux/config"
+    ],
+    verify_commands=[
+        "grep -q '^SELINUXTYPE={SELINUX_POLICY_TYPE}' /etc/selinux/config && echo 'PASS' || echo 'FAIL'"
+    ],
+    requires_reboot=True,
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.5 - Ensure SELinux mode is enforcing
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.5",
+    description="Ensure SELinux mode is set to enforcing",
+    commands=[
+        "sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config",
+        "grep -q '^SELINUX=' /etc/selinux/config || echo 'SELINUX=enforcing' >> /etc/selinux/config",
+        "setenforce 1 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "getenforce | grep -qi 'enforcing' && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.6 - Ensure no unconfined services (MANUAL)
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.6",
+    description="Ensure no unconfined services exist (manual review required)",
+    commands=[
+        "echo 'MANUAL REVIEW: Check output of the following command for unconfined services:'",
+        "ps -eZ | grep unconfined_service_t || echo 'No unconfined services found'"
+    ],
+    verify_commands=[
+        "ps -eZ | grep -q 'unconfined_service_t' && echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.7 - Ensure SETroubleshoot is not installed
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.7",
+    description="Ensure SETroubleshoot is not installed",
+    commands=[
+        "dnf remove -y setroubleshoot 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "rpm -q setroubleshoot >/dev/null 2>&1 && echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.8 - Ensure mcstrans is not installed
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.8",
+    description="Ensure mcstrans is not installed",
+    commands=[
+        "dnf remove -y mcstrans 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "rpm -q mcstrans >/dev/null 2>&1 && echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-5.3.1.1 - Ensure minimum password length (pwquality)
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-5.3.1.1",
+    description="Ensure password minimum length is configured via pwquality",
+    commands=[
+        "dnf install -y libpwquality 2>/dev/null || true",
+        "sed -i 's/^#*\\s*minlen.*/minlen = {PWQUALITY_MINLEN}/' /etc/security/pwquality.conf",
+        "grep -q '^minlen' /etc/security/pwquality.conf || echo 'minlen = {PWQUALITY_MINLEN}' >> /etc/security/pwquality.conf"
+    ],
+    verify_commands=[
+        "grep -qE '^minlen\\s*=\\s*{PWQUALITY_MINLEN}' /etc/security/pwquality.conf && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-5.3.3 - Ensure pam faillock is configured
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-5.3.3",
+    description="Ensure pam faillock module is configured",
+    commands=[
+        "cat > /etc/security/faillock.conf << 'EOF'\ndenial = {FAILLOCK_DENY}\nunlock_time = {FAILLOCK_UNLOCK_TIME}\nfail_interval = 900\naudit\nsilent\nEOF",
+        "authselect enable-feature with-faillock 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "test -f /etc/security/faillock.conf && grep -q 'denial' /etc/security/faillock.conf && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-5.3.4 - Ensure authselect is configured
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-5.3.4",
+    description="Ensure authselect profile is selected and configured",
+    commands=[
+        "authselect select {AUTHSELECT_PROFILE} --force 2>/dev/null || authselect select sssd --force"
+    ],
+    verify_commands=[
+        "authselect current 2>/dev/null | grep -q 'Profile ID' && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-5.3.5 - Ensure pam_tally2 is not used
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-5.3.5",
+    description="Ensure pam_tally2 is not used (replaced by faillock)",
+    commands=[
+        "sed -i '/pam_tally2/d' /etc/pam.d/system-auth 2>/dev/null || true",
+        "sed -i '/pam_tally2/d' /etc/pam.d/password-auth 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "grep -rq 'pam_tally2' /etc/pam.d/ && echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L2-5.4.2 - Ensure system accounts are non-interactive (MANUAL)
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L2-5.4.2",
+    description="Ensure system accounts are secured (manual review required)",
+    commands=[
+        "echo 'MANUAL REVIEW: Verify system accounts have nologin shell and are locked'",
+        "awk -F: '($3 < 1000 && $1 != \"root\" && $1 != \"sync\" && $1 != \"shutdown\" && $1 != \"halt\" && $7 !~ /nologin|false/) {print $1}' /etc/passwd"
+    ],
+    verify_commands=[
+        "awk -F: '($3 < 1000 && $1 != \"root\" && $1 != \"sync\" && $1 != \"shutdown\" && $1 != \"halt\" && $7 !~ /nologin|false/) {print}' /etc/passwd | wc -l | grep -q '^0$' && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
     """Get hardening template for a specific check."""
     return LINUX_HARDENING_TEMPLATES.get(check_id)
