@@ -54,3 +54,5 @@ CLAUDE.md
 
 .vevn/
 .venv
+dist_build/
+*.zip
