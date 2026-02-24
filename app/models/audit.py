@@ -22,6 +22,7 @@ class DeviceType(str, enum.Enum):
     FORTINET = "fortinet"
     APACHE = "apache"
     MONGODB = "mongodb"
+    MSSQL = "mssql"
 
 
 class CheckStatus(str, enum.Enum):
