@@ -288,15 +288,14 @@ class MSSQLClient:
         """)
 
         # ---- 10. Error log configuration ------------------------------- #
-        sections["ERRORLOG_COUNT"] = self._query("""
-            DECLARE @num_logs INT;
-            EXEC xp_instance_regread
-                N'HKEY_LOCAL_MACHINE',
-                N'Software\Microsoft\MSSQLServer\MSSQLServer',
-                N'NumErrorLogs',
-                @num_logs OUTPUT;
-            SELECT ISNULL(@num_logs, 6) AS num_error_logs
-        """)
+        sections["ERRORLOG_COUNT"] = self._query(
+            "DECLARE @num_logs INT;"
+            " EXEC xp_instance_regread"
+            " N'HKEY_LOCAL_MACHINE',"
+            r" N'Software\Microsoft\MSSQLServer\MSSQLServer',"
+            " N'NumErrorLogs', @num_logs OUTPUT;"
+            " SELECT ISNULL(@num_logs, 6) AS num_error_logs"
+        )
 
         # ---- 11. Linked servers ---------------------------------------- #
         sections["LINKED_SERVERS"] = self._query("""
