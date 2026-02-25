@@ -1,1 +1,1 @@
-"""SQL Server (MSSQL) Audit Module"""
+"""SQL Server (MSSQL) Audit and Hardening Module"""
