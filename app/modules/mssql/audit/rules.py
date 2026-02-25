@@ -102,6 +102,31 @@ def _ev_config_row(dump: str, option_name: str) -> str:
 
 
 # ============================================================ #
+#  Version detection helper                                    #
+# ============================================================ #
+
+def _detect_version(dump: str) -> int:
+    """
+    Return the SQL Server major version number from the VERSION section.
+
+    Known mappings: 2016=13, 2017=14, 2019=15, 2022=16.
+    Returns 0 if version cannot be determined.
+    """
+    version_text = _section(dump, "VERSION")
+    # Try "Microsoft SQL Server 20XX"
+    m = re.search(r"Microsoft SQL Server (\d{4})", version_text, re.I)
+    if m:
+        year = int(m.group(1))
+        year_to_major = {2016: 13, 2017: 14, 2019: 15, 2022: 16}
+        return year_to_major.get(year, 0)
+    # Try product version "15.0.xxxx"
+    m = re.search(r"\b(\d{2})\.\d+\.\d+", version_text)
+    if m:
+        return int(m.group(1))
+    return 0
+
+
+# ============================================================ #
 #  Rule builder                                                 #
 # ============================================================ #
 
