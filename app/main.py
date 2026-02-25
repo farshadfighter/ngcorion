@@ -35,8 +35,9 @@ from app.modules.apache.hardening import router as apache_hardening_router
 from app.modules.mongodb.audit import router as mongodb_audit_router
 from app.modules.mongodb.hardening import router as mongodb_hardening_router
 
-# SQL Server (MSSQL) Audit
+# SQL Server (MSSQL) Audit and Hardening
 from app.modules.mssql.audit import router as mssql_audit_router
+from app.modules.mssql.hardening import router as mssql_hardening_router
 
 # Shared hardening infrastructure
 from app.modules.shared import hardening_router as unified_hardening_router
@@ -140,6 +141,9 @@ app.include_router(mongodb_hardening_router)
 
 # SQL Server CIS Audit routes
 app.include_router(mssql_audit_router)
+
+# SQL Server Hardening routes
+app.include_router(mssql_hardening_router)
 
 # Schema-driven Hardening routes (unified)
 app.include_router(unified_hardening_router)
