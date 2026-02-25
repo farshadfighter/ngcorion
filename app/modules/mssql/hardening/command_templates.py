@@ -420,6 +420,257 @@ _register(MSSQLHardeningTemplate(
     manual_only=True,
 ))
 
+# ===================================================================
+# NEW CHECKS: Surface Area (Section 2 additions)
+# ===================================================================
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-027",
+    description=(
+        "Disable unnecessary SQL Server protocols "
+        "– requires SQL Server Configuration Manager; manual only"
+    ),
+    statements=[],
+    requires_restart=True,
+    manual_only=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-028",
+    description="Set Hide Instance to Yes via registry",
+    statements=[
+        r"EXEC xp_instance_regwrite N'HKEY_LOCAL_MACHINE', "
+        r"N'Software\Microsoft\MSSQLServer\MSSQLServer\SuperSocketNetLib', "
+        r"N'HideInstance', REG_DWORD, 1",
+    ],
+    verify_statements=[
+        r"DECLARE @h INT; "
+        r"EXEC xp_instance_regread N'HKEY_LOCAL_MACHINE', "
+        r"N'Software\Microsoft\MSSQLServer\MSSQLServer\SuperSocketNetLib', "
+        r"N'HideInstance', @h OUTPUT; "
+        r"SELECT CASE WHEN ISNULL(@h, 0) = 1 THEN 'PASS' ELSE 'FAIL' END AS result",
+    ],
+    requires_restart=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-029",
+    description="Set AUTO_CLOSE OFF for contained database {DB_NAME}",
+    statements=[
+        "ALTER DATABASE [{DB_NAME}] SET AUTO_CLOSE OFF",
+    ],
+    verify_statements=[
+        "SELECT CASE is_auto_close_on WHEN 0 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM sys.databases WHERE name = '{DB_NAME}'",
+    ],
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-030",
+    description=(
+        "Rename the 'sa' login – already handled by MSSQL-L2-015; manual review"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-031",
+    description="Enable 'CLR strict security' (sp_configure = 1, SQL Server 2017+)",
+    statements=[
+        "EXECUTE sp_configure 'show advanced options', 1",
+        "RECONFIGURE",
+        "EXECUTE sp_configure 'clr strict security', 1",
+        "RECONFIGURE",
+        "EXECUTE sp_configure 'show advanced options', 0",
+        "RECONFIGURE",
+    ],
+    verify_statements=[
+        "SELECT CASE CAST(value_in_use AS INT) WHEN 1 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM sys.configurations WHERE name = 'clr strict security'",
+    ],
+))
+
+# ===================================================================
+# NEW CHECKS: Authentication & Authorization (Section 3 additions)
+# ===================================================================
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-032",
+    description="Revoke CONNECT from guest user in database {DB_NAME}",
+    statements=[
+        "USE [{DB_NAME}]",
+        "REVOKE CONNECT FROM [guest]",
+    ],
+    verify_statements=[
+        "SELECT CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM [{DB_NAME}].sys.database_permissions dp "
+        "JOIN [{DB_NAME}].sys.database_principals pr "
+        "ON dp.grantee_principal_id = pr.principal_id "
+        "WHERE pr.name = 'guest' AND dp.permission_name = 'CONNECT' "
+        "AND dp.state IN ('G', 'W')",
+    ],
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-033",
+    description=(
+        "Drop orphaned users – requires per-database manual review"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-034",
+    description=(
+        "Migrate contained DB users from SQL auth to Windows auth – manual review"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-035",
+    description=(
+        "Revoke non-default public server role permissions – manual review required"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-036",
+    description="Drop BUILTIN group SQL login {BUILTIN_LOGIN}",
+    statements=[
+        "DROP LOGIN [{BUILTIN_LOGIN}]",
+    ],
+    verify_statements=[
+        "SELECT CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM sys.server_principals WHERE name = '{BUILTIN_LOGIN}'",
+    ],
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-037",
+    description="Drop local Windows group SQL login {LOCAL_GROUP_LOGIN}",
+    statements=[
+        "DROP LOGIN [{LOCAL_GROUP_LOGIN}]",
+    ],
+    verify_statements=[
+        "SELECT CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM sys.server_principals WHERE name = '{LOCAL_GROUP_LOGIN}'",
+    ],
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-038",
+    description="Revoke public proxy access for proxy {PROXY_NAME}",
+    statements=[
+        "EXEC msdb.dbo.sp_revoke_login_from_proxy "
+        "@name = N'public', @proxy_name = N'{PROXY_NAME}'",
+    ],
+    verify_statements=[
+        "SELECT CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM msdb.dbo.sysproxylogin spl "
+        "JOIN msdb.dbo.sysproxies sp ON sp.proxy_id = spl.proxy_id "
+        "WHERE spl.sid = 0x00 AND sp.name = '{PROXY_NAME}'",
+    ],
+))
+
+# ===================================================================
+# NEW CHECKS: Password Policies (Section 4 addition)
+# ===================================================================
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-039",
+    description=(
+        "Set MUST_CHANGE for SQL logins – advisory; must be done at password reset time"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
+# ===================================================================
+# NEW CHECKS: Auditing (Section 5 additions)
+# ===================================================================
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-040",
+    description="Enable 'Default Trace Enabled' (sp_configure = 1)",
+    statements=[
+        "EXECUTE sp_configure 'show advanced options', 1",
+        "RECONFIGURE",
+        "EXECUTE sp_configure 'default trace enabled', 1",
+        "RECONFIGURE",
+        "EXECUTE sp_configure 'show advanced options', 0",
+        "RECONFIGURE",
+    ],
+    verify_statements=[
+        "SELECT CASE CAST(value_in_use AS INT) WHEN 1 THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM sys.configurations WHERE name = 'default trace enabled'",
+    ],
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-041",
+    description="Set Login Auditing to capture failed logins (AuditLevel = 2)",
+    statements=[
+        r"EXEC xp_instance_regwrite N'HKEY_LOCAL_MACHINE', "
+        r"N'Software\Microsoft\MSSQLServer\MSSQLServer', "
+        r"N'AuditLevel', REG_DWORD, {AUDIT_LEVEL}",
+    ],
+    verify_statements=[
+        r"DECLARE @al INT; "
+        r"EXEC xp_instance_regread N'HKEY_LOCAL_MACHINE', "
+        r"N'Software\Microsoft\MSSQLServer\MSSQLServer', "
+        r"N'AuditLevel', @al OUTPUT; "
+        r"SELECT CASE WHEN ISNULL(@al, 0) >= 2 THEN 'PASS' ELSE 'FAIL' END AS result",
+    ],
+    requires_restart=True,
+))
+
+# ===================================================================
+# NEW CHECKS: Application Development (Section 6 addition)
+# ===================================================================
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-042",
+    description="Set CLR Assembly {ASSEMBLY_NAME} permission set to SAFE in database {DB_NAME}",
+    statements=[
+        "USE [{DB_NAME}]",
+        "ALTER ASSEMBLY [{ASSEMBLY_NAME}] WITH PERMISSION_SET = SAFE",
+    ],
+    verify_statements=[
+        "SELECT CASE permission_set_desc WHEN 'SAFE_ACCESS' THEN 'PASS' ELSE 'FAIL' END AS result "
+        "FROM [{DB_NAME}].sys.assemblies WHERE name = '{ASSEMBLY_NAME}'",
+    ],
+))
+
+# ===================================================================
+# NEW CHECKS: Encryption (Section 7 additions) — manual only
+# ===================================================================
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-043",
+    description=(
+        "Re-create symmetric keys with AES_128+ algorithm – "
+        "requires key drop and re-creation; manual only"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
+_register(MSSQLHardeningTemplate(
+    check_id="MSSQL-L1-044",
+    description=(
+        "Re-create asymmetric keys with ≥ 2048-bit size – "
+        "requires key drop and re-creation; manual only"
+    ),
+    statements=[],
+    manual_only=True,
+))
+
 
 # ===================================================================
 # Helper functions

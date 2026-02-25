@@ -529,13 +529,13 @@ class MSSQLClient:
         """)
 
         # ---- 23. BUILTIN/local group logins ---------------------------- #
-        sections["BUILTIN_LOGINS"] = self._query("""
-            SELECT name, type_desc, is_disabled
-            FROM sys.server_principals
-            WHERE type = 'G'
-              AND (name LIKE 'BUILTIN%' OR name LIKE '%\%')
-            ORDER BY name
-        """)
+        sections["BUILTIN_LOGINS"] = self._query(
+            "SELECT name, type_desc, is_disabled "
+            "FROM sys.server_principals "
+            "WHERE type = 'G' "
+            r"AND (name LIKE 'BUILTIN%' OR name LIKE '%\%') "
+            "ORDER BY name"
+        )
 
         # ---- 24. SQL Agent proxy access for public role ---------------- #
         sections["AGENT_PROXIES"] = self._query("""

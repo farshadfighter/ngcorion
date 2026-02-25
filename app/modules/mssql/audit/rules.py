@@ -1,7 +1,8 @@
 """
 SQL Server CIS Benchmark Rules
 
-~26 predefined security checks based on the CIS Microsoft SQL Server Benchmark.
+~44 predefined security checks based on the CIS Microsoft SQL Server Benchmark
+(2016 v1.4, 2019 v1.5, 2022 v1.2) with version-aware logic for 2017+ features.
 Each rule evaluates a specific aspect of SQL Server security by searching
 the structured audit dump collected by MSSQLClient.
 
@@ -802,6 +803,527 @@ def build_all_mssql_cis_rules() -> List[MSSQLCISRule]:
             "Open SQL Server Configuration Manager → SQL Server Network Configuration "
             "→ TCP/IP Properties → IP All → set TCP Port to a non-standard value. "
             "Restart the SQL Server service."
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 2 – Surface Area Reduction (additions)                   #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-027",
+        section="2.10",
+        title="Ensure Unnecessary SQL Server Protocols are Disabled",
+        description=(
+            "SQL Server can listen on multiple protocols (Shared Memory, Named Pipes, "
+            "TCP/IP). Unused protocols should be disabled to reduce the attack surface. "
+            "This is an OS-level check via SQL Server Configuration Manager."
+        ),
+        severity="low",
+        level="L1",
+        # Manual/informational check — cannot query protocols from T-SQL
+        check_fn=lambda d: True,
+        evidence_fn=lambda d: (
+            "Manual check required: Open SQL Server Configuration Manager → "
+            "SQL Server Network Configuration → Protocols and verify only "
+            "required protocols are enabled."
+        ),
+        remediation=(
+            "In SQL Server Configuration Manager → SQL Server Network Configuration → "
+            "Protocols: disable Shared Memory, Named Pipes, or TCP/IP if not needed. "
+            "Restart the SQL Server service."
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-028",
+        section="2.12",
+        title="Ensure 'Hide Instance' is set to 'Yes'",
+        description=(
+            "Hiding the SQL Server instance prevents it from being enumerated by "
+            "the SQL Server Browser service, reducing discoverability during "
+            "network reconnaissance."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "HIDE_INSTANCE")
+            and bool(re.search(r"\b1\b", _section(d, "HIDE_INSTANCE")))
+        ),
+        evidence_fn=lambda d: _ev_section(d, "HIDE_INSTANCE"),
+        remediation=(
+            "EXEC xp_instance_regwrite N'HKEY_LOCAL_MACHINE',\n"
+            r"    N'Software\Microsoft\MSSQLServer\MSSQLServer\SuperSocketNetLib',"
+            "\n    N'HideInstance', REG_DWORD, 1;\n"
+            "Restart the SQL Server service."
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-029",
+        section="2.15",
+        title="Ensure AUTO_CLOSE is OFF on Contained Databases",
+        description=(
+            "AUTO_CLOSE on contained databases can cause reliability issues and "
+            "potential denial of service. It should be disabled for all contained DBs."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "CONTAINED_DBS")
+            and (
+                "(no rows returned)" in _section(d, "CONTAINED_DBS")
+                or not bool(re.search(
+                    r"\|\s*True\s*$",
+                    _section(d, "CONTAINED_DBS"),
+                    re.M | re.I,
+                ))
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "CONTAINED_DBS"),
+        remediation=(
+            "ALTER DATABASE [<contained_db_name>] SET AUTO_CLOSE OFF;"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-030",
+        section="2.16",
+        title="Ensure No Login Exists with the Name 'sa'",
+        description=(
+            "After disabling and/or renaming the default SA account, ensure no login "
+            "named 'sa' exists. Attackers commonly target the well-known 'sa' name."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "SA_NAME_CHECK")
+            and (
+                "(no rows returned)" in _section(d, "SA_NAME_CHECK")
+                or not bool(_section(d, "SA_NAME_CHECK").strip())
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "SA_NAME_CHECK"),
+        remediation=(
+            "ALTER LOGIN [sa] WITH NAME = [<new_name>];\n"
+            "This check overlaps with MSSQL-L2-015 (SA rename)."
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-031",
+        section="2.17",
+        title="Ensure 'CLR strict security' is set to 1 (SQL Server 2019+)",
+        description=(
+            "Starting with SQL Server 2017, the 'clr strict security' option controls "
+            "whether CLR assemblies are treated as UNSAFE by default. Setting it to 1 "
+            "prevents unsigned assemblies from running with elevated permissions. "
+            "This check only applies to SQL Server 2017 and later."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=lambda d: (
+            # Skip for versions before 2017 (major < 14)
+            _detect_version(d) < 14
+            or _config_is_one(d, "clr strict security")
+        ),
+        evidence_fn=lambda d: (
+            f"SQL Server major version: {_detect_version(d)}. "
+            + _ev_config_row(d, "clr strict security")
+        ),
+        remediation=(
+            "EXECUTE sp_configure 'show advanced options', 1;\n"
+            "RECONFIGURE;\n"
+            "EXECUTE sp_configure 'clr strict security', 1;\n"
+            "RECONFIGURE;\n"
+            "EXECUTE sp_configure 'show advanced options', 0;\n"
+            "RECONFIGURE;"
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 3 – Authentication & Authorization (additions)           #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-032",
+        section="3.2",
+        title="Ensure CONNECT Permissions on Guest User are Revoked",
+        description=(
+            "The guest user exists in every database. If CONNECT permission is "
+            "granted to guest, any authenticated login can access the database. "
+            "Guest CONNECT should be revoked for all user databases."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "GUEST_CONNECT")
+            and (
+                "(no rows returned)" in _section(d, "GUEST_CONNECT")
+                or not bool(re.search(
+                    r"\|\s*[1-9]\d*\s*$",
+                    _section(d, "GUEST_CONNECT"),
+                    re.M,
+                ))
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "GUEST_CONNECT"),
+        remediation=(
+            "USE [<database_name>];\n"
+            "REVOKE CONNECT FROM [guest];"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-033",
+        section="3.3",
+        title="Ensure Orphaned Users are Dropped",
+        description=(
+            "Orphaned users are database users whose corresponding server login "
+            "has been dropped. They represent a security risk as they could be "
+            "re-associated with a new malicious login."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "ORPHANED_USERS")
+            and (
+                "(no rows returned)" in _section(d, "ORPHANED_USERS")
+                or not bool(_section(d, "ORPHANED_USERS").strip())
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "ORPHANED_USERS"),
+        remediation=(
+            "For each orphaned user found:\n"
+            "USE [<database_name>];\n"
+            "DROP USER [<orphaned_user_name>];\n"
+            "Or re-associate with an existing login:\n"
+            "ALTER USER [<user_name>] WITH LOGIN = [<login_name>];"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-034",
+        section="3.4",
+        title="Ensure SQL Authentication is not Used in Contained Databases",
+        description=(
+            "Contained database users with SQL authentication store password hashes "
+            "inside the database. If the database is moved to another server, the "
+            "user can access it without any server-level principal validation."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "CONTAINED_DB_USERS")
+            and (
+                "(no rows returned)" in _section(d, "CONTAINED_DB_USERS")
+                or not bool(_section(d, "CONTAINED_DB_USERS").strip())
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "CONTAINED_DB_USERS"),
+        remediation=(
+            "Migrate contained database users from SQL authentication to Windows "
+            "authentication:\n"
+            "USE [<contained_db>];\n"
+            "DROP USER [<sql_user>];\n"
+            "CREATE USER [<domain\\user>] FROM EXTERNAL PROVIDER;"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-035",
+        section="3.8",
+        title="Ensure 'public' Server Role Has Only Default Permissions",
+        description=(
+            "Every SQL Server login is a member of the public server role. "
+            "Non-default permissions granted to public effectively apply to "
+            "all logins, potentially granting excessive privileges."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "PUBLIC_SERVER_PERMS")
+            and (
+                "(no rows returned)" in _section(d, "PUBLIC_SERVER_PERMS")
+                or not bool(_section(d, "PUBLIC_SERVER_PERMS").strip())
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "PUBLIC_SERVER_PERMS"),
+        remediation=(
+            "Review and revoke non-default permissions from the public server role:\n"
+            "REVOKE <permission_name> FROM [public];"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-036",
+        section="3.9",
+        title="Ensure Windows BUILTIN Groups are not SQL Logins",
+        description=(
+            "Windows BUILTIN groups (e.g., BUILTIN\\Administrators) should not be "
+            "SQL Server logins because membership in these groups is controlled at "
+            "the OS level, not by the DBA."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "BUILTIN_LOGINS")
+            and not bool(re.search(
+                r"^BUILTIN\\",
+                _section(d, "BUILTIN_LOGINS"),
+                re.M | re.I,
+            ))
+        ),
+        evidence_fn=lambda d: _ev_section(d, "BUILTIN_LOGINS"),
+        remediation=(
+            "DROP LOGIN [BUILTIN\\<group_name>];\n"
+            "Create specific Windows logins with appropriate permissions instead."
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-037",
+        section="3.10",
+        title="Ensure Windows Local Groups are not SQL Logins",
+        description=(
+            "Local Windows groups should not be used as SQL Server logins. "
+            "Membership in local groups is managed at the OS level, which may not "
+            "be under the DBA's control, creating potential privilege escalation paths."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "BUILTIN_LOGINS")
+            and (
+                "(no rows returned)" in _section(d, "BUILTIN_LOGINS")
+                or not bool(_section(d, "BUILTIN_LOGINS").strip())
+                # If BUILTIN entries are already absent, local groups are also checked
+                # via the same query (type = 'G' with backslash pattern)
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "BUILTIN_LOGINS"),
+        remediation=(
+            "DROP LOGIN [<machine_name>\\<local_group>];\n"
+            "Use domain-level groups or individual Windows logins instead."
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-038",
+        section="3.11",
+        title="Ensure Public Role in msdb Has No SQL Agent Proxy Access",
+        description=(
+            "SQL Agent proxies allow stored procedures to run under the security "
+            "context of a different Windows account. If the public role has proxy "
+            "access, any user could execute jobs with elevated OS credentials."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "AGENT_PROXIES")
+            and (
+                "(no rows returned)" in _section(d, "AGENT_PROXIES")
+                or not bool(_section(d, "AGENT_PROXIES").strip())
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "AGENT_PROXIES"),
+        remediation=(
+            "EXEC msdb.dbo.sp_revoke_login_from_proxy\n"
+            "    @name = N'public',\n"
+            "    @proxy_name = N'<proxy_name>';"
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 4 – Password Policies (addition)                         #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-039",
+        section="4.1",
+        title="Ensure MUST_CHANGE Option is Set for All SQL Authenticated Logins",
+        description=(
+            "The MUST_CHANGE option forces a password reset on first login. For "
+            "newly created SQL logins, this ensures the initial password set by "
+            "the DBA is replaced with a user-chosen password."
+        ),
+        severity="low",
+        level="L1",
+        # Informational — MUST_CHANGE is only meaningful at login creation time.
+        # We flag logins that have IsMustChange=0, but this is advisory.
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "MUST_CHANGE")
+            and (
+                "(no rows returned)" in _section(d, "MUST_CHANGE")
+                or not bool(re.search(
+                    r"\|\s*0\s*$",
+                    _section(d, "MUST_CHANGE"),
+                    re.M,
+                ))
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "MUST_CHANGE"),
+        remediation=(
+            "When creating SQL logins, always use MUST_CHANGE:\n"
+            "CREATE LOGIN [<login>] WITH PASSWORD = '<pwd>' MUST_CHANGE,\n"
+            "    CHECK_POLICY = ON, CHECK_EXPIRATION = ON;\n"
+            "For existing logins, reset the password with MUST_CHANGE:\n"
+            "ALTER LOGIN [<login>] WITH PASSWORD = '<new_pwd>' MUST_CHANGE;"
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 5 – Auditing & Logging (additions)                       #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-040",
+        section="5.2",
+        title="Ensure 'Default Trace Enabled' is set to 1",
+        description=(
+            "The default trace captures important security-related events such as "
+            "object creation, alteration, and deletion. It should be enabled to "
+            "maintain a baseline audit trail."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: _config_is_one(d, "default trace enabled"),
+        evidence_fn=lambda d: _ev_config_row(d, "default trace enabled"),
+        remediation=(
+            "EXECUTE sp_configure 'show advanced options', 1;\n"
+            "RECONFIGURE;\n"
+            "EXECUTE sp_configure 'default trace enabled', 1;\n"
+            "RECONFIGURE;\n"
+            "EXECUTE sp_configure 'show advanced options', 0;\n"
+            "RECONFIGURE;"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-041",
+        section="5.3",
+        title="Ensure Login Auditing is Set to Capture Failed Logins",
+        description=(
+            "SQL Server login auditing can be configured at the instance level to "
+            "capture None (0), Failed only (1), Successful only (2), or Both (3). "
+            "At minimum, failed login attempts should be logged."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "LOGIN_AUDIT_LEVEL")
+            and bool(re.search(
+                r"\b[23]\b",
+                _section(d, "LOGIN_AUDIT_LEVEL"),
+            ))
+        ),
+        evidence_fn=lambda d: _ev_section(d, "LOGIN_AUDIT_LEVEL"),
+        remediation=(
+            "-- Set to 2 (failed logins only) or 3 (both):\n"
+            "EXEC xp_instance_regwrite N'HKEY_LOCAL_MACHINE',\n"
+            r"    N'Software\Microsoft\MSSQLServer\MSSQLServer',"
+            "\n    N'AuditLevel', REG_DWORD, 2;\n"
+            "Restart the SQL Server service."
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 6 – Application Development (addition)                   #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-042",
+        section="6.2",
+        title="Ensure CLR Assembly Permission Set is SAFE_ACCESS",
+        description=(
+            "CLR assemblies registered in SQL Server should use SAFE_ACCESS "
+            "permission set. EXTERNAL_ACCESS and UNSAFE allow the assembly to "
+            "access external resources or call unmanaged code, which is a security risk."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "CLR_ASSEMBLIES")
+            and (
+                "(no rows returned)" in _section(d, "CLR_ASSEMBLIES")
+                or not bool(re.search(
+                    r"(EXTERNAL_ACCESS|UNSAFE)",
+                    _section(d, "CLR_ASSEMBLIES"),
+                    re.I,
+                ))
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "CLR_ASSEMBLIES"),
+        remediation=(
+            "ALTER ASSEMBLY [<assembly_name>] WITH PERMISSION_SET = SAFE;\n"
+            "Or drop the assembly if it is not needed:\n"
+            "DROP ASSEMBLY [<assembly_name>];"
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 7 – Encryption (additions)                               #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-043",
+        section="7.1",
+        title="Ensure Symmetric Key Encryption Algorithm is AES_128 or Stronger",
+        description=(
+            "User-created symmetric keys should use AES_128 or stronger algorithms. "
+            "Weaker algorithms such as DES or Triple DES are considered cryptographically "
+            "weak and should not be used."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "SYMMETRIC_KEYS")
+            and (
+                "(no rows returned)" in _section(d, "SYMMETRIC_KEYS")
+                or not bool(re.search(
+                    r"(DES|RC[24]|TRIPLE_DES|DESX)",
+                    _section(d, "SYMMETRIC_KEYS"),
+                    re.I,
+                ))
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "SYMMETRIC_KEYS"),
+        remediation=(
+            "Re-create symmetric keys with a stronger algorithm:\n"
+            "DROP SYMMETRIC KEY [<key_name>];\n"
+            "CREATE SYMMETRIC KEY [<key_name>]\n"
+            "    WITH ALGORITHM = AES_256\n"
+            "    ENCRYPTION BY CERTIFICATE [<cert_name>];"
+        ),
+    ))
+
+    rules.append(MSSQLCISRule(
+        id="MSSQL-L1-044",
+        section="7.2",
+        title="Ensure Asymmetric Key Size is 2048 Bits or Larger",
+        description=(
+            "Asymmetric keys with fewer than 2048 bits provide insufficient "
+            "cryptographic strength. All user-created asymmetric keys should use "
+            "at least 2048-bit key length."
+        ),
+        severity="medium",
+        level="L1",
+        check_fn=lambda d: (
+            "QUERY_ERROR" not in _section(d, "ASYMMETRIC_KEYS")
+            and (
+                "(no rows returned)" in _section(d, "ASYMMETRIC_KEYS")
+                or not bool(re.search(
+                    r"\|\s*(?:51[2]|102[4]|768)\s*\|",
+                    _section(d, "ASYMMETRIC_KEYS"),
+                ))
+            )
+        ),
+        evidence_fn=lambda d: _ev_section(d, "ASYMMETRIC_KEYS"),
+        remediation=(
+            "Re-create asymmetric keys with at least 2048-bit key size:\n"
+            "DROP ASYMMETRIC KEY [<key_name>];\n"
+            "CREATE ASYMMETRIC KEY [<key_name>]\n"
+            "    WITH ALGORITHM = RSA_2048;"
         ),
     ))
 

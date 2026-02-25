@@ -126,6 +126,52 @@ MSSQL_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         required=True,
         placeholder="LoginAuditSpec",
     ),
+
+    "BUILTIN_LOGIN": ParameterMetadata(
+        name="BUILTIN_LOGIN",
+        input_type="text",
+        label="BUILTIN Group Login",
+        description="Windows BUILTIN group name to drop from SQL Server logins (e.g. BUILTIN\\Administrators)",
+        required=True,
+        placeholder="BUILTIN\\Administrators",
+    ),
+
+    "LOCAL_GROUP_LOGIN": ParameterMetadata(
+        name="LOCAL_GROUP_LOGIN",
+        input_type="text",
+        label="Local Group Login",
+        description="Windows local group login to drop from SQL Server (e.g. MACHINE\\GroupName)",
+        required=True,
+        placeholder="SERVERNAME\\Users",
+    ),
+
+    "PROXY_NAME": ParameterMetadata(
+        name="PROXY_NAME",
+        input_type="text",
+        label="SQL Agent Proxy Name",
+        description="Name of the SQL Agent proxy to revoke public access from",
+        required=True,
+        placeholder="MyProxy",
+    ),
+
+    "AUDIT_LEVEL": ParameterMetadata(
+        name="AUDIT_LEVEL",
+        input_type="select",
+        label="Login Audit Level",
+        description="Login auditing level: 2 = Failed logins only, 3 = Both failed and successful",
+        required=False,
+        default="2",
+        options=["2", "3"],
+    ),
+
+    "ASSEMBLY_NAME": ParameterMetadata(
+        name="ASSEMBLY_NAME",
+        input_type="text",
+        label="CLR Assembly Name",
+        description="Name of the CLR assembly to set to SAFE permission set",
+        required=True,
+        placeholder="MyAssembly",
+    ),
 }
 
 
@@ -165,12 +211,38 @@ MSSQL_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "MSSQL-L1-023": ["LOGIN_NAME"],
     "MSSQL-L1-024": ["LOGIN_NAME"],
 
+    # --- New checks (Section 2 additions) ---
+    "MSSQL-L1-028": [],                         # Hide instance (auto via registry)
+    "MSSQL-L1-029": ["DB_NAME"],                # AUTO_CLOSE OFF on contained DB
+    "MSSQL-L1-031": [],                         # CLR strict security = 1 (auto)
+
+    # --- New checks (Section 3 additions) ---
+    "MSSQL-L1-032": ["DB_NAME"],                # Revoke guest CONNECT per DB
+    "MSSQL-L1-036": ["BUILTIN_LOGIN"],          # Drop BUILTIN group login
+    "MSSQL-L1-037": ["LOCAL_GROUP_LOGIN"],       # Drop local group login
+    "MSSQL-L1-038": ["PROXY_NAME"],             # Revoke public proxy access
+
+    # --- New checks (Section 5 additions) ---
+    "MSSQL-L1-040": [],                         # Default trace enabled (auto)
+    "MSSQL-L1-041": ["AUDIT_LEVEL"],            # Login audit level (default=2)
+
+    # --- New checks (Section 6 addition) ---
+    "MSSQL-L1-042": ["DB_NAME", "ASSEMBLY_NAME"],  # CLR assembly SAFE
+
     # Manual only — no automated remediation
     # MSSQL-L1-001: patch level (Windows Update / manual)
     # MSSQL-L1-013: auth mode (requires SSMS + restart)
     # MSSQL-L2-018: public role permissions (manual review)
     # MSSQL-L2-025: TDE (multi-step, multi-DB)
     # MSSQL-L1-026: port change (Configuration Manager + restart)
+    # MSSQL-L1-027: unnecessary protocols (Configuration Manager)
+    # MSSQL-L1-030: SA rename (see MSSQL-L2-015)
+    # MSSQL-L1-033: orphaned users (per-DB manual review)
+    # MSSQL-L1-034: contained DB SQL auth (migration required)
+    # MSSQL-L1-035: public server role perms (manual review)
+    # MSSQL-L1-039: MUST_CHANGE (advisory, at password reset time)
+    # MSSQL-L1-043: symmetric key algorithms (key re-creation)
+    # MSSQL-L1-044: asymmetric key sizes (key re-creation)
 }
 
 
