@@ -8,7 +8,7 @@ Supported distributions:
 - Ubuntu 20.04 LTS
 - Ubuntu 22.04 LTS
 - Ubuntu 24.04 LTS
-- Rocky Linux 8 / 9
+- Rocky Linux 8 / 9 / 10
 - Red Hat Enterprise Linux 8 / 9 / 10
 """
 
@@ -321,6 +321,8 @@ class LinuxSSHClient:
                 distro_info["profile"] = "rocky_8"
             elif version.startswith("9"):
                 distro_info["profile"] = "rocky_9"
+            elif version.startswith("10"):
+                distro_info["profile"] = "rocky_10"
             else:
                 distro_info["profile"] = "rocky_generic"
         elif distro_id in ("rhel", "redhat"):

@@ -1,7 +1,7 @@
 """
 Linux CIS Benchmark Audit Commands
 
-Supports Ubuntu 20.04/22.04/24.04, Rocky Linux 8/9, RHEL 8/9/10.
+Supports Ubuntu 20.04/22.04/24.04, Rocky Linux 8/9/10, RHEL 8/9/10.
 
 Commands organized by CIS Benchmark sections:
 1.x - Initial Setup (Filesystem, Boot, Kernel)

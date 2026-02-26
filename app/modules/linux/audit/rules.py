@@ -5,7 +5,7 @@ CIS security compliance rules for Linux distributions:
 - Ubuntu 20.04 LTS (CIS Benchmark v2.0.1)
 - Ubuntu 22.04 LTS (CIS Benchmark v1.0.0)
 - Ubuntu 24.04 LTS
-- Rocky Linux 8 / 9 (CIS Benchmark v2.0.0)
+- Rocky Linux 8 / 9 / 10 (CIS Benchmark v2.0.0)
 - Red Hat Enterprise Linux 8 / 9 (CIS Benchmark v3.0.0)
 - Red Hat Enterprise Linux 10 (CIS Benchmark v1.0.0)
 
