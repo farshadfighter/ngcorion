@@ -130,7 +130,7 @@ def _secpol_value(dump: str, key: str) -> Optional[str]:
     secedit format: key = value (or key = value1,value2)
     """
     section = _section(dump, "SECURITY_POLICY")
-    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=\s*(.+)$", re.M | re.I)
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=[^\S\n]*(.+)$", re.M | re.I)
     m = pattern.search(section)
     if m:
         return m.group(1).strip()
@@ -162,9 +162,9 @@ def _user_right_sids(dump: str, privilege: str) -> List[str]:
     section = _section(dump, "USER_RIGHTS")
     if not section:
         section = _section(dump, "SECURITY_POLICY")
-    pattern = re.compile(rf"^\s*{re.escape(privilege)}\s*=\s*(.+)$", re.M | re.I)
+    pattern = re.compile(rf"^\s*{re.escape(privilege)}\s*=[^\S\n]*(.*?)$", re.M | re.I)
     m = pattern.search(section)
-    if m:
+    if m and m.group(1).strip():
         return [s.strip() for s in m.group(1).split(",") if s.strip()]
     return []
 
@@ -949,7 +949,7 @@ def build_all_windows_cis_rules() -> List[WindowsCISRule]:
         level="L1",
         check_fn=lambda d: (
             _secpol_value(d, "NewAdministratorName") is not None
-            and "administrator" not in _secpol_value(d, "NewAdministratorName").lower().replace('"', '')
+            and _secpol_value(d, "NewAdministratorName").lower().replace('"', '').strip() != "administrator"
         ),
         evidence_fn=lambda d: f"NewAdministratorName = {_secpol_value(d, 'NewAdministratorName')}",
         remediation="Rename the built-in Administrator account to a non-default name.",
@@ -967,7 +967,7 @@ def build_all_windows_cis_rules() -> List[WindowsCISRule]:
         level="L1",
         check_fn=lambda d: (
             _secpol_value(d, "NewGuestName") is not None
-            and "guest" not in _secpol_value(d, "NewGuestName").lower().replace('"', '')
+            and _secpol_value(d, "NewGuestName").lower().replace('"', '').strip() != "guest"
         ),
         evidence_fn=lambda d: f"NewGuestName = {_secpol_value(d, 'NewGuestName')}",
         remediation="Rename the built-in Guest account to a non-default name.",
