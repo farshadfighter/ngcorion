@@ -96,7 +96,7 @@ LoginAuditSpec | SecurityAudit | True | SUCCESSFUL_LOGIN_GROUP | SUCCESS
 (no rows returned)
 ===SECTION:SERVICE_ACCOUNTS===
 SQL Server (MSSQLSERVER) | NT Service\\MSSQLSERVER | Running | Automatic
-SQL Server Agent (MSSQLSERVER) | NT Service\SQLSERVERAGENT | Running | Automatic
+SQL Server Agent (MSSQLSERVER) | NT Service\\SQLSERVERAGENT | Running | Automatic
 ===SECTION:ENDPOINTS===
 TSQL Local Machine | SHARED_MEMORY | STARTED | True
 TSQL Named Pipes | NAMED_PIPES | STARTED | False
@@ -125,7 +125,7 @@ AppDB | LegacyKey | TRIPLE_DES
 ===SECTION:ASYMMETRIC_KEYS===
 AppDB | WeakRSAKey | 1024 | RSA_1024
 ===SECTION:BUILTIN_LOGINS===
-BUILTIN\Administrators | WINDOWS_GROUP | False
+BUILTIN\\Administrators | WINDOWS_GROUP | False
 ===SECTION:AGENT_PROXIES===
 CmdExecProxy | 0x00
 ===SECTION:HIDE_INSTANCE===
@@ -350,7 +350,10 @@ class TestRuleCount:
         # 5.2 — Audit configured (020) + Default trace (040)
         # 5.3 — Audit enabled (021) + Login audit level (041)
         # 7.2 — Port (026) + Asymmetric key (044)
-        known_shared = {"2.10", "3.2", "3.3", "5.2", "5.3", "7.2"}
+        # 4.1 — sysadmin role (016) + MUST_CHANGE (039)
+        # 6.2 — CHECK_EXPIRATION (024) + CLR assembly (042)
+        # 7.1 — TDE (025) + Symmetric keys (043)
+        known_shared = {"2.10", "3.2", "3.3", "4.1", "5.2", "5.3", "6.2", "7.1", "7.2"}
         dupes_filtered = [d for d in set(dupes) if d not in known_shared]
         assert len(dupes_filtered) == 0, f"Unexpected duplicate sections: {dupes_filtered}"
 
@@ -441,7 +444,7 @@ class TestRuleEvaluation2019:
       - UNSAFE CLR assembly (MSSQL-L1-042 FAIL)
       - TRIPLE_DES symmetric key (MSSQL-L1-043 FAIL)
       - 1024-bit asymmetric key (MSSQL-L1-044 FAIL)
-      - BUILTIN\Administrators login (MSSQL-L1-036 FAIL, MSSQL-L1-037 FAIL)
+      - BUILTIN\\Administrators login (MSSQL-L1-036 FAIL, MSSQL-L1-037 FAIL)
       - Agent proxy public access (MSSQL-L1-038 FAIL)
       - Hide instance = 0 (MSSQL-L1-028 FAIL)
       - MUST_CHANGE = 0 (MSSQL-L1-039 FAIL)
@@ -574,7 +577,7 @@ class TestRuleEvaluation2019:
         assert rule_map["MSSQL-L1-036"].check_fn(MOCK_MSSQL_2019_DUMP) is False
 
     def test_037_local_groups_fail(self, rule_map):
-        # Same section as 036, BUILTIN\Administrators triggers this too
+        # Same section as 036, BUILTIN\\Administrators triggers this too
         assert rule_map["MSSQL-L1-037"].check_fn(MOCK_MSSQL_2019_DUMP) is False
 
     def test_038_agent_proxy_fail(self, rule_map):
