@@ -32,6 +32,9 @@ httpx>=0.25.0
 # SQL Server connectivity
 pymssql>=2.2.0
 
+# Windows Server WinRM connectivity
+pywinrm>=0.4.3
+
 #etc
 pydantic[email]
 
