@@ -5,6 +5,7 @@ Handles SSH connections and command execution on Linux servers with sudo support
 Uses netmiko with device_type="linux" for consistent patterns with Cisco/FortiGate.
 
 Supported distributions:
+- Ubuntu 20.04 LTS
 - Ubuntu 22.04 LTS
 - Ubuntu 24.04 LTS
 - Rocky Linux 8 / 9
@@ -306,7 +307,9 @@ class LinuxSSHClient:
         version = distro_info["version_id"]
 
         if distro_id == "ubuntu":
-            if version.startswith("22"):
+            if version.startswith("20"):
+                distro_info["profile"] = "ubuntu_20"
+            elif version.startswith("22"):
                 distro_info["profile"] = "ubuntu_22"
             elif version.startswith("24"):
                 distro_info["profile"] = "ubuntu_24"
