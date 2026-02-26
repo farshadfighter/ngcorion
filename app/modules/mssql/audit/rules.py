@@ -696,10 +696,12 @@ def build_all_mssql_cis_rules() -> List[MSSQLCISRule]:
         ),
         severity="high",
         level="L1",
+        # Columns: name | is_disabled | is_policy_checked | is_expiration_checked | type_desc
+        # Fail if any non-sa login has is_policy_checked (3rd col) = False
         check_fn=lambda d: (
             "QUERY_ERROR" not in _section(d, "SQL_LOGINS")
             and not bool(re.search(
-                r"^(?!sa\s).*\|\s*False\s*\|",
+                r"^(?!sa\s)\S+\s*\|\s*\S+\s*\|\s*False\s*\|",
                 _section(d, "SQL_LOGINS"),
                 re.M | re.I,
             ))
