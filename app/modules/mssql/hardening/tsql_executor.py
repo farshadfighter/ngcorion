@@ -70,6 +70,9 @@ class MSSQLTSQLExecutor:
             result = executor.execute_hardening("MSSQL-L1-010")
     """
 
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2
+
     def __init__(
         self,
         ip: str,
@@ -77,12 +80,14 @@ class MSSQLTSQLExecutor:
         password: str,
         port: int = 1433,
         timeout: int = 30,
+        max_retries: int = 3,
     ):
         self.ip = ip
         self.username = username
         self.password = password
         self.port = port
         self.timeout = timeout
+        self.max_retries = max_retries
         self._conn = None
 
     # ---------------------------------------------------------------- #
@@ -90,7 +95,7 @@ class MSSQLTSQLExecutor:
     # ---------------------------------------------------------------- #
 
     def connect(self) -> None:
-        """Establish connection to SQL Server."""
+        """Establish connection to SQL Server with retry logic."""
         if self._conn:
             return
         try:
@@ -98,28 +103,65 @@ class MSSQLTSQLExecutor:
         except ImportError:
             raise RuntimeError("pymssql is not installed. Run: pip install pymssql")
 
-        logger.info(f"Connecting to SQL Server {self.ip}:{self.port} for hardening")
-        try:
-            self._conn = pymssql.connect(
-                server=self.ip,
-                port=self.port,
-                user=self.username,
-                password=self.password,
-                database="master",
-                login_timeout=self.timeout,
-                timeout=STATEMENT_TIMEOUT,
-                as_dict=False,
-            )
-            logger.info(f"Connected to SQL Server at {self.ip}")
-        except Exception as exc:
-            msg = str(exc).lower()
-            if "login failed" in msg or "authentication" in msg:
-                raise PermissionError(
-                    f"SQL Server authentication failed for {self.ip}: {exc}"
+        last_exception = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.info(
+                    f"Connecting to SQL Server {self.ip}:{self.port} for hardening "
+                    f"(attempt {attempt}/{self.max_retries})"
                 )
-            raise ConnectionError(
-                f"SQL Server connection failed to {self.ip}:{self.port}: {exc}"
-            )
+                self._conn = pymssql.connect(
+                    server=self.ip,
+                    port=self.port,
+                    user=self.username,
+                    password=self.password,
+                    database="master",
+                    login_timeout=self.timeout,
+                    timeout=STATEMENT_TIMEOUT,
+                    as_dict=False,
+                )
+                logger.info(f"Connected to SQL Server at {self.ip}")
+                return
+
+            except pymssql.OperationalError as exc:
+                msg = str(exc).lower()
+                if "login failed" in msg or "authentication" in msg:
+                    raise PermissionError(
+                        f"SQL Server authentication failed for {self.ip}: {exc}"
+                    )
+                last_exception = exc
+                logger.warning(
+                    f"Connection to {self.ip} failed (attempt {attempt}/{self.max_retries}): {exc}"
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+            except OSError as exc:
+                if hasattr(exc, "errno") and exc.errno in (111, 113):
+                    raise ConnectionError(
+                        f"SQL Server connection refused at {self.ip}:{self.port}: {exc}"
+                    )
+                last_exception = exc
+                logger.warning(
+                    f"OS error connecting to {self.ip} (attempt {attempt}/{self.max_retries}): {exc}"
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+            except Exception as exc:
+                last_exception = exc
+                logger.warning(
+                    f"Connection error to {self.ip} (attempt {attempt}/{self.max_retries}): "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+        raise ConnectionError(
+            f"SQL Server connection failed to {self.ip}:{self.port} "
+            f"after {self.max_retries} attempts: {last_exception}"
+        )
 
     def disconnect(self) -> None:
         """Close the SQL Server connection."""
@@ -140,37 +182,76 @@ class MSSQLTSQLExecutor:
         return False
 
     # ---------------------------------------------------------------- #
+    #  Health check                                                      #
+    # ---------------------------------------------------------------- #
+
+    def is_connected(self) -> bool:
+        """Check if the SQL Server connection is alive."""
+        if not self._conn:
+            return False
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchall()
+            return True
+        except Exception:
+            return False
+
+    # ---------------------------------------------------------------- #
     #  Statement execution                                              #
     # ---------------------------------------------------------------- #
+
+    _EXECUTE_MAX_ATTEMPTS = 2
 
     def _execute(self, sql: str) -> str:
         """
         Execute a single T-SQL statement and return output as a formatted string.
 
-        Returns "(no rows)" for DML/DDL statements, or the first result column
-        for SELECT statements.
+        Returns "(ok)" for DML/DDL statements, or the formatted result rows
+        for SELECT statements. Retries once on deadlock or connection-drop errors.
         """
         if not self._conn:
             raise RuntimeError("Not connected to SQL Server")
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute(sql)
+
+        for attempt in range(1, self._EXECUTE_MAX_ATTEMPTS + 1):
             try:
-                rows = cursor.fetchall()
-            except Exception:
-                rows = None
+                cursor = self._conn.cursor()
+                cursor.execute(sql)
+                try:
+                    rows = cursor.fetchall()
+                except Exception:
+                    rows = None
 
-            if not rows:
-                return "(ok)"
+                if not rows:
+                    return "(ok)"
 
-            lines = []
-            for row in rows:
-                lines.append(" | ".join(str(c) if c is not None else "NULL" for c in row))
-            return "\n".join(lines)
+                lines = []
+                for row in rows:
+                    lines.append(" | ".join(str(c) if c is not None else "NULL" for c in row))
+                return "\n".join(lines)
 
-        except Exception as exc:
-            logger.debug(f"Statement failed [{sql[:80]}]: {exc}")
-            raise
+            except Exception as exc:
+                exc_msg = str(exc).lower()
+                is_deadlock = "1205" in exc_msg or "deadlock" in exc_msg
+                is_conn_drop = (
+                    "connection" in exc_msg and ("closed" in exc_msg or "reset" in exc_msg)
+                ) or "adaptive server" in exc_msg
+                retryable = is_deadlock or is_conn_drop
+
+                if retryable and attempt < self._EXECUTE_MAX_ATTEMPTS:
+                    logger.warning(
+                        f"Statement retryable error (attempt {attempt}): {exc}"
+                    )
+                    try:
+                        self.disconnect()
+                        self.connect()
+                    except Exception as reconn_exc:
+                        logger.error(f"Reconnect failed during statement retry: {reconn_exc}")
+                        raise exc from reconn_exc
+                    continue
+
+                logger.debug(f"Statement failed [{sql[:80]}]: {exc}")
+                raise
 
     # ---------------------------------------------------------------- #
     #  Hardening execution                                              #
@@ -306,11 +387,13 @@ class MSSQLHardeningBatchExecutor:
         username: str,
         password: str,
         port: int = 1433,
+        max_retries: int = 3,
     ):
         self.ip = ip
         self.username = username
         self.password = password
         self.port = port
+        self.max_retries = max_retries
 
     def _make_executor(self) -> MSSQLTSQLExecutor:
         return MSSQLTSQLExecutor(
@@ -318,6 +401,7 @@ class MSSQLHardeningBatchExecutor:
             username=self.username,
             password=self.password,
             port=self.port,
+            max_retries=self.max_retries,
         )
 
     def execute_auto_harden(

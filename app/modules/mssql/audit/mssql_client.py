@@ -19,6 +19,7 @@ markers, which rules.py then evaluates using regex patterns.
 
 import re
 import logging
+import time
 from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,8 @@ class MSSQLClient:
     """
 
     QUERY_TIMEOUT = 30
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2
 
     def __init__(
         self,
@@ -65,12 +68,14 @@ class MSSQLClient:
         password: str,
         port: int = 1433,
         timeout: int = 30,
+        max_retries: int = 3,
     ):
         self.ip = ip
         self.port = port
         self.username = username
         self.password = password
         self.timeout = timeout
+        self.max_retries = max_retries
         self._conn = None
 
     # ------------------------------------------------------------------ #
@@ -93,28 +98,65 @@ class MSSQLClient:
                 "pymssql is not installed. Run: pip install pymssql"
             )
 
-        logger.info(f"Connecting to SQL Server at {self.ip}:{self.port}")
-        try:
-            self._conn = pymssql.connect(
-                server=self.ip,
-                port=self.port,
-                user=self.username,
-                password=self.password,
-                database="master",
-                login_timeout=self.timeout,
-                timeout=self.QUERY_TIMEOUT,
-                as_dict=False,
-            )
-            logger.info(f"Connected to SQL Server at {self.ip}")
-        except Exception as exc:
-            msg = str(exc).lower()
-            if "login failed" in msg or "authentication" in msg:
-                raise PermissionError(
-                    f"SQL Server authentication failed for {self.ip}: {exc}"
+        last_exception = None
+
+        for attempt in range(1, self.max_retries + 1):
+            try:
+                logger.info(
+                    f"Connecting to SQL Server at {self.ip}:{self.port} "
+                    f"(attempt {attempt}/{self.max_retries})"
                 )
-            raise ConnectionError(
-                f"SQL Server connection failed to {self.ip}:{self.port}: {exc}"
-            )
+                self._conn = pymssql.connect(
+                    server=self.ip,
+                    port=self.port,
+                    user=self.username,
+                    password=self.password,
+                    database="master",
+                    login_timeout=self.timeout,
+                    timeout=self.QUERY_TIMEOUT,
+                    as_dict=False,
+                )
+                logger.info(f"Connected to SQL Server at {self.ip}")
+                return
+
+            except pymssql.OperationalError as exc:
+                msg = str(exc).lower()
+                if "login failed" in msg or "authentication" in msg:
+                    raise PermissionError(
+                        f"SQL Server authentication failed for {self.ip}: {exc}"
+                    )
+                last_exception = exc
+                logger.warning(
+                    f"Connection to {self.ip} failed (attempt {attempt}/{self.max_retries}): {exc}"
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+            except OSError as exc:
+                if hasattr(exc, "errno") and exc.errno in (111, 113):
+                    raise ConnectionError(
+                        f"SQL Server connection refused at {self.ip}:{self.port}: {exc}"
+                    )
+                last_exception = exc
+                logger.warning(
+                    f"OS error connecting to {self.ip} (attempt {attempt}/{self.max_retries}): {exc}"
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+            except Exception as exc:
+                last_exception = exc
+                logger.warning(
+                    f"Connection error to {self.ip} (attempt {attempt}/{self.max_retries}): "
+                    f"{type(exc).__name__}: {exc}"
+                )
+                if attempt < self.max_retries:
+                    time.sleep(self.RETRY_DELAY)
+
+        raise ConnectionError(
+            f"SQL Server connection failed to {self.ip}:{self.port} "
+            f"after {self.max_retries} attempts: {last_exception}"
+        )
 
     def _disconnect(self):
         if self._conn:
@@ -125,26 +167,71 @@ class MSSQLClient:
             self._conn = None
 
     # ------------------------------------------------------------------ #
+    #  Health check                                                        #
+    # ------------------------------------------------------------------ #
+
+    def is_connected(self) -> bool:
+        """Check if the SQL Server connection is alive."""
+        if not self._conn:
+            return False
+        try:
+            cursor = self._conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchall()
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------ #
     #  Query execution helper                                              #
     # ------------------------------------------------------------------ #
 
+    _QUERY_MAX_ATTEMPTS = 2
+
     def _query(self, sql: str) -> str:
-        """Execute a T-SQL query and return results as a formatted string."""
+        """Execute a T-SQL query and return results as a formatted string.
+
+        Retries once on deadlock (error 1205) or connection-drop errors
+        by reconnecting and re-executing.
+        """
         if not self._conn:
             raise RuntimeError("Not connected to SQL Server")
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            if not rows:
-                return "(no rows returned)"
-            lines = []
-            for row in rows:
-                lines.append(" | ".join(str(c) if c is not None else "NULL" for c in row))
-            return "\n".join(lines)
-        except Exception as exc:
-            logger.debug(f"Query failed [{sql[:80]}...]: {exc}")
-            return f"QUERY_ERROR: {str(exc)[:200]}"
+
+        for attempt in range(1, self._QUERY_MAX_ATTEMPTS + 1):
+            try:
+                cursor = self._conn.cursor()
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+                if not rows:
+                    return "(no rows returned)"
+                lines = []
+                for row in rows:
+                    lines.append(" | ".join(str(c) if c is not None else "NULL" for c in row))
+                return "\n".join(lines)
+            except Exception as exc:
+                exc_msg = str(exc).lower()
+                is_deadlock = "1205" in exc_msg or "deadlock" in exc_msg
+                is_conn_drop = (
+                    "connection" in exc_msg and ("closed" in exc_msg or "reset" in exc_msg)
+                ) or "adaptive server" in exc_msg
+                retryable = is_deadlock or is_conn_drop
+
+                if retryable and attempt < self._QUERY_MAX_ATTEMPTS:
+                    logger.warning(
+                        f"Query retryable error (attempt {attempt}): {exc}"
+                    )
+                    try:
+                        self._disconnect()
+                        self._connect()
+                    except Exception as reconn_exc:
+                        logger.error(f"Reconnect failed during query retry: {reconn_exc}")
+                        return f"QUERY_ERROR: {str(exc)[:200]}"
+                    continue
+
+                logger.debug(f"Query failed [{sql[:80]}...]: {exc}")
+                return f"QUERY_ERROR: {str(exc)[:200]}"
+
+        return "QUERY_ERROR: max retry attempts reached"
 
     # ------------------------------------------------------------------ #
     #  Main data collection                                                #
