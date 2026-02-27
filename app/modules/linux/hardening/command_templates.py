@@ -14,6 +14,7 @@ Each template includes:
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 import copy
+import shlex
 
 
 @dataclass
@@ -1508,7 +1509,7 @@ def get_linux_template_commands_for_distro(
     for cmd in template.commands:
         # Substitute parameters
         for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", str(param_value))
+            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
         commands.append(cmd)
 
     return commands
@@ -1539,7 +1540,7 @@ def get_linux_verify_commands_for_distro(
 
     for cmd in template.verify_commands:
         for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", str(param_value))
+            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
         commands.append(cmd)
 
     return commands
@@ -1566,7 +1567,7 @@ def get_linux_template_commands(check_id: str, parameters: Dict[str, str] = None
     for cmd in template.commands:
         # Substitute parameters
         for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", str(param_value))
+            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
         commands.append(cmd)
 
     return commands
@@ -1583,7 +1584,7 @@ def get_linux_verify_commands(check_id: str, parameters: Dict[str, str] = None) 
 
     for cmd in template.verify_commands:
         for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", str(param_value))
+            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
         commands.append(cmd)
 
     return commands

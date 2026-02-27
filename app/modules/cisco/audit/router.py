@@ -263,10 +263,10 @@ def get_audit_results(
             "check_number": r.check_number,
             "check_title": r.check_title,
             "severity": r.severity,
-            "level": r.level,
+            "level": r.level or "L1",
             "status": r.status.value,
             "evidence_snippet": r.evidence_snippet,
-            "checked_at": r.checked_at.isoformat()
+            "checked_at": r.checked_at.isoformat() if r.checked_at else None
         }
         for r in results
     ]
