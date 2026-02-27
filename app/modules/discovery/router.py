@@ -5,7 +5,7 @@ app/modules/discovery/router.py
 API endpoints for network scanning and asset discovery
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from datetime import datetime, timezone
@@ -18,10 +18,12 @@ from app.models.discovery import DiscoveredHost as DiscoveredHostModel
 from app.modules.users.service import UserService
 
 from .schemas import (
-    ScanRequest, ScanResponse,
+    ScanRequest, ScanResponse, ScanListItem,
     ApplyDiscoveryRequest, ApplyDiscoveryResponse,
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
-    DiscoveredHost as DiscoveredHostSchema, PendingHostsListResponse, PendingHostResponse,
+    DiscoveredHost as DiscoveredHostSchema, DiscoveredPort,
+    PendingHostsListResponse, PendingHostResponse,
+    ApproveHostRequest, BulkApproveRequest,
     AddPortsRequest, OverwritePortsRequest, PortManagementResponse,
     ApplyDiscoveryMode, ApplyDiscoveryModeResponse, DiscoveryPreviewResponse
 )
@@ -73,6 +75,7 @@ def check_discovery_permission(current_user: User, action: str, db: Session):
 @router.post("/scan", response_model=ScanResponse)
 async def start_scan(
     request: ScanRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -96,15 +99,21 @@ async def start_scan(
     - **protocol**: TCP, UDP, or BOTH (default: TCP)
 
     **Returns:**
-    Scan object with `scan_id` and `job_name` to poll for results
+    Scan object with `scan_id` and `job_name` to poll for results.
+    Status will be `pending` — poll `GET /scan/{scan_id}` for progress.
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
     check_discovery_permission(current_user, "write", db)
 
     try:
-        scan = await DiscoveryService.start_scan(db, request, current_user.id)
-        return scan
+        scan_response = DiscoveryService.start_scan(db, request, current_user.id)
+        scan_id = scan_response["scan_id"]
+
+        # Run the actual nmap scan in the background so the HTTP response returns immediately
+        background_tasks.add_task(DiscoveryService.execute_scan, db, scan_id)
+
+        return scan_response
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -130,17 +139,35 @@ async def get_scan_status(
     return scan
 
 
-@router.get("/scans", response_model=List[ScanResponse])
+@router.get("/scans", response_model=List[ScanListItem])
 async def get_all_scans(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all recent scans (last 20)
+    """Get all recent scans (last 100)
+
+    Returns a lightweight list without full host data.
+    Use `GET /scan/{scan_id}` to get full details including hosts.
 
     **Permissions:** Requires read permission for asset_auto_discovery module
     """
     check_discovery_permission(current_user, "read", db)
-    return DiscoveryService.get_all_scans(db)
+    scans = DiscoveryService.get_all_scans(db)
+    return [
+        {
+            "scan_id": scan.scan_id,
+            "job_name": scan.job_name,
+            "target": scan.target,
+            "scan_type": scan.scan_type,
+            "status": scan.status,
+            "started_at": scan.started_at,
+            "completed_at": scan.completed_at,
+            "hosts_up": scan.hosts_up or 0,
+            "hosts_total": scan.hosts_discovered or 0,
+            "error": scan.error_message,
+        }
+        for scan in scans
+    ]
 
 
 @router.post("/scan/{scan_id}/cancel")
@@ -209,6 +236,21 @@ async def get_pending_hosts(
     # Convert to response format
     pending_list = []
     for host in pending_hosts:
+        # Transform raw nmap port dicts to DiscoveredPort schema format
+        raw_ports = host.open_ports or []
+        transformed_ports = [
+            {
+                "port": p.get("port"),
+                "protocol": p.get("protocol", "tcp"),
+                "state": p.get("state", "open"),
+                "service": p.get("service"),
+                "product": p.get("product"),
+                "version": p.get("version"),
+                "ostype": p.get("ostype"),
+            }
+            for p in raw_ports
+        ]
+
         pending_list.append({
             "id": host.id,
             "scan_id": host.scan_id,
@@ -217,8 +259,8 @@ async def get_pending_hosts(
             "hostname": host.hostname,
             "os_info": host.os_info,
             "os_accuracy": host.os_accuracy,
-            "os_guessed": host.os_guessed,  # OS guessed from service detection (-sV)
-            "open_ports": host.open_ports or [],
+            "os_guessed": host.os_guessed,
+            "open_ports": transformed_ports,
             "status": host.status,
             "state": host.state,
             "discovered_at": host.discovered_at,
@@ -338,7 +380,7 @@ async def check_host_matches(
 @router.post("/hosts/{host_id}/approve")
 async def approve_discovered_host(
     host_id: int,
-    request_body: dict,
+    request_body: ApproveHostRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -360,10 +402,10 @@ async def approve_discovered_host(
     if not host:
         raise HTTPException(status_code=404, detail="Discovered host not found")
 
-    # Extract parameters from request body
-    action = request_body.get("action")
-    asset_id = request_body.get("asset_id")
-    asset_data = request_body.get("asset_data")
+    # Extract parameters from validated request body
+    action = request_body.action
+    asset_id = request_body.asset_id
+    asset_data = request_body.asset_data
 
     if action == "merge_with_existing":
         if not asset_id:
@@ -495,7 +537,7 @@ async def reject_discovered_host(
 
 @router.post("/bulk-approve")
 async def bulk_approve_hosts(
-    request_body: dict,
+    request_body: BulkApproveRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -509,16 +551,10 @@ async def bulk_approve_hosts(
 
     check_discovery_permission(current_user, "write", db)
 
-    # Extract parameters from request body
-    host_ids = request_body.get("host_ids", [])
-    default_asset_type_id = request_body.get("default_asset_type_id")
-    default_location_id = request_body.get("default_location_id")
-    default_owner_id = request_body.get("default_owner_id")
-
-    if not host_ids:
-        raise HTTPException(status_code=400, detail="host_ids required")
-    if not default_asset_type_id:
-        raise HTTPException(status_code=400, detail="default_asset_type_id required")
+    host_ids = request_body.host_ids
+    default_asset_type_id = request_body.default_asset_type_id
+    default_location_id = request_body.default_location_id
+    default_owner_id = request_body.default_owner_id
 
     created_assets = []
     errors = []

@@ -48,7 +48,13 @@ class ScanRequest(BaseModel):
         for part in parts:
             if int(part) > 255:
                 raise ValueError('Invalid IP: octet cannot be > 255')
-        
+
+        # Validate CIDR prefix length — reject networks larger than /16 (65K hosts)
+        if '/' in v:
+            prefix = int(v.split('/')[1])
+            if prefix < 16:
+                raise ValueError('CIDR prefix must be /16 or smaller (max ~65K hosts). Received /' + str(prefix))
+
         return v
     
     @field_validator('scan_type')
@@ -151,6 +157,20 @@ class ScanResponse(BaseModel):
     error: Optional[str] = None
 
 
+class ScanListItem(BaseModel):
+    """Lightweight scan item for listing scan history (no full hosts array)"""
+    scan_id: str
+    job_name: Optional[str] = None
+    target: str
+    scan_type: str
+    status: str  # pending, running, completed, failed, cancelled
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    hosts_up: int = 0
+    hosts_total: int = 0
+    error: Optional[str] = None
+
+
 class ScanStatusResponse(BaseModel):
     """Status check response"""
     scan_id: str
@@ -241,7 +261,7 @@ class ApproveHostRequest(BaseModel):
     @field_validator('action')
     @classmethod
     def validate_action(cls, v):
-        allowed = ['create_new', 'merge_with_existing']
+        allowed = ['create_new', 'merge_with_existing', 'skip']
         if v not in allowed:
             raise ValueError(f'action must be one of: {allowed}')
         return v

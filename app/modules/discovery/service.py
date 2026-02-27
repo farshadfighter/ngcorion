@@ -703,6 +703,20 @@ class DiscoveryService:
         # Convert discovered hosts to schema format
         hosts_list = []
         for host in discovered_hosts:
+            # Transform raw nmap port dicts to DiscoveredPort schema format
+            raw_ports = host.open_ports or []
+            transformed_ports = []
+            for p in raw_ports:
+                transformed_ports.append({
+                    "port": p.get("port"),
+                    "protocol": p.get("protocol", "tcp"),
+                    "state": p.get("state", "open"),
+                    "service": p.get("service"),
+                    "product": p.get("product"),
+                    "version": p.get("version"),
+                    "ostype": p.get("ostype"),
+                })
+
             host_dict = {
                 "ip_address": host.ip_address,
                 "hostname": host.hostname,
@@ -712,7 +726,7 @@ class DiscoveryService:
                 "os_version": None,
                 "os_accuracy": host.os_accuracy,
                 "os_guessed": host.os_guessed,  # OS guessed from service detection (-sV)
-                "ports": host.open_ports or [],
+                "ports": transformed_ports,
                 "state": host.state or "unknown"
             }
             hosts_list.append(host_dict)
@@ -785,14 +799,14 @@ class DiscoveryService:
             }
 
     @staticmethod
-    async def start_scan(db: Session, request: ScanRequest, user_id: int) -> Dict[str, Any]:
+    def start_scan(db: Session, request: ScanRequest, user_id: int) -> Dict[str, Any]:
         """
-        Start a new scan (async)
+        Start a new scan — creates the record and returns immediately.
 
-        Creates scan record and executes scan in background
+        The actual nmap execution is run via BackgroundTasks in the router.
 
         Returns:
-            Dict matching ScanResponse schema
+            Dict matching ScanResponse schema (status will be 'pending')
         """
         # Create scan record
         scan = DiscoveryService.create_scan(
@@ -806,18 +820,5 @@ class DiscoveryService:
             version_detection=getattr(request, 'version_detection', False)
         )
 
-        # Execute scan in background (for now, run synchronously)
-        # TODO: Use background task for proper async execution
-        import asyncio
-        from concurrent.futures import ThreadPoolExecutor
-
-        def run_scan():
-            return DiscoveryService.execute_scan(db, scan.scan_id)
-
-        # Run scan in thread pool to avoid blocking
-        with ThreadPoolExecutor() as executor:
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(executor, run_scan)
-
-        # Return scan status
+        # Return the scan status immediately (status = pending)
         return DiscoveryService.get_scan_status(db, scan.scan_id)
