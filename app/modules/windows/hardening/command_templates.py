@@ -523,11 +523,11 @@ for _cid, _subcat, _desc_val, _auditpol_val in _audit_policy_fixes:
         check_id=_cid,
         description=f"Set audit policy '{_subcat}' to '{_desc_val}'",
         statements=[
-            f"auditpol /set /subcategory:\"{_subcat}\" /{_auditpol_val.replace(',', ' /')}"
-            if ',' not in _auditpol_val else
             f"auditpol /set /subcategory:\"{_subcat}\" /success:enable /failure:enable"
             if _auditpol_val == "success,failure" else
             f"auditpol /set /subcategory:\"{_subcat}\" /success:enable"
+            if _auditpol_val == "success" else
+            f"auditpol /set /subcategory:\"{_subcat}\" /failure:enable"
         ],
         verify_statements=[
             f"$r = auditpol /get /subcategory:\"{_subcat}\" /r | ConvertFrom-Csv; "
