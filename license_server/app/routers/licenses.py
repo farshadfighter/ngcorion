@@ -36,7 +36,7 @@ def verify_request_signature(
 
 @router.post("/activate", response_model=schemas.ValidationResponse)
 def activate_license(data: schemas.LicenseActivate, db: Session = Depends(get_db)):
-    """فعال‌سازی لایسنس با VM fingerprint"""
+    """license activision with VM fingerprint"""
     success, message, license = crud.activate_license(db, data.license_key, data.vm_fingerprint)
     
     if not success:
@@ -71,7 +71,7 @@ def validate_license(
     x_timestamp: Optional[str] = Header(None),
     x_signature: Optional[str] = Header(None)
 ):
-    """اعتبارسنجی لایسنس"""
+    """license validation"""
     # Verify signature
     verify_request_signature(x_timestamp, x_signature, data)
     
@@ -105,7 +105,7 @@ def validate_license(
 
 @router.post("/heartbeat", response_model=schemas.HeartbeatResponse)
 def heartbeat(data: schemas.LicenseValidate, db: Session = Depends(get_db)):
-    """چک روزانه - باید هر روز صدا زده شود"""
+    """cheking validation"""
     success, message, should_downgrade = crud.heartbeat(
         db, data.license_key, data.organization_token, data.vm_fingerprint
     )
@@ -126,7 +126,7 @@ def consume_operation(
     x_timestamp: Optional[str] = Header(None),
     x_signature: Optional[str] = Header(None)
 ):
-    """مصرف عملیات (asset, discovery, audit, harden, monitor)"""
+    """(asset, discovery, audit, harden, monitor)"""
     # Verify signature
     verify_request_signature(x_timestamp, x_signature, data)
     
