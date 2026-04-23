@@ -1,4 +1,3 @@
-#TEST
 from sqlalchemy.orm import Session
 from . import models, schemas
 from datetime import datetime, timedelta
@@ -7,18 +6,18 @@ import string
 import hashlib
 
 def generate_license_key() -> str:
-    """تولید کلید لایسنس: XXXX-XXXX-XXXX-XXXX"""
+    """generate license key: XXXX-XXXX-XXXX-XXXX"""
     chars = string.ascii_uppercase + string.digits
     parts = [''.join(secrets.choice(chars) for _ in range(4)) for _ in range(4)]
     return '-'.join(parts)
 
 def generate_organization_token(org_name: str, customer_email: str) -> str:
-    """تولید توکن منحصر به فرد برای سازمان"""
+    """generate unique token for each company"""
     unique_string = f"{org_name}:{customer_email}:{secrets.token_hex(16)}"
     return hashlib.sha256(unique_string.encode()).hexdigest()
 
 def get_plan_limits(plan_type: models.PlanType) -> dict:
-    """محدودیت‌های هر پلن"""
+    """each plan limit"""
     limits = {
         models.PlanType.PILOT: {
             "max_assets": 5,
@@ -101,17 +100,17 @@ def activate_license(db: Session, license_key: str, vm_fingerprint: str) -> tupl
     license = get_license_by_key(db, license_key)
     
     if not license:
-        return False, "کلید لایسنس یافت نشد", None
+        return False, "license key not found", None
     
     if not license.is_active:
-        return False, "لایسنس غیرفعال است", None
+        return False, "license is deactivate", None
     
     if license.expires_at < datetime.now():
-        return False, "لایسنس منقضی شده است", None
+        return False, "license is expierd", None
     
     # چک VM fingerprint - فقط یک ماشین مجاز
     if license.vm_fingerprint and license.vm_fingerprint != vm_fingerprint:
-        return False, "این لایسنس روی ماشین دیگری فعال شده است", None
+        return False, "this license already activate in another VM", None
     
     if not license.vm_fingerprint:
         license.vm_fingerprint = vm_fingerprint
@@ -120,25 +119,25 @@ def activate_license(db: Session, license_key: str, vm_fingerprint: str) -> tupl
         db.commit()
         db.refresh(license)
     
-    return True, "لایسنس با موفقیت فعال شد", license
+    return True, "license activate successfully", license
 
 def validate_license(db: Session, license_key: str, org_token: str, vm_fingerprint: str) -> tuple[bool, str, models.License]:
     license = get_license_by_key(db, license_key)
     
     if not license:
-        return False, "کلید لایسنس یافت نشد", None
+        return False, "license key not found", None
     
     if license.organization_token != org_token:
-        return False, "توکن سازمان نامعتبر است", None
+        return False, "company token is invalid", None
     
     if not license.is_active:
-        return False, "لایسنس غیرفعال است", None
+        return False, "license is deactive", None
     
     if license.expires_at < datetime.now():
-        return False, "لایسنس منقضی شده است", None
+        return False, "license has expierd", None
     
     if license.vm_fingerprint != vm_fingerprint:
-        return False, "VM fingerprint مطابقت ندارد", None
+        return False, "VM fingerprint is not match", None
     
     # چک heartbeat - اگر بیش از 48 ساعت قطع بود
     if license.last_heartbeat_at:
@@ -152,17 +151,17 @@ def validate_license(db: Session, license_key: str, org_token: str, vm_fingerpri
     db.commit()
     db.refresh(license)
     
-    return True, "لایسنس معتبر است", license
+    return True, "invalid license", license
 
 def heartbeat(db: Session, license_key: str, org_token: str, vm_fingerprint: str) -> tuple[bool, str, bool]:
     """چک روزانه - باید هر روز صدا زده شود"""
     license = get_license_by_key(db, license_key)
     
     if not license:
-        return False, "کلید لایسنس یافت نشد", False
+        return False, "license key has not found", False
     
     if license.organization_token != org_token or license.vm_fingerprint != vm_fingerprint:
-        return False, "اطلاعات احراز هویت نامعتبر است", False
+        return False, "faild to authintication", False
     
     # چک آیا باید downgrade شود
     should_downgrade = False
@@ -176,10 +175,10 @@ def heartbeat(db: Session, license_key: str, org_token: str, vm_fingerprint: str
     db.commit()
     db.refresh(license)
     
-    return True, "Heartbeat ثبت شد", should_downgrade
+    return True, "Heartbeat is ok", should_downgrade
 
 def downgrade_to_pilot(db: Session, license: models.License):
-    """تبدیل لایسنس به حالت Pilot"""
+    """convert license to Pilot"""
     pilot_limits = get_plan_limits(models.PlanType.PILOT)
     
     license.is_pilot_mode = True
@@ -210,7 +209,7 @@ def consume_operation(db: Session, license_key: str, org_token: str, vm_fingerpr
     }
     
     if operation_type not in operation_map:
-        return False, "نوع عملیات نامعتبر است", None
+        return False, "Operation is invalid", None
     
     max_field, used_field = operation_map[operation_type]
     max_value = getattr(license, max_field)
@@ -219,13 +218,13 @@ def consume_operation(db: Session, license_key: str, org_token: str, vm_fingerpr
     # چک محدودیت (None = نامحدود)
     if max_value is not None:
         if used_value + count > max_value:
-            return False, f"محدودیت {operation_type} به پایان رسیده است", license
+            return False, f"limit {operation_type} has expierd", license
         
         setattr(license, used_field, used_value + count)
         db.commit()
         db.refresh(license)
     
-    return True, "عملیات با موفقیت ثبت شد", license
+    return True, "operation successfully", license
 
 def get_all_licenses(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.License).offset(skip).limit(limit).all()
