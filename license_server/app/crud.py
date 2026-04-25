@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import secrets
 import string
 import hashlib
@@ -67,7 +67,7 @@ def create_license(db: Session, license_data: schemas.LicenseCreate) -> models.L
     org_token = generate_organization_token(license_data.organization_name, license_data.customer_email)
     
     limits = get_plan_limits(license_data.plan_type)
-    expires_at = datetime.now() + timedelta(days=limits["duration_days"])
+    expires_at = datetime.now(timezone.utc) + timedelta(days=limits["duration_days"])
     
     db_license = models.License(
         license_key=license_key,
@@ -105,7 +105,7 @@ def activate_license(db: Session, license_key: str, vm_fingerprint: str) -> tupl
     if not license.is_active:
         return False, "license is deactivate", None
     
-    if license.expires_at < datetime.now():
+    if license.expires_at < datetime.now(timezone.utc):
         return False, "license is expierd", None
     
     # چک VM fingerprint - فقط یک ماشین مجاز
@@ -114,8 +114,8 @@ def activate_license(db: Session, license_key: str, vm_fingerprint: str) -> tupl
     
     if not license.vm_fingerprint:
         license.vm_fingerprint = vm_fingerprint
-        license.activated_at = datetime.now()
-        license.last_heartbeat_at = datetime.now()
+        license.activated_at = datetime.now(timezone.utc)
+        license.last_heartbeat_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(license)
     
@@ -133,7 +133,7 @@ def validate_license(db: Session, license_key: str, org_token: str, vm_fingerpri
     if not license.is_active:
         return False, "license is deactive", None
     
-    if license.expires_at < datetime.now():
+    if license.expires_at < datetime.now(timezone.utc):
         return False, "license has expierd", None
     
     if license.vm_fingerprint != vm_fingerprint:
@@ -141,13 +141,13 @@ def validate_license(db: Session, license_key: str, org_token: str, vm_fingerpri
     
     # چک heartbeat - اگر بیش از 48 ساعت قطع بود
     if license.last_heartbeat_at:
-        time_since_last = datetime.now() - license.last_heartbeat_at
+        time_since_last = datetime.now(timezone.utc) - license.last_heartbeat_at
         if time_since_last > timedelta(hours=48):
             # تبدیل به Pilot
             downgrade_to_pilot(db, license)
             return False, "لایسنس به دلیل قطع ارتباط به حالت Pilot تبدیل شد", license
     
-    license.last_validated_at = datetime.now()
+    license.last_validated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(license)
     
@@ -166,12 +166,12 @@ def heartbeat(db: Session, license_key: str, org_token: str, vm_fingerprint: str
     # چک آیا باید downgrade شود
     should_downgrade = False
     if license.last_heartbeat_at:
-        time_since_last = datetime.now() - license.last_heartbeat_at
+        time_since_last = datetime.now(timezone.utc) - license.last_heartbeat_at
         if time_since_last > timedelta(hours=48):
             downgrade_to_pilot(db, license)
             should_downgrade = True
     
-    license.last_heartbeat_at = datetime.now()
+    license.last_heartbeat_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(license)
     

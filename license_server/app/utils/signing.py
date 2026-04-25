@@ -1,7 +1,7 @@
 import hmac
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 def generate_signature(data: dict, secret: str, timestamp: str) -> str:
     """Generate HMAC-SHA256 signature for request data"""
@@ -26,7 +26,7 @@ def verify_signature(
     # Check timestamp freshness
     try:
         request_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         age = (current_time - request_time).total_seconds()
         
         if abs(age) > max_age_seconds:
