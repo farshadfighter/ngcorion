@@ -5,6 +5,7 @@ from .routers import licenses, admin
 from .middleware.logging import LoggingMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .core.config import settings
+from .utils.fingerprint import get_vm_fingerprint
 
 Base.metadata.create_all(bind=engine)
 
@@ -36,3 +37,9 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+@app.get("/api/fingerprint")
+def get_fingerprint():
+    """Get VM fingerprint for this machine"""
+    fingerprint = get_vm_fingerprint()
+    return {"fingerprint": fingerprint}
