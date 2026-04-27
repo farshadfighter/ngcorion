@@ -7,12 +7,18 @@ import api from "../config/api.js";
 
 /**
  * Maps device type to API path
- * Linux variants (linux-ubuntu-22.04, linux-ubuntu-24.04, linux-rocky-8) → 'linux'
+ * Linux variants → 'linux'
+ * MongoDB        → 'mongodb'
+ * MSSQL variants → 'mssql'
+ * Windows variants → 'windows'
  * Others (cisco, fortinet, apache) → same as device type
  */
 const getDeviceApiPath = (deviceType) => {
-    if (!deviceType) return 'cisco'; // Default fallback
-    if (deviceType.startsWith('linux-')) return 'linux';
+    if (!deviceType) return 'cisco';
+    if (deviceType.startsWith('linux-'))   return 'linux';
+    if (deviceType.startsWith('mssql-'))   return 'mssql';
+    if (deviceType.startsWith('windows-')) return 'windows';
+    if (deviceType === 'mongodb')          return 'mongodb';
     return deviceType; // cisco, fortinet, apache
 };
 
@@ -30,20 +36,33 @@ export const executeAudit = createAsyncThunk(
 
             const payload = {
                 asset_id: formData.asset_id,
-                ssh_username: formData.ssh_username,
-                ssh_password: formData.ssh_password,
                 profile: "L1"
             };
 
-            // ✅ اضافه کردن job_name (optional)
-            if (formData.job_name) {
-                payload.job_name = formData.job_name;
-            }
+            if (formData.job_name) payload.job_name = formData.job_name;
 
-            // Add device-specific fields
-            if (formData.ssh_secret) payload.ssh_secret = formData.ssh_secret;
-            if (formData.vdom) payload.vdom = formData.vdom;
+            // SSH-based devices
+            if (formData.ssh_username) payload.ssh_username = formData.ssh_username;
+            if (formData.ssh_password) payload.ssh_password = formData.ssh_password;
+            if (formData.ssh_secret)   payload.ssh_secret   = formData.ssh_secret;
+            if (formData.vdom)         payload.vdom         = formData.vdom;
             if (formData.sudo_password) payload.sudo_password = formData.sudo_password;
+
+            // MongoDB extra
+            if (formData.mongo_username) payload.mongo_username = formData.mongo_username;
+            if (formData.mongo_password) payload.mongo_password = formData.mongo_password;
+            if (formData.mongo_port)     payload.mongo_port     = parseInt(formData.mongo_port);
+
+            // MSSQL
+            if (formData.mssql_username) payload.mssql_username = formData.mssql_username;
+            if (formData.mssql_password) payload.mssql_password = formData.mssql_password;
+            if (formData.mssql_port)     payload.mssql_port     = parseInt(formData.mssql_port);
+
+            // Windows
+            if (formData.windows_username) payload.windows_username = formData.windows_username;
+            if (formData.windows_password) payload.windows_password = formData.windows_password;
+            if (formData.winrm_port)       payload.winrm_port       = parseInt(formData.winrm_port);
+            if (formData.transport)        payload.transport        = formData.transport;
 
             const res = await api.post(endpoint, payload);
             return res.data;
@@ -55,15 +74,37 @@ export const executeAudit = createAsyncThunk(
     }
 );
 
-// Fetch all audit sessions (for main list)
+// Fetch all audit sessions (for main list) - from all 7 families in parallel
 export const fetchAuditSessions = createAsyncThunk(
     "audit/fetchSessions",
     async ({ limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
         try {
-            const res = await api.get("/api/audit/sessions", {
-                params: { limit, offset }
+            const families = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows"];
+
+            const results = await Promise.allSettled(
+                families.map((family) =>
+                    api.get(`/api/audit/${family}/sessions`, {
+                        params: { limit, offset }
+                    })
+                )
+            );
+
+            const allSessions = [];
+            results.forEach((result, idx) => {
+                if (result.status === "fulfilled") {
+                    const data = result.value.data;
+                    if (Array.isArray(data)) {
+                        allSessions.push(...data);
+                    }
+                } else {
+                    console.warn(
+                        `Failed to fetch ${families[idx]} sessions:`,
+                        result.reason?.message
+                    );
+                }
             });
-            return res.data;
+
+            return allSessions;
         } catch (err) {
             return rejectWithValue(
                 err.response?.data?.detail || "Failed to fetch audit sessions"
@@ -255,7 +296,6 @@ const auditSlice = createSlice({
             // Check status (polling)
             .addCase(checkAuditStatus.fulfilled, (state, action) => {
                 state.currentSession = action.payload;
-                // If completed or failed, stop polling
                 if (action.payload.status === "completed" || action.payload.status === "failed") {
                     state.pollingActive = false;
                 }

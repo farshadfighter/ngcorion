@@ -1,16 +1,17 @@
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { useNavigate } from "react-router-dom";
-import { useState ,useEffect} from "react";
+import { useState, useEffect } from "react";
 import { UserManagement } from "./UserManagement/UserManagement";
 import { AssetList } from "./AssetList/AssetList";
 import { AssetRequirement } from "./AssetRequirement/AssetRequirement";
 import AutoDiscovery from "./AutoDiscovery/AutoDiscovery";
 import { AuditingList } from "./Auditing/AuditingList";
 import { HardeningMain } from "./Hardening/HardeningMain";
+import { License } from "./License/License";
 
 export const Dashboard = () => {
-    const { username,role } = useSelector((state) => state.auth);
+    const { username, role } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [activeMenu, setActiveMenu] = useState("dashboard");
@@ -22,7 +23,6 @@ export const Dashboard = () => {
         navigate("/");
     };
 
-    // Navigation callback for Hardening → Auditing
     const handleNavigateToAuditing = () => {
         setActiveMenu("operation-device");
     };
@@ -31,7 +31,6 @@ export const Dashboard = () => {
         const timer = setInterval(() => {
             setCurrentTime(new Date());
         }, 1000);
-
         return () => clearInterval(timer);
     }, []);
 
@@ -159,6 +158,16 @@ export const Dashboard = () => {
                         {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
                         {!isSidebarCollapsed && <span>Logs</span>}
                     </div>
+
+                    {/* Licence */}
+                    <div
+                        className={`nav-item ${activeMenu === "licence" ? "active" : ""}`}
+                        onClick={() => setActiveMenu("licence")}
+                        title="Licence"
+                    >
+                        <span>🪪</span>
+                        {!isSidebarCollapsed && <span>Licence</span>}
+                    </div>
                 </nav>
 
                 <div className="sidebar-footer">
@@ -199,19 +208,19 @@ export const Dashboard = () => {
                         {activeMenu === "operation-device" && "Operation and Device"}
                         {activeMenu === "hardening" && "Hardening"}
                         {activeMenu === "logs" && "Logs"}
+                        {activeMenu === "licence" && "Licence"}
                     </h1>
                     <div className="header-right">
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
                             <div className="current-time">
-                                <img src={"/icons/watch.png"} style={{width:"15px", height:"15px",margin:"15px 8px -1px 1px"}} alt={"logo"} />
+                                <img src={"/icons/watch.png"} style={{ width: "15px", height: "15px", margin: "15px 8px -1px 1px" }} alt={"logo"} />
                                 {currentTimeString}
                             </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Conditional Content Based on Active Menu */}
                 {activeMenu === "dashboard" && (
                     <div className="dashboard-cards">
                         <div className="stat-card">
@@ -220,21 +229,18 @@ export const Dashboard = () => {
                             <div className="card-title">Total Assets</div>
                             <div className="card-description">Number of all assets in the system</div>
                         </div>
-
                         <div className="stat-card">
                             <div className="card-icon">✅</div>
                             <div className="card-number">1</div>
                             <div className="card-title">Active Assets</div>
                             <div className="card-description">Assets currently active and operational</div>
                         </div>
-
                         <div className="stat-card">
                             <div className="card-icon">⚠️</div>
                             <div className="card-number">0</div>
                             <div className="card-title">Pending Issues</div>
                             <div className="card-description">Issues awaiting resolution</div>
                         </div>
-
                         <div className="stat-card">
                             <div className="card-icon">👥</div>
                             <div className="card-number">1</div>
@@ -245,32 +251,26 @@ export const Dashboard = () => {
                 )}
 
                 {activeMenu === "user-management" && <UserManagement />}
-
                 {activeMenu === "asset-list" && <AssetList />}
-
                 {activeMenu === "asset-requirement" && <AssetRequirement />}
-
                 {activeMenu === "auto-discovery" && <AutoDiscovery />}
-
                 {activeMenu === "operation-device" && <AuditingList />}
-
                 {activeMenu === "auditing" && (
                     <div className="placeholder-content">
                         <h3>Auditing</h3>
                         <p>Coming soon...</p>
                     </div>
                 )}
-
                 {activeMenu === "hardening" && (
                     <HardeningMain onNavigateToAuditing={handleNavigateToAuditing} />
                 )}
-
                 {activeMenu === "logs" && (
                     <div className="placeholder-content">
                         <h3>Logs</h3>
                         <p>Coming soon...</p>
                     </div>
                 )}
+                {activeMenu === "licence" && <License />}
             </main>
         </div>
     );

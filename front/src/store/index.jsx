@@ -6,6 +6,7 @@ import requirementReducer from "./requirementSlice";
 import discoveryReducer from "./discoverySlice";
 import auditReducer from "./auditSlice";
 import hardeningReducer from "./hardeningSlice";
+import licenseReducer from "./licenseSlice";
 
 export const store = configureStore({
     reducer: {
@@ -16,5 +17,6 @@ export const store = configureStore({
         discovery: discoveryReducer,
         audit: auditReducer,
         hardening: hardeningReducer,
+        license: licenseReducer,
     },
 });

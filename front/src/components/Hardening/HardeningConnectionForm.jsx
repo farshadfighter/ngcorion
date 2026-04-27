@@ -3,77 +3,137 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
 import { executeAuditWithDevice } from "../../store/hardeningSlice";
 
+// ─── Device type list shown in the dropdown ───────────────────────────────────
+// value must match the keys in DEVICE_API_PATH_MAP inside hardeningSlice.js
+const DEVICE_TYPES = [
+    // ── Cisco ──────────────────────────────────────────────────────────────────
+    { value: "cisco",          label: "Cisco Router/Switch",         group: "Network" },
+
+    // ── Fortinet ───────────────────────────────────────────────────────────────
+    { value: "fortinet",       label: "FortiGate Firewall",          group: "Network" },
+
+    // ── Apache ─────────────────────────────────────────────────────────────────
+    { value: "apache",         label: "Apache Web Server",           group: "Web Server" },
+
+    // ── MongoDB ────────────────────────────────────────────────────────────────
+    { value: "mongodb",        label: "MongoDB",                     group: "Database" },
+
+    // ── SQL Server ─────────────────────────────────────────────────────────────
+    { value: "mssql-2016",     label: "SQL Server 2016",             group: "Database" },
+    { value: "mssql-2019",     label: "SQL Server 2019",             group: "Database" },
+    { value: "mssql-2022",     label: "SQL Server 2022",             group: "Database" },
+
+    // ── Windows Server ─────────────────────────────────────────────────────────
+    { value: "windows-2016",   label: "Windows Server 2016",         group: "Windows" },
+    { value: "windows-2022",   label: "Windows Server 2022",         group: "Windows" },
+    { value: "windows-2025",   label: "Windows Server 2025",         group: "Windows" },
+
+    // ── Ubuntu ─────────────────────────────────────────────────────────────────
+    { value: "linux-ubuntu-24",label: "Linux – Ubuntu 24.04 LTS",   group: "Linux" },
+    { value: "linux-ubuntu-22",label: "Linux – Ubuntu 22.04 LTS",   group: "Linux" },
+    { value: "linux-ubuntu-20",label: "Linux – Ubuntu 20.04 LTS",   group: "Linux" },
+
+    // ── Red Hat ────────────────────────────────────────────────────────────────
+    { value: "linux-redhat-10",label: "Linux – Red Hat 10",         group: "Linux" },
+    { value: "linux-redhat-9", label: "Linux – Red Hat 9",          group: "Linux" },
+    { value: "linux-redhat-8", label: "Linux – Red Hat 8",          group: "Linux" },
+
+    // ── Rocky ──────────────────────────────────────────────────────────────────
+    { value: "linux-rocky-10", label: "Linux – Rocky Linux 10",     group: "Linux" },
+    { value: "linux-rocky-9",  label: "Linux – Rocky Linux 9",      group: "Linux" },
+    { value: "linux-rocky-8",  label: "Linux – Rocky Linux 8",      group: "Linux" },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const isLinux   = (dt) => dt?.startsWith("linux-");
+const isCisco   = (dt) => dt === "cisco";
+const isFortinet= (dt) => dt === "fortinet";
+const isApache  = (dt) => dt === "apache";
+const isMongo   = (dt) => dt === "mongodb";
+const isMssql   = (dt) => dt?.startsWith("mssql-");
+const isWindows = (dt) => dt?.startsWith("windows-");
+
+const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+const needsVdom  = (dt) => isFortinet(dt);
+const needsSecret= (dt) => isCisco(dt);
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     const dispatch = useDispatch();
-    const { assets } = useSelector((state) => state.assets);
+    const { assets }    = useSelector((state) => state.assets);
     const { isLoading } = useSelector((state) => state.hardening);
 
     const [formData, setFormData] = useState({
-        device_type: "cisco",
-        asset_id: "",
-        job_name: "", // ✅ اضافه شد
-        ssh_username: "",
-        ssh_password: "",
-        ssh_secret: "",
-        vdom: "",
-        sudo_password: "",
+        device_type:      "cisco",
+        asset_id:         "",
+        job_name:         "",
+        // SSH-based
+        ssh_username:     "",
+        ssh_password:     "",
+        ssh_secret:       "",    // Cisco
+        vdom:             "",    // Fortinet
+        sudo_password:    "",    // Linux / Apache / MongoDB
+        // MongoDB extra
+        mongo_username:   "",
+        mongo_password:   "",
+        mongo_port:       "27017",
+        // MSSQL
+        mssql_username:   "",
+        mssql_password:   "",
+        mssql_port:       "1433",
+        // Windows
+        windows_username: "",
+        windows_password: "",
+        winrm_port:       "5986",
+        transport:        "ntlm",
     });
 
     const [errors, setErrors] = useState({});
-
-    // Device Types - 6 total
-    const deviceTypes = [
-        { value: "cisco", label: "Cisco Router/Switch" },
-        { value: "fortinet", label: "FortiGate Firewall" },
-        { value: "linux-ubuntu-22.04", label: "Linux - Ubuntu 22.04 LTS" },
-        { value: "linux-ubuntu-24.04", label: "Linux - Ubuntu 24.04 LTS" },
-        { value: "linux-rocky-8", label: "Linux - Rocky Linux 8" },
-        { value: "apache", label: "Apache Web Server" },
-    ];
 
     useEffect(() => {
         dispatch(fetchAssets());
     }, [dispatch]);
 
+    const dt = formData.device_type;
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-
         if (errors[name]) {
-            setErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors[name];
-                return newErrors;
-            });
+            setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
     };
 
     const validate = () => {
-        const newErrors = {};
+        const errs = {};
 
         if (!formData.asset_id) {
-            newErrors.asset_id = "Please select an asset";
+            errs.asset_id = "Please select an asset";
         }
         if (!formData.job_name || formData.job_name.trim().length < 2) {
-            newErrors.job_name = "Job name must be at least 2 characters";
-        }
-        if (!formData.ssh_username || formData.ssh_username.trim().length < 1) {
-            newErrors.ssh_username = "Username is required";
-        }
-        if (!formData.ssh_password || formData.ssh_password.trim().length < 1) {
-            newErrors.ssh_password = "Password is required";
+            errs.job_name = "Job name must be at least 2 characters";
         }
 
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        if (isWindows(dt)) {
+            if (!formData.windows_username?.trim()) errs.windows_username = "Username is required";
+            if (!formData.windows_password?.trim()) errs.windows_password = "Password is required";
+        } else if (isMssql(dt)) {
+            if (!formData.mssql_username?.trim()) errs.mssql_username = "Username is required";
+            if (!formData.mssql_password?.trim()) errs.mssql_password = "Password is required";
+        } else {
+            if (!formData.ssh_username?.trim()) errs.ssh_username = "Username is required";
+            if (!formData.ssh_password?.trim()) errs.ssh_password = "Password is required";
+        }
+
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!validate()) {
-            return;
-        }
+        if (!validate()) return;
 
         const assetId = parseInt(formData.asset_id);
         if (isNaN(assetId)) {
@@ -81,63 +141,77 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             return;
         }
 
-        // Prepare credentials
-        const credentials = {
-            ssh_username: formData.ssh_username,
-            ssh_password: formData.ssh_password,
-        };
+        // Build credentials based on device type
+        let credentials = {};
 
-        // Add device-specific credentials
-        if (formData.device_type === "cisco" && formData.ssh_secret) {
-            credentials.ssh_secret = formData.ssh_secret;
-        }
-        if (formData.device_type === "fortinet" && formData.vdom) {
-            credentials.vdom = formData.vdom;
-        }
-        if ((formData.device_type.startsWith("linux-") || formData.device_type === "apache") && formData.sudo_password) {
-            credentials.sudo_password = formData.sudo_password;
+        if (isWindows(dt)) {
+            credentials = {
+                windows_username: formData.windows_username,
+                windows_password: formData.windows_password,
+                winrm_port:       parseInt(formData.winrm_port) || 5986,
+                transport:        formData.transport || "ntlm",
+            };
+        } else if (isMssql(dt)) {
+            credentials = {
+                mssql_username: formData.mssql_username,
+                mssql_password: formData.mssql_password,
+                mssql_port:     parseInt(formData.mssql_port) || 1433,
+            };
+        } else {
+            credentials = {
+                ssh_username: formData.ssh_username,
+                ssh_password: formData.ssh_password,
+                ...(isCisco(dt) && formData.ssh_secret && { ssh_secret: formData.ssh_secret }),
+                ...(isFortinet(dt) && formData.vdom    && { vdom:       formData.vdom }),
+                ...(needsSudo(dt)  && formData.sudo_password && { sudo_password: formData.sudo_password }),
+                ...(isMongo(dt)    && formData.mongo_username && { mongo_username: formData.mongo_username }),
+                ...(isMongo(dt)    && formData.mongo_password && { mongo_password: formData.mongo_password }),
+                ...(isMongo(dt)    && { mongo_port: parseInt(formData.mongo_port) || 27017 }),
+            };
         }
 
-        // ✅ Immediately go to step 2 with temp data
-        const selectedAsset = assets.find(a => a.id === assetId);
+        // Optimistically advance the wizard with temp data
+        const selectedAsset = assets.find((a) => a.id === assetId);
         const tempSessionData = {
-            session_id: "pending",
-            asset_name: selectedAsset?.asset_name || "N/A",
-            target_ip: selectedAsset?.ip_address || "N/A",
-            device_type: formData.device_type,
-            status: "pending"
+            session_id:  "pending",
+            asset_name:  selectedAsset?.asset_name || "N/A",
+            target_ip:   selectedAsset?.ip_address || "N/A",
+            device_type: dt,
+            status:      "pending",
         };
-
         onSubmit(tempSessionData);
 
-        // ✅ THEN dispatch API call in background
+        // Dispatch API call in background
         try {
             const result = await dispatch(
                 executeAuditWithDevice({
-                    deviceType: formData.device_type,
+                    deviceType: dt,
                     assetId,
                     credentials,
-                    jobName: formData.job_name // ✅ اضافه شد
+                    jobName: formData.job_name,
                 })
             ).unwrap();
 
-            // Update with real session data
             onSubmit(result);
         } catch (err) {
-            const errorMessage = err?.message || err?.toString() || "Failed to create hardening session";
-            setErrors({ submit: errorMessage });
+            const msg = err?.message || err?.toString() || "Failed to create hardening session";
+            setErrors({ submit: msg });
         }
     };
+
+    // Group devices for optgroup rendering
+    const groups = [...new Set(DEVICE_TYPES.map((d) => d.group))];
 
     return (
         <div className="auditing-form-container">
             <form onSubmit={handleSubmit} className="auditing-form">
                 <div className="form-grid-two-column">
-                    {/* Device Type Selector - First Field */}
+
+                    {/* ── Device Type ──────────────────────────────────────── */}
                     <div className="form-group form-group-full">
                         <label>
                             Device Type
-                            <span className="required" style={{color: '#ef4444'}}>*</span>
+                            <span className="required" style={{ color: "#ef4444" }}>*</span>
                         </label>
                         <select
                             name="device_type"
@@ -145,10 +219,14 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                             onChange={handleChange}
                             className={errors.device_type ? "error" : ""}
                         >
-                            {deviceTypes.map((type) => (
-                                <option key={type.value} value={type.value}>
-                                    {type.label}
-                                </option>
+                            {groups.map((group) => (
+                                <optgroup key={group} label={group}>
+                                    {DEVICE_TYPES.filter((d) => d.group === group).map((d) => (
+                                        <option key={d.value} value={d.value}>
+                                            {d.label}
+                                        </option>
+                                    ))}
+                                </optgroup>
                             ))}
                         </select>
                         {errors.device_type && (
@@ -156,28 +234,36 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                         )}
                     </div>
 
-                    {/* Select Asset */}
+                    {/* ── Asset ────────────────────────────────────────────── */}
                     <div className="form-group">
-                        <label>Select Asset <span className="required" style={{color: '#ef4444'}}>*</span></label>
+                        <label>
+                            Select Asset
+                            <span className="required" style={{ color: "#ef4444" }}>*</span>
+                        </label>
                         <select
                             name="asset_id"
                             value={formData.asset_id}
                             onChange={handleChange}
                             className={errors.asset_id ? "error" : ""}
                         >
-                            <option value="">select</option>
-                            {assets && assets.map((asset) => (
+                            <option value="">Select</option>
+                            {assets?.map((asset) => (
                                 <option key={asset.id} value={asset.id}>
                                     {asset.asset_name} ({asset.ip_address || "No IP"})
                                 </option>
                             ))}
                         </select>
-                        {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
+                        {errors.asset_id && (
+                            <span className="error-message">{errors.asset_id}</span>
+                        )}
                     </div>
 
-                    {/* Job Name */}
+                    {/* ── Job Name ─────────────────────────────────────────── */}
                     <div className="form-group">
-                        <label>Job Name <span className="required" style={{color: '#ef4444'}}>*</span></label>
+                        <label>
+                            Job Name
+                            <span className="required" style={{ color: "#ef4444" }}>*</span>
+                        </label>
                         <input
                             type="text"
                             name="job_name"
@@ -186,133 +272,276 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                             className={errors.job_name ? "error" : ""}
                             placeholder="Enter job name"
                         />
-                        {errors.job_name && <span className="error-message">{errors.job_name}</span>}
+                        {errors.job_name && (
+                            <span className="error-message">{errors.job_name}</span>
+                        )}
                     </div>
 
-                    {/* SSH Username */}
-                    <div className="form-group">
-                        <label>UserName <span className="required" style={{color: '#ef4444'}}>*</span></label>
-                        <input
-                            type="text"
-                            name="ssh_username"
-                            value={formData.ssh_username}
-                            onChange={handleChange}
-                            className={errors.ssh_username ? "error" : ""}
-                            placeholder="Enter SSH username"
-                            autoComplete="username"
-                        />
-                        {errors.ssh_username && <span className="error-message">{errors.ssh_username}</span>}
-                    </div>
+                    {/* ══════════════════════════════════════════════════════
+                        SSH-based credentials (Linux, Cisco, Fortinet, Apache, MongoDB)
+                    ══════════════════════════════════════════════════════ */}
+                    {!isWindows(dt) && !isMssql(dt) && (
+                        <>
+                            {/* Username */}
+                            <div className="form-group">
+                                <label>
+                                    SSH Username
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="ssh_username"
+                                    value={formData.ssh_username}
+                                    onChange={handleChange}
+                                    className={errors.ssh_username ? "error" : ""}
+                                    placeholder="Enter SSH username"
+                                    autoComplete="username"
+                                />
+                                {errors.ssh_username && (
+                                    <span className="error-message">{errors.ssh_username}</span>
+                                )}
+                            </div>
 
-                    {/* CISCO ONLY: Enable Password */}
-                    {formData.device_type === "cisco" && (
-                        <div className="form-group">
-                            <label>Enable Password</label>
-                            <input
-                                type="password"
-                                name="ssh_secret"
-                                value={formData.ssh_secret}
-                                onChange={handleChange}
-                                placeholder="Enter enable password (optional)"
-                                autoComplete="off"
-                            />
-                            <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280',
-                                display: 'block',
-                                marginTop: '4px'
-                            }}>
-                                Required for privileged commands
-                            </span>
-                        </div>
+                            {/* Cisco: Enable Secret */}
+                            {isCisco(dt) && (
+                                <div className="form-group">
+                                    <label>Enable Password</label>
+                                    <input
+                                        type="password"
+                                        name="ssh_secret"
+                                        value={formData.ssh_secret}
+                                        onChange={handleChange}
+                                        placeholder="Enable password (optional)"
+                                        autoComplete="off"
+                                    />
+                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
+                                        Required for privileged commands
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Fortinet: VDOM */}
+                            {isFortinet(dt) && (
+                                <div className="form-group">
+                                    <label>VDOM</label>
+                                    <input
+                                        type="text"
+                                        name="vdom"
+                                        value={formData.vdom}
+                                        onChange={handleChange}
+                                        placeholder="Virtual Domain (optional, default: root)"
+                                        autoComplete="off"
+                                    />
+                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
+                                        Leave empty for default VDOM
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Linux / Apache / MongoDB: Sudo Password */}
+                            {needsSudo(dt) && (
+                                <div className="form-group">
+                                    <label>Sudo Password</label>
+                                    <input
+                                        type="password"
+                                        name="sudo_password"
+                                        value={formData.sudo_password}
+                                        onChange={handleChange}
+                                        placeholder="Sudo password (optional)"
+                                        autoComplete="off"
+                                    />
+                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
+                                        Defaults to SSH password if left empty
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* MongoDB: extra DB credentials */}
+                            {isMongo(dt) && (
+                                <>
+                                    <div className="form-group">
+                                        <label>MongoDB Username</label>
+                                        <input
+                                            type="text"
+                                            name="mongo_username"
+                                            value={formData.mongo_username}
+                                            onChange={handleChange}
+                                            placeholder="admin (optional)"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>MongoDB Password</label>
+                                        <input
+                                            type="password"
+                                            name="mongo_password"
+                                            value={formData.mongo_password}
+                                            onChange={handleChange}
+                                            placeholder="MongoDB password (optional)"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>MongoDB Port</label>
+                                        <input
+                                            type="number"
+                                            name="mongo_port"
+                                            value={formData.mongo_port}
+                                            onChange={handleChange}
+                                            placeholder="27017"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* SSH Password (always last for SSH-based) */}
+                            <div className="form-group form-group-full">
+                                <label>
+                                    SSH Password
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    name="ssh_password"
+                                    value={formData.ssh_password}
+                                    onChange={handleChange}
+                                    className={errors.ssh_password ? "error" : ""}
+                                    placeholder="Enter SSH password"
+                                    autoComplete="current-password"
+                                />
+                                {errors.ssh_password && (
+                                    <span className="error-message">{errors.ssh_password}</span>
+                                )}
+                            </div>
+                        </>
                     )}
 
-                    {/* FORTINET ONLY: VDOM */}
-                    {formData.device_type === "fortinet" && (
-                        <div className="form-group">
-                            <label>VDOM</label>
-                            <input
-                                type="text"
-                                name="vdom"
-                                value={formData.vdom}
-                                onChange={handleChange}
-                                placeholder="Virtual Domain (optional, default: root)"
-                                autoComplete="off"
-                            />
-                            <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280',
-                                display: 'block',
-                                marginTop: '4px'
-                            }}>
-                                Leave empty for default VDOM
-                            </span>
-                        </div>
+                    {/* ══════════════════════════════════════════════════════
+                        MSSQL credentials
+                    ══════════════════════════════════════════════════════ */}
+                    {isMssql(dt) && (
+                        <>
+                            <div className="form-group">
+                                <label>
+                                    SQL Server Username
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="mssql_username"
+                                    value={formData.mssql_username}
+                                    onChange={handleChange}
+                                    className={errors.mssql_username ? "error" : ""}
+                                    placeholder="sa or sysadmin account"
+                                    autoComplete="username"
+                                />
+                                {errors.mssql_username && (
+                                    <span className="error-message">{errors.mssql_username}</span>
+                                )}
+                            </div>
+                            <div className="form-group">
+                                <label>SQL Server Port</label>
+                                <input
+                                    type="number"
+                                    name="mssql_port"
+                                    value={formData.mssql_port}
+                                    onChange={handleChange}
+                                    placeholder="1433"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div className="form-group form-group-full">
+                                <label>
+                                    SQL Server Password
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    name="mssql_password"
+                                    value={formData.mssql_password}
+                                    onChange={handleChange}
+                                    className={errors.mssql_password ? "error" : ""}
+                                    placeholder="SQL Server password"
+                                    autoComplete="current-password"
+                                />
+                                {errors.mssql_password && (
+                                    <span className="error-message">{errors.mssql_password}</span>
+                                )}
+                            </div>
+                        </>
                     )}
 
-                    {/* LINUX (ALL 3 VARIANTS): Sudo Password */}
-                    {formData.device_type.startsWith("linux-") && (
-                        <div className="form-group">
-                            <label>Sudo Password</label>
-                            <input
-                                type="password"
-                                name="sudo_password"
-                                value={formData.sudo_password}
-                                onChange={handleChange}
-                                placeholder="Sudo password (optional)"
-                                autoComplete="off"
-                            />
-                            <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280',
-                                display: 'block',
-                                marginTop: '4px'
-                            }}>
-                                Required for root access (defaults to SSH password)
-                            </span>
-                        </div>
+                    {/* ══════════════════════════════════════════════════════
+                        Windows credentials (WinRM)
+                    ══════════════════════════════════════════════════════ */}
+                    {isWindows(dt) && (
+                        <>
+                            <div className="form-group">
+                                <label>
+                                    Windows Username
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="windows_username"
+                                    value={formData.windows_username}
+                                    onChange={handleChange}
+                                    className={errors.windows_username ? "error" : ""}
+                                    placeholder="Administrator or DOMAIN\user"
+                                    autoComplete="username"
+                                />
+                                {errors.windows_username && (
+                                    <span className="error-message">{errors.windows_username}</span>
+                                )}
+                            </div>
+                            <div className="form-group">
+                                <label>WinRM Port</label>
+                                <input
+                                    type="number"
+                                    name="winrm_port"
+                                    value={formData.winrm_port}
+                                    onChange={handleChange}
+                                    placeholder="5986"
+                                    autoComplete="off"
+                                />
+                                <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
+                                    Default: 5986 (HTTPS)
+                                </span>
+                            </div>
+                            <div className="form-group">
+                                <label>Transport</label>
+                                <select name="transport" value={formData.transport} onChange={handleChange}>
+                                    <option value="ntlm">NTLM</option>
+                                    <option value="kerberos">Kerberos</option>
+                                    <option value="credssp">CredSSP</option>
+                                    <option value="basic">Basic</option>
+                                </select>
+                            </div>
+                            <div className="form-group form-group-full">
+                                <label>
+                                    Windows Password
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    name="windows_password"
+                                    value={formData.windows_password}
+                                    onChange={handleChange}
+                                    className={errors.windows_password ? "error" : ""}
+                                    placeholder="Windows admin password"
+                                    autoComplete="current-password"
+                                />
+                                {errors.windows_password && (
+                                    <span className="error-message">{errors.windows_password}</span>
+                                )}
+                            </div>
+                        </>
                     )}
 
-                    {/* APACHE: Sudo Password */}
-                    {formData.device_type === "apache" && (
-                        <div className="form-group">
-                            <label>Sudo Password</label>
-                            <input
-                                type="password"
-                                name="sudo_password"
-                                value={formData.sudo_password}
-                                onChange={handleChange}
-                                placeholder="Sudo password (optional)"
-                                autoComplete="off"
-                            />
-                            <span style={{
-                                fontSize: '12px',
-                                color: '#6b7280',
-                                display: 'block',
-                                marginTop: '4px'
-                            }}>
-                                Required for root access (defaults to SSH password)
-                            </span>
-                        </div>
-                    )}
-
-                    {/* SSH Password - Always Last */}
-                    <div className="form-group form-group-full">
-                        <label>Password <span className="required" style={{color: '#ef4444'}}>*</span></label>
-                        <input
-                            type="password"
-                            name="ssh_password"
-                            value={formData.ssh_password}
-                            onChange={handleChange}
-                            className={errors.ssh_password ? "error" : ""}
-                            placeholder="Enter SSH password"
-                            autoComplete="current-password"
-                        />
-                        {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
-                    </div>
                 </div>
 
-                {/* Submit Error */}
+                {/* Submit error */}
                 {errors.submit && (
                     <div className="alert alert-error">{errors.submit}</div>
                 )}
@@ -325,17 +554,17 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                         onClick={onCancel}
                         disabled={isLoading}
                         style={{
-                            padding: '12px 28px',
-                            background: 'white',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: '#374151',
-                            cursor: 'pointer'
+                            padding: "12px 28px",
+                            background: "white",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "8px",
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            color: "#374151",
+                            cursor: "pointer",
                         }}
                     >
-                        cancel
+                        Cancel
                     </button>
                     <button
                         type="submit"
