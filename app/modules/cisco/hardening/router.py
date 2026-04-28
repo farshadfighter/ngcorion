@@ -17,7 +17,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import get_current_user, require_permission, require_quota
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
@@ -536,7 +536,8 @@ def preview_hardening(
 def execute_hardening(
     request: HardeningExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(require_quota("harden"))
 ):
     """
     Execute hardening commands on device.

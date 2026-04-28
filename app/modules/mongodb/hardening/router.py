@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import get_current_user, require_permission, require_quota
 from app.models import User
 
 from .service import MongoDBHardeningService
@@ -187,6 +187,7 @@ def batch_execute_selected(
     request: BatchExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
+    _quota_check: None = Depends(require_quota("harden"))
 ):
     """
     Execute hardening for selected checks with user-provided parameters.

@@ -3,6 +3,7 @@ Ngicorn - Main Application
 
 FastAPI application entry point with CORS middleware and route registration.
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -68,15 +69,40 @@ from app.modules.assets.router_with_auth import (
 from app.modules.assets.requirement_logs_router import router as requirement_logs_router
 from app.modules.assets.asset_logs_router import router as asset_logs_router
 
+# Import license router
+from app.modules.license.router import router as license_router
+
+# Import license components
+from app.core.license_client import LicenseClient
+from app.core.license_state import refresh_license_state
+from app.core.heartbeat import start_heartbeat, stop_heartbeat
+from app.middleware.license_middleware import LicenseMiddleware
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Lifespan context manager for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    client = LicenseClient(settings.LICENSE_SERVER_URL, settings.LICENSE_STORAGE_DIR)
+    app.state.license_client = client
+    try:
+        refresh_license_state(client)
+    except Exception:
+        pass  # App starts even if license server is unreachable
+    start_heartbeat(client)
+    yield
+    # Shutdown
+    stop_heartbeat()
 
 # Initialize FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description=settings.DESCRIPTION,
     version=settings.VERSION,
-    redirect_slashes=False
+    redirect_slashes=False,
+    lifespan=lifespan
 )
 
 # Configure CORS middleware
@@ -90,6 +116,9 @@ app.add_middleware(
     expose_headers=["*"],  # Allow all response headers to be accessible
     # hatman avaz shavad
 )
+
+# Add license middleware (after CORS, before routes)
+app.add_middleware(LicenseMiddleware)
 
 # Authentication routes (no auth required)
 app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
@@ -166,6 +195,9 @@ app.include_router(cisco_audit_logs_router)
 # Deprecated routes (backward compatibility - 307 redirects)
 app.include_router(deprecated_router)
 
+# License routes
+app.include_router(license_router)
+
 
 @app.get("/")
 def root():
@@ -192,6 +224,5 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 
