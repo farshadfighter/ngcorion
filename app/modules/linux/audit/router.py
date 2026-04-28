@@ -11,7 +11,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import get_current_user, require_permission, require_quota
 from app.models import User, log_audit_executed, log_audit_session_deleted
 from .service import LinuxAuditService
 
@@ -114,7 +114,8 @@ router = APIRouter(prefix="/api/audit/linux", tags=["Audit - Linux CIS"])
 def execute_linux_audit(
     request: LinuxAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute CIS compliance audit on a Linux server.
