@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # License Server
+    LICENSE_SERVER_URL: str = "http://localhost:8001"
+    LICENSE_STORAGE_DIR: str = "~/.license"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

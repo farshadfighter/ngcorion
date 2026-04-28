@@ -5,14 +5,17 @@ Provides FastAPI dependency functions for:
 - JWT token validation
 - User authentication
 - Role-based access control
+- License quota enforcement
 """
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, ExpiredSignatureError, jwt
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import User
+
+import requests
 
 security = HTTPBearer()
 
@@ -170,3 +173,72 @@ def require_permission(module: str, permission_type: str):
         return current_user
 
     return check_permission
+
+
+def require_quota(operation_type: str, count: int = 1):
+    """
+    Dependency that consumes a license quota slot before the endpoint runs.
+    Raises HTTP 403 if quota exhausted.
+    
+    Args:
+        operation_type: One of "asset", "discovery", "audit", "harden", "monitor"
+        count: Number of operations to consume (default: 1)
+    
+    Usage:
+        @router.post("/execute", dependencies=[Depends(require_quota("audit"))])
+        def execute_audit(...):
+            ...
+    """
+    def check(request: Request, current_user: User = Depends(get_current_user)) -> None:
+        from app.core.license_state import update_usage
+        
+        client = request.app.state.license_client
+        try:
+            result = client.consume(operation_type, count)
+            # Optimistic update of local usage counter
+            update_usage(operation_type, count)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 400:
+                detail = e.response.json().get("detail", "Quota exhausted")
+                raise HTTPException(
+                    status_code=403,
+                    detail=detail,
+                    headers={"X-Quota-Exhausted": "true"}
+                )
+            raise HTTPException(status_code=503, detail="License server unreachable")
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"License check failed: {str(e)}")
+    
+    return check
+
+
+def require_asset_quota():
+    """
+    Checks max_assets ceiling before creating an asset.
+    Does NOT consume quota — only checks if limit would be exceeded.
+    
+    Usage:
+        @router.post("/", dependencies=[Depends(require_asset_quota())])
+        def create_asset(...):
+            ...
+    """
+    def check(request: Request, current_user: User = Depends(get_current_user)) -> None:
+        from app.core.license_state import get_license_state
+        
+        state = get_license_state()
+        if not state.valid or state.limits is None:
+            # License middleware should have caught this, but double-check
+            return
+        
+        max_assets = state.limits.get("max_assets")
+        if max_assets is None:
+            return  # Unlimited (Enterprise)
+        
+        used_assets = state.usage.get("used_assets", 0) if state.usage else 0
+        if used_assets >= max_assets:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Asset limit reached ({used_assets}/{max_assets}). Upgrade your plan or delete unused assets."
+            )
+    
+    return check
