@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
     activateLicenseThunk,
-    validateLicenseThunk,
-    heartbeatThunk,
+    getLicenseStatusThunk,
     clearMessages,
     initializeFromStorage,
 } from "../../store/licenseSlice";
@@ -38,23 +37,20 @@ export const License = () => {
         dispatch(initializeFromStorage());
     }, []);
 
-    // اگه storage داشت validate میکنیم
+    // بعد از initialize، status را چک می‌کنیم
     useEffect(() => {
         if (isInitialized) {
-            const stored = loadLicenseFromStorage();
-            if (stored) {
-                dispatch(validateLicenseThunk());
-            }
+            dispatch(getLicenseStatusThunk());
         }
     }, [isInitialized]);
 
-    // heartbeat هر ساعت
+    // هر 5 دقیقه یکبار status را refresh می‌کنیم (برای به‌روزرسانی usage)
     useEffect(() => {
         if (!isValid) return;
 
         const interval = setInterval(() => {
-            dispatch(heartbeatThunk());
-        }, 60 * 60 * 1000);
+            dispatch(getLicenseStatusThunk());
+        }, 5 * 60 * 1000); // 5 minutes
 
         return () => clearInterval(interval);
     }, [isValid]);
@@ -171,37 +167,40 @@ export const License = () => {
                                 textAlign: "center",
                             }}
                         >
-                            <div style={{ fontSize: "48px", marginBottom: "16px" }}>🪪</div>
-                            <div style={{ fontSize: "18px", fontWeight: "600", color: "#111827", marginBottom: "8px" }}>
-                                No Active Licence
+                            <div style={{ fontSize: "18px", fontWeight: "600", marginBottom: "12px", color: "#111827" }}>
+                                No Active License
                             </div>
-                            <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "28px" }}>
-                                Enter your licence key to activate
+                            <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "32px" }}>
+                                Enter your license key to activate
                             </div>
 
-                            {/* فرم فعال‌سازی */}
-                            <div style={{ display: "flex", gap: "10px", maxWidth: "480px", margin: "0 auto" }}>
+                            <div style={{ maxWidth: "400px", margin: "0 auto" }}>
                                 <input
                                     type="text"
-                                    value={licenseKey}
-                                    onChange={(e) => setLicenseKey(e.target.value)}
                                     placeholder="XXXX-XXXX-XXXX-XXXX"
-                                    onKeyDown={(e) => e.key === "Enter" && handleActivate()}
+                                    value={licenseKey}
+                                    onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
+                                    disabled={isActivating}
+                                    maxLength={19}
                                     style={{
-                                        flex: 1,
-                                        padding: "10px 16px",
+                                        width: "100%",
+                                        padding: "12px 16px",
                                         borderRadius: "8px",
-                                        border: "1px solid #E5E7EB",
+                                        border: "1px solid #D1D5DB",
                                         fontSize: "14px",
-                                        outline: "none",
-                                        letterSpacing: "1px",
+                                        marginBottom: "16px",
+                                        textAlign: "center",
+                                        letterSpacing: "2px",
+                                        fontFamily: "monospace",
                                     }}
                                 />
+
                                 <button
                                     onClick={handleActivate}
                                     disabled={isActivating || !licenseKey.trim()}
                                     style={{
-                                        padding: "10px 24px",
+                                        width: "100%",
+                                        padding: "12px 24px",
                                         borderRadius: "8px",
                                         border: "none",
                                         backgroundColor: isActivating || !licenseKey.trim() ? "#D1D5DB" : "#111827",
@@ -213,6 +212,11 @@ export const License = () => {
                                 >
                                     {isActivating ? "Activating..." : "Activate"}
                                 </button>
+
+                                <div style={{ marginTop: "20px", fontSize: "13px", color: "#6B7280" }}>
+                                    Don't have a license key?<br />
+                                    Contact your system administrator to obtain one.
+                                </div>
                             </div>
                         </div>
                     )}
