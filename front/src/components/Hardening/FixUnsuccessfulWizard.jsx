@@ -4,7 +4,7 @@ import { FixUnsuccessfulProcess } from "./FixUnsuccessfulProcess";
 import { FixUnsuccessfulSuccess } from "./FixUnsuccessfulSuccess";
 import { FixUnsuccessfulResults } from "./FixUnsuccessfulResults";
 
-export const FixUnsuccessfulWizard = ({ isOpen, onClose }) => {
+export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [sessionData, setSessionData] = useState(null);
     const [hasFailed, setHasFailed] = useState(false);
@@ -104,8 +104,10 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose }) => {
                         <FixUnsuccessfulResults
                             sessionData={sessionData}
                             onClose={handleClose}
+                            onNavigateToAuditing={onNavigateToAuditing}
                         />
                     )}
+
                 </div>
             </div>
         </div>

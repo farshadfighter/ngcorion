@@ -27,6 +27,10 @@ export const Dashboard = () => {
         setActiveMenu("operation-device");
     };
 
+    const handleNavigateToLicence = () => {
+        setActiveMenu("licence");
+    };
+
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(new Date());
@@ -251,19 +255,29 @@ export const Dashboard = () => {
                 )}
 
                 {activeMenu === "user-management" && <UserManagement />}
-                {activeMenu === "asset-list" && <AssetList />}
+                {activeMenu === "asset-list" && (
+                    <AssetList onNavigateToLicence={handleNavigateToLicence} />
+                )}
                 {activeMenu === "asset-requirement" && <AssetRequirement />}
-                {activeMenu === "auto-discovery" && <AutoDiscovery />}
-                {activeMenu === "operation-device" && <AuditingList />}
+                {activeMenu === "auto-discovery" && (
+                    <AutoDiscovery onNavigateToLicence={handleNavigateToLicence} />
+                )}
+                {activeMenu === "operation-device" && (
+                    <AuditingList onNavigateToLicence={handleNavigateToLicence} />
+                )}
                 {activeMenu === "auditing" && (
                     <div className="placeholder-content">
                         <h3>Auditing</h3>
+
                         <p>Coming soon...</p>
                     </div>
                 )}
                 {activeMenu === "hardening" && (
-                    <HardeningMain onNavigateToAuditing={handleNavigateToAuditing} />
-                )}
+                <HardeningMain
+                    onNavigateToAuditing={handleNavigateToAuditing}
+                    onNavigateToLicence={handleNavigateToLicence}
+                />
+            )}
                 {activeMenu === "logs" && (
                     <div className="placeholder-content">
                         <h3>Logs</h3>

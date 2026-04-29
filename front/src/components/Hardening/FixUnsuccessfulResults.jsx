@@ -4,7 +4,7 @@ import { fetchAuditResults } from "../../store/hardeningSlice";
 import HardenAllModal from './HardenAllModal';
 import FixSingleModal from './FixSingleModal';
 
-export const FixUnsuccessfulResults = ({ sessionData, onClose }) => {
+export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
     const { cisChecks, isLoading } = useSelector((state) => state.hardening);
     const [showHardenAllModal, setShowHardenAllModal] = useState(false);
@@ -224,6 +224,24 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose }) => {
                         >
                             🛡️ Harden All
                         </button>
+                        {onNavigateToAuditing && (
+                            <button
+                                onClick={onNavigateToAuditing}
+                                style={{
+                                    padding: '10px 24px',
+                                    background: 'white',
+                                    color: '#1e3a5f',
+                                    border: '2px solid #1e3a5f',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🔍 Go to Auditing
+                            </button>
+                        )}
+
                     </div>
 
                     {/* Table */}

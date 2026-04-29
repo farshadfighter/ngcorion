@@ -12,8 +12,11 @@ import { EditLocationModal } from "./EditLocationModal";
 import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
+import { LicenseBadge } from "../License/LicenseBadge";
+import { LicenseLimitModal } from "../License/LicenseLimitModal";
+
 import "../../assets/AssetList.css"
-export const AssetList = () => {
+export const AssetList = ({onNavigateToLicence}) => {
     const dispatch = useDispatch();
     const { assets, isLoading, error, successMessage } = useSelector(
         (state) => state.assets
@@ -33,6 +36,7 @@ export const AssetList = () => {
     const [showEditSecurityModal, setShowEditSecurityModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [showLicenseModal, setShowLicenseModal] = useState(false);
 
     const fileInputRef = useRef(null);
 
@@ -46,6 +50,10 @@ export const AssetList = () => {
             return () => clearTimeout(timer);
         }
     }, [successMessage, error, dispatch]);
+
+    const handleLicenseLimitReached = () => {
+        setShowLicenseModal(true);
+    };
 
     const filteredAssets = Array.isArray(assets)
         ? assets.filter((asset) => {
@@ -127,6 +135,11 @@ export const AssetList = () => {
             {/* Header */}
             <div className="asset-list-header">
                 <h1 className="page-title">Asset List</h1>
+                <LicenseBadge
+                    module="assetList"
+                    onLimitReached={handleLicenseLimitReached}
+                />
+
                 <div className="header-actions">
                     <button
                         className="btn-header"
@@ -349,6 +362,12 @@ export const AssetList = () => {
             )}
 
             <AddAssetModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
+            <LicenseLimitModal
+                isOpen={showLicenseModal}
+                onClose={() => setShowLicenseModal(false)}
+                module="assetList"
+                onNavigateToLicence={onNavigateToLicence}
+            />
         </div>
     );
 };

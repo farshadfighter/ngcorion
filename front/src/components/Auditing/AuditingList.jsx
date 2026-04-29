@@ -7,10 +7,19 @@ import {
 } from "../../store/auditSlice";
 import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
+import { LicenseBadge } from "../License/LicenseBadge";
+import { LicenseLimitModal } from "../License/LicenseLimitModal";
+
 import "../../assets/Auditing.css";
 
-export const AuditingList = () => {
+export const AuditingList = ({ onNavigateToLicence }) => {
     const dispatch = useDispatch();
+    const { usage, limits } = useSelector((state) => state.license);
+    const [showLimitModal, setShowLimitModal] = useState(false);
+
+    const isAuditLimitReached = limits?.max_audits !== null &&
+        (usage?.used_audits ?? 0) >= (limits?.max_audits ?? 0);
+
     const { sessions, isLoading, error, successMessage } = useSelector(
         (state) => state.audit
     );
@@ -95,14 +104,18 @@ export const AuditingList = () => {
     return (
         <div className="auditing-container">
             {/* Header */}
-            <div className="auditing-header">
+            <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <button
                     className="btn-auditing-primary"
-                    onClick={() => setShowWizard(true)}
+                    onClick={() => isAuditLimitReached ? setShowLimitModal(true) : setShowWizard(true)}
+                    disabled={isAuditLimitReached}
+                    title={isAuditLimitReached ? "Audit limit reached" : ""}
+                    style={{ opacity: isAuditLimitReached ? 0.6 : 1, cursor: isAuditLimitReached ? "not-allowed" : "pointer" }}
                 >
                     <img src="/icons/audit.svg" alt="" className="btn-icon" />
                     Auditing
                 </button>
+                <LicenseBadge module="auditing" />
             </div>
 
             {/* Alerts */}
@@ -229,6 +242,17 @@ export const AuditingList = () => {
                     onClose={() => {
                         setShowResultModal(false);
                         setSelectedSession(null);
+                    }}
+                />
+            )}
+
+            {showLimitModal && (
+                <LicenseLimitModal
+                    module="auditing"  // درست شد
+                    onClose={() => setShowLimitModal(false)}
+                    onGoToLicence={() => {
+                        setShowLimitModal(false);
+                        onNavigateToLicence();
                     }}
                 />
             )}

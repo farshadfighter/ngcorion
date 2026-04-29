@@ -123,6 +123,7 @@ export const consumeOperation = async (operationType, count = 1) => {
     const data = {
         license_key: stored.license_key,
         organization_token: stored.organization_token,
+
         vm_fingerprint: stored.vm_fingerprint,
         operation_type: operationType,
         count,

@@ -15,7 +15,11 @@ import ScanHistoryTable from './ScanHistoryTable.jsx';
 import ScanResultsModal from './ScanResultsModal.jsx';
 import ApplyDiscoveryModal from './ApplyDiscoveryModal.jsx';
 import AutoDiscoveryAssetListModal from './AutoDiscoveryAssetListModal';
+import { LicenseBadge } from "../License/LicenseBadge";
+import { LicenseLimitModal } from "../License/LicenseLimitModal";
+
 import '../../assets/autoDiscoveryStyle/AutoDiscovery.css';
+const [showLicenseModal, setShowLicenseModal] = useState(false);
 
 const AutoDiscovery = () => {
     const dispatch = useDispatch();
@@ -145,6 +149,9 @@ const AutoDiscovery = () => {
     const hasRunningScan = React.useMemo(() => {
         return allScans.some(scan => scan.status === 'running');
     }, [allScans]);
+    const handleLicenseLimitReached = useCallback(() => {
+        setShowLicenseModal(true);
+    }, []);
 
     return (
         <>
@@ -168,6 +175,11 @@ const AutoDiscovery = () => {
                         <h1 className="page-title">Auto Discovery</h1>
                     </div>
                     <div className="header-actions">
+                        <LicenseBadge
+                            module="autoDiscovery"
+                            onLimitReached={handleLicenseLimitReached}
+                        />
+
                         <button
                             className="btn btn-primary"
                             onClick={() => setShowScanModal(true)}
@@ -399,6 +411,15 @@ const AutoDiscovery = () => {
                         isScanning={loading.scan}
                     />
                 )}
+                {showLicenseModal && (
+                    <LicenseLimitModal
+                        isOpen={showLicenseModal}
+                        onClose={() => setShowLicenseModal(false)}
+                        module="autoDiscovery"
+                        onNavigateToLicence={onNavigateToLicence}
+                    />
+                )}
+
             </div>
         </>
     );

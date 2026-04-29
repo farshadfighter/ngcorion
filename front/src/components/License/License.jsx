@@ -81,14 +81,14 @@ export const License = () => {
     const buildApiData = () => {
         if (!usage || !limits) return null;
         return {
-            used_hardens: usage.harden ?? 0,
-            used_audits: usage.audit ?? 0,
-            used_assets: usage.asset ?? 0,
-            used_discoveries: usage.discovery ?? 0,
-            max_hardens: limits.max_hardens ?? null,
-            max_audits: limits.max_audits ?? null,
-            max_assets: limits.max_assets ?? null,
-            max_discoveries: limits.max_discoveries ?? null,
+            used_hardens: usage?.used_hardens ?? 0,
+            used_audits: usage?.used_audits ?? 0,
+            used_assets: usage?.used_assets ?? 0,
+            used_discoveries: usage?.used_discoveries ?? 0,
+            max_hardens: limits?.max_hardens ?? null,
+            max_audits: limits?.max_audits ?? null,
+            max_assets: limits?.max_assets ?? null,
+            max_discoveries: limits?.max_discoveries ?? null,
         };
     };
 
