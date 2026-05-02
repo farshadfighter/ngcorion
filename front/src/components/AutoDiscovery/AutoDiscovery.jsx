@@ -19,10 +19,9 @@ import { LicenseBadge } from "../License/LicenseBadge";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 
 import '../../assets/autoDiscoveryStyle/AutoDiscovery.css';
-const [showLicenseModal, setShowLicenseModal] = useState(false);
-
-const AutoDiscovery = () => {
+const AutoDiscovery = ({onNavigateToLicence}) => {
     const dispatch = useDispatch();
+    const [showLicenseModal, setShowLicenseModal] = useState(false);
 
     // Redux state
     const {
