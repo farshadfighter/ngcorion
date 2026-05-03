@@ -72,3 +72,7 @@ class HeartbeatResponse(BaseModel):
     success: bool
     message: str
     should_downgrade: bool = False
+
+class FingerprintResponse(BaseModel):
+    """Response model for VM fingerprint endpoint"""
+    fingerprint: str

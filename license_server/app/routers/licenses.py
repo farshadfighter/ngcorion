@@ -36,7 +36,11 @@ def verify_request_signature(
 
 @router.post("/activate", response_model=schemas.ValidationResponse)
 def activate_license(data: schemas.LicenseActivate, db: Session = Depends(get_db)):
-    """license activision with VM fingerprint"""
+    """Activate license with VM fingerprint
+    
+    This is a public endpoint that doesn't require signature authentication.
+    Used during initial license activation.
+    """
     success, message, license = crud.activate_license(db, data.license_key, data.vm_fingerprint)
     
     if not success:
@@ -71,10 +75,31 @@ def validate_license(
     x_timestamp: Optional[str] = Header(None),
     x_signature: Optional[str] = Header(None)
 ):
-    """license validation"""
-    # Verify signature
-    verify_request_signature(x_timestamp, x_signature, data)
+    """Validate license with optional signature authentication
     
+    This endpoint can be called with or without HMAC signature headers.
+    - With headers (X-Signature, X-Timestamp): Full validation with signature check
+    - Without headers: Basic validation without signature (for testing/frontend)
+    
+    Request body:
+    - license_key: The license key to validate
+    - organization_token: The organization token
+    - vm_fingerprint: The VM fingerprint
+    
+    Returns ValidationResponse with license status, limits, and usage.
+    """
+    # If signature headers are provided, verify them
+    if x_timestamp and x_signature:
+        try:
+            verify_request_signature(x_timestamp, x_signature, data)
+        except HTTPException:
+            # Signature verification failed
+            return schemas.ValidationResponse(
+                valid=False, 
+                message="Invalid signature"
+            )
+    
+    # Validate license
     success, message, license = crud.validate_license(
         db, data.license_key, data.organization_token, data.vm_fingerprint
     )
@@ -105,7 +130,11 @@ def validate_license(
 
 @router.post("/heartbeat", response_model=schemas.HeartbeatResponse)
 def heartbeat(data: schemas.LicenseValidate, db: Session = Depends(get_db)):
-    """cheking validation"""
+    """Send heartbeat to check license validity
+    
+    This is a public endpoint that doesn't require signature authentication.
+    Used by the main app to periodically check license status.
+    """
     success, message, should_downgrade = crud.heartbeat(
         db, data.license_key, data.organization_token, data.vm_fingerprint
     )
@@ -126,8 +155,12 @@ def consume_operation(
     x_timestamp: Optional[str] = Header(None),
     x_signature: Optional[str] = Header(None)
 ):
-    """(asset, discovery, audit, harden, monitor)"""
-    # Verify signature
+    """Consume operation quota (asset, discovery, audit, harden, monitor)
+    
+    This endpoint requires HMAC signature authentication for security.
+    Only the main app backend should call this endpoint.
+    """
+    # Verify signature (required for consume operations)
     verify_request_signature(x_timestamp, x_signature, data)
     
     success, message, license = crud.consume_operation(
