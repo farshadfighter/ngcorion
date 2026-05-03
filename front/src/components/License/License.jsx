@@ -4,13 +4,12 @@ import {
     activateLicenseThunk,
     getLicenseStatusThunk,
     clearMessages,
-    initializeFromStorage,
 } from "../../store/licenseSlice";
 import { LicenseCard } from "./LicenseCard";
 import { LicenseHeader } from "./LicenseHeader";
 import { LicenseModal } from "./LicenseModal";
 import { LICENSE_TYPES } from "./licenseConfig";
-import { loadLicenseFromStorage } from "./licenseService";
+
 
 export const License = () => {
     const dispatch = useDispatch();
@@ -32,10 +31,6 @@ export const License = () => {
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [showModal, setShowModal] = useState(false);
 
-    // اول از storage لود میکنیم
-    useEffect(() => {
-        dispatch(initializeFromStorage());
-    }, []);
 
     // بعد از initialize، status را چک می‌کنیم
     useEffect(() => {

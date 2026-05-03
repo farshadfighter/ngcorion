@@ -91,7 +91,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
                 isOpen={showLicenseModal}
                 onClose={handleLicenseModalClose}
                 module="hardening"
-                onNavigateToLicence={onNavigateToLicence}
+                onGoToLicence={onNavigateToLicence}
             />
         </div>
     );

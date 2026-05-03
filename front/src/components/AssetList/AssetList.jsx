@@ -366,7 +366,7 @@ export const AssetList = ({onNavigateToLicence}) => {
                 isOpen={showLicenseModal}
                 onClose={() => setShowLicenseModal(false)}
                 module="assetList"
-                onNavigateToLicence={onNavigateToLicence}
+                onGoToLicence={onNavigateToLicence}
             />
         </div>
     );

@@ -1,156 +1,168 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-export const QuotaExhaustedModal = () => {
+const QuotaExhaustedModal = () => {
     const [isOpen, setIsOpen] = useState(false);
-    const [message, setMessage] = useState("");
+    const [message, setMessage] = useState('');
+    const [isClosing, setIsClosing] = useState(false);
+    const modalRef = useRef(null);
+    const closeButtonRef = useRef(null);
+    const upgradeButtonRef = useRef(null);
+
+    const handleClose = useCallback(() => {
+        setIsClosing(true);
+        setTimeout(() => {
+            setIsOpen(false);
+            setMessage('');
+            setIsClosing(false);
+        }, 300);
+    }, []);
 
     useEffect(() => {
         const handleQuotaExhausted = (event) => {
-            setMessage(event.detail.message);
+            setMessage(event.detail?.message || 'You have reached your quota limit.');
             setIsOpen(true);
+            setIsClosing(false);
         };
 
-        window.addEventListener("quota-exhausted", handleQuotaExhausted);
+        window.addEventListener('quota-exhausted', handleQuotaExhausted);
 
         return () => {
-            window.removeEventListener("quota-exhausted", handleQuotaExhausted);
+            window.removeEventListener('quota-exhausted', handleQuotaExhausted);
         };
     }, []);
+
+    // Lock body scroll when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            // Focus first interactive element when modal opens
+            setTimeout(() => {
+                closeButtonRef.current?.focus();
+            }, 100);
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
+
+    // Handle Escape key
+    useEffect(() => {
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && isOpen) {
+                handleClose();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen, handleClose]);
+
+    // Focus trap
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleTab = (e) => {
+            if (e.key !== 'Tab') return;
+
+            const focusableElements = modalRef.current?.querySelectorAll(
+                'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+
+            if (!focusableElements || focusableElements.length === 0) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (e.shiftKey) {
+                if (document.activeElement === firstElement) {
+                    e.preventDefault();
+                    lastElement.focus();
+                }
+            } else {
+                if (document.activeElement === lastElement) {
+                    e.preventDefault();
+                    firstElement.focus();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleTab);
+        return () => document.removeEventListener('keydown', handleTab);
+    }, [isOpen]);
+
+    const handleUpgrade = () => {
+        try {
+            // Navigate to upgrade page or trigger upgrade flow
+            window.location.href = '/license';
+        } catch (error) {
+            console.error('Failed to navigate to upgrade page:', error);
+            // Show user-friendly error instead of alert
+            setMessage('Unable to navigate to upgrade page. Please try again.');
+        }
+    };
+
+    const handleBackdropClick = (e) => {
+        if (e.target === e.currentTarget) {
+            handleClose();
+        }
+    };
 
     if (!isOpen) return null;
 
     return (
         <div
             style={{
-                position: "fixed",
+                position: 'fixed',
                 top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
-                padding: "20px",
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                animation: isClosing ? 'fadeOut 0.3s ease-out' : 'fadeIn 0.3s ease-out',
             }}
-            onClick={() => setIsOpen(false)}
+            onClick={handleBackdropClick}
+            aria-modal="true"
+            role="dialog"
+            aria-labelledby="modal-title"
+            aria-describedby="modal-description"
         >
             <div
+                ref={modalRef}
                 style={{
-                    backgroundColor: "#ffffff",
-                    borderRadius: "12px",
-                    padding: "32px",
-                    maxWidth: "480px",
-                    width: "100%",
-                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                    backgroundColor: 'white',
+                    padding: '32px',
+                    borderRadius: '8px',
+                    maxWidth: '500px',
+                    width: '90%',
+                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                    animation: isClosing ? 'slideOut 0.3s ease-out' : 'slideIn 0.3s ease-out',
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Icon */}
-                <div
-                    style={{
-                        width: "56px",
-                        height: "56px",
-                        borderRadius: "50%",
-                        backgroundColor: "#FEF2F2",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        margin: "0 auto 20px",
-                    }}
-                >
-                    <svg
-                        width="28"
-                        height="28"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#DC2626"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                </div>
+                <h2 id="modal-title">Quota Limit Reached</h2>
 
-                {/* Title */}
-                <h2
-                    style={{
-                        fontSize: "20px",
-                        fontWeight: "600",
-                        color: "#111827",
-                        textAlign: "center",
-                        marginBottom: "12px",
-                    }}
-                >
-                    Quota Limit Reached
-                </h2>
-
-                {/* Message */}
-                <p
-                    style={{
-                        fontSize: "14px",
-                        color: "#6B7280",
-                        textAlign: "center",
-                        lineHeight: "1.6",
-                        marginBottom: "24px",
-                    }}
-                >
+                <p id="modal-description">
                     {message}
                 </p>
 
-                {/* Actions */}
-                <div style={{ display: "flex", gap: "12px" }}>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
                     <button
-                        onClick={() => setIsOpen(false)}
-                        style={{
-                            flex: 1,
-                            padding: "12px 24px",
-                            borderRadius: "8px",
-                            border: "1px solid #E5E7EB",
-                            backgroundColor: "#ffffff",
-                            color: "#374151",
-                            fontSize: "14px",
-                            fontWeight: "600",
-                            cursor: "pointer",
-                            transition: "background-color 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = "#F9FAFB";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = "#ffffff";
-                        }}
+                        ref={closeButtonRef}
+                        onClick={handleClose}
                     >
                         Close
                     </button>
+
                     <button
-                        onClick={() => {
-                            setIsOpen(false);
-                            // TODO: Navigate to upgrade page or contact admin
-                            alert("Please contact your administrator to upgrade your plan.");
-                        }}
-                        style={{
-                            flex: 1,
-                            padding: "12px 24px",
-                            borderRadius: "8px",
-                            border: "none",
-                            backgroundColor: "#111827",
-                            color: "#ffffff",
-                            fontSize: "14px",
-                            fontWeight: "600",
-                            cursor: "pointer",
-                            transition: "background-color 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = "#1F2937";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = "#111827";
-                        }}
+                        ref={upgradeButtonRef}
+                        onClick={handleUpgrade}
                     >
                         Upgrade Plan
                     </button>
@@ -159,3 +171,5 @@ export const QuotaExhaustedModal = () => {
         </div>
     );
 };
+
+export default QuotaExhaustedModal;

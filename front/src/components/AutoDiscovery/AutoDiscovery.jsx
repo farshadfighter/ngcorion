@@ -415,8 +415,7 @@ const AutoDiscovery = ({onNavigateToLicence}) => {
                         isOpen={showLicenseModal}
                         onClose={() => setShowLicenseModal(false)}
                         module="autoDiscovery"
-                        onNavigateToLicence={onNavigateToLicence}
-                    />
+                        onGoToLicence={onNavigateToLicence}                    />
                 )}
 
             </div>

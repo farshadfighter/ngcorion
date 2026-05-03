@@ -51,7 +51,7 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                                 fontSize: "22px",
                             }}
                         >
-                            🪪
+                            <img src="/icons/license.svg" alt="" className="section-icon" />
                         </div>
                         <div>
                             <div style={{ fontSize: "18px", fontWeight: "700", color: "#111827" }}>

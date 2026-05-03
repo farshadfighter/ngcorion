@@ -35,7 +35,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             fontSize: "20px",
                         }}
                     >
-                        🪪
+                        <img src="/icons/license.svg" alt="" className="section-icon" />
                     </div>
 
                     <div>

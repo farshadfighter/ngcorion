@@ -1,10 +1,11 @@
 import { LICENSE_TYPES } from "./licenseConfig";
 import { useSelector } from "react-redux";
 
-export const LicenseLimitModal = ({ module, onClose, onGoToLicence }) => {
+export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) => {
     const { planType } = useSelector((state) => state.license);
     const license = LICENSE_TYPES[planType];
 
+    if (!isOpen) return null;
     const MODULE_LABELS = {
         auditing: "Auditing",
         autoDiscovery: "Auto Discovery",
@@ -81,7 +82,7 @@ export const LicenseLimitModal = ({ module, onClose, onGoToLicence }) => {
                         color: license.borderColor,
                         marginBottom: "24px",
                     }}>
-                        🪪 {license.name}
+                        <img src="/icons/license.svg" alt="" className="section-icon" /> {license.name}
                     </div>
                 )}
 

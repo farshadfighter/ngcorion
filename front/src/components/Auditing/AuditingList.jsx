@@ -248,7 +248,8 @@ export const AuditingList = ({ onNavigateToLicence }) => {
 
             {showLimitModal && (
                 <LicenseLimitModal
-                    module="auditing"  // درست شد
+                    isOpen={showLimitModal}
+                    module="auditing"
                     onClose={() => setShowLimitModal(false)}
                     onGoToLicence={() => {
                         setShowLimitModal(false);

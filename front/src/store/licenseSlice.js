@@ -2,7 +2,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
     getLicenseStatus,
     activateLicense,
-    loadLicenseFromStorage,
     clearLicenseFromStorage,
 } from "../components/License/licenseService";
 
@@ -80,12 +79,7 @@ const licenseSlice = createSlice({
             state.message = "";
             state.isInitialized = false;
         },
-        // چک کردن آیا لایسنس در storage هست
-        initializeFromStorage: (state) => {
-            const stored = loadLicenseFromStorage();
-            state.isInitialized = true;
-            // اگر license_key داشتیم، باید status را چک کنیم
-        },
+
     },
     extraReducers: (builder) => {
         builder
@@ -137,7 +131,6 @@ const licenseSlice = createSlice({
 export const {
     clearMessages,
     clearLicense,
-    initializeFromStorage,
 } = licenseSlice.actions;
 
 export default licenseSlice.reducer;

@@ -169,7 +169,8 @@ export const Dashboard = () => {
                         onClick={() => setActiveMenu("licence")}
                         title="Licence"
                     >
-                        <span>🪪</span>
+                        <span>                            <img src="/icons/license.svg" alt="" className="section-icon" />
+</span>
                         {!isSidebarCollapsed && <span>Licence</span>}
                     </div>
                 </nav>
