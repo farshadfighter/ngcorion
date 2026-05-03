@@ -33,11 +33,7 @@ export const License = () => {
 
 
     // بعد از initialize، status را چک می‌کنیم
-    useEffect(() => {
-        if (isInitialized) {
-            dispatch(getLicenseStatusThunk());
-        }
-    }, [isInitialized]);
+;
 
     // هر 5 دقیقه یکبار status را refresh می‌کنیم (برای به‌روزرسانی usage)
     useEffect(() => {

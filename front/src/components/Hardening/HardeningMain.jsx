@@ -49,7 +49,9 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
             <div className="hardening-options-container">
                 {/* باکس 1: Fix All Section */}
                 <div className="hardening-option-box" onClick={handleFixAllClick}>
-                    <div className="hardening-option-icon"><img src="/icons/audit.svg" alt="" className="" /></div>
+                    <div >
+                        <img src="/" alt="" style={{ width: "160px", height: "160px" }} />
+                    </div>
                     <div className="hardening-option-title">Fix all section</div>
                     <div className="hardening-option-description">
                         Hardening all section by CIS Benchmark
@@ -59,7 +61,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
 
                 {/* باکس 2: Fix Unsuccessful */}
                 <div className="hardening-option-box" onClick={handleFixUnsuccessfulClick}>
-                    <div className="hardening-option-icon"><img src="/icons/audit.svg" alt="" className="" /></div>
+                    <div className="hardening-option-icon"><img src="/icons/audit.svg" alt="icon" /></div>
                     <div className="hardening-option-title">Fix Unsuccessful section</div>
                     <div className="hardening-option-description">
                         Hardening Unsuccessful section by Auditing
