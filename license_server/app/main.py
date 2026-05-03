@@ -6,6 +6,7 @@ from .middleware.logging import LoggingMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
 from .core.config import settings
 from .utils.fingerprint import get_vm_fingerprint
+from .schemas import FingerprintResponse
 
 Base.metadata.create_all(bind=engine)
 
@@ -38,8 +39,15 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
-@app.get("/api/fingerprint")
+@app.get("/api/fingerprint", response_model=FingerprintResponse)
 def get_fingerprint():
-    """Get VM fingerprint for this machine"""
+    """Get VM fingerprint for this machine
+    
+    Returns a unique fingerprint identifier for the current virtual machine.
+    This fingerprint is used to bind licenses to specific machines.
+    
+    Returns:
+        FingerprintResponse: Object containing the VM fingerprint string
+    """
     fingerprint = get_vm_fingerprint()
     return {"fingerprint": fingerprint}
