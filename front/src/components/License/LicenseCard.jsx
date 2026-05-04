@@ -35,8 +35,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             fontSize: "20px",
                         }}
                     >
-                        <img src="/icons/license.svg" alt="" className="section-icon" />
-                    </div>
+                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "24px", height: "24px", filter: "invert(1)" }} />                    </div>
 
                     <div>
                         <div style={{ fontSize: "18px", fontWeight: "600", color: "#111827" }}>

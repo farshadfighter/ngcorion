@@ -6,47 +6,31 @@ import {
     clearMessages,
 } from "../../store/licenseSlice";
 import { LicenseCard } from "./LicenseCard";
-import { LicenseHeader } from "./LicenseHeader";
-import { LicenseModal } from "./LicenseModal";
-import { LICENSE_TYPES } from "./licenseConfig";
-
+import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 
 export const License = () => {
     const dispatch = useDispatch();
     const {
         isValid,
         planType,
-        isPilotMode,
         limits,
         usage,
         isActivating,
         isValidating,
         error,
         successMessage,
-        isInitialized,
     } = useSelector((state) => state.license);
 
-    const [activeTab, setActiveTab] = useState("active");
     const [licenseKey, setLicenseKey] = useState("");
-    const [selectedPlan, setSelectedPlan] = useState(null);
-    const [showModal, setShowModal] = useState(false);
 
-
-    // بعد از initialize، status را چک می‌کنیم
-;
-
-    // هر 5 دقیقه یکبار status را refresh می‌کنیم (برای به‌روزرسانی usage)
     useEffect(() => {
         if (!isValid) return;
-
         const interval = setInterval(() => {
             dispatch(getLicenseStatusThunk());
-        }, 5 * 60 * 1000); // 5 minutes
-
+        }, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, [isValid]);
 
-    // پاک کردن پیام‌ها
     useEffect(() => {
         if (error || successMessage) {
             const timer = setTimeout(() => dispatch(clearMessages()), 4000);
@@ -59,12 +43,6 @@ export const License = () => {
         dispatch(activateLicenseThunk(licenseKey.trim()));
     };
 
-    const handlePlanClick = (planType) => {
-        setSelectedPlan(planType);
-        setShowModal(true);
-    };
-
-    // ساخت apiData از اطلاعات redux
     const buildApiData = () => {
         if (!usage || !limits) return null;
         return {
@@ -79,93 +57,216 @@ export const License = () => {
         };
     };
 
-    return (
-        <div style={{ padding: "24px", maxWidth: "900px", margin: "0 auto" }}>
+    const license = planType ? LICENSE_TYPES[planType] : null;
+    const apiData = buildApiData();
 
-            {/* پیام‌های success/error */}
+    return (
+        <div style={{
+            padding: "32px 28px",
+            maxWidth: "960px",
+            margin: "0 auto",
+            fontFamily: "'Segoe UI', sans-serif",
+        }}>
+
+            {/* Alert */}
             {(error || successMessage) && (
-                <div
-                    style={{
-                        padding: "12px 20px",
-                        borderRadius: "8px",
-                        marginBottom: "20px",
-                        backgroundColor: error ? "#FEF2F2" : "#F0FDF4",
-                        border: `1px solid ${error ? "#FECACA" : "#BBF7D0"}`,
-                        color: error ? "#DC2626" : "#16A34A",
-                        fontSize: "14px",
-                    }}
-                >
+                <div style={{
+                    padding: "14px 20px",
+                    borderRadius: "10px",
+                    marginBottom: "24px",
+                    backgroundColor: error ? "#FEF2F2" : "#F0FDF4",
+                    border: `1px solid ${error ? "#FECACA" : "#BBF7D0"}`,
+                    color: error ? "#DC2626" : "#16A34A",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                }}>
+                    <span>{error ? "⚠️" : "✅"}</span>
                     {error || successMessage}
                 </div>
             )}
 
-            {/* تب‌ها */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
-                {["active", "available"].map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        style={{
-                            padding: "10px 24px",
-                            borderRadius: "8px",
-                            border: "none",
-                            cursor: "pointer",
-                            fontSize: "14px",
-                            fontWeight: "500",
-                            backgroundColor: activeTab === tab ? "#111827" : "#F3F4F6",
-                            color: activeTab === tab ? "#ffffff" : "#6B7280",
-                            transition: "all 0.2s",
-                        }}
-                    >
-                        {tab === "active" ? "Active licence" : "Available licences"}
-                    </button>
-                ))}
-            </div>
+            {/* ===== STATUS BOX ===== */}
+            {isValidating ? (
+                <div style={{
+                    background: "linear-gradient(135deg, #1e3a5f 0%, #2d5a9e 100%)",
+                    borderRadius: "16px",
+                    padding: "40px",
+                    textAlign: "center",
+                    marginBottom: "40px",
+                    color: "white",
+                }}>
+                    <div style={{ fontSize: "32px", marginBottom: "12px" }}>⏳</div>
+                    <div style={{ fontSize: "16px", opacity: 0.9 }}>Checking licence status...</div>
+                </div>
+            ) : isValid && license ? (
+                /* ---- دارای لایسنس ---- */
+                <div style={{
+                    background: "linear-gradient(135deg, #1e3a5f 0%, #2d5a9e 100%)",
+                    borderRadius: "20px",
+                    padding: "36px 40px",
+                    marginBottom: "48px",
+                    color: "white",
+                    boxShadow: "0 20px 60px rgba(30, 58, 95, 0.3)",
+                    position: "relative",
+                    overflow: "hidden",
+                }}>
+                    {/* دایره دکوراتیو پس زمینه */}
+                    <div style={{
+                        position: "absolute", top: "-60px", right: "-60px",
+                        width: "200px", height: "200px",
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.05)",
+                        pointerEvents: "none",
+                    }} />
+                    <div style={{
+                        position: "absolute", bottom: "-40px", left: "30%",
+                        width: "140px", height: "140px",
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.04)",
+                        pointerEvents: "none",
+                    }} />
 
-            {/* تب Active */}
-            {activeTab === "active" && (
-                <div>
-                    {isValidating && (
-                        <div style={{ textAlign: "center", padding: "40px", color: "#6B7280" }}>
-                            Validating licence...
+                    {/* هدر باکس */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px", flexWrap: "wrap", gap: "16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <div style={{
+                                width: "56px", height: "56px",
+                                borderRadius: "14px",
+                                backgroundColor: license.bgColor,
+                                border: `2px solid ${license.borderColor}`,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                fontSize: "26px",
+                            }}>
+                                <img
+                                    src="/icons/license.svg"
+                                    alt=""
+                                    style={{ width: "24px", height: "24px", filter: "invert(1)" }}
+                                />                         </div>
+                            <div>
+                                <div style={{ fontSize: "13px", opacity: 0.7, marginBottom: "4px", letterSpacing: "0.5px" }}>
+                                    ACTIVE LICENCE
+                                </div>
+                                <div style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "-0.3px" }}>
+                                    {license.name}
+                                </div>
+                            </div>
                         </div>
-                    )}
 
-                    {!isValidating && isValid && planType && (
-                        <>
-                            {/* هدر لایسنس فعال */}
-                            <LicenseHeader
-                                licenseType={planType}
-                                apiData={buildApiData()}
-                            />
+                        <div style={{
+                            backgroundColor: "rgba(255,255,255,0.15)",
+                            borderRadius: "30px",
+                            padding: "8px 20px",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            backdropFilter: "blur(4px)",
+                        }}>
+                            ✅ Active
+                        </div>
+                    </div>
 
-                            {/* کارت لایسنس فعال */}
-                            <LicenseCard
-                                licenseType={planType}
-                                isActive={true}
-                                apiData={buildApiData()}
-                            />
-                        </>
-                    )}
+                    {/* usage ماژول‌ها */}
+                    <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                        gap: "12px",
+                    }}>
+                        {Object.keys(MODULE_LABELS).map((module) => {
+                            const { used: usedKey, max: maxKey } = API_FIELD_MAP[module];
+                            const usedValue = apiData ? apiData[usedKey] ?? 0 : 0;
+                            const maxValue = apiData ? apiData[maxKey] : null;
+                            const displayMax = maxValue === null ? "∞" : maxValue;
+                            const percent = maxValue ? Math.min((usedValue / maxValue) * 100, 100) : 0;
+                            const isNearLimit = maxValue && usedValue >= maxValue * 0.8;
 
-                    {!isValidating && !isValid && (
-                        <div
-                            style={{
-                                backgroundColor: "#ffffff",
-                                border: "1px solid #E5E7EB",
-                                borderRadius: "12px",
-                                padding: "40px",
-                                textAlign: "center",
-                            }}
-                        >
-                            <div style={{ fontSize: "18px", fontWeight: "600", marginBottom: "12px", color: "#111827" }}>
-                                No Active License
+                            return (
+                                <div key={module} style={{
+                                    backgroundColor: "rgba(255,255,255,0.1)",
+                                    borderRadius: "12px",
+                                    padding: "16px",
+                                    backdropFilter: "blur(4px)",
+                                    border: "1px solid rgba(255,255,255,0.15)",
+                                }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                                        <span style={{ fontSize: "18px" }}>{MODULE_ICONS[module]}</span>
+                                        <span style={{ fontSize: "13px", opacity: 0.85, fontWeight: "500" }}>
+                                            {MODULE_LABELS[module]}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
+                                        {usedValue}
+                                        <span style={{ fontSize: "14px", opacity: 0.7, fontWeight: "400" }}>
+                                            /{displayMax}
+                                        </span>
+                                    </div>
+                                    {maxValue && (
+                                        <div style={{
+                                            height: "4px",
+                                            backgroundColor: "rgba(255,255,255,0.2)",
+                                            borderRadius: "2px",
+                                            overflow: "hidden",
+                                        }}>
+                                            <div style={{
+                                                width: `${percent}%`,
+                                                height: "100%",
+                                                backgroundColor: isNearLimit ? "#FCA5A5" : "#86EFAC",
+                                                borderRadius: "2px",
+                                                transition: "width 0.5s ease",
+                                            }} />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ) : (
+                /* ---- بدون لایسنس ---- */
+                <div style={{
+                    background: "linear-gradient(135deg, #1f2937 0%, #374151 100%)",
+                    borderRadius: "20px",
+                    padding: "40px",
+                    marginBottom: "48px",
+                    color: "white",
+                    boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+                    position: "relative",
+                    overflow: "hidden",
+                }}>
+                    <div style={{
+                        position: "absolute", top: "-40px", right: "-40px",
+                        width: "160px", height: "160px",
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.04)",
+                        pointerEvents: "none",
+                    }} />
+
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "24px", flexWrap: "wrap" }}>
+                        {/* سمت چپ: وضعیت و فرم */}
+                        <div style={{ flex: 1, minWidth: "260px" }}>
+                            <div style={{
+                                display: "inline-flex", alignItems: "center", gap: "8px",
+                                backgroundColor: "rgba(239,68,68,0.2)",
+                                border: "1px solid rgba(239,68,68,0.4)",
+                                borderRadius: "30px",
+                                padding: "6px 16px",
+                                fontSize: "13px",
+                                color: "#FCA5A5",
+                                marginBottom: "20px",
+                            }}>
+                                🔒 No Active Licence
                             </div>
-                            <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "32px" }}>
-                                Enter your license key to activate
+                            <div style={{ fontSize: "22px", fontWeight: "700", marginBottom: "8px" }}>
+                                Activate Your Licence
+                            </div>
+                            <div style={{ fontSize: "14px", opacity: 0.7, marginBottom: "28px", lineHeight: "1.6" }}>
+                                Enter your licence key below to unlock full access to all features.
                             </div>
 
-                            <div style={{ maxWidth: "400px", margin: "0 auto" }}>
+                            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                                 <input
                                     type="text"
                                     placeholder="XXXX-XXXX-XXXX-XXXX"
@@ -174,78 +275,122 @@ export const License = () => {
                                     disabled={isActivating}
                                     maxLength={19}
                                     style={{
-                                        width: "100%",
+                                        flex: 1,
+                                        minWidth: "200px",
                                         padding: "12px 16px",
-                                        borderRadius: "8px",
-                                        border: "1px solid #D1D5DB",
-                                        fontSize: "14px",
-                                        marginBottom: "16px",
+                                        borderRadius: "10px",
+                                        border: "1px solid rgba(255,255,255,0.2)",
+                                        backgroundColor: "rgba(255,255,255,0.08)",
+                                        color: "white",
+                                        fontSize: "15px",
                                         textAlign: "center",
-                                        letterSpacing: "2px",
+                                        letterSpacing: "3px",
                                         fontFamily: "monospace",
+                                        fontWeight: "600",
+                                        outline: "none",
                                     }}
                                 />
-
                                 <button
                                     onClick={handleActivate}
                                     disabled={isActivating || !licenseKey.trim()}
                                     style={{
-                                        width: "100%",
-                                        padding: "12px 24px",
-                                        borderRadius: "8px",
+                                        padding: "12px 28px",
+                                        borderRadius: "10px",
                                         border: "none",
-                                        backgroundColor: isActivating || !licenseKey.trim() ? "#D1D5DB" : "#111827",
-                                        color: "#ffffff",
+                                        backgroundColor: isActivating || !licenseKey.trim() ? "rgba(255,255,255,0.1)" : "#3B82F6",
+                                        color: "white",
                                         fontSize: "14px",
-                                        fontWeight: "600",
+                                        fontWeight: "700",
                                         cursor: isActivating || !licenseKey.trim() ? "not-allowed" : "pointer",
+                                        whiteSpace: "nowrap",
+                                        transition: "all 0.2s",
                                     }}
                                 >
-                                    {isActivating ? "Activating..." : "Activate"}
+                                    {isActivating ? "⏳ Activating..." : "🚀 Activate"}
                                 </button>
+                            </div>
 
-                                <div style={{ marginTop: "20px", fontSize: "13px", color: "#6B7280" }}>
-                                    Don't have a license key?<br />
-                                    Contact your system administrator to obtain one.
-                                </div>
+                            <div style={{ marginTop: "16px", fontSize: "12px", opacity: 0.5 }}>
+                                Don't have a key? Contact your system administrator.
                             </div>
                         </div>
-                    )}
-                </div>
-            )}
 
-            {/* تب Available */}
-            {activeTab === "available" && (
-                <div>
-                    <div style={{ fontSize: "13px", color: "#6B7280", marginBottom: "20px" }}>
-                        Available licence plans:
+                        {/* سمت راست: تعرفه رایگان */}
+                        <div style={{
+                            backgroundColor: "rgba(255,255,255,0.07)",
+                            borderRadius: "14px",
+                            padding: "20px 24px",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            minWidth: "200px",
+                        }}>
+                            <div style={{ fontSize: "13px", opacity: 0.6, marginBottom: "12px", fontWeight: "600", letterSpacing: "0.5px" }}>
+                                🎁 FREE PILOT PLAN
+                            </div>
+                            {Object.keys(MODULE_LABELS).map((module) => {
+                                const pilotLimit = LICENSE_TYPES.pilot?.limits[module];
+                                return (
+                                    <div key={module} style={{
+                                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                                        marginBottom: "10px", gap: "16px",
+                                    }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", opacity: 0.8 }}>
+                                            <span>{MODULE_ICONS[module]}</span>
+                                            <span>{MODULE_LABELS[module]}</span>
+                                        </div>
+                                        <span style={{
+                                            fontWeight: "700", fontSize: "14px",
+                                            color: "#86EFAC",
+                                        }}>
+                                            {pilotLimit === Infinity ? "∞" : pilotLimit}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    {Object.keys(LICENSE_TYPES).map((type) => (
-                        <LicenseCard
-                            key={type}
-                            licenseType={type}
-                            isActive={planType === type}
-                            onActivate={!isValid ? handlePlanClick : undefined}
-                        />
-                    ))}
                 </div>
             )}
 
-            {/* مودال */}
-            {showModal && selectedPlan && (
-                <LicenseModal
-                    licenseType={selectedPlan}
-                    onClose={() => {
-                        setShowModal(false);
-                        setSelectedPlan(null);
-                    }}
-                    onActivate={(type) => {
-                        setShowModal(false);
-                        setSelectedPlan(null);
-                        setActiveTab("active");
-                    }}
-                />
-            )}
+            {/* ===== عنوان بخش تعرفه‌ها ===== */}
+            <div style={{ marginBottom: "24px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" }}>
+                    <div style={{
+                        width: "4px", height: "28px",
+                        backgroundColor: "#1e3a5f",
+                        borderRadius: "2px",
+                    }} />
+                    <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "700", color: "#111827" }}>
+                        Available Licence Plans
+                    </h2>
+                </div>
+                <p style={{ margin: "0 0 0 16px", fontSize: "14px", color: "#6B7280", paddingLeft: "16px" }}>
+                    Choose the plan that fits your organization's needs
+                </p>
+            </div>
+
+            {/* ===== کارت‌های تعرفه ===== */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {Object.keys(LICENSE_TYPES).map((type) => (
+                    <LicenseCard
+                        key={type}
+                        licenseType={type}
+                        isActive={planType === type}
+                        apiData={planType === type ? apiData : null}
+                    />
+                ))}
+            </div>
+
+            {/* فوتر */}
+            <div style={{
+                marginTop: "48px",
+                padding: "20px",
+                borderTop: "1px solid #E5E7EB",
+                textAlign: "center",
+                fontSize: "13px",
+                color: "#9CA3AF",
+            }}>
+                🔒 All licence operations are secured and validated against your server
+            </div>
         </div>
     );
 };

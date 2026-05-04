@@ -39,7 +39,7 @@ export const LicenseBadge = ({ module }) => {
                 fontWeight: "500",
                 color: "#374151",
             }}>
-                <span><img src="/icons/license.svg" alt="" className="section-icon" /></span>
+                <span><img src="/icons/haedenIcon.svg" alt="" className="section-icon" /></span>
                 <span>{license.name}</span>
             </div>
 

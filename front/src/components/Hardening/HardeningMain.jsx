@@ -3,6 +3,7 @@ import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
 import { LicenseBadge } from "../License/LicenseBadge";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
+
 import "../../assets/hardening/FixAll.css";
 
 export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => {
@@ -49,8 +50,8 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
             <div className="hardening-options-container">
                 {/* باکس 1: Fix All Section */}
                 <div className="hardening-option-box" onClick={handleFixAllClick}>
-                    <div >
-                        <img src="/" alt="" style={{ width: "160px", height: "160px" }} />
+                    <div className="hardening-option-icon" >
+                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "160px", height: "160px" }} />
                     </div>
                     <div className="hardening-option-title">Fix all section</div>
                     <div className="hardening-option-description">
@@ -61,7 +62,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
 
                 {/* باکس 2: Fix Unsuccessful */}
                 <div className="hardening-option-box" onClick={handleFixUnsuccessfulClick}>
-                    <div className="hardening-option-icon"><img src="/icons/audit.svg" alt="icon" /></div>
+                    <div className="hardening-option-icon" >    <img src="/icons/haedenIcon.svg" alt="" style={{ width: "160px", height: "160px" }} /></div>
                     <div className="hardening-option-title">Fix Unsuccessful section</div>
                     <div className="hardening-option-description">
                         Hardening Unsuccessful section by Auditing
