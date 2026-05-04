@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUser } from "../../store/userSlice";
 
 const MODULES = [
@@ -12,10 +12,14 @@ const MODULES = [
 
 export const EditUserModal = ({ user, onClose }) => {
     const dispatch = useDispatch();
+    const { username: authUsername } = useSelector((state) => state.auth);
+    const isSelfEdit = authUsername === user.username;
+
     const [formData, setFormData] = useState({
         username: user.username,
         email: user.email,
         password: "",
+        current_password: "",
         role: user.role,
         is_active: user.is_active,
     });
@@ -28,8 +32,8 @@ export const EditUserModal = ({ user, onClose }) => {
     );
 
     const [loadingPermissions, setLoadingPermissions] = useState(true);
+    const [passwordError, setPasswordError] = useState(null);
 
-    // بارگذاری permissions کاربر
     useEffect(() => {
         const loadUserPermissions = async () => {
             try {
@@ -60,6 +64,9 @@ export const EditUserModal = ({ user, onClose }) => {
             ...formData,
             [e.target.name]: e.target.value,
         });
+        if (e.target.name === "current_password") {
+            setPasswordError(null);
+        }
     };
 
     const handlePermissionChange = (moduleName, permissionType) => {
@@ -81,15 +88,21 @@ export const EditUserModal = ({ user, onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setPasswordError(null);
 
         const updateData = {};
         if (formData.username !== user.username) updateData.username = formData.username;
         if (formData.email !== user.email) updateData.email = formData.email;
-        if (formData.password) updateData.password = formData.password;
         if (formData.role !== user.role) updateData.role = formData.role;
         if (formData.is_active !== user.is_active) updateData.is_active = formData.is_active;
 
-        // اضافه کردن permissions
+        if (formData.password) {
+            updateData.password = formData.password;
+            if (isSelfEdit) {
+                updateData.current_password = formData.current_password;
+            }
+        }
+
         const permissionsArray = Object.keys(permissions).map((module) => ({
             module: module,
             can_read: permissions[module].read,
@@ -98,7 +111,17 @@ export const EditUserModal = ({ user, onClose }) => {
         }));
         updateData.permissions = permissionsArray;
 
-        await dispatch(updateUser({ userId: user.id, userData: updateData }));
+        const result = await dispatch(updateUser({ userId: user.id, userData: updateData }));
+
+        if (result.error) {
+            const msg = result.payload;
+            if (msg?.includes("Current password is required") || msg?.includes("Current password is incorrect")) {
+                setPasswordError(msg);
+                setFormData({ ...formData, current_password: "" });
+                return;
+            }
+        }
+
         onClose();
     };
 
@@ -163,6 +186,28 @@ export const EditUserModal = ({ user, onClose }) => {
                                 </select>
                             </div>
                         </div>
+
+                        {/* Current Password - فقط برای self edit */}
+                        {isSelfEdit && formData.password && (
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Current Password *</label>
+                                    <input
+                                        type="password"
+                                        name="current_password"
+                                        value={formData.current_password}
+                                        onChange={handleChange}
+                                        placeholder="Enter current password"
+                                        required
+                                    />
+                                    {passwordError && (
+                                        <div style={{ color: "#DC2626", fontSize: "13px", marginTop: "4px" }}>
+                                            ⚠️ {passwordError}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Active Status Toggle */}
                         <div className="form-row">
