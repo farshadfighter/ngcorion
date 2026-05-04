@@ -536,28 +536,4 @@ Your main app (`app/`) currently has **NO license validation**. You need to:
 
 ---
 
-## Troubleshooting
-
-**Problem:** "License not found"
-- Check license key is correct
-- Verify license was created in database
-
-**Problem:** "Invalid signature"
-- Check organization_token is correct
-- Verify timestamp format (ISO 8601)
-- Ensure payload is JSON with sorted keys
-
-**Problem:** "VM fingerprint mismatch"
-- License is locked to another machine
-- Need to deactivate and reactivate
-
-**Problem:** "License downgraded to PILOT"
-- Heartbeat was missed for 48+ hours
-- Check network connectivity
-- Verify heartbeat task is running
-
----
-
-## Summary
-
-Your license system is **fully functional** but **not integrated** with your main application. The license server works independently and provides all necessary APIs. You need to add license validation logic to your main app to enforce licensing.
+## 

@@ -945,5 +945,3 @@ systemctl restart netease
 ```
 
 ---
-
-*Last updated: 2024*
