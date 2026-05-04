@@ -82,7 +82,7 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
                         color: license.borderColor,
                         marginBottom: "24px",
                     }}>
-                        <img src="/icons/license.svg" alt="" className="section-icon" /> {license.name}
+                        ⛔  {license.name}
                     </div>
                 )}
 

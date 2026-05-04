@@ -38,7 +38,7 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                         fontSize: "16px",
                     }}
                 >
-                    <img src="/icons/license.svg" alt="" className="section-icon" />
+                    ⛔
                 </div>
                 <div>
                     <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Active Licence</div>
