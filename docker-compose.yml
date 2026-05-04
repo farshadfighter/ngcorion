@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # Main Application PostgreSQL Database
+  postgres-main:
+    image: postgres:15-alpine
+    container_name: netease-postgres-main
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: netease_db
+      POSTGRES_USER: netease
+      POSTGRES_PASSWORD: 1234
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres-main:/var/lib/postgresql/data
+      - ./docker/postgres-main/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - netease-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netease -d netease_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # License Server PostgreSQL Database
+  postgres-license:
+    image: postgres:15-alpine
+    container_name: netease-postgres-license
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: license_db
+      POSTGRES_USER: license_user
+      POSTGRES_PASSWORD: your_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./data/postgres-license:/var/lib/postgresql/data
+      - ./docker/postgres-license/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - netease-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U license_user -d license_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for License Server Rate Limiting
+  redis:
+    image: redis:7-alpine
+    container_name: netease-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - netease-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  netease-network:
+    driver: bridge
+
+volumes:
+  postgres-main-data:
+  postgres-license-data:
+  redis-data:
