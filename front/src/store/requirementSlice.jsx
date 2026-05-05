@@ -339,7 +339,7 @@ const requirementSlice = createSlice({
                 state.zones.push(action.payload);
                 state.successMessage = "Zone created successfully";
             })
-            
+
             .addCase(updateZone.fulfilled, (state, action) => {
                 const index = state.zones.findIndex(item => item.id === action.payload.id);
                 if (index !== -1) state.zones[index] = action.payload;

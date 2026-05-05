@@ -246,12 +246,7 @@ export const AssetList = ({onNavigateToLicence}) => {
                     />
                 </div>
 
-                <button
-                    className="btn-sort"
-                    onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
-                >
-                    Sort {sortDir === "asc" ? "↑" : "↓"}
-                </button>
+
             </div>
 
             {isLoading && <div className="loading-spinner">Loading assets...</div>}
