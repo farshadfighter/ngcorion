@@ -120,18 +120,18 @@
 
 /* modal box */
 .modal-content {
-    background: #FFFFFF;
-    width: 800px;
+    width: 95%;
+    max-width: 800px;
     border-radius: 16px;
-    border: 1px solid rgba(20, 33, 61, 0.45);
-    box-shadow: 0 18px 40px rgba(0,0,0,0.16);
     overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
+
 
 /* ADD / EDIT HEIGHT */
 .modal-large .modal-body {
-    padding: 28px 32px 10px;
-}
+                           padding: 24px 32px 24px; /* افزایش پدینگ پایین (قبلا 10px بود که خیلی کم است) */
+                       }
 
 /* DELETE POPUP SIZE */
 .modal-small {
@@ -203,16 +203,22 @@
 
 .form-group input,
 .form-group select {
-    padding: 10px 12px;
-    border-radius: 6px;
+    width: 100%;                 /* پر کردن کامل عرض ستون */
+    box-sizing: border-box;      /* جلوگیری از بیرون‌زدگی به خاطر پدینگ */
+    padding: 12px 16px;          /* پدینگ بیشتر برای ظاهر مدرن‌تر */
+    border-radius: 8px;          /* گوشه‌های نرم‌تر */
     border: 1px solid #D1D5DB;
     font-size: 14px;
+    transition: all 0.2s ease;   /* اضافه کردن انیمیشن نرم */
+    background-color: #F9FAFB;   /* رنگ پس‌زمینه خیلی ملایم */
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
     border-color: #14213D;
+    background-color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(20, 33, 61, 0.15);
 }
 
 /* PERMISSIONS */
