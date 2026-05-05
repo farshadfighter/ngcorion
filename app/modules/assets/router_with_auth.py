@@ -94,8 +94,11 @@ def delete_asset_type(
     if not asset_type:
         raise HTTPException(status_code=404, detail="Asset type not found")
     type_name = asset_type.type_name
-    if not AssetService.delete_asset_type(db, type_id):
-        raise HTTPException(status_code=404, detail="Asset type not found")
+    try:
+        if not AssetService.delete_asset_type(db, type_id):
+            raise HTTPException(status_code=404, detail="Asset type not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     log_requirement_delete(db, current_user.id, "asset_type", type_id, type_name)
     return {"message": "Deleted successfully"}
 

@@ -85,6 +85,11 @@ class AssetService:
         """Delete asset type"""
         asset_type = db.query(AssetType).filter(AssetType.id == type_id).first()
         if asset_type:
+            asset_count = db.query(Asset).filter(Asset.asset_type_id == type_id).count()
+            if asset_count:
+                raise ValueError(
+                    f"Cannot delete asset type because it is used by {asset_count} asset(s)"
+                )
             db.delete(asset_type)
             db.commit()
             return True
