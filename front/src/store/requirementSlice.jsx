@@ -139,6 +139,15 @@ export const deleteZone = createAsyncThunk("requirements/deleteZone", async (id,
         return rejectWithValue(err.response?.data?.detail || "Failed to delete zone");
     }
 });
+export const updateZone = createAsyncThunk("requirements/updateZone", async ({ id, data }, { rejectWithValue }) => {
+    try {
+        const response = await api.put(`/api/zones/${id}`, data);
+        return response.data;
+    } catch (err) {
+        return rejectWithValue(err.response?.data?.detail || "Failed to update zone");
+    }
+});
+
 
 // ==================== OS CATALOG ====================
 export const fetchOSCatalog = createAsyncThunk("requirements/fetchOSCatalog", async (_, { rejectWithValue }) => {
@@ -323,16 +332,25 @@ const requirementSlice = createSlice({
             });
 
         // Zones
+        // Zones
         builder
             .addCase(fetchZones.fulfilled, (state, action) => { state.zones = action.payload; })
             .addCase(createZone.fulfilled, (state, action) => {
                 state.zones.push(action.payload);
                 state.successMessage = "Zone created successfully";
             })
+            
+            .addCase(updateZone.fulfilled, (state, action) => {
+                const index = state.zones.findIndex(item => item.id === action.payload.id);
+                if (index !== -1) state.zones[index] = action.payload;
+                state.successMessage = "Zone updated successfully";
+            })
+            // ---------------------------------
             .addCase(deleteZone.fulfilled, (state, action) => {
                 state.zones = state.zones.filter(item => item.id !== action.payload);
                 state.successMessage = "Zone deleted successfully";
             });
+
 
         // OS Catalog
         builder

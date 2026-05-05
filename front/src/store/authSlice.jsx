@@ -1,11 +1,15 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../config/api";  // ✅ تغییر
+import api from "../config/api";
+
+// ==========================================
+// Async Thunks
+// ==========================================
 
 export const loginUser = createAsyncThunk(
     "auth/login",
     async (credentials, { rejectWithValue }) => {
         try {
-            const response = await api.post("/auth/login", {  // ✅ تغییر - حذف /api
+            const response = await api.post("/auth/login", {
                 username: credentials.username,
                 password: credentials.password,
             });
@@ -19,50 +23,84 @@ export const loginUser = createAsyncThunk(
     }
 );
 
-// بقیه کد بدون تغییر...
+// ==========================================
+// Helper - بررسی دسترسی کاربر
+// ==========================================
+
+/**
+ * چک کردن دسترسی کاربر به یک ماژول
+ *
+ * @param {object} permissions - آبجکت permissions از state
+ * @param {string} role - نقش کاربر
+ * @param {string} module - نام ماژول (مثلاً "hardening")
+ * @param {string} action - نوع عملیات: "read" | "write" | "delete"
+ * @returns {boolean}
+ *
+ * مثال:
+ *   hasPermission(permissions, role, "hardening", "read")
+ */
+export const hasPermission = (permissions, role, module, action) => {
+    if (role === "admin") return true;
+    if (!permissions || !permissions[module]) return false;
+    return permissions[module][action] === true;
+};
+
+// ==========================================
+// Slice
+// ==========================================
+
 const authSlice = createSlice({
     name: "auth",
     initialState: {
-        token: localStorage.getItem("token") || null,
-        username: localStorage.getItem("username") || null,
-        role: localStorage.getItem("role") || null,
-        isLoading: false,
-        error: null,
+        token:       localStorage.getItem("token") || null,
+        username:    localStorage.getItem("username") || null,
+        role:        localStorage.getItem("role") || null,
+        permissions: JSON.parse(localStorage.getItem("permissions") || "{}"),
+        isLoading:   false,
+        error:       null,
     },
     reducers: {
         logout: (state) => {
-            state.token = null;
-            state.username = null;
-            state.role = null;
-            state.error = null;
+            state.token       = null;
+            state.username    = null;
+            state.role        = null;
+            state.permissions = {};
+            state.error       = null;
 
             localStorage.removeItem("token");
             localStorage.removeItem("username");
             localStorage.removeItem("role");
+            localStorage.removeItem("permissions");
+        },
+
+        clearError: (state) => {
+            state.error = null;
         },
     },
     extraReducers: (builder) => {
         builder
             .addCase(loginUser.pending, (state) => {
                 state.isLoading = true;
-                state.error = null;
+                state.error     = null;
             })
             .addCase(loginUser.fulfilled, (state, action) => {
-                state.isLoading = false;
-                state.token = action.payload.access_token;
-                state.username = action.payload.username;
-                state.role = action.payload.role;
+                state.isLoading   = false;
+                state.token       = action.payload.access_token;
+                state.username    = action.payload.username;
+                state.role        = action.payload.role;
+                state.permissions = action.payload.permissions || {};
 
-                localStorage.setItem("token", action.payload.access_token);
-                localStorage.setItem("username", action.payload.username);
-                localStorage.setItem("role", action.payload.role);
+                localStorage.setItem("token",       action.payload.access_token);
+                localStorage.setItem("username",    action.payload.username);
+                localStorage.setItem("role",        action.payload.role);
+                localStorage.setItem("permissions", JSON.stringify(action.payload.permissions || {}));
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.payload;
+                state.error     = action.payload;
             });
     },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearError } = authSlice.actions;
 export default authSlice.reducer;
