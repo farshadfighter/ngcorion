@@ -9,7 +9,7 @@ import {
     clearError,
 } from '../../store/discoverySlice.jsx';
 import { fetchAssetTypes } from  "../../store/assetSlice.jsx";
-
+import AutoDiscoveryDeleteModal from "./AutoDiscoveryDeleteModal.jsx";
 import NewScanModal from './NewScanModal.jsx';
 import ScanHistoryTable from './ScanHistoryTable.jsx';
 import ScanResultsModal from './ScanResultsModal.jsx';
@@ -33,6 +33,16 @@ const AutoDiscovery = ({onNavigateToLicence}) => {
     } = useSelector((state) => state.discovery);
 
     const { assetTypes } = useSelector((state) => state.assets);
+
+    // اضافه کردن به ابتدای کامپوننت AutoDiscovery
+    const [deleteModal, setDeleteModal] = useState({
+        isOpen: false,
+        type: null, //
+        scanId: null,
+        title: '',
+        message: ''
+    });
+
 
     // Local state
     const [showScanModal, setShowScanModal] = useState(false);
@@ -112,20 +122,30 @@ const AutoDiscovery = ({onNavigateToLicence}) => {
     }, [dispatch]);
 
     // Handle deleting a scan
-    const handleDeleteScan = useCallback((scanId) => {
-        if (window.confirm('Are you sure you want to delete this scan?')) {
-            dispatch(deleteScan(scanId));
-        }
-    }, [dispatch]);
 
-    // Handle clearing all history
-    const handleClearHistory = useCallback(() => {
-        if (window.confirm('Are you sure you want to clear all scan history?')) {
+
+    const handleDeleteScan = (scanId) => {
+        // باز کردن مودال برای حذف یک اسکن خاص
+        setDeleteModal({ isOpen: true, type: 'SINGLE_SCAN', scanId: scanId });
+    };
+
+    const handleClearHistory = () => {
+        // باز کردن مودال برای پاک کردن کل تاریخچه
+        setDeleteModal({ isOpen: true, type: 'CLEAR_HISTORY', scanId: null });
+    };
+    const handleConfirmDelete = useCallback(() => {
+        if (deleteModal.type === 'SINGLE_SCAN' && deleteModal.scanId) {
+            dispatch(deleteScan(deleteModal.scanId));
+        } else if (deleteModal.type === 'CLEAR_HISTORY') {
             scanHistory.forEach(scan => {
                 dispatch(deleteScan(scan.scan_id));
             });
         }
-    }, [dispatch, scanHistory]);
+
+        // در نهایت مودال را می‌بندیم
+        setDeleteModal(prev => ({ ...prev, isOpen: false }));
+    }, [deleteModal, dispatch, scanHistory]);
+
 
     // Handle host approval workflow
     const handleApproveHost = useCallback((host) => {
@@ -419,6 +439,16 @@ const AutoDiscovery = ({onNavigateToLicence}) => {
                 )}
 
             </div>
+            <AutoDiscoveryDeleteModal
+                isOpen={deleteModal.isOpen}
+                onCancel={() => setDeleteModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={handleConfirmDelete}
+                title={deleteModal.type === 'SINGLE_SCAN' ? "Delete Scan" : "Clear History"}
+                message={deleteModal.type === 'SINGLE_SCAN'
+                    ? "Are you sure you want to delete this scan?"
+                    : "Are you sure you want to clear all scan history?"}
+
+            />
         </>
     );
 };

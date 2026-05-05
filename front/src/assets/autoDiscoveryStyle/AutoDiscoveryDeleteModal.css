@@ -1,0 +1,69 @@
+/* AutoDiscoveryDeleteModal.css */
+.ad-del-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* قرارگیری روی تمام عناصر */
+}
+
+.ad-del-modal-box {
+    background: #ffffff;
+    padding: 24px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.ad-del-modal-title {
+    margin: 0 0 10px 0;
+    font-size: 1.25rem;
+    color: #111827;
+}
+
+.ad-del-modal-text {
+    margin: 0 0 24px 0;
+    font-size: 0.95rem;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+.ad-del-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.ad-del-modal-btn-cancel {
+    padding: 8px 16px;
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.ad-del-modal-btn-cancel:hover {
+    background-color: #e5e7eb;
+}
+
+.ad-del-modal-btn-danger {
+    padding: 8px 16px;
+    background-color: #ef4444;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.ad-del-modal-btn-danger:hover {
+    background-color: #dc2626;
+}
