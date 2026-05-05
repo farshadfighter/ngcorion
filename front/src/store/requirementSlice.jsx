@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import api from "../config/api";
 
 // ==================== ASSET TYPES ====================
@@ -371,9 +371,36 @@ const requirementSlice = createSlice({
             });
 
         // Enums
-        builder.addCase(fetchEnums.fulfilled, (state, action) => {
-            state.enums = action.payload;
-        });
+        builder
+            .addCase(fetchEnums.fulfilled, (state, action) => {
+                state.enums = action.payload;
+            })
+            .addMatcher(
+                isAnyOf(
+                    createAssetType.rejected,
+                    updateAssetType.rejected,
+                    deleteAssetType.rejected,
+                    createOwner.rejected,
+                    updateOwner.rejected,
+                    deleteOwner.rejected,
+                    createLocation.rejected,
+                    updateLocation.rejected,
+                    deleteLocation.rejected,
+                    createZone.rejected,
+                    deleteZone.rejected,
+                    createOS.rejected,
+                    deleteOS.rejected,
+                    createVendor.rejected,
+                    deleteVendor.rejected,
+                    createDependency.rejected,
+                    deleteDependency.rejected,
+                    fetchEnums.rejected
+                ),
+                (state, action) => {
+                    state.error = action.payload || "Request failed";
+                    state.successMessage = null;
+                }
+            );
     },
 });
 
