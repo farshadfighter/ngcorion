@@ -67,6 +67,12 @@ class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=4, max_length=72)
+    current_password: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=72,
+        description="Required when the authenticated user changes their own password"
+    )
     role: Optional[str] = None
     is_active: Optional[bool] = None
     permissions: Optional[List[PermissionCreate]] = Field(

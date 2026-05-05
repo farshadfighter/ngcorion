@@ -503,7 +503,7 @@ async def get_users(
 | GET | `/api/users/` | user_management.read | List all users |
 | GET | `/api/users/{id}` | user_management.read | Get user by ID |
 | POST | `/api/users/` | user_management.write | Create user |
-| PUT | `/api/users/{id}` | user_management.write | Update user |
+| PUT | `/api/users/{id}` | user_management.write | Update user; self password changes require `current_password` |
 | DELETE | `/api/users/{id}` | user_management.delete | Delete user |
 | GET | `/api/users/modules` | authenticated | List available modules |
 
@@ -521,6 +521,16 @@ async def get_users(
     }
 }
 ```
+
+**Self Password Change Request:**
+```json
+{
+    "password": "newSecurePassword123",
+    "current_password": "oldSecurePassword123"
+}
+```
+
+If the authenticated user changes their own password, `current_password` is required. Missing current password returns `400`; an incorrect current password returns `401`. Admins or permitted user-management operators can still reset another user's password without that user's current password.
 
 ---
 

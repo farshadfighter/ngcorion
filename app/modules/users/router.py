@@ -186,7 +186,11 @@ def update_user(
     check_user_management_permission(current_user, "write", db)
     
     service = UserService(db)
-    updated_user = service.update_user(user_id, user_data)
+    updated_user = service.update_user(
+        user_id,
+        user_data,
+        current_user_id=current_user.id
+    )
     return updated_user
 
 

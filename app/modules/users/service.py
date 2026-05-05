@@ -8,7 +8,7 @@ from typing import List, Optional
 from app.models import User, UserRole
 from app.models.user_permission import UserPermission, ModuleEnum, get_default_permissions
 from app.schemas.user import UserCreate, UserUpdate
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 
 
 class UserService:
@@ -100,7 +100,7 @@ class UserService:
         
         return new_user
     
-    def update_user(self, user_id: int, user_data: UserUpdate) -> User:
+    def update_user(self, user_id: int, user_data: UserUpdate, current_user_id: int = None) -> User:
         """Update user and optionally their permissions"""
         user = self.get_user_by_id(user_id)
         
@@ -136,6 +136,19 @@ class UserService:
         
         # Update password
         if user_data.password is not None:
+            if current_user_id == user_id:
+                if not user_data.current_password:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Current password is required to change your password"
+                    )
+
+                if not verify_password(user_data.current_password, user.hashed_password):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Current password is incorrect"
+                    )
+
             user.hashed_password = get_password_hash(user_data.password)
         
         # Update role
