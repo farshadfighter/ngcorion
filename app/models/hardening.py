@@ -29,7 +29,7 @@ class HardeningAction(Base):
     # Relationships
     audit_result_id = Column(Integer, ForeignKey("audit_results.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    asset_id = Column(Integer, ForeignKey("asset_inventory.id"), nullable=False, index=True)
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id",ondelete="CASCADE"), nullable=False, index=True , comment="Related asset id")
     audit_session_id = Column(Integer, ForeignKey("audit_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Action metadata
@@ -62,5 +62,9 @@ class HardeningAction(Base):
     # Relationships
     audit_result = relationship("AuditResult", backref=backref("hardening_actions", passive_deletes=True))
     user = relationship("User", backref="hardening_actions")
-    asset = relationship("Asset", backref="hardening_actions")
+    #asset = relationship("Asset", backref="hardening_actions")
+    asset = relationship(
+    "Asset",
+    backref=backref("hardening_actions", cascade="all, delete-orphan"))
     audit_session = relationship("AuditSession", backref=backref("hardening_actions", passive_deletes=True))
+    
