@@ -80,8 +80,8 @@ class AuditSession(Base):
     )  # Can be null for direct CIS scans
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     asset_id = Column(
-        Integer, ForeignKey("asset_inventory.id"), nullable=True
-    )  # Optional: link to asset
+        Integer, ForeignKey("asset_inventory.id", ondelete='SET NULL'), nullable=True
+    )
 
     target_ip = Column(String(50), nullable=False)
     device_type = Column(SQLEnum(DeviceType), nullable=False)
