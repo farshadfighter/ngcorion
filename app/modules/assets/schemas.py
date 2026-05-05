@@ -189,6 +189,7 @@ class AssetOwnerCreate(BaseModel):
     role: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    responsibility_level: Optional[str] = None
 
     @field_validator('full_name')
     @classmethod
@@ -209,10 +210,12 @@ class AssetOwnerCreate(BaseModel):
             raise ValueError('Phone number must be at least 7 characters')
         return v
 
+
 class AssetOwnerResponse(AssetOwnerCreate):
     id: int
     user_id: int
-    
+    created_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 class AssetLocationCreate(BaseModel):
