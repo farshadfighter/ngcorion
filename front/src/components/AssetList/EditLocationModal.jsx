@@ -9,9 +9,9 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
-        location_id: asset.location_id || "",
-        owner_id: asset.owner_id || "",
-        status: asset.status || "active"
+        location_id: asset.location_id ?? "",
+        owner_id: asset.owner_id ?? "",
+        status: asset.status ?? "active"
     });
 
     const handleChange = (e) => {
@@ -25,7 +25,6 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
         setError(null);
         try {
             const submitData = { ...formData };
-            Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 

@@ -19,11 +19,11 @@ export const EditSecurityModal = ({ asset, isOpen, onClose }) => {
     const [fieldErrors, setFieldErrors] = useState({});
     const [formData, setFormData] = useState({
         confidentiality_level: asset.confidentiality_level || "",
-        risk_level: asset.risk_level || "",
-        last_audit_date: asset.last_audit_date || "",
-        last_patch_date: asset.last_patch_date || "",
-        asset_value: asset.asset_value || "",
-        description: asset.description || ""
+        risk_level: asset.risk_level ?? "",
+        last_audit_date: asset.last_audit_date ?? "",
+        last_patch_date: asset.last_patch_date ?? "",
+        asset_value: asset.asset_value ?? "",
+        description: asset.description ?? ""
     });
 
     const handleChange = (e) => {
@@ -54,7 +54,6 @@ export const EditSecurityModal = ({ asset, isOpen, onClose }) => {
         setError(null);
         try {
             const submitData = { ...formData };
-            Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 

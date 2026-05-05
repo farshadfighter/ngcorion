@@ -31,11 +31,12 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
     const [error, setError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
     const [formData, setFormData] = useState({
-        serial_number: asset.serial_number || "",
-        os_name: asset.os_name || "",
-        ip_address: asset.ip_address || "",
-        mac_address: asset.mac_address || ""
+        serial_number: asset.serial_number ?? "",
+        os_name: asset.os_name ?? "",
+        ip_address: asset.ip_address ?? "",
+        mac_address: asset.mac_address ?? ""
     });
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -67,7 +68,6 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         setError(null);
         try {
             const submitData = { ...formData };
-            Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 

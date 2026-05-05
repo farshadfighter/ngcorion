@@ -18,12 +18,12 @@ export const EditOverviewModal = ({ asset, isOpen, onClose }) => {
     const [error, setError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
     const [formData, setFormData] = useState({
-        asset_name: asset.asset_name || "",
-        hostname: asset.hostname || "",
-        asset_type_id: asset.asset_type_id || "",
-        asset_role: asset.asset_role || "",
-        manufacturer: asset.manufacturer || "",
-        model: asset.model || ""
+        asset_name: asset.asset_name ?? "",
+        hostname: asset.hostname ?? "",
+        asset_type_id: asset.asset_type_id ?? "",
+        asset_role: asset.asset_role ?? "",
+        manufacturer: asset.manufacturer ?? "",
+        model: asset.model ?? ""
     });
 
     const handleChange = (e) => {
@@ -55,7 +55,6 @@ export const EditOverviewModal = ({ asset, isOpen, onClose }) => {
         setError(null);
         try {
             const submitData = { ...formData };
-            Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 
