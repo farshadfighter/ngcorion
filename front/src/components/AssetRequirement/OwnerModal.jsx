@@ -35,8 +35,13 @@ export const OwnerModal = ({ onClose }) => {
 
         if (!validateForm()) return;
 
+        // Remove empty strings to avoid validation errors
+        const cleanedData = Object.fromEntries(
+            Object.entries(formData).filter(([_, value]) => value.trim() !== "")
+        );
+
         try {
-            await dispatch(createOwner(formData)).unwrap();
+            await dispatch(createOwner(cleanedData)).unwrap();
             onClose();
         } catch (error) {
             console.error("Failed to create owner:", error);

@@ -189,7 +189,7 @@ class AssetOwnerCreate(BaseModel):
     role: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    responsibility_level: Optional[str] = None
+    #responsibility_level: Optional[str] = None
 
     @field_validator('full_name')
     @classmethod
