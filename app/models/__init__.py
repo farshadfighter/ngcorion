@@ -72,11 +72,6 @@ from app.models.asset_log import (
     log_asset_deleted,
     log_asset_import
 )
-from app.models.audit_log import (
-    AuditModuleLog,
-    log_audit_executed,
-    log_audit_session_deleted
-)
 
 # Import security audit log (system-wide action tracking)
 from app.models.security_audit_log import (
@@ -143,9 +138,6 @@ __all__ = [
     "log_asset_updated",
     "log_asset_deleted",
     "log_asset_import",
-    "AuditModuleLog",
-    "log_audit_executed",
-    "log_audit_session_deleted",
     # Security audit log
     "AuditLog",
     "log_action",
