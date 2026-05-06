@@ -80,7 +80,6 @@ export const LocationsTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-
                         placeholder="Search asset types..."
                         className="search-input"
                         value={searchTerm}
@@ -105,6 +104,7 @@ export const LocationsTab = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
+                        <th>Number</th>
                         <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                             ID{renderSortIcon("id")}
                         </th>
@@ -135,13 +135,14 @@ export const LocationsTab = () => {
                     <tbody>
                     {sortedData.length === 0 ? (
                         <tr>
-                            <td colSpan="9" className="no-data">
+                            <td colSpan="10" className="no-data">
                                 No locations found
                             </td>
                         </tr>
                     ) : (
-                        sortedData.map((item) => (
+                        sortedData.map((item, index) => (
                             <tr key={item.id}>
+                                <td>{index + 1}</td>
                                 <td>{item.id}</td>
                                 <td>{item.site_name}</td>
                                 <td>{item.rack_name || "-"}</td>
@@ -152,7 +153,7 @@ export const LocationsTab = () => {
                                 <td>{item.subnet || "-"}</td>
                                 <td className="actions">
                                     <button className="btn-icon"
-                                        onClick={() => handleDelete(item)}
+                                            onClick={() => handleDelete(item)}
                                     >
                                         <i className="fa-solid fa-trash"></i>
                                     </button>

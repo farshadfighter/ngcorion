@@ -34,6 +34,8 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
             <table className="assets-table">
                 <thead>
                 <tr>
+                    {/* ستون جدید برای شماره‌گذاری */}
+                    <th>Number</th>
                     <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                         ID {renderSortIcon("id")}
                     </th>
@@ -56,8 +58,11 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                 </tr>
                 </thead>
                 <tbody>
-                {sortedAssets.map((asset) => (
+                {/* دریافت index برای شماره‌گذاری */}
+                {sortedAssets.map((asset, index) => (
                     <tr key={asset.id} className={isNewAsset(asset.id) ? "new-asset-row" : ""}>
+                        {/* نمایش شماره ردیف (چون ایندکس از 0 شروع می‌شود، به علاوه 1 می‌کنیم) */}
+                        <td>{index + 1}</td>
                         <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.confidentiality_level || "-"}</td>

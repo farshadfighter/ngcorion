@@ -104,6 +104,7 @@ export const NetworkZoneTab = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
+                        <th>Number</th>
                         <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                             ID{renderSortIcon("id")}
                         </th>
@@ -124,8 +125,9 @@ export const NetworkZoneTab = () => {
                             </td>
                         </tr>
                     ) : (
-                        sortedData.map((item) => (
+                        sortedData.map((item,index) => (
                             <tr key={item.id}>
+                                <td>{index + 1}</td>
                                 <td>{item.id}</td>
                                 <td>{item.zone_name}</td>
                                 <td>{item.description || "-"}</td>

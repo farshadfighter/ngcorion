@@ -104,6 +104,8 @@ export const VendorsTab = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
+                        <th>Number</th>
+
                         <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                             ID{renderSortIcon("id")}
                         </th>
@@ -124,8 +126,9 @@ export const VendorsTab = () => {
                             </td>
                         </tr>
                     ) : (
-                        sortedData.map((item) => (
+                        sortedData.map((item,index) => (
                             <tr key={item.id}>
+                                <td>{index + 1}</td>
                                 <td>{item.id}</td>
                                 <td>{item.vendor_name}</td>
                                 <td>{item.vendor_type || "-"}</td>

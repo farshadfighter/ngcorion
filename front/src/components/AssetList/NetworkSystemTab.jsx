@@ -5,7 +5,6 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [showPortsModal, setShowPortsModal] = useState(false);
 
-    // Sort states
     const [sortColumn, setSortColumn] = useState(null);
     const [sortDirection, setSortDirection] = useState("asc");
 
@@ -49,6 +48,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
             <table className="assets-table">
                 <thead>
                 <tr>
+                    <th>Number</th>
                     <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                         ID {renderSortIcon("id")}
                     </th>
@@ -72,8 +72,9 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                 </tr>
                 </thead>
                 <tbody>
-                {sortedAssets.map((asset) => (
+                {sortedAssets.map((asset, index) => (
                     <tr key={asset.id} className={isNewAsset(asset.id) ? "new-asset-row" : ""}>
+                        <td>{index + 1}</td>
                         <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.serial_number || "-"}</td>
@@ -88,11 +89,9 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                         <td className="actions-cell">
                             <button className="btn-icon" onClick={() => onEdit(asset)}>
                                 <i className="fa-solid fa-pen"></i>
-
                             </button>
                             <button className="btn-icon" onClick={() => onDelete(asset.id)}>
                                 <i className="fa-solid fa-trash"></i>
-
                             </button>
                         </td>
                     </tr>

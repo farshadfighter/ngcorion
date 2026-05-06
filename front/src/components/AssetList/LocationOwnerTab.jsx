@@ -34,6 +34,7 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
             <table className="assets-table">
                 <thead>
                 <tr>
+                    <th>Number</th>
                     <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                         ID {renderSortIcon("id")}
                     </th>
@@ -53,19 +54,21 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                 </tr>
                 </thead>
                 <tbody>
-                {sortedAssets.map((asset) => (
+                {sortedAssets.map((asset, index) => (
                     <tr key={asset.id} className={isNewAsset(asset.id) ? "new-asset-row" : ""}>
+                        <td>{index + 1}</td>
                         <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.location_name || "-"}</td>
                         <td>{asset.owner_name || "-"}</td>
                         <td>
-                <span className={`status-badge status-${(asset.status || "unknown").toLowerCase().replace(/\s+/g, '-')}`}>
-                  {asset.status || "Unknown"}
-                </span>
+                            <span className={`status-badge status-${(asset.status || "unknown").toLowerCase().replace(/\s+/g, '-')}`}>
+                                {asset.status || "Unknown"}
+                            </span>
                         </td>
                         <td className="actions-cell">
-                            <button className="btn-icon" onClick={() => onEdit(asset)}><i className="fa-solid fa-pen"></i>
+                            <button className="btn-icon" onClick={() => onEdit(asset)}>
+                                <i className="fa-solid fa-pen"></i>
                             </button>
                             <button className="btn-icon" onClick={() => onDelete(asset.id)}>
                                 <i className="fa-solid fa-trash"></i>

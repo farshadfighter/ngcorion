@@ -118,6 +118,7 @@ export const OwnersTab = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
+                        <th>Number</th>
                         <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                             ID{renderSortIcon("id")}
                         </th>
@@ -147,8 +148,9 @@ export const OwnersTab = () => {
                             </td>
                         </tr>
                     ) : (
-                        sortedData.map((item) => (
+                        sortedData.map((item,index) => (
                             <tr key={item.id}>
+                                <td>{index + 1}</td>
                                 <td>{item.id}</td>
                                 <td>{item.full_name}</td>
                                 <td>{item.department || "-"}</td>

@@ -80,7 +80,6 @@ export const AssetTypeTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-
                         placeholder="Search asset types..."
                         className="search-input"
                         value={searchTerm}
@@ -106,6 +105,7 @@ export const AssetTypeTab = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
+                        <th>Number</th>
                         <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
                             ID{renderSortIcon("id")}
                         </th>
@@ -124,13 +124,14 @@ export const AssetTypeTab = () => {
                     <tbody>
                     {sortedData.length === 0 ? (
                         <tr>
-                            <td colSpan="5" className="no-data">
+                            <td colSpan="6" className="no-data">
                                 No asset types found
                             </td>
                         </tr>
                     ) : (
-                        sortedData.map((item) => (
+                        sortedData.map((item, index) => (
                             <tr key={item.id}>
+                                <td>{index + 1}</td>
                                 <td>{item.id}</td>
                                 <td>{item.type_name}</td>
                                 <td>{item.category || "-"}</td>
