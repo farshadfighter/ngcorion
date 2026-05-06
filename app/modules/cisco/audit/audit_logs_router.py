@@ -5,13 +5,13 @@ API endpoints for querying audit module logs.
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.dependencies import require_permission
-from app.models import User, AuditModuleLog
+from app.models import User, AuditLog
 
 
 class AuditModuleLogResponse(BaseModel):
@@ -25,7 +25,7 @@ class AuditModuleLogResponse(BaseModel):
     target_ip: Optional[str] = None
     audit_type: Optional[str] = None
     profile: Optional[str] = None
-    details: Optional[dict] = None
+    details: Optional[Any] = None
     status: Optional[str] = None
     error_message: Optional[str] = None
     timestamp: Optional[datetime] = None
@@ -50,43 +50,42 @@ def get_audit_module_logs(
 ):
     """
     Get audit module logs with filters.
-
-    - **limit**: Maximum number of logs to return (default: 50, max: 500)
-    - **offset**: Number of logs to skip (for pagination)
-    - **action**: Filter by action type (execute_audit, delete_session)
-    - **asset_id**: Filter by asset ID
-    - **user_id**: Filter by user who performed the action
-    - **audit_type**: Filter by audit type (cisco_cis, cis_benchmark)
     """
-    query = db.query(AuditModuleLog)
+    query = db.query(AuditLog)
 
+    # Filtering based on the new AuditLog columns
     if action:
-        query = query.filter(AuditModuleLog.action == action)
+        query = query.filter(AuditLog.action == action)
     if asset_id:
-        query = query.filter(AuditModuleLog.asset_id == asset_id)
+        query = query.filter(AuditLog.target_id == asset_id)
     if user_id:
-        query = query.filter(AuditModuleLog.user_id == user_id)
+        query = query.filter(AuditLog.user_id == user_id)
     if audit_type:
-        query = query.filter(AuditModuleLog.audit_type == audit_type)
+        query = query.filter(AuditLog.module == audit_type)
 
-    logs = query.order_by(AuditModuleLog.timestamp.desc()).offset(offset).limit(limit).all()
+    logs = query.order_by(AuditLog.timestamp.desc()).offset(offset).limit(limit).all()
 
     result = []
     for log in logs:
+        # Extracting username if relation exists
+        username = None
+        if hasattr(log, "user") and log.user:
+             username = log.user.username
+
         log_dict = AuditModuleLogResponse(
             id=log.id,
             user_id=log.user_id,
-            username=log.user.username if log.user else None,
+            username=username,
             action=log.action,
-            session_id=log.session_id,
-            asset_id=log.asset_id,
-            asset_name=log.asset_name,
-            target_ip=log.target_ip,
-            audit_type=log.audit_type,
-            profile=log.profile,
-            details=log.details,
-            status=log.status,
-            error_message=log.error_message,
+            session_id=None, # session details are now stored in `detail` string
+            asset_id=log.target_id, # target_id represents asset_id here
+            asset_name=None, 
+            target_ip=log.ip_address,
+            audit_type=log.module,
+            profile=None,
+            details={"info": log.detail} if hasattr(log, "detail") else None,
+            status=log.result, # status is now 'result' (success/failed)
+            error_message=log.detail if log.result == "failed" else None,
             timestamp=log.timestamp
         )
         result.append(log_dict)
@@ -103,30 +102,32 @@ def get_logs_for_asset(
 ):
     """
     Get all audit logs for a specific asset.
-
-    - **asset_id**: The asset ID to get logs for
-    - **limit**: Maximum number of logs to return (default: 50, max: 500)
     """
-    logs = db.query(AuditModuleLog).filter(
-        AuditModuleLog.asset_id == asset_id
-    ).order_by(AuditModuleLog.timestamp.desc()).limit(limit).all()
+    logs = db.query(AuditLog).filter(
+        AuditLog.target_id == asset_id,
+        AuditLog.module.in_(["cisco_cis", "cisco_audit"]) # Restrict to audit modules
+    ).order_by(AuditLog.timestamp.desc()).limit(limit).all()
 
     result = []
     for log in logs:
+        username = None
+        if hasattr(log, "user") and log.user:
+             username = log.user.username
+
         log_dict = AuditModuleLogResponse(
             id=log.id,
             user_id=log.user_id,
-            username=log.user.username if log.user else None,
+            username=username,
             action=log.action,
-            session_id=log.session_id,
-            asset_id=log.asset_id,
-            asset_name=log.asset_name,
-            target_ip=log.target_ip,
-            audit_type=log.audit_type,
-            profile=log.profile,
-            details=log.details,
-            status=log.status,
-            error_message=log.error_message,
+            session_id=None,
+            asset_id=log.target_id,
+            asset_name=None,
+            target_ip=log.ip_address,
+            audit_type=log.module,
+            profile=None,
+            details={"info": log.detail} if hasattr(log, "detail") else None,
+            status=log.result,
+            error_message=log.detail if log.result == "failed" else None,
             timestamp=log.timestamp
         )
         result.append(log_dict)
@@ -141,24 +142,20 @@ def get_audit_module_log_stats(
 ):
     """
     Get statistics for audit module logs.
-
-    Returns:
-        - total: Total number of logs
-        - by_action: Count by action type
-        - success_count: Number of successful actions
-        - failed_count: Number of failed actions
-        - success_rate: Percentage of successful actions
     """
-    total = db.query(AuditModuleLog).count()
+    # Only count logs related to cisco audit
+    base_query = db.query(AuditLog).filter(AuditLog.module.in_(["cisco_cis", "cisco_audit"]))
+    
+    total = base_query.count()
 
     by_action = {}
-    for action in ["execute_audit", "delete_session"]:
-        by_action[action] = db.query(AuditModuleLog).filter(
-            AuditModuleLog.action == action
-        ).count()
+    # Use the new action names you configured earlier
+    for action in ["audit_executed", "audit_session_deleted"]:
+        by_action[action] = base_query.filter(AuditLog.action == action).count()
 
-    success = db.query(AuditModuleLog).filter(AuditModuleLog.status == "success").count()
-    failed = db.query(AuditModuleLog).filter(AuditModuleLog.status == "failed").count()
+    # Use the new 'result' column for success/failed status
+    success = base_query.filter(AuditLog.result == "success").count()
+    failed = base_query.filter(AuditLog.result == "failed").count()
 
     return {
         "total": total,
