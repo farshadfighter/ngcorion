@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, require_quota
-from app.models import User, log_audit_executed, log_audit_session_deleted
+from app.models import User, log_action
 from .service import ApacheAuditService, ApacheAuditNotInstalledError
 
 
@@ -165,36 +165,55 @@ def execute_apache_audit(
                 detail="Failed to retrieve audit summary"
             )
 
-        log_audit_executed(
-            db, current_user.id, session.id, request.asset_id, asset_name,
-            session.target_ip, "apache_cis", request.profile,
-            session.compliance_pct, "success"
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="apache_cis",
+            target_id=session.id,
+            result="success",
+            detail=f"Asset ID: {request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
         )
 
         return summary
 
     except ApacheAuditNotInstalledError as e:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "apache_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="apache_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except ValueError as e:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "apache_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="apache_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "apache_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="apache_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -211,12 +230,7 @@ def list_apache_sessions(
 ):
     """
     List all Apache audit sessions with pagination.
-
-    **Query Parameters:**
-    - limit: Maximum number of sessions to return (default: 50, max: 100)
-    - offset: Number of sessions to skip (default: 0)
-
-    **Permissions:** Requires AUDIT read permission
+    ...
     """
     limit = min(limit, 100)
     sessions = ApacheAuditService.get_apache_sessions(db, limit, offset)
@@ -235,11 +249,6 @@ def get_apache_sessions_count(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get total count of Apache audit sessions.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     count = ApacheAuditService.get_apache_sessions_count(db)
     return {"total": count}
 
@@ -250,11 +259,6 @@ def get_apache_session(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get Apache audit session details and compliance summary.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     summary = ApacheAuditService.get_session_summary(db, session_id)
 
     if not summary:
@@ -280,11 +284,6 @@ def get_apache_results(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get detailed results for all checks in an Apache audit session.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     session = ApacheAuditService.get_audit_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -315,13 +314,6 @@ def get_apache_failed_checks(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get only failed checks for an Apache audit session.
-
-    Useful for hardening workflows - returns only the checks that need to be fixed.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     session = ApacheAuditService.get_audit_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -340,11 +332,6 @@ def get_asset_apache_history(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get Apache audit history for a specific asset.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -371,11 +358,6 @@ def delete_apache_session(
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db)
 ):
-    """
-    Delete an Apache audit session and all its results.
-
-    **Permissions:** Requires AUDIT write permission
-    """
     session = ApacheAuditService.get_audit_session(db, session_id)
 
     if not session:
@@ -391,9 +373,14 @@ def delete_apache_session(
     try:
         ApacheAuditService.delete_audit_session(db, session_id)
 
-        log_audit_session_deleted(
-            db, current_user.id, session_id, session.asset_id,
-            asset_name, session.target_ip
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="delete_audit_session",
+            module="apache_cis",
+            target_id=session_id,
+            result="success",
+            detail=f"Deleted session for Asset ID: {session.asset_id}, Name: {asset_name}, IP: {session.target_ip}"
         )
 
         return {"message": f"Audit session {session_id} deleted successfully"}
@@ -410,14 +397,6 @@ def get_apache_statistics(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get comprehensive statistics about Apache audit sessions.
-
-    **Query Parameters:**
-    - asset_id: Optional filter by asset
-
-    **Permissions:** Requires AUDIT read permission
-    """
     stats = ApacheAuditService.get_audit_statistics(db, asset_id)
     return stats
 
@@ -426,13 +405,7 @@ def get_apache_statistics(
 def get_benchmark_info(
     current_user: User = Depends(require_permission("AUDIT", "read"))
 ):
-    """
-    Get information about the CIS Apache HTTP Server benchmark.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     from .cis_benchmark_map import get_benchmark_summary
-
     return get_benchmark_summary()
 
 
@@ -440,11 +413,6 @@ def get_benchmark_info(
 def get_supported_configs(
     current_user: User = Depends(require_permission("AUDIT", "read"))
 ):
-    """
-    Get list of supported Apache configurations and distributions.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     return {
         "supported_distributions": [
             {
