@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, require_quota
-from app.models import User, log_audit_executed, log_audit_session_deleted
+from app.models import User, log_action
 from .service import LinuxAuditService
 
 
@@ -119,26 +119,7 @@ def execute_linux_audit(
 ):
     """
     Execute CIS compliance audit on a Linux server.
-
-    **Supported Distributions:**
-    - Ubuntu 22.04 LTS
-    - Ubuntu 24.04 LTS
-    - Rocky Linux 8 / 9
-    - Red Hat Enterprise Linux 8 / 9 / 10
-
-    **Workflow:**
-    1. User selects asset from Asset List
-    2. User enters SSH credentials (not stored)
-    3. System connects via SSH and detects distribution
-    4. System runs 100+ targeted commands
-    5. System evaluates 60+ CIS security checks
-    6. Results stored permanently in database
-    7. Returns compliance summary
-
-    **Permissions:** Requires AUDIT write permission
-
-    **Note:** SSH credentials are used only for the audit session and never stored.
-    The sudo password defaults to the SSH password if not provided.
+    ...
     """
     from app.models import Asset
     asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
@@ -165,27 +146,41 @@ def execute_linux_audit(
                 detail="Failed to retrieve audit summary"
             )
 
-        log_audit_executed(
-            db, current_user.id, session.id, request.asset_id, asset_name,
-            session.target_ip, "linux_cis", request.profile,
-            session.compliance_pct, "success"
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="linux_cis",
+            target_id=session.id,
+            result="success",
+            detail=f"Asset ID: {request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
         )
 
         return summary
 
     except ValueError as e:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "linux_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="linux_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "linux_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="linux_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -200,15 +195,6 @@ def list_linux_sessions(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    List all Linux audit sessions with pagination.
-
-    **Query Parameters:**
-    - limit: Maximum number of sessions to return (default: 50, max: 100)
-    - offset: Number of sessions to skip (default: 0)
-
-    **Permissions:** Requires AUDIT read permission
-    """
     limit = min(limit, 100)
     sessions = LinuxAuditService.get_linux_sessions(db, limit, offset)
 
@@ -226,11 +212,6 @@ def get_linux_sessions_count(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get total count of Linux audit sessions.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     count = LinuxAuditService.get_linux_sessions_count(db)
     return {"total": count}
 
@@ -241,11 +222,6 @@ def get_linux_session(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get Linux audit session details and compliance summary.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     summary = LinuxAuditService.get_session_summary(db, session_id)
 
     if not summary:
@@ -254,7 +230,6 @@ def get_linux_session(
             detail=f"Audit session {session_id} not found"
         )
 
-    # Verify it's a Linux audit
     session = LinuxAuditService.get_audit_session(db, session_id)
     if session.device_type.value != "linux":
         raise HTTPException(
@@ -271,11 +246,6 @@ def get_linux_results(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get detailed results for all checks in a Linux audit session.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     session = LinuxAuditService.get_audit_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -306,13 +276,6 @@ def get_linux_failed_checks(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get only failed checks for a Linux audit session.
-
-    Useful for hardening workflows - returns only the checks that need to be fixed.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     session = LinuxAuditService.get_audit_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -331,11 +294,6 @@ def get_asset_linux_history(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get Linux audit history for a specific asset.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -362,11 +320,6 @@ def delete_linux_session(
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db)
 ):
-    """
-    Delete a Linux audit session and all its results.
-
-    **Permissions:** Requires AUDIT write permission
-    """
     session = LinuxAuditService.get_audit_session(db, session_id)
 
     if not session:
@@ -382,9 +335,14 @@ def delete_linux_session(
     try:
         LinuxAuditService.delete_audit_session(db, session_id)
 
-        log_audit_session_deleted(
-            db, current_user.id, session_id, session.asset_id,
-            asset_name, session.target_ip
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="delete_audit_session",
+            module="linux_cis",
+            target_id=session_id,
+            result="success",
+            detail=f"Deleted session for Asset ID: {session.asset_id}, Name: {asset_name}, IP: {session.target_ip}"
         )
 
         return {"message": f"Audit session {session_id} deleted successfully"}
@@ -401,14 +359,6 @@ def get_linux_statistics(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
-    """
-    Get comprehensive statistics about Linux audit sessions.
-
-    **Query Parameters:**
-    - asset_id: Optional filter by asset
-
-    **Permissions:** Requires AUDIT read permission
-    """
     stats = LinuxAuditService.get_audit_statistics(db, asset_id)
     return stats
 
@@ -417,11 +367,6 @@ def get_linux_statistics(
 def get_supported_distros(
     current_user: User = Depends(require_permission("AUDIT", "read"))
 ):
-    """
-    Get list of supported Linux distributions.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     return {
         "supported_distributions": [
             {
