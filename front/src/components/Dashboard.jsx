@@ -121,7 +121,7 @@ export const Dashboard = () => {
                 return (
                     <div className="dashboard-cards">
                         <div className="stat-card">
-                            <div className="card-icon"><img src="/icons/haedenIcon.svg"/></div>
+                            <div className="card-icon" ><img style={{width:"55px"}} src="/icons/haedenIcon.svg"/></div>
                             <div className="card-title">Total Assets</div>
                             <div className="card-description">Number of all assets in the system</div>
                         </div>

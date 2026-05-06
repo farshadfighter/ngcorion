@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchLocations, deleteLocation } from "../../store/requirementSlice";
 import { LocationModal } from "./LocationModal";
@@ -151,10 +151,10 @@ export const LocationsTab = () => {
                                 <td>{item.vlan_id || "-"}</td>
                                 <td>{item.subnet || "-"}</td>
                                 <td className="actions">
-                                    <button className="btn-delete"
+                                    <button className="btn-icon"
                                         onClick={() => handleDelete(item)}
                                     >
-                                        <img src={"/icons/delete.svg"} alt={"delete"} />
+                                        <i className="fa-solid fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>

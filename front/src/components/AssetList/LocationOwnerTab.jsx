@@ -65,8 +65,11 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                 </span>
                         </td>
                         <td className="actions-cell">
-                            <button className="btn-edit" onClick={() => onEdit(asset)}>Edit</button>
-                            <button className="btn-delete" onClick={() => onDelete(asset.id)}>Delete</button>
+                            <button className="btn-icon" onClick={() => onEdit(asset)}><i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button className="btn-icon" onClick={() => onDelete(asset.id)}>
+                                <i className="fa-solid fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 ))}

@@ -225,21 +225,30 @@
    ACTION BUTTONS
    ============================================ */
 
+/* ============================================
+   ACTION BUTTONS (UPDATED)
+   ============================================ */
+
 .btn-icon {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 6px;
-    font-size: 18px;
-    transition: transform 0.2s;
+    padding: 5px;
+    margin: 0 4px;
+    font-size: 5px;
+    color: #6b7280; /* رنگ خاکستری پیش‌فرض برای آیکون‌ها */
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
 }
+
+/* افکت‌های Hover برای هر نوع دکمه */
+
 
 .btn-icon:hover {
-    transform: scale(1.2);
-}
-
-.btn-edit {
-    margin-right: 8px;
+    transform: scale(1.1); /* بزرگنمایی ملایم */
 }
 
 /* ============================================

@@ -69,8 +69,14 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                         <td>{asset.manufacturer || "-"}</td>
                         <td>{asset.model || "-"}</td>
                         <td className="actions-cell">
-                            <button className="btn-edit" onClick={() => onEdit(asset)}>Edit</button>
-                            <button className="btn-delete" onClick={() => onDelete(asset.id)}>Delete</button>
+                            {/* THIS IS THE CHANGE FOR THE EDIT BUTTON */}
+                            <button className="btn-icon" title="Edit" onClick={() => onEdit(asset)}>
+                                <i className="fa-solid fa-pen"></i>
+                            </button>
+                            {/* THIS IS THE CHANGE FOR THE DELETE BUTTON */}
+                            <button className="btn-icon" title="Delete" onClick={() => onDelete(asset.id)}>
+                                <i className="fa-solid fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 ))}

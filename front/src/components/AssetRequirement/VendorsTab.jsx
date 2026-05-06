@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchVendors, deleteVendor } from "../../store/requirementSlice";
 import { VendorModal } from "./VendorModal";
@@ -131,10 +131,10 @@ export const VendorsTab = () => {
                                 <td>{item.vendor_type || "-"}</td>
                                 <td className="actions">
                                     <button
-                                        className="btn-delete"
+                                        className="btn-icon"
                                         onClick={() => handleDelete(item)}
                                     >
-                                        <img src={"/icons/delete.svg"} alt={"delete"} />
+                                        <i className="fa-solid fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>

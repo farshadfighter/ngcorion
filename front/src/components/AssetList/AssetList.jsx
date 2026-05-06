@@ -158,7 +158,7 @@ export const AssetList = ({onNavigateToLicence}) => {
                             window.URL.revokeObjectURL(url);
                         }}
                     >
-                        Dawnload Template <img src="/icons/downloadteplate.svg"/>
+                        Dawnload Template
                     </button>
 
                     <button

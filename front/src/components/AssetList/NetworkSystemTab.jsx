@@ -81,13 +81,19 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset }) => {
                         <td>{asset.ip_address || "-"}</td>
                         <td>{asset.mac_address || "-"}</td>
                         <td>
-                            <button className="btn-ports" onClick={() => handleManagePorts(asset)}>
-                                Manage Ports
+                            <button className="btn-icon" onClick={() => handleManagePorts(asset)}>
+                                <i className="fa-solid fa-eye"></i>
                             </button>
                         </td>
                         <td className="actions-cell">
-                            <button className="btn-edit" onClick={() => onEdit(asset)}>Edit</button>
-                            <button className="btn-delete" onClick={() => onDelete(asset.id)}>Delete</button>
+                            <button className="btn-icon" onClick={() => onEdit(asset)}>
+                                <i className="fa-solid fa-pen"></i>
+
+                            </button>
+                            <button className="btn-icon" onClick={() => onDelete(asset.id)}>
+                                <i className="fa-solid fa-trash"></i>
+
+                            </button>
                         </td>
                     </tr>
                 ))}

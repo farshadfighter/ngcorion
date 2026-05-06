@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOSCatalog, deleteOS } from "../../store/requirementSlice";
 import { OSCatalogModal } from "./OSCatalogModal";
@@ -125,10 +125,10 @@ export const OSCatalogTab = () => {
                                 <td>{item.os_name}</td>
                                 <td className="actions">
                                     <button
-                                        className="btn-delete"
+                                        className="btn-icon"
                                         onClick={() => handleDelete(item)}
                                     >
-                                        <img src={"/icons/delete.svg"} alt={"delete"} />
+                                        <i className="fa-solid fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>
