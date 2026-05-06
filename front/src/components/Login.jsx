@@ -32,7 +32,7 @@ export const Login = () => {
 
                 {/* LOGO BOX */}
                 <div className="logo-wrapper">
-                    <img className="log-logo" src="./log.png" alt="logo" />
+                    <img className="log-logo" src="/logo2.png" alt="logo" />
                 </div>
 
                 {/* USERNAME */}

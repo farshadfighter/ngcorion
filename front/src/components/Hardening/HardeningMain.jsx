@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
-import { LicenseBadge } from "../License/LicenseBadge";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 
 import "../../assets/hardening/FixAll.css";
@@ -39,13 +38,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
 
     return (
         <div className="hardening-main-container">
-            {/* License Badge */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-                <LicenseBadge
-                    module="hardening"
-                    onLimitReached={handleLicenseLimitReached}
-                />
-            </div>
+
             {/* دو باکس انتخاب */}
             <div className="hardening-options-container">
                 {/* باکس 1: Fix All Section */}

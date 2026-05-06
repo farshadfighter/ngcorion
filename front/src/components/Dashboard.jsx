@@ -1,3 +1,5 @@
+import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { useNavigate } from "react-router-dom";
@@ -9,6 +11,8 @@ import AutoDiscovery from "./AutoDiscovery/AutoDiscovery";
 import { AuditingList } from "./Auditing/AuditingList";
 import { HardeningMain } from "./Hardening/HardeningMain";
 import { License } from "./License/License";
+import  LicenseBadge  from './License/LicenseBadge';
+
 import { usePermission } from "../hooks/usePermission";
 
 // ==========================================
@@ -37,6 +41,7 @@ const AccessDenied = ({ menuName }) => (
         </p>
     </div>
 );
+
 
 // ==========================================
 // کامپوننت اصلی Dashboard
@@ -97,6 +102,13 @@ export const Dashboard = () => {
         minute: "2-digit",
         second: "2-digit",
     });
+    const location = useLocation();
+
+    let currentModule = "";
+    if (location.pathname.includes("hardening")) currentModule = "hardening";
+    else if (location.pathname.includes("auditing")) currentModule = "auditing";
+    else if (location.pathname.includes("auto-discovery")) currentModule = "auto_discovery";
+    else if (location.pathname.includes("asset")) currentModule = "asset";
 
     // ==========================================
     // Helper — رندر محتوای هر منو با چک دسترسی
@@ -109,26 +121,22 @@ export const Dashboard = () => {
                 return (
                     <div className="dashboard-cards">
                         <div className="stat-card">
-                            <div className="card-icon">💻</div>
-                            <div className="card-number">1</div>
+                            <div className="card-icon"><img src="/icons/haedenIcon.svg"/></div>
                             <div className="card-title">Total Assets</div>
                             <div className="card-description">Number of all assets in the system</div>
                         </div>
                         <div className="stat-card">
-                            <div className="card-icon">✅</div>
-                            <div className="card-number">1</div>
+                            <div className="card-icon"><img src="/icons/iconcheck.svg"/></div>
                             <div className="card-title">Active Assets</div>
                             <div className="card-description">Assets currently active and operational</div>
                         </div>
                         <div className="stat-card">
-                            <div className="card-icon">⚠️</div>
-                            <div className="card-number">0</div>
+                            <div className="card-icon"><img src="/icons/icondenger.svg"/></div>
                             <div className="card-title">Pending Issues</div>
                             <div className="card-description">Issues awaiting resolution</div>
                         </div>
                         <div className="stat-card">
-                            <div className="card-icon">👥</div>
-                            <div className="card-number">1</div>
+                            <div className="card-icon"><img src="/icons/iconuser.svg"/></div>
                             <div className="card-title">Total Users</div>
                             <div className="card-description">Registered users in the system</div>
                         </div>
@@ -196,10 +204,10 @@ export const Dashboard = () => {
             <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
                 <div className="sidebar-header">
                     {!isSidebarCollapsed && (
-                        <img src="./log.png" alt="logo" className="sidebar-logo" />
+                        <img src="/logo2.png" alt="logo" className="sidebar-logo" />
                     )}
                     {isSidebarCollapsed && (
-                        <img src="./log.png" alt="logo" className="sidebar-logo-small" />
+                        <img src="/logo2.png" alt="logo" className="sidebar-logo-small" />
                     )}
                     <button
                         className="toggle-sidebar-btn"
@@ -372,6 +380,11 @@ export const Dashboard = () => {
                         {activeMenu === "logs"             && "Logs"}
                         {activeMenu === "licence"          && "Licence"}
                     </h1>
+                    {/* کانتینر جدید برای وسط هدر */}
+                    <div className="header-center" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                        {currentModule && <LicenseBadge module={currentModule} />}
+                    </div>
+
                     <div className="header-right">
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
@@ -385,6 +398,8 @@ export const Dashboard = () => {
                             </div>
                         </div>
                     </div>
+
+
                 </header>
 
                 {renderContent()}

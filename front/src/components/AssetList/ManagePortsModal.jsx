@@ -324,7 +324,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                 cursor: 'pointer'
                             }}
                         >
-                            Next
+                            Close
                         </button>
                     </div>
                 </div>

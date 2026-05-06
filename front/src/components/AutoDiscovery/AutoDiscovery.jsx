@@ -15,7 +15,6 @@ import ScanHistoryTable from './ScanHistoryTable.jsx';
 import ScanResultsModal from './ScanResultsModal.jsx';
 import ApplyDiscoveryModal from './ApplyDiscoveryModal.jsx';
 import AutoDiscoveryAssetListModal from './AutoDiscoveryAssetListModal';
-import { LicenseBadge } from "../License/LicenseBadge";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 
 import '../../assets/autoDiscoveryStyle/AutoDiscovery.css';
@@ -194,10 +193,7 @@ const AutoDiscovery = ({onNavigateToLicence}) => {
                         <h1 className="page-title">Auto Discovery</h1>
                     </div>
                     <div className="header-actions">
-                        <LicenseBadge
-                            module="autoDiscovery"
-                            onLimitReached={handleLicenseLimitReached}
-                        />
+
 
                         <button
                             className="btn btn-primary"

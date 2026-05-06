@@ -7,7 +7,6 @@ import {
 } from "../../store/auditSlice";
 import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
-import { LicenseBadge } from "../License/LicenseBadge";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 
 import "../../assets/Auditing.css";
@@ -115,7 +114,6 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                     <img src="/icons/audit.svg" alt="" className="btn-icon" />
                     Auditing
                 </button>
-                <LicenseBadge module="auditing" />
             </div>
 
             {/* Alerts */}

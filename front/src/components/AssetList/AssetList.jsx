@@ -12,7 +12,6 @@ import { EditLocationModal } from "./EditLocationModal";
 import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
-import { LicenseBadge } from "../License/LicenseBadge";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 
 import "../../assets/AssetList.css"
@@ -135,10 +134,6 @@ export const AssetList = ({onNavigateToLicence}) => {
             {/* Header */}
             <div className="asset-list-header">
                 <h1 className="page-title">Asset List</h1>
-                <LicenseBadge
-                    module="assetList"
-                    onLimitReached={handleLicenseLimitReached}
-                />
 
                 <div className="header-actions">
                     <button

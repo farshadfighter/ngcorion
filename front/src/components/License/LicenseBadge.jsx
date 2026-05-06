@@ -1,65 +1,125 @@
+import React from "react";
 import { useSelector } from "react-redux";
-import { LICENSE_TYPES } from "./licenseConfig";
 
-const MODULE_CONFIG = {
-    auditing: { label: "Auditing", icon: "📋", usedKey: "used_audits", maxKey: "max_audits" },
-    autoDiscovery: { label: "Discovery", icon: "🔍", usedKey: "used_discoveries", maxKey: "max_discoveries" },
-    assetList: { label: "Asset", icon: "📦", usedKey: "used_assets", maxKey: "max_assets" },
-    hardening: { label: "Hardening", icon: "🛡️", usedKey: "used_hardens", maxKey: "max_hardens" },
-};
+const LicenseBadge = ({ module }) => {
+    const license = useSelector((state) => state.license);
 
-export const LicenseBadge = ({ module }) => {
-    const { isValid, planType, usage, limits } = useSelector((state) => state.license);
+    // دریافت محدودیت‌ها از ریداکس
+    const limits = license?.limits || {};
+    const isUnlimited = license?.isUnlimited;
 
-    if (!isValid || !planType) return null;
+    // مپ کردن نام ماژول پاس داده شده به کلیدهای داخل ریداکس
+    const limitMap = {
+        hardening: limits.maxHardeningAsset,
+        auditing: limits.maxAuditingAsset,
+        auto_discovery: limits.maxNetworkDiscoveryAsset,
+        asset: limits.maxAsset,
+    };
 
-    const license = LICENSE_TYPES[planType];
-    if (!license) return null;
+    // تعیین ظرفیت کل ماژول فعال
+    const maxVal = limitMap[module];
+    const displayMax = isUnlimited ? "∞" : maxVal || 0;
 
-    const config = MODULE_CONFIG[module];
-    if (!config) return null;
+    // نام نمایشی ماژول‌ها برای کاربر
+    const moduleNames = {
+        hardening: "Hardening",
+        auditing: "Auditing",
+        auto_discovery: "Auto Discovery",
+        asset: "Asset List",
+    };
 
-    const usedValue = usage?.[config.usedKey] ?? 0;
-    const maxValue = limits?.[config.maxKey] ?? null;
-    const displayMax = maxValue === null ? "∞" : maxValue;
-    const isLimitReached = maxValue !== null && usedValue >= maxValue;
+    const displayName = moduleNames[module] || "Module";
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {/* نام لایسنس */}
-            <div style={{
+        <div
+            className="license-badge-container"
+            style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                backgroundColor: "#ffffff",
-                border: `1px solid ${license.borderColor}`,
-                borderRadius: "8px",
-                padding: "6px 14px",
-                fontSize: "13px",
-                fontWeight: "500",
-                color: "#374151",
-            }}>
-                <span><img src="/icons/haedenIcon.svg" alt="" className="section-icon" /></span>
-                <span>{license.name}</span>
+                backgroundColor: "#1E293B", // پس زمینه کلی (کمی روشن‌تر از مشکی)
+                borderRadius: "12px",
+                padding: "4px",
+                border: "1px solid #334155",
+                gap: "12px",
+                height: "48px",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            }}
+        >
+            {/* بخش سمت چپ: ثابت (آیکون + نام بیس لایسنس) */}
+            <div
+                className="license-badge-left"
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    backgroundColor: "#0F172A", // پس زمینه تیره‌تر برای بخش چپ
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    gap: "8px",
+                    height: "100%",
+                }}
+            >
+        <span
+            style={{
+                backgroundColor: "#1E293B",
+                padding: "6px",
+                borderRadius: "6px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}
+        >
+          <img
+              src="/icons/headlicense.svg"
+              alt="license icon"
+              style={{ width: "16px", height: "16px" }}
+          />
+        </span>
+                <span
+                    style={{
+                        color: "#94A3B8", // رنگ خاکستری روشن برای متن
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        whiteSpace: "nowrap",
+                    }}
+                >
+          base licence
+        </span>
             </div>
 
-            {/* استفاده ماژول */}
-            <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                backgroundColor: isLimitReached ? "#FEF2F2" : "#1e3a5f",
-                border: `1px solid ${isLimitReached ? "#FECACA" : "#1e3a5f"}`,
-                borderRadius: "8px",
-                padding: "6px 14px",
+            {/* بخش سمت راست: داینامیک (نام ماژول + تعداد کل) */}
+            <div
+                className="license-badge-right"
+                style={{
+                    display: "flex",
+                    flexDirection: "column", // قرارگیری نام و عدد زیر هم
+                    alignItems: "flex-start",
+                    justifyContent: "center",
+                    paddingRight: "16px",
+                }}
+            >
+        <span
+            style={{
+                color: "#F8FAFC", // رنگ سفید برای نام ماژول
                 fontSize: "13px",
                 fontWeight: "600",
-                color: isLimitReached ? "#DC2626" : "#ffffff",
-            }}>
-                <span>{config.icon}</span>
-                <span>{config.label}</span>
-                <span>{usedValue}/{displayMax}</span>
+                lineHeight: "1.2",
+            }}
+        >
+          {displayName}
+        </span>
+                <span
+                    style={{
+                        color: "#38BDF8", // رنگ آبی/متفاوت برای نمایش عدد کل
+                        fontSize: "14px",
+                        fontWeight: "700",
+                        lineHeight: "1.2",
+                    }}
+                >
+          {displayMax}
+        </span>
             </div>
         </div>
     );
 };
+
+export default LicenseBadge;
