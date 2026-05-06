@@ -1,6 +1,7 @@
 """
 User Schemas with Permission Support
 """
+import re
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, List
@@ -49,13 +50,27 @@ class UserCreate(UserBase):
     Default permissions (dashboard and asset_list read) are applied
     if not explicitly provided.
     """
-    password: str = Field(..., min_length=4, max_length=72, description="Password")
+    password: str = Field(..., min_length=8, max_length=72, description="Password")
     role: str = Field(default="user", description="User role: admin, manager, user, guest")
     is_active: bool = Field(default=True, description="Active status")
     permissions: Optional[List[PermissionCreate]] = Field(
         default=None, 
         description="List of permissions. If not provided, defaults will be applied."
     )
+    @validator('password')
+    def validate_password_strength(cls, v: str) -> str:
+        """Validate password meets security requirements"""
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*()_+=\-[\]{};\':"\\|,.<>/?]', v):
+            raise ValueError('Password must contain at least one special character')
+        return v
 
 
 class UserUpdate(BaseModel):
@@ -66,7 +81,7 @@ class UserUpdate(BaseModel):
     """
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
-    password: Optional[str] = Field(None, min_length=4, max_length=72)
+    password: Optional[str] = Field(None, min_length=8, max_length=72)
     current_password: Optional[str] = Field(
         None,
         min_length=1,
@@ -79,6 +94,22 @@ class UserUpdate(BaseModel):
         default=None,
         description="Update permissions. If provided, replaces all existing permissions."
     )
+    @validator('password')
+    def validate_password_strength(cls, v: Optional[str]) -> Optional[str]:
+        """Validate password meets security requirements (only if provided)"""
+        if v is None:
+            return v
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not re.search(r'\d', v):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*()_+=\-[\]{};\':"\\|,.<>/?]', v):
+            raise ValueError('Password must contain at least one special character')
+        return v
 
 
 class UserResponse(BaseModel):

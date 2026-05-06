@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # Set SECRET_KEY in .env file for production
     SECRET_KEY: str = "your-secret-key-here-change-in-production-min-32-chars"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
 
     # CORS Origins
     # WARNING: ["*"] allows all origins - NOT SECURE for production!
