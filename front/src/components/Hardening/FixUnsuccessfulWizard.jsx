@@ -4,33 +4,126 @@ import { FixUnsuccessfulProcess } from "./FixUnsuccessfulProcess";
 import { FixUnsuccessfulSuccess } from "./FixUnsuccessfulSuccess";
 import { FixUnsuccessfulResults } from "./FixUnsuccessfulResults";
 
+// ==========================================
+// کامپوننت صفحه Fail
+// ==========================================
+
+const FixUnsuccessfulFailed = ({ sessionData, onRetry, onClose }) => (
+    <div style={{
+        display:        "flex",
+        flexDirection:  "column",
+        alignItems:     "center",
+        justifyContent: "center",
+        padding:        "48px 32px",
+        gap:            "20px",
+        background:     "linear-gradient(135deg, #FEF2F2 0%, #FFF5F5 100%)",
+        borderRadius:   "16px",
+        minHeight:      "320px",
+    }}>
+        {/* آیکون ضربدر قرمز */}
+        <div style={{
+            width:        "72px",
+            height:       "72px",
+            borderRadius: "50%",
+            background:   "#EF4444",
+            display:      "flex",
+            alignItems:   "center",
+            justifyContent: "center",
+            fontSize:     "36px",
+            color:        "white",
+            boxShadow:    "0 8px 24px rgba(239,68,68,0.35)",
+        }}>
+            ✕
+        </div>
+
+        <div style={{ textAlign: "center", gap: "8px", display: "flex", flexDirection: "column" }}>
+            <h2 style={{ fontSize: "22px", fontWeight: "700", color: "#991B1B", margin: 0 }}>
+                Connection Failed
+            </h2>
+            <p style={{ fontSize: "14px", color: "#B91C1C", margin: 0, lineHeight: "1.6" }}>
+                Could not connect to <strong>{sessionData?.asset_name || "the device"}</strong>
+                {sessionData?.target_ip ? ` (${sessionData.target_ip})` : ""}.
+                <br />
+                Please check your credentials and try again.
+            </p>
+        </div>
+
+        {/* دکمه‌ها */}
+        <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+            <button
+                onClick={onRetry}
+                style={{
+                    padding:      "10px 28px",
+                    background:   "#EF4444",
+                    color:        "white",
+                    border:       "none",
+                    borderRadius: "8px",
+                    fontSize:     "14px",
+                    fontWeight:   "600",
+                    cursor:       "pointer",
+                    transition:   "all 0.2s",
+                }}
+                onMouseOver={(e) => e.target.style.background = "#DC2626"}
+                onMouseOut={(e)  => e.target.style.background = "#EF4444"}
+            >
+                Try Again
+            </button>
+            <button
+                onClick={onClose}
+                style={{
+                    padding:      "10px 28px",
+                    background:   "white",
+                    color:        "#374151",
+                    border:       "1px solid #D1D5DB",
+                    borderRadius: "8px",
+                    fontSize:     "14px",
+                    fontWeight:   "600",
+                    cursor:       "pointer",
+                    transition:   "all 0.2s",
+                }}
+                onMouseOver={(e) => e.target.style.background = "#F9FAFB"}
+                onMouseOut={(e)  => e.target.style.background = "white"}
+            >
+                Close
+            </button>
+        </div>
+    </div>
+);
+
+// ==========================================
+// Wizard اصلی
+// ==========================================
+
 export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [sessionData, setSessionData] = useState(null);
-    const [hasFailed, setHasFailed] = useState(false);
+    const [hasFailed, setHasFailed]     = useState(false);
 
     const handleFormSubmit = (data) => {
-        console.log("📥 FixUnsuccessful Form Data:", data); // Debug
-        setSessionData(data.session); // ذخیره session
+        setSessionData(data.session);
         setHasFailed(false);
-        setCurrentStep(2); // Go to Process immediately
+        setCurrentStep(2);
     };
 
     const handleProcessComplete = () => {
-        console.log("✅ Process completed"); // Debug
         setHasFailed(false);
-        setCurrentStep(3); // Go to Success
+        setCurrentStep(3);
     };
 
     const handleProcessError = () => {
-        console.log("❌ Process failed"); // Debug
         setHasFailed(true);
-        setCurrentStep(3); // Go to Failed state
+        setCurrentStep(3);
     };
 
     const handleSuccessNext = () => {
-        console.log("➡️ Going to Results"); // Debug
-        setCurrentStep(4); // Go to Results
+        setCurrentStep(4);
+    };
+
+    // برگشت به step 1 برای تلاش مجدد
+    const handleRetry = () => {
+        setHasFailed(false);
+        setSessionData(null);
+        setCurrentStep(1);
     };
 
     const handleClose = () => {
@@ -58,21 +151,26 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing })
                     <div className={`stepper-line ${currentStep >= 2 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}></div>
 
                     {/* Step 2: Process */}
-                    <div className={`stepper-item ${currentStep >= 2 ? "active" : ""} ${currentStep > 2 ? "completed" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}>
+                    <div className={`stepper-item ${currentStep >= 2 ? "active" : ""} ${currentStep > 2 && !hasFailed ? "completed" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}>
                         <div className="stepper-circle">
                             <div className="stepper-icon">2</div>
                         </div>
-                        <div className="stepper-label">process</div>
+                        <div className="stepper-label">Process</div>
                     </div>
 
                     <div className={`stepper-line ${currentStep >= 3 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}></div>
 
-                    {/* Step 3: Result/Harden */}
+                    {/* Step 3: Harden */}
                     <div className={`stepper-item ${currentStep >= 3 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}>
                         <div className="stepper-circle">
-                            <div className="stepper-icon">{hasFailed ? "✕" : (currentStep >= 4 ? <img src="/icons/audit.svg" alt="" className="btn-icon" /> : "✓")}</div>
+                            <div className="stepper-icon">
+                                {hasFailed ? "✕" : (currentStep >= 4
+                                        ? <img src="/icons/audit.svg" alt="" className="btn-icon" />
+                                        : "✓"
+                                )}
+                            </div>
                         </div>
-                        <div className="stepper-label">harden</div>
+                        <div className="stepper-label">Harden</div>
                     </div>
                 </div>
 
@@ -93,10 +191,20 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing })
                         />
                     )}
 
+                    {/* ✅ Success */}
                     {currentStep === 3 && sessionData && !hasFailed && (
                         <FixUnsuccessfulSuccess
                             sessionData={sessionData}
                             onNext={handleSuccessNext}
+                        />
+                    )}
+
+                    {/* ✅ Failed — قبلاً اینجا هیچی نبود */}
+                    {currentStep === 3 && hasFailed && (
+                        <FixUnsuccessfulFailed
+                            sessionData={sessionData}
+                            onRetry={handleRetry}
+                            onClose={handleClose}
                         />
                     )}
 
@@ -107,7 +215,6 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing })
                             onNavigateToAuditing={onNavigateToAuditing}
                         />
                     )}
-
                 </div>
             </div>
         </div>
