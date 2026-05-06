@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, require_quota
-from app.models import User, log_audit_executed, log_audit_session_deleted
+#from app.models import User, log_audit_executed, log_audit_session_deleted
+from app.models import User, log_action
 from .service import AuditService
 
 
@@ -130,19 +131,37 @@ def execute_cisco_audit(
             )
 
         # Log successful audit
-        log_audit_executed(
-            db, current_user.id, session.id, request.asset_id, asset_name,
-            session.target_ip, "cisco_cis", request.profile,
-            session.compliance_pct, "success"
+        #log_audit_executed(
+        #    db, current_user.id, session.id, request.asset_id, asset_name,
+        #    session.target_ip, "cisco_cis", request.profile,
+        #    session.compliance_pct, "success"
+        #)
+
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=session.target_ip,
+            result="success",
+            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
         )
+    
 
         return summary
 
     except ValueError as e:
         # Log failed audit
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "cisco_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=target_ip,
+            result="failed",
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -150,9 +169,15 @@ def execute_cisco_audit(
         )
     except Exception as e:
         # Log failed audit
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "cisco_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=target_ip,
+            result="failed",
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -339,9 +364,15 @@ def delete_audit_session(
         AuditService.delete_audit_session(db, session_id)
 
         # Log successful deletion
-        log_audit_session_deleted(
-            db, current_user.id, session_id, session.asset_id,
-            asset_name, session.target_ip
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_session_deleted",
+            module="cisco_audit",
+            target_id=session_id,
+            ip_address=session.target_ip,
+            result="success",
+            detail=f"Asset ID: {session.asset_id}, Asset Name: {asset_name}"
         )
 
         return {"message": f"Audit session {session_id} deleted successfully"}
@@ -481,19 +512,30 @@ def execute_cis_benchmark_audit(
             )
 
         # Log successful audit
-        log_audit_executed(
-            db, current_user.id, session.id, request.asset_id, asset_name,
-            session.target_ip, "cis_benchmark", "FULL",
-            session.compliance_pct, "success"
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=session.target_ip,
+            result="success",
+            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
         )
 
         return table
 
     except ValueError as e:
         # Log failed audit
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "cis_benchmark", "FULL", None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=target_ip,
+            result="failed",
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -501,9 +543,15 @@ def execute_cis_benchmark_audit(
         )
     except Exception as e:
         # Log failed audit
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "cis_benchmark", "FULL", None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=target_ip,
+            result="failed",
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
