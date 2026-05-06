@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, require_quota
-from app.models import User, log_audit_executed, log_audit_session_deleted
+from app.models import User, log_action
 from .service import FortinetAuditService
 
 
@@ -125,25 +125,6 @@ def execute_fortinet_audit(
 ):
     """
     Execute CIS compliance audit on a FortiGate device.
-
-    **Workflow:**
-    1. User selects FortiGate asset from Asset List
-    2. User enters SSH credentials (HTTPS encrypted, not stored)
-    3. User optionally selects VDOM (defaults to root/global context)
-    4. System connects via SSH
-    5. System collects configuration and status commands
-    6. System evaluates 65+ CIS security checks
-    7. Results stored permanently in database
-    8. Returns compliance summary
-
-    **VDOM Support:**
-    - If `vdom` is specified, audit runs in that VDOM context
-    - If `vdom` is null/omitted, audit runs in global/root context
-    - Use `/vdoms/discover` endpoint first to list available VDOMs
-
-    **Permissions:** Requires AUDIT write permission
-
-    **Note:** SSH credentials are used only for the audit session and never stored.
     """
     # Get asset info for logging
     from app.models import Asset
@@ -173,19 +154,28 @@ def execute_fortinet_audit(
             )
 
         # Log successful audit
-        log_audit_executed(
-            db, current_user.id, session.id, request.asset_id, asset_name,
-            session.target_ip, "fortinet_cis", request.profile,
-            session.compliance_pct, "success"
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="fortinet_cis",
+            target_id=request.asset_id,
+            result="success",
+            detail=f"Session: {session.id}, Asset: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
         )
 
         return summary
 
     except ValueError as e:
         # Log failed audit
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "fortinet_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="fortinet_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -193,9 +183,14 @@ def execute_fortinet_audit(
         )
     except Exception as e:
         # Log failed audit
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "fortinet_cis", request.profile, None, "failed", str(e)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="fortinet_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -211,22 +206,6 @@ def discover_vdoms(
 ):
     """
     Discover VDOMs on a FortiGate device.
-
-    **Use Case:**
-    - Frontend calls this endpoint before executing an audit
-    - Displays VDOM list in a dropdown selector
-    - User can then choose which VDOM to audit
-
-    **Workflow:**
-    1. Establishes temporary SSH connection
-    2. Executes `config global` and `get vdom` commands
-    3. Parses VDOM list
-    4. Disconnects
-    5. Returns VDOM names
-
-    **Permissions:** Requires AUDIT read permission
-
-    **Note:** SSH credentials are used only for discovery and never stored.
     """
     # Get asset info
     from app.models import Asset
@@ -274,10 +253,6 @@ def list_audit_sessions(
 ):
     """
     List all FortiGate audit sessions with pagination.
-
-    **Permissions:** Requires AUDIT read permission
-
-    Returns sessions in descending order (most recent first).
     """
     from app.models.audit import DeviceType
 
@@ -304,8 +279,6 @@ def get_fortinet_sessions_count(
 ):
     """
     Get total count of FortiGate audit sessions.
-
-    **Permissions:** Requires AUDIT read permission
     """
     from app.models.audit import DeviceType
     count = FortinetAuditService.get_sessions_count(db, DeviceType.FORTINET)
@@ -320,14 +293,6 @@ def get_audit_session(
 ):
     """
     Get FortiGate audit session details and compliance summary.
-
-    **Permissions:** Requires AUDIT read permission
-
-    Returns:
-    - Session metadata (timestamps, status, etc.)
-    - Compliance metrics (total, passed, failed, percentage)
-    - Asset information
-    - Error details (if failed)
     """
     summary = FortinetAuditService.get_session_summary(db, session_id)
 
@@ -348,17 +313,6 @@ def get_audit_results(
 ):
     """
     Get detailed results for all checks in an audit session.
-
-    **Permissions:** Requires AUDIT read permission
-
-    Returns:
-    - List of all security control evaluations
-    - Each result includes:
-      - Control ID (e.g., FG-BL-001)
-      - Title and severity
-      - Pass/Fail status
-      - Evidence snippet
-      - CIS Benchmark mapping
     """
     # Verify session exists
     session = FortinetAuditService.get_audit_session(db, session_id)
@@ -394,10 +348,6 @@ def delete_audit_session(
 ):
     """
     Delete an audit session and all its results.
-
-    **Permissions:** Requires AUDIT write permission
-
-    **Warning:** This action is permanent and cannot be undone.
     """
     # Verify session exists
     session = FortinetAuditService.get_audit_session(db, session_id)
@@ -417,9 +367,14 @@ def delete_audit_session(
 
     if deleted:
         # Log deletion
-        log_audit_session_deleted(
-            db, current_user.id, session_id, session.asset_id,
-            asset_name, session.target_ip
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_session_deleted",
+            module="fortinet_cis",
+            target_id=session.asset_id,
+            result="success",
+            detail=f"Deleted session: {session_id}, Asset: {asset_name}, IP: {session.target_ip}"
         )
 
         return {
