@@ -89,6 +89,7 @@ function AppContent() {
             </BrowserRouter>
 
             {/* مودال سهمیه تمام شده - نمایش در تمام صفحات */}
+            <PermissionToast />
             <QuotaExhaustedModal />
         </>
     );

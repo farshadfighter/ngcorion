@@ -161,7 +161,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                                                 >
                                                     Manage Asset
                                                 </button>
-                                               
+
                                             </div>
                                         </td>
                                     </tr>

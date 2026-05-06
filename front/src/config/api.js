@@ -9,7 +9,10 @@ const api = axios.create({
     }
 });
 
-// Request interceptor - اضافه کردن token
+// ==========================================
+// Request Interceptor — اضافه کردن token
+// ==========================================
+
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -23,38 +26,56 @@ api.interceptors.request.use(
     }
 );
 
-// Response interceptor - مدیریت خطاها
+// ==========================================
+// Response Interceptor — مدیریت خطاها
+// ==========================================
+
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        // مدیریت 401 - Unauthorized
+
+        // ----------------------------------------
+        // 401 — Unauthorized: توکن نداره یا منقضی شده
+        // ----------------------------------------
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             localStorage.removeItem('role');
+            localStorage.removeItem('permissions'); // ← اضافه شد
             window.location.href = '/';
             return Promise.reject(error);
         }
 
-        // مدیریت 403 - Forbidden (License issues)
+        // ----------------------------------------
+        // 403 — Forbidden: سه حالت داره
+        // ----------------------------------------
         if (error.response?.status === 403) {
             const data = error.response.data;
 
-            // لایسنس فعال نیست
+            // حالت ۱: لایسنس فعال نیست — دست نخورده
             if (data.license_required) {
-                // ارسال event برای نمایش مودال فعال‌سازی لایسنس
                 window.dispatchEvent(new CustomEvent('license-required', {
                     detail: { message: data.detail }
                 }));
+                return Promise.reject(error);
             }
 
-            // سهمیه تمام شده
+            // حالت ۲: سهمیه تمام شده — دست نخورده
             if (data.detail?.includes('quota') || data.detail?.includes('limit')) {
-                // ارسال event برای نمایش مودال سهمیه تمام شده
                 window.dispatchEvent(new CustomEvent('quota-exhausted', {
                     detail: { message: data.detail }
                 }));
+                return Promise.reject(error);
             }
+
+            // حالت ۳: Permission Denied — اضافه شد
+            // بک‌اند 403 برگردونده ولی نه به خاطر لایسنس
+            window.dispatchEvent(new CustomEvent('permission-denied', {
+                detail: {
+                    message: data.detail || 'You do not have permission to perform this action.',
+                    url: error.config?.url,
+                }
+            }));
         }
 
         return Promise.reject(error);
