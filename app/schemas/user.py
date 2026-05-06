@@ -2,7 +2,7 @@
 User Schemas with Permission Support
 """
 import re
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field , field_validator
 from datetime import datetime
 from typing import Optional, List
 
