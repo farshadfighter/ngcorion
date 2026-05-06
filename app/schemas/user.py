@@ -57,7 +57,8 @@ class UserCreate(UserBase):
         default=None, 
         description="List of permissions. If not provided, defaults will be applied."
     )
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """Validate password meets security requirements"""
         if len(v) < 8:
@@ -94,7 +95,8 @@ class UserUpdate(BaseModel):
         default=None,
         description="Update permissions. If provided, replaces all existing permissions."
     )
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password_strength(cls, v: Optional[str]) -> Optional[str]:
         """Validate password meets security requirements (only if provided)"""
         if v is None:
