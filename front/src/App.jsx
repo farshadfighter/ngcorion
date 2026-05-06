@@ -9,6 +9,7 @@ import { Dashboard } from "./components/Dashboard.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { LicenseActivationScreen } from "./components/License/LicenseActivationScreen.jsx";
 import QuotaExhaustedModal from './components/License/QuotaExhaustedModal';
+import {PermissionToast} from "./components/UserManagement/Permissiontoast.jsx";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./store/index";
 import { useEffect, useState } from "react";

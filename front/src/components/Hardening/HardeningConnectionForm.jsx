@@ -210,7 +210,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                     {/* ── Device Type ──────────────────────────────────────── */}
                     <div className="form-group form-group-full">
                         <label>
-                            Device Type
+                            Device Type/Service Type
                             <span className="required" style={{ color: "#ef4444" }}>*</span>
                         </label>
                         <select
