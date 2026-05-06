@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, require_quota
-from app.models import User, log_audit_executed, log_audit_session_deleted
+from app.models import User, log_action
 
 from .service import WindowsAuditService
 
@@ -119,23 +119,6 @@ def execute_windows_audit(
     db: Session = Depends(get_db),
     _quota_check: None = Depends(require_quota("audit"))
 ):
-    """
-    Execute a CIS compliance audit on a Windows Server instance.
-
-    **Workflow:**
-    1. Select the asset that hosts the Windows Server
-    2. Provide Windows admin credentials (local or domain account)
-    3. The system connects via WinRM (HTTPS) and runs PowerShell commands
-       to collect security policy, registry, services, firewall, and audit data
-    4. ~80+ CIS checks are evaluated against the collected data (L1 profile)
-       or ~110+ checks (FULL profile including L2 checks)
-    5. Results are stored permanently; a compliance summary is returned
-
-    **Credentials:** Windows credentials are used only during the audit
-    session and are never persisted.
-
-    **Permissions:** Requires AUDIT write permission
-    """
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
@@ -162,32 +145,39 @@ def execute_windows_audit(
                 detail="Failed to retrieve audit summary",
             )
 
-        log_audit_executed(
-            db,
-            current_user.id,
-            session.id,
-            request.asset_id,
-            asset_name,
-            session.target_ip,
-            "windows_cis",
-            request.profile,
-            session.compliance_pct,
-            "success",
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="windows_cis",
+            target_id=session.id,
+            result="success",
+            detail=f"Asset ID: {request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
         )
 
         return summary
 
     except ValueError as exc:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "windows_cis", request.profile, None, "failed", str(exc),
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="windows_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(exc)}"
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     except Exception as exc:
-        log_audit_executed(
-            db, current_user.id, None, request.asset_id, asset_name,
-            target_ip, "windows_cis", request.profile, None, "failed", str(exc),
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="windows_cis",
+            target_id=request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(exc)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -202,13 +192,6 @@ def list_audit_sessions(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db),
 ):
-    """
-    List Windows Server audit sessions with pagination.
-
-    Returns sessions ordered by most-recent first.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     limit = min(limit, 100)
     sessions = WindowsAuditService.get_all_sessions(db, limit, offset)
     summaries = [WindowsAuditService.get_session_summary(db, s.id) for s in sessions]
@@ -220,11 +203,6 @@ def get_sessions_count(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db),
 ):
-    """
-    Total number of Windows Server audit sessions.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     return {"total": WindowsAuditService.get_sessions_count(db)}
 
 
@@ -234,11 +212,6 @@ def get_audit_session(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db),
 ):
-    """
-    Get summary and compliance metrics for a single audit session.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     summary = WindowsAuditService.get_session_summary(db, session_id)
     if not summary:
         raise HTTPException(
@@ -257,11 +230,6 @@ def get_audit_results(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db),
 ):
-    """
-    Get all individual CIS check results for an audit session.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     session = WindowsAuditService.get_audit_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -295,11 +263,6 @@ def get_asset_audit_history(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db),
 ):
-    """
-    Get the Windows Server audit history for a specific asset.
-
-    **Permissions:** Requires AUDIT read permission
-    """
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -320,13 +283,6 @@ def delete_audit_session(
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db),
 ):
-    """
-    Delete an audit session and all its associated results.
-
-    This action is irreversible.
-
-    **Permissions:** Requires AUDIT write permission
-    """
     session = WindowsAuditService.get_audit_session(db, session_id)
     if not session:
         raise HTTPException(
@@ -345,13 +301,14 @@ def delete_audit_session(
     try:
         WindowsAuditService.delete_audit_session(db, session_id)
 
-        log_audit_session_deleted(
-            db,
-            current_user.id,
-            session_id,
-            session.asset_id,
-            asset.asset_name if asset else None,
-            session.target_ip,
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="delete_audit_session",
+            module="windows_cis",
+            target_id=session_id,
+            result="success",
+            detail=f"Deleted session for Asset ID: {session.asset_id}, Name: {asset.asset_name if asset else 'None'}, IP: {session.target_ip}"
         )
 
         return {"message": f"Audit session {session_id} deleted successfully"}
