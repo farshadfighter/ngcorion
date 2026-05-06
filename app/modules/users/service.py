@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from app.models import User, UserRole
 from app.models.user_permission import UserPermission, ModuleEnum, get_default_permissions
+from app.models.security_audit_log import log_user_action
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash, verify_password
 
@@ -96,6 +97,10 @@ class UserService:
         self.db.commit()
         self.db.refresh(new_user)
         
+        # Audit log
+        log_user_action(self.db, None, "user.create", new_user.id, 
+                       detail=f"Created user '{new_user.username}' with role '{new_user.role.value}'")
+        
         print(f"[+] User created: {new_user.username} ({new_user.role.value})")
         
         return new_user
@@ -103,6 +108,11 @@ class UserService:
     def update_user(self, user_id: int, user_data: UserUpdate, current_user_id: int = None) -> User:
         """Update user and optionally their permissions"""
         user = self.get_user_by_id(user_id)
+        
+        # Get current user to check their role
+        current_user = None
+        if current_user_id:
+            current_user = self.db.query(User).filter(User.id == current_user_id).first()
         
         # Update username
         if user_data.username is not None:
@@ -153,13 +163,44 @@ class UserService:
         
         # Update role
         if user_data.role is not None:
+            # SECURITY: Role escalation protection
+            old_role = user.role
+            new_role_value = user_data.role
+            
+            # Non-admins cannot change any user's role
+            if current_user and current_user.role != UserRole.ADMIN:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only administrators can change user roles"
+                )
+            
+            # Admins cannot change their own role
+            if current_user_id == user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You cannot change your own role"
+                )
+            
             try:
-                user.role = UserRole(user_data.role)
+                new_role = UserRole(new_role_value)
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid role '{user_data.role}'"
+                    detail=f"Invalid role '{new_role_value}'"
                 )
+            
+            user.role = new_role
+            
+            # Clean up permissions when role changes
+            if old_role != new_role:
+                if new_role == UserRole.ADMIN:
+                    # Delete all permissions for new admins (they don't need them)
+                    self.db.query(UserPermission).filter(UserPermission.user_id == user_id).delete()
+                    print(f"[*] Removed permissions for new admin: {user.username}")
+                elif old_role == UserRole.ADMIN:
+                    # Create default permissions when downgrading from admin
+                    self._create_user_permissions(user_id, None)
+                    print(f"[*] Created default permissions for downgraded user: {user.username}")
         
         # Update is_active
         if user_data.is_active is not None:
@@ -171,6 +212,25 @@ class UserService:
         
         self.db.commit()
         self.db.refresh(user)
+        
+        # Audit logging
+        changes = []
+        if user_data.username: changes.append(f"username")
+        if user_data.email: changes.append(f"email")
+        if user_data.password: changes.append(f"password")
+        if user_data.is_active is not None: changes.append(f"is_active")
+        
+        if user_data.role is not None:
+            log_user_action(self.db, current_user, "role.change", user_id,
+                           detail=f"Changed role to '{user.role.value}'")
+        
+        if user_data.permissions is not None:
+            log_user_action(self.db, current_user, "permission.update", user_id,
+                           detail=f"Updated permissions for '{user.username}'")
+        
+        if changes:
+            log_user_action(self.db, current_user, "user.update", user_id,
+                           detail=f"Updated {', '.join(changes)} for '{user.username}'")
         
         print(f"[*] User updated: {user.username}")
         
@@ -212,6 +272,10 @@ class UserService:
 
         self.db.delete(user)
         self.db.commit()
+
+        # Audit log
+        log_user_action(self.db, current_user if current_user_id else None, "user.delete", user_id,
+                       detail=f"Deleted user '{username}' with role '{user.role.value}'")
 
         print(f"[-] User deleted: {username}")
 

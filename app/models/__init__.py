@@ -78,6 +78,15 @@ from app.models.audit_log import (
     log_audit_session_deleted
 )
 
+# Import security audit log (system-wide action tracking)
+from app.models.security_audit_log import (
+    AuditLog,
+    log_action,
+    log_user_action,
+    log_asset_action,
+    log_discovery_action
+)
+
 # Import hardening models LAST (depend on Audit)
 from app.models.hardening import HardeningAction
 
@@ -137,4 +146,10 @@ __all__ = [
     "AuditModuleLog",
     "log_audit_executed",
     "log_audit_session_deleted",
+    # Security audit log
+    "AuditLog",
+    "log_action",
+    "log_user_action",
+    "log_asset_action",
+    "log_discovery_action",
 ]

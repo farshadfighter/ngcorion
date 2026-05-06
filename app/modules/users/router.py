@@ -185,6 +185,14 @@ def update_user(
     """
     check_user_management_permission(current_user, "write", db)
     
+    # SECURITY: Block self role/permission changes
+    if user_id == current_user.id:
+        if user_data.role is not None or user_data.permissions is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot modify your own role or permissions"
+            )
+    
     service = UserService(db)
     updated_user = service.update_user(
         user_id,
