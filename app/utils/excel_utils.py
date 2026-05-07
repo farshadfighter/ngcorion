@@ -181,7 +181,7 @@ ASSET_LIST_SHEETS = [
         "title": "Overview",
         "columns": ["Asset Name", "Hostname", "Type", "Role", "Manufacturer", "Model"],
         "map_row": lambda asset: [
-            asset.name,
+            asset.asset_name,
             asset.hostname,
             asset.asset_type.name if asset.asset_type else "",
             asset.role,
@@ -194,7 +194,7 @@ ASSET_LIST_SHEETS = [
         "title": "Network & System",
         "columns": ["Asset Name", "Serial", "OS", "IP Address", "MAC Address", "Ports"],
         "map_row": lambda asset: [
-            asset.name,
+            asset.asset_name,
             asset.serial,
             f"{asset.os.name} {asset.os_version}" if asset.os else "",
             asset.ip_address,
@@ -207,7 +207,7 @@ ASSET_LIST_SHEETS = [
         "title": "Location & Owner",
         "columns": ["Asset Name", "Location", "Owner", "Status"],
         "map_row": lambda asset: [
-            asset.name,
+            asset.asset_name,
             asset.location.name if asset.location else "",
             asset.owner.name if asset.owner else "",
             asset.status,
@@ -224,7 +224,7 @@ ASSET_LIST_SHEETS = [
             "Last Patch Date",
         ],
         "map_row": lambda asset: [
-            asset.name,
+            asset.asset_name,
             asset.confidentiality,
             asset.risk_level,
             asset.last_audit_date.strftime("%Y-%m-%d") if asset.last_audit_date else "",
