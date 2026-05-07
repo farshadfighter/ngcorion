@@ -1,5 +1,4 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { useNavigate } from "react-router-dom";
@@ -102,13 +101,14 @@ export const Dashboard = () => {
         minute: "2-digit",
         second: "2-digit",
     });
-    const location = useLocation();
-
-    let currentModule = "";
-    if (location.pathname.includes("hardening")) currentModule = "hardening";
-    else if (location.pathname.includes("auditing")) currentModule = "auditing";
-    else if (location.pathname.includes("auto-discovery")) currentModule = "auto_discovery";
-    else if (location.pathname.includes("asset")) currentModule = "asset";
+// ✅ اضافه کن
+    const menuToModule = {
+        "hardening":        "hardening",
+        "operation-device": "auditing",
+        "auto-discovery":   "auto_discovery",
+        "asset-list":       "asset",
+    };
+    const currentModule = menuToModule[activeMenu] || "";
 
     // ==========================================
     // Helper — رندر محتوای هر منو با چک دسترسی

@@ -51,6 +51,7 @@ const licenseSlice = createSlice({
         isPilotMode: false,
         limits: null,
         usage: null,
+        expiresAt: null,
         message: "",
 
         // وضعیت loading
@@ -63,6 +64,7 @@ const licenseSlice = createSlice({
 
         // آیا لایسنس از storage لود شده
         isInitialized: false,
+
     },
     reducers: {
         clearMessages: (state) => {
@@ -88,16 +90,17 @@ const licenseSlice = createSlice({
                 state.isValidating = true;
                 state.error = null;
             })
-            .addCase(getLicenseStatusThunk.fulfilled, (state, action) => {
-                state.isValidating = false;
-                state.isValid = action.payload.valid;
-                state.planType = action.payload.plan_type;
-                state.isPilotMode = action.payload.is_pilot_mode;
-                state.limits = action.payload.limits;
-                state.usage = action.payload.usage;
-                state.message = action.payload.message;
-                state.isInitialized = true;
-            })
+        .addCase(getLicenseStatusThunk.fulfilled, (state, action) => {
+            state.isValidating = false;
+            state.isValid = action.payload.valid;
+            state.planType = action.payload.plan_type;
+            state.isPilotMode = action.payload.is_pilot_mode;
+            state.limits = action.payload.limits;   // { max_assets, max_discoveries, max_audits, max_hardens }
+            state.usage = action.payload.usage;     // { used_assets, used_discoveries, used_audits, used_hardens }
+            state.expiresAt = action.payload.expires_at;  // ✅ اضافه شد
+            state.message = action.payload.message;
+            state.isInitialized = true;
+        })
             .addCase(getLicenseStatusThunk.rejected, (state, action) => {
                 state.isValidating = false;
                 state.isValid = false;
@@ -116,7 +119,8 @@ const licenseSlice = createSlice({
                 state.planType = action.payload.plan_type;
                 state.isPilotMode = action.payload.is_pilot_mode;
                 state.limits = action.payload.limits;
-                state.usage = action.payload.usage;
+                state.usage = action.payload.usage;     // ✅ اضافه شد
+                state.expiresAt = action.payload.expires_at;  // ✅ اضافه شد
                 state.message = action.payload.message;
                 state.successMessage = "License activated successfully!";
                 state.isInitialized = true;
