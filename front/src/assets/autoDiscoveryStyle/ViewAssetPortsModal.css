@@ -1,112 +1,137 @@
 /**
  * ViewAssetPortsModal Styles
+ * Fully Responsive — colors & visual style unchanged
  */
 
 .view-ports-modal {
-    min-width: 800px;
+    width: 90vw;
     max-width: 1000px;
+    min-width: 0;
     max-height: 90vh;
+    box-sizing: border-box;
 }
 
 .view-ports-modal .asset-info {
     margin-top: 4px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    font-size: 0.875rem;
+    color: #6b7280;
     font-weight: normal;
+    word-break: break-all;
 }
 
+/* ============================================
+   Ports Table Container
+   ============================================ */
 .ports-table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     margin: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .ports-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    table-layout: fixed;
+    min-width: 560px;
 }
 
+/* Column widths — keeps every row aligned */
+.ports-table th:nth-child(1),
+.ports-table td:nth-child(1) { width: 10%; }   /* Port */
+
+.ports-table th:nth-child(2),
+.ports-table td:nth-child(2) { width: 12%; }   /* Protocol */
+
+.ports-table th:nth-child(3),
+.ports-table td:nth-child(3) { width: 16%; }   /* Service */
+
+.ports-table th:nth-child(4),
+.ports-table td:nth-child(4) { width: 22%; }   /* Product */
+
+.ports-table th:nth-child(5),
+.ports-table td:nth-child(5) { width: 18%; }   /* Version */
+
+.ports-table th:nth-child(6),
+.ports-table td:nth-child(6) { width: 12%; }   /* State */
+
+.ports-table th:nth-child(7),
+.ports-table td:nth-child(7) { width: 10%; }   /* Actions */
+
 .ports-table thead {
-    background-color: var(--bg-secondary);
+    background-color: #f3f4f6;
     position: sticky;
     top: 0;
     z-index: 1;
 }
 
 .ports-table th {
-    padding: 12px;
+    padding: 11px 12px;
     text-align: left;
     font-weight: 600;
-    color: var(--text-secondary);
-    border-bottom: 2px solid var(--border-color);
+    font-size: 0.8rem;
+    color: #6b7280;
+    border-bottom: 2px solid #e5e7eb;
     white-space: nowrap;
 }
 
 .ports-table tbody tr {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #e5e7eb;
     transition: background-color 0.15s ease;
 }
 
-.ports-table tbody tr:hover {
-    background-color: var(--bg-hover);
-}
+.ports-table tbody tr:hover { background-color: #f9fafb; }
 
 .ports-table td {
-    padding: 12px;
+    padding: 11px 12px;
     vertical-align: middle;
+    font-size: 0.875rem;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
+/* ============================================
+   Protocol Badge
+   ============================================ */
 .protocol-badge {
     display: inline-block;
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 4px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
 }
 
-.protocol-badge.tcp {
-    background-color: #e3f2fd;
-    color: #1976d2;
-}
+.protocol-badge.tcp { background-color: #e3f2fd; color: #1976d2; }
+.protocol-badge.udp { background-color: #f3e5f5; color: #7b1fa2; }
 
-.protocol-badge.udp {
-    background-color: #f3e5f5;
-    color: #7b1fa2;
-}
-
+/* ============================================
+   State Badge
+   ============================================ */
 .state-badge {
     display: inline-block;
-    padding: 4px 10px;
+    padding: 3px 9px;
     border-radius: 12px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
     text-transform: capitalize;
+    white-space: nowrap;
 }
 
-.state-badge.open {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-}
+.state-badge.open     { background-color: #e8f5e9; color: #2e7d32; }
+.state-badge.closed   { background-color: #ffebee; color: #c62828; }
+.state-badge.filtered { background-color: #fff3e0; color: #ef6c00; }
+.state-badge.unknown  { background-color: #f5f5f5; color: #757575; }
 
-.state-badge.closed {
-    background-color: #ffebee;
-    color: #c62828;
-}
-
-.state-badge.filtered {
-    background-color: #fff3e0;
-    color: #ef6c00;
-}
-
-.state-badge.unknown {
-    background-color: #f5f5f5;
-    color: #757575;
-}
-
+/* ============================================
+   Icon Buttons
+   ============================================ */
 .btn-icon {
-    padding: 6px;
+    padding: 5px;
     border: none;
     background: transparent;
     cursor: pointer;
@@ -117,109 +142,160 @@
     justify-content: center;
 }
 
-.btn-icon:hover {
-    background-color: var(--bg-hover);
-}
+.btn-icon:hover { background-color: #f9fafb; }
 
-.btn-delete {
-    color: var(--danger-color);
-}
+.btn-delete { color: #ef4444; }
+.btn-delete:hover { background-color: #ffebee; }
 
-.btn-delete:hover {
-    background-color: #ffebee;
-}
-
+/* ============================================
+   Empty State
+   ============================================ */
 .empty-state {
     text-align: center;
-    padding: 60px 20px;
-    color: var(--text-secondary);
+    padding: 56px 20px;
+    color: #6b7280;
 }
 
 .empty-state svg {
-    margin: 0 auto 20px;
+    display: block;
+    margin: 0 auto 18px;
     opacity: 0.3;
 }
 
 .empty-state h3 {
     margin: 0 0 8px;
-    font-size: 1.2rem;
-    color: var(--text-primary);
+    font-size: 1.15rem;
+    color: #111827;
 }
 
 .empty-state p {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
 }
 
+/* ============================================
+   Loading / Error State
+   ============================================ */
 .loading-state,
 .error-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 56px 20px;
     text-align: center;
 }
 
 .loading-state .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--border-color);
-    border-top-color: var(--primary-color);
+    width: 38px;
+    height: 38px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #1e3a5f;
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .error-state svg {
-    color: var(--danger-color);
-    margin-bottom: 16px;
+    color: #ef4444;
+    margin-bottom: 14px;
     opacity: 0.8;
 }
 
-.error-state p {
-    color: var(--danger-color);
-    margin: 0;
-}
+.error-state p { color: #ef4444; margin: 0; }
 
-.modal-footer {
+/* ============================================
+   Modal Footer
+   ============================================ */
+.view-ports-modal .modal-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 13px 20px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .footer-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    flex-shrink: 0;
 }
 
 .port-count {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
+    font-size: 0.875rem;
+    color: #6b7280;
     font-weight: 500;
+    white-space: nowrap;
 }
 
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+/* ============================================
+   Responsive — ≤1100px
+   ============================================ */
+@media (max-width: 1100px) {
+    .view-ports-modal { max-width: 95vw; }
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-    .view-ports-modal {
-        min-width: 90vw;
-    }
-}
-
+/* ============================================
+   Responsive — ≤768px
+   ============================================ */
 @media (max-width: 768px) {
+    .view-ports-modal { width: 98vw; }
+
     .ports-table {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        min-width: 480px;
     }
 
     .ports-table th,
     .ports-table td {
-        padding: 8px;
+        padding: 9px 9px;
     }
+
+    /* Hide less-critical columns */
+    .ports-table th:nth-child(4),
+    .ports-table td:nth-child(4),
+    .ports-table th:nth-child(5),
+    .ports-table td:nth-child(5) {
+        display: none;
+    }
+
+    /* Re-distribute widths after hiding cols */
+    .ports-table th:nth-child(1),
+    .ports-table td:nth-child(1) { width: 15%; }
+    .ports-table th:nth-child(2),
+    .ports-table td:nth-child(2) { width: 16%; }
+    .ports-table th:nth-child(3),
+    .ports-table td:nth-child(3) { width: 32%; }
+    .ports-table th:nth-child(6),
+    .ports-table td:nth-child(6) { width: 22%; }
+    .ports-table th:nth-child(7),
+    .ports-table td:nth-child(7) { width: 15%; }
+}
+
+/* ============================================
+   Responsive — ≤480px
+   ============================================ */
+@media (max-width: 480px) {
+    .view-ports-modal {
+        width: 100vw;
+        max-width: 100vw;
+        border-radius: 14px 14px 0 0;
+        max-height: 95vh;
+    }
+
+    .ports-table { font-size: 0.78rem; min-width: 380px; }
+
+    .ports-table th,
+    .ports-table td { padding: 8px 7px; }
+
+    .view-ports-modal .modal-footer {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .view-ports-modal .modal-footer .btn { width: 100%; }
 }

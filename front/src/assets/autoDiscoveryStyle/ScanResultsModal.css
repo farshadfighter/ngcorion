@@ -206,10 +206,17 @@
     color: #111827;
     vertical-align: middle;
 }
+.data-table th:last-child,
+.data-table td:last-child {
+    width: 140px;
+    min-width: 140px;
+    text-align: center;
+}
 
-/* ============================================
-   Table Cell Styles
-   ============================================ */
+
+    /* ============================================
+       Table Cell Styles
+       ============================================ */
 
 /* IP Address */
 .ip-address {
@@ -508,6 +515,21 @@ code.mac-address {
         align-items: flex-start;
     }
 }
+/* ستون اکشن‌ها همیشه وسط‌چین شود */
+.data-table td:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* باکس دکمه‌ها وسط‌چین و تراز عمودی */
+.action-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 
 @media (max-width: 480px) {
     .results-summary {
