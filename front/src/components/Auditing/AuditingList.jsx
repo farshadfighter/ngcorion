@@ -103,7 +103,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
     return (
         <div className="auditing-container">
             {/* Header */}
-            <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <button
                     className="btn-auditing-primary"
                     onClick={() => isAuditLimitReached ? setShowLimitModal(true) : setShowWizard(true)}

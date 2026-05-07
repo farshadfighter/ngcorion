@@ -288,7 +288,7 @@ const assetSlice = createSlice({
             // update
             .addCase(updateAsset.fulfilled, (state, action) => {
                 const idx = state.assets.findIndex(
-                    (a) => a.id === action.payload.id
+                    (a) => a.asset_id === action.payload.asset_id
                 );
                 if (idx !== -1) state.assets[idx] = action.payload;
                 state.successMessage = "Asset updated successfully!";
@@ -297,7 +297,7 @@ const assetSlice = createSlice({
             // delete
             .addCase(deleteAsset.fulfilled, (state, action) => {
                 state.assets = state.assets.filter(
-                    (a) => a.id !== action.payload
+                    (a) => a.asset_id !== action.payload
                 );
                 state.successMessage = "Asset deleted successfully!";
             })

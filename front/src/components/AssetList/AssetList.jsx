@@ -114,7 +114,7 @@ export const AssetList = ({onNavigateToLicence}) => {
 
     const handleDeleteConfirm = () => {
         if (selectedAsset) {
-            dispatch(deleteAsset(selectedAsset.id));
+            dispatch(deleteAsset(selectedAsset.asset_id));
             setShowDeleteModal(false);
             setSelectedAsset(null);
         }
