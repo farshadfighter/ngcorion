@@ -19,6 +19,21 @@ def create_styled_workbook(title: str) -> Workbook:
     ws.title = title
     return wb
 
+# برای تمپلیت asset list
+
+def create_asset_list_template() -> BytesIO:
+    """Creates a blank Excel template for asset list with multiple sheets."""
+    wb = Workbook()
+    if "Sheet" in wb.sheetnames:
+        wb.remove(wb["Sheet"])
+
+    for sheet_def in ASSET_LIST_SHEETS:
+        _ensure_asset_sheet(wb, sheet_def["title"], sheet_def["columns"])
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
 
 def style_header_row(ws, columns: List[str]):
     """Apply styling to header row"""
@@ -56,6 +71,7 @@ ASSET_LIST_COLUMNS = [
     "OS Version",
     "IP Address",
     "MAC Address",
+    "Ports",
     "Location",
     "Owner",
     "Status",
@@ -129,7 +145,61 @@ ASSET_REQUIREMENT_SHEETS = [
 ]
 
 
+ASSET_LIST_SHEETS = [
+    {
+        "key": "overview",
+        "title": "Overview",
+        "columns": ["Asset Name", "Hostname", "Type", "Role", "Manufacturer", "Model"],
+        "map_row": lambda asset: [
+            asset.name,
+            asset.hostname,
+            asset.asset_type.name if asset.asset_type else "",
+            asset.role,
+            asset.vendor,
+            asset.model,
+        ],
+    },
+    {
+        "key": "network_system",
+        "title": "Network & System",
+        "columns": ["Asset Name", "Serial", "OS", "IP Address", "MAC Address", "Ports"],
+        "map_row": lambda asset: [
+            asset.name,
+            asset.serial,
+            f"{asset.os.name} {asset.os_version}" if asset.os else "",
+            asset.ip_address,
+            asset.mac_address,
+            getattr(asset, 'ports', 'N/A'),  # ستون Ports باید به مدل داده اضافه شود
+        ],
+    },
+    {
+        "key": "location_owner",
+        "title": "Location & Owner",
+        "columns": ["Asset Name", "Location", "Owner", "Status"],
+        "map_row": lambda asset: [
+            asset.name,
+            asset.location.name if asset.location else "",
+            asset.owner.name if asset.owner else "",
+            asset.status,
+        ],
+    },
+    {
+        "key": "security_audit",
+        "title": "Security & Audit",
+        "columns": ["Asset Name", "Confidentiality Level", "Risk Level", "Last Audit Date", "Last Patch Date"],
+        "map_row": lambda asset: [
+            asset.name,
+            asset.confidentiality,
+            asset.risk_level,
+            asset.last_audit_date.strftime("%Y-%m-%d") if asset.last_audit_date else "",
+            asset.last_patch_date.strftime("%Y-%m-%d") if asset.last_patch_date else "",
+        ],
+    },
+]
+
+
 def _build_asset_row(asset: Any) -> List[Any]:
+    ports_str = ", ".join([str(p.port_number) for p in asset.ports]) if asset.ports else "N/A"
     return [
         asset.id,
         asset.asset_name,
@@ -143,6 +213,7 @@ def _build_asset_row(asset: Any) -> List[Any]:
         asset.os_version,
         asset.ip_address,
         asset.mac_address,
+        ports_str,
         asset.location.site_name if asset.location else "",
         asset.owner.full_name if asset.owner else "",
         asset.status.value if asset.status else "",
@@ -190,6 +261,25 @@ def export_assets_to_excel(assets: List[Any], include_data: bool = True) -> Byte
     output.seek(0)
     return output
 
+# new export for asset list with sheet
+
+def export_assets_to_excel_grouped(assets: List[Any]) -> BytesIO:
+    """Exports a list of assets to a multi-sheet Excel file."""
+    wb = Workbook()
+    if "Sheet" in wb.sheetnames:
+        wb.remove(wb["Sheet"])
+
+    for sheet_def in ASSET_LIST_SHEETS:
+        ws = _ensure_asset_sheet(wb, sheet_def["title"], sheet_def["columns"])
+        map_row_func = sheet_def["map_row"]
+        for asset in assets:
+            row_data = map_row_func(asset)
+            ws.append(row_data)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
 
 def create_asset_template() -> BytesIO:
     """
