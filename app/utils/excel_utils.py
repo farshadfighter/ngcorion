@@ -208,8 +208,8 @@ ASSET_LIST_SHEETS = [
         "columns": ["Asset Name", "Location", "Owner", "Status"],
         "map_row": lambda asset: [
             asset.asset_name,
-            asset.location.site_name if asset.location else "",  # اصلاح شد: .site_name به جای .name
-            asset.owner.full_name if asset.owner else "",        # اصلاح شد: .full_name به جای .name
+            asset.location.site_name if asset.location else "",  
+            asset.owner.full_name if asset.owner else "",        
             asset.status.value if hasattr(asset.status, 'value') else asset.status, # برای enum
         ],
     },
