@@ -196,10 +196,10 @@ ASSET_LIST_SHEETS = [
         "map_row": lambda asset: [
             asset.asset_name,
             getattr(asset, 'serial_number', getattr(asset, 'serial', '')), 
-            asset.os_name if hasattr(asset, 'os_name') else (f"{asset.os.os_name} {asset.os_version}" if hasattr(asset, 'os') and asset.os else ""), # اصلاح شد
+            asset.os_name if hasattr(asset, 'os_name') else (f"{asset.os.os_name} {asset.os_version}" if hasattr(asset, 'os') and asset.os else ""),
             asset.ip_address,
             asset.mac_address,
-            getattr(asset, "ports", "N/A"),
+            ", ".join([str(p) for p in asset.ports]) if hasattr(asset, 'ports') and isinstance(getattr(asset, 'ports'), list) else str(getattr(asset, "ports", "N/A")),
         ],
     },
     {
