@@ -272,10 +272,12 @@ class UserService:
 
         self.db.delete(user)
         self.db.commit()
-
+        current_user = None
+        if current_user_id:
+            current_user = self.db.query(User).filter(User.id == current_user_id).first()
         # Audit log
-        log_user_action(self.db, current_user if current_user_id else None, "user.delete", user_id,
-                       detail=f"Deleted user '{username}' with role '{user.role.value}'")
+        log_user_action(self.db, current_user, "user.delete", user_id,
+                detail=f"Deleted user '{username}' with role '{user.role.value}'")
 
         print(f"[-] User deleted: {username}")
 
