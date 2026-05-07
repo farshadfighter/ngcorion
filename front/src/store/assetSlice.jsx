@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 
+const getAssetId = (asset) => {
+    if (asset == null) return asset;
+    return asset.id ?? asset.asset_id ?? asset.assetId;
+};
+
 // =====================
 // Thunks
 // =====================
@@ -287,8 +292,9 @@ const assetSlice = createSlice({
 
             // update
             .addCase(updateAsset.fulfilled, (state, action) => {
+                const updatedAssetId = getAssetId(action.payload);
                 const idx = state.assets.findIndex(
-                    (a) => a.asset_id === action.payload.asset_id
+                    (a) => getAssetId(a) === updatedAssetId
                 );
                 if (idx !== -1) state.assets[idx] = action.payload;
                 state.successMessage = "Asset updated successfully!";
@@ -296,8 +302,9 @@ const assetSlice = createSlice({
 
             // delete
             .addCase(deleteAsset.fulfilled, (state, action) => {
+                const deletedAssetId = getAssetId({ id: action.payload });
                 state.assets = state.assets.filter(
-                    (a) => a.asset_id !== action.payload
+                    (a) => getAssetId(a) !== deletedAssetId
                 );
                 state.successMessage = "Asset deleted successfully!";
             })

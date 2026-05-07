@@ -38,6 +38,11 @@ export const AssetList = ({onNavigateToLicence}) => {
     const [showLicenseModal, setShowLicenseModal] = useState(false);
 
     const fileInputRef = useRef(null);
+    const resolveAssetId = (asset) => {
+        if (asset == null) return null;
+        if (typeof asset === "number" || typeof asset === "string") return asset;
+        return asset.id ?? asset.asset_id ?? asset.assetId;
+    };
 
     useEffect(() => {
         dispatch(fetchAssets());
@@ -108,13 +113,17 @@ export const AssetList = ({onNavigateToLicence}) => {
     };
 
     const handleDeleteClick = (asset) => {
-        setSelectedAsset(asset);
+        const matchedAsset = typeof asset === "object" && asset
+            ? asset
+            : enrichedAssets.find((a) => String(resolveAssetId(a)) === String(asset));
+        setSelectedAsset(matchedAsset ?? { id: resolveAssetId(asset) });
         setShowDeleteModal(true);
     };
 
     const handleDeleteConfirm = () => {
-        if (selectedAsset) {
-            dispatch(deleteAsset(selectedAsset.asset_id));
+        const assetId = resolveAssetId(selectedAsset);
+        if (assetId) {
+            dispatch(deleteAsset(assetId));
             setShowDeleteModal(false);
             setSelectedAsset(null);
         }
@@ -290,7 +299,7 @@ export const AssetList = ({onNavigateToLicence}) => {
                             </button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to delete "{selectedAsset?.asset_name}"?</p>
+                            <p>Are you sure you want to delete "{selectedAsset?.asset_name || `ID: ${resolveAssetId(selectedAsset)}`}"?</p>
                             <p style={{ color: "#dc3545", fontSize: "13px", marginTop: "8px" }}>
                                 This action cannot be undone.
                             </p>
