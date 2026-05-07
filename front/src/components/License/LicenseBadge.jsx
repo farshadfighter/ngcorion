@@ -69,11 +69,8 @@ const LicenseBadge = ({ module }) => {
                 padding: "0 14px",
                 backgroundColor: "#0f2044",
             }}>
-                <img
-                    src="/icons/search.svg"
-                    alt="search"
-                    style={{ width: "14px", height: "14px", opacity: 0.8 }}
-                />
+                <i className="ti ti-search" style={{ fontSize: "15px", color: "#7aaddb" }} />
+
                 <div style={{ display: "flex", flexDirection: "column", lineHeight: "1.3" }}>
                     <span style={{
                         fontSize: "12px",
