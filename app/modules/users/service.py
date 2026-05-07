@@ -146,19 +146,20 @@ class UserService:
         
         # Update password
         if user_data.password is not None:
-            if current_user_id == user_id:
-                if not user_data.current_password:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Current password is required to change your password"
-                    )
+            
+            if not user_data.current_password:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The user's current password is required to set a new password."
+                )
 
-                if not verify_password(user_data.current_password, user.hashed_password):
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Current password is incorrect"
-                    )
+            if not verify_password(user_data.current_password, user.hashed_password):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="The provided current password for the user is incorrect."
+                )
 
+            # If verification is successful, hash and set the new password.
             user.hashed_password = get_password_hash(user_data.password)
         
         # Update role
