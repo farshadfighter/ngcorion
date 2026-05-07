@@ -183,9 +183,9 @@ ASSET_LIST_SHEETS = [
         "map_row": lambda asset: [
             asset.asset_name,
             asset.hostname,
-            asset.asset_type.name if asset.asset_type else "",
-            asset.role,
-            asset.vendor,
+            asset.asset_type.type_name if asset.asset_type else "",  # اصلاح شد: .type_name به جای .name
+            asset.asset_role if hasattr(asset, 'asset_role') else getattr(asset, 'role', ''), # معمولا asset_role است
+            asset.manufacturer if hasattr(asset, 'manufacturer') else getattr(asset, 'vendor', ''),
             asset.model,
         ],
     },
@@ -195,11 +195,11 @@ ASSET_LIST_SHEETS = [
         "columns": ["Asset Name", "Serial", "OS", "IP Address", "MAC Address", "Ports"],
         "map_row": lambda asset: [
             asset.asset_name,
-            asset.serial,
-            f"{asset.os.name} {asset.os_version}" if asset.os else "",
+            getattr(asset, 'serial_number', getattr(asset, 'serial', '')), 
+            asset.os_name if hasattr(asset, 'os_name') else (f"{asset.os.os_name} {asset.os_version}" if hasattr(asset, 'os') and asset.os else ""), # اصلاح شد
             asset.ip_address,
             asset.mac_address,
-            getattr(asset, "ports", "N/A"),  # ستون Ports باید به مدل داده اضافه شود
+            getattr(asset, "ports", "N/A"),
         ],
     },
     {
@@ -208,9 +208,9 @@ ASSET_LIST_SHEETS = [
         "columns": ["Asset Name", "Location", "Owner", "Status"],
         "map_row": lambda asset: [
             asset.asset_name,
-            asset.location.name if asset.location else "",
-            asset.owner.name if asset.owner else "",
-            asset.status,
+            asset.location.site_name if asset.location else "",  # اصلاح شد: .site_name به جای .name
+            asset.owner.full_name if asset.owner else "",        # اصلاح شد: .full_name به جای .name
+            asset.status.value if hasattr(asset.status, 'value') else asset.status, # برای enum
         ],
     },
     {
@@ -225,13 +225,14 @@ ASSET_LIST_SHEETS = [
         ],
         "map_row": lambda asset: [
             asset.asset_name,
-            asset.confidentiality,
-            asset.risk_level,
+            asset.confidentiality_level.value if hasattr(asset, 'confidentiality_level') and hasattr(asset.confidentiality_level, 'value') else getattr(asset, 'confidentiality', ''),
+            asset.risk_level.value if hasattr(asset.risk_level, 'value') else asset.risk_level,
             asset.last_audit_date.strftime("%Y-%m-%d") if asset.last_audit_date else "",
             asset.last_patch_date.strftime("%Y-%m-%d") if asset.last_patch_date else "",
         ],
     },
 ]
+
 
 
 def _build_asset_row(asset: Any) -> List[Any]:
