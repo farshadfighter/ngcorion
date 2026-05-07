@@ -43,6 +43,124 @@ def style_header_row(ws, columns: List[str]):
         ws.column_dimensions[get_column_letter(col_idx)].width = max(len(column_name) + 2, 15)
 
 
+ASSET_LIST_COLUMNS = [
+    "ID",
+    "Asset Name",
+    "Hostname",
+    "Asset Type",
+    "Asset Role",
+    "Manufacturer",
+    "Model",
+    "Serial Number",
+    "OS Name",
+    "OS Version",
+    "IP Address",
+    "MAC Address",
+    "Location",
+    "Owner",
+    "Status",
+    "Confidentiality Level",
+    "Risk Level",
+    "Last Audit Date",
+    "Last Patch Date",
+    "Asset Value",
+    "Description",
+]
+
+
+ASSET_REQUIREMENT_SHEETS = [
+    {
+        "key": "asset_types",
+        "title": "Asset Types",
+        "columns": ["ID", "Type Name", "Category", "Description"],
+        "map_row": lambda item: [item.id, item.type_name, item.category, item.description],
+    },
+    {
+        "key": "owners",
+        "title": "Owners",
+        "columns": ["ID", "Full Name", "Department", "Role", "Email", "Phone"],
+        "map_row": lambda item: [item.id, item.full_name, item.department, item.role, item.email, item.phone],
+    },
+    {
+        "key": "locations",
+        "title": "Locations",
+        "columns": ["ID", "Site Name", "Rack Name", "Room", "Floor", "Network Zone", "VLAN ID", "Subnet"],
+        "map_row": lambda item: [
+            item.id,
+            item.site_name,
+            item.rack_name,
+            item.room,
+            item.floor,
+            item.network_zone,
+            item.vlan_id,
+            item.subnet,
+        ],
+    },
+    {
+        "key": "zones",
+        "title": "Network Zones",
+        "columns": ["ID", "Zone Name", "Description"],
+        "map_row": lambda item: [item.id, item.zone_name, item.description],
+    },
+    {
+        "key": "os_catalog",
+        "title": "OS Catalog",
+        "columns": ["ID", "OS Name"],
+        "map_row": lambda item: [item.id, item.os_name],
+    },
+    {
+        "key": "vendors",
+        "title": "Vendors",
+        "columns": ["ID", "Vendor Name", "Vendor Type"],
+        "map_row": lambda item: [item.id, item.vendor_name, item.vendor_type],
+    },
+    {
+        "key": "dependencies",
+        "title": "Dependencies",
+        "columns": ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"],
+        "map_row": lambda item: [
+            item.id,
+            item.asset_id,
+            item.depends_on_id,
+            item.relation_type.value if hasattr(item, "relation_type") and item.relation_type else "",
+            item.description,
+        ],
+    },
+]
+
+
+def _build_asset_row(asset: Any) -> List[Any]:
+    return [
+        asset.id,
+        asset.asset_name,
+        asset.hostname,
+        asset.asset_type.type_name if asset.asset_type else "",
+        asset.asset_role,
+        asset.manufacturer,
+        asset.model,
+        asset.serial_number,
+        asset.os_name,
+        asset.os_version,
+        asset.ip_address,
+        asset.mac_address,
+        asset.location.site_name if asset.location else "",
+        asset.owner.full_name if asset.owner else "",
+        asset.status.value if asset.status else "",
+        asset.confidentiality_level.value if asset.confidentiality_level else "",
+        asset.risk_level.value if asset.risk_level else "",
+        asset.last_audit_date.strftime('%Y-%m-%d') if asset.last_audit_date else "",
+        asset.last_patch_date.strftime('%Y-%m-%d') if asset.last_patch_date else "",
+        float(asset.asset_value) if asset.asset_value is not None else "",
+        asset.description,
+    ]
+
+
+def _ensure_asset_sheet(wb: Workbook, title: str, columns: List[str]):
+    ws = wb.create_sheet(title)
+    style_header_row(ws, columns)
+    return ws
+
+
 def export_assets_to_excel(assets: List[Any], include_data: bool = True) -> BytesIO:
     """
     Export assets to Excel file
@@ -57,62 +175,14 @@ def export_assets_to_excel(assets: List[Any], include_data: bool = True) -> Byte
     wb = create_styled_workbook("Assets")
     ws = wb.active
 
-    # Define columns - ALL fields from Asset model
-    columns = [
-        "ID",
-        "Asset Name",
-        "Hostname",
-        "Asset Type",
-        "Asset Role",
-        "Manufacturer",
-        "Model",
-        "Serial Number",
-        "OS Name",
-        "OS Version",
-        "IP Address",
-        "MAC Address",
-        "Location",
-        "Owner",
-        "Status",
-        "Confidentiality Level",
-        "Risk Level",
-        "Last Audit Date",
-        "Last Patch Date",
-        "Asset Value",
-        "Description",
-        "Created At",
-        "Updated At"
-    ]
-
     # Style header
-    style_header_row(ws, columns)
+    style_header_row(ws, ASSET_LIST_COLUMNS)
 
     # Add data if requested
     if include_data and assets:
         for row_idx, asset in enumerate(assets, 2):
-            ws.cell(row=row_idx, column=1, value=asset.id)
-            ws.cell(row=row_idx, column=2, value=asset.asset_name)
-            ws.cell(row=row_idx, column=3, value=asset.hostname)
-            ws.cell(row=row_idx, column=4, value=asset.asset_type.type_name if asset.asset_type else "")
-            ws.cell(row=row_idx, column=5, value=asset.asset_role)
-            ws.cell(row=row_idx, column=6, value=asset.manufacturer)
-            ws.cell(row=row_idx, column=7, value=asset.model)
-            ws.cell(row=row_idx, column=8, value=asset.serial_number)
-            ws.cell(row=row_idx, column=9, value=asset.os_name)
-            ws.cell(row=row_idx, column=10, value=asset.os_version)
-            ws.cell(row=row_idx, column=11, value=asset.ip_address)
-            ws.cell(row=row_idx, column=12, value=asset.mac_address)
-            ws.cell(row=row_idx, column=13, value=asset.location.site_name if asset.location else "")
-            ws.cell(row=row_idx, column=14, value=asset.owner.full_name if asset.owner else "")
-            ws.cell(row=row_idx, column=15, value=asset.status.value if asset.status else "")
-            ws.cell(row=row_idx, column=16, value=asset.confidentiality_level.value if asset.confidentiality_level else "")
-            ws.cell(row=row_idx, column=17, value=asset.risk_level.value if asset.risk_level else "")
-            ws.cell(row=row_idx, column=18, value=asset.last_audit_date.strftime('%Y-%m-%d') if asset.last_audit_date else "")
-            ws.cell(row=row_idx, column=19, value=asset.last_patch_date.strftime('%Y-%m-%d') if asset.last_patch_date else "")
-            ws.cell(row=row_idx, column=20, value=float(asset.asset_value) if asset.asset_value else "")
-            ws.cell(row=row_idx, column=21, value=asset.description)
-            ws.cell(row=row_idx, column=22, value=asset.created_at.strftime('%Y-%m-%d %H:%M:%S') if asset.created_at else "")
-            ws.cell(row=row_idx, column=23, value=asset.updated_at.strftime('%Y-%m-%d %H:%M:%S') if asset.updated_at else "")
+            for col_idx, value in enumerate(_build_asset_row(asset), start=1):
+                ws.cell(row=row_idx, column=col_idx, value=value)
 
     # Save to BytesIO
     output = BytesIO()
@@ -363,95 +433,14 @@ def export_asset_requirements_to_excel(data_dict: Dict[str, List[Any]]) -> Bytes
     # Remove default sheet
     wb.remove(wb.active)
 
-    # Export Asset Types
-    if "asset_types" in data_dict and data_dict["asset_types"]:
-        ws = wb.create_sheet("Asset Types")
-        columns = ["ID", "Type Name", "Category", "Description"]
-        style_header_row(ws, columns)
+    for sheet in ASSET_REQUIREMENT_SHEETS:
+        ws = _ensure_asset_sheet(wb, sheet["title"], sheet["columns"])
+        rows = data_dict.get(sheet["key"]) or []
 
-        for row_idx, item in enumerate(data_dict["asset_types"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.type_name)
-            ws.cell(row=row_idx, column=3, value=item.category)
-            ws.cell(row=row_idx, column=4, value=item.description)
-
-    # Export Owners
-    if "owners" in data_dict and data_dict["owners"]:
-        ws = wb.create_sheet("Owners")
-        columns = ["ID", "Full Name", "Department", "Role", "Email", "Phone"]
-        style_header_row(ws, columns)
-
-        for row_idx, item in enumerate(data_dict["owners"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.full_name)
-            ws.cell(row=row_idx, column=3, value=item.department)
-            ws.cell(row=row_idx, column=4, value=item.role)
-            ws.cell(row=row_idx, column=5, value=item.email)
-            ws.cell(row=row_idx, column=6, value=item.phone)
-
-    # Export Locations
-    if "locations" in data_dict and data_dict["locations"]:
-        ws = wb.create_sheet("Locations")
-        columns = ["ID", "Site Name", "Rack Name", "Room", "Floor", "Network Zone", "VLAN ID", "Subnet"]
-        style_header_row(ws, columns)
-
-        for row_idx, item in enumerate(data_dict["locations"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.site_name)
-            ws.cell(row=row_idx, column=3, value=item.rack_name)
-            ws.cell(row=row_idx, column=4, value=item.room)
-            ws.cell(row=row_idx, column=5, value=item.floor)
-            ws.cell(row=row_idx, column=6, value=item.network_zone)
-            ws.cell(row=row_idx, column=7, value=item.vlan_id)
-            ws.cell(row=row_idx, column=8, value=item.subnet)
-
-    # Export Network Zones
-    if "zones" in data_dict and data_dict["zones"]:
-        ws = wb.create_sheet("Network Zones")
-        columns = ["ID", "Zone Name"]
-        style_header_row(ws, columns)
-
-        for row_idx, item in enumerate(data_dict["zones"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.zone_name)
-
-    # Export OS Catalog
-    if "os_catalog" in data_dict and data_dict["os_catalog"]:
-        ws = wb.create_sheet("OS Catalog")
-        columns = ["ID", "OS Name"]
-        style_header_row(ws, columns)
-
-        for row_idx, item in enumerate(data_dict["os_catalog"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.os_name)
-
-    # Export Vendors
-    if "vendors" in data_dict and data_dict["vendors"]:
-        ws = wb.create_sheet("Vendors")
-        columns = ["ID", "Vendor Name"]
-        style_header_row(ws, columns)
-
-        for row_idx, item in enumerate(data_dict["vendors"], 2):
-            ws.cell(row=row_idx, column=1, value=item.id)
-            ws.cell(row=row_idx, column=2, value=item.vendor_name)
-
-    # Export Dependencies
-    # if "dependencies" in data_dict and data_dict["dependencies"]:
-    #     ws = wb.create_sheet("Dependencies")
-    #     columns = ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"]
-    #     style_header_row(ws, columns)
-
-    #     for row_idx, item in enumerate(data_dict["dependencies"], 2):
-    #         ws.cell(row=row_idx, column=1, value=item.id)
-    #         ws.cell(row=row_idx, column=2, value=item.asset_id)
-    #         ws.cell(row=row_idx, column=3, value=item.depends_on_id)
-    #         ws.cell(row=row_idx, column=4, value=item.relation_type.value if hasattr(item.relation_type, 'value') else item.relation_type)
-    #         ws.cell(row=row_idx, column=5, value=item.description)
-
-    # If no sheets were created, create an empty one
-    if len(wb.worksheets) == 0:
-        ws = wb.create_sheet("Empty")
-        ws.cell(row=1, column=1, value="No data to export")
+        for row_idx, item in enumerate(rows, start=2):
+            row_values = sheet["map_row"](item)
+            for col_idx, value in enumerate(row_values, start=1):
+                ws.cell(row=row_idx, column=col_idx, value=value)
 
     # Save to BytesIO
     output = BytesIO()
@@ -471,40 +460,8 @@ def create_asset_requirements_template() -> BytesIO:
     # Remove default sheet
     wb.remove(wb.active)
 
-    # Asset Types template
-    ws = wb.create_sheet("Asset Types")
-    columns = ["ID", "Type Name", "Category", "Description"]
-    style_header_row(ws, columns)
-
-    # Owners template
-    ws = wb.create_sheet("Owners")
-    columns = ["ID", "Full Name", "Department", "Role", "Email", "Phone"]
-    style_header_row(ws, columns)
-
-    # Locations template
-    ws = wb.create_sheet("Locations")
-    columns = ["ID", "Site Name", "Rack Name", "Room", "Floor", "Network Zone", "VLAN ID", "Subnet"]
-    style_header_row(ws, columns)
-
-    # Network Zones template
-    ws = wb.create_sheet("Network Zones")
-    columns = ["ID", "Zone Name"]
-    style_header_row(ws, columns)
-
-    # OS Catalog template
-    ws = wb.create_sheet("OS Catalog")
-    columns = ["ID", "OS Name"]
-    style_header_row(ws, columns)
-
-    # Vendors template
-    ws = wb.create_sheet("Vendors")
-    columns = ["ID", "Vendor Name"]
-    style_header_row(ws, columns)
-
-    # Dependencies template
-    # ws = wb.create_sheet("Dependencies")
-    # columns = ["ID", "Asset ID", "Depends On ID", "Relation Type", "Description"]
-    # style_header_row(ws, columns)
+    for sheet in ASSET_REQUIREMENT_SHEETS:
+        _ensure_asset_sheet(wb, sheet["title"], sheet["columns"])
 
     # Save to BytesIO
     output = BytesIO()
@@ -526,8 +483,8 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
         Dictionary with import results for each sheet
     """
     from openpyxl import load_workbook
-    from app.models import AssetType, AssetOwner, AssetLocation, NetworkZone, OSCatalog, VendorCatalog #AssetDependency
-    #from app.models.enums import RelationTypeEnum
+    from app.models import AssetType, AssetOwner, AssetLocation, NetworkZone, OSCatalog, VendorCatalog, AssetDependency
+    from app.models.enums import RelationTypeEnum
 
     results = {
         "asset_types": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
@@ -536,7 +493,7 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
         "zones": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
         "os_catalog": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
         "vendors": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
-        # "dependencies": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
+        "dependencies": {"created": 0, "updated": 0, "skipped": 0, "errors": []},
     }
 
     try:
@@ -669,14 +626,17 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         continue
 
                     data = {
-                        "zone_name": row[1]
+                        "zone_name": row[1],
+                        "description": row[2] if len(row) > 2 else None
                     }
 
                     existing = None
                     if row[0]:
                         existing = db_session.query(NetworkZone).filter(NetworkZone.id == row[0]).first()
                     if not existing:
-                        existing = db_session.query(NetworkZone).filter(NetworkZone.zone_name == data["zone_name"]).first()
+                        existing = db_session.query(NetworkZone).filter(
+                            NetworkZone.zone_name == data["zone_name"]
+                        ).first()
 
                     if existing:
                         for key, value in data.items():
@@ -733,14 +693,17 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                         continue
 
                     data = {
-                        "vendor_name": row[1]
+                        "vendor_name": row[1],
+                        "vendor_type": row[2] if len(row) > 2 else None
                     }
 
                     existing = None
                     if row[0]:
                         existing = db_session.query(VendorCatalog).filter(VendorCatalog.id == row[0]).first()
                     if not existing:
-                        existing = db_session.query(VendorCatalog).filter(VendorCatalog.vendor_name == data["vendor_name"]).first()
+                        existing = db_session.query(VendorCatalog).filter(
+                            VendorCatalog.vendor_name == data["vendor_name"]
+                        ).first()
 
                     if existing:
                         for key, value in data.items():
@@ -756,50 +719,61 @@ def import_asset_requirements_from_excel(file_content: BytesIO, db_session, curr
                     results["vendors"]["errors"].append(f"Row {row_idx}: {str(e)}")
 
         # Process Dependencies sheet
-        # if "Dependencies" in wb.sheetnames:
-        #     ws = wb["Dependencies"]
-        #     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-        #         try:
-        #             if not row[1] or not row[2]:  # Skip if Asset ID or Depends On ID is empty
-        #                 results["dependencies"]["skipped"] += 1
-        #                 continue
+        if "Dependencies" in wb.sheetnames:
+            ws = wb["Dependencies"]
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                try:
+                    if len(row) < 2 or not row[1] or not row[2]:
+                        results["dependencies"]["skipped"] += 1
+                        continue
 
-        #             # Convert relation type to enum
-        #             relation_type = row[3] if len(row) > 3 else None
-        #             if relation_type and isinstance(relation_type, str):
-        #                 try:
-        #                     relation_type = RelationTypeEnum(relation_type)
-        #                 except ValueError:
-        #                     relation_type = None
+                    relation_type = row[3] if len(row) > 3 else None
+                    if relation_type is None:
+                        results["dependencies"]["errors"].append(
+                            f"Row {row_idx}: Relation Type is required"
+                        )
+                        continue
+                    relation_type = str(relation_type).strip().lower().replace(" ", "_")
 
-        #             data = {
-        #                 "asset_id": int(row[1]),
-        #                 "depends_on_id": int(row[2]),
-        #                 "relation_type": relation_type,
-        #                 "description": row[4] if len(row) > 4 else None
-        #             }
+                    relation_type_value = None
+                    try:
+                        relation_type_value = RelationTypeEnum(relation_type)
+                    except ValueError:
+                        results["dependencies"]["errors"].append(
+                            f"Row {row_idx}: Invalid relation type '{relation_type}'"
+                        )
+                        continue
 
-        #             existing = None
-        #             if row[0]:
-        #                 existing = db_session.query(AssetDependency).filter(AssetDependency.id == row[0]).first()
-        #             if not existing:
-        #                 existing = db_session.query(AssetDependency).filter(
-        #                     AssetDependency.asset_id == data["asset_id"],
-        #                     AssetDependency.depends_on_id == data["depends_on_id"]
-        #                 ).first()
+                    data = {
+                        "asset_id": int(row[1]),
+                        "depends_on_id": int(row[2]),
+                        "relation_type": relation_type_value,
+                        "description": row[4] if len(row) > 4 else None
+                    }
 
-        #             if existing:
-        #                 for key, value in data.items():
-        #                     if value is not None:
-        #                         setattr(existing, key, value)
-        #                 results["dependencies"]["updated"] += 1
-        #             else:
-        #                 new_item = AssetDependency(**data)
-        #                 db_session.add(new_item)
-        #                 results["dependencies"]["created"] += 1
+                    existing = None
+                    if row[0]:
+                        existing = db_session.query(AssetDependency).filter(
+                            AssetDependency.id == row[0]
+                        ).first()
+                    if not existing:
+                        existing = db_session.query(AssetDependency).filter(
+                            AssetDependency.asset_id == data["asset_id"],
+                            AssetDependency.depends_on_id == data["depends_on_id"]
+                        ).first()
 
-        #         except Exception as e:
-        #             results["dependencies"]["errors"].append(f"Row {row_idx}: {str(e)}")
+                    if existing:
+                        for key, value in data.items():
+                            if value is not None:
+                                setattr(existing, key, value)
+                        results["dependencies"]["updated"] += 1
+                    else:
+                        new_item = AssetDependency(**data)
+                        db_session.add(new_item)
+                        results["dependencies"]["created"] += 1
+
+                except Exception as e:
+                    results["dependencies"]["errors"].append(f"Row {row_idx}: {str(e)}")
 
         # Commit all changes
         db_session.commit()
