@@ -13,6 +13,7 @@ import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
+import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/AssetList.css"
 export const AssetList = ({onNavigateToLicence}) => {
@@ -360,8 +361,13 @@ export const AssetList = ({onNavigateToLicence}) => {
                 />
             )}
 
-            <AddAssetModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
-            <LicenseLimitModal
+            <AddAssetModal
+                isOpen={showAddModal}
+                onClose={() => {
+                    setShowAddModal(false);
+                    dispatch(getLicenseStatusThunk()); // ✅
+                }}
+            />            <LicenseLimitModal
                 isOpen={showLicenseModal}
                 onClose={() => setShowLicenseModal(false)}
                 module="assetList"

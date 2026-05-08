@@ -8,6 +8,8 @@ import {
 import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
+import { getLicenseStatusThunk } from "../../store/licenseSlice";
+
 
 import "../../assets/Auditing.css";
 
@@ -74,6 +76,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
     const handleWizardComplete = (sessionId, jobName) => {
         setShowWizard(false);
         dispatch(fetchAuditSessions());
+        dispatch(getLicenseStatusThunk());
     };
 
     const getStatusBadge = (status) => {

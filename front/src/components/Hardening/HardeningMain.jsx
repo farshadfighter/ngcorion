@@ -2,6 +2,8 @@ import { useState } from "react";
 import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
+import { useDispatch } from "react-redux";
+import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/hardening/FixAll.css";
 
@@ -22,10 +24,12 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
         setShowWizard(true);
     };
 
+    const dispatch = useDispatch();
+
     const handleWizardClose = () => {
-        console.log("❌ Wizard closed");
         setShowWizard(false);
         setWizardMode(null);
+        dispatch(getLicenseStatusThunk()); // ✅
     };
 
     const handleLicenseLimitReached = () => {

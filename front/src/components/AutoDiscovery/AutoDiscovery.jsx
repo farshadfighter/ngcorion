@@ -16,6 +16,8 @@ import ScanResultsModal from './ScanResultsModal.jsx';
 import ApplyDiscoveryModal from './ApplyDiscoveryModal.jsx';
 import AutoDiscoveryAssetListModal from './AutoDiscoveryAssetListModal';
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
+import { getLicenseStatusThunk } from "../../store/licenseSlice";
+
 
 import '../../assets/autoDiscoveryStyle/AutoDiscovery.css';
 const AutoDiscovery = ({onNavigateToLicence}) => {
@@ -99,15 +101,13 @@ const AutoDiscovery = ({onNavigateToLicence}) => {
     }, [currentScan, dispatch]);
 
     // Handle starting a new scan
+
     const handleStartScan = useCallback((scanData) => {
-
         setShowScanModal(false);
-
-
         dispatch(startScan(scanData));
-
         setTimeout(() => {
             dispatch(fetchScanHistory());
+            dispatch(getLicenseStatusThunk()); // ✅
         }, 2000);
     }, [dispatch]);
 

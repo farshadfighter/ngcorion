@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAsset, fetchAssets } from "../../store/assetSlice";
+import { getLicenseStatusThunk } from "../../store/licenseSlice";
+
 import api from "../../config/api";
 
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
@@ -193,6 +195,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
 
             if (result.type === "assets/create/fulfilled") {
                 await dispatch(fetchAssets());
+                dispatch(getLicenseStatusThunk());
                 onClose();
             } else {
                 let errorMessage = "Failed to create asset";
