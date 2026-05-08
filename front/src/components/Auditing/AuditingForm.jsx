@@ -3,6 +3,47 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
 import { executeAudit } from "../../store/auditSlice";
 
+// ─── Device type list ─────────────────────────────────────────────────────────
+const DEVICE_TYPES = [
+    // ── Network ────────────────────────────────────────────────────────────────
+    { value: "cisco",           label: "Cisco Router/Switch",       group: "Network"    },
+    { value: "fortinet",        label: "FortiGate Firewall",         group: "Network"    },
+    // ── Web Server ─────────────────────────────────────────────────────────────
+    { value: "apache",          label: "Apache Web Server",          group: "Web Server" },
+    // ── Database ───────────────────────────────────────────────────────────────
+    { value: "mongodb",         label: "MongoDB",                    group: "Database"   },
+    { value: "mssql-2016",      label: "SQL Server 2016",            group: "Database"   },
+    { value: "mssql-2019",      label: "SQL Server 2019",            group: "Database"   },
+    { value: "mssql-2022",      label: "SQL Server 2022",            group: "Database"   },
+    // ── Windows ────────────────────────────────────────────────────────────────
+    { value: "windows-2016",    label: "Windows Server 2016",        group: "Windows"    },
+    { value: "windows-2022",    label: "Windows Server 2022",        group: "Windows"    },
+    { value: "windows-2025",    label: "Windows Server 2025",        group: "Windows"    },
+    // ── Ubuntu ─────────────────────────────────────────────────────────────────
+    { value: "linux-ubuntu-24", label: "Linux – Ubuntu 24.04 LTS",  group: "Linux"      },
+    { value: "linux-ubuntu-22", label: "Linux – Ubuntu 22.04 LTS",  group: "Linux"      },
+    { value: "linux-ubuntu-20", label: "Linux – Ubuntu 20.04 LTS",  group: "Linux"      },
+    // ── Red Hat ────────────────────────────────────────────────────────────────
+    { value: "linux-redhat-10", label: "Linux – Red Hat 10",        group: "Linux"      },
+    { value: "linux-redhat-9",  label: "Linux – Red Hat 9",         group: "Linux"      },
+    { value: "linux-redhat-8",  label: "Linux – Red Hat 8",         group: "Linux"      },
+    // ── Rocky ──────────────────────────────────────────────────────────────────
+    { value: "linux-rocky-10",  label: "Linux – Rocky Linux 10",    group: "Linux"      },
+    { value: "linux-rocky-9",   label: "Linux – Rocky Linux 9",     group: "Linux"      },
+    { value: "linux-rocky-8",   label: "Linux – Rocky Linux 8",     group: "Linux"      },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const isLinux    = (dt) => dt?.startsWith("linux-");
+const isCisco    = (dt) => dt === "cisco";
+const isFortinet = (dt) => dt === "fortinet";
+const isApache   = (dt) => dt === "apache";
+const isMongo    = (dt) => dt === "mongodb";
+const isMssql    = (dt) => dt?.startsWith("mssql-");
+const isWindows  = (dt) => dt?.startsWith("windows-");
+const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const dispatch = useDispatch();
     const { assets } = useSelector((state) => state.assets);
@@ -12,55 +53,22 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         device_type:      "cisco",
         asset_id:         "",
         job_name:         "",
-        // SSH-based
         ssh_username:     "",
         ssh_password:     "",
-        enable_password:  "",   // Cisco
-        vdom:             "",   // Fortinet
-        sudo_password:    "",   // Linux / Apache / MongoDB
-        // MongoDB extra
+        enable_password:  "",
+        vdom:             "",
+        sudo_password:    "",
         mongo_username:   "",
         mongo_password:   "",
         mongo_port:       "27017",
-        // MSSQL
         mssql_username:   "",
         mssql_password:   "",
         mssql_port:       "1433",
-        // Windows
         windows_username: "",
         windows_password: "",
         winrm_port:       "5986",
         transport:        "ntlm",
     });
-
-    const deviceTypes = [
-        // Network
-        { value: "cisco",           label: "Cisco Router/Switch" },
-        { value: "fortinet",        label: "FortiGate Firewall" },
-        // Web Server
-        { value: "apache",          label: "Apache Web Server" },
-        // Database
-        { value: "mongodb",         label: "MongoDB" },
-        { value: "mssql-2016",      label: "SQL Server 2016" },
-        { value: "mssql-2019",      label: "SQL Server 2019" },
-        { value: "mssql-2022",      label: "SQL Server 2022" },
-        // Windows
-        { value: "windows-2016",    label: "Windows Server 2016" },
-        { value: "windows-2022",    label: "Windows Server 2022" },
-        { value: "windows-2025",    label: "Windows Server 2025" },
-        // Linux - Ubuntu
-        { value: "linux-ubuntu-24", label: "Linux - Ubuntu 24.04 LTS" },
-        { value: "linux-ubuntu-22", label: "Linux - Ubuntu 22.04 LTS" },
-        { value: "linux-ubuntu-20", label: "Linux - Ubuntu 20.04 LTS" },
-        // Linux - Red Hat
-        { value: "linux-redhat-10", label: "Linux - Red Hat 10" },
-        { value: "linux-redhat-9",  label: "Linux - Red Hat 9" },
-        { value: "linux-redhat-8",  label: "Linux - Red Hat 8" },
-        // Linux - Rocky
-        { value: "linux-rocky-10",  label: "Linux - Rocky Linux 10" },
-        { value: "linux-rocky-9",   label: "Linux - Rocky Linux 9" },
-        { value: "linux-rocky-8",   label: "Linux - Rocky Linux 8" },
-    ];
 
     const [errors, setErrors] = useState({});
 
@@ -69,42 +77,27 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     }, [dispatch]);
 
     const dt = formData.device_type;
-    const isWindows = dt.startsWith("windows-");
-    const isMssql   = dt.startsWith("mssql-");
-    const isMongo   = dt === "mongodb";
-    const isLinux   = dt.startsWith("linux-");
-    const isApache  = dt === "apache";
-    const isCisco   = dt === "cisco";
-    const isFortinet= dt === "fortinet";
-    const needsSudo = isLinux || isApache || isMongo;
+    const groups = [...new Set(DEVICE_TYPES.map((d) => d.group))];
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-
         if (errors[name]) {
-            setErrors((prev) => {
-                const newErrors = { ...prev };
-                delete newErrors[name];
-                return newErrors;
-            });
+            setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
     };
 
     const validate = () => {
         const newErrors = {};
 
-        if (!formData.asset_id) {
-            newErrors.asset_id = "Please select an asset";
-        }
-        if (!formData.job_name || formData.job_name.trim().length < 2) {
+        if (!formData.asset_id) newErrors.asset_id = "Please select an asset";
+        if (!formData.job_name || formData.job_name.trim().length < 2)
             newErrors.job_name = "Job name must be at least 2 characters";
-        }
 
-        if (isWindows) {
+        if (isWindows(dt)) {
             if (!formData.windows_username?.trim()) newErrors.windows_username = "Username is required";
             if (!formData.windows_password?.trim()) newErrors.windows_password = "Password is required";
-        } else if (isMssql) {
+        } else if (isMssql(dt)) {
             if (!formData.mssql_username?.trim()) newErrors.mssql_username = "Username is required";
             if (!formData.mssql_password?.trim()) newErrors.mssql_password = "Password is required";
         } else {
@@ -118,7 +111,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (!validate()) return;
 
         const assetId = parseInt(formData.asset_id);
@@ -128,59 +120,48 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         }
 
         const credentials = {
-            asset_id: assetId,
-            job_name: formData.job_name,
-            // SSH
+            asset_id:         assetId,
+            job_name:         formData.job_name,
             ssh_username:     formData.ssh_username,
             ssh_password:     formData.ssh_password,
             ssh_secret:       formData.enable_password,
             vdom:             formData.vdom,
             sudo_password:    formData.sudo_password,
-            // MongoDB
             mongo_username:   formData.mongo_username,
             mongo_password:   formData.mongo_password,
             mongo_port:       formData.mongo_port,
-            // MSSQL
             mssql_username:   formData.mssql_username,
             mssql_password:   formData.mssql_password,
             mssql_port:       formData.mssql_port,
-            // Windows
             windows_username: formData.windows_username,
             windows_password: formData.windows_password,
             winrm_port:       formData.winrm_port,
             transport:        formData.transport,
         };
 
-        const selectedAsset = assets.find(a => a.id === assetId);
+        const selectedAsset = assets.find((a) => a.id === assetId);
         const tempSessionData = {
             session_id:  "pending",
             asset_name:  selectedAsset?.asset_name || "N/A",
             target_ip:   selectedAsset?.ip_address || "N/A",
-            device_type: formData.device_type,
-            status:      "pending"
+            device_type: dt,
+            status:      "pending",
         };
 
-        // ✅ اول برو به step 2 (Process)
         onSubmit(tempSessionData, formData.job_name);
 
-        // ✅ بعد API رو صدا بزن
         try {
             const result = await dispatch(
-                executeAudit({
-                    deviceType: formData.device_type,
-                    formData: credentials,
-                })
+                executeAudit({ deviceType: dt, formData: credentials })
             ).unwrap();
 
             onSubmit(result, formData.job_name);
-
         } catch (err) {
             const errorMessage =
                 err?.detail ||
                 err?.message ||
                 err?.toString() ||
                 "Failed to connect to server. Please check your connection and try again.";
-
             onError(errorMessage);
         }
     };
@@ -188,38 +169,46 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     return (
         <div className="auditing-form-container">
             <form onSubmit={handleSubmit} className="auditing-form">
-                <input type="hidden" name="device_type" value={formData.device_type} />
-
                 <div className="form-grid-two-column">
 
-                    {/* Device Type */}
+                    {/* ── Device Type ──────────────────────────────────────── */}
                     <div className="form-group form-group-full">
-                        <label>Device Type <span className="required">*</span></label>
+                        <label>
+                            Device Type / Service Type
+                            <span className="required" style={{ color: "#ef4444" }}>*</span>
+                        </label>
                         <select
                             name="device_type"
-                            value={formData.device_type}
+                            value={dt}
                             onChange={handleChange}
                             className={`device-type-selector ${errors.device_type ? "error" : ""}`}
                         >
-                            {deviceTypes.map((type) => (
-                                <option key={type.value} value={type.value}>
-                                    {type.label}
-                                </option>
+                            {groups.map((group) => (
+                                <optgroup key={group} label={group}>
+                                    {DEVICE_TYPES.filter((d) => d.group === group).map((d) => (
+                                        <option key={d.value} value={d.value}>
+                                            {d.label}
+                                        </option>
+                                    ))}
+                                </optgroup>
                             ))}
                         </select>
                     </div>
 
-                    {/* Select Asset */}
+                    {/* ── Asset ────────────────────────────────────────────── */}
                     <div className="form-group">
-                        <label>Select Asset <span className="required">*</span></label>
+                        <label>
+                            Select Asset
+                            <span className="required" style={{ color: "#ef4444" }}>*</span>
+                        </label>
                         <select
                             name="asset_id"
                             value={formData.asset_id}
                             onChange={handleChange}
                             className={errors.asset_id ? "error" : ""}
                         >
-                            <option value="">select</option>
-                            {assets && assets.map((asset) => (
+                            <option value="">Select</option>
+                            {assets?.map((asset) => (
                                 <option key={asset.id} value={asset.id}>
                                     {asset.asset_name} ({asset.ip_address || "No IP"})
                                 </option>
@@ -228,9 +217,12 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
                     </div>
 
-                    {/* Job Name */}
+                    {/* ── Job Name ─────────────────────────────────────────── */}
                     <div className="form-group">
-                        <label>Job Name <span className="required">*</span></label>
+                        <label>
+                            Job Name
+                            <span className="required" style={{ color: "#ef4444" }}>*</span>
+                        </label>
                         <input
                             type="text"
                             name="job_name"
@@ -242,14 +234,16 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         {errors.job_name && <span className="error-message">{errors.job_name}</span>}
                     </div>
 
-                    {/* ══════════════════════════════════════════
+                    {/* ══════════════════════════════════════════════════════
                         SSH-based: Cisco, Fortinet, Linux, Apache, MongoDB
-                    ══════════════════════════════════════════ */}
-                    {!isWindows && !isMssql && (
+                    ══════════════════════════════════════════════════════ */}
+                    {!isWindows(dt) && !isMssql(dt) && (
                         <>
-                            {/* Username */}
                             <div className="form-group">
-                                <label>UserName <span className="required">*</span></label>
+                                <label>
+                                    SSH Username
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
                                 <input
                                     type="text"
                                     name="ssh_username"
@@ -262,8 +256,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 {errors.ssh_username && <span className="error-message">{errors.ssh_username}</span>}
                             </div>
 
-                            {/* CISCO ONLY: Enable Password */}
-                            {isCisco && (
+                            {isCisco(dt) && (
                                 <div className="form-group">
                                     <label>Enable Password</label>
                                     <input
@@ -271,17 +264,16 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         name="enable_password"
                                         value={formData.enable_password}
                                         onChange={handleChange}
-                                        placeholder="Enter enable password (optional)"
+                                        placeholder="Enable password (optional)"
                                         autoComplete="off"
                                     />
-                                    <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
+                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
                                         Required for privileged commands
                                     </span>
                                 </div>
                             )}
 
-                            {/* FORTINET ONLY: VDOM */}
-                            {isFortinet && (
+                            {isFortinet(dt) && (
                                 <div className="form-group">
                                     <label>VDOM</label>
                                     <input
@@ -292,14 +284,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         placeholder="Virtual Domain (optional, default: root)"
                                         autoComplete="off"
                                     />
-                                    <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
+                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
                                         Leave empty for default VDOM
                                     </span>
                                 </div>
                             )}
 
-                            {/* Linux / Apache / MongoDB: Sudo Password */}
-                            {needsSudo && (
+                            {needsSudo(dt) && (
                                 <div className="form-group">
                                     <label>Sudo Password</label>
                                     <input
@@ -310,14 +301,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         placeholder="Sudo password (optional)"
                                         autoComplete="off"
                                     />
-                                    <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
+                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
                                         Required for root access (defaults to SSH password)
                                     </span>
                                 </div>
                             )}
 
-                            {/* MongoDB: extra DB credentials */}
-                            {isMongo && (
+                            {isMongo(dt) && (
                                 <>
                                     <div className="form-group">
                                         <label>MongoDB Username</label>
@@ -355,9 +345,11 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 </>
                             )}
 
-                            {/* SSH Password */}
                             <div className="form-group form-group-full">
-                                <label>Password <span className="required">*</span></label>
+                                <label>
+                                    SSH Password
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
                                 <input
                                     type="password"
                                     name="ssh_password"
@@ -372,13 +364,16 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         </>
                     )}
 
-                    {/* ══════════════════════════════════════════
+                    {/* ══════════════════════════════════════════════════════
                         MSSQL credentials
-                    ══════════════════════════════════════════ */}
-                    {isMssql && (
+                    ══════════════════════════════════════════════════════ */}
+                    {isMssql(dt) && (
                         <>
                             <div className="form-group">
-                                <label>SQL Server Username <span className="required">*</span></label>
+                                <label>
+                                    SQL Server Username
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
                                 <input
                                     type="text"
                                     name="mssql_username"
@@ -402,7 +397,10 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 />
                             </div>
                             <div className="form-group form-group-full">
-                                <label>SQL Server Password <span className="required">*</span></label>
+                                <label>
+                                    SQL Server Password
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
                                 <input
                                     type="password"
                                     name="mssql_password"
@@ -417,13 +415,16 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         </>
                     )}
 
-                    {/* ══════════════════════════════════════════
+                    {/* ══════════════════════════════════════════════════════
                         Windows credentials (WinRM)
-                    ══════════════════════════════════════════ */}
-                    {isWindows && (
+                    ══════════════════════════════════════════════════════ */}
+                    {isWindows(dt) && (
                         <>
                             <div className="form-group">
-                                <label>Windows Username <span className="required">*</span></label>
+                                <label>
+                                    Windows Username
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
                                 <input
                                     type="text"
                                     name="windows_username"
@@ -445,7 +446,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     placeholder="5986"
                                     autoComplete="off"
                                 />
-                                <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', marginTop: '4px' }}>
+                                <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
                                     Default: 5986 (HTTPS)
                                 </span>
                             </div>
@@ -459,7 +460,10 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 </select>
                             </div>
                             <div className="form-group form-group-full">
-                                <label>Windows Password <span className="required">*</span></label>
+                                <label>
+                                    Windows Password
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
                                 <input
                                     type="password"
                                     name="windows_password"
@@ -484,7 +488,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         onClick={onCancel}
                         disabled={isExecuting}
                     >
-                        cancel
+                        Cancel
                     </button>
                     <button
                         type="submit"
