@@ -12,8 +12,18 @@ const MODULES = [
     { name: "auditing",             label: "Auditing" },
 ];
 
+const validatePassword = (password) => {
+    if (password.length < 8) return "At least 8 characters required";
+    if (!/[A-Z]/.test(password)) return "Must contain at least one uppercase letter";
+    if (!/[a-z]/.test(password)) return "Must contain at least one lowercase letter";
+    if (!/[0-9]/.test(password)) return "Must contain at least one number";
+    if (!/[@$!%*?&_#]/.test(password)) return "Must contain at least one special character (@$!%*?&_#)";
+    return "";
+};
+
 export const AddUserModal = ({ onClose }) => {
     const dispatch = useDispatch();
+
     const [formData, setFormData] = useState({
         username: "",
         email: "",
@@ -29,11 +39,14 @@ export const AddUserModal = ({ onClose }) => {
         }, {})
     );
 
+    const [passwordError, setPasswordError] = useState("");
+    const [submitError, setSubmitError] = useState("");
+
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        if (e.target.name === "password") {
+            setPasswordError(validatePassword(e.target.value));
+        }
     };
 
     const handlePermissionChange = (moduleName, permissionType) => {
@@ -47,17 +60,19 @@ export const AddUserModal = ({ onClose }) => {
     };
 
     const handleActiveToggle = () => {
-        setFormData({
-            ...formData,
-            is_active: !formData.is_active,
-        });
+        setFormData({ ...formData, is_active: !formData.is_active });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Submitting form data:", formData);
+        setSubmitError("");
 
-        // تبدیل permissions به فرمت API
+        const pwdErr = validatePassword(formData.password);
+        if (pwdErr) {
+            setPasswordError(pwdErr);
+            return;
+        }
+
         const permissionsArray = Object.keys(permissions).map((module) => ({
             module: module,
             can_read: permissions[module].read,
@@ -65,21 +80,14 @@ export const AddUserModal = ({ onClose }) => {
             can_delete: permissions[module].delete,
         }));
 
-        const userData = {
-            ...formData,
-            permissions: permissionsArray,
-        };
-
-        console.log("Creating user with permissions:", userData);
-
+        const userData = { ...formData, permissions: permissionsArray };
         const result = await dispatch(createUser(userData));
 
         if (result.type === "users/create/fulfilled") {
-            console.log("User created! Refreshing list...");
             dispatch(fetchUsers());
             onClose();
         } else {
-            console.error("Failed to create user:", result.payload);
+            setSubmitError(result.payload || "Failed to create user");
         }
     };
 
@@ -93,6 +101,22 @@ export const AddUserModal = ({ onClose }) => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
+
+                        {/* ارور کلی از بک‌اند */}
+                        {submitError && (
+                            <div style={{
+                                color: "#EF4444",
+                                backgroundColor: "#FEF2F2",
+                                border: "1px solid #FECACA",
+                                borderRadius: "6px",
+                                padding: "10px 14px",
+                                fontSize: "13px",
+                                marginBottom: "12px",
+                            }}>
+                                {submitError}
+                            </div>
+                        )}
+
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Username *</label>
@@ -129,9 +153,17 @@ export const AddUserModal = ({ onClose }) => {
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
-                                    minLength={4}
                                     placeholder="Enter password"
                                 />
+                                {passwordError ? (
+                                    <small style={{ color: "#EF4444", fontSize: "11px" }}>
+                                        {passwordError}
+                                    </small>
+                                ) : (
+                                    <small style={{ color: "#6B7280", fontSize: "11px" }}>
+                                        Min 8 chars, uppercase, lowercase, number, special (@$!%*?&_#)
+                                    </small>
+                                )}
                             </div>
 
                             <div className="form-group">
@@ -218,7 +250,7 @@ export const AddUserModal = ({ onClose }) => {
 
                     <div className="modal-actions">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            cancel
+                            Cancel
                         </button>
                         <button type="submit" className="btn-submit">
                             Create

@@ -1,85 +1,94 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 
-// Get all users
+// ==========================================
+// Helper - تبدیل ارور بک‌اند به string
+// ==========================================
+const parseError = (err) => {
+    const detail = err.response?.data?.detail;
+    if (Array.isArray(detail)) return detail.map(e => e.msg).join(", ");
+    return detail || "An error occurred";
+};
+
+// ==========================================
+// Async Thunks
+// ==========================================
+
 export const fetchUsers = createAsyncThunk(
     "users/fetchAll",
     async (_, { rejectWithValue }) => {
         try {
-            const response = await api.get("/api/users/");  // ✅ تغییر
+            const response = await api.get("/api/users/");
             return response.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to fetch users");
+            return rejectWithValue(parseError(err));
         }
     }
 );
 
-// Get single user
 export const fetchUser = createAsyncThunk(
     "users/fetchOne",
     async (userId, { rejectWithValue }) => {
         try {
-            const response = await api.get(`/api/users/${userId}`);  // ✅ تغییر
+            const response = await api.get(`/api/users/${userId}`);
             return response.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to fetch user");
+            return rejectWithValue(parseError(err));
         }
     }
 );
 
-// Create user
 export const createUser = createAsyncThunk(
     "users/create",
     async (userData, { rejectWithValue }) => {
         try {
-            const response = await api.post("/api/users/", userData);  // ✅ تغییر
+            const response = await api.post("/api/users/", userData);
             return response.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to create user");
+            return rejectWithValue(parseError(err));
         }
     }
 );
 
-// Update user
 export const updateUser = createAsyncThunk(
     "users/update",
     async ({ userId, userData }, { rejectWithValue }) => {
         try {
-            const response = await api.put(`/api/users/${userId}`, userData);  // ✅ تغییر
+            const response = await api.put(`/api/users/${userId}`, userData);
             return response.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to update user");
+            return rejectWithValue(parseError(err));
         }
     }
 );
 
-// Delete user
 export const deleteUser = createAsyncThunk(
     "users/delete",
     async (userId, { rejectWithValue }) => {
         try {
-            await api.delete(`/api/users/${userId}`);  // ✅ تغییر
+            await api.delete(`/api/users/${userId}`);
             return userId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to delete user");
+            return rejectWithValue(parseError(err));
         }
     }
 );
 
-// Search users
 export const searchUsers = createAsyncThunk(
     "users/search",
     async (query, { rejectWithValue }) => {
         try {
-            const response = await api.get(`/api/users/search/?q=${query}`);  // ✅ تغییر
+            const response = await api.get(`/api/users/search/?q=${query}`);
             return response.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Search failed");
+            return rejectWithValue(parseError(err));
         }
     }
 );
 
-// بقیه slice بدون تغییر...
+// ==========================================
+// Slice
+// ==========================================
 const userSlice = createSlice({
     name: "users",
     initialState: {
@@ -112,6 +121,7 @@ const userSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+
             .addCase(fetchUser.pending, (state) => {
                 state.isLoading = true;
             })
@@ -123,6 +133,7 @@ const userSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+
             .addCase(createUser.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -136,6 +147,7 @@ const userSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+
             .addCase(updateUser.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -152,6 +164,7 @@ const userSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+
             .addCase(deleteUser.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -165,6 +178,7 @@ const userSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
             })
+
             .addCase(searchUsers.pending, (state) => {
                 state.isLoading = true;
             })
