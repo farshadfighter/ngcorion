@@ -98,9 +98,7 @@ export const EditUserModal = ({ user, onClose }) => {
 
         if (formData.password) {
             updateData.password = formData.password;
-            if (isSelfEdit) {
-                updateData.current_password = formData.current_password;
-            }
+            updateData.current_password = formData.current_password;
         }
 
         const permissionsArray = Object.keys(permissions).map((module) => ({
@@ -188,16 +186,20 @@ export const EditUserModal = ({ user, onClose }) => {
                         </div>
 
                         {/* Current Password - فقط برای self edit */}
-                        {isSelfEdit && formData.password && (
+                        {formData.password && (
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>Current Password *</label>
+                                    <label>
+                                        {isSelfEdit ? "Current Password *" : "User's Current Password *"}
+                                    </label>
                                     <input
                                         type="password"
                                         name="current_password"
                                         value={formData.current_password}
                                         onChange={handleChange}
-                                        placeholder="Enter current password"
+                                        placeholder={isSelfEdit
+                                            ? "Enter your current password"
+                                            : "Enter this user's current password"}
                                         required
                                     />
                                     {passwordError && (

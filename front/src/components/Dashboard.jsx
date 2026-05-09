@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { UserManagement } from "./UserManagement/UserManagement";
 import { AssetList } from "./AssetList/AssetList";
 import { AssetRequirement } from "./AssetRequirement/AssetRequirement";
@@ -11,7 +11,7 @@ import { AuditingList } from "./Auditing/AuditingList";
 import { HardeningMain } from "./Hardening/HardeningMain";
 import { License } from "./License/License";
 import  LicenseBadge  from './License/LicenseBadge';
-
+import { ChangePasswordModal } from "./ChangePasswordModal";
 import { usePermission } from "../hooks/usePermission";
 
 // ==========================================
@@ -53,6 +53,9 @@ export const Dashboard = () => {
     const [activeMenu, setActiveMenu] = useState("dashboard");
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [showChangePassword, setShowChangePassword] = useState(false);
+    const dropdownRef = useRef(null);
 
     // ==========================================
     // Permission Checks
@@ -68,7 +71,15 @@ export const Dashboard = () => {
     // ==========================================
     // Handlers
     // ==========================================
-
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
     const handleLogout = () => {
         dispatch(logout());
         navigate("/");
@@ -353,9 +364,37 @@ export const Dashboard = () => {
                                     <div className="user-role">{role}</div>
                                 </div>
                             </div>
-                            <button className="logout-btn" onClick={handleLogout}>
-                                ⋮
-                            </button>
+                            <div style={{ position: "relative" }} ref={dropdownRef}>
+                                <button className="logout-btn" onClick={() => setShowDropdown(!showDropdown)}>
+                                    ⋮
+                                </button>
+                                {showDropdown && (
+                                    <div style={{
+                                        position: "absolute",
+                                        bottom: "40px",
+                                        right: "0",
+                                        background: "#fff",
+                                        border: "1px solid #E5E7EB",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                                        minWidth: "160px",
+                                        zIndex: 100,
+                                    }}>
+                                        <div
+                                            onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}
+                                            style={{ padding: "10px 16px", cursor: "pointer", fontSize: "14px" }}
+                                        >
+                                            <i className="fa-solid fa-key"></i> Change Password
+                                        </div>
+                                        <div
+                                            onClick={handleLogout}
+                                            style={{ padding: "10px 16px", cursor: "pointer", fontSize: "14px", color: "#EF4444" }}
+                                        >
+                                            <i className="fa-solid fa-right-from-bracket"></i> Logout
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </>
                     )}
                     {isSidebarCollapsed && (
@@ -404,6 +443,9 @@ export const Dashboard = () => {
 
                 {renderContent()}
             </main>
+            {showChangePassword && (
+                <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+            )}
         </div>
     );
 };
