@@ -27,6 +27,20 @@ export const LocationModal = ({ onClose }) => {
         if (formData.vlan_id && isNaN(formData.vlan_id)) {
             newErrors.vlan_id = "VLAN ID must be a number";
         }
+        if (formData.subnet) {
+            const subnetRegex = /^(\d{1,3}\.){3}\d{1,3}\/(\d|[1-2]\d|3[0-2])$/;
+            const isValidFormat = subnetRegex.test(formData.subnet);
+
+            // بررسی اینکه هر اکتت بین 0 تا 255 باشه
+            if (isValidFormat) {
+                const [ip] = formData.subnet.split("/");
+                const octets = ip.split(".");
+                const allOctetsValid = octets.every(o => parseInt(o) >= 0 && parseInt(o) <= 255);
+                if (!allOctetsValid) newErrors.subnet = "IP octets must be between 0-255";
+            } else {
+                newErrors.subnet = "Invalid subnet format (e.g., 192.168.1.0/24)";
+            }
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -166,8 +180,12 @@ export const LocationModal = ({ onClose }) => {
                             name="subnet"
                             value={formData.subnet}
                             onChange={handleChange}
-                            placeholder="Enter subnet (e.g., 192.168.1.0/24)"
+                            placeholder="e.g., 192.168.1.0/24"
+                            className={errors.subnet ? "error" : ""}
                         />
+                        {errors.subnet && (
+                            <span className="error-message">{errors.subnet}</span>
+                        )}
                     </div>
 
                     <div className="modal-footer">

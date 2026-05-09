@@ -25,6 +25,9 @@ export const OwnerModal = ({ onClose }) => {
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = "Invalid email format";
         }
+        if (formData.phone && !/^\+?[\d\s\-()]{7,15}$/.test(formData.phone)) {
+            newErrors.phone = "Invalid phone number format";
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -120,7 +123,6 @@ export const OwnerModal = ({ onClose }) => {
                             <span className="error-message">{errors.email}</span>
                         )}
                     </div>
-
                     <div className="form-group">
                         <label>Phone</label>
                         <input
@@ -128,8 +130,12 @@ export const OwnerModal = ({ onClose }) => {
                             name="phone"
                             value={formData.phone}
                             onChange={handleChange}
-                            placeholder="Enter phone number"
+                            placeholder="e.g., +98 912 345 6789"
+                            className={errors.phone ? "error" : ""}
                         />
+                        {errors.phone && (
+                            <span className="error-message">{errors.phone}</span>
+                        )}
                     </div>
 
                     <div className="modal-footer">
