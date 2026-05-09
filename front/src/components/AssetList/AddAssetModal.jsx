@@ -1,8 +1,9 @@
 // AddAssetModal.jsx - WITH FRONTEND VALIDATION
 import { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { createAsset, fetchAssets } from "../../store/assetSlice";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
+import { fetchOSCatalog } from "../../store/requirementSlice";
 
 import api from "../../config/api";
 
@@ -38,9 +39,9 @@ const validateIP = (ip) => {
 const validateMAC = (mac) => {
     if (!mac || mac.trim() === '') return { valid: true };
     const patterns = [
-        /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/,  // XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
-        /^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$/,     // XXXX.XXXX.XXXX (Cisco)
-        /^[0-9A-Fa-f]{12}$/                            // XXXXXXXXXXXX (no separator)
+        /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/,
+        /^([0-9A-Fa-f]{4}\.){2}([0-9A-Fa-f]{4})$/,
+        /^[0-9A-Fa-f]{12}$/
     ];
     if (!patterns.some(pattern => pattern.test(mac))) {
         return { valid: false, error: 'Invalid MAC format. Use: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX' };
@@ -64,6 +65,8 @@ const validateAssetValue = (value) => {
 
 export const AddAssetModal = ({ isOpen, onClose }) => {
     const dispatch = useDispatch();
+    const osCatalog = useSelector((state) => state.requirements.osCatalog);
+
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoadingOptions, setIsLoadingOptions] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,6 +105,9 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     useEffect(() => {
         if (!isOpen) { resetModal(); return; }
         loadDropdownOptions();
+        if (osCatalog.length === 0) {
+            dispatch(fetchOSCatalog());
+        }
     }, [isOpen]);
 
     const loadDropdownOptions = async () => {
@@ -131,8 +137,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-
-        // Clear field error when user types
         if (fieldErrors[name]) {
             setFieldErrors(prev => {
                 const newErrors = { ...prev };
@@ -148,14 +152,12 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         if (currentStep === 1) {
             const nameCheck = validateAssetName(formData.asset_name);
             if (!nameCheck.valid) errors.asset_name = nameCheck.error;
-
             if (!formData.asset_type_id) errors.asset_type_id = "Asset Type is required";
         }
 
         if (currentStep === 2) {
             const ipCheck = validateIP(formData.ip_address);
             if (!ipCheck.valid) errors.ip_address = ipCheck.error;
-
             const macCheck = validateMAC(formData.mac_address);
             if (!macCheck.valid) errors.mac_address = macCheck.error;
         }
@@ -201,17 +203,14 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 let errorMessage = "Failed to create asset";
 
                 if (result.payload) {
-                    // Check for validation errors (422)
                     if (Array.isArray(result.payload)) {
                         errorMessage = result.payload.map(err => `${err.loc?.join('.') || 'field'}: ${err.msg}`).join(' | ');
-                    }
-                    else if (typeof result.payload === 'string') {
-                        // Check for specific database errors
+                    } else if (typeof result.payload === 'string') {
                         if (result.payload.includes('duplicate key') || result.payload.includes('UniqueViolation')) {
                             if (result.payload.includes('serial_number')) {
                                 errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
                                 setFieldErrors({ serial_number: 'This serial number is already in use' });
-                                setCurrentStep(2); // Go back to step 2 where serial_number is
+                                setCurrentStep(2);
                             } else if (result.payload.includes('ip_address')) {
                                 errorMessage = `IP Address "${formData.ip_address}" already exists. Please use a different IP address.`;
                                 setFieldErrors({ ip_address: 'This IP address is already in use' });
@@ -226,11 +225,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         } else {
                             errorMessage = result.payload;
                         }
-                    }
-                    else if (result.payload.detail) {
+                    } else if (result.payload.detail) {
                         const detail = result.payload.detail;
-
-                        // Check if detail contains duplicate key error
                         if (typeof detail === 'string' && (detail.includes('duplicate key') || detail.includes('UniqueViolation'))) {
                             if (detail.includes('serial_number')) {
                                 errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
@@ -247,16 +243,12 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             } else {
                                 errorMessage = detail;
                             }
-                        }
-                        // Handle array of validation errors
-                        else if (Array.isArray(detail)) {
+                        } else if (Array.isArray(detail)) {
                             errorMessage = detail.map(err => `${err.loc?.join('.') || 'field'}: ${err.msg}`).join(' | ');
-                        }
-                        else {
+                        } else {
                             errorMessage = typeof detail === 'string' ? detail : JSON.stringify(detail);
                         }
-                    }
-                    else {
+                    } else {
                         errorMessage = JSON.stringify(result.payload);
                     }
                 }
@@ -265,8 +257,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             }
         } catch (err) {
             let errorMessage = "An unexpected error occurred";
-
-            // Check if error response contains duplicate key info
             if (err.message) {
                 if (err.message.includes('duplicate key') || err.message.includes('UniqueViolation')) {
                     if (err.message.includes('serial_number')) {
@@ -280,7 +270,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                     errorMessage = err.message;
                 }
             }
-
             setError(errorMessage);
         } finally {
             setIsSubmitting(false);
@@ -352,7 +341,17 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                     </div>
                     <div className="form-group">
                         <label>Operating System</label>
-                        <input type="text" name="os_name" value={formData.os_name} onChange={handleChange} placeholder="e.g. Ubuntu 22.04" disabled={isLoadingOptions} />
+                        <select
+                            name="os_name"
+                            value={formData.os_name}
+                            onChange={handleChange}
+                            disabled={isLoadingOptions}
+                        >
+                            <option value="">Select OS</option>
+                            {osCatalog.map(os => (
+                                <option key={os.id} value={os.os_name}>{os.os_name}</option>
+                            ))}
+                        </select>
                     </div>
                     <div className="form-group">
                         <label>IP Address</label>

@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useDispatch } from "react-redux";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
+import { fetchOSCatalog } from "../../store/requirementSlice";
 
 // Validation functions
 const validateIP = (ip) => {
@@ -27,6 +28,8 @@ const validateMAC = (mac) => {
 
 export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
     const dispatch = useDispatch();
+    const osCatalog = useSelector((state) => state.requirements.osCatalog);
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -37,6 +40,11 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         mac_address: asset.mac_address ?? ""
     });
 
+    useEffect(() => {
+        if (osCatalog.length === 0) {
+            dispatch(fetchOSCatalog());
+        }
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -156,7 +164,17 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                             </div>
                             <div className="form-group">
                                 <label>Operating System</label>
-                                <input type="text" name="os_name" value={formData.os_name} onChange={handleChange} placeholder="e.g. Ubuntu 22.04" disabled={isSubmitting} />
+                                <select
+                                    name="os_name"
+                                    value={formData.os_name}
+                                    onChange={handleChange}
+                                    disabled={isSubmitting}
+                                >
+                                    <option value="">Select OS</option>
+                                    {osCatalog.map(os => (
+                                        <option key={os.id} value={os.os_name}>{os.os_name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="form-group">
                                 <label>IP Address</label>
