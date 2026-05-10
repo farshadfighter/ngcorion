@@ -6,6 +6,8 @@ FastAPI application entry point with CORS middleware and route registration.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.core.database import Base, engine
 from app.core.config import settings
@@ -102,8 +104,13 @@ app = FastAPI(
     description=settings.DESCRIPTION,
     version=settings.VERSION,
     redirect_slashes=False,
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None
 )
+
+# Mount static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Configure CORS middleware
 # WARNING: Default allows all origins - configure BACKEND_CORS_ORIGINS in .env for production
@@ -119,6 +126,17 @@ app.add_middleware(
 
 # Add license middleware (after CORS, before routes)
 app.add_middleware(LicenseMiddleware)
+
+# Custom Swagger UI endpoint
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        swagger_js_url="/static/swagger/swagger-ui-bundle.js",
+        swagger_css_url="/static/swagger/swagger-ui.css",
+        swagger_favicon_url="/static/swagger/favicon-32x32.png"
+    )
 
 # Authentication routes (no auth required)
 app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
@@ -224,5 +242,3 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
