@@ -2,6 +2,69 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUsers } from "../store/userSlice.jsx";
 
+const MessageBox = ({ type, message, onClose }) => {
+    if (!message) return null;
+
+    const config = {
+        success: {
+            bg: "#f0fdf4",
+            border: "#bbf7d0",
+            iconBg: "#d1fae5",
+            iconColor: "#065f46",
+            titleColor: "#15803d",
+            icon: "✓",
+            title: "Password changed successfully",
+        },
+        error: {
+            bg: "#fef2f2",
+            border: "#fecaca",
+            iconBg: "#fee2e2",
+            iconColor: "#991b1b",
+            titleColor: "#dc2626",
+            icon: "✕",
+            title: "Failed to change password",
+        },
+    };
+
+    const c = config[type];
+
+    return (
+        <div style={{
+            background: c.bg,
+            border: `1px solid ${c.border}`,
+            borderRadius: "12px",
+            padding: "14px 16px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "12px",
+        }}>
+            <div style={{
+                width: 36, height: 36, borderRadius: "50%",
+                background: c.iconBg, color: c.iconColor,
+                display: "flex", alignItems: "center",
+                justifyContent: "center", fontWeight: 600, fontSize: 16,
+                flexShrink: 0,
+            }}>
+                {c.icon}
+            </div>
+            <div style={{ flex: 1 }}>
+                <p style={{ margin: "0 0 3px", fontWeight: 500, fontSize: 14, color: c.titleColor }}>{c.title}</p>
+                <p style={{ margin: 0, fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>{message}</p>
+            </div>
+            <button
+                onClick={onClose}
+                style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    opacity: 0.4, fontSize: 16, padding: "2px 4px", lineHeight: 1,
+                }}
+            >
+                ✕
+            </button>
+        </div>
+    );
+};
+
 export const ChangePasswordModal = ({ onClose }) => {
     const dispatch = useDispatch();
     const { username } = useSelector((state) => state.auth);
@@ -15,7 +78,7 @@ export const ChangePasswordModal = ({ onClose }) => {
     });
 
     const [errors, setErrors] = useState({});
-    const [submitError, setSubmitError] = useState("");
+    const [msgBox, setMsgBox] = useState({ type: "", message: "" });
 
     useEffect(() => {
         if (users.length === 0) {
@@ -40,11 +103,11 @@ export const ChangePasswordModal = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setSubmitError("");
+        setMsgBox({ type: "", message: "" });
         if (!validate()) return;
 
         if (!currentUser?.id) {
-            setSubmitError("User not found. Please refresh the page.");
+            setMsgBox({ type: "error", message: "User not found. Please refresh the page." });
             return;
         }
 
@@ -57,9 +120,10 @@ export const ChangePasswordModal = ({ onClose }) => {
         }));
 
         if (result.meta.requestStatus === "fulfilled") {
-            onClose();
+            setMsgBox({ type: "success", message: "Your password has been updated. Use your new password next time you log in." });
+            setTimeout(onClose, 2500);
         } else {
-            setSubmitError(result.payload || "Failed to change password");
+            setMsgBox({ type: "error", message: result.payload || "Something went wrong. Please try again." });
         }
     };
 
@@ -72,19 +136,11 @@ export const ChangePasswordModal = ({ onClose }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="modal-body">
-                    {submitError && (
-                        <div style={{
-                            color: "#EF4444",
-                            background: "#FEF2F2",
-                            border: "1px solid #FECACA",
-                            borderRadius: "6px",
-                            padding: "10px 14px",
-                            fontSize: "13px",
-                            marginBottom: "12px",
-                        }}>
-                            {submitError}
-                        </div>
-                    )}
+                    <MessageBox
+                        type={msgBox.type}
+                        message={msgBox.message}
+                        onClose={() => setMsgBox({ type: "", message: "" })}
+                    />
 
                     <div className="form-group">
                         <label>Current Password</label>

@@ -368,3 +368,46 @@
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
 }
+/* Container اصلی دراپ‌داون */
+.user-menu-dropdown-container {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    z-index: 1000;
+    min-width: 160px;
+    overflow: hidden;
+    padding: 5px 0;
+}
+
+/* استایل پایه برای دکمه‌های داخل دراپ‌داون */
+.user-menu-dropdown-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 15px;
+    text-align: left;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    white-space: nowrap;
+    transition: background-color 0.2s ease; /* انیمیشن نرم برای هاور */
+}
+
+/* دکمه‌های معمولی (مثل تغییر رمز) */
+.user-menu-dropdown-btn.action-primary {
+    color: #333333;
+}
+.user-menu-dropdown-btn.action-primary:hover {
+    background-color: #f0f0f0;
+}
+
+/* دکمه‌های خطر/خروج (مثل Logout) */
+.user-menu-dropdown-btn.action-danger {
+    color: #ff4d4f;
+}
+.user-menu-dropdown-btn.action-danger:hover {
+    background-color: #fff1f0;
+}

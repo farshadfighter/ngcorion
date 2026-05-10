@@ -364,36 +364,27 @@ export const Dashboard = () => {
                                     <div className="user-role">{role}</div>
                                 </div>
                             </div>
-                            <div style={{ position: "relative" }} ref={dropdownRef}>
-                                <button className="logout-btn" onClick={() => setShowDropdown(!showDropdown)}>
-                                    ⋮
+                            <div
+                                ref={dropdownRef}
+                                className="user-menu-dropdown-container"
+                            >
+                                <button
+                                    onClick={() => setShowChangePassword(true)}
+                                    className="user-menu-dropdown-btn action-primary"
+                                >
+                                    Change Password
                                 </button>
-                                {showDropdown && (
-                                    <div style={{
-                                        position: "absolute",
-                                        bottom: "40px",
-                                        right: "0",
-                                        background: "#fff",
-                                        border: "1px solid #E5E7EB",
-                                        borderRadius: "8px",
-                                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                                        minWidth: "160px",
-                                        zIndex: 100,
-                                    }}>
-                                        <div
-                                            onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}
-                                            style={{ padding: "10px 16px", cursor: "pointer", fontSize: "14px" }}
-                                        >
-                                            <i className="fa-solid fa-key"></i> Change Password
-                                        </div>
-                                        <div
-                                            onClick={handleLogout}
-                                            style={{ padding: "10px 16px", cursor: "pointer", fontSize: "14px", color: "#EF4444" }}
-                                        >
-                                            <i className="fa-solid fa-right-from-bracket"></i> Logout
-                                        </div>
-                                    </div>
-                                )}
+
+                                <button
+                                    onClick={handleLogout}
+                                    className="user-menu-dropdown-btn action-danger"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+
+
+                            )}
                             </div>
                         </>
                     )}

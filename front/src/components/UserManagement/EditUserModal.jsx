@@ -3,12 +3,336 @@ import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUser } from "../../store/userSlice";
 
 const MODULES = [
-    { name: "dashboard", label: "Dashboard" },
-    { name: "asset_requirement", label: "Asset Requirement" },
-    { name: "asset_list", label: "Asset List" },
-    { name: "asset_auto_discovery", label: "Auto Discovery" },
-    { name: "user_management", label: "User Management" },
+    { name: "dashboard", label: "Dashboard", icon: "⊞" },
+    { name: "asset_requirement", label: "Asset Requirement", icon: "◈" },
+    { name: "asset_list", label: "Asset List", icon: "≡" },
+    { name: "asset_auto_discovery", label: "Auto Discovery", icon: "⟳" },
+    { name: "user_management", label: "User Management", icon: "◎" },
 ];
+
+const styles = {
+    overlay: {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(10, 20, 40, 0.55)",
+        backdropFilter: "blur(3px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: "20px",
+    },
+    modal: {
+        width: "100%",
+        maxWidth: "780px",
+        maxHeight: "92vh",
+        overflowY: "auto",
+        background: "#ffffff",
+        borderRadius: "20px",
+        boxShadow: "0 24px 60px rgba(10,20,40,0.18), 0 4px 16px rgba(10,20,40,0.08)",
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+    },
+    header: {
+        padding: "24px 32px 20px",
+        borderBottom: "1px solid #eef1f6",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: "linear-gradient(135deg, #1e3a5f 0%, #2d5490 100%)",
+        borderRadius: "20px 20px 0 0",
+    },
+    headerLeft: {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+    },
+    headerAvatar: {
+        width: "42px",
+        height: "42px",
+        borderRadius: "12px",
+        background: "rgba(255,255,255,0.15)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "18px",
+        color: "white",
+        fontWeight: 600,
+        border: "1px solid rgba(255,255,255,0.2)",
+    },
+    headerTitle: {
+        margin: 0,
+        fontSize: "17px",
+        fontWeight: 600,
+        color: "#ffffff",
+        letterSpacing: "-0.2px",
+    },
+    headerSub: {
+        fontSize: "12px",
+        color: "rgba(255,255,255,0.65)",
+        marginTop: "2px",
+    },
+    closeBtn: {
+        background: "rgba(255,255,255,0.12)",
+        border: "1px solid rgba(255,255,255,0.2)",
+        color: "rgba(255,255,255,0.8)",
+        width: "32px",
+        height: "32px",
+        borderRadius: "8px",
+        cursor: "pointer",
+        fontSize: "14px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "all 0.15s",
+    },
+    body: {
+        padding: "28px 32px 20px",
+    },
+    sectionLabel: {
+        fontSize: "11px",
+        fontWeight: 700,
+        color: "#1e3a5f",
+        letterSpacing: "0.8px",
+        textTransform: "uppercase",
+        marginBottom: "16px",
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+    },
+    sectionLine: {
+        flex: 1,
+        height: "1px",
+        background: "linear-gradient(to right, #dce6f5, transparent)",
+    },
+    formRow: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "18px",
+        marginBottom: "18px",
+    },
+    formGroup: {
+        display: "flex",
+        flexDirection: "column",
+    },
+    label: {
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#374151",
+        marginBottom: "6px",
+        letterSpacing: "0.1px",
+    },
+    input: {
+        padding: "10px 14px",
+        borderRadius: "10px",
+        border: "1.5px solid #e2e8f0",
+        fontSize: "14px",
+        color: "#1a2332",
+        background: "#f8fafd",
+        transition: "all 0.2s",
+        outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+    },
+    inputFocus: {
+        borderColor: "#1e3a5f",
+        background: "#ffffff",
+        boxShadow: "0 0 0 3px rgba(30,58,95,0.1)",
+    },
+    inputError: {
+        borderColor: "#ef4444",
+        background: "#fff8f8",
+        boxShadow: "0 0 0 3px rgba(239,68,68,0.08)",
+    },
+    select: {
+        padding: "10px 14px",
+        borderRadius: "10px",
+        border: "1.5px solid #e2e8f0",
+        fontSize: "14px",
+        color: "#1a2332",
+        background: "#f8fafd",
+        transition: "all 0.2s",
+        outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+        cursor: "pointer",
+        appearance: "none",
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231e3a5f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "right 14px center",
+        paddingRight: "36px",
+    },
+    errorText: {
+        fontSize: "12px",
+        color: "#ef4444",
+        marginTop: "5px",
+        display: "flex",
+        alignItems: "center",
+        gap: "4px",
+    },
+    passwordWarning: {
+        background: "linear-gradient(135deg, #fff8f0, #fff3e8)",
+        border: "1.5px solid #fed7aa",
+        borderRadius: "12px",
+        padding: "14px 16px",
+        marginBottom: "18px",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "10px",
+    },
+    warningIcon: {
+        fontSize: "18px",
+        flexShrink: 0,
+        marginTop: "1px",
+    },
+    warningText: {
+        fontSize: "13px",
+        color: "#92400e",
+        lineHeight: 1.5,
+    },
+    divider: {
+        height: "1px",
+        background: "#eef1f6",
+        margin: "22px 0",
+    },
+    statusToggle: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "8px 14px",
+        borderRadius: "10px",
+        border: "1.5px solid",
+        cursor: "pointer",
+        transition: "all 0.2s",
+        fontSize: "13px",
+        fontWeight: 600,
+        background: "none",
+    },
+    track: {
+        width: "38px",
+        height: "20px",
+        borderRadius: "20px",
+        position: "relative",
+        transition: "background 0.25s",
+        flexShrink: 0,
+    },
+    thumb: {
+        position: "absolute",
+        top: "2px",
+        width: "16px",
+        height: "16px",
+        borderRadius: "50%",
+        background: "white",
+        transition: "transform 0.25s",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+    },
+    permissionsSection: {
+        marginTop: "4px",
+    },
+    permTable: {
+        width: "100%",
+        borderCollapse: "separate",
+        borderSpacing: 0,
+        fontSize: "13px",
+        border: "1.5px solid #e2e8f0",
+        borderRadius: "12px",
+        overflow: "hidden",
+    },
+    permThead: {
+        background: "linear-gradient(135deg, #1e3a5f, #2d5490)",
+    },
+    permTh: {
+        padding: "11px 16px",
+        textAlign: "left",
+        color: "rgba(255,255,255,0.9)",
+        fontSize: "11px",
+        fontWeight: 700,
+        letterSpacing: "0.5px",
+        textTransform: "uppercase",
+    },
+    permTd: {
+        padding: "10px 16px",
+        borderBottom: "1px solid #eef1f6",
+        color: "#374151",
+    },
+    permCheckbox: {
+        width: "17px",
+        height: "17px",
+        accentColor: "#1e3a5f",
+        cursor: "pointer",
+    },
+    moduleName: {
+        fontWeight: 500,
+        color: "#1a2332",
+        fontSize: "13px",
+    },
+    footer: {
+        padding: "18px 32px 24px",
+        borderTop: "1px solid #eef1f6",
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "10px",
+    },
+    btnCancel: {
+        padding: "9px 22px",
+        borderRadius: "10px",
+        border: "1.5px solid #e2e8f0",
+        background: "#f8fafd",
+        color: "#374151",
+        fontSize: "14px",
+        fontWeight: 500,
+        cursor: "pointer",
+        transition: "all 0.15s",
+    },
+    btnSubmit: {
+        padding: "9px 26px",
+        borderRadius: "10px",
+        border: "none",
+        background: "linear-gradient(135deg, #1e3a5f, #2d5490)",
+        color: "white",
+        fontSize: "14px",
+        fontWeight: 600,
+        cursor: "pointer",
+        transition: "all 0.15s",
+        boxShadow: "0 4px 12px rgba(30,58,95,0.3)",
+    },
+    loadingBox: {
+        textAlign: "center",
+        padding: "24px",
+        color: "#6b7280",
+        fontSize: "13px",
+    },
+};
+
+const FocusInput = ({ style, errorStyle, hasError, ...props }) => {
+    const [focused, setFocused] = useState(false);
+    return (
+        <input
+            {...props}
+            style={{
+                ...style,
+                ...(focused ? styles.inputFocus : {}),
+                ...(hasError ? styles.inputError : {}),
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+        />
+    );
+};
+
+const FocusSelect = ({ ...props }) => {
+    const [focused, setFocused] = useState(false);
+    return (
+        <select
+            {...props}
+            style={{
+                ...styles.select,
+                ...(focused ? styles.inputFocus : {}),
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+        />
+    );
+};
 
 export const EditUserModal = ({ user, onClose }) => {
     const dispatch = useDispatch();
@@ -55,17 +379,15 @@ export const EditUserModal = ({ user, onClose }) => {
                 setLoadingPermissions(false);
             }
         };
-
         loadUserPermissions();
     }, [dispatch, user.id]);
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-        if (e.target.name === "current_password") {
-            setPasswordError(null);
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        if (e.target.name === "current_password") setPasswordError(null);
+        // اگر password پاک شد، current_password هم پاک بشه
+        if (e.target.name === "password" && !e.target.value) {
+            setFormData(prev => ({ ...prev, password: "", current_password: "" }));
         }
     };
 
@@ -79,16 +401,15 @@ export const EditUserModal = ({ user, onClose }) => {
         });
     };
 
-    const handleActiveToggle = () => {
-        setFormData({
-            ...formData,
-            is_active: !formData.is_active,
-        });
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setPasswordError(null);
+
+        // validation: اگر new password داره ولی current_password نداره
+        if (formData.password && !formData.current_password) {
+            setPasswordError("Current password is required to set a new password.");
+            return;
+        }
 
         const updateData = {};
         if (formData.username !== user.username) updateData.username = formData.username;
@@ -102,7 +423,7 @@ export const EditUserModal = ({ user, onClose }) => {
         }
 
         const permissionsArray = Object.keys(permissions).map((module) => ({
-            module: module,
+            module,
             can_read: permissions[module].read,
             can_write: permissions[module].write,
             can_delete: permissions[module].delete,
@@ -115,7 +436,7 @@ export const EditUserModal = ({ user, onClose }) => {
             const msg = result.payload;
             if (msg?.includes("Current password is required") || msg?.includes("Current password is incorrect")) {
                 setPasswordError(msg);
-                setFormData({ ...formData, current_password: "" });
+                setFormData(prev => ({ ...prev, current_password: "" }));
                 return;
             }
         }
@@ -123,76 +444,148 @@ export const EditUserModal = ({ user, onClose }) => {
         onClose();
     };
 
+    const initials = user.username?.slice(0, 2).toUpperCase() || "U";
+    const showCurrentPasswordField = !!formData.password;
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>Edit User</h3>
-                    <button className="modal-close" onClick={onClose}>✕</button>
+        <div style={styles.overlay} onClick={onClose}>
+            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+
+                {/* ── Header ── */}
+                <div style={styles.header}>
+                    <div style={styles.headerLeft}>
+                        <div style={styles.headerAvatar}>{initials}</div>
+                        <div>
+                            <h3 style={styles.headerTitle}>Edit User</h3>
+                            <p style={styles.headerSub}>@{user.username}</p>
+                        </div>
+                    </div>
+                    <button style={styles.closeBtn} onClick={onClose}>✕</button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="modal-body">
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Username *</label>
-                                <input
+                    <div style={styles.body}>
+
+                        {/* ── Account Info ── */}
+                        <div style={styles.sectionLabel}>
+                            Account Info
+                            <span style={styles.sectionLine} />
+                        </div>
+
+                        <div style={styles.formRow}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Username *</label>
+                                <FocusInput
                                     type="text"
                                     name="username"
                                     value={formData.username}
                                     onChange={handleChange}
                                     required
                                     minLength={3}
+                                    style={styles.input}
                                 />
                             </div>
-
-                            <div className="form-group">
-                                <label>Email *</label>
-                                <input
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Email *</label>
+                                <FocusInput
                                     type="email"
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
+                                    style={styles.input}
                                 />
                             </div>
                         </div>
 
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Password (leave empty to keep current)</label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    placeholder="Enter new password"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Role *</label>
-                                <select
+                        <div style={styles.formRow}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Role *</label>
+                                <FocusSelect
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
                                 >
-                                    <option value="user">user</option>
-                                    <option value="manager">manager</option>
-                                    <option value="admin">admin</option>
-                                    <option value="guest">guest</option>
-                                </select>
+                                    <option value="user">User</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="guest">Guest</option>
+                                </FocusSelect>
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Status</label>
+                                <div style={{ marginTop: "4px" }}>
+                                    <button
+                                        type="button"
+                                        style={{
+                                            ...styles.statusToggle,
+                                            borderColor: formData.is_active ? "#16a34a" : "#dc2626",
+                                            color: formData.is_active ? "#15803d" : "#b91c1c",
+                                            background: formData.is_active ? "#f0fdf4" : "#fef2f2",
+                                        }}
+                                        onClick={() => setFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
+                                    >
+                                        <span style={{
+                                            ...styles.track,
+                                            background: formData.is_active ? "#16a34a" : "#dc2626",
+                                        }}>
+                                            <span style={{
+                                                ...styles.thumb,
+                                                transform: formData.is_active ? "translateX(18px)" : "translateX(0)",
+                                            }} />
+                                        </span>
+                                        {formData.is_active ? "Active" : "Inactive"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Current Password - فقط برای self edit */}
-                        {formData.password && (
-                            <div className="form-row">
-                                <div className="form-group">
-                                    <label>
+                        <div style={styles.divider} />
+
+                        {/* ── Password Change ── */}
+                        <div style={styles.sectionLabel}>
+                            Change Password
+                            <span style={styles.sectionLine} />
+                        </div>
+
+                        {/* توضیح برای admin که داره یوزر دیگه رو ویرایش می‌کنه */}
+                        {!isSelfEdit && (
+                            <div style={{
+                                background: "#eff6ff",
+                                border: "1.5px solid #bfdbfe",
+                                borderRadius: "10px",
+                                padding: "10px 14px",
+                                marginBottom: "16px",
+                                fontSize: "12.5px",
+                                color: "#1d4ed8",
+                            }}>
+                                ℹ️ To change this user's password, their current password is also required for security.
+                            </div>
+                        )}
+
+                        <div style={styles.formRow}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>New Password</label>
+                                <FocusInput
+                                    type="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    placeholder="Leave empty to keep current"
+                                    style={styles.input}
+                                />
+                                <span style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}>
+                                    Minimum 8 characters
+                                </span>
+                            </div>
+
+                            {/* Current Password — همیشه نشون داده می‌شه وقتی new password داره */}
+                            {showCurrentPasswordField && (
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>
                                         {isSelfEdit ? "Current Password *" : "User's Current Password *"}
                                     </label>
-                                    <input
+                                    <FocusInput
                                         type="password"
                                         name="current_password"
                                         value={formData.current_password}
@@ -201,93 +594,96 @@ export const EditUserModal = ({ user, onClose }) => {
                                             ? "Enter your current password"
                                             : "Enter this user's current password"}
                                         required
+                                        style={styles.input}
+                                        hasError={!!passwordError}
                                     />
                                     {passwordError && (
-                                        <div style={{ color: "#DC2626", fontSize: "13px", marginTop: "4px" }}>
-                                            ⚠️ {passwordError}
-                                        </div>
+                                        <span style={styles.errorText}>
+                                            ⚠ {passwordError}
+                                        </span>
                                     )}
                                 </div>
+                            )}
+                        </div>
+
+                        {/* warning وقتی new password نوشتن ولی current خالیه */}
+                        {showCurrentPasswordField && !formData.current_password && (
+                            <div style={styles.passwordWarning}>
+                                <span style={styles.warningIcon}>🔒</span>
+                                <p style={styles.warningText}>
+                                    To change the password, you must provide the <strong>current password</strong> for verification.
+                                </p>
                             </div>
                         )}
 
-                        {/* Active Status Toggle */}
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Status</label>
-                                <div className="active-toggle-container">
-                                    <button
-                                        type="button"
-                                        className={`active-toggle-btn ${formData.is_active ? 'active' : 'inactive'}`}
-                                        onClick={handleActiveToggle}
-                                    >
-                                        <span className="toggle-label">
-                                            {formData.is_active ? 'Active' : 'Inactive'}
-                                        </span>
-                                        <span className={`toggle-switch ${formData.is_active ? 'active' : 'inactive'}`}>
-                                            <span className="toggle-slider"></span>
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
+                        <div style={styles.divider} />
+
+                        {/* ── Permissions ── */}
+                        <div style={styles.sectionLabel}>
+                            Permissions
+                            <span style={styles.sectionLine} />
                         </div>
+                        <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "14px", marginTop: "-8px" }}>
+                            Set module-level access for this user
+                        </p>
 
-                        {/* Permissions Section */}
-                        <div className="permissions-section">
-                            <h4 className="permissions-title">Permissions</h4>
-                            <p className="permissions-subtitle">Set access permissions for each module</p>
-
-                            {loadingPermissions ? (
-                                <div className="loading-permissions">Loading permissions...</div>
-                            ) : (
-                                <table className="permissions-table">
-                                    <thead>
-                                    <tr>
-                                        <th>Module</th>
-                                        <th>Read</th>
-                                        <th>Write</th>
-                                        <th>Delete</th>
+                        {loadingPermissions ? (
+                            <div style={styles.loadingBox}>Loading permissions…</div>
+                        ) : (
+                            <table style={styles.permTable}>
+                                <thead style={styles.permThead}>
+                                <tr>
+                                    <th style={styles.permTh}>Module</th>
+                                    <th style={{ ...styles.permTh, textAlign: "center" }}>Read</th>
+                                    <th style={{ ...styles.permTh, textAlign: "center" }}>Write</th>
+                                    <th style={{ ...styles.permTh, textAlign: "center" }}>Delete</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {MODULES.map((module, idx) => (
+                                    <tr key={module.name} style={{
+                                        background: idx % 2 === 0 ? "#ffffff" : "#f9fbfd",
+                                    }}>
+                                        <td style={styles.permTd}>
+                                                <span style={styles.moduleName}>
+                                                    {module.icon}&nbsp;&nbsp;{module.label}
+                                                </span>
+                                        </td>
+                                        {["read", "write", "delete"].map(perm => (
+                                            <td key={perm} style={{ ...styles.permTd, textAlign: "center" }}>
+                                                <input
+                                                    type="checkbox"
+                                                    style={styles.permCheckbox}
+                                                    checked={permissions[module.name]?.[perm] || false}
+                                                    onChange={() => handlePermissionChange(module.name, perm)}
+                                                />
+                                            </td>
+                                        ))}
                                     </tr>
-                                    </thead>
-                                    <tbody>
-                                    {MODULES.map((module) => (
-                                        <tr key={module.name}>
-                                            <td className="module-name">{module.label}</td>
-                                            <td>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={permissions[module.name]?.read || false}
-                                                    onChange={() => handlePermissionChange(module.name, "read")}
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={permissions[module.name]?.write || false}
-                                                    onChange={() => handlePermissionChange(module.name, "write")}
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={permissions[module.name]?.delete || false}
-                                                    onChange={() => handlePermissionChange(module.name, "delete")}
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
+                                ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
-                    <div className="modal-actions">
-                        <button type="button" className="btn-cancel" onClick={onClose}>
-                            cancel
+                    {/* ── Footer ── */}
+                    <div style={styles.footer}>
+                        <button
+                            type="button"
+                            style={styles.btnCancel}
+                            onClick={onClose}
+                            onMouseEnter={e => e.target.style.background = "#eef1f6"}
+                            onMouseLeave={e => e.target.style.background = "#f8fafd"}
+                        >
+                            Cancel
                         </button>
-                        <button type="submit" className="btn-submit">
-                            Update
+                        <button
+                            type="submit"
+                            style={styles.btnSubmit}
+                            onMouseEnter={e => e.target.style.opacity = "0.88"}
+                            onMouseLeave={e => e.target.style.opacity = "1"}
+                        >
+                            Save Changes
                         </button>
                     </div>
                 </form>
