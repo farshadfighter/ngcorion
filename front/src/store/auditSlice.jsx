@@ -5,28 +5,19 @@ import api from "../config/api.js";
 // HELPER FUNCTION
 // =====================
 
-/**
- * Maps device type to API path
- * Linux variants → 'linux'
- * MongoDB        → 'mongodb'
- * MSSQL variants → 'mssql'
- * Windows variants → 'windows'
- * Others (cisco, fortinet, apache) → same as device type
- */
 const getDeviceApiPath = (deviceType) => {
     if (!deviceType) return 'cisco';
     if (deviceType.startsWith('linux-'))   return 'linux';
     if (deviceType.startsWith('mssql-'))   return 'mssql';
     if (deviceType.startsWith('windows-')) return 'windows';
     if (deviceType === 'mongodb')          return 'mongodb';
-    return deviceType; // cisco, fortinet, apache
+    return deviceType;
 };
 
 // =====================
 // Thunks
 // =====================
 
-// Execute audit (Start new audit)
 export const executeAudit = createAsyncThunk(
     "audit/execute",
     async ({ deviceType, formData }, { rejectWithValue }) => {
@@ -34,31 +25,20 @@ export const executeAudit = createAsyncThunk(
             const apiPath = getDeviceApiPath(deviceType);
             const endpoint = `/api/audit/${apiPath}/execute`;
 
-            const payload = {
-                asset_id: formData.asset_id,
-                profile: "L1"
-            };
+            const payload = { asset_id: formData.asset_id, profile: "L1" };
 
-            if (formData.job_name) payload.job_name = formData.job_name;
-
-            // SSH-based devices
-            if (formData.ssh_username) payload.ssh_username = formData.ssh_username;
-            if (formData.ssh_password) payload.ssh_password = formData.ssh_password;
-            if (formData.ssh_secret)   payload.ssh_secret   = formData.ssh_secret;
-            if (formData.vdom)         payload.vdom         = formData.vdom;
+            if (formData.job_name)      payload.job_name      = formData.job_name;
+            if (formData.ssh_username)  payload.ssh_username  = formData.ssh_username;
+            if (formData.ssh_password)  payload.ssh_password  = formData.ssh_password;
+            if (formData.ssh_secret)    payload.ssh_secret    = formData.ssh_secret;
+            if (formData.vdom)          payload.vdom          = formData.vdom;
             if (formData.sudo_password) payload.sudo_password = formData.sudo_password;
-
-            // MongoDB extra
             if (formData.mongo_username) payload.mongo_username = formData.mongo_username;
             if (formData.mongo_password) payload.mongo_password = formData.mongo_password;
             if (formData.mongo_port)     payload.mongo_port     = parseInt(formData.mongo_port);
-
-            // MSSQL
             if (formData.mssql_username) payload.mssql_username = formData.mssql_username;
             if (formData.mssql_password) payload.mssql_password = formData.mssql_password;
             if (formData.mssql_port)     payload.mssql_port     = parseInt(formData.mssql_port);
-
-            // Windows
             if (formData.windows_username) payload.windows_username = formData.windows_username;
             if (formData.windows_password) payload.windows_password = formData.windows_password;
             if (formData.winrm_port)       payload.winrm_port       = parseInt(formData.winrm_port);
@@ -67,53 +47,37 @@ export const executeAudit = createAsyncThunk(
             const res = await api.post(endpoint, payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to start audit"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to start audit");
         }
     }
 );
 
-// Fetch all audit sessions (for main list) - from all 7 families in parallel
 export const fetchAuditSessions = createAsyncThunk(
     "audit/fetchSessions",
     async ({ limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
         try {
             const families = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows"];
-
             const results = await Promise.allSettled(
                 families.map((family) =>
-                    api.get(`/api/audit/${family}/sessions`, {
-                        params: { limit, offset }
-                    })
+                    api.get(`/api/audit/${family}/sessions`, { params: { limit, offset } })
                 )
             );
-
             const allSessions = [];
             results.forEach((result, idx) => {
                 if (result.status === "fulfilled") {
                     const data = result.value.data;
-                    if (Array.isArray(data)) {
-                        allSessions.push(...data);
-                    }
+                    if (Array.isArray(data)) allSessions.push(...data);
                 } else {
-                    console.warn(
-                        `Failed to fetch ${families[idx]} sessions:`,
-                        result.reason?.message
-                    );
+                    console.warn(`Failed to fetch ${families[idx]} sessions:`, result.reason?.message);
                 }
             });
-
             return allSessions;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch audit sessions"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to fetch audit sessions");
         }
     }
 );
 
-// Fetch single audit session (for checking status)
 export const fetchAuditSession = createAsyncThunk(
     "audit/fetchSession",
     async (sessionId, { rejectWithValue }) => {
@@ -121,14 +85,11 @@ export const fetchAuditSession = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch audit session"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to fetch audit session");
         }
     }
 );
 
-// Fetch audit results (detailed results)
 export const fetchAuditResults = createAsyncThunk(
     "audit/fetchResults",
     async (sessionId, { rejectWithValue }) => {
@@ -136,14 +97,11 @@ export const fetchAuditResults = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}/results`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch audit results"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to fetch audit results");
         }
     }
 );
 
-// Delete audit session
 export const deleteAuditSession = createAsyncThunk(
     "audit/delete",
     async (sessionId, { rejectWithValue }) => {
@@ -151,14 +109,48 @@ export const deleteAuditSession = createAsyncThunk(
             await api.delete(`/api/audit/sessions/${sessionId}`);
             return sessionId;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to delete audit session"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to delete audit session");
         }
     }
 );
 
-// Check audit status (for polling)
+// ── Clear History: همه sessions همه family ها رو حذف میکنه ──────────────────
+export const clearAllAuditSessions = createAsyncThunk(
+    "audit/clearAll",
+    async (_, { getState, rejectWithValue }) => {
+        try {
+            const sessions = getState().audit.sessions;
+
+            // هر session رو با session_id و device_type پیدا میکنیم
+            // چون endpoint به device family نیاز داره
+            const families = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows"];
+
+            // تلاش میکنیم DELETE /api/audit/{family}/sessions/clear رو صدا بزنیم
+            // اگه backend این endpoint رو نداره، به صورت موازی همه رو یکی‌یکی حذف میکنیم
+            const results = await Promise.allSettled(
+                families.map((family) =>
+                    api.delete(`/api/audit/${family}/sessions/clear`)
+                )
+            );
+
+            // اگه حداقل یکی موفق شد، OK
+            const anySuccess = results.some((r) => r.status === "fulfilled");
+            if (!anySuccess) {
+                // fallback: یکی‌یکی حذف کن
+                await Promise.allSettled(
+                    sessions.map((s) =>
+                        api.delete(`/api/audit/sessions/${s.session_id}`)
+                    )
+                );
+            }
+
+            return true;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "Failed to clear history");
+        }
+    }
+);
+
 export const checkAuditStatus = createAsyncThunk(
     "audit/checkStatus",
     async (sessionId, { rejectWithValue }) => {
@@ -166,14 +158,11 @@ export const checkAuditStatus = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to check audit status"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to check audit status");
         }
     }
 );
 
-// Fetch audit sessions count
 export const fetchAuditSessionsCount = createAsyncThunk(
     "audit/fetchCount",
     async (_, { rejectWithValue }) => {
@@ -181,9 +170,7 @@ export const fetchAuditSessionsCount = createAsyncThunk(
             const res = await api.get("/api/audit/sessions/count");
             return res.data;
         } catch (err) {
-            return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch sessions count"
-            );
+            return rejectWithValue(err.response?.data?.detail || "Failed to fetch sessions count");
         }
     }
 );
@@ -201,9 +188,9 @@ const auditSlice = createSlice({
         isLoading: false,
         isLoadingResults: false,
         isExecuting: false,
+        isClearing: false,
         error: null,
         successMessage: null,
-        // For wizard flow
         activeSessionId: null,
         pollingActive: false,
     },
@@ -230,70 +217,41 @@ const auditSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            // Execute audit
-            .addCase(executeAudit.pending, (state) => {
-                state.isExecuting = true;
-                state.error = null;
-            })
-            .addCase(executeAudit.fulfilled, (state, action) => {
-                state.isExecuting = false;
-                state.currentSession = action.payload;
+            .addCase(executeAudit.pending,    (state) => { state.isExecuting = true;  state.error = null; })
+            .addCase(executeAudit.fulfilled,  (state, action) => {
+                state.isExecuting     = false;
+                state.currentSession  = action.payload;
                 state.activeSessionId = action.payload.session_id;
-                state.successMessage = "Audit started successfully!";
+                state.successMessage  = "Audit started successfully!";
             })
-            .addCase(executeAudit.rejected, (state, action) => {
-                state.isExecuting = false;
-                state.error = action.payload;
-            })
+            .addCase(executeAudit.rejected,   (state, action) => { state.isExecuting = false; state.error = action.payload; })
 
-            // Fetch sessions
-            .addCase(fetchAuditSessions.pending, (state) => {
-                state.isLoading = true;
-                state.error = null;
-            })
-            .addCase(fetchAuditSessions.fulfilled, (state, action) => {
-                state.isLoading = false;
-                state.sessions = action.payload;
-            })
-            .addCase(fetchAuditSessions.rejected, (state, action) => {
-                state.isLoading = false;
-                state.error = action.payload;
-            })
+            .addCase(fetchAuditSessions.pending,   (state) => { state.isLoading = true;  state.error = null; })
+            .addCase(fetchAuditSessions.fulfilled, (state, action) => { state.isLoading = false; state.sessions = action.payload; })
+            .addCase(fetchAuditSessions.rejected,  (state, action) => { state.isLoading = false; state.error = action.payload; })
 
-            // Fetch single session
-            .addCase(fetchAuditSession.fulfilled, (state, action) => {
-                state.currentSession = action.payload;
-            })
-            .addCase(fetchAuditSession.rejected, (state, action) => {
-                state.error = action.payload;
-            })
+            .addCase(fetchAuditSession.fulfilled,  (state, action) => { state.currentSession = action.payload; })
+            .addCase(fetchAuditSession.rejected,   (state, action) => { state.error = action.payload; })
 
-            // Fetch results
-            .addCase(fetchAuditResults.pending, (state) => {
-                state.isLoadingResults = true;
-                state.error = null;
-            })
-            .addCase(fetchAuditResults.fulfilled, (state, action) => {
-                state.isLoadingResults = false;
-                state.results = action.payload;
-            })
-            .addCase(fetchAuditResults.rejected, (state, action) => {
-                state.isLoadingResults = false;
-                state.error = action.payload;
-            })
+            .addCase(fetchAuditResults.pending,    (state) => { state.isLoadingResults = true;  state.error = null; })
+            .addCase(fetchAuditResults.fulfilled,  (state, action) => { state.isLoadingResults = false; state.results = action.payload; })
+            .addCase(fetchAuditResults.rejected,   (state, action) => { state.isLoadingResults = false; state.error = action.payload; })
 
-            // Delete session
             .addCase(deleteAuditSession.fulfilled, (state, action) => {
-                state.sessions = state.sessions.filter(
-                    (s) => s.session_id !== action.payload
-                );
+                state.sessions = state.sessions.filter((s) => s.session_id !== action.payload);
                 state.successMessage = "Audit session deleted successfully!";
             })
-            .addCase(deleteAuditSession.rejected, (state, action) => {
-                state.error = action.payload;
-            })
+            .addCase(deleteAuditSession.rejected,  (state, action) => { state.error = action.payload; })
 
-            // Check status (polling)
+            // ── clearAllAuditSessions ──────────────────────────────────────
+            .addCase(clearAllAuditSessions.pending,   (state) => { state.isClearing = true;  state.error = null; })
+            .addCase(clearAllAuditSessions.fulfilled, (state) => {
+                state.isClearing     = false;
+                state.sessions       = [];
+                state.successMessage = "History cleared successfully!";
+            })
+            .addCase(clearAllAuditSessions.rejected,  (state, action) => { state.isClearing = false; state.error = action.payload; })
+
             .addCase(checkAuditStatus.fulfilled, (state, action) => {
                 state.currentSession = action.payload;
                 if (action.payload.status === "completed" || action.payload.status === "failed") {
@@ -301,7 +259,6 @@ const auditSlice = createSlice({
                 }
             })
 
-            // Fetch count
             .addCase(fetchAuditSessionsCount.fulfilled, (state, action) => {
                 state.totalCount = action.payload.total || 0;
             });
