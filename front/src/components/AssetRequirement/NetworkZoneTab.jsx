@@ -254,7 +254,7 @@ export const NetworkZoneTab = () => {
                                     <td>{item.zone_name}</td>
                                     <td>
                                         {item.description ? (
-                                            <button
+                                            <button style={{paddingLeft:"35px",}}
                                                 className="btn-icon"
                                                 onClick={() => {
                                                     setSelectedDescription(item.description);

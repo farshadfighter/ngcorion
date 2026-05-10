@@ -222,7 +222,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                     }}>Port</th>
                                     <th style={{
                                         padding: '12px 16px',
-                                        textAlign: 'right',
+                                        textAlign: 'center',
                                         fontSize: '13px',
                                         fontWeight: '600',
                                         color: '#6b7280',

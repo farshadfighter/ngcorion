@@ -153,24 +153,6 @@ export const AssetList = ({onNavigateToLicence}) => {
                     >
                         {uploading ? "⏳ Importing..." : "⬇ Import"}
                     </button>
-
-                    <button
-                        className="btn-header"
-                        onClick={async () => {
-                            const res = await api.get("/api/assets/export/template", { responseType: "blob" });
-                            const url = window.URL.createObjectURL(new Blob([res.data]));
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.setAttribute("download", `asset-template.xlsx`);
-                            document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                            window.URL.revokeObjectURL(url);
-                        }}
-                    >
-                        Dawnload Template
-                    </button>
-
                     <button
                         className="btn-header"
                         onClick={async () => {
@@ -187,6 +169,24 @@ export const AssetList = ({onNavigateToLicence}) => {
                     >
                         ⬆ Export
                     </button>
+                    <button
+                        className="btn-header"
+                        onClick={async () => {
+                            const res = await api.get("/api/assets/export/template", { responseType: "blob" });
+                            const url = window.URL.createObjectURL(new Blob([res.data]));
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.setAttribute("download", `asset-template.xlsx`);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                        }}
+                    >
+                        <i className="fa-solid fa-download"></i> Dawnload Template
+                    </button>
+
+
 
                     <button
                         className="btn-header btn-primary"

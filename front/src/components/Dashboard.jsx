@@ -364,25 +364,32 @@ export const Dashboard = () => {
                                     <div className="user-role">{role}</div>
                                 </div>
                             </div>
-                            <dgiv style={{ position: "relative" }} ref={dropdownRef}>
+                            <div style={{ position: "relative" }} ref={dropdownRef}>
+                                {/* دکمه اصلی برای باز کردن منو */}
                                 <button className="logout-btn" onClick={() => setShowDropdown(!showDropdown)}>
                                     ⋮
                                 </button>
+
+                                {/* منوی دراپ‌داون */}
                                 {showDropdown && (
-                                    <div>
-                                        <div
+                                    <div className="user-menu-dropdown-container">
+                                        <button
+                                            className="user-menu-dropdown-btn action-primary"
                                             onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}
                                         >
                                             <i className="fa-solid fa-key"></i> Change Password
-                                        </div>
-                                        <div
+                                        </button>
+
+                                        <button
+                                            className="user-menu-dropdown-btn action-danger"
                                             onClick={handleLogout}
                                         >
                                             <i className="fa-solid fa-right-from-bracket"></i> Logout
-                                        </div>
+                                        </button>
                                     </div>
                                 )}
-                            </dgiv>
+                            </div>
+
                         </>
                     )}
                     {isSidebarCollapsed && (
@@ -415,7 +422,7 @@ export const Dashboard = () => {
                     <div className="header-right">
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
-                            <div className="current-time">
+                            <div className="current-time" style={{paddingLeft:"25px",}}>
                                 <img
                                     src={"/icons/watch.png"}
                                     style={{ width: "15px", height: "15px", margin: "15px 8px -1px 1px" }}

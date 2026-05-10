@@ -159,7 +159,7 @@ export const AssetRequirement = () => {
                     </button>
                     <button className="btn-header" onClick={handleDownloadTemplate}>
 
-                        Dawnload Template <i className="fa-solid fa-download"></i>
+                        <i className="fa-solid fa-download"></i>   Dawnload Template
 
                     </button>
                 </div>

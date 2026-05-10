@@ -371,15 +371,16 @@
 /* Container اصلی دراپ‌داون */
 .user-menu-dropdown-container {
     position: absolute;
-    top: 100%;
+    bottom: 100%; /* به جای top از bottom استفاده می‌کنیم تا رو به بالا باز شود */
     right: 0;
     background-color: #ffffff;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     border-radius: 8px;
     z-index: 1000;
-    min-width: 160px;
+    min-width: 170px;
     overflow: hidden;
     padding: 5px 0;
+    margin-bottom: 5px; /* تغییر margin-top به margin-bottom */
 }
 
 /* استایل پایه برای دکمه‌های داخل دراپ‌داون */
@@ -393,7 +394,15 @@
     cursor: pointer;
     font-size: 14px;
     white-space: nowrap;
-    transition: background-color 0.2s ease; /* انیمیشن نرم برای هاور */
+    transition: background-color 0.2s ease;
+    font-family: inherit; /* ارث‌بری فونت Open Sans */
+}
+
+/* فاصله دادن به آیکون‌ها */
+.user-menu-dropdown-btn i {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
 }
 
 /* دکمه‌های معمولی (مثل تغییر رمز) */
@@ -411,3 +420,5 @@
 .user-menu-dropdown-btn.action-danger:hover {
     background-color: #fff1f0;
 }
+
+
