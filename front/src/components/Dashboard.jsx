@@ -364,28 +364,25 @@ export const Dashboard = () => {
                                     <div className="user-role">{role}</div>
                                 </div>
                             </div>
-                            <div
-                                ref={dropdownRef}
-                                className="user-menu-dropdown-container"
-                            >
-                                <button
-                                    onClick={() => setShowChangePassword(true)}
-                                    className="user-menu-dropdown-btn action-primary"
-                                >
-                                    Change Password
+                            <dgiv style={{ position: "relative" }} ref={dropdownRef}>
+                                <button className="logout-btn" onClick={() => setShowDropdown(!showDropdown)}>
+                                    ⋮
                                 </button>
-
-                                <button
-                                    onClick={handleLogout}
-                                    className="user-menu-dropdown-btn action-danger"
-                                >
-                                    Logout
-                                </button>
-                            </div>
-
-
-                            )}
-                            </div>
+                                {showDropdown && (
+                                    <div>
+                                        <div
+                                            onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}
+                                        >
+                                            <i className="fa-solid fa-key"></i> Change Password
+                                        </div>
+                                        <div
+                                            onClick={handleLogout}
+                                        >
+                                            <i className="fa-solid fa-right-from-bracket"></i> Logout
+                                        </div>
+                                    </div>
+                                )}
+                            </dgiv>
                         </>
                     )}
                     {isSidebarCollapsed && (
