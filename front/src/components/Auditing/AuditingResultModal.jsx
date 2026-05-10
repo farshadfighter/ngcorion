@@ -178,10 +178,6 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         <div className="card-label">Total Condition</div>
                     </div>
 
-                    <div className="result-card result-card-benchmark">
-                        <div className="card-title">{sessionDetails?.device_type === "fortinet" ? "FortiGate" : "Cisco"}</div>
-                        <div className="card-subtitle">CIS Benchmark</div>
-                    </div>
                 </div>
 
                 {/* Results Table */}

@@ -29,9 +29,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
         }
     };
 
-    const handleHardenAll = () => {
-        setShowHardenAllModal(true);
-    };
+    const handleHardenAll = () => setShowHardenAllModal(true);
 
     const handleModalSuccess = () => {
         if (sessionData?.session_id && sessionData?.device_type) {
@@ -61,6 +59,16 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
 
     const getStatusBadge = () => {
         return <span className="result-badge result-unknown">unknown</span>;
+    };
+
+    const getDeviceLabel = (dt) => {
+        if (dt === 'fortinet')         return 'FortiGate';
+        if (dt?.startsWith('linux-'))  return 'Linux';
+        if (dt === 'apache')           return 'Apache';
+        if (dt === 'mongodb')          return 'MongoDB';
+        if (dt?.startsWith('mssql-'))  return 'SQL Server';
+        if (dt?.startsWith('windows-'))return 'Windows';
+        return 'Cisco';
     };
 
     const totalChecks = cisChecks?.length || 0;
@@ -126,15 +134,8 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                         paddingBottom: '16px',
                         borderBottom: '2px solid #e5e7eb'
                     }}>
-                        <h3 style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: '#1f2937',
-                            margin: 0
-                        }}>
-                            {sessionData?.device_type === 'fortinet' ? 'FortiGate' :
-                                sessionData?.device_type?.startsWith('linux-') ? 'Linux' :
-                                    sessionData?.device_type === 'apache' ? 'Apache' : 'Cisco'} CIS Benchmark
+                        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
+                            {getDeviceLabel(sessionData?.device_type)} CIS Benchmark
                         </h3>
                         <button
                             onClick={handleHardenAll}
@@ -214,6 +215,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
             {showHardenAllModal && (
                 <HardenAllModal
                     sessionId={sessionData.session_id}
+                    assetId={sessionData.asset_id}
                     deviceType={sessionData.device_type}
                     onClose={() => setShowHardenAllModal(false)}
                     onSuccess={handleModalSuccess}

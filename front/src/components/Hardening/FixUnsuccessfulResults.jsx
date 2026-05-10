@@ -21,9 +21,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         }
     }, [sessionData?.session_id, sessionData?.device_type, dispatch]);
 
-    const handleHardenAll = () => {
-        setShowHardenAllModal(true);
-    };
+    const handleHardenAll = () => setShowHardenAllModal(true);
 
     const handleModalSuccess = () => {
         if (sessionData?.session_id && sessionData?.device_type) {
@@ -52,20 +50,26 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
     };
 
     const getStatusBadge = (status) => {
-        const normalizedStatus = status?.toString().toUpperCase();
-        if (normalizedStatus === "PASS") {
-            return <span className="result-badge result-success">successful</span>;
-        } else if (normalizedStatus === "FAIL") {
-            return <span className="result-badge result-fail">Unsuccessful</span>;
-        } else {
-            return <span className="result-badge result-unknown">unknown</span>;
-        }
+        const s = status?.toString().toUpperCase();
+        if (s === 'PASS') return <span className="result-badge result-success">successful</span>;
+        if (s === 'FAIL') return <span className="result-badge result-fail">Unsuccessful</span>;
+        return <span className="result-badge result-unknown">unknown</span>;
     };
 
-    const totalChecks = cisChecks?.length || 0;
-    const passedChecks = cisChecks?.filter(c => c.status?.toString().toUpperCase() === 'PASS').length || 0;
-    const failedChecks = cisChecks?.filter(c => c.status?.toString().toUpperCase() === 'FAIL').length || 0;
-    const compliancePercentage = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
+    const getDeviceLabel = (dt) => {
+        if (dt === 'fortinet')          return 'FortiGate';
+        if (dt?.startsWith('linux-'))   return 'Linux';
+        if (dt === 'apache')            return 'Apache';
+        if (dt === 'mongodb')           return 'MongoDB';
+        if (dt?.startsWith('mssql-'))   return 'SQL Server';
+        if (dt?.startsWith('windows-')) return 'Windows';
+        return 'Cisco';
+    };
+
+    const totalChecks   = cisChecks?.length || 0;
+    const passedChecks  = cisChecks?.filter(c => c.status?.toString().toUpperCase() === 'PASS').length || 0;
+    const failedChecks  = cisChecks?.filter(c => c.status?.toString().toUpperCase() === 'FAIL').length || 0;
+    const compliancePercentage    = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
     const nonCompliancePercentage = totalChecks > 0 ? Math.round((failedChecks / totalChecks) * 100) : 0;
 
     const displayedChecks = activeTab === 'unsuccessful'
@@ -84,32 +88,15 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
                 {/* Statistics Cards */}
                 <div className="result-stats-container">
-                    {/* Row 1: کارت‌های آماری */}
-                    <div className="result-card result-card-success" style={{
-                        background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
-                        border: '2px solid #6ee7b7'
-                    }}>
-                        <div className="card-percent" style={{
-                            fontSize: '32px',
-                            fontWeight: '700',
-                            color: '#059669',
-                            marginBottom: '8px'
-                        }}>
+                    <div className="result-card result-card-success" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', border: '2px solid #6ee7b7' }}>
+                        <div className="card-percent" style={{ fontSize: '32px', fontWeight: '700', color: '#059669', marginBottom: '8px' }}>
                             {compliancePercentage}% | {passedChecks}
                         </div>
                         <div className="card-label">Conformity</div>
                     </div>
 
-                    <div className="result-card result-card-danger" style={{
-                        background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-                        border: '2px solid #fca5a5'
-                    }}>
-                        <div className="card-percent" style={{
-                            fontSize: '32px',
-                            fontWeight: '700',
-                            color: '#dc2626',
-                            marginBottom: '8px'
-                        }}>
+                    <div className="result-card result-card-danger" style={{ background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', border: '2px solid #fca5a5' }}>
+                        <div className="card-percent" style={{ fontSize: '32px', fontWeight: '700', color: '#dc2626', marginBottom: '8px' }}>
                             {nonCompliancePercentage}% | {failedChecks}
                         </div>
                         <div className="card-label">Non-Conformity</div>
@@ -120,16 +107,11 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                         <div className="card-label">Total Condition</div>
                     </div>
 
+                    {/* ← fix: همه 19 device type */}
                     <div className="result-card result-card-benchmark">
-                        <div className="card-title">
-                            {sessionData?.device_type === 'fortinet' ? 'FortiGate' :
-                                sessionData?.device_type?.startsWith('linux-') ? 'Linux' :
-                                    sessionData?.device_type === 'apache' ? 'Apache' : 'Cisco'}
-                        </div>
-                        <div className="card-subtitle">CIS Benchmark</div>
+                        <div className="card-title">{getDeviceLabel(sessionData?.device_type)}</div>
                     </div>
 
-                    {/* Row 2: اطلاعات */}
                     <div className="result-card result-card-info">
                         <div className="card-label">Asset</div>
                         <div className="card-value">{sessionData?.asset_name || 'N/A'}</div>
@@ -165,45 +147,17 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
                 {/* Tabs and Table */}
                 <div style={{ padding: '0 40px 40px' }}>
-                    {/* Tab Header */}
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '20px',
-                        background: 'white',
-                        padding: '20px',
-                        borderRadius: '8px',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
                                 onClick={() => setActiveTab('audit')}
-                                style={{
-                                    padding: '10px 24px',
-                                    background: activeTab === 'audit' ? '#1e3a5f' : 'white',
-                                    color: activeTab === 'audit' ? 'white' : '#6b7280',
-                                    border: activeTab === 'audit' ? 'none' : '1px solid #e5e7eb',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer'
-                                }}
+                                style={{ padding: '10px 24px', background: activeTab === 'audit' ? '#1e3a5f' : 'white', color: activeTab === 'audit' ? 'white' : '#6b7280', border: activeTab === 'audit' ? 'none' : '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                             >
                                 Audit result
                             </button>
                             <button
                                 onClick={() => setActiveTab('unsuccessful')}
-                                style={{
-                                    padding: '10px 24px',
-                                    background: activeTab === 'unsuccessful' ? '#1e3a5f' : 'white',
-                                    color: activeTab === 'unsuccessful' ? 'white' : '#6b7280',
-                                    border: activeTab === 'unsuccessful' ? 'none' : '1px solid #e5e7eb',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer'
-                                }}
+                                style={{ padding: '10px 24px', background: activeTab === 'unsuccessful' ? '#1e3a5f' : 'white', color: activeTab === 'unsuccessful' ? 'white' : '#6b7280', border: activeTab === 'unsuccessful' ? 'none' : '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                             >
                                 Unsuccessful Section
                             </button>
@@ -211,37 +165,18 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                         <button
                             onClick={handleHardenAll}
                             disabled={failedChecks === 0}
-                            style={{
-                                padding: '10px 24px',
-                                background: failedChecks === 0 ? '#9ca3af' : '#1e3a5f',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: failedChecks === 0 ? 'not-allowed' : 'pointer'
-                            }}
+                            style={{ padding: '10px 24px', background: failedChecks === 0 ? '#9ca3af' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: failedChecks === 0 ? 'not-allowed' : 'pointer' }}
                         >
                             🛡️ Harden All
                         </button>
                         {onNavigateToAuditing && (
                             <button
                                 onClick={onNavigateToAuditing}
-                                style={{
-                                    padding: '10px 24px',
-                                    background: 'white',
-                                    color: '#1e3a5f',
-                                    border: '2px solid #1e3a5f',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer'
-                                }}
+                                style={{ padding: '10px 24px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                             >
                                 🔍 Go to Auditing
                             </button>
                         )}
-
                     </div>
 
                     {/* Table */}
@@ -271,16 +206,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                 {check.status?.toString().toUpperCase() === 'FAIL' && (
                                                     <button
                                                         onClick={() => handleHardenSingle(check)}
-                                                        style={{
-                                                            padding: '8px 18px',
-                                                            background: '#1e3a5f',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            borderRadius: '6px',
-                                                            fontSize: '13px',
-                                                            fontWeight: '600',
-                                                            cursor: 'pointer'
-                                                        }}
+                                                        style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
                                                     >
                                                         🛡️ Harden
                                                     </button>
@@ -306,6 +232,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
             {showHardenAllModal && (
                 <HardenAllModal
                     sessionId={sessionData.session_id}
+                    assetId={sessionData.asset_id}
                     deviceType={sessionData.device_type}
                     onClose={() => setShowHardenAllModal(false)}
                     onSuccess={handleModalSuccess}
