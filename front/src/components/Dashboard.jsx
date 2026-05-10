@@ -215,10 +215,10 @@ export const Dashboard = () => {
             <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
                 <div className="sidebar-header">
                     {!isSidebarCollapsed && (
-                        <img src="/logo2.png" alt="logo" className="sidebar-logo" />
+                        <img src="/logowhite.png" alt="logo" className="sidebar-logo" />
                     )}
                     {isSidebarCollapsed && (
-                        <img src="/logo2.png" alt="logo" className="sidebar-logo-small" />
+                        <img src="/logowhite.png" alt="logo" className="sidebar-logo-small" />
                     )}
                     <button
                         className="toggle-sidebar-btn"
