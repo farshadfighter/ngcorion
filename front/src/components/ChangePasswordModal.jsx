@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { updateUser, fetchUsers } from "../../store/userSlice";
+import { updateUser, fetchUsers } from "../store/userSlice.jsx";
 
 export const ChangePasswordModal = ({ onClose }) => {
     const dispatch = useDispatch();
