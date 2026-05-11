@@ -122,7 +122,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
     return (
         <div className="auditing-container">
             {/* Header */}
-            <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                 <button
                     className="btn-auditing-primary"
                     onClick={() => isAuditLimitReached ? setShowLimitModal(true) : setShowWizard(true)}
@@ -140,6 +140,8 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                     disabled={sessions.length === 0 || isClearing}
                     style={{
                         ...btnPrimary,
+                        position: "absolute",
+                        right: 0,
                         opacity: sessions.length === 0 || isClearing ? 0.5 : 1,
                         cursor: sessions.length === 0 || isClearing ? "not-allowed" : "pointer",
                         display: "flex",
@@ -147,7 +149,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                         gap: "6px",
                     }}
                 >
-                    🗑️ Clear History
+                    <i className="fa-solid fa-trash"></i> Clear History
                 </button>
             </div>
 
@@ -247,7 +249,8 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                 <div className="modal-overlay" onClick={() => setShowClearModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header" style={{ borderBottom: `3px solid ${primaryColor}` }}>
-                            <h3 style={{ color: primaryColor }}>🗑️ Clear History</h3>
+                            <h3 style={{ color: primaryColor }}> <i className="fa-solid fa-trash"></i>
+                                Clear History</h3>
                             <button className="modal-close" onClick={() => setShowClearModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
