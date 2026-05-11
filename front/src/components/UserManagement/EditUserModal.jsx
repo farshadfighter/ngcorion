@@ -385,7 +385,6 @@ export const EditUserModal = ({ user, onClose }) => {
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         if (e.target.name === "current_password") setPasswordError(null);
-        // اگر password پاک شد، current_password هم پاک بشه
         if (e.target.name === "password" && !e.target.value) {
             setFormData(prev => ({ ...prev, password: "", current_password: "" }));
         }
@@ -405,7 +404,6 @@ export const EditUserModal = ({ user, onClose }) => {
         e.preventDefault();
         setPasswordError(null);
 
-        // validation: اگر new password داره ولی current_password نداره
         if (formData.password && !formData.current_password) {
             setPasswordError("Current password is required to set a new password.");
             return;
@@ -472,6 +470,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             <span style={styles.sectionLine} />
                         </div>
 
+                        {/* ✅ formRow اول: Username + Email */}
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Username *</label>
@@ -496,8 +495,9 @@ export const EditUserModal = ({ user, onClose }) => {
                                     style={styles.input}
                                 />
                             </div>
-                        </div>
+                        </div>{/* ✅ پایان formRow اول */}
 
+                        {/* ✅ formRow دوم: Role + Status */}
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Role *</label>
@@ -519,6 +519,15 @@ export const EditUserModal = ({ user, onClose }) => {
                                         type="button"
                                         style={{
                                             ...styles.statusToggle,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px",
+                                            padding: "8px 12px",
+                                            border: "1px solid",
+                                            borderRadius: "6px",
+                                            cursor: "pointer",
+                                            fontWeight: "600",
+                                            fontSize: "14px",
                                             borderColor: formData.is_active ? "#16a34a" : "#dc2626",
                                             color: formData.is_active ? "#15803d" : "#b91c1c",
                                             background: formData.is_active ? "#f0fdf4" : "#fef2f2",
@@ -526,19 +535,33 @@ export const EditUserModal = ({ user, onClose }) => {
                                         onClick={() => setFormData(prev => ({ ...prev, is_active: !prev.is_active }))}
                                     >
                                         <span style={{
-                                            ...styles.track,
+                                            position: "relative",
+                                            display: "inline-block",
+                                            width: "36px",
+                                            height: "20px",
+                                            borderRadius: "20px",
                                             background: formData.is_active ? "#16a34a" : "#dc2626",
+                                            transition: "background-color 0.2s",
+                                            flexShrink: 0,
                                         }}>
                                             <span style={{
-                                                ...styles.thumb,
-                                                transform: formData.is_active ? "translateX(18px)" : "translateX(0)",
+                                                position: "absolute",
+                                                top: "2px",
+                                                left: "2px",
+                                                width: "16px",
+                                                height: "16px",
+                                                backgroundColor: "#fff",
+                                                borderRadius: "50%",
+                                                transition: "transform 0.2s ease-in-out",
+                                                boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                                                transform: formData.is_active ? "translateX(16px)" : "translateX(0)",
                                             }} />
                                         </span>
-                                        {formData.is_active ? "Active" : "Inactive"}
+                                        <span>{formData.is_active ? "Active" : "Inactive"}</span>
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </div>{/* ✅ پایان formRow دوم */}
 
                         <div style={styles.divider} />
 
@@ -548,7 +571,6 @@ export const EditUserModal = ({ user, onClose }) => {
                             <span style={styles.sectionLine} />
                         </div>
 
-                        {/* توضیح برای admin که داره یوزر دیگه رو ویرایش می‌کنه */}
                         {!isSelfEdit && (
                             <div style={{
                                 background: "#eff6ff",
@@ -563,6 +585,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             </div>
                         )}
 
+                        {/* ✅ formRow سوم: Password */}
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>New Password</label>
@@ -579,7 +602,6 @@ export const EditUserModal = ({ user, onClose }) => {
                                 </span>
                             </div>
 
-                            {/* Current Password — همیشه نشون داده می‌شه وقتی new password داره */}
                             {showCurrentPasswordField && (
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>
@@ -604,9 +626,8 @@ export const EditUserModal = ({ user, onClose }) => {
                                     )}
                                 </div>
                             )}
-                        </div>
+                        </div>{/* ✅ پایان formRow سوم */}
 
-                        {/* warning وقتی new password نوشتن ولی current خالیه */}
                         {showCurrentPasswordField && !formData.current_password && (
                             <div style={styles.passwordWarning}>
                                 <span style={styles.warningIcon}>🔒</span>
@@ -645,9 +666,9 @@ export const EditUserModal = ({ user, onClose }) => {
                                         background: idx % 2 === 0 ? "#ffffff" : "#f9fbfd",
                                     }}>
                                         <td style={styles.permTd}>
-                                                <span style={styles.moduleName}>
-                                                    {module.icon}&nbsp;&nbsp;{module.label}
-                                                </span>
+                                            <span style={styles.moduleName}>
+                                                {module.icon}&nbsp;&nbsp;{module.label}
+                                            </span>
                                         </td>
                                         {["read", "write", "delete"].map(perm => (
                                             <td key={perm} style={{ ...styles.permTd, textAlign: "center" }}>
@@ -664,7 +685,8 @@ export const EditUserModal = ({ user, onClose }) => {
                                 </tbody>
                             </table>
                         )}
-                    </div>
+
+                    </div>{/* ✅ پایان body */}
 
                     {/* ── Footer ── */}
                     <div style={styles.footer}>
@@ -686,6 +708,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             Save Changes
                         </button>
                     </div>
+
                 </form>
             </div>
         </div>

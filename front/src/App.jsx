@@ -28,7 +28,7 @@ function AppContent() {
     }, [dispatch]);
 
     // نمایش loading تا زمانی که لایسنس چک شود
-    if (!licenseChecked || isValidating) {
+    if (!licenseChecked) {
         return (
             <div
                 style={{
