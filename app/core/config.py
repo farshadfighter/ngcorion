@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # WARNING: ["*"] allows all origins - NOT SECURE for production!
     # In production, set to specific frontend URLs like:
     # BACKEND_CORS_ORIGINS=["https://yourdomain.com","https://app.yourdomain.com"]
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]  # Must be restricted in production
+    BACKEND_CORS_ORIGINS: List[str] = ["*"]  # حتما عوضش کنیم
 
     @property
     def cors_origins(self) -> List[str]:
