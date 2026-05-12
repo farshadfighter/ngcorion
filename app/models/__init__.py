@@ -85,6 +85,25 @@ from app.models.security_audit_log import (
 # Import hardening models LAST (depend on Audit)
 from app.models.hardening import HardeningAction
 
+# Import hardening log model and helpers
+from app.models.hardening_log import (
+    HardeningLog,
+    log_hardening_preview,
+    log_hardening_execute,
+    log_batch_hardening,
+    log_auto_hardening
+)
+
+# Import additional discovery log helpers
+from app.models.discovery import (
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+
 # Export all
 __all__ = [
     "Base",
@@ -118,6 +137,17 @@ __all__ = [
     "DiscoveredHost",
     "DiscoveryApplication",
     "DiscoveryAuditLog",
+    "log_scan_started",
+    "log_scan_completed",
+    "log_scan_failed",
+    "log_discovery_applied",
+    "log_asset_created",
+    "log_scan_cancelled",
+    "log_scan_deleted",
+    "log_host_applied",
+    "log_bulk_application_started",
+    "log_bulk_application_completed",
+    "log_discovery_preview",
     # Audit models
     "DeviceType",
     "CheckStatus",
@@ -127,6 +157,11 @@ __all__ = [
     "AuditResult",
     # Hardening models
     "HardeningAction",
+    "HardeningLog",
+    "log_hardening_preview",
+    "log_hardening_execute",
+    "log_batch_hardening",
+    "log_auto_hardening",
     # Module audit logs
     "AssetRequirementLog",
     "log_requirement_import",

@@ -16,6 +16,8 @@ from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
+from app.modules.discovery.discovery_logs_router import router as discovery_logs_router
+from app.modules.hardening.hardening_logs_router import router as hardening_logs_router
 
 # Cisco Audit and Hardening (new module structure)
 from app.modules.cisco.audit import router as cisco_audit_router
@@ -159,6 +161,10 @@ app.include_router(enums_router)
 
 # Auto Discovery routes
 app.include_router(discovery_router.router)
+app.include_router(discovery_logs_router)
+
+# Hardening Logs routes
+app.include_router(hardening_logs_router)
 
 # Cisco CIS Audit routes
 app.include_router(cisco_audit_router)

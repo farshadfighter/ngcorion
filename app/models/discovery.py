@@ -561,3 +561,119 @@ def log_asset_created(db, user_id: int, scan_id: str, asset_id: int, ip_address:
     )
     db.add(log)
     db.commit()
+
+
+def log_scan_cancelled(db, user_id: int, scan_id: str, target: str):
+    """Helper to log scan cancellation"""
+    try:
+        log = DiscoveryAuditLog(
+            user_id=user_id,
+            action="scan_cancelled",
+            scan_id=scan_id,
+            target=target,
+            status="success"
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to log scan cancellation: {e}")
+
+
+def log_scan_deleted(db, user_id: int, scan_id: str, target: str):
+    """Helper to log scan deletion"""
+    try:
+        log = DiscoveryAuditLog(
+            user_id=user_id,
+            action="scan_deleted",
+            scan_id=scan_id,
+            target=target,
+            status="success"
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to log scan deletion: {e}")
+
+
+def log_host_applied(db, user_id: int, scan_id: str, host_id: int, ip_address: str, mode: str, asset_id: int = None, asset_name: str = None):
+    """Helper to log host application (create/merge/update)"""
+    try:
+        log = DiscoveryAuditLog(
+            user_id=user_id,
+            action=f"host_applied_{mode}",
+            scan_id=scan_id,
+            asset_id=asset_id,
+            ip_address=ip_address,
+            details={
+                "host_id": host_id,
+                "asset_name": asset_name,
+                "mode": mode
+            },
+            status="success"
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to log host application: {e}")
+
+
+def log_bulk_application_started(db, user_id: int, scan_id: str, host_count: int):
+    """Helper to log bulk application start"""
+    try:
+        log = DiscoveryAuditLog(
+            user_id=user_id,
+            action="bulk_application_started",
+            scan_id=scan_id,
+            details={"host_count": host_count},
+            status="success"
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to log bulk application start: {e}")
+
+
+def log_bulk_application_completed(db, user_id: int, scan_id: str, created: int, merged: int, updated: int, failed: int):
+    """Helper to log bulk application completion"""
+    try:
+        status = "success" if failed == 0 else "partial" if (created + merged + updated) > 0 else "failed"
+        log = DiscoveryAuditLog(
+            user_id=user_id,
+            action="bulk_application_completed",
+            scan_id=scan_id,
+            details={
+                "created": created,
+                "merged": merged,
+                "updated": updated,
+                "failed": failed,
+                "total": created + merged + updated + failed
+            },
+            status=status
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to log bulk application completion: {e}")
+
+
+def log_discovery_preview(db, user_id: int, scan_id: str, host_id: int, ip_address: str):
+    """Helper to log discovery preview"""
+    try:
+        log = DiscoveryAuditLog(
+            user_id=user_id,
+            action="discovery_preview",
+            scan_id=scan_id,
+            ip_address=ip_address,
+            details={"host_id": host_id},
+            status="success"
+        )
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning: Failed to log discovery preview: {e}")

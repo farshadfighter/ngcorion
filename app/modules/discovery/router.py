@@ -15,6 +15,14 @@ from app.core.dependencies import get_current_user, require_quota
 from app.models.user import User, UserRole
 from app.models.asset import Asset
 from app.models.discovery import DiscoveredHost as DiscoveredHostModel
+from app.models import (
+    log_scan_cancelled, 
+    log_scan_deleted, 
+    log_host_applied, 
+    log_bulk_application_started, 
+    log_bulk_application_completed, 
+    log_discovery_preview
+)
 from app.modules.users.service import UserService
 
 from .schemas import (
@@ -189,6 +197,14 @@ async def cancel_scan(
     result = DiscoveryService.cancel_scan(db, scan_id)
 
     if result["success"]:
+        # Log scan cancellation
+        try:
+            from app.models.discovery import DiscoveryScan
+            scan = db.query(DiscoveryScan).filter(DiscoveryScan.scan_id == scan_id).first()
+            if scan:
+                log_scan_cancelled(db, current_user.id, scan_id, scan.target)
+        except Exception as log_err:
+            pass
         return result
     else:
         raise HTTPException(
@@ -209,7 +225,22 @@ async def delete_scan(
     """
     check_discovery_permission(current_user, "delete", db)
 
+    # Get scan info before deletion for logging
+    scan_target = ""
+    try:
+        from app.models.discovery import DiscoveryScan
+        scan = db.query(DiscoveryScan).filter(DiscoveryScan.scan_id == scan_id).first()
+        if scan:
+            scan_target = scan.target
+    except Exception:
+        pass
+
     if DiscoveryService.delete_scan(db, scan_id):
+        # Log scan deletion
+        try:
+            log_scan_deleted(db, current_user.id, scan_id, scan_target)
+        except Exception as log_err:
+            pass
         return {"message": "Scan deleted"}
     raise HTTPException(status_code=404, detail="Scan not found")
 
@@ -870,7 +901,17 @@ async def apply_discovery_bulk(
     """
     check_discovery_permission(current_user, "write", db)
     
+    # Log bulk application start
+    try:
+        log_bulk_application_started(db, current_user.id, scan_id, len(asset_mappings))
+    except Exception as log_err:
+        pass
+    
     results = []
+    created_count = 0
+    merged_count = 0
+    updated_count = 0
+    failed_count = 0
     
     for mapping in asset_mappings:
         try:
@@ -892,6 +933,7 @@ async def apply_discovery_bulk(
                 "status": "success",
                 "updated": result.updated_fields
             })
+            updated_count += 1
             
         except Exception as e:
             results.append({
@@ -899,6 +941,13 @@ async def apply_discovery_bulk(
                 "status": "error",
                 "error": str(e)
             })
+            failed_count += 1
+    
+    # Log bulk application completion
+    try:
+        log_bulk_application_completed(db, current_user.id, scan_id, created_count, merged_count, updated_count, failed_count)
+    except Exception as log_err:
+        pass
     
     return {
         "total": len(asset_mappings),
@@ -1182,6 +1231,12 @@ async def preview_discovery_application(
         response["overwrite_changes"] = overwrite_changes
         response["merge_changes"] = merge_changes
 
+    # Log discovery preview
+    try:
+        log_discovery_preview(db, current_user.id, host.scan_id, host_id, host.ip_address)
+    except Exception as log_err:
+        pass
+
     return response
 
 
@@ -1291,6 +1346,12 @@ async def apply_discovery_with_mode(
             fields_updated.append("mac_address")
         if host.os_info:
             fields_updated.append("os_name")
+
+        # Log host application
+        try:
+            log_host_applied(db, current_user.id, host.scan_id, host_id, host.ip_address, "create", asset.id, asset.asset_name)
+        except Exception as log_err:
+            pass
 
         return ApplyDiscoveryModeResponse(
             success=True,
@@ -1425,6 +1486,13 @@ async def apply_discovery_with_mode(
         }
 
         mode_name = "Overwrite" if mode == "overwrite" else "Merge"
+        
+        # Log host application
+        try:
+            log_host_applied(db, current_user.id, host.scan_id, host_id, host.ip_address, mode, asset.id, asset.asset_name)
+        except Exception as log_err:
+            pass
+        
         return ApplyDiscoveryModeResponse(
             success=True,
             mode=mode,

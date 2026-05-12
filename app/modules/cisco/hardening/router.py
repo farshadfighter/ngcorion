@@ -27,6 +27,7 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError
 )
 from app.models import User
+from app.models import User, Asset, AuditResult, AuditSession, log_hardening_preview, log_hardening_execute, log_batch_hardening, log_auto_hardening
 from .service import HardeningService, CheckAlreadyPassingError, MissingParametersError
 
 
@@ -513,9 +514,47 @@ def preview_hardening(
             parameters=request.parameters
         )
 
+        # Log preview operation
+        try:
+            audit_result = db.query(AuditResult).filter(AuditResult.id == request.audit_result_id).first()
+            if audit_result and audit_result.audit_session:
+                asset = db.query(Asset).filter(Asset.id == audit_result.audit_session.asset_id).first()
+                log_hardening_preview(
+                    db=db,
+                    user_id=current_user.id,
+                    asset_id=asset.id if asset else None,
+                    asset_name=asset.asset_name if asset else None,
+                    audit_session_id=audit_result.audit_session.id,
+                    device_type="cisco",
+                    check_number=preview.get("check_number", ""),
+                    check_title=preview.get("check_title", ""),
+                    status="success"
+                )
+        except Exception as log_err:
+            pass  # Never let logging break the operation
+
         return preview
 
     except CheckAlreadyPassingError as e:
+        # Log failed preview
+        try:
+            audit_result = db.query(AuditResult).filter(AuditResult.id == request.audit_result_id).first()
+            if audit_result and audit_result.audit_session:
+                asset = db.query(Asset).filter(Asset.id == audit_result.audit_session.asset_id).first()
+                log_hardening_preview(
+                    db=db,
+                    user_id=current_user.id,
+                    asset_id=asset.id if asset else None,
+                    asset_name=asset.asset_name if asset else None,
+                    audit_session_id=audit_result.audit_session.id,
+                    device_type="cisco",
+                    check_number=audit_result.check_number,
+                    check_title=audit_result.check_title,
+                    status="failed",
+                    error=str(e)
+                )
+        except Exception as log_err:
+            pass
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -578,6 +617,28 @@ def execute_hardening(
             parameters=request.parameters,
             skip_backup=request.skip_backup
         )
+
+        # Log execute operation
+        try:
+            from app.models import HardeningAction
+            action = db.query(HardeningAction).filter(HardeningAction.id == request.action_id).first()
+            if action and action.audit_session:
+                asset = db.query(Asset).filter(Asset.id == action.asset_id).first()
+                log_hardening_execute(
+                    db=db,
+                    user_id=current_user.id,
+                    asset_id=action.asset_id,
+                    asset_name=asset.asset_name if asset else None,
+                    audit_session_id=action.audit_session_id,
+                    device_type="cisco",
+                    check_number=action.check_number,
+                    check_title=action.check_title,
+                    verification_passed=result.get("verification_passed"),
+                    status="success" if result.get("status") == "success" else "failed",
+                    error=result.get("error_message")
+                )
+        except Exception as log_err:
+            pass
 
         return result
 
@@ -1099,6 +1160,26 @@ def auto_harden_with_defaults(
             skip_backup=request.skip_backup
         )
 
+        # Log auto-harden operation
+        try:
+            session = db.query(AuditSession).filter(AuditSession.id == request.audit_session_id).first()
+            if session:
+                asset = db.query(Asset).filter(Asset.id == session.asset_id).first()
+                log_auto_hardening(
+                    db=db,
+                    user_id=current_user.id,
+                    asset_id=session.asset_id,
+                    asset_name=asset.asset_name if asset else None,
+                    audit_session_id=request.audit_session_id,
+                    device_type="cisco",
+                    check_ids=result.get("check_ids", []),
+                    success_count=result.get("success_count", 0),
+                    failed_count=result.get("failed_count", 0),
+                    details={"auto_defaults": True}
+                )
+        except Exception as log_err:
+            pass
+
         return result
 
     except SSHAuthenticationError as e:
@@ -1194,6 +1275,26 @@ def batch_execute_selected(
             ssh_secret=request.ssh_secret,
             skip_backup=request.skip_backup
         )
+
+        # Log batch execute operation
+        try:
+            session = db.query(AuditSession).filter(AuditSession.id == request.audit_session_id).first()
+            if session:
+                asset = db.query(Asset).filter(Asset.id == session.asset_id).first()
+                log_batch_hardening(
+                    db=db,
+                    user_id=current_user.id,
+                    asset_id=session.asset_id,
+                    asset_name=asset.asset_name if asset else None,
+                    audit_session_id=request.audit_session_id,
+                    device_type="cisco",
+                    check_ids=[str(cid) for cid in request.check_ids],
+                    success_count=result.get("success_count", 0),
+                    failed_count=result.get("failed_count", 0),
+                    details={"total_checks": len(request.check_ids)}
+                )
+        except Exception as log_err:
+            pass
 
         return result
 
