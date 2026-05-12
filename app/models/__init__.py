@@ -44,7 +44,187 @@ from app.models.discovery import (
     DiscoveryScan,
     DiscoveredHost,
     DiscoveryApplication,
-    DiscoveryAuditLog
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
+)
+# Import discovery models (depend on User and Asset)
+from app.models.discovery import (
+    DiscoveryScan,
+    DiscoveredHost,
+    DiscoveryApplication,
+    DiscoveryAuditLog,
+    log_scan_started,
+    log_scan_completed,
+    log_scan_failed,
+    log_discovery_applied,
+    log_scan_cancelled,
+    log_scan_deleted,
+    log_host_applied,
+    log_bulk_application_started,
+    log_bulk_application_completed,
+    log_discovery_preview
 )
 
 # Import audit models (depend on User and Asset)
@@ -94,15 +274,7 @@ from app.models.hardening_log import (
     log_auto_hardening
 )
 
-# Import additional discovery log helpers
-from app.models.discovery import (
-    log_scan_cancelled,
-    log_scan_deleted,
-    log_host_applied,
-    log_bulk_application_started,
-    log_bulk_application_completed,
-    log_discovery_preview
-)
+
 
 # Export all
 __all__ = [
@@ -141,7 +313,7 @@ __all__ = [
     "log_scan_completed",
     "log_scan_failed",
     "log_discovery_applied",
-    "log_asset_created",
+    #"log_asset_created",
     "log_scan_cancelled",
     "log_scan_deleted",
     "log_host_applied",
