@@ -180,6 +180,10 @@ def require_quota(operation_type: str, count: int = 1):
     Dependency that consumes a license quota slot before the endpoint runs.
     Raises HTTP 403 if quota exhausted.
     
+    WARNING: This consumes quota BEFORE the operation runs.
+    If the operation fails, quota is already consumed.
+    Use consume_quota_on_success() for operations that might fail.
+    
     Args:
         operation_type: One of "asset", "discovery", "audit", "harden", "monitor"
         count: Number of operations to consume (default: 1)
@@ -239,6 +243,119 @@ def require_asset_quota():
             raise HTTPException(
                 status_code=403,
                 detail=f"Asset limit reached ({used_assets}/{max_assets}). Upgrade your plan or delete unused assets."
+            )
+    
+    return check
+
+
+def consume_quota_on_success(operation_type: str, count: int = 1):
+    """
+    Returns a function to consume quota AFTER successful operation.
+    Use this for operations that might fail (audit, hardening, discovery).
+    
+    Usage:
+        @router.post("/execute")
+        def execute_audit(request: Request, ...):
+            consume_quota = consume_quota_on_success("audit")
+            
+            try:
+                # Do the operation
+                result = perform_audit(...)
+                
+                # Only consume if successful
+                consume_quota(request)
+                
+                return result
+            except Exception as e:
+                # Quota NOT consumed on failure
+                raise
+    
+    Args:
+        operation_type: One of "asset", "discovery", "audit", "harden", "monitor"
+        count: Number of operations to consume (default: 1)
+    
+    Returns:
+        Function that consumes quota when called
+    """
+    def consume(request: Request) -> None:
+        from app.core.license_state import update_usage
+        
+        client = request.app.state.license_client
+        try:
+            result = client.consume(operation_type, count)
+            # Optimistic update of local usage counter
+            update_usage(operation_type, count)
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 400:
+                detail = e.response.json().get("detail", "Quota exhausted")
+                raise HTTPException(
+                    status_code=403,
+                    detail=detail,
+                    headers={"X-Quota-Exhausted": "true"}
+                )
+            raise HTTPException(status_code=503, detail="License server unreachable")
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"License check failed: {str(e)}")
+    
+    return consume
+
+
+def check_quota_available(operation_type: str, count: int = 1):
+    """
+    Dependency that ONLY CHECKS if quota is available, does NOT consume it.
+    Use this with consume_quota_on_success() for operations that might fail.
+    
+    Usage:
+        @router.post("/execute", dependencies=[Depends(check_quota_available("audit"))])
+        def execute_audit(request: Request, ...):
+            consume_quota = consume_quota_on_success("audit")
+            
+            try:
+                result = perform_audit(...)
+                consume_quota(request)  # Only consume on success
+                return result
+            except Exception:
+                raise  # Quota not consumed
+    
+    Args:
+        operation_type: One of "asset", "discovery", "audit", "harden", "monitor"
+        count: Number of operations to check (default: 1)
+    
+    Returns:
+        Dependency function that checks quota availability
+    """
+    def check(request: Request, current_user: User = Depends(get_current_user)) -> None:
+        from app.core.license_state import get_license_state
+        
+        state = get_license_state()
+        if not state.valid or state.limits is None:
+            return  # License middleware should have caught this
+        
+        # Map operation type to limit/usage fields
+        operation_map = {
+            "asset": ("max_assets", "used_assets"),
+            "discovery": ("max_discoveries", "used_discoveries"),
+            "audit": ("max_audits", "used_audits"),
+            "harden": ("max_hardens", "used_hardens"),
+            "monitor": ("max_monitors", "used_monitors")
+        }
+        
+        if operation_type not in operation_map:
+            return
+        
+        max_field, used_field = operation_map[operation_type]
+        max_value = state.limits.get(max_field)
+        
+        if max_value is None:
+            return  # Unlimited (Enterprise)
+        
+        used_value = state.usage.get(used_field, 0) if state.usage else 0
+        
+        if used_value + count > max_value:
+            raise HTTPException(
+                status_code=403,
+                detail=f"{operation_type.capitalize()} quota exhausted ({used_value}/{max_value}). Upgrade your plan.",
+                headers={"X-Quota-Exhausted": "true"}
             )
     
     return check
