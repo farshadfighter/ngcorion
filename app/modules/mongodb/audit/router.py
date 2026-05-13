@@ -6,20 +6,23 @@ RESTful endpoints for CIS MongoDB security auditing.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status , Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+
+from app.core.dependencies import( 
+    get_current_user,
+    require_permission,
+    require_quota ,
+    check_quota_available,
+    consume_quota_on_success)
+
 from app.models import User, log_action
 
 from .service import MongoDBSHAuditService
 
-
-# ============================================================ #
-#  Request / Response schemas                                   #
-# ============================================================ #
 
 class MongoDBSHAuditRequest(BaseModel):
     """Request body for executing a MongoDB CIS audit."""
@@ -96,19 +99,17 @@ class MongoDBSHAuditResultResponse(BaseModel):
         from_attributes = True
 
 
-# ============================================================ #
-#  Router                                                       #
-# ============================================================ #
 
 router = APIRouter(prefix="/api/audit/mongodb", tags=["Audit - MongoDB CIS"])
 
 
-@router.post("/execute", response_model=MongoDBSHAuditSessionResponse)
+@router.post("/execute", response_model=MongoDBSHAuditSessionResponse, dependencies=[Depends(check_quota_available("audit"))] )
 def execute_mongodb_audit(
-    request: MongoDBSHAuditRequest,
+    audit_request: MongoDBSHAuditRequest,
+    request: Request,
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("audit"))
+    #_quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute a CIS compliance audit on a MongoDB instance.
@@ -116,22 +117,22 @@ def execute_mongodb_audit(
     """
     from app.models import Asset
 
-    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
     asset_name = asset.asset_name if asset else None
     target_ip = asset.ip_address if asset else None
 
     try:
         session = MongoDBSHAuditService.execute_mongodb_audit(
             db=db,
-            asset_id=request.asset_id,
+            asset_id=audit_request.asset_id,
             user_id=current_user.id,
-            ssh_username=request.ssh_username,
-            ssh_password=request.ssh_password,
-            mongo_username=request.mongo_username,
-            mongo_password=request.mongo_password,
-            mongo_port=request.mongo_port,
-            profile=request.profile,
-            job_name=request.job_name,
+            ssh_username=audit_audit_request.ssh_username,
+            ssh_password=audit_request.ssh_password,
+            mongo_username=audit_request.mongo_username,
+            mongo_password=audit_request.mongo_password,
+            mongo_port=audit_request.mongo_port,
+            profile=audit_request.profile,
+            job_name=audit_request.job_name,
         )
 
         summary = MongoDBSHAuditService.get_session_summary(db, session.id)
@@ -148,8 +149,9 @@ def execute_mongodb_audit(
             module="mongodb_cis",
             target_id=session.id,
             result="success",
-            detail=f"Asset ID: {request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
+            detail=f"Asset ID: {audit_request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
+        consume_quota(request)
 
         return summary
 
@@ -159,9 +161,9 @@ def execute_mongodb_audit(
             user_id=current_user.id,
             action="execute_audit",
             module="mongodb_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(exc)}"
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(exc)}"
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
@@ -171,9 +173,9 @@ def execute_mongodb_audit(
             user_id=current_user.id,
             action="execute_audit",
             module="mongodb_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(exc)}"
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(exc)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -259,6 +261,7 @@ def get_asset_audit_history(
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db),
 ):
+    consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
