@@ -5,12 +5,13 @@ RESTful endpoints for Cisco CIS security auditing.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import get_current_user, require_permission, check_quota_available, consume_quota_on_success
 #from app.models import User, log_audit_executed, log_audit_session_deleted
 from app.models import User, log_action
 from .service import AuditService
@@ -81,12 +82,12 @@ class CiscoAuditResultResponse(BaseModel):
 router = APIRouter(prefix="/api/audit/cisco", tags=["Audit - Cisco CIS"])
 
 
-@router.post("/execute", response_model=CiscoAuditSessionResponse)
+@router.post("/execute", response_model=CiscoAuditSessionResponse, dependencies=[Depends(check_quota_available("audit"))])
 def execute_cisco_audit(
-    request: CiscoAuditRequest,
+    audit_request: CiscoAuditRequest,
+    request: Request,
     current_user: User = Depends(require_permission("AUDIT", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("audit"))
+    db: Session = Depends(get_db)
 ):
     """
     Execute CIS compliance audit on a Cisco device.
@@ -103,22 +104,25 @@ def execute_cisco_audit(
 
     **Note:** SSH credentials are used only for the audit session and never stored.
     """
+    # Get quota consumption function (only consume on success)
+    consume_quota = consume_quota_on_success("audit")
+    
     # Get asset info for logging
     from app.models import Asset
-    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
     asset_name = asset.asset_name if asset else None
     target_ip = asset.ip_address if asset else None
 
     try:
         session = AuditService.execute_cisco_audit(
             db=db,
-            asset_id=request.asset_id,
+            asset_id=audit_request.asset_id,
             user_id=current_user.id,
-            ssh_username=request.ssh_username,
-            ssh_password=request.ssh_password,
-            ssh_secret=request.ssh_secret,
-            profile=request.profile,
-            job_name=request.job_name
+            ssh_username=audit_request.ssh_username,
+            ssh_password=audit_request.ssh_password,
+            ssh_secret=audit_request.ssh_secret,
+            profile=audit_request.profile,
+            job_name=audit_request.job_name
         )
 
         # Get formatted summary
@@ -142,12 +146,14 @@ def execute_cisco_audit(
             user_id=current_user.id,
             action="audit_executed",
             module="cisco_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             ip_address=session.target_ip,
             result="success",
-            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
+            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
-    
+        
+        # Only consume quota after successful audit
+        consume_quota(request)
 
         return summary
 
