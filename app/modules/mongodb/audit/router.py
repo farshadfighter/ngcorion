@@ -115,6 +115,7 @@ def execute_mongodb_audit(
     Execute a CIS compliance audit on a MongoDB instance.
     ...
     """
+    consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
