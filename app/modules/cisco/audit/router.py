@@ -164,11 +164,12 @@ def execute_cisco_audit(
             user_id=current_user.id,
             action="audit_executed",
             module="cisco_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             ip_address=target_ip,
             result="failed",
-            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, Profile: {audit_request.profile}, Error: {str(e)}"
         )
+        # Quota NOT consumed on failure
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
