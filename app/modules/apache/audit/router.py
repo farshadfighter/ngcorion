@@ -135,7 +135,6 @@ router = APIRouter(prefix="/api/audit/apache", tags=["Audit - Apache CIS"])
 def execute_apache_audit(
     audit_request: ApacheAuditRequest,
     request: Request,
-    # request: ApacheAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db),
     # _quota_check: None = Depends(require_quota("audit"))

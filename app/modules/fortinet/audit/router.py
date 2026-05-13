@@ -2,15 +2,19 @@
 FortiGate Audit API Router
 
 RESTful endpoints for FortiGate CIS security auditing.
-"""###
+"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import (get_current_user,
+    require_permission,
+    require_quota ,
+    consume_quota_on_success ,
+    check_quota_available)
 from app.models import User, log_action
 from .service import FortinetAuditService
 
@@ -116,32 +120,34 @@ class VDOMDiscoveryResponse(BaseModel):
 router = APIRouter(prefix="/api/audit/fortinet", tags=["Audit - FortiGate"])
 
 
-@router.post("/execute", response_model=FortinetAuditSessionResponse)
+@router.post("/execute", response_model=FortinetAuditSessionResponse,dependencies=[Depends(check_quota_available("audit"))])
 def execute_fortinet_audit(
-    request: FortinetAuditRequest,
+    request: Request,
+    audit_request: FortinetAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("audit"))
+    #_quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute CIS compliance audit on a FortiGate device.
     """
     # Get asset info for logging
+    consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
-    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
     asset_name = asset.asset_name if asset else None
     target_ip = asset.ip_address if asset else None
 
     try:
         session = FortinetAuditService.execute_fortinet_audit(
             db=db,
-            asset_id=request.asset_id,
+            asset_id=audit_request.asset_id,
             user_id=current_user.id,
-            ssh_username=request.ssh_username,
-            ssh_password=request.ssh_password,
-            vdom=request.vdom,
-            profile=request.profile,
-            job_name=request.job_name
+            ssh_username=audit_request.ssh_username,
+            ssh_password=audit_request.ssh_password,
+            vdom=audit_request.vdom,
+            profile=audit_request.profile,
+            job_name=audit_request.job_name
         )
 
         # Get formatted summary
@@ -159,10 +165,11 @@ def execute_fortinet_audit(
             user_id=current_user.id,
             action="audit_executed",
             module="fortinet_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="success",
-            detail=f"Session: {session.id}, Asset: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
+            detail=f"Session: {session.id}, Asset: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
+        consume_quota(request)
 
         return summary
 
@@ -173,9 +180,9 @@ def execute_fortinet_audit(
             user_id=current_user.id,
             action="audit_executed",
             module="fortinet_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -188,9 +195,9 @@ def execute_fortinet_audit(
             user_id=current_user.id,
             action="audit_executed",
             module="fortinet_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}, Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -200,29 +207,31 @@ def execute_fortinet_audit(
 
 @router.post("/vdoms/discover", response_model=VDOMDiscoveryResponse)
 def discover_vdoms(
-    request: VDOMDiscoveryRequest,
+    request: Request,
+    audit_request: VDOMDiscoveryRequest,
     current_user: User = Depends(require_permission("AUDIT", "read")),
     db: Session = Depends(get_db)
 ):
     """
     Discover VDOMs on a FortiGate device.
     """
+    consume_quota = consume_quota_on_success("discovery")
     # Get asset info
     from app.models import Asset
-    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
 
     if not asset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Asset ID {request.asset_id} not found"
+            detail=f"Asset ID {audit_request.asset_id} not found"
         )
 
     try:
         vdoms = FortinetAuditService.discover_vdoms(
             db=db,
-            asset_id=request.asset_id,
-            ssh_username=request.ssh_username,
-            ssh_password=request.ssh_password
+            asset_id=audit_request.asset_id,
+            ssh_username=audit_request.ssh_username,
+            ssh_password=audit_request.ssh_password
         )
 
         return {
