@@ -4,30 +4,46 @@ Audit API Router
 RESTful endpoints for Cisco CIS security auditing.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, check_quota_available, consume_quota_on_success
-#from app.models import User, log_audit_executed, log_audit_session_deleted
+from app.core.dependencies import (
+    get_current_user,
+    require_permission,
+    check_quota_available,
+    consume_quota_on_success,
+)
+
+# from app.models import User, log_audit_executed, log_audit_session_deleted
 from app.models import User, log_action
 from .service import AuditService
 
 
 # ========================= SCHEMAS =========================
 
+
 class CiscoAuditRequest(BaseModel):
     """Request to execute Cisco CIS audit."""
 
     asset_id: int = Field(..., description="Target asset ID from Asset List")
-    ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
-    ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
-    ssh_secret: Optional[str] = Field(None, description="Enable secret (optional, not stored)")
-    profile: str = Field("L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL")
-    job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
+    ssh_username: str = Field(
+        ..., min_length=1, description="SSH username (not stored)"
+    )
+    ssh_password: str = Field(
+        ..., min_length=1, description="SSH password (not stored)"
+    )
+    ssh_secret: Optional[str] = Field(
+        None, description="Enable secret (optional, not stored)"
+    )
+    profile: str = Field(
+        "L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL"
+    )
+    job_name: Optional[str] = Field(
+        None, max_length=200, description="User-friendly job name"
+    )
 
     class Config:
         json_schema_extra = {
@@ -36,7 +52,7 @@ class CiscoAuditRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_secret": "********",
-                "profile": "L1"
+                "profile": "L1",
             }
         }
 
@@ -82,12 +98,16 @@ class CiscoAuditResultResponse(BaseModel):
 router = APIRouter(prefix="/api/audit/cisco", tags=["Audit - Cisco CIS"])
 
 
-@router.post("/execute", response_model=CiscoAuditSessionResponse, dependencies=[Depends(check_quota_available("audit"))])
+@router.post(
+    "/execute",
+    response_model=CiscoAuditSessionResponse,
+    dependencies=[Depends(check_quota_available("audit"))],
+)
 def execute_cisco_audit(
     audit_request: CiscoAuditRequest,
     request: Request,
     current_user: User = Depends(require_permission("AUDIT", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Execute CIS compliance audit on a Cisco device.
@@ -106,9 +126,10 @@ def execute_cisco_audit(
     """
     # Get quota consumption function (only consume on success)
     consume_quota = consume_quota_on_success("audit")
-    
+
     # Get asset info for logging
     from app.models import Asset
+
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
     asset_name = asset.asset_name if asset else None
     target_ip = asset.ip_address if asset else None
@@ -122,7 +143,7 @@ def execute_cisco_audit(
             ssh_password=audit_request.ssh_password,
             ssh_secret=audit_request.ssh_secret,
             profile=audit_request.profile,
-            job_name=audit_request.job_name
+            job_name=audit_request.job_name,
         )
 
         # Get formatted summary
@@ -131,15 +152,15 @@ def execute_cisco_audit(
         if not summary:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to retrieve audit summary"
+                detail="Failed to retrieve audit summary",
             )
 
         # Log successful audit
-        #log_audit_executed(
+        # log_audit_executed(
         #    db, current_user.id, session.id, request.asset_id, asset_name,
         #    session.target_ip, "cisco_cis", request.profile,
         #    session.compliance_pct, "success"
-        #)
+        # )
 
         log_action(
             db=db,
@@ -149,9 +170,9 @@ def execute_cisco_audit(
             target_id=audit_request.asset_id,
             ip_address=session.target_ip,
             result="success",
-            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
+            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%",
         )
-        
+
         # Only consume quota after successful audit
         consume_quota(request)
 
@@ -167,13 +188,10 @@ def execute_cisco_audit(
             target_id=audit_request.asset_id,
             ip_address=target_ip,
             result="failed",
-            detail=f"Asset: {asset_name}, Profile: {audit_request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, Profile: {audit_request.profile}, Error: {str(e)}",
         )
         # Quota NOT consumed on failure
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         # Log failed audit
         log_action(
@@ -184,12 +202,12 @@ def execute_cisco_audit(
             target_id=audit_request.asset_id,
             ip_address=target_ip,
             result="failed",
-            detail=f"Asset: {asset_name}, Profile: {audit_request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, Profile: {audit_request.profile}, Error: {str(e)}",
         )
         # Quota NOT consumed on failure
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Audit execution failed: {str(e)}"
+            detail=f"Audit execution failed: {str(e)}",
         )
 
 
@@ -198,7 +216,7 @@ def list_audit_sessions(
     limit: int = 50,
     offset: int = 0,
     current_user: User = Depends(require_permission("AUDIT", "read")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     List all audit sessions with pagination.
@@ -229,7 +247,7 @@ def list_audit_sessions(
 @router.get("/sessions/count")
 def get_audit_sessions_count(
     current_user: User = Depends(require_permission("AUDIT", "read")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get total count of audit sessions.
@@ -246,7 +264,7 @@ def get_audit_sessions_count(
 def get_audit_session(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get audit session details and compliance summary.
@@ -258,17 +276,19 @@ def get_audit_session(
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
+            detail=f"Audit session {session_id} not found",
         )
 
     return summary
 
 
-@router.get("/sessions/{session_id}/results", response_model=List[CiscoAuditResultResponse])
+@router.get(
+    "/sessions/{session_id}/results", response_model=List[CiscoAuditResultResponse]
+)
 def get_audit_results(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get detailed results for all checks in an audit session.
@@ -286,7 +306,7 @@ def get_audit_results(
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
+            detail=f"Audit session {session_id} not found",
         )
 
     results = AuditService.get_audit_results(db, session_id)
@@ -300,7 +320,7 @@ def get_audit_results(
             "level": r.level or "L1",
             "status": r.status.value,
             "evidence_snippet": r.evidence_snippet,
-            "checked_at": r.checked_at.isoformat() if r.checked_at else None
+            "checked_at": r.checked_at.isoformat() if r.checked_at else None,
         }
         for r in results
     ]
@@ -311,7 +331,7 @@ def get_asset_audit_history(
     asset_id: int,
     limit: int = 10,
     current_user: User = Depends(require_permission("AUDIT", "read")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get audit history for a specific asset.
@@ -326,8 +346,7 @@ def get_asset_audit_history(
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Asset {asset_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Asset {asset_id} not found"
         )
 
     sessions = AuditService.get_asset_audit_history(db, asset_id, limit)
@@ -346,7 +365,7 @@ def get_asset_audit_history(
 def delete_audit_session(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Delete an audit session and all its results.
@@ -360,12 +379,17 @@ def delete_audit_session(
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
+            detail=f"Audit session {session_id} not found",
         )
 
     # Get session info for logging before deletion
     from app.models import Asset
-    asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
+
+    asset = (
+        db.query(Asset).filter(Asset.id == session.asset_id).first()
+        if session.asset_id
+        else None
+    )
     asset_name = asset.asset_name if asset else None
 
     try:
@@ -380,28 +404,33 @@ def delete_audit_session(
             target_id=session_id,
             ip_address=session.target_ip,
             result="success",
-            detail=f"Asset ID: {session.asset_id}, Asset Name: {asset_name}"
+            detail=f"Asset ID: {session.asset_id}, Asset Name: {asset_name}",
         )
 
         return {"message": f"Audit session {session_id} deleted successfully"}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete audit session: {str(e)}"
+            detail=f"Failed to delete audit session: {str(e)}",
         )
 
 
 # ========================= CIS BENCHMARK TABLE ENDPOINTS =========================
 
+
 class CISBenchmarkTableSection(BaseModel):
     """Single row in the CIS Benchmark table."""
+
     section: str = Field(..., description="CIS section number (e.g., '1.1.1')")
     recommendation: str = Field(..., description="CIS recommendation text")
-    set_correctly: Optional[bool] = Field(None, description="True=Yes, False=No, None=Not evaluated")
+    set_correctly: Optional[bool] = Field(
+        None, description="True=Yes, False=No, None=Not evaluated"
+    )
 
 
 class CISBenchmarkTableSummary(BaseModel):
     """Summary statistics for CIS Benchmark compliance."""
+
     total_checks: int
     passed: int
     failed: int
@@ -410,6 +439,7 @@ class CISBenchmarkTableSummary(BaseModel):
 
 class CISBenchmarkTableResponse(BaseModel):
     """Full CIS Benchmark table response matching PDF format."""
+
     session_id: int
     asset_id: Optional[int]
     asset_name: Optional[str]
@@ -423,11 +453,13 @@ class CISBenchmarkTableResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("/sessions/{session_id}/cis-table", response_model=CISBenchmarkTableResponse)
+@router.get(
+    "/sessions/{session_id}/cis-table", response_model=CISBenchmarkTableResponse
+)
 def get_cis_benchmark_table(
     session_id: int,
     current_user: User = Depends(require_permission("AUDIT", "read")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get CIS Benchmark table format results for an audit session.
@@ -442,7 +474,7 @@ def get_cis_benchmark_table(
     if not table:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
+            detail=f"Audit session {session_id} not found",
         )
 
     return table
@@ -450,11 +482,20 @@ def get_cis_benchmark_table(
 
 class CISBenchmarkAuditRequest(BaseModel):
     """Request to execute CIS Benchmark audit."""
+
     asset_id: int = Field(..., description="Target asset ID from Asset List")
-    ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
-    ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
-    ssh_secret: Optional[str] = Field(None, description="Enable secret (optional, not stored)")
-    job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
+    ssh_username: str = Field(
+        ..., min_length=1, description="SSH username (not stored)"
+    )
+    ssh_password: str = Field(
+        ..., min_length=1, description="SSH password (not stored)"
+    )
+    ssh_secret: Optional[str] = Field(
+        None, description="Enable secret (optional, not stored)"
+    )
+    job_name: Optional[str] = Field(
+        None, max_length=200, description="User-friendly job name"
+    )
 
     class Config:
         json_schema_extra = {
@@ -462,7 +503,7 @@ class CISBenchmarkAuditRequest(BaseModel):
                 "asset_id": 25,
                 "ssh_username": "admin",
                 "ssh_password": "********",
-                "ssh_secret": "********"
+                "ssh_secret": "********",
             }
         }
 
@@ -471,7 +512,7 @@ class CISBenchmarkAuditRequest(BaseModel):
 def execute_cis_benchmark_audit(
     request: CISBenchmarkAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Execute CIS Benchmark audit on a Cisco device.
@@ -495,6 +536,7 @@ def execute_cis_benchmark_audit(
     """
     # Get asset info for logging
     from app.models import Asset
+
     asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
     asset_name = asset.asset_name if asset else None
     target_ip = asset.ip_address if asset else None
@@ -507,7 +549,7 @@ def execute_cis_benchmark_audit(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
-            job_name=request.job_name
+            job_name=request.job_name,
         )
 
         # Return results in CIS Benchmark table format
@@ -516,7 +558,7 @@ def execute_cis_benchmark_audit(
         if not table:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to generate CIS Benchmark table"
+                detail="Failed to generate CIS Benchmark table",
             )
 
         # Log successful audit
@@ -528,7 +570,7 @@ def execute_cis_benchmark_audit(
             target_id=request.asset_id,
             ip_address=session.target_ip,
             result="success",
-            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
+            detail=f"Asset: {asset_name}, Session: {session.id}, Profile: {request.profile}, Compliance: {session.compliance_pct}%",
         )
 
         return table
@@ -543,12 +585,9 @@ def execute_cis_benchmark_audit(
             target_id=request.asset_id,
             ip_address=target_ip,
             result="failed",
-            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}",
         )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         # Log failed audit
         log_action(
@@ -559,9 +598,9 @@ def execute_cis_benchmark_audit(
             target_id=request.asset_id,
             ip_address=target_ip,
             result="failed",
-            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}"
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}",
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"CIS Benchmark audit failed: {str(e)}"
+            detail=f"CIS Benchmark audit failed: {str(e)}",
         )

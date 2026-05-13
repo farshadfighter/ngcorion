@@ -5,13 +5,18 @@ RESTful endpoints for Apache HTTP Server CIS security auditing.
 Supports Apache 2.4.x on Ubuntu/Debian and RHEL/Rocky/CentOS.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import (
+    get_current_user, 
+    require_permission,
+    require_quota,
+    check_quota_available,
+    consume_quota_on_success)
 from app.models import User, log_action
 from .service import ApacheAuditService, ApacheAuditNotInstalledError
 
@@ -110,12 +115,14 @@ class ApacheAuditStatisticsResponse(BaseModel):
 router = APIRouter(prefix="/api/audit/apache", tags=["Audit - Apache CIS"])
 
 
-@router.post("/execute", response_model=ApacheAuditSessionResponse)
+@router.post("/execute", response_model=ApacheAuditSessionResponse, dependencies=[Depends(check_quota_available("audit"))])
 def execute_apache_audit(
-    request: ApacheAuditRequest,
+    audit_request: ApacheAuditRequest,
+    request: Request,
+    #request: ApacheAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("audit"))
+    #_quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute CIS compliance audit on Apache HTTP Server.
@@ -140,21 +147,22 @@ def execute_apache_audit(
     **Note:** SSH credentials are used only for the audit session and never stored.
     The sudo password defaults to the SSH password if not provided.
     """
+    consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
-    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
     asset_name = asset.asset_name if asset else None
     target_ip = asset.ip_address if asset else None
 
     try:
         session = ApacheAuditService.execute_apache_audit(
             db=db,
-            asset_id=request.asset_id,
+            asset_id=audit_request.asset_id,
             user_id=current_user.id,
-            ssh_username=request.ssh_username,
-            ssh_password=request.ssh_password,
-            sudo_password=request.sudo_password,
-            profile=request.profile,
-            job_name=request.job_name
+            ssh_username=audit_request.ssh_username,
+            ssh_password=audit_request.ssh_password,
+            sudo_password=audit_request.sudo_password,
+            profile=audit_request.profile,
+            job_name=audit_request.job_name
         )
 
         summary = ApacheAuditService.get_session_summary(db, session.id)
@@ -172,8 +180,9 @@ def execute_apache_audit(
             module="apache_cis",
             target_id=session.id,
             result="success",
-            detail=f"Asset ID: {request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {request.profile}, Compliance: {session.compliance_pct}%"
+            detail=f"Asset ID: {audit_request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
+        consume_quota(request)
 
         return summary
 
@@ -183,9 +192,9 @@ def execute_apache_audit(
             user_id=current_user.id,
             action="execute_audit",
             module="apache_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -197,9 +206,9 @@ def execute_apache_audit(
             user_id=current_user.id,
             action="execute_audit",
             module="apache_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -211,9 +220,9 @@ def execute_apache_audit(
             user_id=current_user.id,
             action="execute_audit",
             module="apache_cis",
-            target_id=request.asset_id,
+            target_id=audit_request.asset_id,
             result="failed",
-            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {request.profile}. Error: {str(e)}"
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(e)}"
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
