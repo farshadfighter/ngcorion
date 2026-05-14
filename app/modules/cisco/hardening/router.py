@@ -11,13 +11,12 @@ Endpoints:
 - DELETE /api/hardening/actions/{id} - Delete action record
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import get_current_user, require_permission, require_quota , check_quota_available,consume_quota_on_success
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
@@ -483,9 +482,11 @@ router = APIRouter(prefix="/api/hardening/cisco", tags=["Hardening - Cisco"])
 
 @router.post("/preview", response_model=HardeningPreviewResponse)
 def preview_hardening(
-    request: HardeningPreviewRequest,
+    http_request: Request,
+    request: HardeningExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Preview hardening commands for a failed check.
@@ -506,6 +507,7 @@ def preview_hardening(
     - 404: Audit result not found
     - 500: Internal error
     """
+    consume_quota = consume_quota_on_success("hardening")  
     try:
         preview = HardeningService.preview_hardening(
             db=db,
@@ -533,6 +535,8 @@ def preview_hardening(
         except Exception as log_err:
             pass  # Never let logging break the operation
 
+        await consume_quota(http_request)
+             
         return preview
 
     except CheckAlreadyPassingError as e:

@@ -85,7 +85,7 @@ async def start_scan(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    #_quota_check: None = Depends(require_quota("discovery"))
+    
 ):
     """
     Start a new network scan
