@@ -5,13 +5,19 @@ app/modules/discovery/router.py
 API endpoints for network scanning and asset discovery
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks , Request
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_quota
+from app.core.dependencies import (
+    get_current_user, 
+    require_quota ,
+    check_quota_available ,
+    consume_quota_on_success
+    )
+
 from app.models.user import User, UserRole
 from app.models.asset import Asset
 from app.models.discovery import DiscoveredHost as DiscoveredHostModel
@@ -45,10 +51,6 @@ router = APIRouter(
 )
 
 
-# ====================================
-# Permission Check Helper
-# ====================================
-
 def check_discovery_permission(current_user: User, action: str, db: Session):
     """
     Check if current user can perform action on asset_auto_discovery module
@@ -76,17 +78,14 @@ def check_discovery_permission(current_user: User, action: str, db: Session):
     return True
 
 
-# ====================================
-# Scan Endpoints
-# ====================================
-
-@router.post("/scan", response_model=ScanResponse)
+@router.post("/scan", response_model=ScanResponse, dependencies=[Depends(check_quota_available("discovery"))])
 async def start_scan(
-    request: ScanRequest,
+    
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _quota_check: None = Depends(require_quota("discovery"))
+    #_quota_check: None = Depends(require_quota("discovery"))
 ):
     """
     Start a new network scan
@@ -113,6 +112,7 @@ async def start_scan(
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
+    consume_quota = consume_quota_on_success("discovery")
     check_discovery_permission(current_user, "write", db)
 
     try:
@@ -121,6 +121,8 @@ async def start_scan(
 
         # Run the actual nmap scan in the background so the HTTP response returns immediately
         background_tasks.add_task(DiscoveryService.execute_scan, db, scan_id)
+
+        consume_quota(request)
 
         return scan_response
     except Exception as e:

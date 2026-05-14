@@ -127,7 +127,7 @@ def execute_mongodb_audit(
             db=db,
             asset_id=audit_request.asset_id,
             user_id=current_user.id,
-            ssh_username=audit_audit_request.ssh_username,
+            ssh_username=audit_request.ssh_username,
             ssh_password=audit_request.ssh_password,
             mongo_username=audit_request.mongo_username,
             mongo_password=audit_request.mongo_password,
