@@ -245,7 +245,7 @@ async def batch_execute_selected(
             checks=checks,
             mssql_port=request.mssql_port,
         )
-        await check_quota_available(http_request)
+        await consume_quota(http_request)
 
         return result
 
@@ -287,7 +287,7 @@ async def execute_single_fix(
             mssql_port=request.mssql_port,
         )
 
-        await check_quota_available(http_request)
+        await consume_quota(http_request)
 
         return result
 

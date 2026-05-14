@@ -7,18 +7,21 @@ Credentials connect directly to Windows Server via WinRM (not SSH).
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status , Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import(
+    get_current_user,
+    require_permission,
+    check_quota_available,
+    consume_quota_on_success
+    )
+    
 from app.models import User
 
 from .service import WindowsHardeningService
-
-
-# ========================= REQUEST SCHEMAS =========================
 
 
 class AutoHardenRequest(BaseModel):
@@ -118,7 +121,6 @@ class SingleFixRequest(BaseModel):
         }
 
 
-# ========================= ROUTER =========================
 
 router = APIRouter(
     prefix="/api/hardening/windows",
@@ -172,10 +174,13 @@ def get_auto_harden_preview(
 
 
 @router.post("/auto-harden-defaults")
-def auto_harden_with_defaults(
+async def auto_harden_with_defaults(
+    http_request: Request,
     request: AutoHardenRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
+
 ):
     """
     Execute automatic hardening using CIS default values.
@@ -188,8 +193,9 @@ def auto_harden_with_defaults(
 
     **Permissions:** Requires HARDENING write permission
     """
+    consume_quota = consume_quota_on_success("harden")
     try:
-        return WindowsHardeningService.auto_harden_with_defaults(
+        result =  WindowsHardeningService.auto_harden_with_defaults(
             db=db,
             session_id=request.session_id,
             asset_id=request.asset_id,
@@ -198,6 +204,11 @@ def auto_harden_with_defaults(
             winrm_port=request.winrm_port,
             transport=request.transport,
         )
+
+        await consume_quota(http_request)
+
+        return result
+        
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
@@ -208,23 +219,25 @@ def auto_harden_with_defaults(
 
 
 @router.post("/batch-execute")
-def batch_execute_selected(
+async def batch_execute_selected(
+    http_request: Request,
     request: BatchExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("harden"))
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening for selected checks with user-provided parameters.
 
     **Permissions:** Requires HARDENING write permission
     """
+    consume_quota = consume_quota_on_success("harden")
     try:
         checks = [
             {"check_id": c.check_id, "parameters": c.parameters}
             for c in request.checks
         ]
-        return WindowsHardeningService.batch_execute_selected(
+        result = WindowsHardeningService.batch_execute_selected(
             db=db,
             session_id=request.session_id,
             asset_id=request.asset_id,
@@ -234,6 +247,11 @@ def batch_execute_selected(
             winrm_port=request.winrm_port,
             transport=request.transport,
         )
+
+        await consume_quota(http_request)    
+
+        return result
+
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
@@ -244,18 +262,22 @@ def batch_execute_selected(
 
 
 @router.post("/execute-single")
-def execute_single_fix(
+async def execute_single_fix(
+    http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
+
 ):
     """
     Execute hardening for a single CIS check.
 
     **Permissions:** Requires HARDENING write permission
     """
+    consume_quota = consume_quota_on_success("harden")
     try:
-        return WindowsHardeningService.execute_single_fix(
+        result = WindowsHardeningService.execute_single_fix(
             db=db,
             asset_id=request.asset_id,
             windows_username=request.windows_username,
@@ -265,6 +287,11 @@ def execute_single_fix(
             winrm_port=request.winrm_port,
             transport=request.transport,
         )
+
+        await consume_quota(http_request)
+
+        return result
+
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
