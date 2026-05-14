@@ -4,18 +4,22 @@ Linux Hardening API Router
 RESTful endpoints for Linux CIS hardening operations.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import (
+    get_current_user,
+    require_permission,
+    check_quota_available,
+    consume_quota_on_success
+    )
+
 from app.models import User
 from .service import LinuxHardeningService
 
-
-# ========================= SCHEMAS =========================
 
 class SSHCredentials(BaseModel):
     """SSH credentials for hardening operations."""
@@ -95,7 +99,6 @@ class SingleFixRequest(BaseModel):
         }
 
 
-# ========================= ROUTER =========================
 
 router = APIRouter(prefix="/api/hardening/linux", tags=["Hardening - Linux"])
 
@@ -154,10 +157,12 @@ def get_auto_harden_preview(
 
 
 @router.post("/auto-harden-defaults")
-def auto_harden_with_defaults(
+async def auto_harden_with_defaults(
+    http_request: Request,
     request: AutoHardenRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute automatic hardening using CIS default values only.
@@ -177,6 +182,7 @@ def auto_harden_with_defaults(
 
     **Note:** SSH credentials are used only during execution and never stored.
     """
+    consume_quota = consume_quota_on_success("harden")
     try:
         result = LinuxHardeningService.auto_harden_with_defaults(
             db=db,
@@ -186,7 +192,11 @@ def auto_harden_with_defaults(
             ssh_password=request.ssh_password,
             sudo_password=request.sudo_password
         )
+
+        await consume_quota(http_request)
+
         return result
+        
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
@@ -195,13 +205,13 @@ def auto_harden_with_defaults(
             detail=f"Auto-hardening failed: {str(e)}"
         )
 
-
 @router.post("/batch-execute")
-def batch_execute_selected(
+async def batch_execute_selected(
+    http_request: Request,    
     request: BatchExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("harden"))
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening for selected checks with user-provided parameters.
@@ -213,6 +223,9 @@ def batch_execute_selected(
 
     **Permissions:** Requires HARDENING write permission
     """
+
+    consume_quota = consume_quota_on_success("harden")
+
     try:
         checks = [
             {"check_id": c.check_id, "parameters": c.parameters}
@@ -228,6 +241,9 @@ def batch_execute_selected(
             sudo_password=request.sudo_password,
             checks=checks
         )
+
+        await consume_quota(http_request)
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -239,16 +255,21 @@ def batch_execute_selected(
 
 
 @router.post("/execute-single")
-def execute_single_fix(
+async def execute_single_fix(
+    http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening for a single check.
 
     **Permissions:** Requires HARDENING write permission
     """
+
+    consume_quota = consume_quota_on_success("harden")
+
     try:
         result = LinuxHardeningService.execute_single_fix(
             db=db,
@@ -259,6 +280,7 @@ def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters
         )
+        await consume_quota(http_request)
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
