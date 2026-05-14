@@ -7,19 +7,19 @@ Credentials connect directly to SQL Server via T-SQL (not SSH).
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import(get_current_user,
+    require_permission,
+    consume_quota_on_success,
+    check_quota_available
+    )
 from app.models import User
 
 from .service import MSSQLHardeningService
-
-
-# ========================= REQUEST SCHEMAS =========================
-
 
 class AutoHardenRequest(BaseModel):
     """Request for automatic hardening using CIS default values."""
@@ -108,7 +108,6 @@ class SingleFixRequest(BaseModel):
         }
 
 
-# ========================= ROUTER =========================
 
 router = APIRouter(
     prefix="/api/hardening/mssql",
@@ -169,10 +168,12 @@ def get_auto_harden_preview(
 
 
 @router.post("/auto-harden-defaults")
-def auto_harden_with_defaults(
+async def auto_harden_with_defaults(
+    http_request: Request,
     request: AutoHardenRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute automatic hardening using CIS default values.
@@ -185,8 +186,11 @@ def auto_harden_with_defaults(
 
     **Permissions:** Requires HARDENING write permission
     """
+
+    consume_quota = consume_quota_on_success("harden")
+
     try:
-        return MSSQLHardeningService.auto_harden_with_defaults(
+        result = MSSQLHardeningService.auto_harden_with_defaults(
             db=db,
             session_id=request.session_id,
             asset_id=request.asset_id,
@@ -194,6 +198,11 @@ def auto_harden_with_defaults(
             mssql_password=request.mssql_password,
             mssql_port=request.mssql_port,
         )
+        
+        await consume_quota(http_request)
+
+        return result
+
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
@@ -204,11 +213,12 @@ def auto_harden_with_defaults(
 
 
 @router.post("/batch-execute")
-def batch_execute_selected(
+async def batch_execute_selected(
+    http_request: Request,
     request: BatchExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("harden"))
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening for selected checks with user-provided parameters.
@@ -218,12 +228,15 @@ def batch_execute_selected(
 
     **Permissions:** Requires HARDENING write permission
     """
+
+    consume_quota = consume_quota_on_success("harden")
+
     try:
         checks = [
             {"check_id": c.check_id, "parameters": c.parameters}
             for c in request.checks
         ]
-        return MSSQLHardeningService.batch_execute_selected(
+        result = MSSQLHardeningService.batch_execute_selected(
             db=db,
             session_id=request.session_id,
             asset_id=request.asset_id,
@@ -232,6 +245,10 @@ def batch_execute_selected(
             checks=checks,
             mssql_port=request.mssql_port,
         )
+        await check_quota_available(http_request)
+
+        return result
+
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
@@ -242,10 +259,12 @@ def batch_execute_selected(
 
 
 @router.post("/execute-single")
-def execute_single_fix(
+async def execute_single_fix(
+    http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening for a single CIS check.
@@ -254,8 +273,11 @@ def execute_single_fix(
 
     **Permissions:** Requires HARDENING write permission
     """
+    
+    consume_quota = consume_quota_on_success("harden")
+
     try:
-        return MSSQLHardeningService.execute_single_fix(
+        result =  MSSQLHardeningService.execute_single_fix(
             db=db,
             asset_id=request.asset_id,
             mssql_username=request.mssql_username,
@@ -264,6 +286,11 @@ def execute_single_fix(
             parameters=request.parameters,
             mssql_port=request.mssql_port,
         )
+
+        await check_quota_available(http_request)
+
+        return result
+
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except Exception as exc:
