@@ -236,7 +236,7 @@ async def batch_execute_selected(
 
 @router.post("/execute-single")
 async def execute_single_fix(
-    http_request: Request:
+    http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
@@ -257,7 +257,7 @@ async def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters,
         )
-        
+
         await consume_quota(http_request)
 
         return result
