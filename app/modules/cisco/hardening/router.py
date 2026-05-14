@@ -16,7 +16,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota , check_quota_available,consume_quota_on_success
+from app.core.dependencies import (
+    get_current_user,
+    require_permission,
+    require_quota,
+    check_quota_available,
+    consume_quota_on_success,
+    consume_quota
+    ) 
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
@@ -475,7 +482,6 @@ class BatchExecuteResponse(BaseModel):
         }
 
 
-# ========================= ROUTER =========================
 
 router = APIRouter(prefix="/api/hardening/cisco", tags=["Hardening - Cisco"])
 
@@ -536,7 +542,7 @@ def preview_hardening(
             pass  # Never let logging break the operation
 
         await consume_quota(http_request)
-             
+
         return preview
 
     except CheckAlreadyPassingError as e:
