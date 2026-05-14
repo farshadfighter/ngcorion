@@ -15,7 +15,6 @@ from app.core.dependencies import (
     require_permission,
     check_quota_available,
     consume_quota_on_success,
-    consume_quota
     )
 from app.models import User
 from .service import ApacheHardeningService

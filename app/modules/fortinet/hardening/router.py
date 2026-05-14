@@ -13,13 +13,18 @@ Endpoints:
 - GET /api/hardening/fortinet/actions - List FortiGate hardening history
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import (
+    get_current_user,
+    require_permission,
+    check_quota_available,
+    consume_quota_on_success,
+    )
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
@@ -34,9 +39,6 @@ from .service import (
     FortiGateCheckAlreadyPassingError,
     FortiGateMissingParametersError
 )
-
-
-# ========================= SCHEMAS =========================
 
 class FortiGatePreviewRequest(BaseModel):
     """Request to preview FortiGate hardening commands."""
@@ -344,8 +346,6 @@ class FortiGateActionResponse(BaseModel):
         from_attributes = True
 
 
-# ========================= ROUTER =========================
-
 router = APIRouter(prefix="/api/hardening/fortinet", tags=["Hardening - FortiGate"])
 
 
@@ -353,7 +353,7 @@ router = APIRouter(prefix="/api/hardening/fortinet", tags=["Hardening - FortiGat
 def preview_fortinet_hardening(
     request: FortiGatePreviewRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Preview hardening commands for a failed FortiGate check.
@@ -367,6 +367,7 @@ def preview_fortinet_hardening(
 
     **Permissions:** Requires HARDENING write permission
     """
+    
     try:
         preview = FortiGateHardeningService.preview_hardening(
             db=db,
@@ -394,11 +395,12 @@ def preview_fortinet_hardening(
 
 
 @router.post("/execute", response_model=FortiGateExecuteResponse)
-def execute_fortinet_hardening(
+async def execute_fortinet_hardening(
+    http_request: Request,
     request: FortiGateExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("harden"))
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening commands on FortiGate device.
@@ -421,6 +423,7 @@ def execute_fortinet_hardening(
     - 504: Connection timeout
     - 500: Other execution errors
     """
+    consume_quota = consume_quota_on_success("harden")
     try:
         result = FortiGateHardeningService.execute_hardening(
             db=db,
@@ -432,6 +435,7 @@ def execute_fortinet_hardening(
             vdom=request.vdom,
             skip_backup=request.skip_backup
         )
+        await consume_quota(http_request)
         return result
 
     except FortiGateCheckAlreadyPassingError as e:
@@ -573,10 +577,12 @@ def get_fortinet_auto_harden_preview(
 
 
 @router.post("/auto-harden-defaults", response_model=FortiGateAutoHardenResponse)
-def auto_harden_fortinet_with_defaults(
+async def auto_harden_fortinet_with_defaults(
+    http_request: Request,
     request: FortiGateAutoHardenRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Automatically harden FortiGate using default values only.
@@ -604,7 +610,7 @@ def auto_harden_fortinet_with_defaults(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You must confirm by setting confirmed=true after reviewing defaults"
         )
-
+    consume_quota = consume_quota_on_success("harden")
     try:
         result = FortiGateHardeningService.auto_harden_with_defaults(
             db=db,
@@ -615,6 +621,8 @@ def auto_harden_fortinet_with_defaults(
             vdom=request.vdom,
             skip_backup=request.skip_backup
         )
+        await consume_quota(http_request)
+
         return result
 
     except SSHAuthenticationError as e:
@@ -660,10 +668,12 @@ def auto_harden_fortinet_with_defaults(
 
 
 @router.post("/batch-execute", response_model=FortiGateBatchExecuteResponse)
-def batch_execute_fortinet_selected(
+async def batch_execute_fortinet_selected(
+    http_request: Request,
     request: FortiGateBatchExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden"))
 ):
     """
     Execute hardening for selected FortiGate checks with user parameters.
@@ -693,7 +703,7 @@ def batch_execute_fortinet_selected(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No checks selected for execution"
         )
-
+    consume_quota = consume_quota_on_success("harden")
     try:
         result = FortiGateHardeningService.batch_execute_selected(
             db=db,
@@ -706,6 +716,8 @@ def batch_execute_fortinet_selected(
             vdom=request.vdom,
             skip_backup=request.skip_backup
         )
+        await consume_quota(http_request)
+        
         return result
 
     except SSHAuthenticationError as e:
