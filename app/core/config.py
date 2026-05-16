@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     """
 
     # Project Info
-    PROJECT_NAME: str = "Ngicorn"
+    PROJECT_NAME: str = "NGcorion"
     VERSION: str = "1.0.8"
     DESCRIPTION: str = "Network Monitoring and Asset Management System"
 
