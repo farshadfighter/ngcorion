@@ -252,7 +252,7 @@ async def batch_execute_selected(
 
 
 @router.post("/execute-single")
-def execute_single_fix(
+async def execute_single_fix(
     http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
@@ -274,8 +274,10 @@ def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters
         )
-        return result
         await consume_quota(http_request)
+        
+        return result
+        
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
