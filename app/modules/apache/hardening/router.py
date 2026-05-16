@@ -235,9 +235,12 @@ async def batch_execute_selected(
             sudo_password=request.sudo_password,
             checks=checks
         )
-        return result
 
         await consume_quota(http_request)
+        
+        return result
+
+        
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

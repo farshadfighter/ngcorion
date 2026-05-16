@@ -541,9 +541,9 @@ def preview_hardening(
         except Exception as log_err:
             pass  # Never let logging break the operation
 
-        await consume_quota(http_request)
+            await consume_quota(http_request)
 
-        return preview
+            return preview
 
     except CheckAlreadyPassingError as e:
         # Log failed preview
