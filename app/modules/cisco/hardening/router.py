@@ -538,9 +538,9 @@ def preview_hardening(
                     check_title=preview.get("check_title", ""),
                     status="success"
                 )
-            await consume_quota(http_request)
+                await consume_quota(http_request)
 
-            return preview
+                return preview
         except Exception as log_err:
             pass  # Never let logging break the operation
 
