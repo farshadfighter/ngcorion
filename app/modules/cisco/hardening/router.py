@@ -487,7 +487,7 @@ router = APIRouter(prefix="/api/hardening/cisco", tags=["Hardening - Cisco"])
 
 
 @router.post("/preview", response_model=HardeningPreviewResponse)
-def preview_hardening(
+async def preview_hardening(
     http_request: Request,
     request: HardeningExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
@@ -538,9 +538,9 @@ def preview_hardening(
                     check_title=preview.get("check_title", ""),
                     status="success"
                 )
-                await consume_quota(http_request)
+            await consume_quota(http_request)
 
-                return preview
+            return preview
         except Exception as log_err:
             pass  # Never let logging break the operation
 
