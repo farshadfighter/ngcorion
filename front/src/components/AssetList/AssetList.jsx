@@ -341,7 +341,6 @@ export const AssetList = ({ onNavigateToLicence }) => {
 
             <AddAssetModal isOpen={showAddModal} onClose={() => {
                 setShowAddModal(false);
-                dispatch(getLicenseStatusThunk());
             }} />
 
             <LicenseLimitModal isOpen={showLicenseModal} onClose={() => setShowLicenseModal(false)}

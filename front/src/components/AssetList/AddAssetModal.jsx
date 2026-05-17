@@ -197,7 +197,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
 
             if (result.type === "assets/create/fulfilled") {
                 await dispatch(fetchAssets());
-                dispatch(getLicenseStatusThunk());
+                await dispatch(getLicenseStatusThunk());
                 onClose();
             } else {
                 let errorMessage = "Failed to create asset";
