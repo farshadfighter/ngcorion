@@ -13,6 +13,7 @@ import { License } from "./License/License";
 import  LicenseBadge  from './License/LicenseBadge';
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { usePermission } from "../hooks/usePermission";
+import { LogsPage } from "./Logs/LogsPage";
 
 
 
@@ -164,12 +165,7 @@ export const Dashboard = () => {
 
             case "logs":
                 return canReadLogs
-                    ? (
-                        <div className="placeholder-content">
-                            <h3>Logs</h3>
-                            <p>Coming soon...</p>
-                        </div>
-                    )
+                    ? <LogsPage />
                     : <AccessDenied menuName="Logs" />;
 
             case "licence":

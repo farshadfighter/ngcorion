@@ -1,0 +1,85 @@
+/* ============================================
+   LOGS PAGE - STYLES
+   ============================================ */
+
+/* ── Toolbar ── */
+.logs-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.logs-btn-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.logs-btn-clear:hover {
+    background: #2d4a7c;
+}
+
+.logs-btn-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: white;
+    color: #374151;
+    border: 1px solid #d0d5dd;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.logs-btn-sort:hover {
+    background: #f9fafb;
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+/* ── Status Badge ── */
+.logs-status-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+}
+
+.logs-status-badge.success {
+    background: #22c55e;
+}
+
+.logs-status-badge.partial {
+    background: #f59e0b;
+}
+
+.logs-status-badge.failed {
+    background: #ef4444;
+}
+
+/* ── Timestamp cell ── */
+.logs-timestamp {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* ── Wrapper ── */
+.logs-wrapper {
+    padding: 0 40px 40px;
+}

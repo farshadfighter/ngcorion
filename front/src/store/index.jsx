@@ -7,6 +7,8 @@ import discoveryReducer from "./discoverySlice";
 import auditReducer from "./auditSlice";
 import hardeningReducer from "./hardeningSlice";
 import licenseReducer from "./licenseSlice";
+import logsReducer from "./logsSlice";
+
 
 export const store = configureStore({
     reducer: {
@@ -18,5 +20,6 @@ export const store = configureStore({
         audit: auditReducer,
         hardening: hardeningReducer,
         license: licenseReducer,
+        logs: logsReducer,
     },
 });
