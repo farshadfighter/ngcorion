@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAllLogs, clearLogs } from "../../store/logsSlice";
+import { fetchAllLogs, clearLogs } from "../../store/logsSlice.js";
 import "../../assets/Logspage.css";
 export const LogsPage = () => {
     const dispatch = useDispatch();

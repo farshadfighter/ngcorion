@@ -116,6 +116,7 @@
     color: rgba(255, 255, 255, 0.8);
     font-size: 14px;
     white-space: nowrap;
+    font-weight: bolder;
 }
 
 .sidebar.collapsed .nav-item {

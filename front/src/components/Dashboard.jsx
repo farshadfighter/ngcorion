@@ -233,14 +233,14 @@ export const Dashboard = () => {
                         title="Dashboard"
                     >
                         <img src="/icons/dashboard.svg" alt="" className="nav-icon-img" />
-                        {!isSidebarCollapsed && <span>dashboard</span>}
+                        {!isSidebarCollapsed && <span>Dashboard</span>}
                     </div>
 
                     {/* ASSET MANAGEMENT Section */}
                     {!isSidebarCollapsed && (canReadAssetReq || canReadAssetList || canReadAutoDisc) && (
                         <div className="nav-section">
                             <img src="/icons/asset-management.svg" alt="" className="section-icon" />
-                            <span className="nav-section-title">ASSET MANAGEMENT</span>
+                            <span className="nav-section-title">Asset Management</span>
                         </div>
                     )}
 
@@ -298,7 +298,7 @@ export const Dashboard = () => {
 
                     {/* Hardening */}
                     {canReadHardening && (
-                        <div
+                        <div style={{paddingTop:"24px"}}
                             className={`nav-item ${activeMenu === "hardening" ? "active" : ""}`}
                             onClick={() => setActiveMenu("hardening")}
                             title="Hardening"
@@ -344,7 +344,7 @@ export const Dashboard = () => {
                         onClick={() => setActiveMenu("licence")}
                         title="Licence"
                     >
-                        <img src="/icons/administration.svg" alt="" className="nav-icon-img" />
+                        <img src="/icons/license.svg" alt="" className="nav-icon-img" />
                         {!isSidebarCollapsed && <span>Licence</span>}
                     </div>
                 </nav>

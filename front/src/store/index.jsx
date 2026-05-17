@@ -7,7 +7,7 @@ import discoveryReducer from "./discoverySlice";
 import auditReducer from "./auditSlice";
 import hardeningReducer from "./hardeningSlice";
 import licenseReducer from "./licenseSlice";
-import logsReducer from "./logsSlice";
+import logsReducer from "./logsSlice.js";
 
 
 export const store = configureStore({

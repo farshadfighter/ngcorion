@@ -684,7 +684,7 @@ export const {
     stopScanning,
     addDiscoveryCreatedAsset,
     removeDiscoveryCreatedAsset,
-    clearDiscoveryCreatedAssets,ششششش
+    clearDiscoveryCreatedAssets,
 } = discoverySlice.actions;
 
 export default discoverySlice.reducer;
