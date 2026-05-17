@@ -48,7 +48,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
                 {/* باکس 1: Fix All Section */}
                 <div className="hardening-option-box" onClick={handleFixAllClick}>
                     <div className="hardening-option-icon" >
-                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "160px", height: "160px" }} />
+                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "120px", height: "120px" }} />
                     </div>
                     <div className="hardening-option-title">Fix all section</div>
                     <div className="hardening-option-description">
