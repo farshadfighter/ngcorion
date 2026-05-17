@@ -122,10 +122,10 @@ async def start_scan(
         # Run the actual nmap scan in the background so the HTTP response returns immediately
         background_tasks.add_task(DiscoveryService.execute_scan, db, scan_id)
 
-        consume_quota(http_request)
+        await consume_quota(http_request)
 
         return scan_response
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
