@@ -27,15 +27,14 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             width: "42px",
                             height: "42px",
                             borderRadius: "8px",
-                            backgroundColor: license.bgColor,
-                            border: `1px solid ${license.borderColor}`,
+                            backgroundColor: "white",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: "20px",
                         }}
                     >
-                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "24px", height: "24px", filter: "invert(1)" }} />                    </div>
+                        <img src="/icons/haedenIcon.svg" alt="" style={{  width: "24px", height: "24px", }} />
+                    </div>
 
                     <div>
                         <div style={{ fontSize: "18px", fontWeight: "600", color: "#111827" }}>
@@ -43,7 +42,17 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                         </div>
                         {apiData?.expires_at && (
                             <div style={{ fontSize: "12px", color: expired ? "#EF4444" : "#6B7280", marginTop: "2px" }}>
-                                {expired ? "⛔ Expired" : `✅ Expires: ${formatExpiryDate(apiData.expires_at)}`}
+                                {expired ? (
+                                    <>
+                                        <i className="fa-solid fa-ban" style={{ marginRight: "4px" }} />
+                                        Expired
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa-solid fa-circle-check" style={{ marginRight: "4px", color: "#10B981" }} />
+                                        Expires: {formatExpiryDate(apiData.expires_at)}
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
@@ -62,7 +71,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             color: "#6B7280",
                         }}
                     >
-                        <span>🕐</span>
+                        <i className="fa-regular fa-clock" />
                         <span>licence time: {license.duration}</span>
                     </div>
 
@@ -76,9 +85,13 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                                 padding: "6px 14px",
                                 fontSize: "12px",
                                 fontWeight: "600",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
                             }}
                         >
-                            ✓ Active
+                            <i className="fa-solid fa-circle-check" />
+                            Active
                         </div>
                     )}
                 </div>
@@ -106,7 +119,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                                 color: "#374151",
                             }}
                         >
-                            <span>{MODULE_ICONS[module]}</span>
+                            <i className={`fa-solid ${MODULE_ICONS[module]}`} style={{ color: license.borderColor }} />
                             <span>{MODULE_LABELS[module]}</span>
                             <span style={{ fontWeight: "700", color: license.borderColor, marginLeft: "4px" }}>
                                 {usedValue !== null ? `${usedValue}/` : ""}{limit}

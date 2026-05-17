@@ -134,8 +134,7 @@ export const License = () => {
                             <div style={{
                                 width: "56px", height: "56px",
                                 borderRadius: "14px",
-                                backgroundColor: license.bgColor,
-                                border: `2px solid ${license.borderColor}`,
+                                backgroundColor: "white",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 fontSize: "26px",
                             }}>

@@ -74,10 +74,10 @@ export const MODULE_LABELS = {
 };
 
 export const MODULE_ICONS = {
-    hardening: '🛡️',
-    auditing: '📋',
-    assetList: '📦',
-    autoDiscovery: '🔍',
+    hardening: 'fa-shield-halved',
+    auditing: 'fa-clipboard-list',
+    assetList: 'fa-box-archive',
+    autoDiscovery: 'fa-magnifying-glass',
 };
 
 export const API_FIELD_MAP = {
