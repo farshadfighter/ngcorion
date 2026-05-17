@@ -81,7 +81,7 @@ def check_discovery_permission(current_user: User, action: str, db: Session):
 @router.post("/scan", response_model=ScanResponse, dependencies=[Depends(check_quota_available("discovery"))])
 async def start_scan(
     http_request : Request,
-    request: ScanResponse,
+    request: ScanRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
