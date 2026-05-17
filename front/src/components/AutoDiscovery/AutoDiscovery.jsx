@@ -267,11 +267,21 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
               <circle cx="12" cy="12" r="10" />
               <path d="M15 9l-6 6M9 9l6 6" />
             </svg>
-            <span>
-              {typeof error === "object" && error !== null
-                ? error.msg || JSON.stringify(error)
-                : String(error)}
-            </span>
+              <span>
+  {(() => {
+      if (!error) return null;
+      if (typeof error === "string") return error;
+      if (Array.isArray(error)) {
+          return error
+              .map((e) => (typeof e === "object" ? e.msg || JSON.stringify(e) : String(e)))
+              .join(" | ");
+      }
+      if (typeof error === "object") {
+          return error.msg || error.detail || JSON.stringify(error);
+      }
+      return String(error);
+  })()}
+</span>
             <button
               className="alert-close"
               onClick={() => dispatch(clearError())}
