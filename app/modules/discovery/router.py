@@ -79,7 +79,7 @@ def check_discovery_permission(current_user: User, action: str, db: Session):
 
 
 @router.post("/scan", response_model=ScanResponse, dependencies=[Depends(check_quota_available("discovery"))])
-async def start_scan(
+def start_scan(
     http_request : Request,
     request: ScanRequest,
     background_tasks: BackgroundTasks,
@@ -122,7 +122,7 @@ async def start_scan(
         # Run the actual nmap scan in the background so the HTTP response returns immediately
         background_tasks.add_task(DiscoveryService.execute_scan, db, scan_id)
 
-        await consume_quota(http_request)
+        consume_quota(http_request)
 
         return scan_response
 
