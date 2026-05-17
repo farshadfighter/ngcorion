@@ -435,7 +435,7 @@ async def execute_fortinet_hardening(
             vdom=request.vdom,
             skip_backup=request.skip_backup
         )
-        await consume_quota(http_request)
+        consume_quota(http_request)
         return result
 
     except FortiGateCheckAlreadyPassingError as e:
@@ -621,7 +621,7 @@ async def auto_harden_fortinet_with_defaults(
             vdom=request.vdom,
             skip_backup=request.skip_backup
         )
-        await consume_quota(http_request)
+        consume_quota(http_request)
 
         return result
 
@@ -716,7 +716,7 @@ async def batch_execute_fortinet_selected(
             vdom=request.vdom,
             skip_backup=request.skip_backup
         )
-        await consume_quota(http_request)
+        consume_quota(http_request)
         
         return result
 
