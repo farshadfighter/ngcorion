@@ -2,18 +2,25 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAllLogs, clearLogs } from "../../store/logsSlice.js";
 import "../../assets/LogsPage.css";
+
 export const LogsPage = () => {
     const dispatch = useDispatch();
-    const { items, isLoading } = useSelector((state) => state.logs);
+    const { items, isLoading, isCleared } = useSelector((state) => state.logs);
 
     const [sortDirection, setSortDirection] = useState("desc");
 
     useEffect(() => {
-        dispatch(fetchAllLogs());
-    }, [dispatch]);
+        if (!isCleared) {
+            dispatch(fetchAllLogs());
+        }
+    }, [dispatch, isCleared]);
 
     const handleClearHistory = () => {
         dispatch(clearLogs());
+    };
+
+    const handleRefresh = () => {
+        dispatch(fetchAllLogs());
     };
 
     const handleSort = () => {
@@ -65,6 +72,13 @@ export const LogsPage = () => {
                     Clear History
                 </button>
 
+                {isCleared && (
+                    <button className="logs-btn-refresh" onClick={handleRefresh}>
+                        <i className="fa-solid fa-rotate-right"></i>
+                        Refresh
+                    </button>
+                )}
+
                 <button className="logs-btn-sort" onClick={handleSort}>
                     <i
                         className={
@@ -107,9 +121,9 @@ export const LogsPage = () => {
                                 <td>{item.asset_name || "-"}</td>
                                 <td>{item.section}</td>
                                 <td>
-                                        <span className={`logs-status-badge ${getStatusClass(item.status)}`}>
-                                            {getStatusLabel(item.status)}
-                                        </span>
+                                    <span className={`logs-status-badge ${getStatusClass(item.status)}`}>
+                                        {getStatusLabel(item.status)}
+                                    </span>
                                 </td>
                                 <td className="logs-timestamp">
                                     {formatTimestamp(item.timestamp)}

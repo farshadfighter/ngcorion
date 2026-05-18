@@ -2,8 +2,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 const API_BASE = "/api";
 
-// ── Thunks ──────────────────────────────────────────────────────────────────
-
 export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getState, rejectWithValue }) => {
     const token = getState().auth.token;
     const headers = { Authorization: `Bearer ${token}` };
@@ -101,18 +99,18 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
     }
 });
 
-// ── Slice ────────────────────────────────────────────────────────────────────
-
 const logsSlice = createSlice({
     name: "logs",
     initialState: {
         items: [],
         isLoading: false,
         error: null,
+        isCleared: false,
     },
     reducers: {
         clearLogs(state) {
             state.items = [];
+            state.isCleared = true;
         },
     },
     extraReducers: (builder) => {
@@ -124,6 +122,7 @@ const logsSlice = createSlice({
             .addCase(fetchAllLogs.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.items = action.payload;
+                state.isCleared = false;
             })
             .addCase(fetchAllLogs.rejected, (state, action) => {
                 state.isLoading = false;
