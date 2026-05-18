@@ -21,15 +21,12 @@ export const loginUser = createAsyncThunk(
             if (err.response?.status === 403) {
                 return rejectWithValue("Account is inactive");
             }
-<<<<<<< HEAD
             if (err.response?.status === 429) {
                 return rejectWithValue(
                     err.response?.data?.detail ||
                     "Too many failed login attempts. Please wait before trying again."
                 );
             }
-=======
->>>>>>> cc77a55 (login fix)
             if (err.response?.data?.detail) {
                 const detail = err.response.data.detail;
                 if (typeof detail === "string") return rejectWithValue(detail);
