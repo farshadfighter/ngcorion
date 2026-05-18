@@ -191,8 +191,7 @@ export const License = () => {
                                     border: "1px solid rgba(255,255,255,0.15)",
                                 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
-                                        <span style={{ fontSize: "18px" }}>{MODULE_ICONS[module]}</span>
-                                        <span style={{ fontSize: "13px", opacity: 0.85, fontWeight: "500" }}>
+                                        <i className={`fa-solid ${MODULE_ICONS[module]}`} style={{ fontSize: "16px", opacity: 0.85 }} />                                        <span style={{ fontSize: "13px", opacity: 0.85, fontWeight: "500" }}>
                                             {MODULE_LABELS[module]}
                                         </span>
                                     </div>

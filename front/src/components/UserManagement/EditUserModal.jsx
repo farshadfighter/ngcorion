@@ -134,15 +134,15 @@ const styles = {
         boxSizing: "border-box",
     },
     inputFocus: {
-        borderColor: "#1e3a5f",
+        border: "1.5px solid #1e3a5f",
         background: "#ffffff",
         boxShadow: "0 0 0 3px rgba(30,58,95,0.1)",
     },
-    inputError: {
-        borderColor: "#ef4444",
-        background: "#fff8f8",
-        boxShadow: "0 0 0 3px rgba(239,68,68,0.08)",
-    },
+        inputError: {
+            border: "1.5px solid #ef4444",
+            background: "#fff8f8",
+            boxShadow: "0 0 0 3px rgba(239,68,68,0.08)",
+        },
     select: {
         padding: "10px 14px",
         borderRadius: "10px",

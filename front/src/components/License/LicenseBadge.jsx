@@ -47,7 +47,7 @@ const LicenseBadge = ({ module }) => {
                 borderRight: "1px solid #e2e8f0",
             }}>
                 <img
-                    src="/icons/headlicense.svg"
+                    src="/icons/license.svg"
                     alt="license"
                     style={{ width: "16px", height: "16px" }}
                 />
