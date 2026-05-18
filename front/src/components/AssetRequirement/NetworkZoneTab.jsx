@@ -229,9 +229,7 @@ export const NetworkZoneTab = () => {
                         <thead>
                         <tr>
                             <th>Number</th>
-                            <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
-                                ID{renderSortIcon("id")}
-                            </th>
+
                             <th onClick={() => handleSort("zone_name")} style={{ cursor: "pointer" }}>
                                 Zone Name{renderSortIcon("zone_name")}
                             </th>
@@ -250,7 +248,6 @@ export const NetworkZoneTab = () => {
                             sortedData.map((item, index) => (
                                 <tr key={item.id}>
                                     <td>{index + 1}</td>
-                                    <td>{item.id}</td>
                                     <td>{item.zone_name}</td>
                                     <td>
                                         {item.description ? (

@@ -36,7 +36,6 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                                title="Select all" style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                     </th>
                     <th>Number</th>
-                    <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>ID {renderSortIcon("id")}</th>
                     <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>Asset Name {renderSortIcon("asset_name")}</th>
                     <th onClick={() => handleSort("location_name")} style={{ cursor: "pointer" }}>Location {renderSortIcon("location_name")}</th>
                     <th onClick={() => handleSort("owner_name")} style={{ cursor: "pointer" }}>Owner {renderSortIcon("owner_name")}</th>
@@ -53,7 +52,6 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                                    style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                         </td>
                         <td>{index + 1}</td>
-                        <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.location_name || "-"}</td>
                         <td>{asset.owner_name || "-"}</td>

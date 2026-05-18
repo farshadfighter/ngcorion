@@ -102,9 +102,6 @@ export const OSCatalogTab = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
-                        <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
-                            ID{renderSortIcon("id")}
-                        </th>
                         <th onClick={() => handleSort("os_name")} style={{ cursor: "pointer" }}>
                             OS Name{renderSortIcon("os_name")}
                         </th>
@@ -121,7 +118,6 @@ export const OSCatalogTab = () => {
                     ) : (
                         sortedData.map((item) => (
                             <tr key={item.id}>
-                                <td>{item.id}</td>
                                 <td>{item.os_name}</td>
                                 <td className="actions">
                                     <button

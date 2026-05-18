@@ -106,9 +106,6 @@ export const VendorsTab = () => {
                     <tr>
                         <th>Number</th>
 
-                        <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
-                            ID{renderSortIcon("id")}
-                        </th>
                         <th onClick={() => handleSort("vendor_name")} style={{ cursor: "pointer" }}>
                             Vendor Name{renderSortIcon("vendor_name")}
                         </th>
@@ -129,7 +126,6 @@ export const VendorsTab = () => {
                         sortedData.map((item,index) => (
                             <tr key={item.id}>
                                 <td>{index + 1}</td>
-                                <td>{item.id}</td>
                                 <td>{item.vendor_name}</td>
                                 <td>{item.vendor_type || "-"}</td>
                                 <td className="actions">

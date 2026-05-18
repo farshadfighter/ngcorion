@@ -68,7 +68,6 @@ export const UserManagement = () => {
                     <table className="users-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Username</th>
                             <th>Email</th>
                             <th>Role</th>
@@ -79,7 +78,6 @@ export const UserManagement = () => {
                         <tbody>
                         {users.map((user) => (
                             <tr key={user.id}>
-                                <td>{user.id}</td>
                                 <td>{user.username}</td>
                                 <td>{user.email}</td>
                                 <td>

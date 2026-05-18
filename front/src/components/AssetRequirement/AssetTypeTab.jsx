@@ -106,9 +106,7 @@ export const AssetTypeTab = () => {
                     <thead>
                     <tr>
                         <th>Number</th>
-                        <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
-                            ID{renderSortIcon("id")}
-                        </th>
+
                         <th onClick={() => handleSort("type_name")} style={{ cursor: "pointer" }}>
                             Type Name{renderSortIcon("type_name")}
                         </th>
@@ -132,7 +130,6 @@ export const AssetTypeTab = () => {
                         sortedData.map((item, index) => (
                             <tr key={item.id}>
                                 <td>{index + 1}</td>
-                                <td>{item.id}</td>
                                 <td>{item.type_name}</td>
                                 <td>{item.category || "-"}</td>
                                 <td>{item.description || "-"}</td>

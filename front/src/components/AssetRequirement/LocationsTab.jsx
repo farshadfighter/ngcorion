@@ -105,9 +105,7 @@ export const LocationsTab = () => {
                     <thead>
                     <tr>
                         <th>Number</th>
-                        <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
-                            ID{renderSortIcon("id")}
-                        </th>
+
                         <th onClick={() => handleSort("site_name")} style={{ cursor: "pointer" }}>
                             Site Name{renderSortIcon("site_name")}
                         </th>
@@ -143,7 +141,6 @@ export const LocationsTab = () => {
                         sortedData.map((item, index) => (
                             <tr key={item.id}>
                                 <td>{index + 1}</td>
-                                <td>{item.id}</td>
                                 <td>{item.site_name}</td>
                                 <td>{item.rack_name || "-"}</td>
                                 <td>{item.room || "-"}</td>

@@ -37,7 +37,6 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds,
                                title="Select all" style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                     </th>
                     <th>Number</th>
-                    <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>ID {renderSortIcon("id")}</th>
                     <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>Asset Name {renderSortIcon("asset_name")}</th>
                     <th onClick={() => handleSort("hostname")} style={{ cursor: "pointer" }}>Hostname {renderSortIcon("hostname")}</th>
                     <th onClick={() => handleSort("asset_type_name")} style={{ cursor: "pointer" }}>Type {renderSortIcon("asset_type_name")}</th>
@@ -56,7 +55,6 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds,
                                    style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                         </td>
                         <td>{index + 1}</td>
-                        <td>{asset.id}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.hostname || "-"}</td>
                         <td>{asset.asset_type_name || "-"}</td>

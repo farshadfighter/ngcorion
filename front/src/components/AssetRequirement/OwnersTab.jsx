@@ -119,9 +119,7 @@ export const OwnersTab = () => {
                     <thead>
                     <tr>
                         <th>Number</th>
-                        <th onClick={() => handleSort("id")} style={{ cursor: "pointer" }}>
-                            ID{renderSortIcon("id")}
-                        </th>
+
                         <th onClick={() => handleSort("full_name")} style={{ cursor: "pointer" }}>
                             Full Name{renderSortIcon("full_name")}
                         </th>
@@ -151,7 +149,6 @@ export const OwnersTab = () => {
                         sortedData.map((item,index) => (
                             <tr key={item.id}>
                                 <td>{index + 1}</td>
-                                <td>{item.id}</td>
                                 <td>{item.full_name}</td>
                                 <td>{item.department || "-"}</td>
                                 <td>{item.role || "-"}</td>

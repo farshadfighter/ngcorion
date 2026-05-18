@@ -23,6 +23,8 @@ export const Login = () => {
         e.preventDefault();
         if (username.trim() && password.trim()) {
             dispatch(loginUser({ username, password }));
+            console.log("Login result:", result);
+
         }
     };
 
