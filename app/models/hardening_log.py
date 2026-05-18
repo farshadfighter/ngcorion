@@ -10,7 +10,11 @@ This provides user-level summary logging for compliance and monitoring.
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class HardeningLog(Base):
@@ -141,10 +145,10 @@ class HardeningLog(Base):
     )
 
     timestamp = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=_utcnow,
         index=True,
-        comment="When the action occurred"
+        comment="When the action occurred (UTC, timezone-aware)"
     )
 
     # Relationships

@@ -37,6 +37,23 @@ class AuditModuleLogResponse(BaseModel):
 router = APIRouter(prefix="/api/audit-logs", tags=["Audit Module Logs"])
 
 
+# Modules considered "audit" activity for the unified feed. Login events are
+# emitted with module="auth" and are intentionally included so failed logins
+# show up in the unified audit-log view.
+_AUDIT_FEED_MODULES = {
+    "auth",
+    "user_management",
+    "cisco_cis",
+    "cisco_audit",
+    "linux_cis",
+    "fortinet_cis",
+    "apache_cis",
+    "mongodb_cis",
+    "mssql_cis",
+    "windows_cis",
+}
+
+
 @router.get("/", response_model=List[AuditModuleLogResponse])
 def get_audit_module_logs(
     limit: int = Query(50, ge=1, le=500),
@@ -50,10 +67,12 @@ def get_audit_module_logs(
 ):
     """
     Get audit module logs with filters.
+
+    Aggregates AuditLog rows across all audit-producing modules (not just Cisco).
+    Use `audit_type` to filter to a single module.
     """
     query = db.query(AuditLog)
 
-    # Filtering based on the new AuditLog columns
     if action:
         query = query.filter(AuditLog.action == action)
     if asset_id:
@@ -84,8 +103,8 @@ def get_audit_module_logs(
             audit_type=log.module,
             profile=None,
             details={"info": log.detail} if hasattr(log, "detail") else None,
-            status=log.result, # status is now 'result' (success/failed)
-            error_message=log.detail if log.result == "failed" else None,
+            status=log.result,
+            error_message=log.detail if log.result in ("failed", "failure") else None,
             timestamp=log.timestamp
         )
         result.append(log_dict)
@@ -127,7 +146,7 @@ def get_logs_for_asset(
             profile=None,
             details={"info": log.detail} if hasattr(log, "detail") else None,
             status=log.result,
-            error_message=log.detail if log.result == "failed" else None,
+            error_message=log.detail if log.result in ("failed", "failure") else None,
             timestamp=log.timestamp
         )
         result.append(log_dict)
@@ -141,21 +160,40 @@ def get_audit_module_log_stats(
     db: Session = Depends(get_db)
 ):
     """
-    Get statistics for audit module logs.
+    Aggregate statistics across all audit modules.
     """
-    # Only count logs related to cisco audit
+    base_query = db.query(AuditLog)
+
+    total = base_query.count()
+    success = base_query.filter(AuditLog.result == "success").count()
+    failed = base_query.filter(AuditLog.result.in_(["failed", "failure"])).count()
+
+    return {
+        "total": total,
+        "success_count": success,
+        "failed_count": failed,
+        "success_rate": round((success / total * 100) if total > 0 else 0, 2),
+    }
+
+
+@router.get("/stats/cisco")
+def get_cisco_audit_module_log_stats(
+    current_user: User = Depends(require_permission("AUDIT", "read")),
+    db: Session = Depends(get_db)
+):
+    """
+    Get statistics for Cisco-specific audit module logs.
+    """
     base_query = db.query(AuditLog).filter(AuditLog.module.in_(["cisco_cis", "cisco_audit"]))
-    
+
     total = base_query.count()
 
     by_action = {}
-    # Use the new action names you configured earlier
     for action in ["audit_executed", "audit_session_deleted"]:
         by_action[action] = base_query.filter(AuditLog.action == action).count()
 
-    # Use the new 'result' column for success/failed status
     success = base_query.filter(AuditLog.result == "success").count()
-    failed = base_query.filter(AuditLog.result == "failed").count()
+    failed = base_query.filter(AuditLog.result.in_(["failed", "failure"])).count()
 
     return {
         "total": total,

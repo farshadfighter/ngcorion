@@ -6,8 +6,12 @@ This table is append-only - no UPDATE or DELETE operations should exist.
 """
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.core.database import Base
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class AuditLog(Base):
@@ -73,7 +77,7 @@ class AuditLog(Base):
         String(20),
         nullable=False,
         default="success",
-        comment="Result of the action ('success' or 'failure')"
+        comment="Result of the action: 'success' or 'failed'"
     )
     
     detail = Column(
@@ -83,11 +87,11 @@ class AuditLog(Base):
     )
     
     timestamp = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
+        default=_utcnow,
         index=True,
-        comment="When the action occurred"
+        comment="When the action occurred (UTC, timezone-aware)"
     )
     
     # Relationship
@@ -123,7 +127,7 @@ def log_action(
         module: Module name (e.g., 'user_management', 'asset_list')
         target_id: ID of affected resource
         ip_address: IP address of requester
-        result: 'success' or 'failure'
+        result: 'success' or 'failed'
         detail: Additional context
     """
     log_entry = AuditLog(

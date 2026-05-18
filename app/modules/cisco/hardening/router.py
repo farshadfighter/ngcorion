@@ -36,6 +36,76 @@ from app.models import User, Asset, AuditResult, AuditSession, log_hardening_pre
 from .service import HardeningService, CheckAlreadyPassingError, MissingParametersError
 
 
+def _log_preview_outcome(
+    db: Session,
+    *,
+    audit_result_id: int,
+    user_id: int,
+    status_value: str,
+    check_number: str = "",
+    check_title: str = "",
+    error: Optional[str] = None,
+) -> None:
+    """Best-effort hardening-preview audit log. Never raises."""
+    try:
+        audit_result = db.query(AuditResult).filter(AuditResult.id == audit_result_id).first()
+        asset = None
+        session_id = None
+        if audit_result:
+            if audit_result.audit_session is not None:
+                session_id = audit_result.audit_session.id
+                asset = db.query(Asset).filter(Asset.id == audit_result.audit_session.asset_id).first()
+            check_number = check_number or audit_result.check_number or ""
+            check_title = check_title or audit_result.check_title or ""
+        log_hardening_preview(
+            db=db,
+            user_id=user_id,
+            asset_id=asset.id if asset else None,
+            asset_name=asset.asset_name if asset else None,
+            audit_session_id=session_id,
+            device_type="cisco",
+            check_number=check_number,
+            check_title=check_title,
+            status=status_value,
+            error=error,
+        )
+    except Exception:
+        pass
+
+
+def _log_execute_outcome(
+    db: Session,
+    *,
+    action_id: int,
+    user_id: int,
+    status_value: str,
+    verification_passed: Optional[bool] = None,
+    error: Optional[str] = None,
+) -> None:
+    """Best-effort hardening-execute audit log. Never raises."""
+    try:
+        from app.models import HardeningAction
+        action = db.query(HardeningAction).filter(HardeningAction.id == action_id).first()
+        if not action:
+            return
+        asset = db.query(Asset).filter(Asset.id == action.asset_id).first() if action.asset_id else None
+        log_hardening_execute(
+            db=db,
+            user_id=user_id,
+            asset_id=action.asset_id,
+            asset_name=asset.asset_name if asset else None,
+            audit_session_id=action.audit_session_id,
+            device_type="cisco",
+            check_number=action.check_number or "",
+            check_title=action.check_title or "",
+            verification_passed=verification_passed,
+            status=status_value,
+            error=error,
+        )
+    except Exception:
+        pass
+
+
 # ========================= SCHEMAS =========================
 
 # --- Existing hardening schemas ---
@@ -512,7 +582,7 @@ async def preview_hardening(
     - 404: Audit result not found
     - 500: Internal error
     """
-    consume_quota = consume_quota_on_success("hardening")  
+    consume_quota = consume_quota_on_success("hardening")
     try:
         preview = HardeningService.preview_hardening(
             db=db,
@@ -521,60 +591,49 @@ async def preview_hardening(
             parameters=request.parameters
         )
 
-        # Log preview operation
-        try:
-            audit_result = db.query(AuditResult).filter(AuditResult.id == request.audit_result_id).first()
-            if audit_result and audit_result.audit_session:
-                asset = db.query(Asset).filter(Asset.id == audit_result.audit_session.asset_id).first()
-                log_hardening_preview(
-                    db=db,
-                    user_id=current_user.id,
-                    asset_id=asset.id if asset else None,
-                    asset_name=asset.asset_name if asset else None,
-                    audit_session_id=audit_result.audit_session.id,
-                    device_type="cisco",
-                    check_number=preview.get("check_number", ""),
-                    check_title=preview.get("check_title", ""),
-                    status="success"
-                )
-            await consume_quota(http_request)
-
-            return preview
-        except Exception as log_err:
-            pass  # Never let logging break the operation
-
-            
+        _log_preview_outcome(
+            db,
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id,
+            status_value="success",
+            check_number=preview.get("check_number", ""),
+            check_title=preview.get("check_title", ""),
+        )
+        await consume_quota(http_request)
+        return preview
 
     except CheckAlreadyPassingError as e:
-        # Log failed preview
-        try:
-            audit_result = db.query(AuditResult).filter(AuditResult.id == request.audit_result_id).first()
-            if audit_result and audit_result.audit_session:
-                asset = db.query(Asset).filter(Asset.id == audit_result.audit_session.asset_id).first()
-                log_hardening_preview(
-                    db=db,
-                    user_id=current_user.id,
-                    asset_id=asset.id if asset else None,
-                    asset_name=asset.asset_name if asset else None,
-                    audit_session_id=audit_result.audit_session.id,
-                    device_type="cisco",
-                    check_number=audit_result.check_number,
-                    check_title=audit_result.check_title,
-                    status="failed",
-                    error=str(e)
-                )
-        except Exception as log_err:
-            pass
+        _log_preview_outcome(
+            db,
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id,
+            status_value="failed",
+            error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except ValueError as e:
+        _log_preview_outcome(
+            db,
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id,
+            status_value="failed",
+            error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        _log_preview_outcome(
+            db,
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id,
+            status_value="failed",
+            error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Preview failed: {str(e)}"

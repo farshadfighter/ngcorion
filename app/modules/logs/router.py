@@ -55,35 +55,41 @@ def get_user_logs(
 @router.get("/stats")
 def get_login_stats(db: Session = Depends(get_db)):
     """
-    total login log
-    
+    Login attempt statistics.
+
     Returns:
-        - total_attempts: 
-        - successful_logins: 
-        - failed_attempts:
-        - success_rate: 
-        - recent_successful_logins: 
+        - total_attempts
+        - successful_logins
+        - failed_attempts
+        - success_rate (percentage)
+        - recent_successful_logins (last 5)
+        - recent_failed_logins (last 5)
     """
     total_attempts = db.query(LoginLog).count()
     successful = db.query(LoginLog).filter(LoginLog.success == True).count()
     failed = db.query(LoginLog).filter(LoginLog.success == False).count()
-    
-# last success login
-    recent_logins = db.query(LoginLog).filter(
+
+    recent_successes = db.query(LoginLog).filter(
         LoginLog.success == True
     ).order_by(LoginLog.timestamp.desc()).limit(5).all()
-    
+
+    recent_failures = db.query(LoginLog).filter(
+        LoginLog.success == False
+    ).order_by(LoginLog.timestamp.desc()).limit(5).all()
+
+    def _serialize(log: LoginLog) -> dict:
+        return {
+            "username": log.username,
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None,
+            "ip_address": log.ip_address,
+            "message": log.message,
+        }
+
     return {
         "total_attempts": total_attempts,
         "successful_logins": successful,
         "failed_attempts": failed,
         "success_rate": round((successful / total_attempts * 100) if total_attempts > 0 else 0, 2),
-        "recent_successful_logins": [
-            {
-                "username": log.username,
-                "timestamp": log.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                "ip_address": log.ip_address
-            }
-            for log in recent_logins
-        ]
+        "recent_successful_logins": [_serialize(log) for log in recent_successes],
+        "recent_failed_logins": [_serialize(log) for log in recent_failures],
     }

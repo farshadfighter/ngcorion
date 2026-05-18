@@ -9,7 +9,11 @@ Replaces the in-memory storage pattern with proper database persistence.
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from app.core.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class DiscoveryScan(Base):
@@ -92,17 +96,17 @@ class DiscoveryScan(Base):
     )
 
     started_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=_utcnow,
         nullable=False,
         index=True,
-        comment="Scan start timestamp"
+        comment="Scan start timestamp (UTC, timezone-aware)"
     )
 
     completed_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
-        comment="Scan completion timestamp"
+        comment="Scan completion timestamp (UTC, timezone-aware)"
     )
 
     hosts_discovered = Column(
@@ -133,16 +137,16 @@ class DiscoveryScan(Base):
 
     # Metadata
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        comment="Record creation timestamp"
+        DateTime(timezone=True),
+        default=_utcnow,
+        comment="Record creation timestamp (UTC, timezone-aware)"
     )
 
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        comment="Last update timestamp"
+        DateTime(timezone=True),
+        default=_utcnow,
+        onupdate=_utcnow,
+        comment="Last update timestamp (UTC, timezone-aware)"
     )
 
     # Relationships
@@ -260,9 +264,9 @@ class DiscoveredHost(Base):
     )
 
     approved_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
-        comment="When approved/rejected"
+        comment="When approved/rejected (UTC, timezone-aware)"
     )
 
     matched_asset_id = Column(
@@ -294,17 +298,17 @@ class DiscoveredHost(Base):
 
     # Timestamps
     discovered_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=_utcnow,
         index=True,
-        comment="When this host was discovered"
+        comment="When this host was discovered (UTC, timezone-aware)"
     )
 
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        comment="Last update timestamp"
+        DateTime(timezone=True),
+        default=_utcnow,
+        onupdate=_utcnow,
+        comment="Last update timestamp (UTC, timezone-aware)"
     )
 
     # Relationships
@@ -371,10 +375,10 @@ class DiscoveryApplication(Base):
     )
 
     applied_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=_utcnow,
         index=True,
-        comment="When discovery was applied"
+        comment="When discovery was applied (UTC, timezone-aware)"
     )
 
     # Relationships
@@ -478,10 +482,10 @@ class DiscoveryAuditLog(Base):
     )
 
     timestamp = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=_utcnow,
         index=True,
-        comment="When the action occurred"
+        comment="When the action occurred (UTC, timezone-aware)"
     )
 
     # Relationships

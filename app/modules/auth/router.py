@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token
 from app.schemas.auth import UserLogin, Token
 from app.models import LoginLog, UserRole
+from app.models.security_audit_log import log_action
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
 
@@ -117,13 +118,22 @@ def login(
             user_agent=user_agent,
             message="Incorrect username or password"
         )
-        
+        log_action(
+            db=db,
+            username=user_credentials.username,
+            action="auth.login",
+            module="auth",
+            ip_address=client_ip,
+            result="failed",
+            detail="Incorrect username or password",
+        )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not user.is_active:
         log_login_attempt(
             db=db,
@@ -133,12 +143,23 @@ def login(
             user_agent=user_agent,
             message="Account is inactive"
         )
-        
+        log_action(
+            db=db,
+            user_id=user.id,
+            username=user.username,
+            action="auth.login",
+            module="auth",
+            target_id=user.id,
+            ip_address=client_ip,
+            result="failed",
+            detail="Account is inactive",
+        )
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is inactive"
         )
-    
+
     log_login_attempt(
         db=db,
         username=user.username,
@@ -146,6 +167,17 @@ def login(
         ip_address=client_ip,
         user_agent=user_agent,
         message=f"Login successfully with {user.role.value} Role."
+    )
+    log_action(
+        db=db,
+        user_id=user.id,
+        username=user.username,
+        action="auth.login",
+        module="auth",
+        target_id=user.id,
+        ip_address=client_ip,
+        result="success",
+        detail=f"Login successful (role={user.role.value})",
     )
     
     # Create JWT token
