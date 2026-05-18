@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.security import create_access_token
+from app.core.auth_rate_limiter import check_login_rate_limit
 from app.schemas.auth import UserLogin, Token
 from app.models import LoginLog, UserRole
 from app.models.security_audit_log import log_action
@@ -102,7 +103,29 @@ def login(
     """
     client_ip = request.client.host
     user_agent = request.headers.get("user-agent", "Unknown")
-    
+
+    try:
+        check_login_rate_limit(db, client_ip, user_credentials.username)
+    except HTTPException as exc:
+        log_login_attempt(
+            db=db,
+            username=user_credentials.username,
+            success=False,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            message="Rate limited",
+        )
+        log_action(
+            db=db,
+            username=user_credentials.username,
+            action="auth.login",
+            module="auth",
+            ip_address=client_ip,
+            result="failed",
+            detail="Rate limited",
+        )
+        raise exc
+
     auth_service = AuthService(db)
     user = auth_service.authenticate_user(
         user_credentials.username, 

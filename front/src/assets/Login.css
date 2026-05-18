@@ -87,12 +87,59 @@ body, html {
     color: #b3b3b3;
 }
 
-/* Error message */
-.login-error {
-    color: red;
-    margin-top: 15px;
+/* Error dialog */
+.login-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.login-dialog {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 28px;
+    min-width: 320px;
+    max-width: 90vw;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
     text-align: center;
-    font-size: 14px;
+}
+
+.login-dialog-title {
+    margin: 0 0 12px;
+    font-size: 18px;
+    color: #b00020;
+}
+
+.login-dialog-message {
+    margin: 0 0 20px;
+    color: #333;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.login-dialog-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.login-dialog-button {
+    min-width: 100px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    background: #0A234E;
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.login-dialog-button:hover {
+    background: #143b7a;
 }
 
 /* Button */

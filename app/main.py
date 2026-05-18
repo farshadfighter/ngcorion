@@ -81,6 +81,7 @@ from app.core.license_client import LicenseClient
 from app.core.license_state import refresh_license_state
 from app.core.heartbeat import start_heartbeat, stop_heartbeat
 from app.middleware.license_middleware import LicenseMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -125,6 +126,9 @@ app.add_middleware(
     expose_headers=["*"],  # Allow all response headers to be accessible
     # hatman avaz shavad
 )
+
+# Add security headers middleware (after CORS, before routes)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Add license middleware (after CORS, before routes)
 app.add_middleware(LicenseMiddleware)

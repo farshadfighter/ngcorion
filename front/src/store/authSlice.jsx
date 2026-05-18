@@ -21,6 +21,12 @@ export const loginUser = createAsyncThunk(
             if (err.response?.status === 403) {
                 return rejectWithValue("Account is inactive");
             }
+            if (err.response?.status === 429) {
+                return rejectWithValue(
+                    err.response?.data?.detail ||
+                    "Too many failed login attempts. Please wait before trying again."
+                );
+            }
             if (err.response?.data?.detail) {
                 const detail = err.response.data.detail;
                 if (typeof detail === "string") return rejectWithValue(detail);

@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../store/authSlice";
+import { loginUser, clearError } from "../store/authSlice";
 import UserIcon from "../assets/UserIcon.jsx";
 import LockIcon from "../assets/LockIcon.jsx";
 
 export const Login = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [showErrorDialog, setShowErrorDialog] = useState(false);
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -19,12 +20,19 @@ export const Login = () => {
         }
     }, [token, navigate]);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (username.trim() && password.trim()) {
-            dispatch(loginUser({ username, password }));
-            console.log("Login result:", result);
+    useEffect(() => {
+        if (error) setShowErrorDialog(true);
+    }, [error]);
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!username.trim() || !password.trim()) {
+            return;
+        }
+        try {
+            await dispatch(loginUser({ username, password })).unwrap();
+        } catch {
+            // rejection is surfaced via the `error` selector + dialog effect
         }
     };
 
@@ -33,6 +41,11 @@ export const Login = () => {
         if (typeof error === "string") return error;
         if (typeof error === "object" && error.detail) return error.detail;
         return "Invalid username or password";
+    };
+
+    const closeDialog = () => {
+        setShowErrorDialog(false);
+        dispatch(clearError());
     };
 
     return (
@@ -70,13 +83,6 @@ export const Login = () => {
                     />
                 </div>
 
-                {/* ERROR */}
-                {error && (
-                    <div className="login-error">
-                        {getErrorMessage()}
-                    </div>
-                )}
-
                 {/* BUTTON */}
                 <button
                     type="submit"
@@ -86,6 +92,33 @@ export const Login = () => {
                     {isLoading ? "Logging in..." : "Login"}
                 </button>
             </form>
+
+            {showErrorDialog && error && (
+                <div
+                    className="login-dialog-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="login-dialog-title"
+                    onClick={closeDialog}
+                >
+                    <div className="login-dialog" onClick={(e) => e.stopPropagation()}>
+                        <h2 id="login-dialog-title" className="login-dialog-title">
+                            Login failed
+                        </h2>
+                        <p className="login-dialog-message">{getErrorMessage()}</p>
+                        <div className="login-dialog-actions">
+                            <button
+                                type="button"
+                                className="login-dialog-button"
+                                onClick={closeDialog}
+                                autoFocus
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
