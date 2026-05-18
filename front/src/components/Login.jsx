@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { loginUser } from "../store/authSlice";
 import UserIcon from "../assets/UserIcon.jsx";
 import LockIcon from "../assets/LockIcon.jsx";
+
 export const Login = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -11,7 +12,6 @@ export const Login = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { isLoading, error, token } = useSelector((state) => state.auth);
-
 
     useEffect(() => {
         if (token) {
@@ -24,6 +24,13 @@ export const Login = () => {
         if (username.trim() && password.trim()) {
             dispatch(loginUser({ username, password }));
         }
+    };
+
+    const getErrorMessage = () => {
+        if (!error) return null;
+        if (typeof error === "string") return error;
+        if (typeof error === "object" && error.detail) return error.detail;
+        return "Invalid username or password";
     };
 
     return (
@@ -63,7 +70,9 @@ export const Login = () => {
 
                 {/* ERROR */}
                 {error && (
-                    <div className="login-error">{error}</div>
+                    <div className="login-error">
+                        {getErrorMessage()}
+                    </div>
                 )}
 
                 {/* BUTTON */}

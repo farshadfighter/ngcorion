@@ -16,7 +16,15 @@ export const loginUser = createAsyncThunk(
             return response.data;
         } catch (err) {
             if (err.response?.status === 401) {
-                return rejectWithValue("Invalid username or password");
+                return rejectWithValue("Incorrect username or password");
+            }
+            if (err.response?.status === 403) {
+                return rejectWithValue("Account is inactive");
+            }
+            if (err.response?.data?.detail) {
+                const detail = err.response.data.detail;
+                if (typeof detail === "string") return rejectWithValue(detail);
+                if (Array.isArray(detail)) return rejectWithValue(detail.map(e => e.msg).join(", "));
             }
             return rejectWithValue("Failed to connect to the server");
         }
@@ -27,18 +35,6 @@ export const loginUser = createAsyncThunk(
 // Helper - بررسی دسترسی کاربر
 // ==========================================
 
-/**
- * چک کردن دسترسی کاربر به یک ماژول
- *
- * @param {object} permissions - آبجکت permissions از state
- * @param {string} role - نقش کاربر
- * @param {string} module - نام ماژول (مثلاً "hardening")
- * @param {string} action - نوع عملیات: "read" | "write" | "delete"
- * @returns {boolean}
- *
- * مثال:
- *   hasPermission(permissions, role, "hardening", "read")
- */
 export const hasPermission = (permissions, role, module, action) => {
     if (role === "admin") return true;
     if (!permissions || !permissions[module]) return false;
