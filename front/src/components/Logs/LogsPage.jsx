@@ -49,13 +49,15 @@ export const LogsPage = () => {
     const getStatusClass = (status) => {
         if (status === "success") return "success";
         if (status === "partial") return "partial";
-        return "failed";
+        if (status === "failed" || status === "failure") return "failed";
+        return "unknown";
     };
 
     const getStatusLabel = (status) => {
         if (status === "success") return "Successful";
         if (status === "partial") return "Partial";
-        return "Fail";
+        if (status === "failed" || status === "failure") return "Fail";
+        return "Unknown";
     };
 
     if (isLoading) {

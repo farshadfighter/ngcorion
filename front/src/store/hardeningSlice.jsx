@@ -668,10 +668,10 @@ const hardeningSlice = createSlice({
                 state.isLoading    = false;
                 state.auditResults = action.payload;
                 state.cisChecks    = action.payload;
-                state.failedChecks = action.payload.filter(
-                    (check) =>
-                        check.status?.toString().toUpperCase() === "FAIL"
-                );
+                state.failedChecks = action.payload.filter((check) => {
+                    const s = check.status?.toString().toUpperCase();
+                    return s === "FAIL" || s === "FAILED";
+                });
             })
             .addCase(fetchAuditResults.rejected, (state, action) => {
                 state.isLoading = false;

@@ -380,7 +380,10 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
     const renderResults = () => {
         if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
 
-        const isSuccess  = executionResult.status === 'success' || executionResult.verification_passed;
+        const isSuccess =
+            executionResult.status === 'success' &&
+            (executionResult.verification_passed === undefined ||
+             executionResult.verification_passed === true);
         const statusClass = isSuccess ? 'success' : executionResult.status === 'warning' ? 'warning' : 'error';
 
         return (

@@ -687,76 +687,108 @@ def execute_hardening(
             skip_backup=request.skip_backup
         )
 
-        # Log execute operation
-        try:
-            from app.models import HardeningAction
-            action = db.query(HardeningAction).filter(HardeningAction.id == request.action_id).first()
-            if action and action.audit_session:
-                asset = db.query(Asset).filter(Asset.id == action.asset_id).first()
-                log_hardening_execute(
-                    db=db,
-                    user_id=current_user.id,
-                    asset_id=action.asset_id,
-                    asset_name=asset.asset_name if asset else None,
-                    audit_session_id=action.audit_session_id,
-                    device_type="cisco",
-                    check_number=action.check_number,
-                    check_title=action.check_title,
-                    verification_passed=result.get("verification_passed"),
-                    status="success" if result.get("status") == "success" else "failed",
-                    error=result.get("error_message")
-                )
-        except Exception as log_err:
-            pass
+        verification_passed = result.get("verification_passed")
+        succeeded = (
+            result.get("status") == "success"
+            and (verification_passed is None or verification_passed is True)
+        )
+        _log_execute_outcome(
+            db,
+            action_id=request.action_id,
+            user_id=current_user.id,
+            status_value="success" if succeeded else "failed",
+            verification_passed=verification_passed,
+            error=result.get("error_message"),
+        )
 
         return result
 
     except CheckAlreadyPassingError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except MissingParametersError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except SSHAuthenticationError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=f"SSH authentication failed: {e}",
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=e.to_dict()
         )
     except SSHConnectionTimeoutError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=f"SSH connection timeout: {e}",
+        )
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail=e.to_dict()
         )
     except SSHNetworkError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=f"SSH network error: {e}",
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=e.to_dict()
         )
     except SSHAlgorithmMismatchError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=f"SSH algorithm mismatch: {e}",
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except SSHHostKeyError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=f"SSH host key error: {e}",
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except SSHConnectionError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=f"SSH connection error: {e}",
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except ValueError as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Execution failed: {str(e)}"

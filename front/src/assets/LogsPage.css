@@ -73,6 +73,10 @@
     background: #ef4444;
 }
 
+.logs-status-badge.unknown {
+    background: #9ca3af;
+}
+
 /* ── Timestamp cell ── */
 .logs-timestamp {
     font-size: 13px;

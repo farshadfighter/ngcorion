@@ -27,7 +27,7 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
         const loginLogs = await parse(loginRes, "Login", (section) => (item) => ({
             id: `login-${item.id}`,
             username: item.username,
-            action: item.success ? "Login" : "Login Failed",
+            action: "Login",
             asset_name: "-",
             section,
             status: item.success ? "success" : "failed",
@@ -40,7 +40,7 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
             action: item.action,
             asset_name: item.asset_name || "-",
             section,
-            status: item.status || "success",
+            status: item.status || "unknown",
             timestamp: item.timestamp,
         }));
 
@@ -50,7 +50,7 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
             action: item.action,
             asset_name: item.entity_type || "-",
             section,
-            status: item.status || "success",
+            status: item.status || "unknown",
             timestamp: item.timestamp,
         }));
 
@@ -60,7 +60,7 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
             action: item.action,
             asset_name: item.asset_name || "-",
             section,
-            status: item.status || "success",
+            status: item.status || "unknown",
             timestamp: item.timestamp,
         }));
 
@@ -70,7 +70,7 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
             action: item.action,
             asset_name: item.target || "-",
             section,
-            status: item.status || "success",
+            status: item.status || "unknown",
             timestamp: item.timestamp,
         }));
 
@@ -80,7 +80,7 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
             action: item.action,
             asset_name: item.asset_name || "-",
             section,
-            status: item.status || "success",
+            status: item.status || "unknown",
             timestamp: item.timestamp,
         }));
 

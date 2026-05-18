@@ -17,6 +17,7 @@ from app.core.dependencies import (
     consume_quota_on_success,
     )
 from app.models import User
+from app.modules.shared.hardening_audit import log_session_execute_outcome
 from .service import ApacheHardeningService
 
 class SSHCredentials(BaseModel):
@@ -190,10 +191,27 @@ async def auto_harden_with_defaults(
             sudo_password=request.sudo_password
         )
         await consume_quota(http_request)
+        log_session_execute_outcome(
+            db, device_type="apache", action="auto_harden",
+            session_id=request.session_id, asset_id=request.asset_id,
+            user_id=current_user.id,
+            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+        )
         return result
     except ValueError as e:
+        log_session_execute_outcome(
+            db, device_type="apache", action="auto_harden",
+            session_id=request.session_id, asset_id=request.asset_id,
+            user_id=current_user.id, failed_count=1, error=str(e),
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        log_session_execute_outcome(
+            db, device_type="apache", action="auto_harden",
+            session_id=request.session_id, asset_id=request.asset_id,
+            user_id=current_user.id, failed_count=1, error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Auto-hardening failed: {str(e)}"
@@ -219,6 +237,7 @@ async def batch_execute_selected(
     **Permissions:** Requires HARDENING write permission
     """
     consume_quota=consume_quota_on_success("harden")
+    check_ids = [c.check_id for c in request.checks]
 
     try:
         checks = [
@@ -237,14 +256,30 @@ async def batch_execute_selected(
         )
 
         await consume_quota(http_request)
-        
+        log_session_execute_outcome(
+            db, device_type="apache", action="batch_execute",
+            session_id=request.session_id, asset_id=request.asset_id,
+            user_id=current_user.id, check_ids=check_ids,
+            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+        )
         return result
 
-        
-
     except ValueError as e:
+        log_session_execute_outcome(
+            db, device_type="apache", action="batch_execute",
+            session_id=request.session_id, asset_id=request.asset_id,
+            user_id=current_user.id, check_ids=check_ids,
+            failed_count=len(check_ids) or 1, error=str(e),
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        log_session_execute_outcome(
+            db, device_type="apache", action="batch_execute",
+            session_id=request.session_id, asset_id=request.asset_id,
+            user_id=current_user.id, check_ids=check_ids,
+            failed_count=len(check_ids) or 1, error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch execution failed: {str(e)}"
@@ -275,12 +310,32 @@ async def execute_single_fix(
             parameters=request.parameters
         )
         await consume_quota(http_request)
-        
+        succeeded = isinstance(result, dict) and result.get("status") == "success"
+        log_session_execute_outcome(
+            db, device_type="apache", action="execute_single",
+            session_id=None, asset_id=request.asset_id,
+            user_id=current_user.id, check_ids=[request.check_id],
+            success_count=1 if succeeded else 0,
+            failed_count=0 if succeeded else 1,
+            error=(result or {}).get("error_message") if isinstance(result, dict) else None,
+        )
         return result
-        
+
     except ValueError as e:
+        log_session_execute_outcome(
+            db, device_type="apache", action="execute_single",
+            session_id=None, asset_id=request.asset_id,
+            user_id=current_user.id, check_ids=[request.check_id],
+            failed_count=1, error=str(e),
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
+        log_session_execute_outcome(
+            db, device_type="apache", action="execute_single",
+            session_id=None, asset_id=request.asset_id,
+            user_id=current_user.id, check_ids=[request.check_id],
+            failed_count=1, error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Single fix failed: {str(e)}"

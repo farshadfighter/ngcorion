@@ -34,6 +34,7 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError
 )
 from app.models import User
+from app.modules.shared.hardening_audit import log_execute_outcome, log_preview_outcome
 from .service import (
     FortiGateHardeningService,
     FortiGateCheckAlreadyPassingError,
@@ -375,19 +376,41 @@ def preview_fortinet_hardening(
             user_id=current_user.id,
             parameters=request.parameters
         )
+        log_preview_outcome(
+            db, device_type="fortinet",
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id, status_value="success",
+            check_number=preview.get("check_number", "") if isinstance(preview, dict) else "",
+            check_title=preview.get("check_title", "") if isinstance(preview, dict) else "",
+        )
         return preview
 
     except FortiGateCheckAlreadyPassingError as e:
+        log_preview_outcome(
+            db, device_type="fortinet",
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id, status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except ValueError as e:
+        log_preview_outcome(
+            db, device_type="fortinet",
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id, status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        log_preview_outcome(
+            db, device_type="fortinet",
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id, status_value="failed", error=str(e),
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Preview failed: {str(e)}"
@@ -424,6 +447,14 @@ async def execute_fortinet_hardening(
     - 500: Other execution errors
     """
     consume_quota = consume_quota_on_success("harden")
+
+    def _fail(err):
+        log_execute_outcome(
+            db, device_type="fortinet",
+            action_id=request.action_id, user_id=current_user.id,
+            status_value="failed", error=str(err),
+        )
+
     try:
         result = FortiGateHardeningService.execute_hardening(
             db=db,
@@ -436,54 +467,77 @@ async def execute_fortinet_hardening(
             skip_backup=request.skip_backup
         )
         consume_quota(http_request)
+        verification_passed = result.get("verification_passed") if isinstance(result, dict) else None
+        succeeded = (
+            isinstance(result, dict)
+            and result.get("status") == "success"
+            and (verification_passed is None or verification_passed is True)
+        )
+        log_execute_outcome(
+            db, device_type="fortinet",
+            action_id=request.action_id, user_id=current_user.id,
+            status_value="success" if succeeded else "failed",
+            verification_passed=verification_passed,
+            error=result.get("error_message") if isinstance(result, dict) else None,
+        )
         return result
 
     except FortiGateCheckAlreadyPassingError as e:
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except FortiGateMissingParametersError as e:
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except SSHAuthenticationError as e:
+        _fail(f"SSH authentication failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=e.to_dict()
         )
     except SSHConnectionTimeoutError as e:
+        _fail(f"SSH connection timeout: {e}")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail=e.to_dict()
         )
     except SSHNetworkError as e:
+        _fail(f"SSH network error: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=e.to_dict()
         )
     except SSHAlgorithmMismatchError as e:
+        _fail(f"SSH algorithm mismatch: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except SSHHostKeyError as e:
+        _fail(f"SSH host key error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except SSHConnectionError as e:
+        _fail(f"SSH connection error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except ValueError as e:
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Execution failed: {str(e)}"

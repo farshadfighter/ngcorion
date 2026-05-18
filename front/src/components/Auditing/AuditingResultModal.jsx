@@ -9,46 +9,35 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
     useEffect(() => {
         if (isOpen && session) {
-            // ✅ اطمینان از اینکه session_id عدد صحیح است
             const sessionId = parseInt(session.session_id);
-            
+
             if (isNaN(sessionId)) {
-                console.error("❌ Invalid session_id:", session);
                 return;
             }
 
-            console.log("✅ Fetching session:", sessionId);
-
-            // Fetch fresh session details
             dispatch(fetchAuditSession(sessionId))
                 .unwrap()
                 .then((data) => {
-                    console.log("📊 Session details:", data);
                     setSessionDetails(data);
                 })
-                .catch((err) => console.error("Failed to fetch session details:", err));
+                .catch(() => {});
 
-            // Fetch results
             dispatch(fetchAuditResults(sessionId));
         }
     }, [isOpen, session, dispatch]);
 
     if (!isOpen) return null;
 
-    // ✅ محاسبه آمار از دو منبع
     let totalChecks = 0;
     let passedChecks = 0;
     let failedChecks = 0;
 
-    // اول: سعی کن از compliance بگیری
     if (sessionDetails?.compliance) {
         totalChecks = sessionDetails.compliance.total_checks || sessionDetails.compliance.total || 0;
         passedChecks = sessionDetails.compliance.passed_checks || sessionDetails.compliance.passed || 0;
         failedChecks = sessionDetails.compliance.failed_checks || sessionDetails.compliance.failed || 0;
-        console.log("📊 از compliance:", { totalChecks, passedChecks, failedChecks });
     }
 
-    // دوم: اگه نبود، از results محاسبه کن
     if (totalChecks === 0 && results && results.length > 0) {
         totalChecks = results.length;
         passedChecks = results.filter(r => {
@@ -59,20 +48,11 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
             const status = r.status?.toString().toUpperCase();
             return status === 'FAIL' || status === 'FAILED';
         }).length;
-        console.log("📊 از results محاسبه شد:", { totalChecks, passedChecks, failedChecks });
     }
 
-    // محاسبه درصدها
     const conformityPercent = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
     const nonConformityPercent = totalChecks > 0 ? Math.round((failedChecks / totalChecks) * 100) : 0;
-
-    console.log("✅ آمار نهایی:", {
-        totalChecks,
-        passedChecks,
-        failedChecks,
-        conformityPercent,
-        nonConformityPercent
-    });
+    const otherChecks = Math.max(totalChecks - passedChecks - failedChecks, 0);
 
     const getResultBadge = (status) => {
         const normalizedStatus = status?.toString().toUpperCase();
@@ -129,7 +109,6 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         <div className="card-value">{sessionDetails?.status || "-"}</div>
                     </div>
 
-                    {/* ✅ Conformity Card با inline style */}
                     <div className="result-card result-card-success">
                         <div className="card-percent" style={{
                             fontSize: '28px',
@@ -139,7 +118,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                             display: 'block',
                             lineHeight: '1.2'
                         }}>
-                            {conformityPercent}% | {passedChecks}
+                            {conformityPercent}% | {passedChecks} of {totalChecks}
                         </div>
                         <div className="card-label" style={{
                             fontSize: '14px',
@@ -151,7 +130,6 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         </div>
                     </div>
 
-                    {/* ✅ Non-Conformity Card با inline style */}
                     <div className="result-card result-card-danger">
                         <div className="card-percent" style={{
                             fontSize: '28px',
@@ -161,7 +139,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                             display: 'block',
                             lineHeight: '1.2'
                         }}>
-                            {nonConformityPercent}% | {failedChecks}
+                            {nonConformityPercent}% | {failedChecks} of {totalChecks}
                         </div>
                         <div className="card-label" style={{
                             fontSize: '14px',
@@ -175,7 +153,14 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
                     <div className="result-card result-card-total">
                         <div className="card-number">{totalChecks}</div>
-                        <div className="card-label">Total Condition</div>
+                        <div className="card-label">
+                            Total Condition
+                            {otherChecks > 0 && (
+                                <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                                    ({otherChecks} other / running)
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                 </div>
