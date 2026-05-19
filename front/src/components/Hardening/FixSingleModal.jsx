@@ -9,16 +9,18 @@ import {
 import '../../assets/hardening/Hardenallmodal.css';
 
 // ─── Device type helpers (same as HardeningConnectionForm) ───────────────────
-const isLinux   = (dt) => dt?.startsWith('linux-');
-const isCisco   = (dt) => dt === 'cisco';
-const isFortinet= (dt) => dt === 'fortinet';
-const isApache  = (dt) => dt === 'apache';
-const isMongo   = (dt) => dt === 'mongodb';
-const isMssql   = (dt) => dt?.startsWith('mssql-');
-const isWindows = (dt) => dt?.startsWith('windows-');
-const needsSudo = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+const isLinux    = (dt) => dt?.startsWith('linux-');
+const isCisco    = (dt) => dt === 'cisco';
+const isFortinet = (dt) => dt === 'fortinet';
+const isApache   = (dt) => dt === 'apache';
+const isMongo    = (dt) => dt === 'mongodb';
+const isMssql    = (dt) => dt?.startsWith('mssql-');
+const isWindows  = (dt) => dt?.startsWith('windows-');
+const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+// Cisco and Fortinet return action_id in preview; others don't (but all now support /preview)
+const isCiscoOrFortinet = (dt) => isCisco(dt) || isFortinet(dt);
 
-const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
+const FixSingleModal = ({ check, assetId, deviceType, onClose, onSuccess }) => {
     const dispatch = useDispatch();
     const {
         previewData,
@@ -52,11 +54,12 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
     });
     const [executionResult, setExecutionResult] = useState(null);
 
-    // Fetch preview on mount
+    // Fetch preview on mount for all device types
     useEffect(() => {
         if (check?.id && deviceType) {
             dispatch(previewHardenCheck({
-                auditResultId: check.id,
+                auditResultId: check.id,            // AuditResult row ID (Cisco/Fortinet)
+                checkId:       check.check_number,  // CIS check string (Linux/Apache/etc.)
                 deviceType:    deviceType,
                 parameters:    {}
             }));
@@ -162,9 +165,9 @@ const FixSingleModal = ({ check, deviceType, onClose, onSuccess }) => {
             }
 
             const result = await dispatch(executeHardenCheck({
-                actionId:   previewData.action_id,
-                checkId:    check.id,
-                assetId:    check.asset_id,
+                actionId:   isCiscoOrFortinet(deviceType) ? previewData?.action_id : null,
+                checkId:    check.check_number,
+                assetId:    assetId,
                 deviceType: deviceType,
                 credentials,
                 parameters: paramValues

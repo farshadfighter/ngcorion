@@ -1,97 +1,17 @@
 """
 Deprecated Routes - Backward Compatibility
 
-Provides 307 (Temporary Redirect) responses for old API paths.
-This allows existing clients to continue working while transitioning
-to the new standardized API structure.
+Provides 307 (Temporary Redirect) responses for old API paths that
+have been superseded by the new standardized API structure.
 
-Old Path Structure:
-- /api/audit/sessions -> /api/audit/cisco/sessions
-- /api/fortinet/audit/* -> /api/audit/fortinet/*
-- /api/hardening/* -> /api/hardening/cisco/*
-
-These redirects should be removed in a future version after
-all clients have migrated to the new paths.
+Note: /api/audit/sessions/{id} routes are NOT here — they are now
+served directly by app.modules.audit.router (shared cross-family router).
 """
 
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse
 
 deprecated_router = APIRouter(tags=["Deprecated"])
-
-
-# ========================= CISCO AUDIT REDIRECTS =========================
-
-@deprecated_router.get("/api/audit/sessions")
-def deprecated_audit_sessions():
-    """Redirect to new Cisco audit sessions endpoint."""
-    return RedirectResponse(
-        url="/api/audit/cisco/sessions",
-        status_code=307
-    )
-
-
-@deprecated_router.get("/api/audit/sessions/count")
-def deprecated_audit_sessions_count():
-    """Redirect to new Cisco audit sessions count endpoint."""
-    return RedirectResponse(
-        url="/api/audit/cisco/sessions/count",
-        status_code=307
-    )
-
-
-@deprecated_router.get("/api/audit/sessions/{session_id}")
-def deprecated_audit_session(session_id: int):
-    """Redirect to new Cisco audit session endpoint."""
-    return RedirectResponse(
-        url=f"/api/audit/cisco/sessions/{session_id}",
-        status_code=307
-    )
-
-
-@deprecated_router.get("/api/audit/sessions/{session_id}/results")
-def deprecated_audit_session_results(session_id: int):
-    """Redirect to new Cisco audit session results endpoint."""
-    return RedirectResponse(
-        url=f"/api/audit/cisco/sessions/{session_id}/results",
-        status_code=307
-    )
-
-
-@deprecated_router.get("/api/audit/sessions/{session_id}/cis-table")
-def deprecated_audit_cis_table(session_id: int):
-    """Redirect to new Cisco CIS table endpoint."""
-    return RedirectResponse(
-        url=f"/api/audit/cisco/sessions/{session_id}/cis-table",
-        status_code=307
-    )
-
-
-@deprecated_router.delete("/api/audit/sessions/{session_id}")
-def deprecated_delete_audit_session(session_id: int):
-    """Redirect to new Cisco audit session delete endpoint."""
-    return RedirectResponse(
-        url=f"/api/audit/cisco/sessions/{session_id}",
-        status_code=307
-    )
-
-
-@deprecated_router.get("/api/audit/asset/{asset_id}/history")
-def deprecated_asset_audit_history(asset_id: int):
-    """Redirect to new Cisco asset audit history endpoint."""
-    return RedirectResponse(
-        url=f"/api/audit/cisco/asset/{asset_id}/history",
-        status_code=307
-    )
-
-
-@deprecated_router.post("/api/audit/cisco/execute")
-def deprecated_cisco_execute():
-    """Redirect old nested cisco/execute to new path."""
-    return RedirectResponse(
-        url="/api/audit/cisco/execute",
-        status_code=307
-    )
 
 
 # ========================= FORTINET AUDIT REDIRECTS =========================

@@ -51,6 +51,9 @@ from app.modules.windows.hardening import router as windows_hardening_router
 # Shared hardening infrastructure
 from app.modules.shared import hardening_router as unified_hardening_router
 
+# Shared cross-family audit endpoints (get/delete session by ID)
+from app.modules.audit.router import router as shared_audit_router
+
 # Deprecated routes for backward compatibility
 from app.modules.deprecated_routes import deprecated_router
 
@@ -214,6 +217,9 @@ app.include_router(windows_hardening_router)
 
 # Schema-driven Hardening routes (unified)
 app.include_router(unified_hardening_router)
+
+# Shared cross-family audit routes (get/delete session by ID for any device)
+app.include_router(shared_audit_router)
 
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)

@@ -113,11 +113,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
         });
     };
 
-    // ── Shared style tokens ────────────────────────────────────────────────────
-    const primaryColor  = "#1e3a5f";
-    const btnPrimary    = { background: primaryColor, color: "white", border: "none", borderRadius: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: "600", cursor: "pointer" };
-    const btnSecondary  = { background: "white", color: "#374151", border: "1px solid #d1d5db", borderRadius: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: "600", cursor: "pointer" };
-    const btnDanger     = { background: "#dc2626", color: "white", border: "none", borderRadius: "8px", padding: "10px 20px", fontSize: "14px", fontWeight: "600", cursor: "pointer" };
+    const primaryColor = "#1e3a5f";
 
     return (
         <div className="auditing-container">
@@ -136,10 +132,10 @@ export const AuditingList = ({ onNavigateToLicence }) => {
 
                 {/* Clear History */}
                 <button
+                    className="btn-modal-primary"
                     onClick={handleClearHistoryClick}
                     disabled={sessions.length === 0 || isClearing}
                     style={{
-                        ...btnPrimary,
                         position: "absolute",
                         right: 0,
                         opacity: sessions.length === 0 || isClearing ? 0.5 : 1,
@@ -237,7 +233,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                             )}
                         </div>
                         <div className="modal-actions">
-                            <button style={btnSecondary} onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                            <button className="btn-modal-secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
                             <button className="btn-delete2" onClick={handleDeleteConfirm}>Delete</button>
                         </div>
                     </div>
@@ -263,11 +259,11 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                             )}
                         </div>
                         <div className="modal-actions">
-                            <button style={btnSecondary} onClick={() => setShowClearModal(false)}>
+                            <button className="btn-modal-secondary" onClick={() => setShowClearModal(false)}>
                                 Cancel
                             </button>
                             <button
-                                style={{ ...btnPrimary, minWidth: "120px" }}
+                                className="btn-modal-primary"
                                 onClick={handleClearConfirm}
                                 disabled={isClearing}
                             >

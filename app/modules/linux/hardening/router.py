@@ -20,6 +20,12 @@ from app.core.dependencies import (
 from app.models import User
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 from .service import LinuxHardeningService
+from .command_templates import get_linux_hardening_template, get_linux_template_commands
+from .parameter_metadata import (
+    get_linux_parameters_for_check,
+    is_linux_check_auto_fixable,
+    get_linux_check_defaults,
+)
 
 
 class SSHCredentials(BaseModel):
@@ -102,6 +108,53 @@ class SingleFixRequest(BaseModel):
 
 
 router = APIRouter(prefix="/api/hardening/linux", tags=["Hardening - Linux"])
+
+
+class LinuxPreviewRequest(BaseModel):
+    check_id: str = Field(..., description="CIS check ID, e.g. LNX-L1-5.2.10")
+    parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
+
+
+@router.post("/preview")
+def preview_linux_hardening(
+    request: LinuxPreviewRequest,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+):
+    """
+    Preview the commands that will be executed for a Linux hardening check.
+
+    Returns commands with parameters substituted using provided values or CIS defaults.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    template = get_linux_hardening_template(request.check_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No hardening template found for check {request.check_id}",
+        )
+
+    params = request.parameters if request.parameters is not None else get_linux_check_defaults(request.check_id)
+    commands = get_linux_template_commands(request.check_id, params)
+    param_meta = get_linux_parameters_for_check(request.check_id)
+    required = [p.name for p in param_meta if p.required and p.default is None]
+    optional = [p.name for p in param_meta if not (p.required and p.default is None)]
+
+    warnings = []
+    if template.requires_service_restart:
+        warnings.append("Requires service restart after execution")
+    if template.requires_reboot:
+        warnings.append("Requires system reboot after execution")
+
+    return {
+        "check_id": request.check_id,
+        "check_title": template.description,
+        "commands": commands,
+        "required_parameters": required,
+        "optional_parameters": optional,
+        "warnings": warnings,
+        "auto_fixable": is_linux_check_auto_fixable(request.check_id),
+    }
 
 
 @router.get("/session/{session_id}/parameters")

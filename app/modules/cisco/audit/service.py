@@ -139,7 +139,7 @@ class AuditService:
 
         for idx, finding in enumerate(findings, 1):
             result = AuditResult(
-                session_id=session_id, #reason of "audit_session_id" BUG.
+                session_id=session_id,
                 check_number=finding["check_number"],
                 check_title=finding["title"],
                 severity=finding["severity"],
