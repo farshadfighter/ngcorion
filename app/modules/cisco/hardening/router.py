@@ -599,7 +599,7 @@ async def preview_hardening(
             check_number=preview.get("check_number", ""),
             check_title=preview.get("check_title", ""),
         )
-        await consume_quota(http_request)
+        consume_quota(http_request)
         return preview
 
     except CheckAlreadyPassingError as e:

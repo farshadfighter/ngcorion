@@ -247,7 +247,7 @@ async def auto_harden_with_defaults(
             sudo_password=request.sudo_password
         )
 
-        await consume_quota(http_request)
+        consume_quota(http_request)
         log_session_execute_outcome(
             db, device_type="linux", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
@@ -313,7 +313,7 @@ async def batch_execute_selected(
             checks=checks
         )
 
-        await consume_quota(http_request)
+        consume_quota(http_request)
         log_session_execute_outcome(
             db, device_type="linux", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
@@ -369,7 +369,7 @@ async def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters
         )
-        await consume_quota(http_request)
+        consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("status") == "success"
         log_session_execute_outcome(
             db, device_type="linux", action="execute_single",

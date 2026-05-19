@@ -257,7 +257,7 @@ async def auto_harden_with_defaults(
             mssql_port=request.mssql_port,
         )
 
-        await consume_quota(http_request)
+        consume_quota(http_request)
         log_session_execute_outcome(
             db, device_type="mssql", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
@@ -320,7 +320,7 @@ async def batch_execute_selected(
             checks=checks,
             mssql_port=request.mssql_port,
         )
-        await consume_quota(http_request)
+        consume_quota(http_request)
         log_session_execute_outcome(
             db, device_type="mssql", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
@@ -380,7 +380,7 @@ async def execute_single_fix(
             mssql_port=request.mssql_port,
         )
 
-        await consume_quota(http_request)
+        consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("status") == "success"
         log_session_execute_outcome(
             db, device_type="mssql", action="execute_single",

@@ -124,6 +124,12 @@ class LinuxSSHExecutor:
             self._connected = False
             logger.info(f"Disconnected from {self.ip}")
 
+    _SLOW_CMD_PREFIXES = (
+        "apt-get install", "apt install",
+        "dnf install", "yum install",
+        "pip install", "pip3 install",
+    )
+
     def execute_command(self, command: str, use_sudo: bool = True) -> str:
         """
         Execute a single command on the server.
@@ -138,7 +144,9 @@ class LinuxSSHExecutor:
         if not self._connected:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        return self.ssh_client.send_command(command, use_sudo=use_sudo)
+        stripped = command.lstrip()
+        timeout = 120 if any(stripped.startswith(p) for p in self._SLOW_CMD_PREFIXES) else 30
+        return self.ssh_client.send_command(command, use_sudo=use_sudo, timeout=timeout)
 
     def execute_hardening(
         self,
