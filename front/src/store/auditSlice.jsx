@@ -163,18 +163,6 @@ export const checkAuditStatus = createAsyncThunk(
     }
 );
 
-export const fetchAuditSessionsCount = createAsyncThunk(
-    "audit/fetchCount",
-    async (_, { rejectWithValue }) => {
-        try {
-            const res = await api.get("/api/audit/sessions/count");
-            return res.data;
-        } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to fetch sessions count");
-        }
-    }
-);
-
 // =====================
 // Slice
 // =====================
@@ -184,15 +172,12 @@ const auditSlice = createSlice({
         sessions: [],
         currentSession: null,
         results: [],
-        totalCount: 0,
         isLoading: false,
         isLoadingResults: false,
         isExecuting: false,
         isClearing: false,
         error: null,
         successMessage: null,
-        activeSessionId: null,
-        pollingActive: false,
     },
     reducers: {
         clearMessages: (state) => {
@@ -203,26 +188,14 @@ const auditSlice = createSlice({
             state.currentSession = null;
             state.results = [];
         },
-        setActiveSession: (state, action) => {
-            state.activeSessionId = action.payload;
-        },
-        clearActiveSession: (state) => {
-            state.activeSessionId = null;
-            state.currentSession = null;
-            state.results = [];
-        },
-        setPollingActive: (state, action) => {
-            state.pollingActive = action.payload;
-        },
     },
     extraReducers: (builder) => {
         builder
             .addCase(executeAudit.pending,    (state) => { state.isExecuting = true;  state.error = null; })
             .addCase(executeAudit.fulfilled,  (state, action) => {
-                state.isExecuting     = false;
-                state.currentSession  = action.payload;
-                state.activeSessionId = action.payload.session_id;
-                state.successMessage  = "Audit started successfully!";
+                state.isExecuting    = false;
+                state.currentSession = action.payload;
+                state.successMessage = "Audit started successfully!";
             })
             .addCase(executeAudit.rejected,   (state, action) => { state.isExecuting = false; state.error = action.payload; })
 
@@ -243,7 +216,6 @@ const auditSlice = createSlice({
             })
             .addCase(deleteAuditSession.rejected,  (state, action) => { state.error = action.payload; })
 
-            // ── clearAllAuditSessions ──────────────────────────────────────
             .addCase(clearAllAuditSessions.pending,   (state) => { state.isClearing = true;  state.error = null; })
             .addCase(clearAllAuditSessions.fulfilled, (state) => {
                 state.isClearing     = false;
@@ -254,23 +226,10 @@ const auditSlice = createSlice({
 
             .addCase(checkAuditStatus.fulfilled, (state, action) => {
                 state.currentSession = action.payload;
-                if (action.payload.status === "completed" || action.payload.status === "failed") {
-                    state.pollingActive = false;
-                }
-            })
-
-            .addCase(fetchAuditSessionsCount.fulfilled, (state, action) => {
-                state.totalCount = action.payload.total || 0;
             });
     },
 });
 
-export const {
-    clearMessages,
-    clearCurrentSession,
-    setActiveSession,
-    clearActiveSession,
-    setPollingActive,
-} = auditSlice.actions;
+export const { clearMessages, clearCurrentSession } = auditSlice.actions;
 
 export default auditSlice.reducer;

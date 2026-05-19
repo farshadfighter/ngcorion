@@ -312,13 +312,16 @@ export const fetchAuditResults = createAsyncThunk(
  */
 export const previewHardenCheck = createAsyncThunk(
     "hardening/previewCheck",
-    async ({ auditResultId, deviceType, parameters }, { rejectWithValue }) => {
+    async ({ auditResultId, checkId, deviceType, parameters }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
-            const res = await api.post(`/api/hardening/${apiPath}/preview`, {
-                audit_result_id: auditResultId,
-                parameters: parameters || {},
-            });
+            // Cisco and Fortinet use audit_result_id (int from AuditResult row).
+            // All other families use check_id (string like "LNX-L1-5.2.10").
+            const isCiscoOrFortinet = apiPath === "cisco" || apiPath === "fortinet";
+            const payload = isCiscoOrFortinet
+                ? { audit_result_id: auditResultId, parameters: parameters || {} }
+                : { check_id: checkId, parameters: parameters || {} };
+            const res = await api.post(`/api/hardening/${apiPath}/preview`, payload);
             return res.data;
         } catch (err) {
             return rejectWithValue(

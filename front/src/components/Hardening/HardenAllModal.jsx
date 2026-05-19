@@ -19,7 +19,7 @@ const isMssql   = (dt) => dt?.startsWith('mssql-');
 const isWindows = (dt) => dt?.startsWith('windows-');
 const needsSudo = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
-const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
+const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) => {
     const dispatch = useDispatch();
     const {
         requiredParameters,
@@ -151,6 +151,7 @@ const HardenAllModal = ({ sessionId, deviceType, onClose, onSuccess }) => {
 
             const result = await dispatch(autoHardenWithDefaults({
                 sessionId,
+                assetId,
                 deviceType,
                 credentials,
             })).unwrap();

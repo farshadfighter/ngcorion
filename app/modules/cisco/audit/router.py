@@ -17,7 +17,6 @@ from app.core.dependencies import (
     consume_quota_on_success,
 )
 
-# from app.models import User, log_audit_executed, log_audit_session_deleted
 from app.models import User, log_action
 from .service import AuditService
 
@@ -154,13 +153,6 @@ def execute_cisco_audit(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to retrieve audit summary",
             )
-
-        # Log successful audit
-        # log_audit_executed(
-        #    db, current_user.id, session.id, request.asset_id, asset_name,
-        #    session.target_ip, "cisco_cis", request.profile,
-        #    session.compliance_pct, "success"
-        # )
 
         log_action(
             db=db,
@@ -493,6 +485,9 @@ class CISBenchmarkAuditRequest(BaseModel):
     ssh_secret: Optional[str] = Field(
         None, description="Enable secret (optional, not stored)"
     )
+    profile: str = Field(
+        "FULL", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL"
+    )
     job_name: Optional[str] = Field(
         None, max_length=200, description="User-friendly job name"
     )
@@ -504,6 +499,7 @@ class CISBenchmarkAuditRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_secret": "********",
+                "profile": "FULL",
             }
         }
 

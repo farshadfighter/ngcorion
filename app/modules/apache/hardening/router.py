@@ -19,6 +19,12 @@ from app.core.dependencies import (
 from app.models import User
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 from .service import ApacheHardeningService
+from .command_templates import get_apache_hardening_template, get_apache_template_commands_for_distro
+from .parameter_metadata import (
+    get_apache_parameters_for_check,
+    is_apache_check_auto_fixable,
+    get_apache_check_defaults,
+)
 
 class SSHCredentials(BaseModel):
     """SSH credentials for hardening operations."""
@@ -99,6 +105,70 @@ class SingleFixRequest(BaseModel):
 
 
 router = APIRouter(prefix="/api/hardening/apache", tags=["Hardening - Apache"])
+
+
+class ApachePreviewRequest(BaseModel):
+    check_id: str = Field(..., description="CIS check ID, e.g. APACHE-L1-2.1")
+    parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
+    distro: Optional[str] = Field("debian", description="Target distro family: 'debian' (Ubuntu/Debian) or 'rhel' (RHEL/Rocky)")
+
+
+@router.post("/preview")
+def preview_apache_hardening(
+    request: ApachePreviewRequest,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+):
+    """
+    Preview the commands that will be executed for an Apache hardening check.
+
+    Returns commands substituted with parameter values or CIS defaults.
+    Since distro cannot be detected without connecting, both Debian and RHEL
+    command sets are returned. Specify `distro` to filter to one family.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    template = get_apache_hardening_template(request.check_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No hardening template found for check {request.check_id}",
+        )
+
+    params = request.parameters if request.parameters is not None else get_apache_check_defaults(request.check_id)
+    distro = (request.distro or "debian").lower()
+
+    commands_debian = get_apache_template_commands_for_distro(request.check_id, "debian", params)
+    commands_rhel = get_apache_template_commands_for_distro(request.check_id, "rhel", params)
+
+    # Return the requested distro's commands as the primary "commands" list
+    if distro in ("rhel", "rocky", "redhat"):
+        commands = commands_rhel
+    else:
+        commands = commands_debian
+
+    param_meta = get_apache_parameters_for_check(request.check_id)
+    required = [p.name for p in param_meta if p.required and p.default is None]
+    optional = [p.name for p in param_meta if not (p.required and p.default is None)]
+
+    warnings = []
+    if template.requires_service_restart:
+        warnings.append("Requires Apache service restart after execution")
+    if template.requires_reboot:
+        warnings.append("Requires system reboot after execution")
+    if commands_debian != commands_rhel:
+        warnings.append("Commands differ between Debian/Ubuntu and RHEL/Rocky — shown for selected distro family")
+
+    return {
+        "check_id": request.check_id,
+        "check_title": template.description,
+        "commands": commands,
+        "commands_debian": commands_debian,
+        "commands_rhel": commands_rhel,
+        "required_parameters": required,
+        "optional_parameters": optional,
+        "warnings": warnings,
+        "auto_fixable": is_apache_check_auto_fixable(request.check_id),
+    }
 
 
 @router.get("/session/{session_id}/parameters")

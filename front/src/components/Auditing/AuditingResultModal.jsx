@@ -20,7 +20,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 .then((data) => {
                     setSessionDetails(data);
                 })
-                .catch(() => {});
+                .catch((err) => console.error("Failed to fetch session details:", err));
 
             dispatch(fetchAuditResults(sessionId));
         }

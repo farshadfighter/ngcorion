@@ -492,109 +492,9 @@ order: 1;
     gap: 16px;
 }
 
-.btn-refresh {
-    padding: 10px 24px;
-    background: #1e3a5f;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #d1d5db;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-refresh:hover {
-    background: #1e3a5f;
-}
-
-.btn-refresh:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 /* ============================================
    AUDITING SUCCESS (Step 3)
    ============================================ */
-
-.auditing-success-container {
-    max-width: 600px;
-    margin: 0 auto;
-    text-align: center;
-    padding: 20px 20px;
-}
-
-.success-icon-wrapper {
-    margin-bottom: 20px;
-}
-
-.success-icon {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: #1e3a5f;
-    color: #374151;
-    font-size: 48px;
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-}
-
-.success-message {
-    margin-bottom: 20px;
-}
-
-.success-text {
-    background: #d1fae5;
-    border: 1px solid #6ee7b7;
-    border-radius: 10px;
-    padding: 16px 24px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #065f46;
-}
-
-.success-info {
-    background: #b8bdc7;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.success-info p {
-    margin: 8px 0;
-    font-size: 14px;
-    color: #374151;
-    text-align: left;
-}
-
-.success-info strong {
-    color: #1f2937;
-}
-
-.success-actions {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-}
-
-.btn-back-home {
-    padding: 12px 28px;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-back-home:hover {
-    background: #f9fafb;
-}
 
 /* ============================================
    AUDITING FAILED (Step 3 - Error)
@@ -876,11 +776,6 @@ order: 1;
     background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
 }
 
-.result-card-benchmark {
-    background: linear-gradient(135deg, #1e3a5f, #2d4a7c);
-    color: white;
-}
-
 .card-label {
     font-size: 13px;
     font-weight: 600;
@@ -892,10 +787,6 @@ order: 1;
 .result-card-danger .card-label,
 .result-card-total .card-label {
     color: #374151;
-}
-
-.result-card-benchmark .card-label {
-    color: rgba(255, 255, 255, 0.9);
 }
 
 .card-value {
@@ -922,19 +813,6 @@ order: 1;
     font-size: 48px;
     font-weight: 700;
     color: #1e40af;
-}
-
-.card-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-}
-
-.card-subtitle {
-    font-size: 14px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
-    margin-top: 4px;
 }
 
 /* Result Table */
@@ -1092,24 +970,34 @@ order: 1;
     }
 }
 
+/* ============================================
+   MODAL BUTTONS
+   ============================================ */
 
-.coming-soon-message {
-    grid-column: 1 / -1;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 24px;
-    text-align: center;
-}
-
-.coming-soon-message p {
-    margin: 6px 0;
+.btn-modal-primary {
+    background: #1e3a5f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
     font-size: 14px;
-    color: #1e40af;
-    font-weight: 500;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 120px;
 }
 
-.coming-soon-message p:first-child {
-    font-size: 16px;
+.btn-modal-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-modal-secondary {
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
     font-weight: 600;
+    cursor: pointer;
 }

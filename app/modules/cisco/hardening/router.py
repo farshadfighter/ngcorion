@@ -558,7 +558,7 @@ router = APIRouter(prefix="/api/hardening/cisco", tags=["Hardening - Cisco"])
 @router.post("/preview", response_model=HardeningPreviewResponse)
 async def preview_hardening(
     http_request: Request,
-    request: HardeningExecuteRequest,
+    request: HardeningPreviewRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
     _quota_check: None = Depends(check_quota_available("harden"))

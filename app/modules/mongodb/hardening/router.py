@@ -22,6 +22,12 @@ from app.models import User
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 
 from .service import MongoDBHardeningService
+from .command_templates import get_mongodb_hardening_template, get_mongodb_template_commands
+from .parameter_metadata import (
+    get_mongodb_parameters_for_check,
+    is_mongodb_check_auto_fixable,
+    get_mongodb_check_defaults,
+)
 
 
 class AutoHardenRequest(BaseModel):
@@ -98,6 +104,51 @@ router = APIRouter(
     prefix="/api/hardening/mongodb",
     tags=["Hardening - MongoDB"],
 )
+
+
+class MongoDBPreviewRequest(BaseModel):
+    check_id: str = Field(..., description="CIS check ID, e.g. MONGO-L1-003")
+    parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
+
+
+@router.post("/preview")
+def preview_mongodb_hardening(
+    request: MongoDBPreviewRequest,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+):
+    """
+    Preview the commands that will be executed for a MongoDB hardening check.
+
+    Returns commands with parameters substituted using provided values or CIS defaults.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    template = get_mongodb_hardening_template(request.check_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No hardening template found for check {request.check_id}",
+        )
+
+    params = request.parameters if request.parameters is not None else get_mongodb_check_defaults(request.check_id)
+    commands = get_mongodb_template_commands(request.check_id, params)
+    param_meta = get_mongodb_parameters_for_check(request.check_id)
+    required = [p.name for p in param_meta if p.required and p.default is None]
+    optional = [p.name for p in param_meta if not (p.required and p.default is None)]
+
+    warnings = []
+    if template.requires_service_restart:
+        warnings.append("Requires mongod service restart after execution")
+
+    return {
+        "check_id": request.check_id,
+        "check_title": template.description,
+        "commands": commands,
+        "required_parameters": required,
+        "optional_parameters": optional,
+        "warnings": warnings,
+        "auto_fixable": is_mongodb_check_auto_fixable(request.check_id),
+    }
 
 
 @router.get("/session/{session_id}/parameters")

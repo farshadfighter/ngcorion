@@ -225,6 +225,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
             {showFixSingleModal && selectedCheck && (
                 <FixSingleModal
                     check={selectedCheck}
+                    assetId={sessionData?.asset_id}
                     deviceType={sessionData.device_type}
                     onClose={() => {
                         setShowFixSingleModal(false);
