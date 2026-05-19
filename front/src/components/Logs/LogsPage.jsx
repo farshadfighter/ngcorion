@@ -3,11 +3,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAllLogs, clearLogs } from "../../store/logsSlice.js";
 import "../../assets/LogsPage.css";
 
+const PAGE_SIZE = 50;
+
 export const LogsPage = () => {
     const dispatch = useDispatch();
     const { items, isLoading, isCleared } = useSelector((state) => state.logs);
 
     const [sortDirection, setSortDirection] = useState("desc");
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         if (!isCleared) {
@@ -15,22 +18,36 @@ export const LogsPage = () => {
         }
     }, [dispatch, isCleared]);
 
+    // reset page when items change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [items]);
+
     const handleClearHistory = () => {
         dispatch(clearLogs());
+        setCurrentPage(1);
     };
 
     const handleRefresh = () => {
         dispatch(fetchAllLogs());
+        setCurrentPage(1);
     };
 
     const handleSort = () => {
         setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
+        setCurrentPage(1);
     };
 
     const sortedItems = [...items].sort((a, b) => {
         const diff = new Date(b.timestamp) - new Date(a.timestamp);
         return sortDirection === "desc" ? diff : -diff;
     });
+
+    const totalPages = Math.ceil(sortedItems.length / PAGE_SIZE);
+    const paginatedItems = sortedItems.slice(
+        (currentPage - 1) * PAGE_SIZE,
+        currentPage * PAGE_SIZE
+    );
 
     const formatTimestamp = (ts) => {
         if (!ts) return "-";
@@ -108,16 +125,16 @@ export const LogsPage = () => {
                     </tr>
                     </thead>
                     <tbody>
-                    {sortedItems.length === 0 ? (
+                    {paginatedItems.length === 0 ? (
                         <tr>
                             <td colSpan="7" className="no-data">
                                 No logs found
                             </td>
                         </tr>
                     ) : (
-                        sortedItems.map((item, index) => (
+                        paginatedItems.map((item, index) => (
                             <tr key={item.id}>
-                                <td>{index + 1}</td>
+                                <td>{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
                                 <td>{item.username || "-"}</td>
                                 <td>{item.action || "-"}</td>
                                 <td>{item.asset_name || "-"}</td>
@@ -136,6 +153,50 @@ export const LogsPage = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="logs-pagination">
+                    <span className="logs-pagination-info">
+                        Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sortedItems.length)} of {sortedItems.length}
+                    </span>
+                    <div className="logs-pagination-buttons">
+                        <button
+                            className="logs-page-btn"
+                            onClick={() => setCurrentPage(1)}
+                            disabled={currentPage === 1}
+                        >
+                            <i className="fa-solid fa-angles-left" />
+                        </button>
+                        <button
+                            className="logs-page-btn"
+                            onClick={() => setCurrentPage((p) => p - 1)}
+                            disabled={currentPage === 1}
+                        >
+                            <i className="fa-solid fa-angle-left" />
+                        </button>
+
+                        <span className="logs-page-current">
+                            {currentPage} / {totalPages}
+                        </span>
+
+                        <button
+                            className="logs-page-btn"
+                            onClick={() => setCurrentPage((p) => p + 1)}
+                            disabled={currentPage === totalPages}
+                        >
+                            <i className="fa-solid fa-angle-right" />
+                        </button>
+                        <button
+                            className="logs-page-btn"
+                            onClick={() => setCurrentPage(totalPages)}
+                            disabled={currentPage === totalPages}
+                        >
+                            <i className="fa-solid fa-angles-right" />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
