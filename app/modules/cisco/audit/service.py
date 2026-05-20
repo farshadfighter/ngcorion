@@ -528,7 +528,8 @@ class AuditService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        job_name: Optional[str] = None
+        job_name: Optional[str] = None,
+        profile: str = "FULL",
     ) -> AuditSession:
         """
         Execute CIS Benchmark audit using official section numbers.
@@ -591,6 +592,7 @@ class AuditService:
 
             # 5. Build CIS Benchmark rules (uses CIS- prefixed IDs)
             rules = build_cis_benchmark_rules()
+            rules = filter_rules_by_profile(rules, profile)
 
             # 6. Evaluate compliance
             report = evaluate_compliance(redacted_dump, rules)
