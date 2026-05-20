@@ -8,12 +8,12 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
 
     try {
         const [loginRes, assetRes, assetReqRes, auditRes, discoveryRes, hardeningRes] = await Promise.allSettled([
-            fetch(`${API_BASE}/logs/?limit=200`, { headers }),
-            fetch(`${API_BASE}/asset-logs/?limit=200`, { headers }),
-            fetch(`${API_BASE}/asset-requirement-logs/?limit=200`, { headers }),
-            fetch(`${API_BASE}/audit-logs/?limit=200`, { headers }),
-            fetch(`${API_BASE}/discovery-logs/?limit=200`, { headers }),
-            fetch(`${API_BASE}/hardening-logs/?limit=200`, { headers }),
+            fetch(`${API_BASE}/logs/?limit=50`, { headers }),
+            fetch(`${API_BASE}/asset-logs/?limit=50`, { headers }),
+            fetch(`${API_BASE}/asset-requirement-logs/?limit=50`, { headers }),
+            fetch(`${API_BASE}/audit-logs/?limit=50`, { headers }),
+            fetch(`${API_BASE}/discovery-logs/?limit=50`, { headers }),
+            fetch(`${API_BASE}/hardening-logs/?limit=50`, { headers }),
         ]);
 
         const parse = async (result, section, mapFn) => {
