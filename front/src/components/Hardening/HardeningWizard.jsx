@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { clearCurrentSession } from "../../store/hardeningSlice";
 import { HardeningConnectionForm } from "./HardeningConnectionForm";
 import { HardeningProcess } from "./HardeningProcess";
 import { HardeningSuccess } from "./HardeningSuccess";
@@ -105,11 +107,13 @@ const HardeningFailed = ({ sessionData, onRetry, onClose }) => (
 // ==========================================
 
 export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
+    const dispatch = useDispatch();
     const [currentStep, setCurrentStep] = useState(1);
     const [sessionData, setSessionData] = useState(null);
     const [hasFailed, setHasFailed] = useState(false);
 
     const handleFormSubmit = (data) => {
+        dispatch(clearCurrentSession());
         setSessionData(data);
         setHasFailed(false);
         setCurrentStep(2);
@@ -127,6 +131,7 @@ export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
 
     // برگشت به step 1 برای تلاش مجدد
     const handleRetry = () => {
+        dispatch(clearCurrentSession());
         setHasFailed(false);
         setSessionData(null);
         setCurrentStep(1);

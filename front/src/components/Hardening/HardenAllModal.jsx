@@ -340,7 +340,9 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
 
         const successCount = executionResult.successful || 0;
         const failedCount  = executionResult.failed     || 0;
-        const skippedCount = executionResult.skipped    || 0;
+        const skippedList  = Array.isArray(executionResult.skipped) ? executionResult.skipped : [];
+        const skippedCount = skippedList.length;
+        const results      = executionResult.results || [];
 
         return (
             <div>
@@ -358,15 +360,44 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                         <div><strong>{skippedCount}</strong><span>Skipped</span></div>
                     </div>
                 </div>
-                {successCount > 0 && (
-                    <div className="hardening-success-message">
-                        <p>✓ Hardening completed successfully! {successCount} checks were hardened.</p>
-                    </div>
-                )}
-                {failedCount > 0 && (
-                    <div className="hardening-error-message">
-                        <span>⚠</span>
-                        <p>{failedCount} checks failed to harden. Please review the logs for details.</p>
+
+                {/* Per-check results table */}
+                {(results.length > 0 || skippedList.length > 0) && (
+                    <div className="result-table-wrapper" style={{ marginTop: '24px', maxHeight: '340px', overflowY: 'auto' }}>
+                        <table className="result-table">
+                            <thead>
+                                <tr>
+                                    <th>Section</th>
+                                    <th>Description</th>
+                                    <th>Result</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {results.map((r) => (
+                                    <tr key={r.check_id}>
+                                        <td style={{ color: r.success ? '#1e3a5f' : '#ef4444', fontWeight: '600' }}>{r.check_id}</td>
+                                        <td><div className="recommendation-text">{r.check_title || r.check_id}</div></td>
+                                        <td>
+                                            {r.success
+                                                ? <span className="result-badge result-success">Fixed</span>
+                                                : <span className="result-badge result-fail">Failed</span>}
+                                        </td>
+                                        <td style={{ fontSize: '12px', color: '#6b7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {r.error_message || r.verification_result || '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {skippedList.map((checkId) => (
+                                    <tr key={checkId}>
+                                        <td style={{ color: '#9ca3af', fontWeight: '600' }}>{checkId}</td>
+                                        <td>—</td>
+                                        <td><span className="result-badge result-unknown">Skipped</span></td>
+                                        <td style={{ fontSize: '12px', color: '#9ca3af' }}>Not auto-fixable</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>

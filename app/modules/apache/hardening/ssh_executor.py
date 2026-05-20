@@ -26,6 +26,7 @@ class ApacheHardeningExecutionResult:
 
     def __init__(self, check_id: str):
         self.check_id = check_id
+        self.check_title: str = ""
         self.success: bool = False
         self.commands_executed: List[str] = []
         self.command_outputs: Dict[str, str] = {}
@@ -38,6 +39,7 @@ class ApacheHardeningExecutionResult:
         """Convert result to dictionary for JSON serialization."""
         return {
             "check_id": self.check_id,
+            "check_title": self.check_title,
             "success": self.success,
             "commands_executed": self.commands_executed,
             "command_outputs": self.command_outputs,
@@ -166,6 +168,7 @@ class ApacheSSHExecutor:
                 result.error_message = f"No hardening template found for {check_id}"
                 logger.warning(result.error_message)
                 return result
+            result.check_title = template.description
 
             # Get distro-specific commands with parameters substituted
             commands = get_apache_template_commands_for_distro(

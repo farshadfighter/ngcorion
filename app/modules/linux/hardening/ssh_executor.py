@@ -29,6 +29,7 @@ class LinuxHardeningExecutionResult:
 
     def __init__(self, check_id: str):
         self.check_id = check_id
+        self.check_title: str = ""
         self.success: bool = False
         self.commands_executed: List[str] = []
         self.command_outputs: Dict[str, str] = {}
@@ -40,6 +41,7 @@ class LinuxHardeningExecutionResult:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "check_id": self.check_id,
+            "check_title": self.check_title,
             "success": self.success,
             "commands_executed": self.commands_executed,
             "command_outputs": self.command_outputs,
@@ -172,6 +174,7 @@ class LinuxSSHExecutor:
             result.error_message = f"No hardening template found for {check_id}"
             logger.error(result.error_message)
             return result
+        result.check_title = template.description
 
         if not self._connected:
             result.error_message = "Not connected to server"
