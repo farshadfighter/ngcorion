@@ -287,7 +287,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         _mk_set_bool("FG-BL-040", "NTP enabled", "BASELINE", "Time & Sync", "Medium", "L1", NTP, "status", True,
                     "config system ntp\\n set status enable\\nend",
                     cis={"id": "3.1.1", "section": "Time Services", "profile": "L1"}, tags=["ntp", "cis"]),
-        _mk_re_pre("FG-BL-041", "NTP server configured", "BASELINE", "Time & Sync", "Medium", "L1", NTP,
+        _mk_re_pre("FG-BL-041","global config", "NTP server configured", "BASELINE", "Time & Sync", "Medium", "L1", NTP,
                   r"config global\\n",
                   "config\s+ntpserver[\s\S]*?edit\s+\d+",
                   "config system ntp\\n config ntpserver\\n edit 1\\n set server <ntp-server>\\nend",
