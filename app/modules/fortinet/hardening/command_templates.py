@@ -282,6 +282,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-041": {
         "commands": [
+            "config global",
             "config system ntp",
             "config ntpserver",
             "edit 1",
