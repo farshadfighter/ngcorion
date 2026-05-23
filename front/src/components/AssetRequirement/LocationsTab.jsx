@@ -48,7 +48,8 @@ export const LocationsTab = () => {
     const filteredData = locations.filter((item) =>
         item.site_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.rack_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.room?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.room?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.unit?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
 
@@ -119,13 +120,16 @@ export const LocationsTab = () => {
                         <th onClick={() => handleSort("floor")} style={{ cursor: "pointer" }}>
                             Floor{renderSortIcon("floor")}
                         </th>
+                        <th onClick={() => handleSort("unit")} style={{ cursor: "pointer" }}>
+                            Unit{renderSortIcon("unit")}
+                        </th>
                         <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {sortedData.length === 0 ? (
                         <tr>
-                            <td colSpan="6" className="no-data">
+                            <td colSpan="7" className="no-data">
                                 No locations found
                             </td>
                         </tr>
@@ -137,6 +141,7 @@ export const LocationsTab = () => {
                                 <td>{item.rack_name || "-"}</td>
                                 <td>{item.room || "-"}</td>
                                 <td>{item.floor || "-"}</td>
+                                <td>{item.unit || "-"}</td>
                                 <td className="actions">
                                     <button className="btn-icon"
                                             onClick={() => handleDelete(item)}

@@ -223,6 +223,7 @@ class AssetLocationCreate(BaseModel):
     rack_name: Optional[str] = None
     room: Optional[str] = None
     floor: Optional[str] = None
+    unit: Optional[str] = None
 
     @field_validator('site_name')
     @classmethod

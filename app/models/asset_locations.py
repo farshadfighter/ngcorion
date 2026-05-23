@@ -72,11 +72,17 @@ class AssetLocation(Base):
         nullable=True,
         comment="Floor number or name (e.g., 2nd Floor, Basement)"
     )
-    
+
+    unit = Column(
+        String(50),
+        nullable=True,
+        comment="Unit number or label within the floor/room (e.g., Unit-3, Bay-12)"
+    )
+
     # ====================================
     # Additional Information
     # ====================================
-    
+
     description = Column(
         Text,
         nullable=True,
