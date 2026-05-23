@@ -215,7 +215,6 @@ def discover_vdoms(
     """
     Discover VDOMs on a FortiGate device.
     """
-    consume_quota = consume_quota_on_success("discovery")
     # Get asset info
     from app.models import Asset
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()

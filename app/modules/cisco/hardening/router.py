@@ -582,7 +582,7 @@ async def preview_hardening(
     - 404: Audit result not found
     - 500: Internal error
     """
-    consume_quota = consume_quota_on_success("hardening")
+    consume_quota = consume_quota_on_success("harden")
     try:
         preview = HardeningService.preview_hardening(
             db=db,

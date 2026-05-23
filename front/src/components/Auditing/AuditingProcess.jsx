@@ -45,12 +45,10 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
     // ✅ چک status - هر چیزی غیر از completed و running → failed
     useEffect(() => {
         if (!currentSession) return;
-
-        if (
-            sessionData.session_id &&
-            sessionData.session_id !== "pending" &&
-            currentSession.session_id !== sessionData.session_id
-        ) return;
+        // Don't process any session update until we have a real session ID
+        if (!sessionData.session_id || sessionData.session_id === "pending") return;
+        // Ignore updates for a different session (stale Redux state)
+        if (currentSession.session_id !== sessionData.session_id) return;
 
         if (currentSession.status === "completed") {
             if (pollIntervalRef.current) {

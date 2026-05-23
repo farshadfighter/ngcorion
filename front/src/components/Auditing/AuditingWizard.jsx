@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { clearCurrentSession } from "../../store/auditSlice";
 import { AuditingForm } from "./AuditingForm";
 import { AuditingProcess } from "./AuditingProcess";
 import { AuditingSuccess } from "./AuditingSuccess";
@@ -6,6 +8,7 @@ import { AuditingFailed } from "./AuditingFailed";
 import { AuditingResultModal } from "./AuditingResultModal";
 
 export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
+    const dispatch = useDispatch();
     const [currentStep, setCurrentStep] = useState(1);
     const [sessionData, setSessionData] = useState(null);
     const [jobName, setJobName] = useState("");
@@ -14,6 +17,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
     const [showResultModal, setShowResultModal] = useState(false);
 
     const handleFormSubmit = (data, name) => {
+        dispatch(clearCurrentSession());
         setSessionData(data);
         setJobName(name);
         setHasFailed(false);

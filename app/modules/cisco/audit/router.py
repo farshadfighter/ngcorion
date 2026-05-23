@@ -504,8 +504,13 @@ class CISBenchmarkAuditRequest(BaseModel):
         }
 
 
-@router.post("/cis-benchmark/execute", response_model=CISBenchmarkTableResponse)
+@router.post(
+    "/cis-benchmark/execute",
+    response_model=CISBenchmarkTableResponse,
+    dependencies=[Depends(check_quota_available("audit"))],
+)
 def execute_cis_benchmark_audit(
+    http_request: Request,
     request: CISBenchmarkAuditRequest,
     current_user: User = Depends(require_permission("AUDIT", "write")),
     db: Session = Depends(get_db),
@@ -530,6 +535,8 @@ def execute_cis_benchmark_audit(
 
     **Note:** SSH credentials are used only for the audit session and never stored.
     """
+    consume_quota = consume_quota_on_success("audit")
+
     # Get asset info for logging
     from app.models import Asset
 
@@ -546,7 +553,10 @@ def execute_cis_benchmark_audit(
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
             job_name=request.job_name,
+            profile=request.profile,
         )
+
+        consume_quota(http_request)
 
         # Return results in CIS Benchmark table format
         table = AuditService.get_cis_benchmark_table(db, session.id)
