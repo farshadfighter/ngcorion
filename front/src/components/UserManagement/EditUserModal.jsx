@@ -343,6 +343,7 @@ export const EditUserModal = ({ user, onClose }) => {
         username: user.username,
         email: user.email,
         password: "",
+        confirm_password: "",
         current_password: "",
         role: user.role,
         is_active: user.is_active,
@@ -386,7 +387,7 @@ export const EditUserModal = ({ user, onClose }) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
         if (e.target.name === "current_password") setPasswordError(null);
         if (e.target.name === "password" && !e.target.value) {
-            setFormData(prev => ({ ...prev, password: "", current_password: "" }));
+            setFormData(prev => ({ ...prev, password: "", confirm_password: "", current_password: "" }));
         }
     };
 
@@ -403,6 +404,11 @@ export const EditUserModal = ({ user, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setPasswordError(null);
+
+        if (formData.password && formData.password !== formData.confirm_password) {
+            setPasswordError("Passwords do not match.");
+            return;
+        }
 
         if (formData.password && !formData.current_password) {
             setPasswordError("Current password is required to set a new password.");
@@ -602,6 +608,23 @@ export const EditUserModal = ({ user, onClose }) => {
                                 </span>
                             </div>
 
+                            {showCurrentPasswordField && (
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Confirm New Password *</label>
+                                    <FocusInput
+                                        type="password"
+                                        name="confirm_password"
+                                        value={formData.confirm_password}
+                                        onChange={handleChange}
+                                        placeholder="Re-enter new password"
+                                        style={styles.input}
+                                        hasError={!!(passwordError && passwordError.includes("match"))}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={styles.formRow}>
                             {showCurrentPasswordField && (
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>

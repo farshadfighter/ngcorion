@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
 from typing import List, Optional
 from math import ceil
+from datetime import date as date_type
 from app.models import (
     AssetType, Asset, AssetOwner, AssetLocation,
     NetworkZone, OSCatalog, VendorCatalog,
@@ -138,6 +139,9 @@ class AssetService:
     @staticmethod
     def update_asset(db: Session, asset_id: int, data: dict):
         """Update asset with optional security status"""
+        # Auto-stamp audit date on every update
+        data['last_audit_date'] = date_type.today()
+
         # Extract security_status if present
         security_status_data = data.pop('security_status', None)
 
