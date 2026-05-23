@@ -247,6 +247,11 @@ class FortiGateAutoHardenResponse(BaseModel):
     actions: List[int]
     fixed_checks: List[Dict[str, Any]]
     skipped_checks: List[Dict[str, Any]]
+    # Normalized fields matching the frontend HardenAllModal expectations
+    successful: int = 0
+    failed: int = 0
+    skipped: List[str] = Field(default_factory=list)
+    results: List[Dict[str, Any]] = Field(default_factory=list)
 
     class Config:
         json_schema_extra = {
@@ -352,9 +357,11 @@ router = APIRouter(prefix="/api/hardening/fortinet", tags=["Hardening - FortiGat
 
 @router.post("/preview", response_model=FortiGatePreviewResponse)
 def preview_fortinet_hardening(
+    http_request: Request,
     request: FortiGatePreviewRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
     db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden")),
 ):
     """
     Preview hardening commands for a failed FortiGate check.
@@ -368,7 +375,7 @@ def preview_fortinet_hardening(
 
     **Permissions:** Requires HARDENING write permission
     """
-    
+    consume_quota = consume_quota_on_success("harden")
     try:
         preview = FortiGateHardeningService.preview_hardening(
             db=db,
@@ -383,6 +390,7 @@ def preview_fortinet_hardening(
             check_number=preview.get("check_number", "") if isinstance(preview, dict) else "",
             check_title=preview.get("check_title", "") if isinstance(preview, dict) else "",
         )
+        consume_quota(http_request)
         return preview
 
     except FortiGateCheckAlreadyPassingError as e:
@@ -677,6 +685,20 @@ async def auto_harden_fortinet_with_defaults(
         )
         consume_quota(http_request)
 
+        # Normalize to the format HardenAllModal expects
+        result["successful"] = result.get("fixed_count", 0)
+        result["failed"] = result.get("failed_count", 0)
+        result["skipped"] = [
+            c.get("check_number", "") for c in result.get("skipped_checks", [])
+        ]
+        result["results"] = [
+            {
+                "check_id": c.get("check_number", ""),
+                "check_title": c.get("check_title", c.get("check_number", "")),
+                "success": True,
+            }
+            for c in result.get("fixed_checks", [])
+        ]
         return result
 
     except SSHAuthenticationError as e:
