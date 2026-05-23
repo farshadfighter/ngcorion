@@ -51,6 +51,7 @@ export const LocationsTab = () => {
         item.room?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+
     const sortedData = [...filteredData].sort((a, b) => {
         let aVal = a[sortColumn];
         let bVal = b[sortColumn];
@@ -118,22 +119,13 @@ export const LocationsTab = () => {
                         <th onClick={() => handleSort("floor")} style={{ cursor: "pointer" }}>
                             Floor{renderSortIcon("floor")}
                         </th>
-                        <th onClick={() => handleSort("network_zone")} style={{ cursor: "pointer" }}>
-                            Zone{renderSortIcon("network_zone")}
-                        </th>
-                        <th onClick={() => handleSort("vlan_id")} style={{ cursor: "pointer" }}>
-                            VLAN{renderSortIcon("vlan_id")}
-                        </th>
-                        <th onClick={() => handleSort("subnet")} style={{ cursor: "pointer" }}>
-                            Subnet{renderSortIcon("subnet")}
-                        </th>
                         <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {sortedData.length === 0 ? (
                         <tr>
-                            <td colSpan="10" className="no-data">
+                            <td colSpan="6" className="no-data">
                                 No locations found
                             </td>
                         </tr>
@@ -145,9 +137,6 @@ export const LocationsTab = () => {
                                 <td>{item.rack_name || "-"}</td>
                                 <td>{item.room || "-"}</td>
                                 <td>{item.floor || "-"}</td>
-                                <td>{item.network_zone || "-"}</td>
-                                <td>{item.vlan_id || "-"}</td>
-                                <td>{item.subnet || "-"}</td>
                                 <td className="actions">
                                     <button className="btn-icon"
                                             onClick={() => handleDelete(item)}

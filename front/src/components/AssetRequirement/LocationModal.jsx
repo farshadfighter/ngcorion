@@ -10,9 +10,6 @@ export const LocationModal = ({ onClose }) => {
         rack_name: "",
         room: "",
         floor: "",
-        network_zone: "",
-        vlan_id: "",
-        subnet: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -22,24 +19,6 @@ export const LocationModal = ({ onClose }) => {
 
         if (!formData.site_name.trim()) {
             newErrors.site_name = "Site name is required";
-        }
-
-        if (formData.vlan_id && isNaN(formData.vlan_id)) {
-            newErrors.vlan_id = "VLAN ID must be a number";
-        }
-        if (formData.subnet) {
-            const subnetRegex = /^(\d{1,3}\.){3}\d{1,3}\/(\d|[1-2]\d|3[0-2])$/;
-            const isValidFormat = subnetRegex.test(formData.subnet);
-
-            // بررسی اینکه هر اکتت بین 0 تا 255 باشه
-            if (isValidFormat) {
-                const [ip] = formData.subnet.split("/");
-                const octets = ip.split(".");
-                const allOctetsValid = octets.every(o => parseInt(o) >= 0 && parseInt(o) <= 255);
-                if (!allOctetsValid) newErrors.subnet = "IP octets must be between 0-255";
-            } else {
-                newErrors.subnet = "Invalid subnet format (e.g., 192.168.1.0/24)";
-            }
         }
 
         setErrors(newErrors);
@@ -57,9 +36,6 @@ export const LocationModal = ({ onClose }) => {
                 rack_name: formData.rack_name || null,
                 room: formData.room || null,
                 floor: formData.floor || null,
-                network_zone: formData.network_zone || null,
-                vlan_id: formData.vlan_id ? parseInt(formData.vlan_id) : null,
-                subnet: formData.subnet || null,
             };
 
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
@@ -145,47 +121,6 @@ export const LocationModal = ({ onClose }) => {
                             onChange={handleChange}
                             placeholder="Enter floor"
                         />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Network Zone</label>
-                        <input
-                            type="text"
-                            name="network_zone"
-                            value={formData.network_zone}
-                            onChange={handleChange}
-                            placeholder="Enter network zone"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>VLAN ID</label>
-                        <input
-                            type="number"
-                            name="vlan_id"
-                            value={formData.vlan_id}
-                            onChange={handleChange}
-                            placeholder="Enter VLAN ID"
-                            className={errors.vlan_id ? "error" : ""}
-                        />
-                        {errors.vlan_id && (
-                            <span className="error-message">{errors.vlan_id}</span>
-                        )}
-                    </div>
-
-                    <div className="form-group">
-                        <label>Subnet</label>
-                        <input
-                            type="text"
-                            name="subnet"
-                            value={formData.subnet}
-                            onChange={handleChange}
-                            placeholder="e.g., 192.168.1.0/24"
-                            className={errors.subnet ? "error" : ""}
-                        />
-                        {errors.subnet && (
-                            <span className="error-message">{errors.subnet}</span>
-                        )}
                     </div>
 
                     <div className="modal-footer">

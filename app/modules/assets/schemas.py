@@ -223,9 +223,6 @@ class AssetLocationCreate(BaseModel):
     rack_name: Optional[str] = None
     room: Optional[str] = None
     floor: Optional[str] = None
-    network_zone: Optional[str] = None
-    vlan_id: Optional[int] = None
-    subnet: Optional[str] = None
 
     @field_validator('site_name')
     @classmethod
@@ -233,24 +230,6 @@ class AssetLocationCreate(BaseModel):
         v = v.strip()
         if len(v) < 2:
             raise ValueError('Site name must be at least 2 characters')
-        return v
-
-    @field_validator('vlan_id')
-    @classmethod
-    def validate_vlan(cls, v):
-        if v is not None and (v < 1 or v > 4094):
-            raise ValueError('VLAN ID must be between 1 and 4094')
-        return v
-
-    @field_validator('subnet')
-    @classmethod
-    def validate_subnet(cls, v):
-        if v is None or v == '':
-            return v
-        # Basic CIDR validation
-        pattern = r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/([0-9]|[1-2][0-9]|3[0-2])$'
-        if not re.match(pattern, v):
-            raise ValueError('Invalid subnet format (use CIDR notation, e.g., 192.168.1.0/24)')
         return v
 
 class AssetLocationResponse(AssetLocationCreate):

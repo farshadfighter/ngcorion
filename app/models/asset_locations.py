@@ -74,29 +74,6 @@ class AssetLocation(Base):
     )
     
     # ====================================
-    # Logical/Network Location Information
-    # ====================================
-    
-    network_zone = Column(
-        String(100),
-        nullable=True,
-        index=True,
-        comment="Network zone or segment (e.g., DMZ, Internal, Management)"
-    )
-    
-    vlan_id = Column(
-        Integer,
-        nullable=True,
-        comment="VLAN identifier (e.g., 100, 200)"
-    )
-    
-    subnet = Column(
-        String(50),
-        nullable=True,
-        comment="Network subnet in CIDR notation (e.g., 10.0.0.0/24, 192.168.1.0/24)"
-    )
-    
-    # ====================================
     # Additional Information
     # ====================================
     
@@ -170,22 +147,7 @@ class AssetLocation(Base):
         if self.floor:
             parts.append(self.floor)
         
-        physical = " - ".join(parts) if parts else "Unknown Location"
-        
-        # Network location
-        network_parts = []
-        if self.network_zone:
-            network_parts.append(self.network_zone)
-        if self.vlan_id:
-            network_parts.append(f"VLAN {self.vlan_id}")
-        if self.subnet:
-            network_parts.append(self.subnet)
-        
-        if network_parts:
-            network = f"({', '.join(network_parts)})"
-            return f"{physical} {network}"
-        
-        return physical
+        return " - ".join(parts) if parts else "Unknown Location"
 
 
 # ====================================
