@@ -3,11 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUser } from "../../store/userSlice";
 
 const MODULES = [
-    { name: "dashboard", label: "Dashboard", icon: "⊞" },
-    { name: "asset_requirement", label: "Asset Requirement", icon: "◈" },
-    { name: "asset_list", label: "Asset List", icon: "≡" },
-    { name: "asset_auto_discovery", label: "Auto Discovery", icon: "⟳" },
-    { name: "user_management", label: "User Management", icon: "◎" },
+    { name: "dashboard",            label: "Dashboard",         icon: "⊞" },
+    { name: "asset_requirement",    label: "Asset Requirement", icon: "◈" },
+    { name: "asset_list",           label: "Asset List",        icon: "≡" },
+    { name: "asset_auto_discovery", label: "Auto Discovery",    icon: "⟳" },
+    { name: "user_management",      label: "User Management",   icon: "◎" },
+    { name: "hardening",            label: "Hardening",         icon: "🛡" },
+    { name: "auditing",             label: "Auditing",          icon: "📋" },
 ];
 
 const styles = {
@@ -138,11 +140,11 @@ const styles = {
         background: "#ffffff",
         boxShadow: "0 0 0 3px rgba(30,58,95,0.1)",
     },
-        inputError: {
-            border: "1.5px solid #ef4444",
-            background: "#fff8f8",
-            boxShadow: "0 0 0 3px rgba(239,68,68,0.08)",
-        },
+    inputError: {
+        border: "1.5px solid #ef4444",
+        background: "#fff8f8",
+        boxShadow: "0 0 0 3px rgba(239,68,68,0.08)",
+    },
     select: {
         padding: "10px 14px",
         borderRadius: "10px",
@@ -371,7 +373,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             delete: perm.can_delete,
                         };
                     });
-                    setPermissions(perms);
+                    setPermissions(prev => ({ ...prev, ...perms }));
                 }
             } catch (error) {
                 console.error("Failed to load permissions:", error);
@@ -470,7 +472,6 @@ export const EditUserModal = ({ user, onClose }) => {
                             <span style={styles.sectionLine} />
                         </div>
 
-                        {/* ✅ formRow اول: Username + Email */}
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Username *</label>
@@ -495,9 +496,8 @@ export const EditUserModal = ({ user, onClose }) => {
                                     style={styles.input}
                                 />
                             </div>
-                        </div>{/* ✅ پایان formRow اول */}
+                        </div>
 
-                        {/* ✅ formRow دوم: Role + Status */}
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Role *</label>
@@ -561,7 +561,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                     </button>
                                 </div>
                             </div>
-                        </div>{/* ✅ پایان formRow دوم */}
+                        </div>
 
                         <div style={styles.divider} />
 
@@ -585,7 +585,6 @@ export const EditUserModal = ({ user, onClose }) => {
                             </div>
                         )}
 
-                        {/* ✅ formRow سوم: Password */}
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>New Password</label>
@@ -626,7 +625,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                     )}
                                 </div>
                             )}
-                        </div>{/* ✅ پایان formRow سوم */}
+                        </div>
 
                         {showCurrentPasswordField && !formData.current_password && (
                             <div style={styles.passwordWarning}>
@@ -686,7 +685,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             </table>
                         )}
 
-                    </div>{/* ✅ پایان body */}
+                    </div>
 
                     {/* ── Footer ── */}
                     <div style={styles.footer}>
