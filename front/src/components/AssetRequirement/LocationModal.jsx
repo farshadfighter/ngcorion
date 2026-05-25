@@ -10,6 +10,7 @@ export const LocationModal = ({ onClose }) => {
         rack_name: "",
         room: "",
         floor: "",
+        unit: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -36,6 +37,7 @@ export const LocationModal = ({ onClose }) => {
                 rack_name: formData.rack_name || null,
                 room: formData.room || null,
                 floor: formData.floor || null,
+                unit: formData.unit || null,
             };
 
             console.log("Sending payload:", JSON.stringify(payload, null, 2));
@@ -120,6 +122,17 @@ export const LocationModal = ({ onClose }) => {
                             value={formData.floor}
                             onChange={handleChange}
                             placeholder="Enter floor"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Unit</label>
+                        <input
+                            type="text"
+                            name="unit"
+                            value={formData.unit}
+                            onChange={handleChange}
+                            placeholder="Enter unit"
                         />
                     </div>
 

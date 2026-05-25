@@ -59,18 +59,16 @@ def _is_postgres() -> bool:
 def upgrade() -> None:
     """Convert naive DateTime columns to timezone-aware (UTC)."""
     if not _is_postgres():
-        # SQLite stores ISO strings — no column-type change required.
-        # New rows written from the ORM use timezone.utc; existing rows
-        # remain naive ISO and are interpreted as UTC by the application.
         return
 
     for table, column, nullable in _TIMESTAMP_COLUMNS:
-        op.execute(
-            f'ALTER TABLE {table} '
-            f'ALTER COLUMN "{column}" '
-            f'TYPE TIMESTAMP WITH TIME ZONE '
-            f'USING "{column}" AT TIME ZONE \'UTC\''
-        )
+        op.execute(sa.text(
+            f"DO $$ BEGIN "
+            f"ALTER TABLE {table} ALTER COLUMN \"{column}\" "
+            f"TYPE TIMESTAMP WITH TIME ZONE USING \"{column}\" AT TIME ZONE 'UTC'; "
+            f"EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; "
+            f"END $$"
+        ))
 
 
 def downgrade() -> None:
@@ -79,9 +77,10 @@ def downgrade() -> None:
         return
 
     for table, column, nullable in _TIMESTAMP_COLUMNS:
-        op.execute(
-            f'ALTER TABLE {table} '
-            f'ALTER COLUMN "{column}" '
-            f'TYPE TIMESTAMP WITHOUT TIME ZONE '
-            f'USING ("{column}" AT TIME ZONE \'UTC\')'
-        )
+        op.execute(sa.text(
+            f"DO $$ BEGIN "
+            f"ALTER TABLE {table} ALTER COLUMN \"{column}\" "
+            f"TYPE TIMESTAMP WITHOUT TIME ZONE USING (\"{column}\" AT TIME ZONE 'UTC'); "
+            f"EXCEPTION WHEN undefined_table THEN NULL; WHEN undefined_column THEN NULL; "
+            f"END $$"
+        ))

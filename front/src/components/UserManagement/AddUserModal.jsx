@@ -28,6 +28,7 @@ export const AddUserModal = ({ onClose }) => {
         username: "",
         email: "",
         password: "",
+        confirmPassword: "",
         role: "user",
         is_active: true,
     });
@@ -70,6 +71,11 @@ export const AddUserModal = ({ onClose }) => {
         const pwdErr = validatePassword(formData.password);
         if (pwdErr) {
             setPasswordError(pwdErr);
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setPasswordError("Passwords do not match");
             return;
         }
 
@@ -166,6 +172,20 @@ export const AddUserModal = ({ onClose }) => {
                                 )}
                             </div>
 
+                            <div className="form-group">
+                                <label>Confirm Password *</label>
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
+                                    required
+                                    placeholder="Re-enter password"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-row">
                             <div className="form-group">
                                 <label>Role *</label>
                                 <select

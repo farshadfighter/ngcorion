@@ -46,7 +46,8 @@ export const OSCatalogTab = () => {
     };
 
     const filteredData = osCatalog.filter((item) =>
-        item.os_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        item.os_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.os_version?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const sortedData = [...filteredData].sort((a, b) => {
@@ -105,6 +106,9 @@ export const OSCatalogTab = () => {
                         <th onClick={() => handleSort("os_name")} style={{ cursor: "pointer" }}>
                             OS Name{renderSortIcon("os_name")}
                         </th>
+                        <th onClick={() => handleSort("os_version")} style={{ cursor: "pointer" }}>
+                            OS Version{renderSortIcon("os_version")}
+                        </th>
                         <th>Actions</th>
                     </tr>
                     </thead>
@@ -119,6 +123,7 @@ export const OSCatalogTab = () => {
                         sortedData.map((item) => (
                             <tr key={item.id}>
                                 <td>{item.os_name}</td>
+                                <td>{item.os_version || "-"}</td>
                                 <td className="actions">
                                     <button
                                         className="btn-icon"

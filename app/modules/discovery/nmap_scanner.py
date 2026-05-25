@@ -136,8 +136,8 @@ class NmapScanner:
 
         cmd = ["nmap", "-oX", "-"]  # XML output to stdout
 
-        # Always use -v (verbose), -sT (TCP connect scan), -Pn (skip host discovery)
-        cmd.extend(["-v", "-sT", "-Pn"])
+        # Always use -v (verbose), -sT (TCP connect scan), -Pn (skip host discovery), -n (no DNS)
+        cmd.extend(["-v", "-sT", "-Pn", "-n"])
 
         # Only add -sV if explicitly requested (it's MUCH slower)
         if version_detection:
@@ -147,7 +147,7 @@ class NmapScanner:
         if scan_type == "all_ports":
             cmd.append("-p-")  # All 65535 ports
         elif scan_type == "well_known_ports":
-            cmd.extend(["-p", "1-1024"])  # Well-known ports (1-1024)
+            cmd.extend(["-p", "1-1024,1433,1521,3306,3389,5432,5900,8080,8443,8888,9090,27017"])
         elif scan_type == "custom_ports":
             if ports:
                 # Custom ports: "80,443" or "1-1000" or specific port
@@ -453,6 +453,10 @@ class NmapScanner:
                             service_info["ostype"] = ostype
                             os_types_found.add(ostype)
 
+                    # Skip TCP 113 (ident) — noisy, unreliable, no security value
+                    if port_id == 113 and protocol == "tcp":
+                        continue
+
                     host_data["ports"].append({
                         "port": port_id,
                         "protocol": protocol,
@@ -474,8 +478,8 @@ class NmapScanner:
                     host_data["os"]["name"] = host_data["os_guessed"]
                     host_data["os"]["accuracy"] = 50  # Lower confidence for service-based detection
 
-            # Only include hosts that were actually discovered (have an IP)
-            if host_data["ip"]:
+            # Only include hosts with an IP and at least one port result
+            if host_data["ip"] and host_data["ports"]:
                 hosts.append(host_data)
 
         logger.info(f"Parsed {len(hosts)} hosts from nmap XML")

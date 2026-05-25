@@ -62,7 +62,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                         <td>{index + 1}</td>
                         <td>{asset.asset_name}</td>
                         <td>{asset.serial_number || "-"}</td>
-                        <td>{asset.os_name || "-"}</td>
+                        <td>{asset.os_name ? [asset.os_name, asset.os_version].filter(Boolean).join(" ") : "-"}</td>
                         <td>{asset.ip_address || "-"}</td>
                         <td>{asset.mac_address || "-"}</td>
                         <td>

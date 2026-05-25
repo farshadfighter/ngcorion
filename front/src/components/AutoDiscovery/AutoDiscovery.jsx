@@ -48,6 +48,8 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
 
   // Polling ref
   const pollIntervalRef = useRef(null);
+  // Track previous scan status to detect running → completed transition
+  const prevScanStatusRef = useRef(null);
 
   // Load initial data and restore running scan state
   useEffect(() => {
@@ -67,34 +69,7 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
     };
   }, []);
 
-  // Poll for scan status when running
-  useEffect(() => {
-    if (currentScan && currentScan.status === "running") {
-      pollIntervalRef.current = setInterval(() => {
-        dispatch(checkScanStatus(currentScan.scan_id));
-      }, 3000);
-    } else {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-
-      // Refresh pending hosts when scan completes
-      if (currentScan && currentScan.status === "completed") {
-        dispatch(fetchPendingHosts());
-        dispatch(fetchScanHistory());
-      }
-    }
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [currentScan, dispatch]);
-
   // Handle starting a new scan
-
   const handleStartScan = useCallback(
     (scanData) => {
       setShowScanModal(false);
@@ -118,6 +93,39 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
     },
     [dispatch],
   );
+
+  // Detect running → completed transition and auto-open results
+  useEffect(() => {
+    const prevStatus = prevScanStatusRef.current;
+    const newStatus = currentScan?.status;
+    prevScanStatusRef.current = newStatus;
+
+    if (prevStatus === "running" && newStatus === "completed") {
+      dispatch(fetchPendingHosts());
+      dispatch(fetchScanHistory());
+      if (currentScan) handleViewResults(currentScan);
+    }
+  }, [currentScan?.status, dispatch, handleViewResults]);
+
+  // Poll for scan status when running
+  useEffect(() => {
+    if (currentScan && currentScan.status === "running") {
+      pollIntervalRef.current = setInterval(() => {
+        dispatch(checkScanStatus(currentScan.scan_id));
+      }, 3000);
+    } else {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [currentScan, dispatch]);
 
   // Handle deleting a scan
 
