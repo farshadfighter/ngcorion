@@ -197,7 +197,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                                                 onClick={() => handleDeleteClick(session)}
                                                 title="Delete"
                                             >
-                                                <img src="/icons/delete.svg" alt="delete" />
+                                                <i className="fa-solid fa-trash"></i>
                                             </button>
                                         </div>
                                     </td>

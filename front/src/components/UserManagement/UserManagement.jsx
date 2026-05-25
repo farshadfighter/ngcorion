@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, clearMessages } from "../../store/userSlice";
 import { AddUserModal } from "./AddUserModal";
@@ -96,14 +96,14 @@ export const UserManagement = () => {
                                         onClick={() => handleEdit(user)}
                                         title="Edit"
                                     >
-                                        <img src="/icons/edetie.svg" alt="edit" />
+                                        <i className="fa-solid fa-pen"></i>
                                     </button>
                                     <button
                                         className="btn-icon btn-delete"
                                         onClick={() => handleDeleteClick(user)}
                                         title="Delete"
                                     >
-                                        <img src={"/icons/delete.svg"} alt={"delete"} />
+                                        <i className="fa-solid fa-trash"></i>
                                     </button>
                                 </td>
                             </tr>

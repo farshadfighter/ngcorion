@@ -33,7 +33,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             justifyContent: "center",
                         }}
                     >
-                        <img src="/icons/license.svg" alt="" style={{  width: "24px", height: "24px", }} />
+                        <img src="/icons/haedenIcon.svg" alt="" style={{  width: "24px", height: "24px", }} />
                     </div>
 
                     <div>
