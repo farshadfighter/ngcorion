@@ -277,6 +277,53 @@ code.mac-address {
     border: 1px solid #93c5fd;
 }
 
+.port-badge.port-state-open {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+.port-badge.port-state-closed {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}
+
+.port-badge.port-state-filtered {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.port-state-label {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.port-state-label.closed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.port-legend {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.port-legend::before {
+    content: 'Legend:';
+    font-weight: 600;
+    color: #374151;
+}
+
 .port-more {
     font-size: 11px;
     color: #6b7280;

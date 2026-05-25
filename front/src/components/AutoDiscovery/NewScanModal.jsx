@@ -111,17 +111,22 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         const details = [];
 
         if (formData.scan_type === 'well_known_ports') {
-            details.push('Scan ports 1-1024 (well-know)');
+            details.push('Ports: 1-1024 + common database/app ports');
         } else if (formData.scan_type === 'all_ports') {
-            details.push('Scan ports 1-65535 (all ports)');
+            details.push('Ports: 1-65535 (full scan, slowest)');
         } else {
-            details.push(`Scan ports: ${formData.ports || 'custom'}`);
+            details.push(`Ports: ${formData.ports || 'specify below'}`);
         }
 
-        details.push('Service version detection (-sV)');
-        details.push(`${formData.protocol} connect scan (-sT)` );
-        details.push('Balanced speed and coverage');
-        details.push('Using Flags: -sT -sV -Pn');
+        details.push(`Protocol: ${formData.protocol} connect scan (-sT)`);
+        details.push('Skip host discovery (-Pn), no DNS (-n)');
+        if (formData.version_detection) {
+            details.push('Service version detection enabled (-sV) — slower');
+        }
+
+        const flags = ['-sT', '-Pn', '-n'];
+        if (formData.version_detection) flags.push('-sV');
+        details.push(`Flags: ${flags.join(' ')}`);
 
         return details;
     };

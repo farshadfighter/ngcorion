@@ -58,19 +58,39 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
         }
     };
 
-    // Format ports for display
+    // Format ports for display with state color coding
     const formatPorts = (ports) => {
         if (!ports || ports.length === 0) return '-';
-        const displayed = ports.slice(0, 4);
-        const remaining = ports.length - 4;
+        const openPorts = ports.filter(p => p.state === 'open' || !p.state);
+        const closedPorts = ports.filter(p => p.state === 'closed');
+        const filteredPorts = ports.filter(p => p.state === 'filtered');
+        const shown = [
+            ...openPorts.slice(0, 3),
+            ...closedPorts.slice(0, 2),
+            ...filteredPorts.slice(0, 1),
+        ];
+        const remaining = ports.length - shown.length;
         return (
             <div className="ports-display">
-                {displayed.map((port, i) => (
-                    <span key={i} className="port-badge">
-            {port.port}/{port.protocol}
-          </span>
+                {openPorts.slice(0, 3).map((port, i) => (
+                    <span key={i} className="port-badge port-state-open" title="open">
+                        {port.port}/{port.protocol}
+                    </span>
+                ))}
+                {closedPorts.slice(0, 2).map((port, i) => (
+                    <span key={`c${i}`} className="port-badge port-state-closed" title="closed">
+                        {port.port}/{port.protocol}
+                    </span>
+                ))}
+                {filteredPorts.slice(0, 1).map((port, i) => (
+                    <span key={`f${i}`} className="port-badge port-state-filtered" title="filtered">
+                        {port.port}/{port.protocol}
+                    </span>
                 ))}
                 {remaining > 0 && <span className="port-more">+{remaining}</span>}
+                {closedPorts.length > 0 && (
+                    <span className="port-state-label closed">{closedPorts.length} closed</span>
+                )}
             </div>
         );
     };
@@ -141,7 +161,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                     <th>Hostname</th>
                     <th>MAC Address</th>
                     <th>OS Info</th>
-                    <th>Open Ports</th>
+                    <th>Ports</th>
                     <th>Status</th>
                     <th className="col-actions">Actions</th>
                 </tr>

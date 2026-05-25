@@ -51,6 +51,64 @@ const ScanResultsModal = ({ scan, onClose }) => {
         return `${minutes}m ${remainingSeconds}s`;
     };
 
+    // Render ports with state color coding
+    const renderPorts = (ports) => {
+        const allPorts = ports || [];
+        if (allPorts.length === 0) {
+            return <span className="text-muted">No ports found</span>;
+        }
+
+        const openPorts = allPorts.filter(p => p.state === 'open' || !p.state);
+        const closedPorts = allPorts.filter(p => p.state === 'closed');
+        const filteredPorts = allPorts.filter(p => p.state === 'filtered');
+
+        const shown = [
+            ...openPorts.slice(0, 5),
+            ...closedPorts.slice(0, 3),
+            ...filteredPorts.slice(0, 2),
+        ];
+        const remaining = allPorts.length - shown.length;
+
+        return (
+            <div className="ports-display">
+                {openPorts.slice(0, 5).map((port, i) => (
+                    <span
+                        key={i}
+                        className="port-badge port-state-open"
+                        title={`open${port.service ? ` - ${port.service}` : ''}`}
+                    >
+                        {port.port}/{port.protocol}
+                        {port.service && ` (${port.service})`}
+                    </span>
+                ))}
+                {closedPorts.slice(0, 3).map((port, i) => (
+                    <span
+                        key={`c${i}`}
+                        className="port-badge port-state-closed"
+                        title="closed"
+                    >
+                        {port.port}/{port.protocol}
+                    </span>
+                ))}
+                {filteredPorts.slice(0, 2).map((port, i) => (
+                    <span
+                        key={`f${i}`}
+                        className="port-badge port-state-filtered"
+                        title="filtered"
+                    >
+                        {port.port}/{port.protocol}
+                    </span>
+                ))}
+                {remaining > 0 && (
+                    <span className="port-more">+{remaining} more</span>
+                )}
+                {closedPorts.length > 0 && (
+                    <span className="port-state-label closed">{closedPorts.length} closed</span>
+                )}
+            </div>
+        );
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
@@ -104,12 +162,17 @@ const ScanResultsModal = ({ scan, onClose }) => {
                         </div>
                     ) : (
                         <div className="results-table-container">
+                            <div className="port-legend">
+                                <span className="port-badge port-state-open" style={{pointerEvents:'none'}}>open</span>
+                                <span className="port-badge port-state-closed" style={{pointerEvents:'none'}}>closed</span>
+                                <span className="port-badge port-state-filtered" style={{pointerEvents:'none'}}>filtered</span>
+                            </div>
                             <table className="data-table">
                                 <thead>
                                 <tr>
                                     <th>IP Address</th>
                                     <th>OS Info</th>
-                                    <th>Open Ports</th>
+                                    <th>Ports</th>
                                     <th>Actions</th>
                                 </tr>
                                 </thead>
@@ -131,27 +194,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                                                 <span className="text-muted">Unknown</span>
                                             )}
                                         </td>
-                                        <td>
-                                            {host.ports && host.ports.length > 0 ? (
-                                                <div className="ports-display">
-                                                    {host.ports.slice(0, 6).map((port, i) => (
-                                                        <span
-                                                            key={i}
-                                                            className="port-badge"
-                                                            title={port.service || 'Unknown service'}
-                                                        >
-                                {port.port}/{port.protocol}
-                                                            {port.service && ` (${port.service})`}
-                              </span>
-                                                    ))}
-                                                    {host.ports.length > 6 && (
-                                                        <span className="port-more">+{host.ports.length - 6}</span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted">No open ports</span>
-                                            )}
-                                        </td>
+                                        <td>{renderPorts(host.ports)}</td>
                                         <td>
                                             <div className="action-buttons">
                                                 <button
