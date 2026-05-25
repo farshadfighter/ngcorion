@@ -136,8 +136,10 @@ class NmapScanner:
 
         cmd = ["nmap", "-oX", "-"]  # XML output to stdout
 
-        # Always use -v (verbose), -sT (TCP connect scan), -Pn (skip host discovery), -n (no DNS)
-        cmd.extend(["-v", "-sT", "-Pn", "-n"])
+        # Core scan flags: TCP connect, skip host discovery, no DNS resolution
+        # Note: -v is intentionally omitted — verbose output on some nmap versions
+        # goes to stdout and corrupts the XML stream.
+        cmd.extend(["-sT", "-Pn", "-n"])
 
         # Only add -sV if explicitly requested (it's MUCH slower)
         if version_detection:
@@ -153,50 +155,22 @@ class NmapScanner:
                 # Custom ports: "80,443" or "1-1000" or specific port
                 cmd.extend(["-p", ports])
             else:
-                # Default to well-known if no custom ports specified
                 cmd.extend(["-p", "1-1024"])
         else:
-            # Default to well-known ports
             cmd.extend(["-p", "1-1024"])
 
-        # Adjust scan settings based on whether target is a single IP or a range
-        is_range = NmapScanner.is_ip_range(target)
+        # Aggressive timing (matches `nmap -T4` used manually by operators)
+        cmd.append("-T4")
 
+        # For range scans add a per-host ceiling so one dead host cannot stall the whole scan.
+        # Single-IP scans let T4 timing run to completion naturally.
+        is_range = NmapScanner.is_ip_range(target)
         if is_range:
-            if version_detection:
-                # With version detection on ranges - need more time per host
-                cmd.extend([
-                    "--max-retries=2",
-                    "--host-timeout=120s",  # 120 seconds per host with -sV
-                    "--min-rate=100",
-                    "-T4"  # Aggressive timing
-                ])
-                logger.info(f"Target '{target}' is IP range with version detection, using balanced settings")
-            else:
-                # Without version detection - increased timeout for slow-responding hosts
-                cmd.extend([
-                    "--max-retries=2",
-                    "--host-timeout=60s",  # Increased from 30s to 60s for slow hosts
-                    "--min-rate=150",  # Slightly reduced packet rate for reliability
-                    "-T4"  # Aggressive timing
-                ])
-                logger.info(f"Target '{target}' is IP range without version detection, using reliable settings")
+            host_timeout = "300s" if version_detection else "120s"
+            cmd.append(f"--host-timeout={host_timeout}")
+            logger.info(f"Range scan '{target}': host-timeout={host_timeout}, version_detection={version_detection}")
         else:
-            # Single IP - can be aggressive
-            if version_detection:
-                cmd.extend([
-                    "--max-retries=2",
-                    "--host-timeout=60s",  # More time for version detection
-                    "--min-rate=100",
-                    "-T4"
-                ])
-            else:
-                cmd.extend([
-                    "--max-retries=1",
-                    "--host-timeout=20s",
-                    "--min-rate=200",
-                    "-T4"
-                ])
+            logger.info(f"Single-IP scan '{target}': using T4 defaults, version_detection={version_detection}")
 
         cmd.append(target)
         return cmd
@@ -237,6 +211,10 @@ class NmapScanner:
                 returncode = process.returncode
 
                 logger.info(f"Nmap completed with return code: {returncode}")
+                if returncode != 0:
+                    logger.error(f"Nmap stderr: {stderr[:500] if stderr else '(empty)'}")
+                elif not stdout:
+                    logger.warning("Nmap returned 0 but stdout is empty")
                 return returncode, stdout, stderr
 
             except subprocess.TimeoutExpired:
@@ -348,10 +326,25 @@ class NmapScanner:
         if not xml_text:
             return []
 
+        # Strip any non-XML content that may precede the XML declaration.
+        # On some nmap versions/configs, verbose messages appear on stdout before
+        # the XML, which would break the parser.
+        xml_start = xml_text.find("<?xml")
+        if xml_start < 0:
+            xml_start = xml_text.find("<nmaprun")
+        if xml_start > 0:
+            logger.warning(f"Stripped {xml_start} bytes of non-XML prefix from nmap stdout")
+            xml_text = xml_text[xml_start:]
+        elif xml_start < 0:
+            logger.error("No XML content found in nmap output")
+            logger.debug(f"nmap stdout (first 500 chars): {xml_text[:500]}")
+            raise ValueError("No XML content found in nmap output")
+
         try:
             root = ET.fromstring(xml_text)
         except ET.ParseError as e:
             logger.error(f"XML parse error: {e}")
+            logger.debug(f"nmap stdout (first 500 chars): {xml_text[:500]}")
             raise ValueError(f"Invalid XML from nmap: {e}")
 
         hosts = []
