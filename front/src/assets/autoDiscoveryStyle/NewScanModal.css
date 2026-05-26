@@ -6,8 +6,8 @@
 /* Modal Container */
 .new-scan-modal {
     max-width: 800px;
-    width: 80vh;
-    max-height: 650px;
+    width: 80vw;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
     background: white;
@@ -104,7 +104,7 @@
 /* Form Inputs */
 .new-scan-modal .form-input,
 .new-scan-modal .form-select  {
-    width: 400px;
+    width: 320px;
     padding: 8px 12px;
     font-size: 14px;
     border: 1px solid #d1d5db;

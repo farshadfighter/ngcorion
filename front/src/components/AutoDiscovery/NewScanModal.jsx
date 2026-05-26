@@ -145,111 +145,113 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
-                        {/* Scan Name */}
-                        <div className="form-group">
-                            <label htmlFor="job_name">Scan Name</label>
-                            <input
-                                type="text"
-                                id="job_name"
-                                name="job_name"
-                                value={formData.job_name}
-                                onChange={handleChange}
-                                className="form-input"
-                            />
-                        </div>
 
-                        {/* Target */}
-                        <div className="form-group">
-                            <label htmlFor="target">
-                                Target IP or Range <span className="required">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="target"
-                                name="target"
-                                value={formData.target}
-                                onChange={handleChange}
-                                className={`form-input ${errors.target ? 'error' : ''}`}
-                            />
-                            {errors.target && <p className="form-error">{errors.target}</p>}
-                            <p className="form-hint">
-                                Formats: Single IP (192.168.1.1), CIDR (192.168.1.0/24), Range (192.168.1.1-254)
-                            </p>
-                        </div>
+                        {/* Grid دو ستونه برای فیلدهای اصلی */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px' }}>
 
-                        {/* Scan Type - Dropdown */}
-                        <div className="form-group">
-                            <label htmlFor="scan_type">Scan Type</label>
-                            <select
-                                id="scan_type"
-                                name="scan_type"
-                                value={formData.scan_type}
-                                onChange={handleChange}
-                                className="form-select"
-                            >
-                                <option value="well_known_ports">Well-Know Port(1-1024)- Recommended</option>
-                                <option value="all_ports">All Ports (1-65535) - Slowest</option>
-                                <option value="custom_ports">Custom Ports - Specify below</option>
-                            </select>
-                        </div>
+                            {/* Scan Name */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label htmlFor="job_name">Scan Name</label>
+                                <input
+                                    type="text"
+                                    id="job_name"
+                                    name="job_name"
+                                    value={formData.job_name}
+                                    onChange={handleChange}
+                                    className="form-input"
+                                />
+                            </div>
 
-                        {/* Custom Ports */}
-                        {formData.scan_type === 'custom_ports' && (
-                            <div className="form-group">
-                                <label htmlFor="ports">
-                                    Custom Ports <span className="required">*</span>
+                            {/* Target */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label htmlFor="target">
+                                    Target IP or Range <span className="required">*</span>
                                 </label>
                                 <input
                                     type="text"
-                                    id="ports"
-                                    name="ports"
-                                    value={formData.ports}
+                                    id="target"
+                                    name="target"
+                                    value={formData.target}
                                     onChange={handleChange}
-                                    placeholder="e.g., 80,443,8080 or 1-1000"
-
-                                    className={`form-input ${errors.ports ? 'error' : ''}`}
+                                    className={`form-input ${errors.target ? 'error' : ''}`}
+                                    placeholder="e.g. 192.168.1.0/24"
                                 />
-                                {errors.ports && <p className="form-error">{errors.ports}</p>}
+                                {errors.target && <p className="form-error">{errors.target}</p>}
                             </div>
-                        )}
 
-
-                        {/* Version Detection */}
-                        {/* Version Detection */}
-                        <div className="form-group">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <input
-                                    type="checkbox"
-                                    name="version_detection"
-                                    checked={formData.version_detection}
+                            {/* Scan Type */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label htmlFor="scan_type">Scan Type</label>
+                                <select
+                                    id="scan_type"
+                                    name="scan_type"
+                                    value={formData.scan_type}
                                     onChange={handleChange}
-                                    style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0, flexShrink: 0 }}
-                                />
-                                <label style={{ margin: 0, cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-                                    Enable Service Version Detection (-sV)
-                                </label>
+                                    className="form-select"
+                                >
+                                    <option value="well_known_ports">Well-Known Ports (1-1024)</option>
+                                    <option value="all_ports">All Ports (1-65535)</option>
+                                    <option value="custom_ports">Custom Ports</option>
+                                </select>
                             </div>
-                            <p className="form-hint" style={{color: '#f59e0b', marginTop: '4px'}}>
-                                ⚠️ Version detection is slower but provides detailed service information
-                            </p>
-                        </div>
-                        {/* Protocol */}
-                        <div className="form-group">
-                            <label htmlFor="protocol">protocol</label>
-                            <select
-                                id="protocol"
-                                name="protocol"
-                                value={formData.protocol}
-                                onChange={handleChange}
-                                className="form-select"
-                            >
-                                <option value="TCP">TCP</option>
-                                <option value="UDP">UDP</option>
-                                <option value="BOTH">Both TCP & UDP</option>
-                            </select>
+
+                            {/* Protocol */}
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label htmlFor="protocol">Protocol</label>
+                                <select
+                                    id="protocol"
+                                    name="protocol"
+                                    value={formData.protocol}
+                                    onChange={handleChange}
+                                    className="form-select"
+                                >
+                                    <option value="TCP">TCP</option>
+                                    <option value="UDP">UDP</option>
+                                    <option value="BOTH">Both TCP & UDP</option>
+                                </select>
+                            </div>
+
+                            {/* Custom Ports - full width, فقط وقتی custom انتخاب شده */}
+                            {formData.scan_type === 'custom_ports' && (
+                                <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                                    <label htmlFor="ports">
+                                        Custom Ports <span className="required">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="ports"
+                                        name="ports"
+                                        value={formData.ports}
+                                        onChange={handleChange}
+                                        className={`form-input ${errors.ports ? 'error' : ''}`}
+                                        placeholder="e.g. 22,80,443,8080-8090"
+                                    />
+                                    {errors.ports && <p className="form-error">{errors.ports}</p>}
+                                </div>
+                            )}
+
+                            {/* Version Detection - full width */}
+                            <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input
+                                        type="checkbox"
+                                        name="version_detection"
+                                        checked={formData.version_detection}
+                                        onChange={handleChange}
+                                        style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0, flexShrink: 0 }}
+                                    />
+                                    <label style={{ margin: 0, cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                                        Enable Service Version Detection (-sV)
+                                    </label>
+                                </div>
+                                <p className="form-hint" style={{ color: '#f59e0b', marginTop: '4px' }}>
+                                    ⚠️ Version detection is slower but provides detailed service information
+                                </p>
+                            </div>
+
                         </div>
 
-                        {/* Scan Details Box */}
+                        {/* Scan Details Box - full width */}
                         <div className="scan-details-box">
                             <h4>Scan Details</h4>
                             <ul>
@@ -258,11 +260,12 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                 ))}
                             </ul>
                         </div>
+
                     </div>
 
                     <div className="modal-footer">
                         <button type="button" className="btn btn-cancel" onClick={onClose} disabled={isLoading}>
-                            cancel
+                            Cancel
                         </button>
                         <button type="submit" className="btn btn-start-scan" disabled={isLoading}>
                             {isLoading ? 'Starting...' : 'Start Scan'}
@@ -271,7 +274,6 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                 </form>
             </div>
         </div>
-    );
-};
+    );}
 
 export default NewScanModal;
