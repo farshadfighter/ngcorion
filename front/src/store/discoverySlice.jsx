@@ -1,25 +1,20 @@
 /**
  * Discovery Slice - با Tracking برای Assets ساخته‌شده از Discovery
- * ✅ همه endpointها با OpenAPI مطابقت دارند
- * ✅ tracking برای assetهای ساخته‌شده از discovery اضافه شد
  */
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from "../config/api.js";
 
-// ============================================
-// LocalStorage Helpers
-// ============================================
 const STORAGE_KEY_SCAN = 'discovery_currentScan';
 const STORAGE_KEY_ASSETS = 'discoveryCreatedAssetIds';
 
-// Load current scan
 const loadScanFromStorage = () => {
     try {
         const saved = localStorage.getItem(STORAGE_KEY_SCAN);
         if (saved) {
             const parsed = JSON.parse(saved);
-            if (parsed && parsed.status === 'running') {
+            // pending هم ذخیره میشه
+            if (parsed && (parsed.status === 'running' || parsed.status === 'pending')) {
                 return parsed;
             }
         }
@@ -29,10 +24,10 @@ const loadScanFromStorage = () => {
     return null;
 };
 
-// Save current scan
 const saveScanToStorage = (scan) => {
     try {
-        if (scan && scan.status === 'running') {
+        // pending و running هر دو ذخیره میشن
+        if (scan && (scan.status === 'running' || scan.status === 'pending')) {
             localStorage.setItem(STORAGE_KEY_SCAN, JSON.stringify(scan));
         } else {
             localStorage.removeItem(STORAGE_KEY_SCAN);
@@ -42,7 +37,6 @@ const saveScanToStorage = (scan) => {
     }
 };
 
-// Clear current scan
 const clearScanFromStorage = () => {
     try {
         localStorage.removeItem(STORAGE_KEY_SCAN);
@@ -51,7 +45,6 @@ const clearScanFromStorage = () => {
     }
 };
 
-// Load discovery created asset IDs
 const loadDiscoveryAssetsFromStorage = () => {
     try {
         const saved = localStorage.getItem(STORAGE_KEY_ASSETS);
@@ -62,7 +55,6 @@ const loadDiscoveryAssetsFromStorage = () => {
     }
 };
 
-// Save discovery created asset IDs
 const saveDiscoveryAssetsToStorage = (assetIds) => {
     try {
         localStorage.setItem(STORAGE_KEY_ASSETS, JSON.stringify(assetIds));
@@ -71,32 +63,16 @@ const saveDiscoveryAssetsToStorage = (assetIds) => {
     }
 };
 
-// ============================================
-// Initial State
-// ============================================
 const initialState = {
-    // Scan state
     currentScan: loadScanFromStorage(),
     scanHistory: [],
-
-    // Scan audit logs (live during a running scan)
     scanLogs: [],
-
-    // Pending hosts awaiting approval
     pendingHosts: [],
     selectedHost: null,
     matchResults: null,
-
-    // Preview state for apply modes
     previewData: null,
-
-    // Asset ports state
     assetPorts: [],
-
-    // 🔥 NEW: Track assets created via discovery
     discoveryCreatedAssetIds: loadDiscoveryAssetsFromStorage(),
-
-    // Loading states
     loading: {
         scan: false,
         history: false,
@@ -108,18 +84,9 @@ const initialState = {
         ports: false,
         logs: false,
     },
-
-    // Error state
     error: null,
 };
 
-// ============================================
-// Async Thunks
-// ============================================
-
-/**
- * Start a new network scan
- */
 export const startScan = createAsyncThunk(
     'discovery/startScan',
     async (scanData, { rejectWithValue }) => {
@@ -132,9 +99,6 @@ export const startScan = createAsyncThunk(
     }
 );
 
-/**
- * Check scan status
- */
 export const checkScanStatus = createAsyncThunk(
     'discovery/checkStatus',
     async (scanId, { rejectWithValue }) => {
@@ -147,9 +111,6 @@ export const checkScanStatus = createAsyncThunk(
     }
 );
 
-/**
- * Fetch all scan history
- */
 export const fetchScanHistory = createAsyncThunk(
     'discovery/fetchHistory',
     async (_, { rejectWithValue }) => {
@@ -162,9 +123,6 @@ export const fetchScanHistory = createAsyncThunk(
     }
 );
 
-/**
- * Delete a scan
- */
 export const deleteScan = createAsyncThunk(
     'discovery/deleteScan',
     async (scanId, { rejectWithValue }) => {
@@ -177,9 +135,6 @@ export const deleteScan = createAsyncThunk(
     }
 );
 
-/**
- * Fetch pending hosts
- */
 export const fetchPendingHosts = createAsyncThunk(
     'discovery/fetchPending',
     async (scanId = null, { rejectWithValue }) => {
@@ -193,9 +148,6 @@ export const fetchPendingHosts = createAsyncThunk(
     }
 );
 
-/**
- * Check for matching assets
- */
 export const checkHostMatches = createAsyncThunk(
     'discovery/checkMatches',
     async (hostId, { rejectWithValue }) => {
@@ -208,37 +160,21 @@ export const checkHostMatches = createAsyncThunk(
     }
 );
 
-/**
- * Approve a discovered host
- */
 export const approveHost = createAsyncThunk(
     'discovery/approveHost',
     async ({ hostId, action, assetId, assetData }, { rejectWithValue }) => {
         try {
             const requestBody = { action };
-            if (action === 'merge_with_existing' && assetId) {
-                requestBody.asset_id = assetId;
-            }
-            if (action === 'create_new' && assetData) {
-                requestBody.asset_data = assetData;
-            }
-
+            if (action === 'merge_with_existing' && assetId) requestBody.asset_id = assetId;
+            if (action === 'create_new' && assetData) requestBody.asset_data = assetData;
             const response = await api.post(`/api/discovery/hosts/${hostId}/approve`, requestBody);
-
-            return {
-                ...response.data,
-                hostId,
-                createdAsset: action === 'create_new' ? response.data.asset_id : null
-            };
+            return { ...response.data, hostId, createdAsset: action === 'create_new' ? response.data.asset_id : null };
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to approve host');
         }
     }
 );
 
-/**
- * Reject a discovered host
- */
 export const rejectHost = createAsyncThunk(
     'discovery/rejectHost',
     async (hostId, { rejectWithValue }) => {
@@ -251,17 +187,12 @@ export const rejectHost = createAsyncThunk(
     }
 );
 
-/**
- * Preview discovery application
- */
 export const previewDiscoveryApplication = createAsyncThunk(
     'discovery/previewApplication',
     async ({ hostId, assetId }, { rejectWithValue }) => {
         try {
             let url = `/api/discovery/hosts/${hostId}/preview`;
-            if (assetId) {
-                url += `?asset_id=${assetId}`;
-            }
+            if (assetId) url += `?asset_id=${assetId}`;
             const response = await api.get(url);
             return response.data;
         } catch (error) {
@@ -270,18 +201,11 @@ export const previewDiscoveryApplication = createAsyncThunk(
     }
 );
 
-/**
- * Apply discovery with mode
- */
 export const applyDiscoveryWithMode = createAsyncThunk(
     'discovery/applyWithMode',
     async ({ hostId, mode, assetId, assetName, assetTypeId, locationId, ownerId }, { rejectWithValue }) => {
         try {
-            const requestBody = {
-                mode,
-                host_id: hostId,
-            };
-
+            const requestBody = { mode, host_id: hostId };
             if (mode === 'create_new') {
                 requestBody.asset_name = assetName;
                 requestBody.asset_type_id = assetTypeId;
@@ -290,34 +214,21 @@ export const applyDiscoveryWithMode = createAsyncThunk(
             } else {
                 requestBody.asset_id = assetId;
             }
-
             const response = await api.post(`/api/discovery/hosts/${hostId}/apply`, requestBody);
-
-            return {
-                ...response.data,
-                hostId,
-                createdAsset: mode === 'create_new' ? response.data.asset_id : null
-            };
+            return { ...response.data, hostId, createdAsset: mode === 'create_new' ? response.data.asset_id : null };
         } catch (error) {
             return rejectWithValue(error.response?.data?.detail || 'Failed to apply discovery');
         }
     }
 );
 
-/**
- * Bulk approve hosts
- */
 export const bulkApproveHosts = createAsyncThunk(
     'discovery/bulkApprove',
     async ({ hostIds, defaultAssetTypeId, defaultLocationId, defaultOwnerId }, { rejectWithValue }) => {
         try {
-            const requestBody = {
-                host_ids: hostIds,
-                default_asset_type_id: defaultAssetTypeId,
-            };
+            const requestBody = { host_ids: hostIds, default_asset_type_id: defaultAssetTypeId };
             if (defaultLocationId) requestBody.default_location_id = defaultLocationId;
             if (defaultOwnerId) requestBody.default_owner_id = defaultOwnerId;
-
             const response = await api.post('/api/discovery/bulk-approve', requestBody);
             return response.data;
         } catch (error) {
@@ -326,9 +237,6 @@ export const bulkApproveHosts = createAsyncThunk(
     }
 );
 
-/**
- * Add ports to asset
- */
 export const addPortsToAsset = createAsyncThunk(
     'discovery/addPorts',
     async ({ assetId, ports, scanId }, { rejectWithValue }) => {
@@ -343,9 +251,6 @@ export const addPortsToAsset = createAsyncThunk(
     }
 );
 
-/**
- * Overwrite asset ports
- */
 export const overwriteAssetPorts = createAsyncThunk(
     'discovery/overwritePorts',
     async ({ assetId, ports, scanId }, { rejectWithValue }) => {
@@ -360,9 +265,6 @@ export const overwriteAssetPorts = createAsyncThunk(
     }
 );
 
-/**
- * Fetch asset ports
- */
 export const fetchAssetPorts = createAsyncThunk(
     'discovery/fetchAssetPorts',
     async (assetId, { rejectWithValue }) => {
@@ -375,9 +277,6 @@ export const fetchAssetPorts = createAsyncThunk(
     }
 );
 
-/**
- * Fetch audit logs for a specific scan
- */
 export const fetchScanLogs = createAsyncThunk(
     'discovery/fetchScanLogs',
     async (scanId, { rejectWithValue }) => {
@@ -390,9 +289,6 @@ export const fetchScanLogs = createAsyncThunk(
     }
 );
 
-/**
- * Delete a port
- */
 export const deletePort = createAsyncThunk(
     'discovery/deletePort',
     async (portId, { rejectWithValue }) => {
@@ -405,48 +301,21 @@ export const deletePort = createAsyncThunk(
     }
 );
 
-// ============================================
-// Slice
-// ============================================
 const discoverySlice = createSlice({
     name: 'discovery',
     initialState,
     reducers: {
-        clearError: (state) => {
-            state.error = null;
-        },
-
-        clearCurrentScan: (state) => {
-            state.currentScan = null;
-            clearScanFromStorage();
-        },
-
-        setSelectedHost: (state, action) => {
-            state.selectedHost = action.payload;
-        },
-
-        clearSelectedHost: (state) => {
-            state.selectedHost = null;
-            state.matchResults = null;
-        },
-
-        clearMatchResults: (state) => {
-            state.matchResults = null;
-        },
-
-        clearPreviewData: (state) => {
-            state.previewData = null;
-        },
-
+        clearError: (state) => { state.error = null; },
+        clearCurrentScan: (state) => { state.currentScan = null; clearScanFromStorage(); },
+        setSelectedHost: (state, action) => { state.selectedHost = action.payload; },
+        clearSelectedHost: (state) => { state.selectedHost = null; state.matchResults = null; },
+        clearMatchResults: (state) => { state.matchResults = null; },
+        clearPreviewData: (state) => { state.previewData = null; },
         stopScanning: (state) => {
             state.loading.scan = false;
-            if (state.currentScan) {
-                state.currentScan.status = 'stopped';
-            }
+            if (state.currentScan) state.currentScan.status = 'stopped';
             clearScanFromStorage();
         },
-
-        // 🔥 NEW: Add asset to discovery tracking
         addDiscoveryCreatedAsset: (state, action) => {
             const assetId = action.payload;
             if (!state.discoveryCreatedAssetIds.includes(assetId)) {
@@ -454,30 +323,19 @@ const discoverySlice = createSlice({
                 saveDiscoveryAssetsToStorage(state.discoveryCreatedAssetIds);
             }
         },
-
-        // 🔥 NEW: Remove asset from discovery tracking
         removeDiscoveryCreatedAsset: (state, action) => {
-            const assetId = action.payload;
-            state.discoveryCreatedAssetIds = state.discoveryCreatedAssetIds.filter(
-                id => id !== assetId
-            );
+            state.discoveryCreatedAssetIds = state.discoveryCreatedAssetIds.filter(id => id !== action.payload);
             saveDiscoveryAssetsToStorage(state.discoveryCreatedAssetIds);
         },
-
-        // 🔥 NEW: Clear all discovery assets
         clearDiscoveryCreatedAssets: (state) => {
             state.discoveryCreatedAssetIds = [];
             localStorage.removeItem(STORAGE_KEY_ASSETS);
         },
-
-        clearScanLogs: (state) => {
-            state.scanLogs = [];
-        },
+        clearScanLogs: (state) => { state.scanLogs = []; },
     },
 
     extraReducers: (builder) => {
         builder
-            // Start Scan
             .addCase(startScan.pending, (state) => {
                 state.loading.scan = true;
                 state.error = null;
@@ -494,13 +352,22 @@ const discoverySlice = createSlice({
                 clearScanFromStorage();
             })
 
-            // Check Scan Status
+            // FIX: pending و running هر دو ذخیره میشن، completed/failed/cancelled پاک میکنن
             .addCase(checkScanStatus.fulfilled, (state, action) => {
                 state.currentScan = action.payload;
-                if (action.payload.status === 'completed' || action.payload.status === 'failed') {
+                if (
+                    action.payload.status === 'completed' ||
+                    action.payload.status === 'failed' ||
+                    action.payload.status === 'cancelled'
+                ) {
                     state.loading.scan = false;
                     clearScanFromStorage();
+                    // آپدیت scanHistory تا انیمیشن بلافاصله بره
+                    state.scanHistory = state.scanHistory.map(s =>
+                        s.scan_id === action.payload.scan_id ? action.payload : s
+                    );
                 } else {
+                    // pending یا running
                     saveScanToStorage(action.payload);
                 }
             })
@@ -510,10 +377,7 @@ const discoverySlice = createSlice({
                 clearScanFromStorage();
             })
 
-            // Fetch Scan History
-            .addCase(fetchScanHistory.pending, (state) => {
-                state.loading.history = true;
-            })
+            .addCase(fetchScanHistory.pending, (state) => { state.loading.history = true; })
             .addCase(fetchScanHistory.fulfilled, (state, action) => {
                 state.loading.history = false;
                 state.scanHistory = action.payload;
@@ -523,15 +387,11 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Delete Scan
             .addCase(deleteScan.fulfilled, (state, action) => {
                 state.scanHistory = state.scanHistory.filter(s => s.scan_id !== action.payload);
             })
 
-            // Fetch Pending Hosts
-            .addCase(fetchPendingHosts.pending, (state) => {
-                state.loading.pending = true;
-            })
+            .addCase(fetchPendingHosts.pending, (state) => { state.loading.pending = true; })
             .addCase(fetchPendingHosts.fulfilled, (state, action) => {
                 state.loading.pending = false;
                 state.pendingHosts = action.payload.pending || [];
@@ -541,10 +401,7 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Check Host Matches
-            .addCase(checkHostMatches.pending, (state) => {
-                state.loading.matches = true;
-            })
+            .addCase(checkHostMatches.pending, (state) => { state.loading.matches = true; })
             .addCase(checkHostMatches.fulfilled, (state, action) => {
                 state.loading.matches = false;
                 state.matchResults = action.payload;
@@ -554,22 +411,15 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Approve Host - با tracking
-            .addCase(approveHost.pending, (state) => {
-                state.loading.approve = true;
-            })
+            .addCase(approveHost.pending, (state) => { state.loading.approve = true; })
             .addCase(approveHost.fulfilled, (state, action) => {
                 state.loading.approve = false;
-
-                // 🔥 اگر asset جدید ساخته شد، track کن
                 if (action.payload.createdAsset) {
                     if (!state.discoveryCreatedAssetIds.includes(action.payload.createdAsset)) {
                         state.discoveryCreatedAssetIds.push(action.payload.createdAsset);
                         saveDiscoveryAssetsToStorage(state.discoveryCreatedAssetIds);
                     }
                 }
-
-                // Remove from pending
                 state.pendingHosts = state.pendingHosts.filter(h => h.id !== action.payload.hostId);
                 state.selectedHost = null;
                 state.matchResults = null;
@@ -579,10 +429,7 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Reject Host
-            .addCase(rejectHost.pending, (state) => {
-                state.loading.approve = true;
-            })
+            .addCase(rejectHost.pending, (state) => { state.loading.approve = true; })
             .addCase(rejectHost.fulfilled, (state, action) => {
                 state.loading.approve = false;
                 state.pendingHosts = state.pendingHosts.filter(h => h.id !== action.payload.hostId);
@@ -592,19 +439,13 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Bulk Approve
-            .addCase(bulkApproveHosts.pending, (state) => {
-                state.loading.approve = true;
-            })
-            .addCase(bulkApproveHosts.fulfilled, (state) => {
-                state.loading.approve = false;
-            })
+            .addCase(bulkApproveHosts.pending, (state) => { state.loading.approve = true; })
+            .addCase(bulkApproveHosts.fulfilled, (state) => { state.loading.approve = false; })
             .addCase(bulkApproveHosts.rejected, (state, action) => {
                 state.loading.approve = false;
                 state.error = action.payload;
             })
 
-            // Preview Discovery
             .addCase(previewDiscoveryApplication.pending, (state) => {
                 state.loading.preview = true;
                 state.previewData = null;
@@ -618,22 +459,15 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Apply Discovery - با tracking
-            .addCase(applyDiscoveryWithMode.pending, (state) => {
-                state.loading.applyMode = true;
-            })
+            .addCase(applyDiscoveryWithMode.pending, (state) => { state.loading.applyMode = true; })
             .addCase(applyDiscoveryWithMode.fulfilled, (state, action) => {
                 state.loading.applyMode = false;
-
-                // 🔥 اگر asset جدید ساخته شد، track کن
                 if (action.payload.createdAsset) {
                     if (!state.discoveryCreatedAssetIds.includes(action.payload.createdAsset)) {
                         state.discoveryCreatedAssetIds.push(action.payload.createdAsset);
                         saveDiscoveryAssetsToStorage(state.discoveryCreatedAssetIds);
                     }
                 }
-
-                // Remove from pending
                 state.pendingHosts = state.pendingHosts.filter(h => h.id !== action.payload.hostId);
                 state.selectedHost = null;
                 state.matchResults = null;
@@ -644,24 +478,15 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Port Management
-            .addCase(addPortsToAsset.pending, (state) => {
-                state.loading.ports = true;
-            })
-            .addCase(addPortsToAsset.fulfilled, (state) => {
-                state.loading.ports = false;
-            })
+            .addCase(addPortsToAsset.pending, (state) => { state.loading.ports = true; })
+            .addCase(addPortsToAsset.fulfilled, (state) => { state.loading.ports = false; })
             .addCase(addPortsToAsset.rejected, (state, action) => {
                 state.loading.ports = false;
                 state.error = action.payload;
             })
 
-            .addCase(overwriteAssetPorts.pending, (state) => {
-                state.loading.ports = true;
-            })
-            .addCase(overwriteAssetPorts.fulfilled, (state) => {
-                state.loading.ports = false;
-            })
+            .addCase(overwriteAssetPorts.pending, (state) => { state.loading.ports = true; })
+            .addCase(overwriteAssetPorts.fulfilled, (state) => { state.loading.ports = false; })
             .addCase(overwriteAssetPorts.rejected, (state, action) => {
                 state.loading.ports = false;
                 state.error = action.payload;
@@ -680,9 +505,7 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            .addCase(deletePort.pending, (state) => {
-                state.loading.ports = true;
-            })
+            .addCase(deletePort.pending, (state) => { state.loading.ports = true; })
             .addCase(deletePort.fulfilled, (state, action) => {
                 state.loading.ports = false;
                 state.assetPorts = state.assetPorts.filter(p => p.id !== action.payload);
@@ -692,24 +515,15 @@ const discoverySlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Fetch Scan Logs
-            .addCase(fetchScanLogs.pending, (state) => {
-                state.loading.logs = true;
-            })
+            .addCase(fetchScanLogs.pending, (state) => { state.loading.logs = true; })
             .addCase(fetchScanLogs.fulfilled, (state, action) => {
                 state.loading.logs = false;
-                // API returns newest-first; reverse so newest entry is at the bottom
                 state.scanLogs = [...action.payload].reverse();
             })
-            .addCase(fetchScanLogs.rejected, (state) => {
-                state.loading.logs = false;
-            });
+            .addCase(fetchScanLogs.rejected, (state) => { state.loading.logs = false; });
     },
 });
 
-// ============================================
-// Exports
-// ============================================
 export const {
     clearError,
     clearCurrentScan,
@@ -726,9 +540,5 @@ export const {
 
 export default discoverySlice.reducer;
 
-// 🔥 NEW: Selectors
-export const selectDiscoveryCreatedAssetIds = (state) =>
-    state.discovery.discoveryCreatedAssetIds;
-
-export const selectIsDiscoveryCreatedAsset = (state, assetId) =>
-    state.discovery.discoveryCreatedAssetIds.includes(assetId);
+export const selectDiscoveryCreatedAssetIds = (state) => state.discovery.discoveryCreatedAssetIds;
+export const selectIsDiscoveryCreatedAsset = (state, assetId) => state.discovery.discoveryCreatedAssetIds.includes(assetId);
