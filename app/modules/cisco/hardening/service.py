@@ -331,6 +331,21 @@ class HardeningService:
                     backup = executor.backup_config()
                     action.backup_config = backup
                     db.commit()
+                    try:
+                        from app.models.backup import DeviceBackup
+                        db.add(DeviceBackup(
+                            asset_id=asset.id,
+                            asset_name=asset.asset_name,
+                            device_ip=asset.ip_address,
+                            device_type="cisco",
+                            config_content=backup,
+                            source="hardening",
+                            hardening_action_id=action.id,
+                            created_by=user_id,
+                        ))
+                        db.commit()
+                    except Exception as _be:
+                        logger.warning(f"Failed to save DeviceBackup row: {_be}")
 
                 # Execute commands
                 exec_result = executor.execute_commands(
@@ -770,6 +785,22 @@ class HardeningService:
             if not skip_backup:
                 logger.info(f"Creating backup for {device_ip}")
                 backup = executor.backup_config()
+                try:
+                    from app.models.backup import DeviceBackup
+                    _asset = db.query(Asset).filter(Asset.id == session.asset_id).first()
+                    db.add(DeviceBackup(
+                        asset_id=session.asset_id,
+                        asset_name=_asset.asset_name if _asset else None,
+                        device_ip=device_ip,
+                        device_type="cisco",
+                        config_content=backup,
+                        source="hardening",
+                        hardening_action_id=None,
+                        created_by=user_id,
+                    ))
+                    db.commit()
+                except Exception as _be:
+                    logger.warning(f"Failed to save DeviceBackup row: {_be}")
 
             # Process each fixable check
             for fix_item in fixable:
@@ -1372,6 +1403,22 @@ class HardeningService:
             if not skip_backup:
                 logger.info(f"Creating backup for {device_ip}")
                 backup = executor.backup_config()
+                try:
+                    from app.models.backup import DeviceBackup
+                    _asset = db.query(Asset).filter(Asset.id == session.asset_id).first()
+                    db.add(DeviceBackup(
+                        asset_id=session.asset_id,
+                        asset_name=_asset.asset_name if _asset else None,
+                        device_ip=device_ip,
+                        device_type="cisco",
+                        config_content=backup,
+                        source="hardening",
+                        hardening_action_id=None,
+                        created_by=user_id,
+                    ))
+                    db.commit()
+                except Exception as _be:
+                    logger.warning(f"Failed to save DeviceBackup row: {_be}")
 
             # Process each auto-fixable check
             for result in auto_fixable:
@@ -1562,6 +1609,22 @@ class HardeningService:
             if not skip_backup:
                 logger.info(f"Creating backup for {device_ip}")
                 backup = executor.backup_config()
+                try:
+                    from app.models.backup import DeviceBackup
+                    _asset = db.query(Asset).filter(Asset.id == session.asset_id).first()
+                    db.add(DeviceBackup(
+                        asset_id=session.asset_id,
+                        asset_name=_asset.asset_name if _asset else None,
+                        device_ip=device_ip,
+                        device_type="cisco",
+                        config_content=backup,
+                        source="hardening",
+                        hardening_action_id=None,
+                        created_by=user_id,
+                    ))
+                    db.commit()
+                except Exception as _be:
+                    logger.warning(f"Failed to save DeviceBackup row: {_be}")
 
             for result in results:
                 check_number = result.check_number
