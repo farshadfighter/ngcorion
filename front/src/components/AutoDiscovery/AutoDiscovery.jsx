@@ -27,7 +27,7 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
   const [showLicenseModal, setShowLicenseModal] = useState(false);
 
   // Redux state
-  const { currentScan, scanHistory, pendingHosts, loading, error, scanLogs } =
+  const { currentScan, scanHistory, loading, error, scanLogs } =
     useSelector((state) => state.discovery);
 
   const { assetTypes } = useSelector((state) => state.assets);
@@ -97,18 +97,25 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
     [dispatch],
   );
 
-  // Detect running → completed transition and auto-open results
-  useEffect(() => {
-    const prevStatus = prevScanStatusRef.current;
-    const newStatus = currentScan?.status;
-    prevScanStatusRef.current = newStatus;
+// Detect running → completed transition and auto-open results
+    useEffect(() => {
+        const prevStatus = prevScanStatusRef.current;
+        const newStatus = currentScan?.status;
+        prevScanStatusRef.current = newStatus;
 
-    if (prevStatus === "running" && (newStatus === "completed" || newStatus === "failed" || newStatus === "cancelled")) {
-      dispatch(fetchPendingHosts());
-      dispatch(fetchScanHistory());
-      if (currentScan) handleViewResults(currentScan);
-    }
-  }, [currentScan?.status, dispatch, handleViewResults]);
+        if (
+            prevStatus === "running" &&
+            (newStatus === "completed" ||
+                newStatus === "failed" ||
+                newStatus === "cancelled")
+        ) {
+            dispatch(fetchPendingHosts());
+            dispatch(fetchScanHistory());
+            if (currentScan) {
+                setTimeout(() => handleViewResults(currentScan), 0);
+            }
+        }
+    }, [currentScan?.status, dispatch]);
 
   // Poll for scan status and logs when running
   useEffect(() => {
@@ -131,7 +138,7 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [currentScan, dispatch]);
+  }, [currentScan?.status, currentScan?.scan_id, dispatch]);
 
   // Handle deleting a scan
 
@@ -317,9 +324,9 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
         {/* Loading Card - نمایش در حین Scan */}
         {hasRunningScan &&
           (() => {
-            const runningScan = allScans.find(
-              (scan) => scan.status === "running",
-            );
+              const runningScan = currentScan?.status === "running"
+                  ? currentScan
+                  : allScans.find((scan) => scan.status === "running");
             if (!runningScan) return null;
 
             return (
