@@ -100,7 +100,7 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
     const newStatus = currentScan?.status;
     prevScanStatusRef.current = newStatus;
 
-    if (prevStatus === "running" && newStatus === "completed") {
+    if (prevStatus === "running" && (newStatus === "completed" || newStatus === "failed" || newStatus === "cancelled")) {
       dispatch(fetchPendingHosts());
       dispatch(fetchScanHistory());
       if (currentScan) handleViewResults(currentScan);

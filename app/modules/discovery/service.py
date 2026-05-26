@@ -190,7 +190,16 @@ class DiscoveryService:
 
             logger.info(f"Scan {scan_id} used timeout: {result.get('timeout_used')}s (version_detection={version_detection})")
 
-            # Check if scan was cancelled
+            # Scan timed out (nmap exceeded the subprocess time limit)
+            if result.get("timed_out"):
+                scan.status = "failed"
+                scan.error_message = result.get("error", "Scan timed out.")
+                scan.completed_at = datetime.now(timezone.utc)
+                db.commit()
+                log_scan_failed(db, scan.user_id, scan_id, scan.error_message)
+                return result
+
+            # Scan was cancelled by user (SIGTERM / SIGKILL)
             if result.get("cancelled"):
                 scan.status = "cancelled"
                 scan.error_message = "Scan was cancelled by user"

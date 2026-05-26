@@ -55,55 +55,51 @@ class NmapScanner:
     @staticmethod
     def calculate_timeout(target: str, scan_type: str, version_detection: bool) -> int:
         """
-        Calculate appropriate timeout based on scan parameters
-
-        Args:
-            target: IP address, CIDR, or range
-            scan_type: all_ports, well_known_ports, or custom_ports
-            version_detection: Whether -sV is enabled
+        Calculate appropriate timeout based on scan parameters.
 
         Returns:
-            Timeout in seconds
+            Timeout in seconds (subprocess-level wall-clock limit)
         """
+        import math
+
         # Estimate number of hosts
         num_hosts = 1
         if '/' in target:
-            # CIDR notation
             prefix = int(target.split('/')[1])
-            num_hosts = 2 ** (32 - prefix) - 2  # Subtract network and broadcast
-            num_hosts = max(1, num_hosts)
+            num_hosts = max(1, 2 ** (32 - prefix) - 2)
         elif '-' in target:
-            # Range notation like 192.168.1.1-254
             parts = target.split('-')
             if len(parts) == 2:
                 try:
                     start = int(parts[0].split('.')[-1])
                     end = int(parts[1])
-                    num_hosts = end - start + 1
+                    num_hosts = max(1, end - start + 1)
                 except ValueError:
-                    num_hosts = 254  # Default assumption
+                    num_hosts = 254
 
-        # Base time per host (in seconds)
-        if version_detection:
-            time_per_host = 60  # -sV is slow
-        else:
-            time_per_host = 10  # Without -sV is fast
-
-        # Adjust for scan type
+        # Realistic base time per single host with -T4 (measured in practice)
         if scan_type == "all_ports":
-            time_per_host *= 3  # 65535 ports takes longer
+            # 65535 ports: ~15 min without -sV, ~60 min with -sV
+            time_per_host = 3600 if version_detection else 900
         elif scan_type == "well_known_ports":
-            time_per_host *= 1.5  # 1024 ports
-        # custom_ports depends on how many ports, assume moderate
+            # ~1036 ports: ~5 min without -sV, ~10 min with -sV
+            time_per_host = 600 if version_detection else 300
+        else:
+            # custom_ports: conservative middle estimate
+            time_per_host = 300 if version_detection else 120
 
-        # Calculate total timeout with buffer
-        calculated_timeout = int(num_hosts * time_per_host * 1.2)  # 20% buffer
+        if num_hosts <= 1:
+            calculated_timeout = time_per_host
+        else:
+            # nmap scans range hosts in parallel — scale sublinearly with sqrt
+            scale = math.sqrt(num_hosts)
+            calculated_timeout = int(time_per_host * scale)
 
-        # Set reasonable bounds
-        min_timeout = 60  # At least 1 minute
-        max_timeout = 3600  # Max 1 hour
+        # 20% safety buffer
+        calculated_timeout = int(calculated_timeout * 1.2)
 
-        return max(min_timeout, min(calculated_timeout, max_timeout))
+        # Bounds: at least 2 min, at most 2 hours
+        return max(120, min(calculated_timeout, 7200))
 
     @staticmethod
     def build_nmap_command(
@@ -537,10 +533,20 @@ class NmapScanner:
             returncode, stdout, stderr = NmapScanner.execute_scan(cmd, timeout, scan_id)
             result["returncode"] = returncode
 
-            # Check if scan was cancelled (process terminated by signal)
-            if returncode and returncode < 0:
+            # returncode -1  → our own timeout (subprocess.TimeoutExpired)
+            # returncode < -1 → killed by external signal (user cancel: SIGTERM=-15, SIGKILL=-9)
+            if returncode == -1:
+                result["timed_out"] = True
+                result["error"] = (
+                    stderr
+                    or f"Scan timed out after {timeout}s. "
+                       f"Try a smaller port range (e.g. well_known_ports instead of all_ports) "
+                       f"or reduce the number of target hosts."
+                )
+                return result
+            elif returncode and returncode < 0:
                 result["cancelled"] = True
-                result["error"] = "Scan was cancelled"
+                result["error"] = "Scan was cancelled by user"
                 return result
 
             if returncode != 0:

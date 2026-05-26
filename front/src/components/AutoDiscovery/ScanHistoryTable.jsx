@@ -27,6 +27,20 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
     return labels[type] || type;
   };
 
+  // Derive a human-readable label from status + optional error message
+  const getStatusLabel = (scan) => {
+    if (scan.status === 'failed') {
+      const err = (scan.error || '').toLowerCase();
+      if (err.includes('timed out') || err.includes('timeout')) return 'Timed Out';
+      return 'Failed';
+    }
+    if (scan.status === 'cancelled') return 'Cancelled';
+    if (scan.status === 'completed') return 'Completed';
+    if (scan.status === 'running') return 'Running';
+    if (scan.status === 'pending') return 'Pending';
+    return scan.status;
+  };
+
   // Get status icon
   const getStatusIcon = (status) => {
     switch (status) {
@@ -44,6 +58,13 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
           </svg>
         );
       case 'failed':
+        return (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4M12 16h.01" />
+          </svg>
+        );
+      case 'cancelled':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" />
@@ -109,9 +130,12 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
                 <span className="scan-type">{getScanTypeLabel(scan.scan_type)}</span>
               </td>
               <td>
-                <span className={`status-badge status-${scan.status}`}>
+                <span
+                  className={`status-badge status-${scan.status}`}
+                  title={scan.error || undefined}
+                >
                   {getStatusIcon(scan.status)}
-                  {scan.status}
+                  {getStatusLabel(scan)}
                 </span>
               </td>
               <td>
@@ -132,11 +156,11 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
               </td>
               <td className="col-actions">
                 <div className="action-buttons">
-                  {scan.status === 'completed' && (
+                  {(scan.status === 'completed' || scan.status === 'failed' || scan.status === 'cancelled') && (
                     <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => onViewResults(scan)}
-                      title="View results"
+                      title={scan.status === 'completed' ? 'View results' : 'View error details'}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
