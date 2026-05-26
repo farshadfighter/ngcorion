@@ -70,72 +70,82 @@ export const OwnerModal = ({ onClose }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="modal-body">
-                    <div className="form-group">
-                        <label>
-                            Full Name <span className="required">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="full_name"
-                            value={formData.full_name}
-                            onChange={handleChange}
-                            placeholder="Enter full name"
-                            className={errors.full_name ? "error" : ""}
-                        />
-                        {errors.full_name && (
-                            <span className="error-message">{errors.full_name}</span>
-                        )}
-                    </div>
+                    <div className="form-grid">
 
-                    <div className="form-group">
-                        <label>Department</label>
-                        <input
-                            type="text"
-                            name="department"
-                            value={formData.department}
-                            onChange={handleChange}
-                            placeholder="Enter department"
-                        />
-                    </div>
+                        {/* Full Name - full width */}
+                        <div className="form-group full-width">
+                            <label>
+                                Full Name <span className="required">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="full_name"
+                                value={formData.full_name}
+                                onChange={handleChange}
+                                placeholder="Enter full name"
+                                className={errors.full_name ? "error" : ""}
+                            />
+                            {errors.full_name && (
+                                <span className="error-message">{errors.full_name}</span>
+                            )}
+                        </div>
 
-                    <div className="form-group">
-                        <label>Role</label>
-                        <input
-                            type="text"
-                            name="role"
-                            value={formData.role}
-                            onChange={handleChange}
-                            placeholder="Enter role"
-                        />
-                    </div>
+                        {/* Department */}
+                        <div className="form-group">
+                            <label>Department</label>
+                            <input
+                                type="text"
+                                name="department"
+                                value={formData.department}
+                                onChange={handleChange}
+                                placeholder="Enter department"
+                            />
+                        </div>
 
-                    <div className="form-group">
-                        <label>Email</label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            placeholder="Enter email"
-                            className={errors.email ? "error" : ""}
-                        />
-                        {errors.email && (
-                            <span className="error-message">{errors.email}</span>
-                        )}
-                    </div>
-                    <div className="form-group">
-                        <label>Phone</label>
-                        <input
-                            type="text"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            placeholder="e.g., +98 912 345 6789"
-                            className={errors.phone ? "error" : ""}
-                        />
-                        {errors.phone && (
-                            <span className="error-message">{errors.phone}</span>
-                        )}
+                        {/* Role */}
+                        <div className="form-group">
+                            <label>Role</label>
+                            <input
+                                type="text"
+                                name="role"
+                                value={formData.role}
+                                onChange={handleChange}
+                                placeholder="Enter role"
+                            />
+                        </div>
+
+                        {/* Email */}
+                        <div className="form-group">
+                            <label>Email</label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="Enter email"
+                                className={errors.email ? "error" : ""}
+                            />
+                            {errors.email && (
+                                <span className="error-message">{errors.email}</span>
+                            )}
+                        </div>
+
+                        {/* Phone */}
+                        <div className="form-group">
+                            <label>Phone</label>
+                            <input
+                                type="text"
+                                name="phone"
+                                value={formData.phone}
+                                onChange={handleChange}
+                                placeholder="e.g., +98 912 345 6789"
+                                className={errors.phone ? "error" : ""}
+                            />
+                            {errors.phone && (
+                                <span className="error-message">{errors.phone}</span>
+                            )}
+                        </div>
+
                     </div>
 
                     <div className="modal-footer">

@@ -104,19 +104,19 @@
 }
 
 /* ============================================
-   TABLES
+   TABLE
    ============================================ */
 
 .table-container {
-    background: white;
+    overflow-x: auto;
+    border-radius: 12px;
     border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    overflow: hidden;
 }
 
 .requirement-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 14px;
 }
 
 .requirement-table thead {
@@ -124,72 +124,33 @@
 }
 
 .requirement-table th {
-    padding: 14px 16px;
+    padding: 12px 16px;
     text-align: left;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
 }
 
-.requirement-table tbody tr {
+.requirement-table td {
+    padding: 14px 16px;
+    color: #374151;
     border-bottom: 1px solid #f3f4f6;
-    transition: background 0.2s;
-}
-
-.requirement-table tbody tr:last-child {
-    border-bottom: none;
 }
 
 .requirement-table tbody tr:hover {
     background: #f9fafb;
 }
 
-.requirement-table td {
-    padding: 14px 16px;
-    font-size: 14px;
-    color: #374151;
+.requirement-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 .no-data {
     text-align: center;
+    padding: 40px 20px;
     color: #9ca3af;
-    font-style: italic;
-}
-
-/* ============================================
-   OTHERS TAB - SECTIONS
-   ============================================ */
-
-.others-section {
-    margin-bottom: 32px;
-}
-
-.others-section:last-child {
-    margin-bottom: 0;
-}
-
-.section-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0 0 16px 0;
-    padding-left: 4px;
-}
-
-.enum-info {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 12px 16px;
-    margin-bottom: 24px;
-}
-
-.enum-info p {
-    margin: 0;
-    color: #1e40af;
     font-size: 14px;
 }
 
@@ -206,6 +167,8 @@
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .btn-add:hover {
@@ -213,9 +176,10 @@
 }
 
 .btn-icon {
-    background: transparent;
+    background: none;
     border: none;
     cursor: pointer;
+    color: #6b7280;
     padding: 6px;
     font-size: 18px;
     transition: transform 0.2s;
@@ -283,9 +247,8 @@
 .modal-content {
     background: white;
     border-radius: 14px;
-
     padding: 24px;
-    max-width: 500px;
+    max-width: 600px; /* ← از 500px به 600px تغییر کرد */
     width: 90%;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
 }

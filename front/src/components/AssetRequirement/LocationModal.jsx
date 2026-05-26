@@ -75,65 +75,74 @@ export const LocationModal = ({ onClose }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="modal-body">
-                    <div className="form-group">
-                        <label>
-                            Site Name <span className="required">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="site_name"
-                            value={formData.site_name}
-                            onChange={handleChange}
-                            placeholder="Enter site name"
-                            className={errors.site_name ? "error" : ""}
-                        />
-                        {errors.site_name && (
-                            <span className="error-message">{errors.site_name}</span>
-                        )}
-                    </div>
+                    <div className="form-grid">
 
-                    <div className="form-group">
-                        <label>Rack Name</label>
-                        <input
-                            type="text"
-                            name="rack_name"
-                            value={formData.rack_name}
-                            onChange={handleChange}
-                            placeholder="Enter rack name"
-                        />
-                    </div>
+                        {/* Site Name - full width */}
+                        <div className="form-group full-width">
+                            <label>
+                                Site Name <span className="required">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                name="site_name"
+                                value={formData.site_name}
+                                onChange={handleChange}
+                                placeholder="Enter site name"
+                                className={errors.site_name ? "error" : ""}
+                            />
+                            {errors.site_name && (
+                                <span className="error-message">{errors.site_name}</span>
+                            )}
+                        </div>
 
-                    <div className="form-group">
-                        <label>Room</label>
-                        <input
-                            type="text"
-                            name="room"
-                            value={formData.room}
-                            onChange={handleChange}
-                            placeholder="Enter room"
-                        />
-                    </div>
+                        {/* Rack Name */}
+                        <div className="form-group">
+                            <label>Rack Name</label>
+                            <input
+                                type="text"
+                                name="rack_name"
+                                value={formData.rack_name}
+                                onChange={handleChange}
+                                placeholder="Enter rack name"
+                            />
+                        </div>
 
-                    <div className="form-group">
-                        <label>Floor</label>
-                        <input
-                            type="text"
-                            name="floor"
-                            value={formData.floor}
-                            onChange={handleChange}
-                            placeholder="Enter floor"
-                        />
-                    </div>
+                        {/* Room */}
+                        <div className="form-group">
+                            <label>Room</label>
+                            <input
+                                type="text"
+                                name="room"
+                                value={formData.room}
+                                onChange={handleChange}
+                                placeholder="Enter room"
+                            />
+                        </div>
 
-                    <div className="form-group">
-                        <label>Unit</label>
-                        <input
-                            type="text"
-                            name="unit"
-                            value={formData.unit}
-                            onChange={handleChange}
-                            placeholder="Enter unit"
-                        />
+                        {/* Floor */}
+                        <div className="form-group">
+                            <label>Floor</label>
+                            <input
+                                type="text"
+                                name="floor"
+                                value={formData.floor}
+                                onChange={handleChange}
+                                placeholder="Enter floor"
+                            />
+                        </div>
+
+                        {/* Unit */}
+                        <div className="form-group">
+                            <label>Unit</label>
+                            <input
+                                type="text"
+                                name="unit"
+                                value={formData.unit}
+                                onChange={handleChange}
+                                placeholder="Enter unit"
+                            />
+                        </div>
+
                     </div>
 
                     <div className="modal-footer">
