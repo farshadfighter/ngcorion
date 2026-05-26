@@ -79,6 +79,9 @@ const initialState = {
     currentScan: loadScanFromStorage(),
     scanHistory: [],
 
+    // Scan audit logs (live during a running scan)
+    scanLogs: [],
+
     // Pending hosts awaiting approval
     pendingHosts: [],
     selectedHost: null,
@@ -103,6 +106,7 @@ const initialState = {
         preview: false,
         applyMode: false,
         ports: false,
+        logs: false,
     },
 
     // Error state
@@ -372,6 +376,21 @@ export const fetchAssetPorts = createAsyncThunk(
 );
 
 /**
+ * Fetch audit logs for a specific scan
+ */
+export const fetchScanLogs = createAsyncThunk(
+    'discovery/fetchScanLogs',
+    async (scanId, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/api/discovery-logs/scan/${scanId}?limit=100`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.detail || 'Failed to fetch scan logs');
+        }
+    }
+);
+
+/**
  * Delete a port
  */
 export const deletePort = createAsyncThunk(
@@ -449,6 +468,10 @@ const discoverySlice = createSlice({
         clearDiscoveryCreatedAssets: (state) => {
             state.discoveryCreatedAssetIds = [];
             localStorage.removeItem(STORAGE_KEY_ASSETS);
+        },
+
+        clearScanLogs: (state) => {
+            state.scanLogs = [];
         },
     },
 
@@ -667,6 +690,19 @@ const discoverySlice = createSlice({
             .addCase(deletePort.rejected, (state, action) => {
                 state.loading.ports = false;
                 state.error = action.payload;
+            })
+
+            // Fetch Scan Logs
+            .addCase(fetchScanLogs.pending, (state) => {
+                state.loading.logs = true;
+            })
+            .addCase(fetchScanLogs.fulfilled, (state, action) => {
+                state.loading.logs = false;
+                // API returns newest-first; reverse so newest entry is at the bottom
+                state.scanLogs = [...action.payload].reverse();
+            })
+            .addCase(fetchScanLogs.rejected, (state) => {
+                state.loading.logs = false;
             });
     },
 });
@@ -685,6 +721,7 @@ export const {
     addDiscoveryCreatedAsset,
     removeDiscoveryCreatedAsset,
     clearDiscoveryCreatedAssets,
+    clearScanLogs,
 } = discoverySlice.actions;
 
 export default discoverySlice.reducer;
