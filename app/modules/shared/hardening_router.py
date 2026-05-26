@@ -497,6 +497,24 @@ async def execute_hardening_controls(
             if not request.skip_backup:
                 logger.info(f"Creating backup for {device_ip}")
                 backup = executor.backup_config()
+                try:
+                    from app.models.backup import DeviceBackup
+                    _asset_id = asset.id if asset else (audit_session.asset_id if audit_session else None)
+                    _asset_name = asset.asset_name if asset else None
+                    if _asset_id:
+                        db.add(DeviceBackup(
+                            asset_id=_asset_id,
+                            asset_name=_asset_name,
+                            device_ip=device_ip,
+                            device_type=device_type,
+                            config_content=backup,
+                            source="hardening",
+                            hardening_action_id=None,
+                            created_by=current_user.id,
+                        ))
+                        db.commit()
+                except Exception as _be:
+                    logger.warning(f"Failed to save DeviceBackup row: {_be}")
 
             # Process each APPLY control
             for cs in apply_controls:

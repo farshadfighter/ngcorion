@@ -79,6 +79,9 @@ from app.modules.assets.asset_logs_router import router as asset_logs_router
 # Import license router
 from app.modules.license.router import router as license_router
 
+# Import backup router
+from app.modules.backup.router import router as backup_router
+
 # Import license components
 from app.core.license_client import LicenseClient
 from app.core.license_state import refresh_license_state
@@ -231,6 +234,9 @@ app.include_router(deprecated_router)
 
 # License routes
 app.include_router(license_router)
+
+# Backup routes
+app.include_router(backup_router)
 
 
 @app.get("/")

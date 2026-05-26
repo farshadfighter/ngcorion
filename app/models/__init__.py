@@ -274,6 +274,9 @@ from app.models.hardening_log import (
     log_auto_hardening
 )
 
+# Import backup model (depends on HardeningAction and Asset)
+from app.models.backup import DeviceBackup
+
 
 
 # Export all
@@ -330,6 +333,7 @@ __all__ = [
     # Hardening models
     "HardeningAction",
     "HardeningLog",
+    "DeviceBackup",
     "log_hardening_preview",
     "log_hardening_execute",
     "log_batch_hardening",

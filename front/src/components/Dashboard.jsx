@@ -14,6 +14,7 @@ import  LicenseBadge  from './License/LicenseBadge';
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { usePermission } from "../hooks/usePermission";
 import { LogsPage } from "./Logs/LogsPage";
+import BackupPage from "./Backup/BackupPage";
 
 
 
@@ -43,6 +44,7 @@ export const Dashboard = () => {
     const canReadHardening  = usePermission("hardening",            "read");
     const canReadUserMgmt   = usePermission("user_management",      "read");
     const canReadLogs       = usePermission("logs",                 "read");
+    const canReadBackup     = usePermission("hardening",           "read");
 
     // ==========================================
     // Handlers
@@ -167,6 +169,11 @@ export const Dashboard = () => {
                 return canReadLogs
                     ? <LogsPage />
                     : <AccessDenied menuName="Logs" />;
+
+            case "backup":
+                return canReadBackup
+                    ? <BackupPage />
+                    : <AccessDenied menuName="Backup" />;
 
             case "licence":
                 return <License />;
@@ -308,6 +315,28 @@ export const Dashboard = () => {
                         </div>
                     )}
 
+                    {/* Backup */}
+                    {canReadBackup && (
+                        <div
+                            className={`nav-item ${activeMenu === "backup" ? "active" : ""}`}
+                            onClick={() => setActiveMenu("backup")}
+                            title="Backup"
+                            style={{ paddingTop: "8px" }}
+                        >
+                            <svg
+                                width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" strokeWidth="2"
+                                className="nav-icon-img"
+                                style={{ flexShrink: 0 }}
+                            >
+                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
+                            </svg>
+                            {!isSidebarCollapsed && <span>Backup</span>}
+                        </div>
+                    )}
+
                     {/* ADMINISTRATION Section */}
                     {!isSidebarCollapsed && (canReadUserMgmt || canReadLogs) && (
                         <div className="nav-section">
@@ -409,6 +438,7 @@ export const Dashboard = () => {
                         {activeMenu === "operation-device" && "Operation and Device"}
                         {activeMenu === "hardening"        && "Hardening"}
                         {activeMenu === "logs"             && "Logs"}
+                        {activeMenu === "backup"           && "Backup"}
                         {activeMenu === "licence"          && "Licence"}
                     </h1>
                     {/* کانتینر جدید برای وسط هدر */}
