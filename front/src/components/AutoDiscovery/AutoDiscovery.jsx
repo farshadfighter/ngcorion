@@ -7,6 +7,8 @@ import {
   fetchPendingHosts,
   deleteScan,
   clearError,
+  fetchScanLogs,
+  clearScanLogs,
 } from "../../store/discoverySlice.jsx";
 import { fetchAssetTypes } from "../../store/assetSlice.jsx";
 import AutoDiscoveryDeleteModal from "./AutoDiscoveryDeleteModal.jsx";
@@ -15,6 +17,7 @@ import ScanHistoryTable from "./ScanHistoryTable.jsx";
 import ScanResultsModal from "./ScanResultsModal.jsx";
 import ApplyDiscoveryModal from "./ApplyDiscoveryModal.jsx";
 import AutoDiscoveryAssetListModal from "./AutoDiscoveryAssetListModal";
+import ScanLogPanel from "./ScanLogPanel.jsx";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
@@ -24,7 +27,7 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
   const [showLicenseModal, setShowLicenseModal] = useState(false);
 
   // Redux state
-  const { currentScan, scanHistory, pendingHosts, loading, error } =
+  const { currentScan, scanHistory, pendingHosts, loading, error, scanLogs } =
     useSelector((state) => state.discovery);
 
   const { assetTypes } = useSelector((state) => state.assets);
@@ -107,17 +110,20 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
     }
   }, [currentScan?.status, dispatch, handleViewResults]);
 
-  // Poll for scan status when running
+  // Poll for scan status and logs when running
   useEffect(() => {
     if (currentScan && currentScan.status === "running") {
+      dispatch(fetchScanLogs(currentScan.scan_id));
       pollIntervalRef.current = setInterval(() => {
         dispatch(checkScanStatus(currentScan.scan_id));
+        dispatch(fetchScanLogs(currentScan.scan_id));
       }, 3000);
     } else {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+      dispatch(clearScanLogs());
     }
 
     return () => {
@@ -401,6 +407,8 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
                     }}
                   ></div>
                 </div>
+
+                <ScanLogPanel logs={scanLogs} />
               </div>
             );
           })()}
