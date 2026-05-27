@@ -43,7 +43,8 @@ class CiscoHardeningExecutor:
         ip: str,
         username: str,
         password: str,
-        secret: Optional[str] = None
+        secret: Optional[str] = None,
+        port: int = 22
     ):
         """
         Initialize executor with SSH credentials.
@@ -53,11 +54,13 @@ class CiscoHardeningExecutor:
             username: SSH username
             password: SSH password
             secret: Enable secret (optional)
+            port: SSH port (default 22)
         """
         self.ip = ip
         self.username = username
         self.password = password
         self.secret = secret
+        self.port = port
         self.ssh_client: Optional[CiscoSSHClient] = None
 
     def __enter__(self):
@@ -71,7 +74,8 @@ class CiscoHardeningExecutor:
             ip=self.ip,
             username=self.username,
             password=self.password,
-            secret=self.secret
+            secret=self.secret,
+            port=self.port,
         )
         # Connect explicitly - SSH exceptions will propagate
         self.ssh_client.connect()

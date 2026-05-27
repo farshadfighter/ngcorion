@@ -30,6 +30,7 @@ class MongoDBSHAuditRequest(BaseModel):
     asset_id: int = Field(..., description="Asset ID of the MongoDB host server")
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     mongo_username: Optional[str] = Field(
         None, description="MongoDB admin username (not stored)"
     )
@@ -54,6 +55,7 @@ class MongoDBSHAuditRequest(BaseModel):
                 "asset_id": 42,
                 "ssh_username": "ubuntu",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "mongo_username": "admin",
                 "mongo_password": "********",
                 "mongo_port": 27017,
@@ -134,6 +136,7 @@ def execute_mongodb_audit(
             mongo_port=audit_request.mongo_port,
             profile=audit_request.profile,
             job_name=audit_request.job_name,
+            ssh_port=audit_request.ssh_port,
         )
 
         summary = MongoDBSHAuditService.get_session_summary(db, session.id)

@@ -27,6 +27,7 @@ class LinuxAuditRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID from Asset List")
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
     profile: str = Field("L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL")
     job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
@@ -37,6 +38,7 @@ class LinuxAuditRequest(BaseModel):
                 "asset_id": 25,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "sudo_password": "********",
                 "profile": "L1"
             }
@@ -140,7 +142,8 @@ def execute_linux_audit(
             ssh_password=audit_request.ssh_password,
             sudo_password=audit_request.sudo_password,
             profile=audit_request.profile,
-            job_name=audit_request.job_name
+            job_name=audit_request.job_name,
+            ssh_port=audit_request.ssh_port,
         )
 
         summary = LinuxAuditService.get_session_summary(db, session.id)

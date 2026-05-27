@@ -173,7 +173,8 @@ class AuditService:
         ssh_password: str,
         ssh_secret: Optional[str] = None,
         profile: str = "L1",
-        job_name: Optional[str] = None
+        job_name: Optional[str] = None,
+        ssh_port: int = 22
     ) -> AuditSession:
         """
         Execute CIS audit on a Cisco device.
@@ -227,7 +228,8 @@ class AuditService:
                     ip=target_ip,
                     username=ssh_username,
                     password=ssh_password,
-                    secret=ssh_secret
+                    secret=ssh_secret,
+                    port=ssh_port
                 ) as ssh_client:
                     raw_dump = ssh_client.collect_turbo()
 
@@ -530,6 +532,7 @@ class AuditService:
         ssh_secret: Optional[str] = None,
         job_name: Optional[str] = None,
         profile: str = "FULL",
+        ssh_port: int = 22
     ) -> AuditSession:
         """
         Execute CIS Benchmark audit using official section numbers.
@@ -583,7 +586,8 @@ class AuditService:
                 ip=target_ip,
                 username=ssh_username,
                 password=ssh_password,
-                secret=ssh_secret
+                secret=ssh_secret,
+                port=ssh_port
             ) as ssh_client:
                 raw_dump = ssh_client.collect_turbo()
 

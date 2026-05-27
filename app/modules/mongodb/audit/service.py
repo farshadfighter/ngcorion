@@ -155,6 +155,7 @@ class MongoDBSHAuditService:
         mongo_port: int = 27017,
         profile: str = "L1",
         job_name: Optional[str] = None,
+        ssh_port: int = 22,
     ) -> AuditSession:
         """
         Execute a CIS MongoDB compliance audit.
@@ -213,6 +214,7 @@ class MongoDBSHAuditService:
                     mongo_username=mongo_username,
                     mongo_password=mongo_password,
                     mongo_port=mongo_port,
+                    ssh_port=ssh_port,
                 ) as client:
                     raw_dump = client.collect_audit_data()
 

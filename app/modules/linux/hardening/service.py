@@ -162,7 +162,8 @@ class LinuxHardeningService:
         asset_id: int,
         ssh_username: str,
         ssh_password: str,
-        sudo_password: Optional[str] = None
+        sudo_password: Optional[str] = None,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute automatic hardening using CIS default values only.
@@ -211,7 +212,8 @@ class LinuxHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
-            sudo_password=sudo_password
+            sudo_password=sudo_password,
+            port=ssh_port
         )
 
         result = executor.execute_auto_harden(failed_check_ids)
@@ -236,7 +238,8 @@ class LinuxHardeningService:
         ssh_username: str,
         ssh_password: str,
         sudo_password: Optional[str],
-        checks: List[Dict[str, Any]]
+        checks: List[Dict[str, Any]],
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -266,7 +269,8 @@ class LinuxHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
-            sudo_password=sudo_password
+            sudo_password=sudo_password,
+            port=ssh_port
         )
 
         result = executor.execute_selected(checks)
@@ -290,7 +294,8 @@ class LinuxHardeningService:
         ssh_password: str,
         sudo_password: Optional[str],
         check_id: str,
-        parameters: Dict[str, str] = None
+        parameters: Dict[str, str] = None,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -320,7 +325,8 @@ class LinuxHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
-            sudo_password=sudo_password
+            sudo_password=sudo_password,
+            port=ssh_port
         )
 
         result = executor.execute_single(check_id, parameters)

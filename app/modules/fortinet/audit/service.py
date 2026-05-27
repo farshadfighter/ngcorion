@@ -379,7 +379,8 @@ class FortinetAuditService:
         ssh_password: str,
         vdom: Optional[str] = None,
         profile: str = "L1",
-        job_name: Optional[str] = None
+        job_name: Optional[str] = None,
+        ssh_port: int = 22
     ) -> AuditSession:
         """
         Execute FortiGate security audit.
@@ -455,7 +456,8 @@ class FortinetAuditService:
                 with FortiGateSSHClient(
                     host=target_ip,
                     username=ssh_username,
-                    password=ssh_password
+                    password=ssh_password,
+                    port=ssh_port
                 ) as ssh_client:
                     ssh_client.connect()
 
@@ -550,7 +552,8 @@ class FortinetAuditService:
         db: Session,
         asset_id: int,
         ssh_username: str,
-        ssh_password: str
+        ssh_password: str,
+        ssh_port: int = 22
     ) -> List[str]:
         """
         Discover VDOMs on a FortiGate device.
@@ -585,7 +588,8 @@ class FortinetAuditService:
             with FortiGateSSHClient(
                 host=target_ip,
                 username=ssh_username,
-                password=ssh_password
+                password=ssh_password,
+                port=ssh_port
             ) as ssh_client:
                 ssh_client.connect()
                 vdoms = ssh_client.discover_vdoms()

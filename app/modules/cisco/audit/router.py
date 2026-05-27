@@ -37,6 +37,7 @@ class CiscoAuditRequest(BaseModel):
     ssh_secret: Optional[str] = Field(
         None, description="Enable secret (optional, not stored)"
     )
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     profile: str = Field(
         "L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL"
     )
@@ -51,6 +52,7 @@ class CiscoAuditRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_secret": "********",
+                "ssh_port": 22,
                 "profile": "L1",
             }
         }
@@ -143,6 +145,7 @@ def execute_cisco_audit(
             ssh_secret=audit_request.ssh_secret,
             profile=audit_request.profile,
             job_name=audit_request.job_name,
+            ssh_port=audit_request.ssh_port,
         )
 
         # Get formatted summary
@@ -485,6 +488,7 @@ class CISBenchmarkAuditRequest(BaseModel):
     ssh_secret: Optional[str] = Field(
         None, description="Enable secret (optional, not stored)"
     )
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     profile: str = Field(
         "FULL", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL"
     )
@@ -499,6 +503,7 @@ class CISBenchmarkAuditRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_secret": "********",
+                "ssh_port": 22,
                 "profile": "FULL",
             }
         }
@@ -554,6 +559,7 @@ def execute_cis_benchmark_audit(
             ssh_secret=request.ssh_secret,
             job_name=request.job_name,
             profile=request.profile,
+            ssh_port=request.ssh_port,
         )
 
         consume_quota(http_request)

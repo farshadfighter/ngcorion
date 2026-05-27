@@ -41,6 +41,7 @@ class AutoHardenRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
 
     class Config:
@@ -50,6 +51,7 @@ class AutoHardenRequest(BaseModel):
                 "asset_id": 25,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "sudo_password": "********"
             }
         }
@@ -67,6 +69,7 @@ class BatchExecuteRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
     checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
 
@@ -77,6 +80,7 @@ class BatchExecuteRequest(BaseModel):
                 "asset_id": 25,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "checks": [
                     {"check_id": "LNX-L1-5.2.10", "parameters": {}},
                     {"check_id": "LNX-L1-5.2.7", "parameters": {"SSH_MAX_AUTH_TRIES": "4"}}
@@ -90,6 +94,7 @@ class SingleFixRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
     check_id: str = Field(..., description="CIS check ID to fix")
     parameters: Dict[str, str] = Field(default_factory=dict, description="Parameter values")
@@ -100,6 +105,7 @@ class SingleFixRequest(BaseModel):
                 "asset_id": 25,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "check_id": "LNX-L1-5.2.10",
                 "parameters": {}
             }
@@ -244,7 +250,8 @@ async def auto_harden_with_defaults(
             asset_id=request.asset_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
-            sudo_password=request.sudo_password
+            sudo_password=request.sudo_password,
+            ssh_port=request.ssh_port,
         )
 
         consume_quota(http_request)
@@ -310,7 +317,8 @@ async def batch_execute_selected(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             sudo_password=request.sudo_password,
-            checks=checks
+            checks=checks,
+            ssh_port=request.ssh_port,
         )
 
         consume_quota(http_request)
@@ -367,7 +375,8 @@ async def execute_single_fix(
             ssh_password=request.ssh_password,
             sudo_password=request.sudo_password,
             check_id=request.check_id,
-            parameters=request.parameters
+            parameters=request.parameters,
+            ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("status") == "success"

@@ -139,6 +139,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
+                ssh_port:     credentials.ssh_port || 22,
                 ...(credentials.sudo_password && { sudo_password: credentials.sudo_password }),
             };
 
@@ -146,6 +147,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
+                ssh_port:     credentials.ssh_port || 22,
                 ...(credentials.ssh_secret && { ssh_secret: credentials.ssh_secret }),
             };
 
@@ -153,6 +155,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
+                ssh_port:     credentials.ssh_port || 22,
                 ...(credentials.vdom && { vdom: credentials.vdom }),
             };
 
@@ -160,6 +163,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
+                ssh_port:     credentials.ssh_port || 22,
                 ...(credentials.mongo_username && { mongo_username: credentials.mongo_username }),
                 ...(credentials.mongo_password && { mongo_password: credentials.mongo_password }),
                 ...(credentials.mongo_port     && { mongo_port:     credentials.mongo_port }),
@@ -185,6 +189,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
+                ssh_port:     credentials.ssh_port || 22,
             };
     }
 };

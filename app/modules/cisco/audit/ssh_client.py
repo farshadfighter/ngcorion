@@ -135,6 +135,7 @@ class CiscoSSHClient:
                  username: str,
                  password: str,
                  secret: Optional[str] = None,
+                 port: int = 22,
                  device_type: str = "cisco_ios",
                  timeout: int = 30,
                  fast_cli: bool = True,
@@ -147,6 +148,7 @@ class CiscoSSHClient:
             username: SSH username
             password: SSH password
             secret: Enable secret (optional)
+            port: SSH port (default 22)
             device_type: Netmiko device type (default: cisco_ios)
             timeout: Connection/command timeout in seconds
             fast_cli: Enable fast CLI mode (reduces delays)
@@ -156,6 +158,7 @@ class CiscoSSHClient:
         self.username = username
         self.password = password
         self.secret = secret
+        self.port = port
         self.device_type = device_type
         self.timeout = timeout
         self.fast_cli = fast_cli
@@ -184,6 +187,7 @@ class CiscoSSHClient:
                 self.connection = ConnectHandler(
                     device_type=self.device_type,
                     ip=self.ip,
+                    port=self.port,
                     username=self.username,
                     password=self.password,
                     secret=self.secret,

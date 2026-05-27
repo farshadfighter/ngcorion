@@ -158,6 +158,7 @@ class MongoDBHardeningService:
         asset_id: int,
         ssh_username: str,
         ssh_password: str,
+        ssh_port: int = 22,
     ) -> Dict[str, Any]:
         """
         Execute automatic hardening using CIS default values only.
@@ -195,6 +196,7 @@ class MongoDBHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
+            ssh_port=ssh_port,
         )
 
         result = executor.execute_auto_harden(failed_check_ids)
@@ -217,6 +219,7 @@ class MongoDBHardeningService:
         ssh_username: str,
         ssh_password: str,
         checks: List[Dict[str, Any]],
+        ssh_port: int = 22,
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -238,6 +241,7 @@ class MongoDBHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
+            ssh_port=ssh_port,
         )
 
         result = executor.execute_selected(checks)
@@ -260,6 +264,7 @@ class MongoDBHardeningService:
         ssh_password: str,
         check_id: str,
         parameters: Dict[str, str] = None,
+        ssh_port: int = 22,
     ) -> Dict[str, Any]:
         """Execute hardening for a single check with given parameters."""
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -274,6 +279,7 @@ class MongoDBHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
+            ssh_port=ssh_port,
         )
 
         result = executor.execute_single(check_id, parameters)

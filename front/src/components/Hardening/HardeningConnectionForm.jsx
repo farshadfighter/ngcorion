@@ -72,6 +72,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         // SSH-based
         ssh_username:     "",
         ssh_password:     "",
+        ssh_port:         "22",
         ssh_secret:       "",    // Cisco
         vdom:             "",    // Fortinet
         sudo_password:    "",    // Linux / Apache / MongoDB
@@ -161,6 +162,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             credentials = {
                 ssh_username: formData.ssh_username,
                 ssh_password: formData.ssh_password,
+                ssh_port:     parseInt(formData.ssh_port) || 22,
                 ...(isCisco(dt) && formData.ssh_secret && { ssh_secret: formData.ssh_secret }),
                 ...(isFortinet(dt) && formData.vdom    && { vdom:       formData.vdom }),
                 ...(needsSudo(dt)  && formData.sudo_password && { sudo_password: formData.sudo_password }),
@@ -413,6 +415,20 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                 {errors.ssh_password && (
                                     <span className="error-message">{errors.ssh_password}</span>
                                 )}
+                            </div>
+
+                            <div className="form-group">
+                                <label>SSH Port</label>
+                                <input
+                                    type="number"
+                                    name="ssh_port"
+                                    value={formData.ssh_port}
+                                    onChange={handleChange}
+                                    placeholder="22"
+                                    min="1"
+                                    max="65535"
+                                    autoComplete="off"
+                                />
                             </div>
                         </>
                     )}

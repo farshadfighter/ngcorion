@@ -95,6 +95,7 @@ class FortiGateExecuteRequest(BaseModel):
     action_id: int = Field(..., description="ID from preview response")
     ssh_username: str = Field(..., min_length=1, description="SSH username")
     ssh_password: str = Field(..., min_length=1, description="SSH password")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     parameters: Dict[str, str] = Field(
         default_factory=dict,
         description="Required parameters"
@@ -108,6 +109,7 @@ class FortiGateExecuteRequest(BaseModel):
                 "action_id": 4567,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "parameters": {},
                 "vdom": None,
                 "skip_backup": False
@@ -222,6 +224,7 @@ class FortiGateAutoHardenRequest(BaseModel):
     audit_session_id: int
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     vdom: Optional[str] = None
     confirmed: bool = Field(default=False, description="User must confirm")
     skip_backup: bool = False
@@ -232,6 +235,7 @@ class FortiGateAutoHardenRequest(BaseModel):
                 "audit_session_id": 123,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "confirmed": True,
                 "skip_backup": False
             }
@@ -285,6 +289,7 @@ class FortiGateBatchExecuteRequest(BaseModel):
     parameters: Dict[str, str] = Field(default_factory=dict, description="User parameters")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     vdom: Optional[str] = None
     skip_backup: bool = False
 
@@ -472,7 +477,8 @@ async def execute_fortinet_hardening(
             ssh_password=request.ssh_password,
             parameters=request.parameters,
             vdom=request.vdom,
-            skip_backup=request.skip_backup
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
         verification_passed = result.get("verification_passed") if isinstance(result, dict) else None
@@ -681,7 +687,8 @@ async def auto_harden_fortinet_with_defaults(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             vdom=request.vdom,
-            skip_backup=request.skip_backup
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
 
@@ -790,7 +797,8 @@ async def batch_execute_fortinet_selected(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             vdom=request.vdom,
-            skip_backup=request.skip_backup
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
         

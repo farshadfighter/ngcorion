@@ -36,6 +36,7 @@ class AutoHardenRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
 
     class Config:
         json_schema_extra = {
@@ -44,6 +45,7 @@ class AutoHardenRequest(BaseModel):
                 "asset_id": 5,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
             }
         }
 
@@ -63,6 +65,7 @@ class BatchExecuteRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
 
     class Config:
@@ -72,6 +75,7 @@ class BatchExecuteRequest(BaseModel):
                 "asset_id": 5,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "checks": [
                     {"check_id": "MONGO-L1-006", "parameters": {}},
                     {"check_id": "MONGO-L1-008", "parameters": {"MONGO_PORT": "27018"}},
@@ -85,6 +89,7 @@ class SingleFixRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     check_id: str = Field(..., description="CIS check ID to fix")
     parameters: Dict[str, str] = Field(default_factory=dict)
 
@@ -94,6 +99,7 @@ class SingleFixRequest(BaseModel):
                 "asset_id": 5,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "check_id": "MONGO-L1-006",
                 "parameters": {},
             }
@@ -231,6 +237,7 @@ async def auto_harden_with_defaults(
             asset_id=request.asset_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
+            ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
         log_session_execute_outcome(
@@ -290,6 +297,7 @@ async def batch_execute_selected(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             checks=checks,
+            ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
         log_session_execute_outcome(
@@ -343,6 +351,7 @@ async def execute_single_fix(
             ssh_password=request.ssh_password,
             check_id=request.check_id,
             parameters=request.parameters,
+            ssh_port=request.ssh_port,
         )
 
         consume_quota(http_request)

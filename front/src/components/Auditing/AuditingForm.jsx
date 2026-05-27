@@ -55,6 +55,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         job_name:         "",
         ssh_username:     "",
         ssh_password:     "",
+        ssh_port:         "22",
         enable_password:  "",
         vdom:             "",
         sudo_password:    "",
@@ -124,6 +125,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             job_name:         formData.job_name,
             ssh_username:     formData.ssh_username,
             ssh_password:     formData.ssh_password,
+            ssh_port:         parseInt(formData.ssh_port) || 22,
             ssh_secret:       formData.enable_password,
             vdom:             formData.vdom,
             sudo_password:    formData.sudo_password,
@@ -360,6 +362,20 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     autoComplete="current-password"
                                 />
                                 {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
+                            </div>
+
+                            <div className="form-group">
+                                <label>SSH Port</label>
+                                <input
+                                    type="number"
+                                    name="ssh_port"
+                                    value={formData.ssh_port}
+                                    onChange={handleChange}
+                                    placeholder="22"
+                                    min="1"
+                                    max="65535"
+                                    autoComplete="off"
+                                />
                             </div>
                         </>
                     )}

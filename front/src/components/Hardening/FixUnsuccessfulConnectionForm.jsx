@@ -25,6 +25,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
         // SSH-based
         ssh_username:     "",
         ssh_password:     "",
+        ssh_port:         "22",
         ssh_secret:       "",     // Cisco
         vdom:             "",     // Fortinet
         sudo_password:    "",     // Linux / Apache / MongoDB
@@ -138,6 +139,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
             credentials = {
                 ssh_username: formData.ssh_username,
                 ssh_password: formData.ssh_password,
+                ssh_port:     parseInt(formData.ssh_port) || 22,
                 ...(isCisco(deviceType)   && formData.ssh_secret     && { ssh_secret:    formData.ssh_secret }),
                 ...(isFortinet(deviceType) && formData.vdom           && { vdom:          formData.vdom }),
                 ...(needsSudo(deviceType)  && formData.sudo_password  && { sudo_password: formData.sudo_password }),
@@ -402,6 +404,22 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                                 {errors.ssh_password && (
                                     <span className="error-message">{errors.ssh_password}</span>
                                 )}
+                            </div>
+
+                            {/* SSH Port */}
+                            <div className="form-group">
+                                <label htmlFor="ssh_port">SSH Port</label>
+                                <input
+                                    id="ssh_port"
+                                    type="number"
+                                    name="ssh_port"
+                                    value={formData.ssh_port}
+                                    onChange={handleChange}
+                                    placeholder="22"
+                                    min="1"
+                                    max="65535"
+                                    autoComplete="off"
+                                />
                             </div>
                         </>
                     )}

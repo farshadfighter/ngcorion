@@ -35,6 +35,7 @@ class ApacheAuditRequest(BaseModel):
     ssh_password: str = Field(
         ..., min_length=1, description="SSH password (not stored)"
     )
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = Field(
         None, description="Sudo password (defaults to SSH password)"
     )
@@ -51,6 +52,7 @@ class ApacheAuditRequest(BaseModel):
                 "asset_id": 25,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "sudo_password": "********",
                 "profile": "L1",
             }
@@ -179,6 +181,7 @@ def execute_apache_audit(
             sudo_password=audit_request.sudo_password,
             profile=audit_request.profile,
             job_name=audit_request.job_name,
+            ssh_port=audit_request.ssh_port,
         )
 
         summary = ApacheAuditService.get_session_summary(db, session.id)

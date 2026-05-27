@@ -216,7 +216,8 @@ class HardeningService:
         ssh_password: str,
         ssh_secret: Optional[str],
         parameters: Dict[str, str],
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening commands on device.
@@ -320,7 +321,8 @@ class HardeningService:
                 ip=asset.ip_address,
                 username=ssh_username,
                 password=ssh_password,
-                secret=ssh_secret
+                secret=ssh_secret,
+                port=ssh_port
             ) as executor:
                 # Test connectivity
                 executor.test_connectivity()
@@ -704,7 +706,8 @@ class HardeningService:
         ssh_password: str,
         ssh_secret: Optional[str] = None,
         parameters: Optional[Dict[str, str]] = None,
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Automatically fix all failures from an audit session.
@@ -775,7 +778,8 @@ class HardeningService:
             ip=device_ip,
             username=ssh_username,
             password=ssh_password,
-            secret=ssh_secret
+            secret=ssh_secret,
+            port=ssh_port
         ) as executor:
             # Test connectivity
             executor.test_connectivity()
@@ -935,7 +939,8 @@ class HardeningService:
         ssh_secret: Optional[str],
         parameters: Dict[str, str],
         skip_backup: bool = False,
-        max_retries: int = None
+        max_retries: int = None,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening with automatic retry on transient failures.
@@ -973,7 +978,8 @@ class HardeningService:
                     ssh_password=ssh_password,
                     ssh_secret=ssh_secret,
                     parameters=parameters,
-                    skip_backup=skip_backup
+                    skip_backup=skip_backup,
+                    ssh_port=ssh_port
                 )
 
             except Exception as e:
@@ -1302,7 +1308,8 @@ class HardeningService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Automatically harden device using only CIS default values.
@@ -1394,7 +1401,8 @@ class HardeningService:
             ip=device_ip,
             username=ssh_username,
             password=ssh_password,
-            secret=ssh_secret
+            secret=ssh_secret,
+            port=ssh_port
         ) as executor:
             executor.test_connectivity()
 
@@ -1537,7 +1545,8 @@ class HardeningService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -1600,7 +1609,8 @@ class HardeningService:
             ip=device_ip,
             username=ssh_username,
             password=ssh_password,
-            secret=ssh_secret
+            secret=ssh_secret,
+            port=ssh_port
         ) as executor:
             executor.test_connectivity()
 

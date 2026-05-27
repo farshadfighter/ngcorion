@@ -77,6 +77,7 @@ class SSHCredentials(BaseModel):
     username: str
     password: str
     secret: Optional[str] = None
+    port: int = 22
 
 
 class ExecuteControlsRequest(BaseModel):
@@ -487,7 +488,8 @@ async def execute_hardening_controls(
             ip=device_ip,
             username=request.ssh_credentials.username,
             password=request.ssh_credentials.password,
-            secret=request.ssh_credentials.secret
+            secret=request.ssh_credentials.secret,
+            port=request.ssh_credentials.port
         ) as executor:
             # Test connectivity
             executor.test_connectivity()

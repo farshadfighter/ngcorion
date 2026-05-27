@@ -27,6 +27,7 @@ class FortinetAuditRequest(BaseModel):
     asset_id: int = Field(..., description="Target FortiGate asset ID")
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     vdom: Optional[str] = Field(None, description="Optional VDOM name (root if omitted)")
     profile: str = Field("L1", pattern="^(L1|L2|FULL)$", description="Audit profile")
     job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
@@ -37,6 +38,7 @@ class FortinetAuditRequest(BaseModel):
                 "asset_id": 42,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "vdom": "root",
                 "profile": "L1"
             }
@@ -49,13 +51,15 @@ class VDOMDiscoveryRequest(BaseModel):
     asset_id: int = Field(..., description="Target FortiGate asset ID")
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "asset_id": 42,
                 "ssh_username": "admin",
-                "ssh_password": "********"
+                "ssh_password": "********",
+                "ssh_port": 22
             }
         }
 
@@ -147,7 +151,8 @@ def execute_fortinet_audit(
             ssh_password=audit_request.ssh_password,
             vdom=audit_request.vdom,
             profile=audit_request.profile,
-            job_name=audit_request.job_name
+            job_name=audit_request.job_name,
+            ssh_port=audit_request.ssh_port,
         )
 
         # Get formatted summary
@@ -230,7 +235,8 @@ def discover_vdoms(
             db=db,
             asset_id=audit_request.asset_id,
             ssh_username=audit_request.ssh_username,
-            ssh_password=audit_request.ssh_password
+            ssh_password=audit_request.ssh_password,
+            ssh_port=audit_request.ssh_port,
         )
 
         return {

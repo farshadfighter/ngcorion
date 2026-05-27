@@ -167,6 +167,7 @@ class HardeningExecuteRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1, description="Fresh SSH credentials")
     ssh_password: str = Field(..., min_length=1, description="Fresh SSH password")
     ssh_secret: Optional[str] = Field(None, description="Enable secret")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     parameters: Dict[str, str] = Field(
         default_factory=dict,
         description="Required parameters (e.g., passwords, IPs)"
@@ -183,6 +184,7 @@ class HardeningExecuteRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_secret": "********",
+                "ssh_port": 22,
                 "parameters": {
                     "STRONG_SECRET": "MyNewSecret123!"
                 },
@@ -436,6 +438,7 @@ class AutoHardenDefaultsRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_secret: Optional[str] = None
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     confirmed: bool = Field(
         default=False,
         description="User must confirm they reviewed the defaults"
@@ -448,6 +451,7 @@ class AutoHardenDefaultsRequest(BaseModel):
                 "audit_session_id": 123,
                 "ssh_username": "admin",
                 "ssh_password": "cisco123",
+                "ssh_port": 22,
                 "confirmed": True,
                 "skip_backup": False
             }
@@ -503,6 +507,7 @@ class BatchExecuteRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_secret: Optional[str] = None
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     skip_backup: bool = False
 
     class Config:
@@ -516,6 +521,7 @@ class BatchExecuteRequest(BaseModel):
                 },
                 "ssh_username": "admin",
                 "ssh_password": "cisco123",
+                "ssh_port": 22,
                 "skip_backup": False
             }
         }
@@ -684,7 +690,8 @@ def execute_hardening(
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
             parameters=request.parameters,
-            skip_backup=request.skip_backup
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
         )
 
         verification_passed = result.get("verification_passed")
@@ -1258,7 +1265,8 @@ def auto_harden_with_defaults(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
-            skip_backup=request.skip_backup
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
         )
 
         # Log auto-harden operation
@@ -1374,7 +1382,8 @@ def batch_execute_selected(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
-            skip_backup=request.skip_backup
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
         )
 
         # Log batch execute operation

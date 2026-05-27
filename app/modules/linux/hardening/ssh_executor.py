@@ -300,13 +300,15 @@ class LinuxHardeningBatchExecutor:
         username: str,
         password: str,
         sudo_password: Optional[str] = None,
-        distro_id: Optional[str] = None
+        distro_id: Optional[str] = None,
+        port: int = 22
     ):
         self.ip = ip
         self.username = username
         self.password = password
         self.sudo_password = sudo_password or password
         self.distro_id = distro_id  # Will be auto-detected if not provided
+        self.port = port
 
     def execute_auto_harden(
         self,
@@ -341,7 +343,8 @@ class LinuxHardeningBatchExecutor:
             username=self.username,
             password=self.password,
             sudo_password=self.sudo_password,
-            distro_id=self.distro_id
+            distro_id=self.distro_id,
+            port=self.port
         ) as executor:
             # Store detected distro for result metadata
             detected_distro = executor.distro_id
@@ -392,7 +395,8 @@ class LinuxHardeningBatchExecutor:
             username=self.username,
             password=self.password,
             sudo_password=self.sudo_password,
-            distro_id=self.distro_id
+            distro_id=self.distro_id,
+            port=self.port
         ) as executor:
             detected_distro = executor.distro_id
 
@@ -436,7 +440,8 @@ class LinuxHardeningBatchExecutor:
             username=self.username,
             password=self.password,
             sudo_password=self.sudo_password,
-            distro_id=self.distro_id
+            distro_id=self.distro_id,
+            port=self.port
         ) as executor:
             result = executor.execute_hardening(check_id, parameters)
             result_dict = result.to_dict()

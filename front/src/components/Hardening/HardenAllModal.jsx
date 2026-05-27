@@ -35,6 +35,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         // SSH-based
         ssh_username:     '',
         ssh_password:     '',
+        ssh_port:         '22',
         ssh_secret:       '',       // Cisco only
         vdom:             '',       // Fortinet only
         sudo_password:    '',       // Linux / Apache / MongoDB
@@ -140,6 +141,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                 credentials = {
                     ssh_username: sshCredentials.ssh_username,
                     ssh_password: sshCredentials.ssh_password,
+                    ssh_port:     parseInt(sshCredentials.ssh_port) || 22,
                     ...(isCisco(deviceType)    && sshCredentials.ssh_secret     && { ssh_secret:     sshCredentials.ssh_secret }),
                     ...(isFortinet(deviceType) && sshCredentials.vdom           && { vdom:           sshCredentials.vdom }),
                     ...(needsSudo(deviceType)  && sshCredentials.sudo_password  && { sudo_password:  sshCredentials.sudo_password }),
@@ -280,6 +282,10 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                 <div className="hardening-form-group">
                     <label>SSH Password<span className="hardening-required">*</span></label>
                     <input type="password" name="ssh_password" value={sshCredentials.ssh_password} onChange={handleSSHChange} placeholder="Enter SSH password" autoComplete="current-password" style={inputStyle} />
+                </div>
+                <div className="hardening-form-group">
+                    <label>SSH Port</label>
+                    <input type="number" name="ssh_port" value={sshCredentials.ssh_port} onChange={handleSSHChange} placeholder="22" min="1" max="65535" autoComplete="off" style={inputStyle} />
                 </div>
 
                 {isCisco(deviceType) && (

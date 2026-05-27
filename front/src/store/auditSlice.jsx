@@ -30,6 +30,7 @@ export const executeAudit = createAsyncThunk(
             if (formData.job_name)      payload.job_name      = formData.job_name;
             if (formData.ssh_username)  payload.ssh_username  = formData.ssh_username;
             if (formData.ssh_password)  payload.ssh_password  = formData.ssh_password;
+            if (formData.ssh_port)      payload.ssh_port      = parseInt(formData.ssh_port) || 22;
             if (formData.ssh_secret)    payload.ssh_secret    = formData.ssh_secret;
             if (formData.vdom)          payload.vdom          = formData.vdom;
             if (formData.sudo_password) payload.sudo_password = formData.sudo_password;

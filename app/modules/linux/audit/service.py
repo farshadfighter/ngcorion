@@ -154,7 +154,8 @@ class LinuxAuditService:
         ssh_password: str,
         sudo_password: Optional[str] = None,
         profile: str = "L1",
-        job_name: Optional[str] = None
+        job_name: Optional[str] = None,
+        ssh_port: int = 22
     ) -> AuditSession:
         """
         Execute CIS audit on a Linux server.
@@ -208,7 +209,8 @@ class LinuxAuditService:
                     ip=target_ip,
                     username=ssh_username,
                     password=ssh_password,
-                    sudo_password=sudo_password
+                    sudo_password=sudo_password,
+                    port=ssh_port
                 )
                 ssh_client.connect()
 

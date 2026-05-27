@@ -204,7 +204,8 @@ class FortiGateHardeningService:
         ssh_password: str,
         parameters: Dict[str, str],
         vdom: Optional[str] = None,
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening commands on FortiGate device.
@@ -292,7 +293,8 @@ class FortiGateHardeningService:
                 ip=device_ip,
                 username=ssh_username,
                 password=ssh_password,
-                vdom=vdom
+                vdom=vdom,
+                port=ssh_port
             ) as executor:
                 # Test connectivity
                 executor.test_connectivity()
@@ -549,7 +551,8 @@ class FortiGateHardeningService:
         ssh_username: str,
         ssh_password: str,
         vdom: Optional[str] = None,
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Automatically harden FortiGate using only default values.
@@ -631,7 +634,8 @@ class FortiGateHardeningService:
             ip=device_ip,
             username=ssh_username,
             password=ssh_password,
-            vdom=vdom
+            vdom=vdom,
+            port=ssh_port
         ) as executor:
             executor.test_connectivity()
 
@@ -753,7 +757,8 @@ class FortiGateHardeningService:
         ssh_username: str,
         ssh_password: str,
         vdom: Optional[str] = None,
-        skip_backup: bool = False
+        skip_backup: bool = False,
+        ssh_port: int = 22
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected FortiGate checks with user parameters.
@@ -807,7 +812,8 @@ class FortiGateHardeningService:
             ip=device_ip,
             username=ssh_username,
             password=ssh_password,
-            vdom=vdom
+            vdom=vdom,
+            port=ssh_port
         ) as executor:
             executor.test_connectivity()
 
