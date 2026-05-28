@@ -132,6 +132,22 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "config_mode": True
     },
 
+    "IOS-L1-0051": {
+        "commands": [
+            "configure terminal",
+            "banner login ^{BANNER_TEXT}^",
+            "end",
+            "write memory"
+        ],
+        "required_params": ["BANNER_TEXT"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Login banner will be displayed at login prompt"
+        ],
+        "config_mode": True
+    },
+
     # ==================== SSH VERSION 2 ====================
     "IOS-L1-007": {
         "commands": [

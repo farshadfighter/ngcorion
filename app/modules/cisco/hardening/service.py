@@ -294,11 +294,10 @@ class HardeningService:
         commands = json.loads(action.commands_json)
 
         # 4. Apply defaults and substitute parameters
-        parsed = RemediationParser.parse_remediation(
-            remediation="",  # Not needed, we have commands already
-            check_number=action.check_number
-        )
-        params_with_defaults = apply_defaults(parameters, parsed.defaults)
+        from .command_templates import has_template, get_template
+        template_defaults = get_template(action.check_number).get("defaults", {}) \
+            if has_template(action.check_number) else {}
+        params_with_defaults = apply_defaults(parameters, template_defaults)
 
         try:
             final_commands = RemediationParser.substitute_parameters(
