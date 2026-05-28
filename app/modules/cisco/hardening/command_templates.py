@@ -563,6 +563,73 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         ],
         "config_mode": True
     },
+
+    # ==================== CONFIG-REGISTER ====================
+    "IOS-L1-090": {
+        "commands": [
+            "configure terminal",
+            "config-register 0x2102",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Config-register change takes effect on the next reload"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== SECURE BOOT ====================
+    "IOS-L2-091": {
+        "commands": [
+            "configure terminal",
+            "secure boot-image",
+            "secure boot-config",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Secure boot requires IOS Resilience feature support",
+            "Verify platform supports 'secure boot-image' before applying"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== CONTROL-PLANE POLICING ====================
+    "IOS-L2-110": {
+        "commands": [
+            "configure terminal",
+            "ip access-list extended ACL-COPP-MGMT",
+            "permit tcp any any eq 22",
+            "permit tcp any any eq 443",
+            "exit",
+            "class-map match-any COPP-MGMT",
+            "match access-group name ACL-COPP-MGMT",
+            "exit",
+            "policy-map type control-plane COPP-POLICY",
+            "class COPP-MGMT",
+            "police rate 1000 pps",
+            "exit",
+            "exit",
+            "control-plane",
+            "service-policy input COPP-POLICY",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "This applies a basic CoPP policy — review and adjust rate limits before applying",
+            "Test in a lab environment before applying to production devices"
+        ],
+        "config_mode": True
+    },
 }
 
 
