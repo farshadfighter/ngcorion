@@ -213,7 +213,11 @@ def get_fortinet_controls() -> List[FortiGateControl]:
     # ===== BASELINE PACK (Enhanced) =====
     controls += [
         # Management Plane Security
-        _mk_set_bool("FG-BL-001", "Admin HTTPS enabled", "BASELINE", "Management Plane", "High", "L1", SG, "admin-https", True,
+        # FortiOS "show" omits settings at their default value. "admin-https enable" is the
+        # default, so it never appears in "show system global" output. Check for the absence
+        # of "set admin-https disable" instead — if that line is missing, HTTPS is enabled.
+        _mk_re_abs("FG-BL-001", "Admin HTTPS enabled", "BASELINE", "Management Plane", "High", "L1", SG,
+                    r"set\s+admin-https\s+disable",
                     "config system global\\n set admin-https enable\\nend",
                     cis={"id": "1.1.1", "section": "Management Access", "profile": "L1"}, tags=["mgmt", "cis"]),
         _mk_set_bool("FG-BL-002", "Admin HTTP disabled", "BASELINE", "Management Plane", "Critical", "L1", SG, "admin-http", False,

@@ -302,17 +302,19 @@ class FortiGateHardeningExecutor:
         output_lower = output.lower()
 
         if rule.type == "set_bool":
-            # Check for "set <key> enable" or "set <key> disable"
+            # FortiOS "show" omits settings at their default value.
+            # Check for absence of the opposite state rather than presence of the
+            # expected state — this works whether the setting is default-on/off or
+            # explicitly configured.
             key = rule.key
             expected = rule.expected
             if expected:
-                # Looking for "set key enable"
-                pattern = rf"set\s+{re.escape(key)}\s+enable"
+                # Want enabled: pass if "set <key> disable" is absent
+                pattern = rf"set\s+{re.escape(key)}\s+disable"
             else:
-                # Looking for "set key disable" or absence of "set key enable"
+                # Want disabled: pass if "set <key> enable" is absent
                 pattern = rf"set\s+{re.escape(key)}\s+enable"
-                return not bool(re.search(pattern, output, re.IGNORECASE))
-            return bool(re.search(pattern, output, re.IGNORECASE))
+            return not bool(re.search(pattern, output, re.IGNORECASE))
 
         elif rule.type == "set_eq":
             # Check for "set <key> <expected>"

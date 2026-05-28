@@ -191,10 +191,17 @@ class FortinetAuditService:
         """
         try:
             if rule.type == "set_bool":
-                # Check if "set <key> <expected>" exists
-                expected_val = "enable" if rule.expected else "disable"
-                pattern = rf"set {rule.key}\s+{expected_val}"
-                return bool(re.search(pattern, command_output, re.IGNORECASE | re.MULTILINE))
+                # FortiOS "show" omits settings at their default value.
+                # Check for absence of the opposite state rather than presence of the
+                # expected state — this works whether the setting is default-on/off or
+                # explicitly configured.
+                if rule.expected:
+                    # Want enabled: pass if "set <key> disable" is absent
+                    pattern = rf"set\s+{rule.key}\s+disable"
+                else:
+                    # Want disabled: pass if "set <key> enable" is absent
+                    pattern = rf"set\s+{rule.key}\s+enable"
+                return not bool(re.search(pattern, command_output, re.IGNORECASE | re.MULTILINE))
 
             elif rule.type == "set_int_le":
                 # Check if integer value <= expected
