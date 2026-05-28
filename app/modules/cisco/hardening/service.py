@@ -391,6 +391,12 @@ class HardeningService:
                 # 8. Update final status
                 if passed:
                     action.status = "success"
+                    audit_result = db.query(AuditResult).filter(
+                        AuditResult.id == action.audit_result_id
+                    ).first()
+                    if audit_result:
+                        audit_result.status = CheckStatus.PASS
+                        audit_result.evidence_snippet = evidence
                     logger.info(f"Hardening action {action_id} completed successfully and verified")
                 else:
                     action.status = "failed"
@@ -882,6 +888,8 @@ class HardeningService:
 
                     if passed:
                         action.status = "success"
+                        audit_result.status = CheckStatus.PASS
+                        audit_result.evidence_snippet = evidence
                         fixed_count += 1
                         logger.info(f"Successfully fixed {check_number}")
                     else:
