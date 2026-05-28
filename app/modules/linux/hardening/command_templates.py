@@ -171,9 +171,8 @@ _register(LinuxHardeningTemplate(
         "systemctl start chronyd 2>/dev/null || systemctl start chrony 2>/dev/null || true"
     ],
     verify_commands=[
-        "systemctl is-enabled chrony 2>/dev/null || systemctl is-enabled chronyd 2>/dev/null | grep -q enabled && echo 'PASS' || echo 'FAIL'"
-    ],
-    requires_service_restart="chronyd"
+        "(systemctl is-enabled chrony 2>/dev/null || systemctl is-enabled chronyd 2>/dev/null) | grep -q enabled && echo 'PASS' || echo 'FAIL'"
+    ]
 ))
 
 # ==================== SECTION 3: NETWORK CONFIGURATION ====================
@@ -480,7 +479,8 @@ _register(LinuxHardeningTemplate(
         "grep -q '^ClientAliveCountMax' /etc/ssh/sshd_config || echo 'ClientAliveCountMax {SSH_CLIENT_ALIVE_COUNT_MAX}' >> /etc/ssh/sshd_config"
     ],
     verify_commands=[
-        "sshd -T | grep -q 'clientaliveinterval {SSH_CLIENT_ALIVE_INTERVAL}' && echo 'PASS' || echo 'FAIL'"
+        "sshd -T | grep -q 'clientaliveinterval {SSH_CLIENT_ALIVE_INTERVAL}' && echo 'PASS' || echo 'FAIL'",
+        "sshd -T | grep -q 'clientalivecountmax {SSH_CLIENT_ALIVE_COUNT_MAX}' && echo 'PASS' || echo 'FAIL'"
     ],
     requires_service_restart="sshd"
 ))

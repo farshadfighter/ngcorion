@@ -92,6 +92,7 @@ class BatchExecuteRequest(BaseModel):
 class SingleFixRequest(BaseModel):
     """Request for single check fix."""
     asset_id: int = Field(..., description="Target asset ID")
+    session_id: Optional[int] = Field(None, description="Audit session ID (used to update AuditResult status)")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
@@ -371,6 +372,7 @@ async def execute_single_fix(
         result = LinuxHardeningService.execute_single_fix(
             db=db,
             asset_id=request.asset_id,
+            session_id=request.session_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             sudo_password=request.sudo_password,
@@ -379,7 +381,7 @@ async def execute_single_fix(
             ssh_port=request.ssh_port,
         )
         consume_quota(http_request)
-        succeeded = isinstance(result, dict) and result.get("status") == "success"
+        succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="linux", action="execute_single",
             session_id=None, asset_id=request.asset_id,

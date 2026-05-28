@@ -225,13 +225,15 @@ class LinuxSSHExecutor:
 
                 result.verification_result = "\n".join(verification_outputs)
 
-                # Check if verification passed
-                if "PASS" in result.verification_result:
-                    result.success = True
-                elif "FAIL" in result.verification_result:
+                # Check if verification passed.
+                # "FAIL" must be checked first: if any verify command fails
+                # the whole check fails, even if another command printed "PASS".
+                if "FAIL" in result.verification_result:
                     result.success = False
+                elif "PASS" in result.verification_result:
+                    result.success = True
                 else:
-                    # Assume success if commands ran without error
+                    # No explicit PASS/FAIL markers — assume success
                     result.success = True
             else:
                 # No verification commands - assume success if commands ran

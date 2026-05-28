@@ -218,6 +218,22 @@ class LinuxHardeningService:
 
         result = executor.execute_auto_harden(failed_check_ids)
 
+        # Update AuditResult.status for every check that passed verification
+        for check_result in result.get("results", []):
+            if check_result.get("success"):
+                audit_row = (
+                    db.query(AuditResult)
+                    .filter(
+                        AuditResult.session_id == session_id,
+                        AuditResult.check_number == check_result.get("check_id")
+                    )
+                    .first()
+                )
+                if audit_row:
+                    audit_row.status = CheckStatus.PASS
+                    audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        db.commit()
+
         # Add metadata
         result["session_id"] = session_id
         result["asset_id"] = asset_id
@@ -275,6 +291,22 @@ class LinuxHardeningService:
 
         result = executor.execute_selected(checks)
 
+        # Update AuditResult.status for every check that passed verification
+        for check_result in result.get("results", []):
+            if check_result.get("success"):
+                audit_row = (
+                    db.query(AuditResult)
+                    .filter(
+                        AuditResult.session_id == session_id,
+                        AuditResult.check_number == check_result.get("check_id")
+                    )
+                    .first()
+                )
+                if audit_row:
+                    audit_row.status = CheckStatus.PASS
+                    audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        db.commit()
+
         result["session_id"] = session_id
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address
@@ -295,7 +327,8 @@ class LinuxHardeningService:
         sudo_password: Optional[str],
         check_id: str,
         parameters: Dict[str, str] = None,
-        ssh_port: int = 22
+        ssh_port: int = 22,
+        session_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -330,6 +363,21 @@ class LinuxHardeningService:
         )
 
         result = executor.execute_single(check_id, parameters)
+
+        # Update AuditResult.status if the fix passed and we know the session
+        if result.get("success") and session_id is not None:
+            audit_row = (
+                db.query(AuditResult)
+                .filter(
+                    AuditResult.session_id == session_id,
+                    AuditResult.check_number == check_id
+                )
+                .first()
+            )
+            if audit_row:
+                audit_row.status = CheckStatus.PASS
+                audit_row.evidence_snippet = result.get("verification_result") or ""
+                db.commit()
 
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address
