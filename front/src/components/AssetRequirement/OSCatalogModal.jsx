@@ -7,6 +7,7 @@ export const OSCatalogModal = ({ onClose }) => {
 
     const [formData, setFormData] = useState({
         os_name: "",
+        os_version: "",
     });
 
     const [errors, setErrors] = useState({});
@@ -28,7 +29,9 @@ export const OSCatalogModal = ({ onClose }) => {
         if (!validateForm()) return;
 
         try {
-            await dispatch(createOS(formData)).unwrap();
+            const payload = { ...formData };
+            if (!payload.os_version.trim()) delete payload.os_version;
+            await dispatch(createOS(payload)).unwrap();
             onClose();
         } catch (error) {
             console.error("Failed to create OS:", error);
@@ -63,12 +66,23 @@ export const OSCatalogModal = ({ onClose }) => {
                             name="os_name"
                             value={formData.os_name}
                             onChange={handleChange}
-                            placeholder="Enter OS name (e.g., Ubuntu 22.04, Windows Server 2022)"
+                            placeholder="e.g., Ubuntu, Windows Server, FortiOS"
                             className={errors.os_name ? "error" : ""}
                         />
                         {errors.os_name && (
                             <span className="error-message">{errors.os_name}</span>
                         )}
+                    </div>
+
+                    <div className="form-group">
+                        <label>OS Version</label>
+                        <input
+                            type="text"
+                            name="os_version"
+                            value={formData.os_version}
+                            onChange={handleChange}
+                            placeholder="e.g., 22.04, 2022, 7.2"
+                        />
                     </div>
 
                     <div className="modal-footer">
