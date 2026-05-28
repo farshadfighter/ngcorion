@@ -417,7 +417,7 @@ def build_all_cisco_cis_rules() -> List[CISRule]:
         severity="medium",
         level="L1",
         rationale="Reduce exposure window for SSH connections.",
-        remediation="Configure: ip ssh timeout <5-120>",
+        remediation="Configure: ip ssh timeout 60",
         check=lambda c: (m:=RE.ssh_timeout.search(c)) is not None and 5 <= int(m.group(1)) <= 120,
         evidence=lambda c: RE.ssh_timeout.search(c).group(0) if RE.ssh_timeout.search(c) else "not set"
     ))

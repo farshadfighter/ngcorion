@@ -187,7 +187,8 @@ class CiscoHardeningExecutor:
 
                 logger.info(
                     f"Sending {len(config_commands)} config commands "
-                    f"(stripped {len(commands) - len(config_commands)} meta-commands)"
+                    f"(stripped {len(commands) - len(config_commands)} meta-commands): "
+                    f"{config_commands}"
                 )
                 output = self.ssh_client.send_config_commands(config_commands)
             else:
