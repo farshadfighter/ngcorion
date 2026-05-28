@@ -15,6 +15,10 @@ FortiGate uses hierarchical config blocks:
 - config <section>
 - set <key> <value>
 - end
+
+When VDOMs are enabled, global-context templates are wrapped in "config global" / "end"
+so they execute in the correct context. Per-VDOM templates are executed inside the
+target VDOM (entered by the executor via "config vdom" / "edit <vdom>").
 """
 
 from typing import Dict, List, Any
@@ -25,8 +29,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== MANAGEMENT PLANE SECURITY ====================
     "FG-BL-001": {
         "commands": [
+            "config global",
             "config system global",
             "set admin-https enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -40,8 +46,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-002": {
         "commands": [
+            "config global",
             "config system global",
             "set admin-http disable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -56,8 +64,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-003": {
         "commands": [
+            "config global",
             "config system global",
             "set admin-telnet disable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -72,8 +82,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-004": {
         "commands": [
+            "config global",
             "config system global",
             "set admintimeout {ADMIN_TIMEOUT}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -90,8 +102,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-005": {
         "commands": [
+            "config global",
             "config system global",
             "set admin-https-ssl-versions tlsv1-2 tlsv1-3",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -106,8 +120,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-006": {
         "commands": [
+            "config global",
             "config system global",
             "set ssh-enc-algo aes256-ctr aes192-ctr aes128-ctr aes256-gcm@openssh.com aes128-gcm@openssh.com",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -122,8 +138,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-007": {
         "commands": [
+            "config global",
             "config system global",
             "set admin-sport {ADMIN_HTTPS_PORT}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -140,8 +158,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-008": {
         "commands": [
+            "config global",
             "config system global",
             "set admin-ssh enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -156,8 +176,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== PASSWORD POLICY ====================
     "FG-BL-030": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set status enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -171,8 +193,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-031": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set minimum-length {PASSWORD_MIN_LENGTH}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -189,8 +213,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-032": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set must-contain uppercase-letter enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -204,8 +230,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-033": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set must-contain lowercase-letter enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -219,8 +247,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-034": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set must-contain number enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -234,8 +264,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-035": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set must-contain non-alphanumeric enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -249,8 +281,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-036": {
         "commands": [
+            "config global",
             "config system password-policy",
             "set min-change-characters {PASSWORD_MIN_CHANGED_CHARS}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -267,8 +301,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== TIME & SYNC ====================
     "FG-BL-040": {
         "commands": [
+            "config global",
             "config system ntp",
             "set status enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -288,6 +324,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "edit 1",
             "set server {NTP_SERVER}",
             "end",
+            "end",
             "end"
         ],
         "required_params": ["NTP_SERVER"],
@@ -302,8 +339,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-042": {
         "commands": [
+            "config global",
             "config system ntp",
             "set interface {NTP_INTERFACE}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -320,8 +359,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== DNS ====================
     "FG-BL-043": {
         "commands": [
+            "config global",
             "config system dns",
             "set primary {DNS_PRIMARY}",
+            "end",
             "end"
         ],
         "required_params": ["DNS_PRIMARY"],
@@ -335,8 +376,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-044": {
         "commands": [
+            "config global",
             "config system dns",
             "set secondary {DNS_SECONDARY}",
+            "end",
             "end"
         ],
         "required_params": ["DNS_SECONDARY"],
@@ -351,9 +394,11 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== SNMP ====================
     "FG-BL-052": {
         "commands": [
+            "config global",
             "config system snmp sysinfo",
             "set contact-info {SNMP_CONTACT}",
             "set location {SNMP_LOCATION}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -371,9 +416,11 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== LOGGING ====================
     "FG-BL-060": {
         "commands": [
+            "config global",
             "config log syslogd setting",
             "set status enable",
             "set server {SYSLOG_SERVER}",
+            "end",
             "end"
         ],
         "required_params": ["SYSLOG_SERVER"],
@@ -388,8 +435,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-061": {
         "commands": [
+            "config global",
             "config log syslogd setting",
             "set server {SYSLOG_SERVER}",
+            "end",
             "end"
         ],
         "required_params": ["SYSLOG_SERVER"],
@@ -403,8 +452,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-062": {
         "commands": [
+            "config global",
             "config log syslogd setting",
             "set facility {SYSLOG_FACILITY}",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -420,8 +471,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-063": {
         "commands": [
+            "config global",
             "config log setting",
             "set local-disk enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -435,8 +488,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-064": {
         "commands": [
+            "config global",
             "config log setting",
             "set log-invalid-packet enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -450,8 +505,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-065": {
         "commands": [
+            "config global",
             "config log setting",
             "set log-user-in-upper enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -466,8 +523,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== GLOBAL SETTINGS ====================
     "FG-BL-090": {
         "commands": [
+            "config global",
             "config system global",
             "set strong-crypto enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -482,8 +541,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-091": {
         "commands": [
+            "config global",
             "config system global",
             "set fgfm-auto-update disable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -498,9 +559,11 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-092": {
         "commands": [
+            "config global",
             "config system global",
             "set pre-login-banner enable",
             "set pre-login-banner-message \"{BANNER_TEXT}\"",
+            "end",
             "end"
         ],
         "required_params": ["BANNER_TEXT"],
@@ -514,8 +577,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-093": {
         "commands": [
+            "config global",
             "config system settings",
             "set gui-display-hostname enable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -530,8 +595,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== HA PACK ====================
     "FG-HA-002": {
         "commands": [
+            "config global",
             "config system ha",
             "set override disable",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -545,8 +612,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-HA-003": {
         "commands": [
+            "config global",
             "config system ha",
             "set password {HA_PASSWORD}",
+            "end",
             "end"
         ],
         "required_params": ["HA_PASSWORD"],
@@ -561,8 +630,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-HA-004": {
         "commands": [
+            "config global",
             "config system ha",
             "set mode a-p",
+            "end",
             "end"
         ],
         "required_params": [],
@@ -594,9 +665,11 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     # ==================== FAZ ====================
     "FG-FAZ-001": {
         "commands": [
+            "config global",
             "config log fortianalyzer setting",
             "set status enable",
             "set server {FAZ_SERVER}",
+            "end",
             "end"
         ],
         "required_params": ["FAZ_SERVER"],
@@ -611,8 +684,10 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-FAZ-002": {
         "commands": [
+            "config global",
             "config log fortianalyzer setting",
             "set server {FAZ_SERVER}",
+            "end",
             "end"
         ],
         "required_params": ["FAZ_SERVER"],

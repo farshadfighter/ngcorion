@@ -144,14 +144,19 @@ class FortiGateHardeningExecutor:
     def execute_commands(
         self,
         commands: List[str],
-        vdom: Optional[str] = None
+        vdom: Optional[str] = None,
+        vdom_context: str = "global"
     ) -> Dict[str, Any]:
         """
         Execute commands on FortiGate device.
 
         Args:
             commands: List of commands to execute
-            vdom: Optional VDOM context for per-VDOM commands
+            vdom: Optional VDOM name (only used when vdom_context == "vdom")
+            vdom_context: "global" or "vdom". For global templates the commands
+                          already contain "config global" / "end" wrappers, so
+                          no VDOM switching is performed here. For per-VDOM
+                          templates the executor enters the target VDOM first.
 
         Returns:
             Dict with:
@@ -168,14 +173,17 @@ class FortiGateHardeningExecutor:
         try:
             logger.info(f"Executing {len(commands)} commands on FortiGate {self.ip}")
 
-            # Enter VDOM context if specified
+            # Enter VDOM context only for per-VDOM templates.
+            # Global templates carry their own "config global" / "end" wrappers.
             vdom_to_use = vdom or self.default_vdom
-            if vdom_to_use:
+            entered_vdom = False
+            if vdom_to_use and vdom_context == "vdom":
                 logger.info(f"Entering VDOM: {vdom_to_use}")
                 if not self.ssh_client.enter_vdom(vdom_to_use):
                     raise FortiGateHardeningExecutionError(
                         f"Failed to enter VDOM: {vdom_to_use}"
                     )
+                entered_vdom = True
 
             outputs = []
             errors = []
@@ -200,8 +208,8 @@ class FortiGateHardeningExecutor:
                     errors.append(error_msg)
                     outputs.append(f"# {cmd}\nERROR: {str(e)}")
 
-            # Exit VDOM context if we entered one
-            if vdom_to_use:
+            # Exit VDOM context only if we entered one
+            if entered_vdom:
                 self.ssh_client.exit_vdom()
 
             full_output = "\n\n".join(outputs)
@@ -230,14 +238,18 @@ class FortiGateHardeningExecutor:
     def verify_check(
         self,
         control: FortiGateControl,
-        vdom: Optional[str] = None
+        vdom: Optional[str] = None,
+        vdom_context: str = "global"
     ) -> Tuple[bool, str]:
         """
         Re-run FortiGate control check to verify fix worked.
 
         Args:
             control: FortiGateControl object with rules to verify
-            vdom: Optional VDOM context
+            vdom: Optional VDOM name (only used when vdom_context == "vdom")
+            vdom_context: "global" or "vdom". Show commands for global checks
+                          run at the top-level CLI; per-VDOM checks need the
+                          correct VDOM context to return the right settings.
 
         Returns:
             Tuple of (passed: bool, evidence: str)
@@ -251,13 +263,17 @@ class FortiGateHardeningExecutor:
         try:
             logger.info(f"Verifying check {control.id} on FortiGate {self.ip}")
 
-            # Enter VDOM context if specified
+            # Enter VDOM context only for per-VDOM checks.
+            # Global show commands (e.g. "show system global") work at the
+            # top-level CLI and must NOT be issued from within a VDOM context.
             vdom_to_use = vdom or self.default_vdom
-            if vdom_to_use:
+            entered_vdom = False
+            if vdom_to_use and vdom_context == "vdom":
                 if not self.ssh_client.enter_vdom(vdom_to_use):
                     raise FortiGateHardeningVerificationError(
                         f"Failed to enter VDOM for verification: {vdom_to_use}"
                     )
+                entered_vdom = True
 
             # Collect fresh output for each rule command
             all_evidence = []
@@ -273,8 +289,8 @@ class FortiGateHardeningExecutor:
                 if not passed:
                     all_passed = False
 
-            # Exit VDOM context
-            if vdom_to_use:
+            # Exit VDOM context only if we entered one
+            if entered_vdom:
                 self.ssh_client.exit_vdom()
 
             evidence = "\n\n".join(all_evidence)

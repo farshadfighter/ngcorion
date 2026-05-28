@@ -203,28 +203,6 @@ FORTIGATE_PARAMETER_REGISTRY: Dict[str, FortiGateParameterMetadata] = {
         placeholder="Authorized access only. All activity is monitored.",
         validation="min_length:10"
     ),
-
-    # ==================== TLS VERSIONS ====================
-    "TLS_MIN_VERSION": FortiGateParameterMetadata(
-        name="TLS_MIN_VERSION",
-        input_type="select",
-        label="Minimum TLS Version",
-        description="Minimum TLS version for admin HTTPS",
-        required=False,
-        default="tlsv1-2",
-        options=["tlsv1-2", "tlsv1-3"]
-    ),
-
-    # ==================== SSH CONFIGURATION ====================
-    "SSH_ENC_ALGO": FortiGateParameterMetadata(
-        name="SSH_ENC_ALGO",
-        input_type="text",
-        label="SSH Encryption Algorithms",
-        description="Allowed SSH encryption algorithms",
-        required=False,
-        default="aes256-ctr aes192-ctr aes128-ctr",
-        placeholder="aes256-ctr aes192-ctr aes128-ctr"
-    ),
 }
 
 

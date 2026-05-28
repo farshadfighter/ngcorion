@@ -309,7 +309,8 @@ class FortiGateHardeningService:
                 # Execute commands
                 exec_result = executor.execute_commands(
                     final_commands,
-                    vdom=vdom
+                    vdom=vdom,
+                    vdom_context=parsed.vdom_context
                 )
 
                 # Store output regardless of execution errors
@@ -325,13 +326,17 @@ class FortiGateHardeningService:
                 # when a setting is already at the requested value (idempotent no-op).
                 # Verification is the authoritative check of whether the fix succeeded.
                 control = FortiGateHardeningService._get_control_by_id(action.check_number)
-                passed, evidence = executor.verify_check(control, vdom=vdom)
+                passed, evidence = executor.verify_check(
+                    control, vdom=vdom, vdom_context=parsed.vdom_context
+                )
 
                 action.verification_passed = passed
                 action.verification_evidence = evidence
 
                 if passed:
                     action.status = "success"
+                    audit_result.status = CheckStatus.PASS
+                    audit_result.evidence_snippet = evidence
                     logger.info(f"FortiGate hardening action {action_id} completed successfully")
                 else:
                     action.status = "failed"
@@ -681,7 +686,8 @@ class FortiGateHardeningService:
                     # Execute commands
                     exec_result = executor.execute_commands(
                         final_commands,
-                        vdom=vdom
+                        vdom=vdom,
+                        vdom_context=parsed.vdom_context
                     )
 
                     # Store output regardless of execution errors
@@ -695,12 +701,16 @@ class FortiGateHardeningService:
 
                     # Always verify — FortiGate may return non-fatal errors (e.g.
                     # "Command fail. Return code -7") when a value is already set.
-                    passed, evidence = executor.verify_check(control, vdom=vdom)
+                    passed, evidence = executor.verify_check(
+                        control, vdom=vdom, vdom_context=parsed.vdom_context
+                    )
                     action.verification_passed = passed
                     action.verification_evidence = evidence
 
                     if passed:
                         action.status = "success"
+                        result.status = CheckStatus.PASS
+                        result.evidence_snippet = evidence
                         fixed_count += 1
                         fixed_checks.append({
                             "check_number": check_id,
@@ -894,7 +904,8 @@ class FortiGateHardeningService:
                     # Execute
                     exec_result = executor.execute_commands(
                         final_commands,
-                        vdom=vdom
+                        vdom=vdom,
+                        vdom_context=parsed.vdom_context
                     )
 
                     # Store output regardless of execution errors
@@ -908,12 +919,16 @@ class FortiGateHardeningService:
 
                     # Always verify — FortiGate may return non-fatal errors (e.g.
                     # "Command fail. Return code -7") when a value is already set.
-                    passed, evidence = executor.verify_check(control, vdom=vdom)
+                    passed, evidence = executor.verify_check(
+                        control, vdom=vdom, vdom_context=parsed.vdom_context
+                    )
                     action.verification_passed = passed
                     action.verification_evidence = evidence
 
                     if passed:
                         action.status = "success"
+                        result.status = CheckStatus.PASS
+                        result.evidence_snippet = evidence
                         fixed_count += 1
                         execution_results.append({
                             "check_number": check_id,
