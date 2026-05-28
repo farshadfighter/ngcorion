@@ -290,13 +290,18 @@ class HardeningService:
         if not asset.ip_address:
             raise ValueError(f"Asset '{asset.asset_name}' has no IP address configured")
 
-        # 3. Parse commands from JSON
-        commands = json.loads(action.commands_json)
+        # 3. Get commands — use the live template when available so stale
+        #    commands_json (from an old preview) never reaches the device.
+        from .command_templates import has_template, get_template
+        if has_template(action.check_number):
+            template = get_template(action.check_number)
+            commands = template["commands"]
+            template_defaults = template.get("defaults", {})
+        else:
+            commands = json.loads(action.commands_json)
+            template_defaults = {}
 
         # 4. Apply defaults and substitute parameters
-        from .command_templates import has_template, get_template
-        template_defaults = get_template(action.check_number).get("defaults", {}) \
-            if has_template(action.check_number) else {}
         params_with_defaults = apply_defaults(parameters, template_defaults)
 
         try:
