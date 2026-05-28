@@ -312,42 +312,33 @@ class FortiGateHardeningService:
                     vdom=vdom
                 )
 
-                if not exec_result["success"]:
-                    action.status = "failed"
-                    action.error_message = "; ".join(exec_result["errors"])
-                    action.output = redact_fortigate_secrets(exec_result["output"])
-                    action.completed_at = datetime.now(timezone.utc)
-                    db.commit()
-
-                    logger.error(f"FortiGate hardening failed for action {action_id}: {action.error_message}")
-
-                    return {
-                        "action_id": action.id,
-                        "status": "failed",
-                        "verification_passed": False,
-                        "verification_evidence": "",
-                        "backup_created": backup is not None,
-                        "commands_executed": final_commands,
-                        "error_message": action.error_message
-                    }
-
-                # Store output
+                # Store output regardless of execution errors
                 action.output = redact_fortigate_secrets(exec_result["output"])
 
-                # Verify the fix
+                if not exec_result["success"]:
+                    logger.warning(
+                        f"FortiGate execution had errors for action {action_id}: "
+                        f"{exec_result['errors']} — still running verification"
+                    )
+
+                # Always verify: FortiGate sometimes returns "Command fail. Return code -7"
+                # when a setting is already at the requested value (idempotent no-op).
+                # Verification is the authoritative check of whether the fix succeeded.
                 control = FortiGateHardeningService._get_control_by_id(action.check_number)
                 passed, evidence = executor.verify_check(control, vdom=vdom)
 
                 action.verification_passed = passed
                 action.verification_evidence = evidence
 
-                # Update final status
                 if passed:
                     action.status = "success"
                     logger.info(f"FortiGate hardening action {action_id} completed successfully")
                 else:
                     action.status = "failed"
-                    action.error_message = "Verification failed: check still not passing after fix"
+                    if not exec_result["success"]:
+                        action.error_message = "; ".join(exec_result["errors"])
+                    else:
+                        action.error_message = "Verification failed: check still not passing after fix"
                     logger.warning(f"FortiGate hardening action {action_id} completed but verification failed")
 
                 action.completed_at = datetime.now(timezone.utc)
@@ -693,19 +684,17 @@ class FortiGateHardeningService:
                         vdom=vdom
                     )
 
-                    if not exec_result["success"]:
-                        action.status = "failed"
-                        action.error_message = "; ".join(exec_result["errors"])
-                        action.output = redact_fortigate_secrets(exec_result["output"])
-                        action.completed_at = datetime.now(timezone.utc)
-                        db.commit()
-                        failed_count += 1
-                        continue
-
-                    # Store output
+                    # Store output regardless of execution errors
                     action.output = redact_fortigate_secrets(exec_result["output"])
 
-                    # Verify
+                    if not exec_result["success"]:
+                        logger.warning(
+                            f"FortiGate execution had errors for {check_id}: "
+                            f"{exec_result['errors']} — still running verification"
+                        )
+
+                    # Always verify — FortiGate may return non-fatal errors (e.g.
+                    # "Command fail. Return code -7") when a value is already set.
                     passed, evidence = executor.verify_check(control, vdom=vdom)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
@@ -722,7 +711,10 @@ class FortiGateHardeningService:
                         logger.info(f"Successfully auto-fixed FortiGate check {check_id}")
                     else:
                         action.status = "failed"
-                        action.error_message = "Verification failed after fix"
+                        if not exec_result["success"]:
+                            action.error_message = "; ".join(exec_result["errors"])
+                        else:
+                            action.error_message = "Verification failed after fix"
                         failed_count += 1
 
                     action.completed_at = datetime.now(timezone.utc)
@@ -905,25 +897,17 @@ class FortiGateHardeningService:
                         vdom=vdom
                     )
 
-                    if not exec_result["success"]:
-                        action.status = "failed"
-                        action.error_message = "; ".join(exec_result["errors"])
-                        action.output = redact_fortigate_secrets(exec_result["output"])
-                        action.completed_at = datetime.now(timezone.utc)
-                        db.commit()
-                        failed_count += 1
-                        execution_results.append({
-                            "check_number": check_id,
-                            "check_title": result.check_title,
-                            "status": "failed",
-                            "action_id": action.id,
-                            "error": action.error_message
-                        })
-                        continue
-
+                    # Store output regardless of execution errors
                     action.output = redact_fortigate_secrets(exec_result["output"])
 
-                    # Verify
+                    if not exec_result["success"]:
+                        logger.warning(
+                            f"FortiGate execution had errors for {check_id}: "
+                            f"{exec_result['errors']} — still running verification"
+                        )
+
+                    # Always verify — FortiGate may return non-fatal errors (e.g.
+                    # "Command fail. Return code -7") when a value is already set.
                     passed, evidence = executor.verify_check(control, vdom=vdom)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
@@ -940,7 +924,10 @@ class FortiGateHardeningService:
                         })
                     else:
                         action.status = "failed"
-                        action.error_message = "Verification failed"
+                        if not exec_result["success"]:
+                            action.error_message = "; ".join(exec_result["errors"])
+                        else:
+                            action.error_message = "Verification failed"
                         failed_count += 1
                         execution_results.append({
                             "check_number": check_id,
