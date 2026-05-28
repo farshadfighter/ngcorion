@@ -630,6 +630,101 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         ],
         "config_mode": True
     },
+
+    # ==================== NTP AUTHENTICATION ====================
+    "IOS-L1-080": {
+        "commands": [
+            "configure terminal",
+            "ntp authenticate",
+            "ntp authentication-key {NTP_KEY_ID} md5 {NTP_KEY}",
+            "ntp trusted-key {NTP_KEY_ID}",
+            "end",
+            "write memory"
+        ],
+        "required_params": ["NTP_KEY_ID", "NTP_KEY"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "NTP_KEY_ID must match the key ID configured on your NTP server",
+            "Associate the key with your NTP server: ntp server <IP> key <ID>"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== SNMP COMMUNITY WITH ACL ====================
+    "IOS-L1-030B": {
+        "commands": [
+            "configure terminal",
+            "snmp-server community {COMMUNITY_STRING} RO {ACL_NAME}",
+            "end",
+            "write memory"
+        ],
+        "required_params": ["COMMUNITY_STRING", "ACL_NAME"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Ensure ACL {ACL_NAME} exists and permits only trusted management hosts",
+            "Repeat for each bare community string found in the config"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== REPLACE WEAK USERNAME PASSWORD ====================
+    "IOS-L1-071": {
+        "commands": [
+            "configure terminal",
+            "no username {OLD_USERNAME}",
+            "username {OLD_USERNAME} privilege 15 secret {NEW_SECRET}",
+            "end",
+            "write memory"
+        ],
+        "required_params": ["OLD_USERNAME", "NEW_SECRET"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Run once per user that has a plaintext 'password' entry",
+            "Verify the new secret works before closing your current session"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== INTERFACE INGRESS ACL ====================
+    "IOS-L1-061": {
+        "commands": [
+            "configure terminal",
+            "interface {INTERFACE_NAME}",
+            "ip access-group {ACL_NAME} in",
+            "end",
+            "write memory"
+        ],
+        "required_params": ["INTERFACE_NAME", "ACL_NAME"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Ensure ACL {ACL_NAME} is defined before applying",
+            "Verify the ACL does not block your management access"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== SSH CIPHER/MAC HARDENING ====================
+    "IOS-L2-0114": {
+        "commands": [
+            "configure terminal",
+            "ip ssh server algorithm encryption aes256-ctr aes192-ctr aes128-ctr",
+            "ip ssh server algorithm mac hmac-sha2-256 hmac-sha1",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Verify your IOS version supports these algorithm keywords before applying",
+            "Older IOS versions may not support 'ip ssh server algorithm' commands"
+        ],
+        "config_mode": True
+    },
 }
 
 
