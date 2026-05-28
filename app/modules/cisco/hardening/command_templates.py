@@ -489,6 +489,80 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [],
         "config_mode": True
     },
+
+    # ==================== SSH TIMEOUT ====================
+    "IOS-L1-0112": {
+        "commands": [
+            "configure terminal",
+            "ip ssh timeout {TIMEOUT_SEC}",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": ["TIMEOUT_SEC"],
+        "defaults": {
+            "TIMEOUT_SEC": "60"
+        },
+        "warnings": [
+            "Default SSH timeout is 60 seconds (valid range: 5-120)"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== RSA KEY GENERATION ====================
+    "IOS-L1-0120": {
+        "commands": [
+            "configure terminal",
+            "crypto key generate rsa modulus {MODULUS}",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": ["MODULUS"],
+        "defaults": {
+            "MODULUS": "2048"
+        },
+        "warnings": [
+            "This will generate or replace the existing RSA key pair",
+            "Key generation may take a moment to complete"
+        ],
+        "config_mode": True
+    },
+
+    # ==================== LOGIN FAILURE/SUCCESS LOGGING ====================
+    "IOS-L1-0131": {
+        "commands": [
+            "configure terminal",
+            "login on-failure log",
+            "login on-success log",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [],
+        "config_mode": True
+    },
+
+    # ==================== ARCHIVE CONFIG LOGGING ====================
+    "IOS-L1-0244": {
+        "commands": [
+            "configure terminal",
+            "archive",
+            "log config",
+            "logging enable",
+            "end",
+            "write memory"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "This enables configuration change logging via the archive subsystem"
+        ],
+        "config_mode": True
+    },
 }
 
 
