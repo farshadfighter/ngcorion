@@ -136,7 +136,12 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setFormData((prev) => {
+            const next = { ...prev, [name]: value };
+            // Reset os_version when os_name changes
+            if (name === "os_name") next.os_version = "";
+            return next;
+        });
         if (fieldErrors[name]) {
             setFieldErrors(prev => {
                 const newErrors = { ...prev };
@@ -348,9 +353,26 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             disabled={isLoadingOptions}
                         >
                             <option value="">Select OS</option>
-                            {osCatalog.map(os => (
+                            {[...new Map(osCatalog.map(os => [os.os_name, os])).values()].map(os => (
                                 <option key={os.id} value={os.os_name}>{os.os_name}</option>
                             ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>OS Version</label>
+                        <select
+                            name="os_version"
+                            value={formData.os_version}
+                            onChange={handleChange}
+                            disabled={isLoadingOptions || !formData.os_name}
+                        >
+                            <option value="">Select version</option>
+                            {osCatalog
+                                .filter(os => os.os_name === formData.os_name && os.os_version)
+                                .map(os => (
+                                    <option key={os.id} value={os.os_version}>{os.os_version}</option>
+                                ))
+                            }
                         </select>
                     </div>
                     <div className="form-group">
