@@ -80,6 +80,7 @@ class FortiGateHardeningExecutor:
         self.port = port
         self.default_vdom = vdom
         self.ssh_client: Optional[FortiGateSSHClient] = None
+        self._vdom_enabled: Optional[bool] = None
 
     def __enter__(self):
         """
@@ -141,6 +142,31 @@ class FortiGateHardeningExecutor:
             logger.error(f"Config backup failed: {str(e)}")
             raise FortiGateHardeningExecutionError(f"Failed to backup config: {str(e)}")
 
+    def _is_vdom_enabled(self) -> bool:
+        """Return True if VDOMs are enabled on the device (cached after first call)."""
+        if self._vdom_enabled is None:
+            try:
+                status = self.ssh_client.get_system_status()
+                self._vdom_enabled = status.get("vdom_enabled", True)
+            except Exception:
+                self._vdom_enabled = True  # assume enabled if detection fails
+        return self._vdom_enabled
+
+    def _strip_global_wrapper(self, commands: List[str]) -> List[str]:
+        """
+        On non-VDOM devices the session is already at global scope, so
+        "config global" / the matching closing "end" are invalid.  Strip them.
+        """
+        cmds = [c for c in commands if c.strip()]
+        if cmds and cmds[0].strip().lower() == "config global":
+            cmds = cmds[1:]
+            # Remove the last "end" that closes the config-global block
+            for i in range(len(cmds) - 1, -1, -1):
+                if cmds[i].strip().lower() == "end":
+                    cmds.pop(i)
+                    break
+        return cmds
+
     def execute_commands(
         self,
         commands: List[str],
@@ -171,6 +197,12 @@ class FortiGateHardeningExecutor:
             raise FortiGateHardeningExecutionError("Not connected to device")
 
         try:
+            # On devices without VDOMs the session is already at global scope;
+            # strip the "config global" / closing "end" wrapper so the inner
+            # config commands reach the device cleanly.
+            if vdom_context == "global" and not self._is_vdom_enabled():
+                commands = self._strip_global_wrapper(commands)
+
             logger.info(f"Executing {len(commands)} commands on FortiGate {self.ip}")
 
             # Enter VDOM context only for per-VDOM templates.
