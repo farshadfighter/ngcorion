@@ -130,7 +130,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],  # Allow all response headers to be accessible
-    # hatman avaz shavad
 )
 
 # Add security headers middleware (after CORS, before routes)

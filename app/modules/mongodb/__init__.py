@@ -1,5 +1,6 @@
 """
-MongoDB Module
-
-CIS compliance auditing for MongoDB database instances.
+MongoDB CIS Audit and Hardening Module
 """
+from . import audit, hardening
+
+__all__ = ["audit", "hardening"]
