@@ -326,10 +326,12 @@ class MSSQLTSQLExecutor:
 
                 result.verification_result = "\n".join(verification_outputs)
 
-                if "PASS" in result.verification_result:
-                    result.success = True
-                elif "FAIL" in result.verification_result:
+                # "FAIL" is checked first: if any verify statement returns FAIL
+                # the check fails, even if another statement returned PASS.
+                if "FAIL" in result.verification_result:
                     result.success = False
+                elif "PASS" in result.verification_result:
+                    result.success = True
                 else:
                     # No PASS/FAIL signal — success if no errors during execution
                     result.success = len(execution_errors) == 0

@@ -87,6 +87,7 @@ class BatchExecuteRequest(BaseModel):
 class SingleFixRequest(BaseModel):
     """Request for a single check fix."""
     asset_id: int = Field(..., description="Target asset ID")
+    session_id: Optional[int] = Field(None, description="Audit session ID (updates AuditResult status on success)")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
@@ -97,6 +98,7 @@ class SingleFixRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "asset_id": 5,
+                "session_id": 10,
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_port": 22,
@@ -244,8 +246,8 @@ async def auto_harden_with_defaults(
             db, device_type="mongodb", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -304,8 +306,8 @@ async def batch_execute_selected(
             db, device_type="mongodb", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id, check_ids=check_ids,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
     except ValueError as exc:
@@ -352,10 +354,11 @@ async def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters,
             ssh_port=request.ssh_port,
+            session_id=request.session_id,
         )
 
         consume_quota(http_request)
-        succeeded = isinstance(result, dict) and result.get("status") == "success"
+        succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="mongodb", action="execute_single",
             session_id=None, asset_id=request.asset_id,

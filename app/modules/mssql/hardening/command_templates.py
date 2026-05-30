@@ -503,9 +503,10 @@ _register(MSSQLHardeningTemplate(
         "REVOKE CONNECT FROM [guest]",
     ],
     verify_statements=[
+        "USE [{DB_NAME}]; "
         "SELECT CASE WHEN COUNT(*) = 0 THEN 'PASS' ELSE 'FAIL' END AS result "
-        "FROM [{DB_NAME}].sys.database_permissions dp "
-        "JOIN [{DB_NAME}].sys.database_principals pr "
+        "FROM sys.database_permissions dp "
+        "JOIN sys.database_principals pr "
         "ON dp.grantee_principal_id = pr.principal_id "
         "WHERE pr.name = 'guest' AND dp.permission_name = 'CONNECT' "
         "AND dp.state IN ('G', 'W')",
@@ -642,8 +643,9 @@ _register(MSSQLHardeningTemplate(
         "ALTER ASSEMBLY [{ASSEMBLY_NAME}] WITH PERMISSION_SET = SAFE",
     ],
     verify_statements=[
+        "USE [{DB_NAME}]; "
         "SELECT CASE permission_set_desc WHEN 'SAFE_ACCESS' THEN 'PASS' ELSE 'FAIL' END AS result "
-        "FROM [{DB_NAME}].sys.assemblies WHERE name = '{ASSEMBLY_NAME}'",
+        "FROM sys.assemblies WHERE name = '{ASSEMBLY_NAME}'",
     ],
 ))
 

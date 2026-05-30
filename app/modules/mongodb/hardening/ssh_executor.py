@@ -215,10 +215,10 @@ class MongoDBSSHExecutor:
 
                 result.verification_result = "\n".join(verification_outputs)
 
-                if "PASS" in result.verification_result:
-                    result.success = True
-                elif "FAIL" in result.verification_result:
+                if "FAIL" in result.verification_result:
                     result.success = False
+                elif "PASS" in result.verification_result:
+                    result.success = True
                 else:
                     # No PASS/FAIL signal — assume success if commands ran
                     result.success = True

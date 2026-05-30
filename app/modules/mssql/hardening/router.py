@@ -96,6 +96,7 @@ class BatchExecuteRequest(BaseModel):
 class SingleFixRequest(BaseModel):
     """Request for a single check fix."""
     asset_id: int = Field(..., description="Target asset ID")
+    session_id: Optional[int] = Field(None, description="Audit session ID (updates AuditResult status on success)")
     mssql_username: str = Field(..., min_length=1)
     mssql_password: str = Field(..., min_length=1)
     mssql_port: int = Field(1433, ge=1, le=65535)
@@ -106,6 +107,7 @@ class SingleFixRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "asset_id": 5,
+                "session_id": 10,
                 "mssql_username": "sa",
                 "mssql_password": "********",
                 "mssql_port": 1433,
@@ -262,8 +264,8 @@ async def auto_harden_with_defaults(
             db, device_type="mssql", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -325,8 +327,8 @@ async def batch_execute_selected(
             db, device_type="mssql", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id, check_ids=check_ids,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -370,7 +372,7 @@ async def execute_single_fix(
     consume_quota = consume_quota_on_success("harden")
 
     try:
-        result =  MSSQLHardeningService.execute_single_fix(
+        result = MSSQLHardeningService.execute_single_fix(
             db=db,
             asset_id=request.asset_id,
             mssql_username=request.mssql_username,
@@ -378,10 +380,11 @@ async def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters,
             mssql_port=request.mssql_port,
+            session_id=request.session_id,
         )
 
         consume_quota(http_request)
-        succeeded = isinstance(result, dict) and result.get("status") == "success"
+        succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="mssql", action="execute_single",
             session_id=None, asset_id=request.asset_id,
