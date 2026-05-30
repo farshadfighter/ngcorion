@@ -174,12 +174,14 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     },
 
     # ==================== PASSWORD POLICY ====================
+    # NOTE: config system password-policy is configured at the root CLI level
+    # on both VDOM-enabled and non-VDOM devices. "config global" is NOT used
+    # here because on many FortiOS versions the password-policy block does not
+    # accept set commands when entered inside a config-global context.
     "FG-BL-030": {
         "commands": [
-            "config global",
             "config system password-policy",
             "set status enable",
-            "end",
             "end"
         ],
         "required_params": [],
@@ -193,10 +195,8 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-031": {
         "commands": [
-            "config global",
             "config system password-policy",
             "set minimum-length {PASSWORD_MIN_LENGTH}",
-            "end",
             "end"
         ],
         "required_params": [],
@@ -213,10 +213,8 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-032": {
         "commands": [
-            "config global",
             "config system password-policy",
             "set must-contain uppercase-letter enable",
-            "end",
             "end"
         ],
         "required_params": [],
@@ -230,10 +228,8 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-033": {
         "commands": [
-            "config global",
             "config system password-policy",
             "set must-contain lowercase-letter enable",
-            "end",
             "end"
         ],
         "required_params": [],
@@ -247,10 +243,8 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-034": {
         "commands": [
-            "config global",
             "config system password-policy",
             "set must-contain number enable",
-            "end",
             "end"
         ],
         "required_params": [],
@@ -264,10 +258,8 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-035": {
         "commands": [
-            "config global",
             "config system password-policy",
             "set must-contain non-alphanumeric enable",
-            "end",
             "end"
         ],
         "required_params": [],
@@ -281,10 +273,8 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
 
     "FG-BL-036": {
         "commands": [
-            "config global",
             "config system password-policy",
-            "set min-change-characters {PASSWORD_MIN_CHANGED_CHARS}",
-            "end",
+            "set min-changed-characters {PASSWORD_MIN_CHANGED_CHARS}",
             "end"
         ],
         "required_params": [],
