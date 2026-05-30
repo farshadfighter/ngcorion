@@ -174,10 +174,12 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     },
 
     # ==================== PASSWORD POLICY ====================
-    # NOTE: config system password-policy is configured at the root CLI level
-    # on both VDOM-enabled and non-VDOM devices. "config global" is NOT used
-    # here because on many FortiOS versions the password-policy block does not
-    # accept set commands when entered inside a config-global context.
+    # "config system password-policy" is a per-VDOM setting.
+    # On non-VDOM devices it lives at root scope.
+    # On VDOM-enabled devices the executor must enter "config vdom / edit root"
+    # first so that SET commands are accepted (vdom_context: "vdom_root" handles
+    # this automatically). The audit runs "show system password-policy" at root
+    # level, which is equivalent to the "root" VDOM scope on VDOM devices.
     "FG-BL-030": {
         "commands": [
             "config system password-policy",
@@ -190,7 +192,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [
             "Enables password policy enforcement"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     "FG-BL-031": {
@@ -208,7 +210,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
             "Sets minimum password length",
             "Existing passwords not affected until changed"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     "FG-BL-032": {
@@ -223,7 +225,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [
             "Requires uppercase letter in passwords"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     "FG-BL-033": {
@@ -238,7 +240,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [
             "Requires lowercase letter in passwords"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     "FG-BL-034": {
@@ -253,7 +255,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [
             "Requires number in passwords"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     "FG-BL-035": {
@@ -268,7 +270,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [
             "Requires special character in passwords"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     "FG-BL-036": {
@@ -285,7 +287,7 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": [
             "Sets minimum characters that must change on password update"
         ],
-        "vdom_context": "global"
+        "vdom_context": "vdom_root"
     },
 
     # ==================== TIME & SYNC ====================

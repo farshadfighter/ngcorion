@@ -205,11 +205,17 @@ class FortiGateHardeningExecutor:
 
             logger.info(f"Executing {len(commands)} commands on FortiGate {self.ip}")
 
-            # Enter VDOM context only for per-VDOM templates.
-            # Global templates carry their own "config global" / "end" wrappers.
+            # Determine VDOM to enter (if any).
+            # "vdom"      — use caller-supplied name or default_vdom
+            # "vdom_root" — automatically use the built-in "root" VDOM on
+            #               VDOM-enabled devices (password-policy and similar
+            #               per-VDOM settings that the audit reads at root level)
             vdom_to_use = vdom or self.default_vdom
+            if vdom_context == "vdom_root" and self._is_vdom_enabled():
+                vdom_to_use = vdom_to_use or "root"
+
             entered_vdom = False
-            if vdom_to_use and vdom_context == "vdom":
+            if vdom_to_use and vdom_context in ("vdom", "vdom_root"):
                 logger.info(f"Entering VDOM: {vdom_to_use}")
                 if not self.ssh_client.enter_vdom(vdom_to_use):
                     raise FortiGateHardeningExecutionError(
@@ -296,11 +302,15 @@ class FortiGateHardeningExecutor:
             logger.info(f"Verifying check {control.id} on FortiGate {self.ip}")
 
             # Enter VDOM context only for per-VDOM checks.
-            # Global show commands (e.g. "show system global") work at the
-            # top-level CLI and must NOT be issued from within a VDOM context.
+            # "vdom_root" show commands run inside the "root" VDOM (mirrors
+            # the context in which the audit reads those settings).
+            # Pure global show commands run at top-level CLI.
             vdom_to_use = vdom or self.default_vdom
+            if vdom_context == "vdom_root" and self._is_vdom_enabled():
+                vdom_to_use = vdom_to_use or "root"
+
             entered_vdom = False
-            if vdom_to_use and vdom_context == "vdom":
+            if vdom_to_use and vdom_context in ("vdom", "vdom_root"):
                 if not self.ssh_client.enter_vdom(vdom_to_use):
                     raise FortiGateHardeningVerificationError(
                         f"Failed to enter VDOM for verification: {vdom_to_use}"
