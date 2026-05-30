@@ -1940,7 +1940,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         remediation="Configure pam_faillock in /etc/security/faillock.conf and ensure it's included in system-auth and password-auth PAM files.",
         check=lambda d, p: (
             "pam_faillock" in _get_output(d, "pam_faillock_rhel").lower() or
-            "deny" in _get_output(d, "faillock_conf").lower()
+            bool(re.search(r'^\s*deny\s*=\s*\d+', _get_output(d, "faillock_conf"), re.MULTILINE))
         ),
         evidence=lambda d, p: (
             f"PAM: {_get_output(d, 'pam_faillock_rhel')[:200]}\n"

@@ -1088,12 +1088,12 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-RHEL-L1-1.2.3",
     description="Ensure gpgcheck is globally activated",
     commands=[
-        "sed -i 's/^gpgcheck=.*/gpgcheck=1/' /etc/yum.conf",
-        "grep -q '^gpgcheck' /etc/yum.conf || echo 'gpgcheck=1' >> /etc/yum.conf",
+        "sed -i 's/^gpgcheck=.*/gpgcheck=1/' /etc/dnf/dnf.conf",
+        "grep -q '^gpgcheck' /etc/dnf/dnf.conf || echo 'gpgcheck=1' >> /etc/dnf/dnf.conf",
         "for f in /etc/yum.repos.d/*.repo; do sed -i 's/^gpgcheck=.*/gpgcheck=1/' \"$f\"; done"
     ],
     verify_commands=[
-        "grep -q '^gpgcheck=1' /etc/yum.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -q '^gpgcheck=1' /etc/dnf/dnf.conf && echo 'PASS' || echo 'FAIL'",
         "grep -rq 'gpgcheck=0' /etc/yum.repos.d/ && echo 'FAIL' || echo 'PASS'"
     ],
     distros=_RHEL_DISTROS
@@ -1284,11 +1284,11 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-RHEL-L1-5.3.3",
     description="Ensure pam faillock module is configured",
     commands=[
-        "cat > /etc/security/faillock.conf << 'EOF'\ndenial = {FAILLOCK_DENY}\nunlock_time = {FAILLOCK_UNLOCK_TIME}\nfail_interval = 900\naudit\nsilent\nEOF",
+        "cat > /etc/security/faillock.conf << 'EOF'\ndeny = {FAILLOCK_DENY}\nunlock_time = {FAILLOCK_UNLOCK_TIME}\nfail_interval = 900\naudit\nsilent\nEOF",
         "authselect enable-feature with-faillock 2>/dev/null || true"
     ],
     verify_commands=[
-        "test -f /etc/security/faillock.conf && grep -q 'denial' /etc/security/faillock.conf && echo 'PASS' || echo 'FAIL'"
+        "test -f /etc/security/faillock.conf && grep -q '^deny' /etc/security/faillock.conf && echo 'PASS' || echo 'FAIL'"
     ],
     distros=_RHEL_DISTROS
 ))
