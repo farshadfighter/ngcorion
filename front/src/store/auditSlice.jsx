@@ -44,6 +44,7 @@ export const executeAudit = createAsyncThunk(
             if (formData.windows_password) payload.windows_password = formData.windows_password;
             if (formData.winrm_port)       payload.winrm_port       = parseInt(formData.winrm_port);
             if (formData.transport)        payload.transport        = formData.transport;
+            if (apiPath === 'linux' && deviceType?.startsWith('linux-')) payload.sub_device_type = deviceType;
 
             const res = await api.post(endpoint, payload);
             return res.data;

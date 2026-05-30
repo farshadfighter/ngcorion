@@ -77,7 +77,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
                     (s) => s.session_id === parseInt(value)
                 );
                 setSelectedSession(session || null);
-                setDeviceType(session?.device_type || null);
+                setDeviceType(session?.sub_device_type || session?.device_type || null);
             } else {
                 setSelectedSession(null);
                 setDeviceType(null);

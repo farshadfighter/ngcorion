@@ -135,7 +135,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                         borderBottom: '2px solid #e5e7eb'
                     }}>
                         <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                            {getDeviceLabel(sessionData?.device_type)} CIS Benchmark
+                            {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)} CIS Benchmark
                         </h3>
                         <button
                             onClick={handleHardenAll}

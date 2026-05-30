@@ -155,7 +155,8 @@ class LinuxAuditService:
         sudo_password: Optional[str] = None,
         profile: str = "L1",
         job_name: Optional[str] = None,
-        ssh_port: int = 22
+        ssh_port: int = 22,
+        sub_device_type: Optional[str] = None,
     ) -> AuditSession:
         """
         Execute CIS audit on a Linux server.
@@ -195,6 +196,7 @@ class LinuxAuditService:
             target_ip=target_ip,
             device_type=DeviceType.LINUX,
             job_name=job_name,
+            sub_device_type=sub_device_type,
             status="running",
             started_at=datetime.now(timezone.utc)
         )
@@ -223,6 +225,22 @@ class LinuxAuditService:
                 distro_id = distro_info.get("id", "ubuntu")
 
                 logger.info(f"Detected: {distro_info.get('name')} (profile: {distro_profile})")
+
+                _PROFILE_TO_SUB_DEVICE = {
+                    "ubuntu_20": "linux-ubuntu-20",
+                    "ubuntu_22": "linux-ubuntu-22",
+                    "ubuntu_24": "linux-ubuntu-24",
+                    "rhel_8":    "linux-redhat-8",
+                    "rhel_9":    "linux-redhat-9",
+                    "rhel_10":   "linux-redhat-10",
+                    "rocky_8":   "linux-rocky-8",
+                    "rocky_9":   "linux-rocky-9",
+                    "rocky_10":  "linux-rocky-10",
+                }
+                detected_sub = _PROFILE_TO_SUB_DEVICE.get(distro_profile)
+                if detected_sub:
+                    session.sub_device_type = detected_sub
+                    db.commit()
 
                 # 5. Get audit commands for this distro
                 audit_commands = get_linux_audit_commands(distro_id)
@@ -354,6 +372,7 @@ class LinuxAuditService:
             "asset_name": asset.asset_name if asset else None,
             "target_ip": session.target_ip,
             "device_type": session.device_type.value,
+            "sub_device_type": session.sub_device_type,
             "status": session.status,
             "started_at": session.started_at.isoformat() if session.started_at else None,
             "completed_at": session.completed_at.isoformat() if session.completed_at else None,

@@ -80,6 +80,9 @@ export const getDeviceName = (deviceType) => {
         "linux-rocky-9":    "Rocky Linux 9",
         "linux-rocky-8":    "Rocky Linux 8",
 
+        // Linux bare fallback (sessions without sub_device_type)
+        "linux":            "Linux Server",
+
         // Cisco
         "cisco":            "Cisco Router/Switch",
 

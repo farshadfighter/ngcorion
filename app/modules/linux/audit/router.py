@@ -31,6 +31,7 @@ class LinuxAuditRequest(BaseModel):
     sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
     profile: str = Field("L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL")
     job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
+    sub_device_type: Optional[str] = Field(None, description="UI device type variant, e.g. linux-ubuntu-22")
 
     class Config:
         json_schema_extra = {
@@ -54,6 +55,7 @@ class LinuxAuditSessionResponse(BaseModel):
     asset_name: Optional[str]
     target_ip: str
     device_type: str
+    sub_device_type: Optional[str] = None
     status: str
     started_at: Optional[str]
     completed_at: Optional[str]
@@ -144,6 +146,7 @@ def execute_linux_audit(
             profile=audit_request.profile,
             job_name=audit_request.job_name,
             ssh_port=audit_request.ssh_port,
+            sub_device_type=audit_request.sub_device_type,
         )
 
         summary = LinuxAuditService.get_session_summary(db, session.id)

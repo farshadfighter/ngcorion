@@ -109,7 +109,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
                     {/* ← fix: همه 19 device type */}
                     <div className="result-card result-card-benchmark">
-                        <div className="card-title">{getDeviceLabel(sessionData?.device_type)}</div>
+                        <div className="card-title">{getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}</div>
                     </div>
 
                     <div className="result-card result-card-info">
