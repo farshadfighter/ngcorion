@@ -345,7 +345,7 @@ export const previewHardenCheck = createAsyncThunk(
  */
 export const executeHardenCheck = createAsyncThunk(
     "hardening/executeCheck",
-    async ({ actionId, checkId, assetId, deviceType, credentials, parameters }, { rejectWithValue }) => {
+    async ({ actionId, checkId, assetId, sessionId, deviceType, credentials, parameters }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -370,6 +370,7 @@ export const executeHardenCheck = createAsyncThunk(
                 check_id: checkId,
                 ...credPayload,
                 parameters: parameters || {},
+                ...(sessionId != null && { session_id: sessionId }),
             };
             const res = await api.post(endpoint, payload);
             return res.data;

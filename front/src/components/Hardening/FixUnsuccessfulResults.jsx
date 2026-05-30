@@ -58,7 +58,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
     const getDeviceLabel = (dt) => {
         if (dt === 'fortinet')          return 'FortiGate';
-        if (dt?.startsWith('linux-'))   return 'Linux';
+        if (dt === 'linux' || dt?.startsWith('linux-')) return 'Linux';
         if (dt === 'apache')            return 'Apache';
         if (dt === 'mongodb')           return 'MongoDB';
         if (dt?.startsWith('mssql-'))   return 'SQL Server';
@@ -243,6 +243,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 <FixSingleModal
                     check={selectedCheck}
                     assetId={sessionData?.asset_id}
+                    sessionId={sessionData?.session_id}
                     deviceType={sessionData.device_type}
                     onClose={() => {
                         setShowFixSingleModal(false);

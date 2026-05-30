@@ -9,7 +9,7 @@ import {
 import '../../assets/hardening/Hardenallmodal.css';
 
 // ─── Device type helpers (same as HardeningConnectionForm) ───────────────────
-const isLinux    = (dt) => dt?.startsWith('linux-');
+const isLinux    = (dt) => dt === 'linux' || dt?.startsWith('linux-');
 const isCisco    = (dt) => dt === 'cisco';
 const isFortinet = (dt) => dt === 'fortinet';
 const isApache   = (dt) => dt === 'apache';
@@ -20,7 +20,7 @@ const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 // Cisco and Fortinet return action_id in preview; others don't (but all now support /preview)
 const isCiscoOrFortinet = (dt) => isCisco(dt) || isFortinet(dt);
 
-const FixSingleModal = ({ check, assetId, deviceType, onClose, onSuccess }) => {
+const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSuccess }) => {
     const dispatch = useDispatch();
     const {
         previewData,
@@ -170,6 +170,7 @@ const FixSingleModal = ({ check, assetId, deviceType, onClose, onSuccess }) => {
                 actionId:   isCiscoOrFortinet(deviceType) ? previewData?.action_id : null,
                 checkId:    check.check_number,
                 assetId:    assetId,
+                sessionId:  sessionId,
                 deviceType: deviceType,
                 credentials,
                 parameters: paramValues
@@ -389,30 +390,34 @@ const FixSingleModal = ({ check, assetId, deviceType, onClose, onSuccess }) => {
     const renderResults = () => {
         if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
 
-        const isSuccess =
-            executionResult.status === 'success' &&
-            (executionResult.verification_passed === undefined ||
-             executionResult.verification_passed === true);
-        const statusClass = isSuccess ? 'success' : executionResult.status === 'warning' ? 'warning' : 'error';
+        // Cisco/Fortinet return { status: "success", verification_passed, verification_evidence, message }
+        // Linux/MongoDB/MSSQL/Apache return { success: true, verification_result, check_title, error_message }
+        const isSuccess = executionResult.success === true || executionResult.status === 'success';
+        const isWarning = executionResult.status === 'warning';
+        const statusClass = isSuccess ? 'success' : isWarning ? 'warning' : 'error';
+        const displayMessage = executionResult.message || executionResult.check_title || 'Hardening operation completed.';
+        const verificationText = executionResult.verification_evidence || executionResult.verification_result;
 
         return (
             <div className="hardening-single-result" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ padding: '24px', borderRadius: '12px', borderLeft: isSuccess ? '5px solid #1e3a5f' : statusClass === 'warning' ? '5px solid #f59e0b' : '5px solid #ef4444', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', background: isSuccess ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : statusClass === 'warning' ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
-                    <h3 style={{ fontSize: '20px', margin: '0 0 12px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px', color: isSuccess ? '#1e3a5f' : statusClass === 'warning' ? '#92400e' : '#c0392b' }}>
+                <div style={{ padding: '24px', borderRadius: '12px', borderLeft: isSuccess ? '5px solid #1e3a5f' : isWarning ? '5px solid #f59e0b' : '5px solid #ef4444', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', background: isSuccess ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : isWarning ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
+                    <h3 style={{ fontSize: '20px', margin: '0 0 12px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px', color: isSuccess ? '#1e3a5f' : isWarning ? '#92400e' : '#c0392b' }}>
                         {isSuccess && <span style={{ background: '#1e3a5f', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
-                        {isSuccess ? 'Hardening Successful' : executionResult.status === 'warning' ? '⚠ Completed with Warnings' : '✗ Hardening Failed'}
+                        {isSuccess ? 'Hardening Successful' : isWarning ? '⚠ Completed with Warnings' : '✗ Hardening Failed'}
                     </h3>
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>{executionResult.message || 'Hardening operation completed.'}</p>
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>{displayMessage}</p>
                 </div>
 
-                {executionResult.verification_passed !== undefined && (
+                {(executionResult.verification_passed !== undefined || verificationText) && (
                     <div style={{ background: 'linear-gradient(135deg,#fafbfc 0%,#ffffff 100%)', padding: '18px', borderRadius: '10px', border: '2px solid #e8edf5' }}>
                         <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>🔍 Verification</h4>
-                        <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '600', color: executionResult.verification_passed ? '#1e3a5f' : '#ef4444' }}>
-                            {executionResult.verification_passed ? '✓ Verified' : '✗ Not Verified'}
-                        </p>
-                        {executionResult.verification_evidence && (
-                            <pre style={{ background: '#f8f9fb', padding: '12px', borderRadius: '6px', border: '1px solid #e8edf5', fontSize: '12px', overflowX: 'auto', margin: '10px 0 0 0', color: '#1f2937', fontFamily: "'Consolas','Monaco','Courier New',monospace" }}>{executionResult.verification_evidence}</pre>
+                        {executionResult.verification_passed !== undefined && (
+                            <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '600', color: executionResult.verification_passed ? '#1e3a5f' : '#ef4444' }}>
+                                {executionResult.verification_passed ? '✓ Verified' : '✗ Not Verified'}
+                            </p>
+                        )}
+                        {verificationText && (
+                            <pre style={{ background: '#f8f9fb', padding: '12px', borderRadius: '6px', border: '1px solid #e8edf5', fontSize: '12px', overflowX: 'auto', margin: '10px 0 0 0', color: '#1f2937', fontFamily: "'Consolas','Monaco','Courier New',monospace" }}>{verificationText}</pre>
                         )}
                     </div>
                 )}

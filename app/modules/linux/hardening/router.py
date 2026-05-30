@@ -260,8 +260,8 @@ async def auto_harden_with_defaults(
             db, device_type="linux", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -327,8 +327,8 @@ async def batch_execute_selected(
             db, device_type="linux", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id, check_ids=check_ids,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
     except ValueError as e:
