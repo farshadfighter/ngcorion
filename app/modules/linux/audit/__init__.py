@@ -2,9 +2,9 @@
 Linux Audit Module
 
 CIS compliance auditing for Linux distributions:
-- Ubuntu 22.04 LTS
-- Ubuntu 24.04 LTS
-- Rocky Linux 8
+- Ubuntu 20.04 LTS, 22.04 LTS, 24.04 LTS
+- Red Hat Enterprise Linux 8, 9, 10
+- Rocky Linux 8, 9, 10
 """
 from .router import router
 from .service import LinuxAuditService
