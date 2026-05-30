@@ -107,6 +107,7 @@ class BatchExecuteRequest(BaseModel):
 class SingleFixRequest(BaseModel):
     """Request for a single check fix."""
     asset_id: int = Field(..., description="Target asset ID")
+    session_id: Optional[int] = Field(None, description="Audit session ID (updates AuditResult status on success)")
     windows_username: str = Field(..., min_length=1)
     windows_password: str = Field(..., min_length=1)
     winrm_port: int = Field(5986, ge=1, le=65535)
@@ -268,8 +269,8 @@ async def auto_harden_with_defaults(
             db, device_type="windows", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -328,8 +329,8 @@ async def batch_execute_selected(
             db, device_type="windows", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id, check_ids=check_ids,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -373,6 +374,7 @@ async def execute_single_fix(
         result = WindowsHardeningService.execute_single_fix(
             db=db,
             asset_id=request.asset_id,
+            session_id=request.session_id,
             windows_username=request.windows_username,
             windows_password=request.windows_password,
             check_id=request.check_id,
@@ -382,7 +384,7 @@ async def execute_single_fix(
         )
 
         consume_quota(http_request)
-        succeeded = isinstance(result, dict) and result.get("status") == "success"
+        succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="windows", action="execute_single",
             session_id=None, asset_id=request.asset_id,

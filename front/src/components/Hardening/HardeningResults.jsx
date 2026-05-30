@@ -63,7 +63,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
 
     const getDeviceLabel = (dt) => {
         if (dt === 'fortinet')         return 'FortiGate';
-        if (dt?.startsWith('linux-'))  return 'Linux';
+        if (dt === 'linux' || dt?.startsWith('linux-'))  return 'Linux';
         if (dt === 'apache')           return 'Apache';
         if (dt === 'mongodb')          return 'MongoDB';
         if (dt?.startsWith('mssql-'))  return 'SQL Server';

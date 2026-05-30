@@ -187,6 +187,22 @@ class WindowsHardeningService:
         )
 
         result = executor.execute_auto_harden(failed_check_ids)
+
+        for check_result in result.get("results", []):
+            if check_result.get("success"):
+                audit_row = (
+                    db.query(AuditResult)
+                    .filter(
+                        AuditResult.session_id == session_id,
+                        AuditResult.check_number == check_result.get("check_id"),
+                    )
+                    .first()
+                )
+                if audit_row:
+                    audit_row.status = CheckStatus.PASS
+                    audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        db.commit()
+
         result["session_id"] = session_id
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address
@@ -230,6 +246,22 @@ class WindowsHardeningService:
         )
 
         result = executor.execute_selected(checks)
+
+        for check_result in result.get("results", []):
+            if check_result.get("success"):
+                audit_row = (
+                    db.query(AuditResult)
+                    .filter(
+                        AuditResult.session_id == session_id,
+                        AuditResult.check_number == check_result.get("check_id"),
+                    )
+                    .first()
+                )
+                if audit_row:
+                    audit_row.status = CheckStatus.PASS
+                    audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        db.commit()
+
         result["session_id"] = session_id
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address
@@ -251,6 +283,7 @@ class WindowsHardeningService:
         parameters: Dict[str, str] = None,
         winrm_port: int = 5986,
         transport: str = "ntlm",
+        session_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute hardening for a single check with given parameters."""
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -270,6 +303,21 @@ class WindowsHardeningService:
         )
 
         result = executor.execute_single(check_id, parameters)
+
+        if result.get("success") and session_id is not None:
+            audit_row = (
+                db.query(AuditResult)
+                .filter(
+                    AuditResult.session_id == session_id,
+                    AuditResult.check_number == check_id,
+                )
+                .first()
+            )
+            if audit_row:
+                audit_row.status = CheckStatus.PASS
+                audit_row.evidence_snippet = result.get("verification_result") or ""
+                db.commit()
+
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address
         result["executed_at"] = datetime.now(timezone.utc).isoformat()

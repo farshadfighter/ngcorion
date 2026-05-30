@@ -163,6 +163,7 @@ class ApacheHardeningService:
         asset_id: int,
         ssh_username: str,
         ssh_password: str,
+        ssh_port: int = 22,
         sudo_password: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -212,12 +213,27 @@ class ApacheHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
-            sudo_password=sudo_password
+            sudo_password=sudo_password,
+            port=ssh_port,
         )
 
         result = executor.execute_auto_harden(failed_check_ids)
 
-        # Add metadata
+        for check_result in result.get("results", []):
+            if check_result.get("success"):
+                audit_row = (
+                    db.query(AuditResult)
+                    .filter(
+                        AuditResult.session_id == session_id,
+                        AuditResult.check_number == check_result.get("check_id"),
+                    )
+                    .first()
+                )
+                if audit_row:
+                    audit_row.status = CheckStatus.PASS
+                    audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        db.commit()
+
         result["session_id"] = session_id
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address
@@ -236,8 +252,9 @@ class ApacheHardeningService:
         asset_id: int,
         ssh_username: str,
         ssh_password: str,
-        sudo_password: Optional[str],
-        checks: List[Dict[str, Any]]
+        ssh_port: int = 22,
+        sudo_password: Optional[str] = None,
+        checks: List[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -267,10 +284,26 @@ class ApacheHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
-            sudo_password=sudo_password
+            sudo_password=sudo_password,
+            port=ssh_port,
         )
 
-        result = executor.execute_selected(checks)
+        result = executor.execute_selected(checks or [])
+
+        for check_result in result.get("results", []):
+            if check_result.get("success"):
+                audit_row = (
+                    db.query(AuditResult)
+                    .filter(
+                        AuditResult.session_id == session_id,
+                        AuditResult.check_number == check_result.get("check_id"),
+                    )
+                    .first()
+                )
+                if audit_row:
+                    audit_row.status = CheckStatus.PASS
+                    audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        db.commit()
 
         result["session_id"] = session_id
         result["asset_id"] = asset_id
@@ -289,9 +322,11 @@ class ApacheHardeningService:
         asset_id: int,
         ssh_username: str,
         ssh_password: str,
-        sudo_password: Optional[str],
         check_id: str,
-        parameters: Dict[str, str] = None
+        parameters: Dict[str, str] = None,
+        ssh_port: int = 22,
+        sudo_password: Optional[str] = None,
+        session_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -321,10 +356,25 @@ class ApacheHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
-            sudo_password=sudo_password
+            sudo_password=sudo_password,
+            port=ssh_port,
         )
 
         result = executor.execute_single(check_id, parameters)
+
+        if result.get("success") and session_id is not None:
+            audit_row = (
+                db.query(AuditResult)
+                .filter(
+                    AuditResult.session_id == session_id,
+                    AuditResult.check_number == check_id,
+                )
+                .first()
+            )
+            if audit_row:
+                audit_row.status = CheckStatus.PASS
+                audit_row.evidence_snippet = result.get("verification_result") or ""
+                db.commit()
 
         result["asset_id"] = asset_id
         result["target_ip"] = asset.ip_address

@@ -4,7 +4,7 @@ import { fetchAuditSessions, getDeviceName } from "../../store/hardeningSlice";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const isLinux    = (dt) => dt?.startsWith("linux-");
+const isLinux    = (dt) => dt === "linux" || dt?.startsWith("linux-");
 const isCisco    = (dt) => dt === "cisco";
 const isFortinet = (dt) => dt === "fortinet";
 const isApache   = (dt) => dt === "apache";

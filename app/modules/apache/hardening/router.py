@@ -39,6 +39,7 @@ class AutoHardenRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
 
     class Config:
@@ -48,6 +49,7 @@ class AutoHardenRequest(BaseModel):
                 "asset_id": 30,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "sudo_password": "********"
             }
         }
@@ -65,6 +67,7 @@ class BatchExecuteRequest(BaseModel):
     asset_id: int = Field(..., description="Target asset ID")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
     checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
 
@@ -75,6 +78,7 @@ class BatchExecuteRequest(BaseModel):
                 "asset_id": 30,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "checks": [
                     {"check_id": "APACHE-L1-9.1", "parameters": {}},
                     {"check_id": "APACHE-L1-8.3", "parameters": {"SSL_PROTOCOLS": "all -SSLv3 -TLSv1 -TLSv1.1"}}
@@ -86,8 +90,10 @@ class BatchExecuteRequest(BaseModel):
 class SingleFixRequest(BaseModel):
     """Request for single check fix."""
     asset_id: int = Field(..., description="Target asset ID")
+    session_id: Optional[int] = Field(None, description="Audit session ID (updates AuditResult status on success)")
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
     check_id: str = Field(..., description="CIS check ID to fix")
     parameters: Dict[str, str] = Field(default_factory=dict, description="Parameter values")
@@ -98,6 +104,7 @@ class SingleFixRequest(BaseModel):
                 "asset_id": 30,
                 "ssh_username": "admin",
                 "ssh_password": "********",
+                "ssh_port": 22,
                 "check_id": "APACHE-L1-9.1",
                 "parameters": {}
             }
@@ -258,6 +265,7 @@ async def auto_harden_with_defaults(
             asset_id=request.asset_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
+            ssh_port=request.ssh_port,
             sudo_password=request.sudo_password
         )
         consume_quota(http_request)
@@ -265,8 +273,8 @@ async def auto_harden_with_defaults(
             db, device_type="apache", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
     except ValueError as e:
@@ -321,6 +329,7 @@ async def batch_execute_selected(
             asset_id=request.asset_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
+            ssh_port=request.ssh_port,
             sudo_password=request.sudo_password,
             checks=checks
         )
@@ -330,8 +339,8 @@ async def batch_execute_selected(
             db, device_type="apache", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
             user_id=current_user.id, check_ids=check_ids,
-            success_count=(result or {}).get("success_count", 0) if isinstance(result, dict) else 0,
-            failed_count=(result or {}).get("failed_count", 0) if isinstance(result, dict) else 0,
+            success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
+            failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
         return result
 
@@ -369,18 +378,21 @@ async def execute_single_fix(
 
     **Permissions:** Requires HARDENING write permission
     """
+    consume_quota = consume_quota_on_success("harden")
     try:
         result = ApacheHardeningService.execute_single_fix(
             db=db,
             asset_id=request.asset_id,
+            session_id=request.session_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
+            ssh_port=request.ssh_port,
             sudo_password=request.sudo_password,
             check_id=request.check_id,
             parameters=request.parameters
         )
         consume_quota(http_request)
-        succeeded = isinstance(result, dict) and result.get("status") == "success"
+        succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="apache", action="execute_single",
             session_id=None, asset_id=request.asset_id,
