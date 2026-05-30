@@ -2,7 +2,10 @@
 Linux Audit API Router
 
 RESTful endpoints for Linux CIS security auditing.
-Supports Ubuntu 22.04, Ubuntu 24.04, Rocky Linux 8/9, and RHEL 8/9/10.
+Supports:
+  Ubuntu:     20.04 LTS, 22.04 LTS, 24.04 LTS
+  RHEL:       8, 9, 10
+  Rocky:      8, 9, 10
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -385,14 +388,14 @@ def get_supported_distros(
             {
                 "id": "ubuntu",
                 "name": "Ubuntu",
-                "versions": ["22.04 LTS", "24.04 LTS"],
+                "versions": ["20.04 LTS", "22.04 LTS", "24.04 LTS"],
                 "benchmark": "CIS Ubuntu Linux Benchmark",
                 "mac": "AppArmor"
             },
             {
                 "id": "rocky",
                 "name": "Rocky Linux",
-                "versions": ["8", "9"],
+                "versions": ["8", "9", "10"],
                 "benchmark": "CIS Rocky Linux Benchmark",
                 "mac": "SELinux"
             },

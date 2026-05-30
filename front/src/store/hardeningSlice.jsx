@@ -80,8 +80,10 @@ export const getDeviceName = (deviceType) => {
         "linux-rocky-9":    "Rocky Linux 9",
         "linux-rocky-8":    "Rocky Linux 8",
 
-        // Linux bare fallback (sessions without sub_device_type)
+        // Bare-type fallbacks for sessions with no sub_device_type
         "linux":            "Linux Server",
+        "mssql":            "SQL Server",
+        "windows":          "Windows Server",
 
         // Cisco
         "cisco":            "Cisco Router/Switch",
@@ -218,6 +220,7 @@ export const executeAuditWithDevice = createAsyncThunk(
                 asset_id: assetId,
                 ...credPayload,
                 ...(jobName && { job_name: jobName }),
+                ...(apiPath === "linux" && deviceType?.startsWith("linux-") && { sub_device_type: deviceType }),
             };
 
             const response = await api.post(endpoint, payload);

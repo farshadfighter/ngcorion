@@ -10,6 +10,7 @@ import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
+import { getDeviceName } from "../../store/hardeningSlice";
 
 import "../../assets/Auditing.css";
 
@@ -163,6 +164,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                         <tr>
                             <th>Job Name</th>
                             <th>Asset Name</th>
+                            <th>Device Type</th>
                             <th>Process</th>
                             <th>Date</th>
                             <th>Actions</th>
@@ -177,6 +179,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                                         {session.asset_name || "-"}
                                         {session.target_ip && ` (${session.target_ip})`}
                                     </td>
+                                    <td>{getDeviceName(session.sub_device_type || session.device_type)}</td>
                                     <td>{getStatusBadge(session.status)}</td>
                                     <td>{formatDate(session.started_at)}</td>
                                     <td>
@@ -205,7 +208,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="5" style={{ textAlign: "center", padding: "40px" }}>
+                                <td colSpan="6" style={{ textAlign: "center", padding: "40px" }}>
                                     No audit sessions found. Click "Auditing" to start a new audit.
                                 </td>
                             </tr>
