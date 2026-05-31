@@ -396,13 +396,29 @@ class CiscoSSHClient:
                 except Exception as e:
                     logger.warning(f"Failed to enter enable mode: {e}")
 
-            # Send config commands as a set
-            # netmiko's send_config_set handles config mode entry/exit automatically
+            # Expand any commands that contain embedded newlines (e.g. banner templates)
+            # into separate list items so send_config_set handles them line-by-line.
+            expanded: list = []
+            for cmd in commands:
+                lines = cmd.split("\n")
+                expanded.extend(lines)
+
+            # Regex pattern for commands that may produce interactive prompts
+            # (confirmation questions). Netmiko uses timing for these instead of
+            # prompt detection, preventing "Pattern not detected: [>#]" errors.
+            interactive_pattern = (
+                r"^crypto key generate"
+                r"|^banner\s+(exec|login|motd|incoming|slip-ppp)"
+                r"|^no\s+interface\s+Tunnel"
+            )
+
             output = self.connection.send_config_set(
-                commands,
-                exit_config_mode=True,  # Automatically exit config mode
+                expanded,
+                exit_config_mode=True,
                 cmd_verify=False,
-                read_timeout=60  # Longer timeout for config commands
+                read_timeout=120,
+                delay_factor=2.0,
+                bypass_commands=interactive_pattern,
             )
 
             logger.info(f"Successfully executed {len(commands)} config commands on {self.ip}")
