@@ -16,7 +16,7 @@ const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
+export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedSessionId, preselectedDeviceType }) => {
     const dispatch = useDispatch();
     const { auditSessions, isLoading } = useSelector((state) => state.hardening);
 
@@ -51,6 +51,16 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel }) => {
     useEffect(() => {
         dispatch(fetchAuditSessions());
     }, [dispatch]);
+
+    // Auto-select session when opened from audit results
+    useEffect(() => {
+        if (!preselectedSessionId || !auditSessions?.length) return;
+        const session = auditSessions.find(s => s.session_id === preselectedSessionId);
+        if (!session) return;
+        setFormData(prev => ({ ...prev, session_id: String(preselectedSessionId) }));
+        setSelectedSession(session);
+        setDeviceType(preselectedDeviceType || session.sub_device_type || session.device_type || null);
+    }, [auditSessions, preselectedSessionId, preselectedDeviceType]);
 
     // Only sessions that are completed AND have failed checks
     const failedAuditSessions = (auditSessions || []).filter(

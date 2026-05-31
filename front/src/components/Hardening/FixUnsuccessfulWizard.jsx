@@ -94,7 +94,7 @@ const FixUnsuccessfulFailed = ({ sessionData, onRetry, onClose }) => (
 // Wizard اصلی
 // ==========================================
 
-export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
+export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing, preselectedSessionId, preselectedDeviceType }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [sessionData, setSessionData] = useState(null);
     const [hasFailed, setHasFailed]     = useState(false);
@@ -180,6 +180,8 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing })
                         <FixUnsuccessfulConnectionForm
                             onSubmit={handleFormSubmit}
                             onCancel={handleClose}
+                            preselectedSessionId={preselectedSessionId}
+                            preselectedDeviceType={preselectedDeviceType}
                         />
                     )}
 
