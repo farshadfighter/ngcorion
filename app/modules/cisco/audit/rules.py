@@ -157,6 +157,12 @@ class CiscoRegex:
     aaa_source_interface = re.compile(r"^ip (?:radius|tacacs)\s+source-interface\s+\S+", re.M)
     tftp_source_interface = re.compile(r"^ip tftp source-interface\s+\S+", re.M)
 
+    # Aux line patterns
+    line_aux = re.compile(r"^line aux\s+0[\s\S]*?(?=^line|\Z)", re.M)
+    no_exec = re.compile(r"^\s*no exec\b", re.M)
+    transport_input_none = re.compile(r"^\s*transport input\s+none", re.M)
+    tcp_keepalives_out = re.compile(r"^service tcp-keepalives-out", re.M)
+
     # IP hardening patterns
     interface_tunnel = re.compile(r"^interface [Tt]unnel\d+", re.M)
     ip_verify_unicast = re.compile(r"^\s*ip verify unicast source reachable-via", re.M)
@@ -868,6 +874,20 @@ def _get_line_tty_blocks(text: str) -> List[str]:
     return RE.line_tty.findall(text)
 
 
+def _get_line_aux_block(text: str) -> str:
+    """Extract line aux 0 block."""
+    m = RE.line_aux.search(text)
+    return m.group(0) if m else ""
+
+
+def _has_exec_timeout_le10(block: str) -> bool:
+    """Check if exec-timeout is configured and <= 10 minutes."""
+    m = RE.exec_timeout_line.search(block)
+    if not m:
+        return False
+    return int(m.group(1)) <= 10
+
+
 def build_cis_benchmark_rules() -> List[CISRule]:
     """
     Build CIS Benchmark rules that match the official CIS Cisco IOS 15 Benchmark v4.1.1.
@@ -955,7 +975,7 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         id="CIS-1.1.7",
         title="Set 'aaa accounting' to log all privileged use commands using 'commands 15'",
         severity="medium",
-        level="L1",
+        level="L2",
         rationale="Log all privilege level 15 commands for auditing.",
         remediation="Configure: aaa accounting commands 15 default start-stop group tacacs+",
         check=lambda c: bool(RE.aaa_acc_cmd15.search(c)),
@@ -966,7 +986,7 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         id="CIS-1.1.8",
         title="Set 'aaa accounting connection'",
         severity="medium",
-        level="L1",
+        level="L2",
         rationale="Log connection accounting for auditing.",
         remediation="Configure: aaa accounting connection default start-stop group tacacs+",
         check=lambda c: bool(RE.aaa_acc_connection.search(c)),
@@ -977,7 +997,7 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         id="CIS-1.1.9",
         title="Set 'aaa accounting exec'",
         severity="medium",
-        level="L1",
+        level="L2",
         rationale="Log exec session accounting for auditing.",
         remediation="Configure: aaa accounting exec default start-stop group tacacs+",
         check=lambda c: bool(RE.aaa_acc_exec.search(c)),
@@ -988,7 +1008,7 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         id="CIS-1.1.10",
         title="Set 'aaa accounting network'",
         severity="medium",
-        level="L1",
+        level="L2",
         rationale="Log network service accounting for auditing.",
         remediation="Configure: aaa accounting network default start-stop group tacacs+",
         check=lambda c: bool(RE.aaa_acc_network.search(c)),
@@ -999,7 +1019,7 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         id="CIS-1.1.11",
         title="Set 'aaa accounting system'",
         severity="medium",
-        level="L1",
+        level="L2",
         rationale="Log system events accounting for auditing.",
         remediation="Configure: aaa accounting system default start-stop group tacacs+",
         check=lambda c: bool(RE.aaa_acc_system.search(c)),
@@ -1049,6 +1069,83 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         remediation="Configure: line vty 0 15 -> access-class <ACL> in",
         check=lambda c: all(RE.access_class_in.search(b) for b in _vty_blocks(c)) if _vty_blocks(c) else False,
         evidence=lambda c: "\n".join([m.group(0) for m in re.finditer(r"^line vty .*|^\s+access-class .*", c, re.M)])
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.3",
+        title="Set 'no exec' for 'line aux 0'",
+        severity="medium",
+        level="L1",
+        rationale="Disable EXEC on the auxiliary port to prevent unauthorized modem access.",
+        remediation="Configure: line aux 0 -> no exec",
+        check=lambda c: bool(RE.no_exec.search(_get_line_aux_block(c))),
+        evidence=lambda c: _get_line_aux_block(c) or "line aux 0 not found"
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.6",
+        title="Set 'exec-timeout' <= 10 minutes for 'line aux 0'",
+        severity="medium",
+        level="L1",
+        rationale="Prevent abandoned aux sessions from remaining open indefinitely.",
+        remediation="Configure: line aux 0 -> exec-timeout 10 0",
+        check=lambda c: _has_exec_timeout_le10(_get_line_aux_block(c)),
+        evidence=lambda c: _get_line_aux_block(c) or "line aux 0 not found"
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.7",
+        title="Set 'exec-timeout' <= 10 minutes for 'line console 0'",
+        severity="medium",
+        level="L1",
+        rationale="Prevent abandoned console sessions from remaining open indefinitely.",
+        remediation="Configure: line con 0 -> exec-timeout 10 0",
+        check=lambda c: _has_exec_timeout_le10(_get_line_con_block(c)),
+        evidence=lambda c: _get_line_con_block(c) or "line console 0 not found"
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.8",
+        title="Set 'exec-timeout' <= 10 minutes for 'line tty'",
+        severity="medium",
+        level="L1",
+        rationale="Prevent abandoned TTY sessions from remaining open indefinitely.",
+        remediation="Configure: line tty X -> exec-timeout 10 0",
+        check=lambda c: (not _get_line_tty_blocks(c)) or all(_has_exec_timeout_le10(b) for b in _get_line_tty_blocks(c)),
+        evidence=lambda c: "\n".join(_get_line_tty_blocks(c)) or "no tty lines configured"
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.9",
+        title="Set 'exec-timeout' <= 10 minutes for 'line vty' (0-4)",
+        severity="medium",
+        level="L1",
+        rationale="Prevent abandoned VTY sessions from remaining open indefinitely.",
+        remediation="Configure: line vty 0 4 -> exec-timeout 10 0",
+        check=lambda c: bool(_vty_blocks(c)) and all(_has_exec_timeout_le10(b) for b in _vty_blocks(c)),
+        evidence=lambda c: "\n".join([m.group(0) for m in re.finditer(r"^line vty .*|^\s+exec-timeout .*", c, re.M)])
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.10",
+        title="Set 'exec-timeout' <= 10 minutes for 'line vty' (5-15)",
+        severity="medium",
+        level="L1",
+        rationale="Prevent abandoned VTY sessions on extended range from remaining open.",
+        remediation="Configure: line vty 5 15 -> exec-timeout 10 0",
+        check=lambda c: bool(_vty_blocks(c)) and all(_has_exec_timeout_le10(b) for b in _vty_blocks(c)),
+        evidence=lambda c: "\n".join([m.group(0) for m in re.finditer(r"^line vty .*|^\s+exec-timeout .*", c, re.M)])
+    ))
+
+    rules.append(CISRule(
+        id="CIS-1.2.11",
+        title="Set 'transport input none' for 'line aux 0'",
+        severity="medium",
+        level="L1",
+        rationale="Disable all inbound connections on the auxiliary port.",
+        remediation="Configure: line aux 0 -> transport input none",
+        check=lambda c: bool(RE.transport_input_none.search(_get_line_aux_block(c))),
+        evidence=lambda c: _get_line_aux_block(c) or "line aux 0 not found"
     ))
 
     # 1.3 - Banners
@@ -1355,6 +1452,17 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         remediation="Configure: service tcp-keepalives-in",
         check=lambda c: bool(RE.tcp_keepalives_in.search(c)),
         evidence=lambda c: RE.tcp_keepalives_in.search(c).group(0) if RE.tcp_keepalives_in.search(c) else "not set"
+    ))
+
+    rules.append(CISRule(
+        id="CIS-2.1.7",
+        title="Set 'service tcp-keepalives-out'",
+        severity="low",
+        level="L1",
+        rationale="TCP keepalives on outgoing connections detect dead sessions and free resources.",
+        remediation="Configure: service tcp-keepalives-out",
+        check=lambda c: bool(RE.tcp_keepalives_out.search(c)),
+        evidence=lambda c: RE.tcp_keepalives_out.search(c).group(0) if RE.tcp_keepalives_out.search(c) else "not set"
     ))
 
     rules.append(CISRule(

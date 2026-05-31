@@ -105,7 +105,7 @@ class AuditService:
         # Build fresh rules and cache
         logger.info(f"Building fresh CIS rules for {profile}")
         with AuditService._timed_operation(f"Build CIS rules ({profile})"):
-            all_rules = build_all_cisco_cis_rules()
+            all_rules = build_cis_benchmark_rules()
             filtered_rules = filter_rules_by_profile(all_rules, profile)
 
         AuditService._rules_cache[cache_key] = filtered_rules
