@@ -506,10 +506,10 @@ class HardeningService:
     @staticmethod
     def _get_rule_by_check_number(check_number: str) -> CISRule:
         """
-        Get CIS rule by check number.
+        Get CIS rule by check number. Accepts both CIS-X.X.X and IOS-L1-XXX formats.
 
         Args:
-            check_number: Check number (e.g., "IOS-L1-001")
+            check_number: Check number (e.g., "CIS-1.1.2" or "IOS-L1-001")
 
         Returns:
             CISRule object
@@ -517,11 +517,13 @@ class HardeningService:
         Raises:
             ValueError: If rule not found
         """
-        all_rules = build_all_cisco_cis_rules()
-        for rule in all_rules:
+        from app.modules.cisco.audit.rules import build_cis_benchmark_rules
+        for rule in build_cis_benchmark_rules():
             if rule.id == check_number:
                 return rule
-
+        for rule in build_all_cisco_cis_rules():
+            if rule.id == check_number:
+                return rule
         raise ValueError(f"CIS rule {check_number} not found")
 
     # ==================== AUTO-HARDENING METHODS ====================
