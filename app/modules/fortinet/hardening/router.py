@@ -69,6 +69,7 @@ class FortiGatePreviewResponse(BaseModel):
     vdom_context: str
     required_parameters: List[str]
     optional_parameters: List[str]
+    parameter_defaults: Dict[str, str] = {}
     warnings: List[str]
 
     class Config:

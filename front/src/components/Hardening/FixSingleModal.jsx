@@ -71,17 +71,17 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
         };
     }, [dispatch, check, deviceType]);
 
-    // Initialize param values when preview loads (only once)
+    // Initialize param values when preview loads — required (empty) + optional (pre-filled with defaults)
     useEffect(() => {
-        if (previewData?.required_parameters && Object.keys(paramValues).length === 0) {
-            const initialValues = {};
-            previewData.required_parameters.forEach(param => {
-                initialValues[param] = '';
-            });
-            setParamValues(initialValues);
-        }
+        if (!previewData) return;
+        const initialValues = {};
+        previewData.required_parameters?.forEach(p => { initialValues[p] = ''; });
+        previewData.optional_parameters?.forEach(p => {
+            initialValues[p] = previewData.parameter_defaults?.[p] ?? '';
+        });
+        setParamValues(initialValues);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [previewData?.required_parameters]);
+    }, [previewData]);
 
     const handleParamChange = (key, value) => {
         setParamValues(prev => ({ ...prev, [key]: value }));
@@ -93,7 +93,9 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
     };
 
     const handleNextFromPreview = () => {
-        if (previewData?.required_parameters && previewData.required_parameters.length > 0) {
+        const hasParams = (previewData?.required_parameters?.length ?? 0) > 0
+                       || (previewData?.optional_parameters?.length ?? 0) > 0;
+        if (hasParams) {
             setStep(2);
         } else {
             setStep(3);
@@ -240,10 +242,15 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                         <ul>{previewData.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
                     </div>
                 )}
-                {previewData.required_parameters && previewData.required_parameters.length > 0 && (
+                {((previewData.required_parameters?.length ?? 0) > 0 || (previewData.optional_parameters?.length ?? 0) > 0) && (
                     <div className="hardening-info-box">
-                        <p><strong>ℹ️ Additional Configuration Required</strong></p>
-                        <ul>{previewData.required_parameters.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                        <p><strong>ℹ️ Parameters will be configured in the next step</strong></p>
+                        {previewData.required_parameters?.length > 0 && (
+                            <><strong>Required:</strong> <ul>{previewData.required_parameters.map((p, i) => <li key={i}>{p}</li>)}</ul></>
+                        )}
+                        {previewData.optional_parameters?.length > 0 && (
+                            <><strong>Optional (with defaults):</strong> <ul>{previewData.optional_parameters.map((p, i) => <li key={i}>{p} = {previewData.parameter_defaults?.[p]}</li>)}</ul></>
+                        )}
                     </div>
                 )}
             </div>
@@ -251,13 +258,30 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
     };
 
     const renderParametersForm = () => {
-        if (!previewData?.required_parameters || previewData.required_parameters.length === 0) return null;
+        const hasRequired = previewData?.required_parameters?.length > 0;
+        const hasOptional = previewData?.optional_parameters?.length > 0;
+        if (!hasRequired && !hasOptional) return null;
         return (
             <div className="hardening-params-form">
-                {previewData.required_parameters.map((param) => (
+                {previewData.required_parameters?.map((param) => (
                     <div key={param} className="hardening-form-group">
                         <label>{param}<span className="hardening-required">*</span></label>
-                        <input type="text" value={paramValues[param] || ''} onChange={(e) => handleParamChange(param, e.target.value)} placeholder={`Enter ${param}`} style={inputStyle} />
+                        <input type="text" value={paramValues[param] ?? ''} onChange={(e) => handleParamChange(param, e.target.value)} placeholder={`Enter ${param}`} style={inputStyle} />
+                    </div>
+                ))}
+                {previewData.optional_parameters?.map((param) => (
+                    <div key={param} className="hardening-form-group">
+                        <label>
+                            {param}
+                            <span style={{ color: "#6b7280", fontWeight: 400, marginLeft: "6px" }}>(optional)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={paramValues[param] ?? ''}
+                            onChange={(e) => handleParamChange(param, e.target.value)}
+                            placeholder={`default: ${previewData.parameter_defaults?.[param] ?? ''}`}
+                            style={inputStyle}
+                        />
                     </div>
                 ))}
             </div>
@@ -497,7 +521,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                     )}
                     {step === 3 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(previewData?.required_parameters?.length > 0 ? 2 : 1)}>Back</button>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(((previewData?.required_parameters?.length ?? 0) > 0 || (previewData?.optional_parameters?.length ?? 0) > 0) ? 2 : 1)}>Back</button>
                             <button className="hardening-btn-primary" onClick={handleExecute} disabled={isExecuting}>Execute Hardening</button>
                         </>
                     )}

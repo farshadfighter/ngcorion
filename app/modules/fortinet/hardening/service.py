@@ -192,6 +192,7 @@ class FortiGateHardeningService:
             "vdom_context": parsed.vdom_context,
             "required_parameters": parsed.required_parameters,
             "optional_parameters": parsed.optional_parameters,
+            "parameter_defaults": parsed.defaults,
             "warnings": parsed.warnings
         }
 

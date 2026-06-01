@@ -452,6 +452,20 @@ export const autoHardenWithDefaults = createAsyncThunk(
  * Cisco/Fortinet use check_ids[] + parameters{}
  * Linux/Apache/MongoDB/MSSQL/Windows use checks[{check_id, parameters}]
  */
+export const discoverFortinetVdoms = createAsyncThunk(
+    "hardening/discoverFortinetVdoms",
+    async ({ asset_id, ssh_username, ssh_password, ssh_port = 22 }, { rejectWithValue }) => {
+        try {
+            const res = await api.post("/api/audit/fortinet/vdoms/discover", {
+                asset_id, ssh_username, ssh_password, ssh_port,
+            });
+            return res.data; // { asset_id, asset_name, target_ip, vdoms: string[] }
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "VDOM discovery failed");
+        }
+    }
+);
+
 export const batchExecuteChecks = createAsyncThunk(
     "hardening/batchExecute",
     async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters }, { rejectWithValue }) => {
@@ -522,6 +536,9 @@ const initialState = {
     sessionStatus:      null,
     requiredParameters: null,
     previewData:        null,
+
+    // VDOM discovery (FortiGate)
+    vdomDiscovery: { vdoms: null, isDiscovering: false, error: null },
 
     // Loading states
     isLoading:       false,
@@ -771,6 +788,26 @@ const hardeningSlice = createSlice({
             .addCase(batchExecuteChecks.rejected, (state, action) => {
                 state.isExecuting = false;
                 state.error       = action.payload;
+            });
+
+        // ── discoverFortinetVdoms ──────────────────────────────
+        builder
+            .addCase(discoverFortinetVdoms.pending, (state) => {
+                state.vdomDiscovery = { vdoms: null, isDiscovering: true, error: null };
+            })
+            .addCase(discoverFortinetVdoms.fulfilled, (state, action) => {
+                state.vdomDiscovery = {
+                    vdoms: action.payload.vdoms || [],
+                    isDiscovering: false,
+                    error: null,
+                };
+            })
+            .addCase(discoverFortinetVdoms.rejected, (state, action) => {
+                state.vdomDiscovery = {
+                    vdoms: null,
+                    isDiscovering: false,
+                    error: action.payload,
+                };
             });
     },
 });

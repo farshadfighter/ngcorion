@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
-import { executeAuditWithDevice } from "../../store/hardeningSlice";
+import { executeAuditWithDevice, discoverFortinetVdoms } from "../../store/hardeningSlice";
 
 // ─── Device type list shown in the dropdown ───────────────────────────────────
 // value must match the keys in DEVICE_API_PATH_MAP inside hardeningSlice.js
@@ -63,7 +63,7 @@ const needsSecret= (dt) => isCisco(dt);
 export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     const dispatch = useDispatch();
     const { assets }    = useSelector((state) => state.assets);
-    const { isLoading } = useSelector((state) => state.hardening);
+    const { isLoading, vdomDiscovery } = useSelector((state) => state.hardening);
 
     const [formData, setFormData] = useState({
         device_type:      "cisco",
@@ -105,6 +105,16 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         if (errors[name]) {
             setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
+    };
+
+    const handleDetectVdoms = () => {
+        if (!formData.asset_id || !formData.ssh_username || !formData.ssh_password) return;
+        dispatch(discoverFortinetVdoms({
+            asset_id:     parseInt(formData.asset_id),
+            ssh_username: formData.ssh_username,
+            ssh_password: formData.ssh_password,
+            ssh_port:     parseInt(formData.ssh_port) || 22,
+        }));
     };
 
     const validate = () => {
@@ -322,20 +332,66 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                 </div>
                             )}
 
-                            {/* Fortinet: VDOM */}
+                            {/* Fortinet: VDOM detection + selection */}
                             {isFortinet(dt) && (
                                 <div className="form-group">
                                     <label>VDOM</label>
-                                    <input
-                                        type="text"
-                                        name="vdom"
-                                        value={formData.vdom}
-                                        onChange={handleChange}
-                                        placeholder="Virtual Domain (optional, default: root)"
-                                        autoComplete="off"
-                                    />
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
+                                        <button
+                                            type="button"
+                                            onClick={handleDetectVdoms}
+                                            disabled={vdomDiscovery?.isDiscovering || !formData.ssh_username || !formData.ssh_password || !formData.asset_id}
+                                            style={{
+                                                padding: "6px 14px", fontSize: "13px", fontWeight: "600",
+                                                background: "#2563eb", color: "white", border: "none",
+                                                borderRadius: "6px", cursor: "pointer", opacity:
+                                                    (vdomDiscovery?.isDiscovering || !formData.ssh_username || !formData.ssh_password || !formData.asset_id) ? 0.5 : 1,
+                                            }}
+                                        >
+                                            {vdomDiscovery?.isDiscovering ? "Detecting…" : "Detect VDOMs"}
+                                        </button>
+                                        {vdomDiscovery?.vdoms !== null && !vdomDiscovery?.isDiscovering && (
+                                            <span style={{
+                                                padding: "3px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: "600",
+                                                background: vdomDiscovery.vdoms.length > 0 ? "#d1fae5" : "#f3f4f6",
+                                                color: vdomDiscovery.vdoms.length > 0 ? "#065f46" : "#6b7280",
+                                                border: `1px solid ${vdomDiscovery.vdoms.length > 0 ? "#6ee7b7" : "#d1d5db"}`,
+                                            }}>
+                                                {vdomDiscovery.vdoms.length > 0
+                                                    ? `✓ VDOM Enabled (${vdomDiscovery.vdoms.length})`
+                                                    : "VDOM Disabled"}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {vdomDiscovery?.error && (
+                                        <span style={{ fontSize: "12px", color: "#dc2626", display: "block", marginBottom: "4px" }}>
+                                            {vdomDiscovery.error}
+                                        </span>
+                                    )}
+                                    {vdomDiscovery?.vdoms?.length > 0 ? (
+                                        <select
+                                            name="vdom"
+                                            value={formData.vdom}
+                                            onChange={handleChange}
+                                            style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                                        >
+                                            <option value="">Select VDOM (default: root)</option>
+                                            {vdomDiscovery.vdoms.map((v) => (
+                                                <option key={v} value={v}>{v}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="vdom"
+                                            value={formData.vdom}
+                                            onChange={handleChange}
+                                            placeholder="Virtual Domain (optional, default: root)"
+                                            autoComplete="off"
+                                        />
+                                    )}
                                     <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
-                                        Leave empty for default VDOM
+                                        Click "Detect VDOMs" to discover available virtual domains
                                     </span>
                                 </div>
                             )}
