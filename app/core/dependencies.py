@@ -226,25 +226,32 @@ def require_asset_quota():
         def create_asset(...):
             ...
     """
-    def check(request: Request, current_user: User = Depends(get_current_user)) -> None:
+    def check(
+        request: Request,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ) -> None:
         from app.core.license_state import get_license_state
-        
+        from app.models import Asset
+
         state = get_license_state()
         if not state.valid or state.limits is None:
             # License middleware should have caught this, but double-check
             return
-        
+
         max_assets = state.limits.get("max_assets")
         if max_assets is None:
             return  # Unlimited (Enterprise)
-        
-        used_assets = state.usage.get("used_assets", 0) if state.usage else 0
+
+        # Assets are a live inventory: count what actually exists rather than a
+        # cumulative server-side counter, so deleting an asset frees a slot.
+        used_assets = db.query(Asset).count()
         if used_assets >= max_assets:
             raise HTTPException(
                 status_code=403,
                 detail=f"Asset limit reached ({used_assets}/{max_assets}). Upgrade your plan or delete unused assets."
             )
-    
+
     return check
 
 

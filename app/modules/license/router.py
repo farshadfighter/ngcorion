@@ -4,13 +4,25 @@ License Router
 Endpoints for license activation and status checking.
 Frontend talks to these endpoints instead of directly to the license server.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
+import logging
 import requests
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
 from app.core.license_state import get_license_state, refresh_license_state, set_license_state
 from app.core.heartbeat import start_heartbeat
+
+logger = logging.getLogger(__name__)
+
+# How long a server-validated state is considered fresh. Within this window we
+# serve the cached state instead of re-validating, so a burst of status reads
+# (e.g. several components mounting right after login) collapses to one call and
+# we stay well under the license server's rate limit.
+STATUS_REFRESH_TTL_SECONDS = 10
 
 
 router = APIRouter(prefix="/api/license", tags=["License"])
@@ -32,21 +44,61 @@ class LicenseStatusResponse(BaseModel):
 
 
 @router.get("/status", response_model=LicenseStatusResponse)
-def get_license_status():
+def get_license_status(request: Request, db: Session = Depends(get_db)):
     """
-    Get current license status
-    
-    Returns in-memory license state without calling the license server.
+    Get current license status.
+
+    The license server's database is the persistent source of truth for usage
+    counters. The in-memory state in this process is only a cache that is synced
+    at startup and on the hourly heartbeat, so it can be stale or empty after a
+    restart (or differ between multiple workers). To keep the usage numbers
+    correct and stable across logout/login and restarts, we reconcile with the
+    license server on every status read, falling back to the cached state only
+    when the server is unreachable.
+
+    `used_assets` is reported as the live count of assets in this app's own
+    database, since assets are an inventory that can grow and shrink (deleting an
+    asset frees a slot), unlike the monotonic audit/harden/discovery counters.
     """
     state = get_license_state()
+    client = getattr(request.app.state, "license_client", None)
+
+    last = state.last_validated_at
+    is_fresh = (
+        last is not None
+        and (datetime.utcnow() - last).total_seconds() < STATUS_REFRESH_TTL_SECONDS
+    )
+
+    if client is not None and not is_fresh:
+        try:
+            # Refresh from the authoritative license server. Update the cache
+            # only on success — never flip validity on a transient outage, or
+            # the license middleware would lock the whole app out.
+            result = client.validate()
+            set_license_state(result)
+            state = get_license_state()
+        except Exception as e:
+            logger.warning(f"License status refresh failed, using cached state: {e}")
+
+    usage = dict(state.usage) if state.usage else None
+    if usage is not None:
+        # Assets are a live inventory owned by this app, not a cumulative quota.
+        usage["used_assets"] = _count_assets(db)
+
     return LicenseStatusResponse(
         valid=state.valid,
         plan_type=state.plan_type,
         is_pilot_mode=state.is_pilot_mode,
         message=state.message,
         limits=state.limits,
-        usage=state.usage
+        usage=usage
     )
+
+
+def _count_assets(db: Session) -> int:
+    """Return the current number of assets in this app's database."""
+    from app.models import Asset
+    return db.query(Asset).count()
 
 
 @router.post("/activate", response_model=LicenseStatusResponse)

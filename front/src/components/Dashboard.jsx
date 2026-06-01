@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
+import { getLicenseStatusThunk } from "../store/licenseSlice";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { UserManagement } from "./UserManagement/UserManagement";
@@ -77,6 +78,12 @@ export const Dashboard = () => {
         }, 1000);
         return () => clearInterval(timer);
     }, []);
+
+    // Refresh license usage on every login so the badge reflects the
+    // server's persisted counters instead of any stale/empty Redux state.
+    useEffect(() => {
+        dispatch(getLicenseStatusThunk());
+    }, [dispatch]);
 
     const currentDate = currentTime.toLocaleDateString("en-US", {
         weekday: "long",
