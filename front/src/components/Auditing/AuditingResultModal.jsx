@@ -71,6 +71,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     };
 
     return (
+        <>
         <div className="modal-overlay result-modal-overlay" onClick={onClose}>
             <div className="result-modal-content" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
@@ -241,6 +242,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
             preselectedSessionId={sessionDetails?.session_id ? parseInt(sessionDetails.session_id) : undefined}
             preselectedDeviceType={sessionDetails?.device_type}
         />
+        </>
     );
 };
 
