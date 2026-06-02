@@ -177,7 +177,7 @@ export const AssetList = ({ onNavigateToLicence }) => {
     };
 
     return (
-        <div className="asset-list-container">
+        <div className="asset-list-container main-asset-list">
             {/* Header */}
             <div className="asset-list-header">
                 <h1 className="page-title">Asset List</h1>
