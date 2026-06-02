@@ -17,6 +17,7 @@ from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
 import re
 import time
+import shlex
 import logging
 
 try:
@@ -221,8 +222,9 @@ class LinuxSSHClient:
         try:
             if use_sudo:
                 # Use sudo with password via stdin
-                # The -S flag makes sudo read password from stdin
-                full_command = f"echo '{self.sudo_password}' | sudo -S {command}"
+                # The -S flag makes sudo read password from stdin.
+                # shlex.quote handles passwords containing quotes/metacharacters.
+                full_command = f"echo {shlex.quote(self.sudo_password)} | sudo -S {command}"
                 output = self.connection.send_command(
                     full_command,
                     cmd_verify=False,

@@ -133,7 +133,7 @@ class TestDistroHelpers:
 
     def test_get_package_manager(self):
         """Test package manager detection."""
-        from app.modules.audit.linux_ssh_client import get_package_manager
+        from app.modules.linux.common.ssh_client import get_package_manager
 
         assert get_package_manager("ubuntu") == "apt"
         assert get_package_manager("debian") == "apt"
@@ -146,7 +146,7 @@ class TestDistroHelpers:
 
     def test_get_firewall_tool(self):
         """Test firewall tool detection."""
-        from app.modules.audit.linux_ssh_client import get_firewall_tool
+        from app.modules.linux.common.ssh_client import get_firewall_tool
 
         assert get_firewall_tool("ubuntu") == "ufw"
         assert get_firewall_tool("debian") == "ufw"
@@ -156,7 +156,7 @@ class TestDistroHelpers:
 
     def test_get_security_framework(self):
         """Test MAC framework detection."""
-        from app.modules.audit.linux_ssh_client import get_security_framework
+        from app.modules.linux.common.ssh_client import get_security_framework
 
         assert get_security_framework("ubuntu") == "apparmor"
         assert get_security_framework("debian") == "apparmor"

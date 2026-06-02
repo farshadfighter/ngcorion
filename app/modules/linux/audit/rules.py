@@ -75,6 +75,20 @@ def _check_sysctl_value(data: Dict[str, str], key: str, expected: str) -> bool:
     return False
 
 
+def _resolve_service_name(service: str, distro_profile: str) -> str:
+    """
+    Resolve a CIS service name to the systemd unit name used on this distro.
+
+    Mirrors the remapping in audit_commands.py (httpd -> apache2, smb -> smbd on
+    Debian/Ubuntu) so the rule reads the same svc_<name>_enabled key the audit
+    actually produced.
+    """
+    is_debian = distro_profile.startswith("ubuntu") or distro_profile.startswith("debian")
+    if is_debian:
+        return {"httpd": "apache2", "smb": "smbd"}.get(service, service)
+    return service
+
+
 def _check_service_disabled(data: Dict[str, str], service: str) -> bool:
     """Check if a service is disabled or not installed."""
     key = f"svc_{service}_enabled"
@@ -565,8 +579,8 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             level="L1",
             rationale=rationale,
             remediation=f"Run: systemctl disable {service}",
-            check=lambda d, p, s=service: _check_service_disabled(d, s),
-            evidence=lambda d, p, s=service: _get_output(d, f"svc_{s}_enabled"),
+            check=lambda d, p, s=service: _check_service_disabled(d, _resolve_service_name(s, p)),
+            evidence=lambda d, p, s=service: _get_output(d, f"svc_{_resolve_service_name(s, p)}_enabled"),
         ))
 
     # 2.3.x - Service Clients

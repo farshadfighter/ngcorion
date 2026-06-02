@@ -14,6 +14,7 @@ Each template includes:
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 import copy
+import re
 import shlex
 
 
@@ -182,7 +183,7 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-3.1.1",
     description="Disable IP forwarding",
     commands=[
-        "echo 'net.ipv4.ip_forward = 0' > /etc/sysctl.d/60-netipv4_sysctl.conf",
+        "echo 'net.ipv4.ip_forward = 0' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
         "echo 'net.ipv6.conf.all.forwarding = 0' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
         "sysctl -w net.ipv4.ip_forward=0",
         "sysctl -w net.ipv6.conf.all.forwarding=0"
@@ -1385,8 +1386,39 @@ def get_distro_service_name(service: str, distro_id: str) -> str:
         ("httpd", False): "httpd",
         ("chrony", True): "chrony",
         ("chrony", False): "chronyd",
+        # OpenSSH server unit: ssh.service on Debian/Ubuntu, sshd.service on RHEL
+        ("sshd", True): "ssh",
+        ("sshd", False): "sshd",
+        # Samba file-server unit: smbd.service on Debian/Ubuntu, smb.service on RHEL
+        ("smb", True): "smbd",
+        ("smb", False): "smb",
     }
     return service_map.get((service, is_debian), service)
+
+
+# systemctl subcommands whose following argument is a unit (service) name.
+_SYSTEMCTL_VERBS = (
+    "start", "stop", "restart", "reload", "try-restart", "reload-or-restart",
+    "enable", "disable", "mask", "unmask", "is-enabled", "is-active", "status",
+)
+# Matches the unit argument of a systemctl call (skipping any --flags), so that
+# only real service names are rewritten — never path-like tokens such as
+# /etc/cron.daily or files referenced elsewhere in a command.
+_SERVICE_ARG_RE = re.compile(
+    r"(systemctl\s+(?:--[\w=.-]+\s+)*(?:" + "|".join(_SYSTEMCTL_VERBS) + r")\s+)([\w@.:-]+)"
+)
+
+
+def _remap_service_names(cmd: str, distro_id: str) -> str:
+    """
+    Rewrite distro-variant service names in the unit argument of systemctl
+    commands (e.g. ``systemctl disable httpd`` -> ``systemctl disable apache2``
+    on Debian/Ubuntu). Unknown services are left unchanged.
+    """
+    return _SERVICE_ARG_RE.sub(
+        lambda m: m.group(1) + get_distro_service_name(m.group(2), distro_id),
+        cmd,
+    )
 
 
 def get_distro_mac_paths(distro_id: str) -> List[str]:
@@ -1453,14 +1485,12 @@ def get_linux_hardening_template_for_distro(
     transformed_commands = []
     for cmd in template.commands:
         new_cmd = cmd
-        if is_debian:
-            # Ubuntu/Debian: Use common-password and common-auth
-            # No changes needed - templates already use these paths
-            pass
-        else:
-            # RHEL-based: Replace Debian paths with RHEL paths
+        if not is_debian:
+            # RHEL-based: Replace Debian PAM paths with RHEL paths
             new_cmd = new_cmd.replace("/etc/pam.d/common-password", pam_paths["password"])
             new_cmd = new_cmd.replace("/etc/pam.d/common-auth", pam_paths["auth"])
+        # Rewrite distro-variant service names (e.g. httpd -> apache2 on Debian)
+        new_cmd = _remap_service_names(new_cmd, distro_id)
         transformed_commands.append(new_cmd)
 
     # Transform verify commands
@@ -1470,7 +1500,14 @@ def get_linux_hardening_template_for_distro(
         if not is_debian:
             new_cmd = new_cmd.replace("/etc/pam.d/common-password", pam_paths["password"])
             new_cmd = new_cmd.replace("/etc/pam.d/common-auth", pam_paths["auth"])
+        new_cmd = _remap_service_names(new_cmd, distro_id)
         transformed_verify.append(new_cmd)
+
+    # The executor restarts requires_service_restart via `systemctl restart <svc>`,
+    # so it needs the distro-specific unit name too (e.g. sshd -> ssh on Debian).
+    restart_service = template.requires_service_restart
+    if restart_service:
+        restart_service = get_distro_service_name(restart_service, distro_id)
 
     return LinuxHardeningTemplate(
         check_id=template.check_id,
@@ -1479,8 +1516,29 @@ def get_linux_hardening_template_for_distro(
         requires_reboot=template.requires_reboot,
         verify_commands=transformed_verify,
         distros=template.distros.copy() if template.distros else ["all"],
-        requires_service_restart=template.requires_service_restart
+        requires_service_restart=restart_service
     )
+
+
+# Parameters whose value is inserted into a quoted heredoc body (cat << 'EOF').
+# These must NOT be shell-quoted: shlex.quote would wrap the literal text in
+# stray single quotes inside the heredoc.
+_HEREDOC_PARAMS = {"MOTD_TEXT", "BANNER_TEXT"}
+
+
+def _substitute_params(cmd: str, parameters: Dict[str, str]) -> str:
+    """
+    Substitute {PARAM} placeholders in a command string.
+
+    Values are shell-quoted with shlex.quote for injection safety, except
+    heredoc-body parameters (see _HEREDOC_PARAMS) which are inserted literally.
+    """
+    for param_name, param_value in parameters.items():
+        value = str(param_value)
+        if param_name not in _HEREDOC_PARAMS:
+            value = shlex.quote(value)
+        cmd = cmd.replace(f"{{{param_name}}}", value)
+    return cmd
 
 
 def get_linux_template_commands_for_distro(
@@ -1508,8 +1566,7 @@ def get_linux_template_commands_for_distro(
 
     for cmd in template.commands:
         # Substitute parameters
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands
@@ -1539,8 +1596,7 @@ def get_linux_verify_commands_for_distro(
     commands = []
 
     for cmd in template.verify_commands:
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands
@@ -1566,8 +1622,7 @@ def get_linux_template_commands(check_id: str, parameters: Dict[str, str] = None
 
     for cmd in template.commands:
         # Substitute parameters
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands
@@ -1583,8 +1638,7 @@ def get_linux_verify_commands(check_id: str, parameters: Dict[str, str] = None) 
     commands = []
 
     for cmd in template.verify_commands:
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands

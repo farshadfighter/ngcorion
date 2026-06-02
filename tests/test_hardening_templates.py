@@ -162,12 +162,12 @@ class TestDistroTransformation:
 
     def test_template_transformation_function_exists(self):
         """Test get_linux_hardening_template_for_distro exists."""
-        from app.modules.hardening.linux_command_templates import get_linux_hardening_template_for_distro
+        from app.modules.linux.hardening.command_templates import get_linux_hardening_template_for_distro
         assert callable(get_linux_hardening_template_for_distro)
 
     def test_ubuntu_transformation(self):
         """Test template transformation for Ubuntu."""
-        from app.modules.hardening.linux_command_templates import get_linux_hardening_template_for_distro
+        from app.modules.linux.hardening.command_templates import get_linux_hardening_template_for_distro
 
         # Get a template that might have distro-specific parts
         template = get_linux_hardening_template_for_distro("LNX-L1-2.4.1", "ubuntu")
@@ -180,7 +180,7 @@ class TestDistroTransformation:
 
     def test_rocky_transformation(self):
         """Test template transformation for Rocky."""
-        from app.modules.hardening.linux_command_templates import get_linux_hardening_template_for_distro
+        from app.modules.linux.hardening.command_templates import get_linux_hardening_template_for_distro
 
         template = get_linux_hardening_template_for_distro("LNX-L1-2.4.1", "rocky")
 
@@ -191,7 +191,7 @@ class TestDistroTransformation:
 
     def test_nonexistent_template_returns_none(self):
         """Test nonexistent template returns None."""
-        from app.modules.hardening.linux_command_templates import get_linux_hardening_template_for_distro
+        from app.modules.linux.hardening.command_templates import get_linux_hardening_template_for_distro
 
         template = get_linux_hardening_template_for_distro("FAKE-ID-999", "ubuntu")
         assert template is None
