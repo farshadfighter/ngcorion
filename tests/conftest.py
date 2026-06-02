@@ -216,28 +216,28 @@ def mock_ssh_client_class():
 @pytest.fixture(scope="session")
 def all_cis_rules():
     """Load all CIS rules."""
-    from app.modules.audit.linux_rules import build_linux_cis_rules
+    from app.modules.linux.audit.rules import build_linux_cis_rules
     return build_linux_cis_rules()
 
 
 @pytest.fixture(scope="session")
 def ubuntu_audit_commands():
     """Get audit commands for Ubuntu."""
-    from app.modules.audit.linux_audit_commands import get_linux_audit_commands
+    from app.modules.linux.audit.audit_commands import get_linux_audit_commands
     return get_linux_audit_commands("ubuntu")
 
 
 @pytest.fixture(scope="session")
 def rocky_audit_commands():
     """Get audit commands for Rocky Linux."""
-    from app.modules.audit.linux_audit_commands import get_linux_audit_commands
+    from app.modules.linux.audit.audit_commands import get_linux_audit_commands
     return get_linux_audit_commands("rocky")
 
 
 @pytest.fixture(scope="session")
 def all_hardening_templates():
     """Load all hardening templates."""
-    from app.modules.hardening.linux_command_templates import LINUX_HARDENING_TEMPLATES
+    from app.modules.linux.hardening.command_templates import LINUX_HARDENING_TEMPLATES
     return LINUX_HARDENING_TEMPLATES
 
 

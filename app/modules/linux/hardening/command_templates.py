@@ -182,7 +182,7 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-3.1.1",
     description="Disable IP forwarding",
     commands=[
-        "echo 'net.ipv4.ip_forward = 0' > /etc/sysctl.d/60-netipv4_sysctl.conf",
+        "echo 'net.ipv4.ip_forward = 0' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
         "echo 'net.ipv6.conf.all.forwarding = 0' >> /etc/sysctl.d/60-netipv4_sysctl.conf",
         "sysctl -w net.ipv4.ip_forward=0",
         "sysctl -w net.ipv6.conf.all.forwarding=0"
@@ -1483,6 +1483,27 @@ def get_linux_hardening_template_for_distro(
     )
 
 
+# Parameters whose value is inserted into a quoted heredoc body (cat << 'EOF').
+# These must NOT be shell-quoted: shlex.quote would wrap the literal text in
+# stray single quotes inside the heredoc.
+_HEREDOC_PARAMS = {"MOTD_TEXT", "BANNER_TEXT"}
+
+
+def _substitute_params(cmd: str, parameters: Dict[str, str]) -> str:
+    """
+    Substitute {PARAM} placeholders in a command string.
+
+    Values are shell-quoted with shlex.quote for injection safety, except
+    heredoc-body parameters (see _HEREDOC_PARAMS) which are inserted literally.
+    """
+    for param_name, param_value in parameters.items():
+        value = str(param_value)
+        if param_name not in _HEREDOC_PARAMS:
+            value = shlex.quote(value)
+        cmd = cmd.replace(f"{{{param_name}}}", value)
+    return cmd
+
+
 def get_linux_template_commands_for_distro(
     check_id: str,
     distro_id: str = "ubuntu",
@@ -1508,8 +1529,7 @@ def get_linux_template_commands_for_distro(
 
     for cmd in template.commands:
         # Substitute parameters
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands
@@ -1539,8 +1559,7 @@ def get_linux_verify_commands_for_distro(
     commands = []
 
     for cmd in template.verify_commands:
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands
@@ -1566,8 +1585,7 @@ def get_linux_template_commands(check_id: str, parameters: Dict[str, str] = None
 
     for cmd in template.commands:
         # Substitute parameters
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands
@@ -1583,8 +1601,7 @@ def get_linux_verify_commands(check_id: str, parameters: Dict[str, str] = None) 
     commands = []
 
     for cmd in template.verify_commands:
-        for param_name, param_value in parameters.items():
-            cmd = cmd.replace(f"{{{param_name}}}", shlex.quote(str(param_value)))
+        cmd = _substitute_params(cmd, parameters)
         commands.append(cmd)
 
     return commands

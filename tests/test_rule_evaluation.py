@@ -250,7 +250,7 @@ class TestHelperFunctions:
 
     def test_check_sysctl_value(self, ubuntu_audit_data):
         """Test _check_sysctl_value helper."""
-        from app.modules.audit.linux_rules import _check_sysctl_value
+        from app.modules.linux.audit.rules import _check_sysctl_value
 
         # ASLR should be 2
         assert _check_sysctl_value(ubuntu_audit_data, "aslr", "2") is True
@@ -262,7 +262,7 @@ class TestHelperFunctions:
 
     def test_check_service_disabled(self, ubuntu_audit_data):
         """Test _check_service_disabled helper."""
-        from app.modules.audit.linux_rules import _check_service_disabled
+        from app.modules.linux.audit.rules import _check_service_disabled
 
         # avahi-daemon should be disabled
         assert _check_service_disabled(ubuntu_audit_data, "avahi-daemon") is True
@@ -272,14 +272,14 @@ class TestHelperFunctions:
 
     def test_check_module_disabled(self, ubuntu_audit_data):
         """Test _check_module_disabled helper."""
-        from app.modules.audit.linux_rules import _check_module_disabled
+        from app.modules.linux.audit.rules import _check_module_disabled
 
         # cramfs should be disabled
         assert _check_module_disabled(ubuntu_audit_data, "cramfs") is True
 
     def test_parse_sshd_config(self, ubuntu_audit_data):
         """Test _parse_sshd_config helper."""
-        from app.modules.audit.linux_rules import _parse_sshd_config
+        from app.modules.linux.audit.rules import _parse_sshd_config
 
         config = _parse_sshd_config(ubuntu_audit_data)
 

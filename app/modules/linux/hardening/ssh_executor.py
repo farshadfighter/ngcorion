@@ -187,6 +187,7 @@ class LinuxSSHExecutor:
             commands = get_linux_template_commands_for_distro(check_id, self.distro_id or "ubuntu", parameters)
 
             # Execute each command
+            command_errors: List[str] = []
             for cmd in commands:
                 try:
                     output = self.execute_command(cmd, use_sudo=True)
@@ -197,6 +198,7 @@ class LinuxSSHExecutor:
                     error_msg = f"Command failed: {cmd[:60]}... Error: {str(e)}"
                     logger.error(error_msg)
                     result.command_outputs[cmd] = f"ERROR: {str(e)}"
+                    command_errors.append(error_msg)
                     # Continue with other commands unless critical
 
             # Restart service if needed
@@ -225,19 +227,29 @@ class LinuxSSHExecutor:
 
                 result.verification_result = "\n".join(verification_outputs)
 
-                # Check if verification passed.
-                # "FAIL" must be checked first: if any verify command fails
-                # the whole check fails, even if another command printed "PASS".
-                if "FAIL" in result.verification_result:
+                # Check if verification passed. A fix is only considered
+                # successful when verification explicitly reports PASS.
+                # "FAIL" or a verify command error means the fix failed;
+                # absence of any PASS marker means we cannot confirm it, so we
+                # do NOT claim success (otherwise the audit row gets flipped to
+                # PASS without the host actually being remediated).
+                verify_text = result.verification_result
+                if "FAIL" in verify_text or "ERROR:" in verify_text:
                     result.success = False
-                elif "PASS" in result.verification_result:
+                elif "PASS" in verify_text:
                     result.success = True
                 else:
-                    # No explicit PASS/FAIL markers — assume success
-                    result.success = True
+                    result.success = False
+                    if not result.error_message:
+                        result.error_message = "Verification did not return an explicit PASS marker"
             else:
-                # No verification commands - assume success if commands ran
-                result.success = True
+                # No verification commands defined — fall back to whether every
+                # fix command ran without error.
+                result.success = not command_errors
+
+            # Surface swallowed fix-command failures when the check did not succeed.
+            if not result.success and command_errors and not result.error_message:
+                result.error_message = "; ".join(command_errors[:3])
 
             result.requires_reboot = template.requires_reboot
 
