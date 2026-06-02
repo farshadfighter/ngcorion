@@ -214,16 +214,18 @@ def consume_operation(db: Session, license_key: str, org_token: str, vm_fingerpr
     max_field, used_field = operation_map[operation_type]
     max_value = getattr(license, max_field)
     used_value = getattr(license, used_field)
-    
+
     # چک محدودیت (None = نامحدود)
-    if max_value is not None:
-        if used_value + count > max_value:
-            return False, f"limit {operation_type} has expierd", license
-        
-        setattr(license, used_field, used_value + count)
-        db.commit()
-        db.refresh(license)
-    
+    # Only enforce the ceiling for capped plans. The usage counter is always
+    # incremented — including unlimited (Enterprise) plans where max_value is
+    # None — so the frontend can report real usage instead of a frozen 0.
+    if max_value is not None and used_value + count > max_value:
+        return False, f"limit {operation_type} has expierd", license
+
+    setattr(license, used_field, used_value + count)
+    db.commit()
+    db.refresh(license)
+
     return True, "operation successfully", license
 
 def get_all_licenses(db: Session, skip: int = 0, limit: int = 100):
