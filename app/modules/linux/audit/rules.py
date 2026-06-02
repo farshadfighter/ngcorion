@@ -79,12 +79,13 @@ def _resolve_service_name(service: str, distro_profile: str) -> str:
     """
     Resolve a CIS service name to the systemd unit name used on this distro.
 
-    Mirrors the remapping in audit_commands.py (httpd -> apache2 on Debian/Ubuntu)
-    so the rule reads the same svc_<name>_enabled key the audit actually produced.
+    Mirrors the remapping in audit_commands.py (httpd -> apache2, smb -> smbd on
+    Debian/Ubuntu) so the rule reads the same svc_<name>_enabled key the audit
+    actually produced.
     """
     is_debian = distro_profile.startswith("ubuntu") or distro_profile.startswith("debian")
-    if service == "httpd" and is_debian:
-        return "apache2"
+    if is_debian:
+        return {"httpd": "apache2", "smb": "smbd"}.get(service, service)
     return service
 
 

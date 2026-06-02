@@ -186,9 +186,12 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         ("telnet.socket", "2.2.16"),
     ]
 
-    # Adjust service names for distro (httpd -> apache2 on Debian/Ubuntu)
+    # Adjust service names for distro (e.g. httpd -> apache2, smb -> smbd on Debian/Ubuntu).
+    # Keep this in sync with _resolve_service_name() in rules.py and
+    # get_distro_service_name() in hardening/command_templates.py.
+    _debian_service_aliases = {"httpd": "apache2", "smb": "smbd"}
     if is_debian:
-        services_to_check = [(s if s != "httpd" else "apache2", sec) for s, sec in services_to_check]
+        services_to_check = [(_debian_service_aliases.get(s, s), sec) for s, sec in services_to_check]
 
     for service, section in services_to_check:
         commands.append({
