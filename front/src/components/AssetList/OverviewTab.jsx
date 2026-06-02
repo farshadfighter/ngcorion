@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { isAssetComplete } from "./assetCompleteness";
 
 export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected }) => {
     const [sortColumn, setSortColumn] = useState(null);
@@ -32,6 +33,7 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds,
             <table className="assets-table">
                 <thead>
                 <tr>
+                    <th style={{ width: "4px", padding: 0 }}></th>
                     <th style={{ width: "40px" }}>
                         <input type="checkbox" checked={allSelected} onChange={onToggleAll}
                                title="Select all" style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
@@ -47,30 +49,38 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds,
                 </tr>
                 </thead>
                 <tbody>
-                {sortedAssets.map((asset, index) => (
-                    <tr key={asset.id} className={`${isNewAsset(asset) ? "new-asset-row" : ""} ${selectedIds.has(asset.id) ? "selected-row" : ""}`}
-                        style={{ background: selectedIds.has(asset.id) ? "#eef2f7" : undefined }}>
-                        <td>
-                            <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={() => onToggleSelect(asset.id)}
-                                   style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
-                        </td>
-                        <td>{index + 1}</td>
-                        <td>{asset.asset_name}</td>
-                        <td>{asset.hostname || "-"}</td>
-                        <td>{asset.asset_type_name || "-"}</td>
-                        <td>{asset.asset_role || "-"}</td>
-                        <td>{asset.manufacturer || "-"}</td>
-                        <td>{asset.model || "-"}</td>
-                        <td className="actions-cell">
-                            <button className="btn-icon" title="Edit" onClick={() => onEdit(asset)}>
-                                <i className="fa-solid fa-pen"></i>
-                            </button>
-                            <button className="btn-icon" title="Delete" onClick={() => onDelete(asset.id)}>
-                                <i className="fa-solid fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                ))}
+                {sortedAssets.map((asset, index) => {
+                    const complete = isAssetComplete(asset);
+                    return (
+                        <tr
+                            key={asset.id}
+                            className={`${isNewAsset(asset) ? "new-asset-row" : ""} ${selectedIds.has(asset.id) ? "selected-row" : ""}`}
+                            style={{ background: selectedIds.has(asset.id) ? "#eef2f7" : undefined }}
+                        >
+                            {/* نوار رنگی completeness */}
+                            <td className={`completeness-indicator ${complete ? "complete" : "incomplete"}`}></td>
+                            <td>
+                                <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={() => onToggleSelect(asset.id)}
+                                       style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
+                            </td>
+                            <td>{index + 1}</td>
+                            <td>{asset.asset_name}</td>
+                            <td>{asset.hostname || "-"}</td>
+                            <td>{asset.asset_type_name || "-"}</td>
+                            <td>{asset.asset_role || "-"}</td>
+                            <td>{asset.manufacturer || "-"}</td>
+                            <td>{asset.model || "-"}</td>
+                            <td className="actions-cell">
+                                <button className="btn-icon" title="Edit" onClick={() => onEdit(asset)}>
+                                    <i className="fa-solid fa-pen"></i>
+                                </button>
+                                <button className="btn-icon" title="Delete" onClick={() => onDelete(asset.id)}>
+                                    <i className="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    );
+                })}
                 </tbody>
             </table>
         </div>

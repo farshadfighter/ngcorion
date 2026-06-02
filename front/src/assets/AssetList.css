@@ -1006,3 +1006,46 @@
     font-weight: 500;
     color: #111827;
 }
+/* ============================================
+   COMPLETENESS INDICATOR - نوار رنگی ابتدای ردیف
+   ============================================ */
+
+/* ستون indicator در thead بدون border */
+.assets-table thead tr th:first-child {
+    width: 4px;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+/* سلول indicator */
+td.completeness-indicator {
+    width: 4px;
+    min-width: 4px;
+    max-width: 4px;
+    padding: 0 !important;
+    border-right: none !important;
+    border-radius: 4px 0 0 4px;
+    transition: background-color 0.2s ease;
+}
+
+/* سبز = تکمیل */
+td.completeness-indicator.complete {
+    background-color: #22c55e;
+    box-shadow: inset -1px 0 0 rgba(0,0,0,0.06);
+}
+
+/* نارنجی = ناقص */
+td.completeness-indicator.incomplete {
+    background-color: #f97316;
+    box-shadow: inset -1px 0 0 rgba(0,0,0,0.06);
+}
+
+/* hover روی ردیف - indicator کمی روشن‌تر */
+.assets-table tbody tr:hover td.completeness-indicator.complete {
+    background-color: #16a34a;
+}
+
+.assets-table tbody tr:hover td.completeness-indicator.incomplete {
+    background-color: #ea6f0a;
+}
