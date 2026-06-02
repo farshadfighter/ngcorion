@@ -1882,7 +1882,7 @@ CIS_SECTION_TO_IOS: Dict[str, str] = {
     "CIS-1.1.3":  "IOS-L1-0211",   # aaa authentication enable default
     "CIS-1.1.4":  "IOS-L1-0212",   # line con 0 / login authentication
     "CIS-1.1.5":  "IOS-L1-0213",   # line tty / login authentication
-    "CIS-1.1.6":  "IOS-L1-004",    # line vty / login authentication
+    "CIS-1.1.6":  "IOS-L1-013",    # line vty / login authentication (was IOS-L1-004 'transport input ssh', which never satisfied the vty login-authentication check)
     "CIS-1.1.7":  "IOS-L1-0225",   # aaa accounting commands 15
     "CIS-1.1.8":  "IOS-L1-0221",   # aaa accounting connection
     "CIS-1.1.9":  "IOS-L1-0222",   # aaa accounting exec

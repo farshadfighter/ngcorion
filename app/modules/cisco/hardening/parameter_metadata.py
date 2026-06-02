@@ -226,18 +226,68 @@ def get_parameters_for_check(check_number: str) -> List[ParameterMetadata]:
     """
     Get all parameter metadata for a specific check.
 
+    Driven by the command template, which is the single source of truth for what
+    placeholders a check's remediation actually needs. The template is CIS-aware
+    (it resolves CIS-X.X.X ids via CIS_SECTION_TO_IOS), unlike the legacy
+    CHECK_PARAMETER_MAP, which is keyed only by IOS-L1-XXX ids and is incomplete.
+
+    For each placeholder, UI metadata (label/type/description/…) comes from
+    PARAMETER_REGISTRY (keyed by parameter name), while `default` and `required`
+    come from the template: a parameter is required iff the template lists it in
+    `required_params` and provides no default for it.
+
     Args:
-        check_number: CIS check number (e.g., "IOS-L1-001")
+        check_number: CIS check number (e.g., "CIS-1.1.2") or IOS id ("IOS-L1-001")
 
     Returns:
         List of ParameterMetadata objects for the check's parameters
     """
-    param_names = CHECK_PARAMETER_MAP.get(check_number, [])
-    return [
-        PARAMETER_REGISTRY[name]
-        for name in param_names
-        if name in PARAMETER_REGISTRY
-    ]
+    import dataclasses
+    from .command_templates import has_template, get_template
+    from .command_parser import RemediationParser
+
+    if not has_template(check_number):
+        return []
+
+    template = get_template(check_number)
+    required_params = template.get("required_params", [])
+    optional_params = template.get("optional_params", [])
+    template_defaults = template.get("defaults", {})
+
+    # Placeholder names, order-preserving and de-duplicated. Fall back to the
+    # placeholders actually present in the commands if the template doesn't
+    # enumerate them explicitly.
+    param_names = list(dict.fromkeys(list(required_params) + list(optional_params)))
+    if not param_names:
+        seen = set()
+        for cmd in template.get("commands", []):
+            for name in RemediationParser.extract_parameters(cmd):
+                if name not in seen:
+                    seen.add(name)
+                    param_names.append(name)
+
+    params: List[ParameterMetadata] = []
+    for name in param_names:
+        base = PARAMETER_REGISTRY.get(name)
+        # Default comes from the template only (contextually correct). The registry
+        # is used purely for UI metadata — its name-keyed defaults are not always
+        # valid in every command context, so they must not drive fixability.
+        default = template_defaults.get(name)
+        required = name in required_params and name not in template_defaults
+        if base is not None:
+            params.append(dataclasses.replace(base, default=default, required=required))
+        else:
+            # No UI metadata registered for this placeholder — synthesize a
+            # generic text field so the form can still collect it.
+            params.append(ParameterMetadata(
+                name=name,
+                input_type="text",
+                label=name.replace("_", " ").title(),
+                description=f"Value for {name}",
+                required=required,
+                default=default,
+            ))
+    return params
 
 
 def get_required_parameters_for_check(check_number: str) -> List[ParameterMetadata]:

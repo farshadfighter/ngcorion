@@ -1351,11 +1351,7 @@ class HardeningService:
                 "skipped_checks": List[Dict]
             }
         """
-        from .parameter_metadata import (
-            is_check_auto_fixable,
-            get_check_defaults
-        )
-        from .command_templates import has_template
+        from .command_templates import has_template, get_template
 
         logger.info(f"Starting auto-harden with defaults for session {audit_session_id}")
 
@@ -1382,16 +1378,32 @@ class HardeningService:
 
         for result in failed_results:
             check_number = result.check_number
-            if has_template(check_number) and is_check_auto_fixable(check_number):
-                auto_fixable.append(result)
-            else:
-                reason = "No template" if not has_template(check_number) else "Requires user input"
+
+            # Fixability is decided from the command template (which is CIS-aware via
+            # CIS_SECTION_TO_IOS), not from parameter_metadata. A template's
+            # `required_params` lists exactly the placeholders that have no default and
+            # therefore need user input — so a check is auto-fixable-with-defaults only
+            # when that list is empty. This keeps the decision consistent with what
+            # substitution actually does below (no "Missing required parameters" surprises).
+            if not has_template(check_number):
                 skipped.append({
                     "check_number": check_number,
                     "check_title": result.check_title,
                     "result_id": result.id,
-                    "reason": reason
+                    "reason": "No template"
                 })
+                continue
+
+            if get_template(check_number).get("required_params"):
+                skipped.append({
+                    "check_number": check_number,
+                    "check_title": result.check_title,
+                    "result_id": result.id,
+                    "reason": "Requires user input"
+                })
+                continue
+
+            auto_fixable.append(result)
 
         if not auto_fixable:
             logger.info("No auto-fixable checks found")
@@ -1456,8 +1468,10 @@ class HardeningService:
                         check_number=check_number
                     )
 
-                    # Get defaults and substitute
-                    defaults = get_check_defaults(check_number)
+                    # Substitute using the template's own (contextually-correct) defaults.
+                    # Because the categorization above only admits checks with no
+                    # required_params, every remaining placeholder is covered here.
+                    defaults = parsed.defaults
                     final_commands = RemediationParser.substitute_parameters(
                         parsed.commands,
                         apply_defaults({}, defaults)
@@ -1524,6 +1538,19 @@ class HardeningService:
 
                     action.completed_at = datetime.now(timezone.utc)
                     db.commit()
+
+                except ValueError as e:
+                    # A template whose commands still contain unsubstituted placeholders
+                    # despite empty required_params is a template-authoring bug, not a
+                    # device failure. Skip it (so it can't spam errors or be miscounted as
+                    # a failed remediation) and surface it for follow-up.
+                    logger.warning(f"Skipping {check_number}: unresolved template parameters: {e}")
+                    skipped.append({
+                        "check_number": check_number,
+                        "check_title": result.check_title,
+                        "result_id": result.id,
+                        "reason": "Requires user input"
+                    })
 
                 except Exception as e:
                     logger.error(f"Error auto-fixing {check_number}: {str(e)}")

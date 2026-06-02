@@ -240,8 +240,13 @@ class CiscoHardeningExecutor:
         try:
             logger.info(f"Verifying check {rule.id} on {self.ip}")
 
-            # Collect fresh configuration
-            config = self.ssh_client.send_command("show running-config")
+            # Collect the SAME broad command set the audit uses (collect_turbo),
+            # not just "show running-config". Several CIS check functions evaluate
+            # data that only appears in other show commands — e.g. RSA key size from
+            # "show crypto key mypubkey rsa", "show ip ssh", "show version". Verifying
+            # against running-config alone makes those checks report FAIL even after a
+            # correct fix. Using the audit's collection keeps verify and audit in sync.
+            config = self.ssh_client.collect_turbo()
 
             # Run the check function
             passed = rule.check(config)
