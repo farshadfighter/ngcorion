@@ -177,14 +177,15 @@
 }
 
 .assets-table th {
-    padding: 14px 16px;
+    padding: 14px 12px;
     text-align: left;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    text-transform: none;
+    letter-spacing: 0;
     border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
 }
 
 .assets-table tbody tr {

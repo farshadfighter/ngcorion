@@ -66,10 +66,10 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                         </th>
                         <th>Number</th>
                         <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>Asset Name {renderSortIcon("asset_name")}</th>
-                        <th onClick={() => handleSort("confidentiality_level")} style={{ cursor: "pointer" }}>Confidentiality Level {renderSortIcon("confidentiality_level")}</th>
+                        <th onClick={() => handleSort("confidentiality_level")} style={{ cursor: "pointer" }}>Confidentiality {renderSortIcon("confidentiality_level")}</th>
                         <th onClick={() => handleSort("risk_level")} style={{ cursor: "pointer" }}>Risk Level {renderSortIcon("risk_level")}</th>
-                        <th onClick={() => handleSort("last_audit_date")} style={{ cursor: "pointer" }}>Last Audit Date {renderSortIcon("last_audit_date")}</th>
-                        <th onClick={() => handleSort("last_patch_date")} style={{ cursor: "pointer" }}>Last Patch Date {renderSortIcon("last_patch_date")}</th>
+                        <th onClick={() => handleSort("last_audit_date")} style={{ cursor: "pointer" }}>Last Audit  {renderSortIcon("last_audit_date")}</th>
+                        <th onClick={() => handleSort("last_patch_date")} style={{ cursor: "pointer" }}>Last Patch {renderSortIcon("last_patch_date")}</th>
                         <th onClick={() => handleSort("asset_value")} style={{ cursor: "pointer" }}>Asset Value {renderSortIcon("asset_value")}</th>
                         <th>Description</th>
                         <th>Actions</th>
