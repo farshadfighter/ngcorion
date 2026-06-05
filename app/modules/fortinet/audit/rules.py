@@ -11,9 +11,6 @@ Comprehensive catalog of 65+ FortiGate security controls covering:
 - EXPOSURE: WAN/VIP exposure risks
 - UTM: Unified Threat Management coverage
 - FAZ: FortiAnalyzer integration
-- SHADOW: Shadow rule analysis
-- UNUSED: Unused object detection
-- COVERAGE: UTM coverage metrics
 
 Based on CIS Benchmarks and enterprise best practices.
 """
@@ -176,9 +173,6 @@ def get_fortinet_controls() -> List[FortiGateControl]:
     - EXPOSURE: WAN/VIP exposure (2 checks)
     - UTM: Security profiles (4 checks)
     - FAZ: FortiAnalyzer logging (2 checks)
-    - SHADOW: Shadow rule analysis (1 check)
-    - UNUSED: Unused objects (1 check)
-    - COVERAGE: UTM coverage metrics (1 check)
     """
     # Command shortcuts
     SG = "show system global"
