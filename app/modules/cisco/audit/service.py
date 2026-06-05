@@ -262,6 +262,7 @@ class AuditService:
                     "check_number": finding["id"],
                     "title": finding["title"],
                     "severity": finding["severity"],
+                    "level": finding["level"],
                     "passed": finding["compliant"],
                     "evidence": finding["evidence"],
                     "remediation": finding.get("remediation")
@@ -479,11 +480,10 @@ class AuditService:
             rule_id = sec["rule_id"]
             section_num = sec["section"]
 
-            # Try both formats: IOS-L1-* (internal) and CIS-* (CIS benchmark)
-            # The execute_cis_benchmark_audit uses CIS-* format
+            # rule_id is "CIS-<section>" (what the audit engine stores). Fall back
+            # to the explicit CIS section id for any legacy results.
             result = results_by_id.get(rule_id)
             if not result:
-                # Try CIS section format (e.g., CIS-1.1.1)
                 cis_id = f"CIS-{section_num}"
                 result = results_by_id.get(cis_id)
 
