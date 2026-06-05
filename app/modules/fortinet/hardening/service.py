@@ -97,6 +97,62 @@ class FortiGateHardeningService:
         raise ValueError(f"FortiGate control {check_id} not found")
 
     @staticmethod
+    def discover_vdoms(
+        db: Session,
+        asset_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_port: int = 22
+    ) -> List[str]:
+        """
+        Discover VDOMs on a FortiGate device for the hardening flow.
+
+        Connects over SSH and runs `show vdom` (and fallbacks) so the UI can
+        present the available virtual domains once the user enables VDOM mode.
+
+        Args:
+            db: Database session
+            asset_id: Target asset ID
+            ssh_username: SSH username (not stored)
+            ssh_password: SSH password (not stored)
+            ssh_port: SSH port (default 22)
+
+        Returns:
+            List of VDOM names (empty if VDOMs are disabled on the device)
+
+        Raises:
+            ValueError: If asset not found or missing IP
+            Exception: If SSH connection fails
+        """
+        # Imported here to avoid a circular import at module load time.
+        from app.modules.fortinet.audit.ssh_client import FortiGateSSHClient
+
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if not asset:
+            raise ValueError(f"Asset ID {asset_id} not found")
+
+        if not asset.ip_address:
+            raise ValueError(f"Asset '{asset.asset_name}' has no IP address configured")
+
+        target_ip = asset.ip_address
+
+        try:
+            with FortiGateSSHClient(
+                host=target_ip,
+                username=ssh_username,
+                password=ssh_password,
+                port=ssh_port
+            ) as ssh_client:
+                vdoms = ssh_client.discover_vdoms()
+
+            logger.info(f"Discovered {len(vdoms)} VDOMs on {target_ip}: {vdoms}")
+            return vdoms
+
+        except Exception as e:
+            logger.error(f"VDOM discovery failed for {target_ip}: {type(e).__name__}")
+            raise
+
+    @staticmethod
     def preview_hardening(
         db: Session,
         audit_result_id: int,

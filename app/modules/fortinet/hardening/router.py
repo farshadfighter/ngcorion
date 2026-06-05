@@ -358,7 +358,104 @@ class FortiGateActionResponse(BaseModel):
         from_attributes = True
 
 
+class FortiGateVDOMDiscoveryRequest(BaseModel):
+    """Request to discover VDOMs on a FortiGate device before hardening."""
+    asset_id: int = Field(..., description="Target FortiGate asset ID")
+    ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
+    ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "asset_id": 42,
+                "ssh_username": "admin",
+                "ssh_password": "********",
+                "ssh_port": 22,
+            }
+        }
+
+
+class FortiGateVDOMDiscoveryResponse(BaseModel):
+    """VDOM discovery response."""
+    asset_id: int
+    asset_name: Optional[str]
+    target_ip: Optional[str]
+    vdoms: List[str]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "asset_id": 42,
+                "asset_name": "fw-hq-01",
+                "target_ip": "192.168.1.1",
+                "vdoms": ["root", "VDOM_1", "VDOM_2"],
+            }
+        }
+
+
 router = APIRouter(prefix="/api/hardening/fortinet", tags=["Hardening - FortiGate"])
+
+
+@router.post("/vdoms/discover", response_model=FortiGateVDOMDiscoveryResponse)
+def discover_fortinet_vdoms(
+    request: FortiGateVDOMDiscoveryRequest,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db),
+):
+    """
+    Discover VDOMs on a FortiGate device for the hardening flow.
+
+    Used by the hardening UI: when the user enables VDOM mode, this returns the
+    list of virtual domains (via `show vdom` over SSH) so they can pick one.
+    An empty list means VDOMs are disabled on the device.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    from app.models import Asset
+
+    asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
+    if not asset:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Asset ID {request.asset_id} not found",
+        )
+
+    try:
+        vdoms = FortiGateHardeningService.discover_vdoms(
+            db=db,
+            asset_id=request.asset_id,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_port=request.ssh_port,
+        )
+
+        return {
+            "asset_id": asset.id,
+            "asset_name": asset.asset_name,
+            "target_ip": asset.ip_address,
+            "vdoms": vdoms,
+        }
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except (
+        SSHAuthenticationError,
+        SSHConnectionTimeoutError,
+        SSHNetworkError,
+        SSHAlgorithmMismatchError,
+        SSHHostKeyError,
+        SSHConnectionError,
+    ) as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"VDOM discovery failed: {str(e)}",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"VDOM discovery failed: {str(e)}",
+        )
 
 
 @router.post("/preview", response_model=FortiGatePreviewResponse)

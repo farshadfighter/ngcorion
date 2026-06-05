@@ -454,9 +454,15 @@ export const autoHardenWithDefaults = createAsyncThunk(
  */
 export const discoverFortinetVdoms = createAsyncThunk(
     "hardening/discoverFortinetVdoms",
-    async ({ asset_id, ssh_username, ssh_password, ssh_port = 22 }, { rejectWithValue }) => {
+    // mode: "audit" (default) hits the audit endpoint (AUDIT read) — used by the
+    // audit-driven forms. mode: "hardening" hits the hardening endpoint
+    // (HARDENING read) so hardening-only users can list VDOMs too.
+    async ({ asset_id, ssh_username, ssh_password, ssh_port = 22, mode = "audit" }, { rejectWithValue }) => {
         try {
-            const res = await api.post("/api/audit/fortinet/vdoms/discover", {
+            const endpoint = mode === "hardening"
+                ? "/api/hardening/fortinet/vdoms/discover"
+                : "/api/audit/fortinet/vdoms/discover";
+            const res = await api.post(endpoint, {
                 asset_id, ssh_username, ssh_password, ssh_port,
             });
             return res.data; // { asset_id, asset_name, target_ip, vdoms: string[] }

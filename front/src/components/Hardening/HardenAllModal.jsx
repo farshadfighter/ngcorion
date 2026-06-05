@@ -4,6 +4,7 @@ import {
     fetchRequiredParameters,
     autoHardenWithDefaults,
     batchExecuteChecks,
+    discoverFortinetVdoms,
     clearRequiredParameters,
     clearMessages
 } from '../../store/hardeningSlice';
@@ -26,8 +27,11 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         isFetchingParams,
         isExecuting,
         error,
-        cisChecks
+        cisChecks,
+        vdomDiscovery
     } = useSelector((state) => state.hardening);
+
+    const [vdomEnabled, setVdomEnabled] = useState(false);
 
     const [step, setStep] = useState(1); // 1: Parameters, 2: Credentials, 3: Executing, 4: Results
     const [paramValues, setParamValues] = useState({});
@@ -84,6 +88,17 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     const handleSSHChange = (e) => {
         const { name, value } = e.target;
         setSshCredentials(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleDetectVdoms = () => {
+        if (!assetId || !sshCredentials.ssh_username || !sshCredentials.ssh_password) return;
+        dispatch(discoverFortinetVdoms({
+            mode:         'hardening',
+            asset_id:     parseInt(assetId),
+            ssh_username: sshCredentials.ssh_username,
+            ssh_password: sshCredentials.ssh_password,
+            ssh_port:     parseInt(sshCredentials.ssh_port) || 22,
+        }));
     };
 
     const validateParameters = () => {
@@ -143,7 +158,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                     ssh_password: sshCredentials.ssh_password,
                     ssh_port:     parseInt(sshCredentials.ssh_port) || 22,
                     ...(isCisco(deviceType)    && sshCredentials.ssh_secret     && { ssh_secret:     sshCredentials.ssh_secret }),
-                    ...(isFortinet(deviceType) && sshCredentials.vdom           && { vdom:           sshCredentials.vdom }),
+                    ...(isFortinet(deviceType) && vdomEnabled && sshCredentials.vdom && { vdom:        sshCredentials.vdom }),
                     ...(needsSudo(deviceType)  && sshCredentials.sudo_password  && { sudo_password:  sshCredentials.sudo_password }),
                     ...(isMongo(deviceType)    && sshCredentials.mongo_username  && { mongo_username: sshCredentials.mongo_username }),
                     ...(isMongo(deviceType)    && sshCredentials.mongo_password  && { mongo_password: sshCredentials.mongo_password }),
@@ -298,9 +313,63 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
 
                 {isFortinet(deviceType) && (
                     <div className="hardening-form-group">
-                        <label>VDOM</label>
-                        <input type="text" name="vdom" value={sshCredentials.vdom} onChange={handleSSHChange} placeholder="Virtual Domain (optional, default: root)" autoComplete="off" style={inputStyle} />
-                        <span style={hintStyle}>Leave empty for default VDOM</span>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={vdomEnabled}
+                                onChange={(e) => setVdomEnabled(e.target.checked)}
+                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                            />
+                            This FortiGate uses VDOMs
+                        </label>
+
+                        {vdomEnabled && (
+                            <div style={{ marginTop: '8px' }}>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={handleDetectVdoms}
+                                        disabled={vdomDiscovery?.isDiscovering || !sshCredentials.ssh_username || !sshCredentials.ssh_password}
+                                        style={{
+                                            padding: '6px 14px', fontSize: '13px', fontWeight: 600,
+                                            background: '#2563eb', color: 'white', border: 'none',
+                                            borderRadius: '6px', cursor: 'pointer',
+                                            opacity: (vdomDiscovery?.isDiscovering || !sshCredentials.ssh_username || !sshCredentials.ssh_password) ? 0.5 : 1,
+                                        }}
+                                    >
+                                        {vdomDiscovery?.isDiscovering ? 'Detecting…' : 'Show VDOMs'}
+                                    </button>
+                                    {vdomDiscovery?.vdoms !== null && !vdomDiscovery?.isDiscovering && (
+                                        <span style={{
+                                            padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
+                                            background: vdomDiscovery.vdoms.length > 0 ? '#d1fae5' : '#f3f4f6',
+                                            color: vdomDiscovery.vdoms.length > 0 ? '#065f46' : '#6b7280',
+                                            border: `1px solid ${vdomDiscovery.vdoms.length > 0 ? '#6ee7b7' : '#d1d5db'}`,
+                                        }}>
+                                            {vdomDiscovery.vdoms.length > 0
+                                                ? `✓ VDOM Enabled (${vdomDiscovery.vdoms.length})`
+                                                : 'No VDOMs found'}
+                                        </span>
+                                    )}
+                                </div>
+                                {vdomDiscovery?.error && (
+                                    <span style={{ fontSize: '12px', color: '#dc2626', display: 'block', marginBottom: '4px' }}>
+                                        {vdomDiscovery.error}
+                                    </span>
+                                )}
+                                {vdomDiscovery?.vdoms?.length > 0 ? (
+                                    <select name="vdom" value={sshCredentials.vdom} onChange={handleSSHChange} style={inputStyle}>
+                                        <option value="">Select VDOM (default: root)</option>
+                                        {vdomDiscovery.vdoms.map((v) => (
+                                            <option key={v} value={v}>{v}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input type="text" name="vdom" value={sshCredentials.vdom} onChange={handleSSHChange} placeholder="VDOM name (e.g. root)" autoComplete="off" style={inputStyle} />
+                                )}
+                                <span style={hintStyle}>Click "Show VDOMs" to list virtual domains, then pick the target VDOM.</span>
+                            </div>
+                        )}
                     </div>
                 )}
 

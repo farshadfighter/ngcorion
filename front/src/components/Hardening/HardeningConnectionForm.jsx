@@ -92,6 +92,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     });
 
     const [errors, setErrors] = useState({});
+    const [vdomEnabled, setVdomEnabled] = useState(false);
 
     useEffect(() => {
         dispatch(fetchAssets());
@@ -174,7 +175,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                 ssh_password: formData.ssh_password,
                 ssh_port:     parseInt(formData.ssh_port) || 22,
                 ...(isCisco(dt) && formData.ssh_secret && { ssh_secret: formData.ssh_secret }),
-                ...(isFortinet(dt) && formData.vdom    && { vdom:       formData.vdom }),
+                ...(isFortinet(dt) && vdomEnabled && formData.vdom && { vdom: formData.vdom }),
                 ...(needsSudo(dt)  && formData.sudo_password && { sudo_password: formData.sudo_password }),
                 ...(isMongo(dt)    && formData.mongo_username && { mongo_username: formData.mongo_username }),
                 ...(isMongo(dt)    && formData.mongo_password && { mongo_password: formData.mongo_password }),
@@ -335,7 +336,17 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                             {/* Fortinet: VDOM detection + selection */}
                             {isFortinet(dt) && (
                                 <div className="form-group">
-                                    <label>VDOM</label>
+                                    <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={vdomEnabled}
+                                            onChange={(e) => setVdomEnabled(e.target.checked)}
+                                            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                        />
+                                        This FortiGate uses VDOMs
+                                    </label>
+                                    {vdomEnabled && (
+                                      <div style={{ marginTop: "8px" }}>
                                     <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
                                         <button
                                             type="button"
@@ -393,6 +404,8 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                     <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
                                         Click "Detect VDOMs" to discover available virtual domains
                                     </span>
+                                      </div>
+                                    )}
                                 </div>
                             )}
 

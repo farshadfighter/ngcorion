@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAuditSessions, getDeviceName } from "../../store/hardeningSlice";
+import { fetchAuditSessions, getDeviceName, discoverFortinetVdoms } from "../../store/hardeningSlice";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,8 @@ const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
 export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedSessionId, preselectedDeviceType }) => {
     const dispatch = useDispatch();
-    const { auditSessions, isLoading } = useSelector((state) => state.hardening);
+    const { auditSessions, isLoading, vdomDiscovery } = useSelector((state) => state.hardening);
+    const [vdomEnabled, setVdomEnabled] = useState(false);
 
     const [formData, setFormData] = useState({
         session_id:       "",
@@ -99,6 +100,18 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
         }
     };
 
+    const handleDetectVdoms = () => {
+        const assetId = selectedSession?.asset_id;
+        if (!assetId || !formData.ssh_username || !formData.ssh_password) return;
+        dispatch(discoverFortinetVdoms({
+            mode:         "hardening",
+            asset_id:     parseInt(assetId),
+            ssh_username: formData.ssh_username,
+            ssh_password: formData.ssh_password,
+            ssh_port:     parseInt(formData.ssh_port) || 22,
+        }));
+    };
+
     const validate = () => {
         const errs = {};
 
@@ -151,7 +164,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                 ssh_password: formData.ssh_password,
                 ssh_port:     parseInt(formData.ssh_port) || 22,
                 ...(isCisco(deviceType)   && formData.ssh_secret     && { ssh_secret:    formData.ssh_secret }),
-                ...(isFortinet(deviceType) && formData.vdom           && { vdom:          formData.vdom }),
+                ...(isFortinet(deviceType) && vdomEnabled && formData.vdom && { vdom:      formData.vdom }),
                 ...(needsSudo(deviceType)  && formData.sudo_password  && { sudo_password: formData.sudo_password }),
                 ...(isMongo(deviceType)    && formData.mongo_username && { mongo_username: formData.mongo_username }),
                 ...(isMongo(deviceType)    && formData.mongo_password && { mongo_password: formData.mongo_password }),
@@ -321,19 +334,79 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                             {/* Fortinet */}
                             {isFortinet(deviceType) && (
                                 <div className="form-group">
-                                    <label htmlFor="vdom">VDOM</label>
-                                    <input
-                                        id="vdom"
-                                        type="text"
-                                        name="vdom"
-                                        value={formData.vdom}
-                                        onChange={handleChange}
-                                        placeholder="Virtual Domain (optional, default: root)"
-                                        autoComplete="off"
-                                    />
-                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
-                                        Leave empty for default VDOM
-                                    </span>
+                                    <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={vdomEnabled}
+                                            onChange={(e) => setVdomEnabled(e.target.checked)}
+                                            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                        />
+                                        This FortiGate uses VDOMs
+                                    </label>
+
+                                    {vdomEnabled && (
+                                        <div style={{ marginTop: "8px" }}>
+                                            <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDetectVdoms}
+                                                    disabled={vdomDiscovery?.isDiscovering || !formData.ssh_username || !formData.ssh_password || !selectedSession?.asset_id}
+                                                    style={{
+                                                        padding: "6px 14px", fontSize: "13px", fontWeight: 600,
+                                                        background: "#2563eb", color: "white", border: "none",
+                                                        borderRadius: "6px", cursor: "pointer",
+                                                        opacity: (vdomDiscovery?.isDiscovering || !formData.ssh_username || !formData.ssh_password || !selectedSession?.asset_id) ? 0.5 : 1,
+                                                    }}
+                                                >
+                                                    {vdomDiscovery?.isDiscovering ? "Detecting…" : "Show VDOMs"}
+                                                </button>
+                                                {vdomDiscovery?.vdoms !== null && !vdomDiscovery?.isDiscovering && (
+                                                    <span style={{
+                                                        padding: "3px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: 600,
+                                                        background: vdomDiscovery.vdoms.length > 0 ? "#d1fae5" : "#f3f4f6",
+                                                        color: vdomDiscovery.vdoms.length > 0 ? "#065f46" : "#6b7280",
+                                                        border: `1px solid ${vdomDiscovery.vdoms.length > 0 ? "#6ee7b7" : "#d1d5db"}`,
+                                                    }}>
+                                                        {vdomDiscovery.vdoms.length > 0
+                                                            ? `✓ VDOM Enabled (${vdomDiscovery.vdoms.length})`
+                                                            : "No VDOMs found"}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {vdomDiscovery?.error && (
+                                                <span style={{ fontSize: "12px", color: "#dc2626", display: "block", marginBottom: "4px" }}>
+                                                    {vdomDiscovery.error}
+                                                </span>
+                                            )}
+                                            {vdomDiscovery?.vdoms?.length > 0 ? (
+                                                <select
+                                                    id="vdom"
+                                                    name="vdom"
+                                                    value={formData.vdom}
+                                                    onChange={handleChange}
+                                                    style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
+                                                >
+                                                    <option value="">Select VDOM (default: root)</option>
+                                                    {vdomDiscovery.vdoms.map((v) => (
+                                                        <option key={v} value={v}>{v}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    id="vdom"
+                                                    type="text"
+                                                    name="vdom"
+                                                    value={formData.vdom}
+                                                    onChange={handleChange}
+                                                    placeholder="VDOM name (e.g. root)"
+                                                    autoComplete="off"
+                                                />
+                                            )}
+                                            <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
+                                                Click "Show VDOMs" to list virtual domains, then pick the target VDOM.
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

@@ -312,11 +312,6 @@ FORTIGATE_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     # ==================== FAZ PACK ====================
     "FG-FAZ-001": ["FAZ_SERVER"],  # FortiAnalyzer logging enabled
     "FG-FAZ-002": ["FAZ_SERVER"],  # FortiAnalyzer server configured
-
-    # ==================== ANALYTICS ====================
-    "FG-SHADOW-INV-001": [],  # Shadow analysis (informational)
-    "FG-UNUSED-INV-001": [],  # Unused objects (informational)
-    "FG-COV-INV-001": [],  # Coverage metrics (informational)
 }
 
 
