@@ -478,19 +478,6 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                   "config log fortianalyzer setting\\n set server <faz-ip>\\nend", tags=["faz", "logging"]),
     ]
 
-    # ===== ANALYTICS INVENTORY CONTROLS =====
-    controls += [
-        _mk_re_pre("FG-SHADOW-INV-001", "Policy table present for shadow analysis", "SHADOW", "Firewall Policy", "Low", "L1", POL,
-                  r"set\s+(srcaddr|dstaddr|service|srcintf|dstintf)\s+",
-                  "Shadow rule analysis computed from policy table", tags=["shadow", "analytics"]),
-        _mk_re_pre("FG-UNUSED-INV-001", "Address objects readable", "UNUSED", "Object Hygiene", "Low", "L1", "show firewall address",
-                  r"^\s*edit\s+",
-                  "Unused object analysis computed from address/service objects", tags=["unused", "analytics"]),
-        _mk_re_pre("FG-COV-INV-001", "Policy table present for coverage metrics", "COVERAGE", "Coverage", "Low", "L1", POL,
-                  r"^\s*edit\s+",
-                  "UTM coverage and policy matrix computed", tags=["coverage", "analytics"]),
-    ]
-
     return controls
 
 
@@ -508,8 +495,7 @@ def get_all_packs() -> List[str]:
     """Get list of all control packs"""
     return [
         "BASELINE", "HA", "SDWAN", "VPN_SSL", "VPN_IPSEC",
-        "CENTRAL_NAT", "LOCAL_IN", "EXPOSURE", "UTM", "FAZ",
-        "SHADOW", "UNUSED", "COVERAGE"
+        "CENTRAL_NAT", "LOCAL_IN", "EXPOSURE", "UTM", "FAZ"
     ]
 
 
