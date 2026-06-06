@@ -44,7 +44,7 @@ def get_discovery_logs(
     asset_id: Optional[int] = None,
     user_id: Optional[int] = None,
     status: Optional[str] = None,
-    current_user: User = Depends(require_permission("DISCOVERY", "read")),
+    current_user: User = Depends(require_permission("ASSET_AUTO_DISCOVERY", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -98,7 +98,7 @@ def get_discovery_logs(
 def get_logs_for_scan(
     scan_id: str,
     limit: int = Query(50, ge=1, le=500),
-    current_user: User = Depends(require_permission("DISCOVERY", "read")),
+    current_user: User = Depends(require_permission("ASSET_AUTO_DISCOVERY", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -134,7 +134,7 @@ def get_logs_for_scan(
 
 @router.get("/stats")
 def get_discovery_log_stats(
-    current_user: User = Depends(require_permission("DISCOVERY", "read")),
+    current_user: User = Depends(require_permission("ASSET_AUTO_DISCOVERY", "read")),
     db: Session = Depends(get_db)
 ):
     """
