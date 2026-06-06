@@ -67,16 +67,16 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.assets-table {
+.discovery-assets-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-.assets-table thead {
+.discovery-assets-table thead {
     background: #F8F9FA;
 }
 
-.assets-table th {
+.discovery-assets-table th {
     padding: 16px;
     text-align: left;
     font-weight: 600;
@@ -86,14 +86,14 @@
     letter-spacing: 0.5px;
 }
 
-.assets-table td {
+.discovery-assets-table td {
     padding: 16px;
     border-top: 1px solid #E9ECEF;
     font-size: 14px;
     color: #495057;
 }
 
-.assets-table tbody tr:hover {
+.discovery-assets-table tbody tr:hover {
     background: #F8F9FA;
 }
 
@@ -222,7 +222,7 @@
         overflow-x: auto;
     }
 
-    .assets-table {
+    .discovery-assets-table {
         min-width: 800px;
     }
 }

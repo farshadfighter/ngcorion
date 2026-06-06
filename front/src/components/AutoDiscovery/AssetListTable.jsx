@@ -267,7 +267,7 @@ const AssetListTable = () => {
                 </div>
             ) : (
                 <div className="table-container">
-                    <table className="assets-table">
+                    <table className="discovery-assets-table">
                         <thead>
                         <tr>
                             {renderTableHeaders()}

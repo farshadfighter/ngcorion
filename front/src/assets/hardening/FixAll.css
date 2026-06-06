@@ -16,19 +16,19 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 40px;
     max-width: 1000px;
-    margin: 80px auto;
+    margin: 0px auto;
     padding: 0 20px;
 }
 
 .hardening-option-box {
-    min-height: 350px;
+    min-height: 280px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    padding: 50px 40px;
+    padding: 32px 40px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
