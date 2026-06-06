@@ -38,7 +38,8 @@ from app.modules.shared.hardening_audit import log_execute_outcome, log_preview_
 from .service import (
     FortiGateHardeningService,
     FortiGateCheckAlreadyPassingError,
-    FortiGateMissingParametersError
+    FortiGateMissingParametersError,
+    FortiGateNotAutoFixableError
 )
 
 class FortiGatePreviewRequest(BaseModel):
@@ -496,7 +497,7 @@ def preview_fortinet_hardening(
         consume_quota(http_request)
         return preview
 
-    except FortiGateCheckAlreadyPassingError as e:
+    except (FortiGateCheckAlreadyPassingError, FortiGateNotAutoFixableError) as e:
         log_preview_outcome(
             db, device_type="fortinet",
             audit_result_id=request.audit_result_id,
@@ -594,7 +595,7 @@ async def execute_fortinet_hardening(
         )
         return result
 
-    except FortiGateCheckAlreadyPassingError as e:
+    except (FortiGateCheckAlreadyPassingError, FortiGateNotAutoFixableError) as e:
         _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

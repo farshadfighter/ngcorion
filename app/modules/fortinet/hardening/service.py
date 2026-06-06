@@ -55,6 +55,11 @@ class FortiGateMissingParametersError(FortiGateHardeningError):
     pass
 
 
+class FortiGateNotAutoFixableError(FortiGateHardeningError):
+    """Raised when a check has no automated remediation template (manual/review only)."""
+    pass
+
+
 class FortiGateHardeningService:
     """Service for automated FortiGate device hardening."""
 
@@ -198,6 +203,16 @@ class FortiGateHardeningService:
         # Get FortiGate control
         control = FortiGateHardeningService._get_control_by_id(result.check_number)
 
+        # Block manual/review-only checks: without a remediation template,
+        # parse_remediation falls back to treating the prose remediation as CLI,
+        # which the device rejects (e.g. "Unknown action 0"). These must be applied
+        # manually — consistent with the batch/auto-harden flows that skip them.
+        if not has_fortigate_template(result.check_number):
+            raise FortiGateNotAutoFixableError(
+                f"Check {result.check_number} ('{control.title}') has no automated "
+                f"remediation and must be applied manually. Guidance: {control.remediation}"
+            )
+
         # Parse remediation into commands
         parsed = FortiGateRemediationParser.parse_remediation(
             remediation=control.remediation,
@@ -293,6 +308,20 @@ class FortiGateHardeningService:
             raise ValueError(
                 f"Action {action_id} has status '{action.status}'. "
                 "Only pending actions can be executed."
+            )
+
+        # Defense in depth: never push a non-templated (manual/prose) remediation to
+        # the device. preview_hardening now blocks creating such actions, but guard
+        # legacy or directly-created actions too, since their commands_json would hold
+        # prose that the device rejects with "Unknown action ...".
+        if not has_fortigate_template(action.check_number):
+            action.status = "blocked"
+            action.error_message = "No automated remediation template; manual remediation required"
+            action.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            raise FortiGateNotAutoFixableError(
+                f"Check {action.check_number} has no automated remediation and "
+                "must be applied manually."
             )
 
         # Get related records

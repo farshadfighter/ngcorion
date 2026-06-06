@@ -7,7 +7,8 @@ from .router import router
 from .service import (
     FortiGateHardeningService,
     FortiGateCheckAlreadyPassingError,
-    FortiGateMissingParametersError
+    FortiGateMissingParametersError,
+    FortiGateNotAutoFixableError
 )
 from .ssh_executor import (
     FortiGateHardeningExecutor,
@@ -23,6 +24,7 @@ __all__ = [
     "FortiGateHardeningService",
     "FortiGateCheckAlreadyPassingError",
     "FortiGateMissingParametersError",
+    "FortiGateNotAutoFixableError",
     "FortiGateHardeningExecutor",
     "redact_fortigate_secrets",
     "FortiGateHardeningExecutionError",
