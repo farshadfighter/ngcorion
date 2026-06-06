@@ -164,7 +164,6 @@
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 14px;
-    overflow: hidden;
 }
 
 .assets-table {
@@ -175,9 +174,8 @@
 .assets-table thead {
     background: #f9fafb;
 }
-
 .assets-table th {
-    padding: 14px 12px;
+    padding: 14px 16px;
     text-align: left;
     font-size: 13px;
     font-weight: 600;

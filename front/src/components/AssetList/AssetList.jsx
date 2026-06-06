@@ -13,7 +13,6 @@ import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
-import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/AssetList.css"
 
@@ -22,7 +21,6 @@ const PRIMARY = "#1e3a5f";
 export const AssetList = ({ onNavigateToLicence }) => {
     const dispatch = useDispatch();
     const { assets, isLoading, error, successMessage } = useSelector((state) => state.assets);
-    const { usage, limits } = useSelector((state) => state.license);
     const { assetTypes, locations, owners } = useAssetFormOptions();
 
     const [activeTab, setActiveTab]           = useState("overview");
