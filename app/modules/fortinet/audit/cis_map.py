@@ -1,132 +1,132 @@
 """
 FortiGate CIS Benchmark Mapping
 
-Maps FortiGate security controls to CIS Benchmark sections.
-Based on CIS FortiGate Benchmark recommendations.
+Authoritative mapping of the official CIS FortiGate Benchmark checklist sections
+to the internal control IDs that back them (see rules.py). The "type" field is
+the benchmark's own classification (Automated / Manual). Manual recommendations
+are evidence-only and excluded from the compliance score (see
+FortiGateControl.is_manual).
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # CIS Benchmark version
-CIS_BENCHMARK_VERSION = "Fortinet FortiGate Best Practices v1.0"
+CIS_BENCHMARK_VERSION = "CIS Fortinet FortiGate Benchmark"
 
-# CIS Benchmark sections mapped to control IDs
+# Official CIS FortiGate Benchmark sections mapped to backing control IDs.
+# Each entry: section, recommendation (from the benchmark), type, rule_id.
 CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
-    # Management Access
-    {"section": "1.1.1", "recommendation": "Ensure HTTPS is enabled for admin access", "rule_id": "FG-BL-001"},
-    {"section": "1.1.2", "recommendation": "Ensure HTTP is disabled for admin access", "rule_id": "FG-BL-002"},
-    {"section": "1.1.3", "recommendation": "Ensure Telnet is disabled for admin access", "rule_id": "FG-BL-003"},
+    # 1 Network Settings
+    {"section": "1.1", "recommendation": "Ensure DNS server is configured", "type": "Automated", "rule_id": "FG-BL-043"},
+    {"section": "1.2", "recommendation": "Ensure intra-zone traffic is not always allowed", "type": "Manual", "rule_id": "FG-NET-001"},
+    {"section": "1.3", "recommendation": "Disable all management related services on WAN port", "type": "Manual", "rule_id": "FG-BL-WAN-HTTPS"},
 
-    # Session Management
-    {"section": "1.2.1", "recommendation": "Ensure admin idle timeout is set to 10 minutes or less", "rule_id": "FG-BL-004"},
+    # 2.1 General Settings
+    {"section": "2.1.1", "recommendation": "Ensure 'Pre-Login Banner' is set", "type": "Automated", "rule_id": "FG-BL-092"},
+    {"section": "2.1.2", "recommendation": "Ensure 'Post-Login-Banner' is set", "type": "Automated", "rule_id": "FG-SYS-001"},
+    {"section": "2.1.3", "recommendation": "Ensure timezone is properly configured", "type": "Manual", "rule_id": "FG-SYS-002"},
+    {"section": "2.1.4", "recommendation": "Ensure correct system time is configured through NTP", "type": "Automated", "rule_id": "FG-BL-040"},
+    {"section": "2.1.5", "recommendation": "Ensure hostname is set", "type": "Automated", "rule_id": "FG-SYS-003"},
+    {"section": "2.1.6", "recommendation": "Ensure the latest firmware is installed", "type": "Manual", "rule_id": "FG-SYS-004"},
+    {"section": "2.1.7", "recommendation": "Disable USB Firmware and configuration installation", "type": "Automated", "rule_id": "FG-SYS-005"},
+    {"section": "2.1.8", "recommendation": "Disable static keys for TLS", "type": "Automated", "rule_id": "FG-SYS-006"},
+    {"section": "2.1.9", "recommendation": "Enable Global Strong Encryption", "type": "Automated", "rule_id": "FG-BL-090"},
+    {"section": "2.1.10", "recommendation": "Ensure management GUI listens on secure TLS version", "type": "Manual", "rule_id": "FG-BL-005"},
 
-    # Cryptography
-    {"section": "1.3.1", "recommendation": "Ensure TLS 1.0/1.1 is disabled for admin GUI", "rule_id": "FG-BL-005"},
-    {"section": "1.3.2", "recommendation": "Ensure weak SSH ciphers are disabled", "rule_id": "FG-BL-006"},
-    {"section": "1.4.1", "recommendation": "Ensure strong cryptography is enforced", "rule_id": "FG-BL-090"},
+    # 2.2 Password Policy
+    {"section": "2.2.1", "recommendation": "Ensure 'Password Policy' is enabled", "type": "Automated", "rule_id": "FG-BL-030"},
+    {"section": "2.2.2", "recommendation": "Ensure administrator password retries and lockout time are configured", "type": "Automated", "rule_id": "FG-PW-001"},
 
-    # Access Control
-    {"section": "2.1.1", "recommendation": "Ensure admin trusthosts are configured", "rule_id": "FG-BL-020"},
-    {"section": "2.1.2", "recommendation": "Ensure default 'admin' account is disabled or renamed", "rule_id": "FG-BL-021"},
+    # 2.3 SNMP
+    {"section": "2.3.1", "recommendation": "Ensure only SNMPv3 is enabled", "type": "Automated", "rule_id": "FG-BL-050"},
+    {"section": "2.3.2", "recommendation": "Allow only trusted hosts in SNMPv3", "type": "Manual", "rule_id": "FG-SNMP-001"},
 
-    # Authentication
-    {"section": "2.2.1", "recommendation": "Ensure multi-factor authentication is configured", "rule_id": "FG-BL-022"},
+    # 2.4 Administrators and Admin Profiles
+    {"section": "2.4.1", "recommendation": "Ensure default 'admin' password is changed", "type": "Manual", "rule_id": "FG-BL-021"},
+    {"section": "2.4.2", "recommendation": "Ensure all the login accounts having specific trusted hosts enabled", "type": "Manual", "rule_id": "FG-BL-020"},
+    {"section": "2.4.3", "recommendation": "Ensure admin accounts with different privileges have their correct profiles assigned", "type": "Manual", "rule_id": "FG-ADM-001"},
+    {"section": "2.4.4", "recommendation": "Ensure idle timeout time is configured", "type": "Automated", "rule_id": "FG-BL-004"},
+    {"section": "2.4.5", "recommendation": "Ensure only encrypted access channels are enabled", "type": "Automated", "rule_id": "FG-BL-002"},
+    {"section": "2.4.6", "recommendation": "Apply Local-in Policies", "type": "Manual", "rule_id": "FG-LIP-001"},
+    {"section": "2.4.7", "recommendation": "Ensure default Admin ports are changed", "type": "Manual", "rule_id": "FG-BL-007"},
 
-    # Password Policy
-    {"section": "2.3.1", "recommendation": "Ensure password policy is enabled", "rule_id": "FG-BL-030"},
-    {"section": "2.3.2", "recommendation": "Ensure password minimum length is 12 or more", "rule_id": "FG-BL-031"},
-    {"section": "2.3.3", "recommendation": "Ensure password must contain uppercase", "rule_id": "FG-BL-032"},
-    {"section": "2.3.4", "recommendation": "Ensure password must contain lowercase", "rule_id": "FG-BL-033"},
-    {"section": "2.3.5", "recommendation": "Ensure password must contain numbers", "rule_id": "FG-BL-034"},
-    {"section": "2.3.6", "recommendation": "Ensure password must contain special characters", "rule_id": "FG-BL-035"},
-    {"section": "2.3.7", "recommendation": "Ensure minimum changed characters is 4 or more", "rule_id": "FG-BL-036"},
+    # 2.5 High Availability
+    {"section": "2.5.1", "recommendation": "Ensure High Availability configuration is enabled", "type": "Automated", "rule_id": "FG-HA-004"},
+    {"section": "2.5.2", "recommendation": "Ensure 'Monitor Interfaces' for High Availability devices is enabled", "type": "Automated", "rule_id": "FG-HA-005"},
+    {"section": "2.5.3", "recommendation": "Ensure HA Reserved Management Interface is configured", "type": "Manual", "rule_id": "FG-HA-006"},
 
-    # Time Services
-    {"section": "3.1.1", "recommendation": "Ensure NTP is enabled", "rule_id": "FG-BL-040"},
-    {"section": "3.1.2", "recommendation": "Ensure NTP server is configured", "rule_id": "FG-BL-041"},
+    # 3 Policy and Objects
+    {"section": "3.1", "recommendation": "Ensure that unused policies are reviewed regularly", "type": "Manual", "rule_id": "FG-POL-001"},
+    {"section": "3.2", "recommendation": "Ensure that policies do not use 'ALL' as Service", "type": "Automated", "rule_id": "FG-BL-080"},
+    {"section": "3.3", "recommendation": "Ensure firewall policy denying all traffic to/from Tor, malicious server, or scanner IP addresses using ISDB", "type": "Manual", "rule_id": "FG-POL-002"},
+    {"section": "3.4", "recommendation": "Ensure logging is enabled on all firewall policies", "type": "Manual", "rule_id": "FG-BL-082"},
 
-    # SNMP
-    {"section": "4.1.1", "recommendation": "Ensure SNMPv2 communities are removed", "rule_id": "FG-BL-050"},
-    {"section": "4.1.2", "recommendation": "Ensure SNMPv3 is configured", "rule_id": "FG-BL-051"},
+    # 4.1 Intrusion Prevention System (IPS)
+    {"section": "4.1.1", "recommendation": "Detect Botnet connections", "type": "Manual", "rule_id": "FG-IPS-001"},
+    {"section": "4.1.2", "recommendation": "Apply IPS Security Profile to Policies", "type": "Manual", "rule_id": "FG-UTM-003"},
 
-    # Logging
-    {"section": "5.1.1", "recommendation": "Ensure remote syslog is enabled", "rule_id": "FG-BL-060"},
-    {"section": "5.1.2", "recommendation": "Ensure remote syslog server is configured", "rule_id": "FG-BL-061"},
+    # 4.2 Antivirus
+    {"section": "4.2.1", "recommendation": "Ensure Antivirus Definition Push Updates are Configured", "type": "Automated", "rule_id": "FG-AV-001"},
+    {"section": "4.2.2", "recommendation": "Apply Antivirus Security Profile to Policies", "type": "Manual", "rule_id": "FG-UTM-002"},
+    {"section": "4.2.3", "recommendation": "Enable Outbreak Prevention Database", "type": "Automated", "rule_id": "FG-AV-002"},
+    {"section": "4.2.4", "recommendation": "Enable AI/heuristic based malware detection", "type": "Automated", "rule_id": "FG-AV-003"},
+    {"section": "4.2.5", "recommendation": "Enable grayware detection on antivirus", "type": "Automated", "rule_id": "FG-AV-004"},
 
-    # Firewall Policy
-    {"section": "6.1.1", "recommendation": "Ensure no 'Any/Any/ALL' ACCEPT policies exist", "rule_id": "FG-BL-080"},
-    {"section": "6.2.1", "recommendation": "Ensure policy logging is enabled", "rule_id": "FG-BL-082"},
+    # 4.3 DNS Filter
+    {"section": "4.3.1", "recommendation": "Enable Botnet C&C Domain Blocking DNS Filter", "type": "Automated", "rule_id": "FG-DNS-001"},
+    {"section": "4.3.2", "recommendation": "Ensure DNS Filter logs all DNS queries and responses", "type": "Manual", "rule_id": "FG-DNS-002"},
+    {"section": "4.3.3", "recommendation": "Apply DNS Filter Security Profile to Policies", "type": "Manual", "rule_id": "FG-DNS-003"},
 
-    # Interface Security
-    {"section": "7.1.1", "recommendation": "Ensure management services are not accessible from WAN", "rule_id": "FG-BL-WAN-HTTP"},
-    {"section": "7.2.1", "recommendation": "Ensure local-in-policy is configured", "rule_id": "FG-LIP-001"},
+    # 4.4 Application Control
+    {"section": "4.4.1", "recommendation": "Block high risk categories on Application Control", "type": "Manual", "rule_id": "FG-APP-001"},
+    {"section": "4.4.2", "recommendation": "Block applications running on non-default ports", "type": "Automated", "rule_id": "FG-APP-002"},
+    {"section": "4.4.3", "recommendation": "Ensure all Application Control related traffic is logged", "type": "Manual", "rule_id": "FG-APP-003"},
+    {"section": "4.4.4", "recommendation": "Apply Application Control Security Profile to Policies", "type": "Manual", "rule_id": "FG-APP-004"},
 
-    # VPN
-    {"section": "8.1.1", "recommendation": "Ensure SSL-VPN uses TLS 1.2 or higher", "rule_id": "FG-VPN-SSL-001"},
-    {"section": "8.2.1", "recommendation": "Ensure IPsec uses strong encryption proposals", "rule_id": "FG-VPN-IPSEC-001"},
+    # 5 Security Fabric
+    {"section": "5.1.1", "recommendation": "Enable Compromised Host Quarantine", "type": "Automated", "rule_id": "FG-FAB-001"},
+    {"section": "5.2.1.1", "recommendation": "Ensure Security Fabric is Configured", "type": "Automated", "rule_id": "FG-FAB-002"},
 
-    # UTM
-    {"section": "9.1.1", "recommendation": "Ensure UTM profiles are enabled on policies", "rule_id": "FG-UTM-001"},
+    # 6 VPN
+    {"section": "6.1.1", "recommendation": "Apply a Trusted Signed Certificate for VPN Portal", "type": "Manual", "rule_id": "FG-VPN-SSL-003"},
+    {"section": "6.1.2", "recommendation": "Enable Limited TLS Versions for SSL VPN", "type": "Manual", "rule_id": "FG-VPN-SSL-001"},
+
+    # 7 Users and Authentication
+    {"section": "7.1", "recommendation": "Configuring the maximum login attempts and lockout period", "type": "Automated", "rule_id": "FG-USER-001"},
+
+    # 8 Logs and Reports
+    {"section": "8.1.1", "recommendation": "Enable Event Logging", "type": "Automated", "rule_id": "FG-LOG-001"},
+    {"section": "8.2.1", "recommendation": "Encrypt Log Transmission to FortiAnalyzer / FortiManager", "type": "Automated", "rule_id": "FG-LOG-002"},
+    {"section": "8.3.1", "recommendation": "Centralized Logging and Reporting", "type": "Automated", "rule_id": "FG-FAZ-001"},
 ]
 
 
-def get_cis_section_by_id(cis_id: str) -> Dict[str, str]:
-    """Get CIS benchmark section details by CIS ID"""
-    for section in CIS_BENCHMARK_SECTIONS:
-        if section["section"] == cis_id:
-            return section
-    return {}
+def get_all_sections() -> List[Dict[str, str]]:
+    """Return all CIS benchmark sections."""
+    return CIS_BENCHMARK_SECTIONS
 
 
-def get_cis_sections_by_domain(domain: str) -> List[Dict[str, str]]:
-    """Get all CIS sections for a domain"""
-    # Domain mapping based on section numbers
-    domain_prefixes = {
-        "Management Access": ["1.1"],
-        "Session Management": ["1.2"],
-        "Cryptography": ["1.3", "1.4"],
-        "Identity & Access": ["2."],
-        "Time & Sync": ["3."],
-        "Network Services": ["4."],
-        "Logging & Monitoring": ["5."],
-        "Firewall Policy": ["6."],
-        "Management Exposure": ["7."],
-        "VPN": ["8."],
-        "Security Profiles": ["9."],
+def get_section_by_id(section: str) -> Optional[Dict[str, str]]:
+    """Return a specific benchmark section by its section number."""
+    for s in CIS_BENCHMARK_SECTIONS:
+        if s["section"] == section:
+            return s
+    return None
+
+
+def get_rule_id_for_section(section: str) -> Optional[str]:
+    """Return the backing control ID for a CIS section number."""
+    sec = get_section_by_id(section)
+    return sec["rule_id"] if sec else None
+
+
+def get_benchmark_summary() -> Dict[str, Any]:
+    """Return coverage counts for the benchmark (by recommendation type)."""
+    automated = sum(1 for s in CIS_BENCHMARK_SECTIONS if s["type"] == "Automated")
+    manual = sum(1 for s in CIS_BENCHMARK_SECTIONS if s["type"] == "Manual")
+    return {
+        "version": CIS_BENCHMARK_VERSION,
+        "total_sections": len(CIS_BENCHMARK_SECTIONS),
+        "automated": automated,
+        "manual": manual,
     }
-
-    prefixes = domain_prefixes.get(domain, [])
-    return [
-        section for section in CIS_BENCHMARK_SECTIONS
-        if any(section["section"].startswith(prefix) for prefix in prefixes)
-    ]
-
-
-def get_all_cis_controls() -> List[str]:
-    """Get list of all control IDs that map to CIS benchmarks"""
-    return [section["rule_id"] for section in CIS_BENCHMARK_SECTIONS]
-
-
-def group_by_cis_section() -> Dict[str, List[Dict[str, str]]]:
-    """Group CIS sections by major category"""
-    groups = {}
-    for section in CIS_BENCHMARK_SECTIONS:
-        major = section["section"].split(".")[0]
-        category_names = {
-            "1": "Management Plane Security",
-            "2": "Identity & Access Management",
-            "3": "Time Services",
-            "4": "Network Services",
-            "5": "Logging & Monitoring",
-            "6": "Firewall Policy",
-            "7": "Interface & Management Exposure",
-            "8": "VPN Security",
-            "9": "Unified Threat Management"
-        }
-        category = category_names.get(major, f"Category {major}")
-
-        if category not in groups:
-            groups[category] = []
-        groups[category].append(section)
-
-    return groups

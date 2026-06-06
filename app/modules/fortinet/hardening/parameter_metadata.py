@@ -203,6 +203,82 @@ FORTIGATE_PARAMETER_REGISTRY: Dict[str, FortiGateParameterMetadata] = {
         placeholder="Authorized access only. All activity is monitored.",
         validation="min_length:10"
     ),
+
+    # ==================== CIS BENCHMARK COVERAGE ====================
+    "HOSTNAME": FortiGateParameterMetadata(
+        name="HOSTNAME",
+        input_type="text",
+        label="Hostname",
+        description="Device hostname for identification in logs and management",
+        required=True,
+        placeholder="fgt-hq-01"
+    ),
+    "ADMIN_LOCKOUT_THRESHOLD": FortiGateParameterMetadata(
+        name="ADMIN_LOCKOUT_THRESHOLD",
+        input_type="number",
+        label="Admin Lockout Threshold",
+        description="Failed admin login attempts before lockout",
+        required=False,
+        default="3",
+        min_value=1,
+        max_value=10
+    ),
+    "ADMIN_LOCKOUT_DURATION": FortiGateParameterMetadata(
+        name="ADMIN_LOCKOUT_DURATION",
+        input_type="number",
+        label="Admin Lockout Duration (seconds)",
+        description="Lockout period after exceeding the admin login retry threshold",
+        required=False,
+        default="60",
+        min_value=1,
+        max_value=86400
+    ),
+    "AUTH_LOCKOUT_THRESHOLD": FortiGateParameterMetadata(
+        name="AUTH_LOCKOUT_THRESHOLD",
+        input_type="number",
+        label="User Auth Lockout Threshold",
+        description="Failed user login attempts before lockout",
+        required=False,
+        default="3",
+        min_value=1,
+        max_value=10
+    ),
+    "AUTH_LOCKOUT_DURATION": FortiGateParameterMetadata(
+        name="AUTH_LOCKOUT_DURATION",
+        input_type="number",
+        label="User Auth Lockout Duration (seconds)",
+        description="Lockout period after exceeding the user login retry threshold",
+        required=False,
+        default="60",
+        min_value=1,
+        max_value=86400
+    ),
+    "HA_MONITOR_INTERFACE": FortiGateParameterMetadata(
+        name="HA_MONITOR_INTERFACE",
+        input_type="text",
+        label="HA Monitored Interface(s)",
+        description="Interface(s) to monitor for HA failover (space-separated)",
+        required=True,
+        placeholder="port1 port2"
+    ),
+    "DNSFILTER_PROFILE": FortiGateParameterMetadata(
+        name="DNSFILTER_PROFILE",
+        input_type="text",
+        label="DNS Filter Profile",
+        description="Name of the DNS filter profile to update",
+        required=False,
+        default="default",
+        placeholder="default"
+    ),
+    "APP_LIST": FortiGateParameterMetadata(
+        name="APP_LIST",
+        input_type="text",
+        label="Application Control List",
+        description="Name of the application control sensor/list to update",
+        required=False,
+        default="default",
+        placeholder="default"
+    ),
 }
 
 
@@ -312,6 +388,55 @@ FORTIGATE_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     # ==================== FAZ PACK ====================
     "FG-FAZ-001": ["FAZ_SERVER"],  # FortiAnalyzer logging enabled
     "FG-FAZ-002": ["FAZ_SERVER"],  # FortiAnalyzer server configured
+
+    # ==================== CIS BENCHMARK COVERAGE ====================
+    # 1 Network Settings
+    "FG-NET-001": [],   # intra-zone traffic (Manual - no auto-fix)
+    # 2.1 General Settings
+    "FG-SYS-001": [],                 # post-login banner enable
+    "FG-SYS-002": [],                 # timezone (Manual)
+    "FG-SYS-003": ["HOSTNAME"],       # hostname
+    "FG-SYS-004": [],                 # firmware (Manual)
+    "FG-SYS-005": [],                 # USB auto-install disable
+    "FG-SYS-006": [],                 # static TLS keys disable
+    # 2.2 Password Policy
+    "FG-PW-001": ["ADMIN_LOCKOUT_THRESHOLD", "ADMIN_LOCKOUT_DURATION"],  # retries/lockout
+    # 2.3 SNMP
+    "FG-SNMP-001": [],                # SNMPv3 trusted hosts (Manual)
+    # 2.4 Administrators
+    "FG-ADM-001": [],                 # admin profiles (Manual)
+    # 2.5 High Availability
+    "FG-HA-005": ["HA_MONITOR_INTERFACE"],  # HA monitor interfaces
+    "FG-HA-006": [],                  # HA reserved mgmt (Manual)
+    # 3 Policy and Objects
+    "FG-POL-001": [],                 # unused policies (Manual)
+    "FG-POL-002": [],                 # ISDB deny (Manual)
+    # 4.1 IPS
+    "FG-IPS-001": [],                 # botnet connections (Manual)
+    # 4.2 Antivirus
+    "FG-AV-001": [],                  # push updates
+    "FG-AV-002": [],                  # outbreak prevention (manual remediation)
+    "FG-AV-003": [],                  # AI/heuristic detection
+    "FG-AV-004": [],                  # grayware detection
+    # 4.3 DNS Filter
+    "FG-DNS-001": ["DNSFILTER_PROFILE"],  # botnet C&C blocking
+    "FG-DNS-002": [],                 # DNS logs (Manual)
+    "FG-DNS-003": [],                 # apply DNS filter (Manual)
+    # 4.4 Application Control
+    "FG-APP-001": [],                 # high risk categories (Manual)
+    "FG-APP-002": ["APP_LIST"],       # non-default ports
+    "FG-APP-003": [],                 # app log (Manual)
+    "FG-APP-004": [],                 # apply app control (Manual)
+    # 5 Security Fabric
+    "FG-FAB-001": [],                 # quarantine automation (manual remediation)
+    "FG-FAB-002": [],                 # security fabric (manual remediation - risky)
+    # 6 VPN
+    "FG-VPN-SSL-003": [],             # VPN portal cert (Manual)
+    # 7 Users and Authentication
+    "FG-USER-001": ["AUTH_LOCKOUT_THRESHOLD", "AUTH_LOCKOUT_DURATION"],  # login attempts
+    # 8 Logs and Reports
+    "FG-LOG-001": [],                 # event logging enable
+    "FG-LOG-002": [],                 # encrypt log transmission
 }
 
 

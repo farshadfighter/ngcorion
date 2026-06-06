@@ -323,6 +323,8 @@ class FortinetAuditService:
             "severity": control.severity,
             "level": control.level,
             "cis_id": control.cis_id,
+            "cis_type": control.cis_type,
+            "manual": control.is_manual,
             "remediation": control.remediation
         }
 
@@ -350,13 +352,20 @@ class FortinetAuditService:
         logger.info(f"Bulk inserting {len(findings)} audit results (batch size: {batch_size})")
 
         for idx, finding in enumerate(findings, 1):
+            # Manual controls are stored as NOT_APPLICABLE so the UI can show them
+            # as "manual review" rather than a pass/fail that counts toward the score.
+            if finding.get("manual"):
+                result_status = CheckStatus.NOT_APPLICABLE
+            else:
+                result_status = CheckStatus.PASS if finding["passed"] else CheckStatus.FAIL
+
             result = AuditResult(
                 session_id=session_id,
                 check_number=finding["control_id"],
                 check_title=finding["title"],
                 severity=finding["severity"],
                 level=finding["level"],
-                status=CheckStatus.PASS if finding["passed"] else CheckStatus.FAIL,
+                status=result_status,
                 evidence_snippet=finding["evidence"][:1000] if finding["evidence"] else None,
                 checked_at=datetime.now(timezone.utc)
             )
@@ -499,8 +508,12 @@ class FortinetAuditService:
                     findings.append(finding)
 
             # 7. Calculate compliance metrics
-            total = len(findings)
-            passed = sum(1 for f in findings if f["passed"])
+            # Manual (CIS 'Manual') controls are evidence-only and excluded from
+            # the score so they don't distort the compliance percentage.
+            scored = [f for f in findings if not f.get("manual")]
+            manual_count = len(findings) - len(scored)
+            total = len(scored)
+            passed = sum(1 for f in scored if f["passed"])
             failed = total - passed
             compliance_pct = round(100.0 * passed / total, 2) if total > 0 else 0.0
 

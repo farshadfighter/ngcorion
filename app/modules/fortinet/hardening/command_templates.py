@@ -690,6 +690,220 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         ],
         "vdom_context": "global"
     },
+
+    # ==================== CIS BENCHMARK COVERAGE ====================
+    # 2.1.2 Post-Login Banner
+    "FG-SYS-001": {
+        "commands": [
+            "config global",
+            "config system global",
+            "set post-login-banner enable",
+            "end",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Enables the post-login banner (banner text is set via replacement messages)"],
+        "vdom_context": "global"
+    },
+    # 2.1.5 Hostname
+    "FG-SYS-003": {
+        "commands": [
+            "config global",
+            "config system global",
+            "set hostname {HOSTNAME}",
+            "end",
+            "end"
+        ],
+        "required_params": ["HOSTNAME"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Sets the device hostname"],
+        "vdom_context": "global"
+    },
+    # 2.1.7 Disable USB firmware/config auto-install
+    "FG-SYS-005": {
+        "commands": [
+            "config global",
+            "config system auto-install",
+            "set auto-install-config disable",
+            "set auto-install-image disable",
+            "end",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Disables automatic config/firmware installation from USB"],
+        "vdom_context": "global"
+    },
+    # 2.1.8 Disable static keys for TLS
+    "FG-SYS-006": {
+        "commands": [
+            "config global",
+            "config system global",
+            "set ssl-static-key-ciphers disable",
+            "end",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Disables static key ciphers for TLS"],
+        "vdom_context": "global"
+    },
+    # 2.2.2 Admin password retries and lockout
+    "FG-PW-001": {
+        "commands": [
+            "config global",
+            "config system global",
+            "set admin-lockout-threshold {ADMIN_LOCKOUT_THRESHOLD}",
+            "set admin-lockout-duration {ADMIN_LOCKOUT_DURATION}",
+            "end",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": ["ADMIN_LOCKOUT_THRESHOLD", "ADMIN_LOCKOUT_DURATION"],
+        "defaults": {"ADMIN_LOCKOUT_THRESHOLD": "3", "ADMIN_LOCKOUT_DURATION": "60"},
+        "warnings": ["Sets admin login retry threshold and lockout duration"],
+        "vdom_context": "global"
+    },
+    # 2.5.2 HA monitor interfaces
+    "FG-HA-005": {
+        "commands": [
+            "config global",
+            "config system ha",
+            "set monitor {HA_MONITOR_INTERFACE}",
+            "end",
+            "end"
+        ],
+        "required_params": ["HA_MONITOR_INTERFACE"],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Sets HA monitored interfaces",
+            "Only apply on HA-configured devices"
+        ],
+        "vdom_context": "global"
+    },
+    # 4.2.1 Antivirus definition push updates
+    "FG-AV-001": {
+        "commands": [
+            "config global",
+            "config system autoupdate push-update",
+            "set status enable",
+            "end",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Enables FortiGuard antivirus definition push updates"],
+        "vdom_context": "global"
+    },
+    # 4.2.4 AI/heuristic malware detection
+    "FG-AV-003": {
+        "commands": [
+            "config antivirus settings",
+            "set machine-learning-detection enable",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Enables AI/heuristic (machine-learning) malware detection"],
+        "vdom_context": "vdom"
+    },
+    # 4.2.5 Grayware detection
+    "FG-AV-004": {
+        "commands": [
+            "config antivirus settings",
+            "set grayware enable",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Enables grayware detection in antivirus"],
+        "vdom_context": "vdom"
+    },
+    # 4.3.1 Botnet C&C domain blocking (DNS filter)
+    "FG-DNS-001": {
+        "commands": [
+            "config dnsfilter profile",
+            "edit {DNSFILTER_PROFILE}",
+            "set block-botnet enable",
+            "next",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": ["DNSFILTER_PROFILE"],
+        "defaults": {"DNSFILTER_PROFILE": "default"},
+        "warnings": ["Enables Botnet C&C domain blocking on the DNS filter profile"],
+        "vdom_context": "vdom"
+    },
+    # 4.4.2 Block applications on non-default ports
+    "FG-APP-002": {
+        "commands": [
+            "config application list",
+            "edit {APP_LIST}",
+            "set enforce-default-app-port enable",
+            "next",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": ["APP_LIST"],
+        "defaults": {"APP_LIST": "default"},
+        "warnings": ["Enforces default ports for applications on the application control list"],
+        "vdom_context": "vdom"
+    },
+    # 7.1 Maximum login attempts and lockout period
+    "FG-USER-001": {
+        "commands": [
+            "config user setting",
+            "set auth-lockout-threshold {AUTH_LOCKOUT_THRESHOLD}",
+            "set auth-lockout-duration {AUTH_LOCKOUT_DURATION}",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": ["AUTH_LOCKOUT_THRESHOLD", "AUTH_LOCKOUT_DURATION"],
+        "defaults": {"AUTH_LOCKOUT_THRESHOLD": "3", "AUTH_LOCKOUT_DURATION": "60"},
+        "warnings": ["Sets user authentication lockout threshold and duration"],
+        "vdom_context": "vdom"
+    },
+    # 8.1.1 Enable event logging
+    "FG-LOG-001": {
+        "commands": [
+            "config log eventfilter",
+            "set event enable",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": ["Enables event logging"],
+        "vdom_context": "vdom"
+    },
+    # 8.2.1 Encrypt log transmission to FortiAnalyzer/FortiManager
+    "FG-LOG-002": {
+        "commands": [
+            "config global",
+            "config log fortianalyzer setting",
+            "set reliable enable",
+            "set enc-algorithm high",
+            "end",
+            "end"
+        ],
+        "required_params": [],
+        "optional_params": [],
+        "defaults": {},
+        "warnings": [
+            "Enables reliable (TCP) and encrypted log transmission to FortiAnalyzer",
+            "Ensure FortiAnalyzer is configured to accept encrypted/reliable logging"
+        ],
+        "vdom_context": "global"
+    },
 }
 
 
