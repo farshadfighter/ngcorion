@@ -167,32 +167,6 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     </div>
 
                 </div>
-
-                {/* Fix Failed Checks button */}
-                {failedChecks > 0 && (
-                    <div style={{ padding: "0 24px 16px", display: "flex", justifyContent: "flex-end" }}>
-                        <button
-                            onClick={() => setShowHardeningWizard(true)}
-                            style={{
-                                padding: "10px 20px",
-                                background: "#dc2626",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "8px",
-                                fontSize: "14px",
-                                fontWeight: "600",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                            }}
-                        >
-                            <span>⚙</span>
-                            Fix Failed Checks ({failedChecks})
-                        </button>
-                    </div>
-                )}
-
                 {/* Results Table */}
                 <div className="result-table-wrapper">
                     {isLoadingResults ? (
