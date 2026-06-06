@@ -15,6 +15,7 @@ from app.core.dependencies import (get_current_user,
     require_quota ,
     consume_quota_on_success ,
     check_quota_available)
+from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, log_action
 from .service import FortinetAuditService
 
@@ -193,6 +194,18 @@ def execute_fortinet_audit(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except SSHConnectionError as e:
+        # SSH connect/auth failure — surface the precise status (401/502/503/504)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="fortinet_cis",
+            target_id=audit_request.asset_id,
+            result="failed",
+            detail=f"Asset: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}, Error: {str(e)}"
+        )
+        raise HTTPException(status_code=e.http_status, detail=e.to_dict())
     except Exception as e:
         # Log failed audit
         log_action(

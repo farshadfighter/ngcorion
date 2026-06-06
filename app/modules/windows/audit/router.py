@@ -172,6 +172,36 @@ def execute_windows_audit(
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
+    except PermissionError as exc:
+        # WinRM authentication failed (winrm_client raises PermissionError)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="windows_cis",
+            target_id=audit_request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(exc)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error_type": "authentication_error", "message": "WinRM authentication failed — check the username and password."},
+        )
+    except ConnectionError as exc:
+        # WinRM connect/timeout (winrm_client raises ConnectionError)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="windows_cis",
+            target_id=audit_request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(exc)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error_type": "connection_error", "message": "Could not connect to the device — check the host, WinRM port, and network."},
+        )
     except Exception as exc:
         log_action(
             db=db,

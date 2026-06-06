@@ -536,7 +536,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                 {error && step !== 4 && (
                     <div className="hardening-error-message" style={{ margin: '16px 24px' }}>
                         <span>⚠</span>
-                        <p>{error}</p>
+                        <p>{typeof error === 'string' ? error : (error?.message || 'Operation failed')}</p>
                     </div>
                 )}
             </div>

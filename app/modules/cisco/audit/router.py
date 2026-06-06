@@ -17,6 +17,7 @@ from app.core.dependencies import (
     consume_quota_on_success,
 )
 
+from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, log_action
 from .service import AuditService
 
@@ -187,6 +188,20 @@ def execute_cisco_audit(
         )
         # Quota NOT consumed on failure
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except SSHConnectionError as e:
+        # SSH connect/auth failure — surface the precise status (401/502/503/504)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=audit_request.asset_id,
+            ip_address=target_ip,
+            result="failed",
+            detail=f"Asset: {asset_name}, Profile: {audit_request.profile}, Error: {str(e)}",
+        )
+        # Quota NOT consumed on failure
+        raise HTTPException(status_code=e.http_status, detail=e.to_dict())
     except Exception as e:
         # Log failed audit
         log_action(
@@ -600,6 +615,19 @@ def execute_cis_benchmark_audit(
             detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}",
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except SSHConnectionError as e:
+        # SSH connect/auth failure — surface the precise status (401/502/503/504)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="audit_executed",
+            module="cisco_cis",
+            target_id=request.asset_id,
+            ip_address=target_ip,
+            result="failed",
+            detail=f"Asset: {asset_name}, Profile: {request.profile}, Error: {str(e)}",
+        )
+        raise HTTPException(status_code=e.http_status, detail=e.to_dict())
     except Exception as e:
         # Log failed audit
         log_action(

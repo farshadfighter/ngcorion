@@ -183,18 +183,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             };
         }
 
-        // Optimistically advance the wizard with temp data
-        const selectedAsset = assets.find((a) => a.id === assetId);
-        const tempSessionData = {
-            session_id:  "pending",
-            asset_name:  selectedAsset?.asset_name || "N/A",
-            target_ip:   selectedAsset?.ip_address || "N/A",
-            device_type: dt,
-            status:      "pending",
-        };
-        onSubmit(tempSessionData);
-
-        // Dispatch API call in background
+        // Run the audit (which verifies the SSH credentials) and only advance
+        // the wizard once it succeeds. Advancing before this point would show
+        // the checks list even when the credentials are wrong.
         try {
             const result = await dispatch(
                 executeAuditWithDevice({
@@ -207,7 +198,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
 
             onSubmit(result);
         } catch (err) {
-            const msg = err?.message || err?.toString() || "Failed to create hardening session";
+            const msg = typeof err === "string"
+                ? err
+                : (err?.message || "Failed to connect — please check your credentials and try again.");
             setErrors({ submit: msg });
         }
     };
@@ -631,6 +624,20 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                     <div className="alert alert-error">{errors.submit}</div>
                 )}
 
+                {/* Connecting indicator — credentials are verified by the audit */}
+                {isLoading && (
+                    <div
+                        className="alert"
+                        style={{
+                            background: "#e0f2fe",
+                            color: "#075985",
+                            border: "1px solid #bae6fd",
+                        }}
+                    >
+                        Connecting and verifying credentials… this can take a moment.
+                    </div>
+                )}
+
                 {/* Actions */}
                 <div className="form-actions">
                     <button
@@ -656,7 +663,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                         className="btn-see-result"
                         disabled={isLoading}
                     >
-                        Next
+                        {isLoading ? "Connecting…" : "Next"}
                     </button>
                 </div>
             </form>
