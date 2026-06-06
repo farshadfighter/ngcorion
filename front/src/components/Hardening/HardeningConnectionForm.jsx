@@ -198,9 +198,19 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
 
             onSubmit(result);
         } catch (err) {
-            const msg = typeof err === "string"
-                ? err
-                : (err?.message || "Failed to connect — please check your credentials and try again.");
+            // Extract error message from various possible formats
+            let msg = "Failed to connect — please check your credentials and try again.";
+            
+            if (typeof err === "string") {
+                msg = err;
+            } else if (err?.detail) {
+                msg = err.detail;
+            } else if (err?.message) {
+                msg = err.message;
+            } else if (err?.toString && err.toString() !== "[object Object]") {
+                msg = err.toString();
+            }
+            
             setErrors({ submit: msg });
         }
     };

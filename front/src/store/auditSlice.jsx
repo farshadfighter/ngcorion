@@ -49,7 +49,20 @@ export const executeAudit = createAsyncThunk(
             const res = await api.post(endpoint, payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to start audit");
+            // Extract error message from various possible formats
+            const detail = err.response?.data?.detail;
+            let errorMessage = "Failed to start audit";
+            
+            if (typeof detail === "string") {
+                errorMessage = detail;
+            } else if (detail && typeof detail === "object") {
+                // Handle structured error objects from SSH/device errors
+                errorMessage = detail.message || detail.error_type || "Authentication failed";
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+            
+            return rejectWithValue(errorMessage);
         }
     }
 );

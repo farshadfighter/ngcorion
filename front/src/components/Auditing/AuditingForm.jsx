@@ -171,11 +171,19 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
             onSubmit(result, formData.job_name);
         } catch (err) {
-            const errorMessage =
-                err?.detail ||
-                err?.message ||
-                err?.toString() ||
-                "Failed to connect to server. Please check your connection and try again.";
+            // Extract error message from various possible formats
+            let errorMessage = "Failed to connect to server. Please check your connection and try again.";
+            
+            if (typeof err === "string") {
+                errorMessage = err;
+            } else if (err?.detail) {
+                errorMessage = err.detail;
+            } else if (err?.message) {
+                errorMessage = err.message;
+            } else if (err?.toString && err.toString() !== "[object Object]") {
+                errorMessage = err.toString();
+            }
+            
             onError(errorMessage);
         }
     };
