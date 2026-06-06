@@ -1,0 +1,214 @@
+/* ============================================
+   BACKUP PAGE - STYLES
+   ============================================ */
+
+.backup-container {
+    padding: 32px 40px;
+    background: transparent;
+    min-height: 100vh;
+}
+
+/* Header */
+.backup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+/* Filter Tabs */
+.backup-filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.backup-filter-btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.backup-filter-btn:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.backup-filter-btn.active {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+    font-weight: 600;
+}
+
+/* Table Container */
+.backup-table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* Table */
+.backup-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.backup-table thead {
+    background: #f9fafb;
+}
+
+.backup-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.backup-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.backup-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.backup-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.backup-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
+}
+
+/* Cell styles */
+.backup-asset-name {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.backup-ip {
+    font-size: 12px;
+    background: #f3f4f6;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.backup-type {
+    text-transform: capitalize;
+}
+
+/* Source Badge */
+.backup-source-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.backup-source-badge.manual {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.backup-source-badge.hardening {
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+/* Action Buttons */
+.backup-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Danger button variant */
+
+
+
+
+/* Loading */
+.backup-loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+.backup-loading p {
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+/* Empty State */
+.backup-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: #6b7280;
+}
+
+.backup-empty svg {
+    opacity: 0.4;
+    margin-bottom: 12px;
+}
+
+.backup-empty p {
+    margin: 4px 0;
+    font-size: 14px;
+}
+
+/* Spinner */
+.spinner-lg {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #1e3a5f;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .backup-container {
+        padding: 16px 20px;
+    }
+
+    .backup-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .backup-table {
+        font-size: 13px;
+    }
+
+    .backup-table th,
+    .backup-table td {
+        padding: 10px 12px;
+    }
+}
