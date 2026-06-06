@@ -2,6 +2,26 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 
 // ===========================
+// ERROR NORMALIZATION
+// ===========================
+
+/**
+ * Always returns a plain string error message.
+ *
+ * Backend SSH/connection errors return `detail` as an object
+ * (SSHConnectionError.to_dict() → { error_type, message, device_ip, ... }).
+ * Storing that object in state.error and rendering it as a React child
+ * silently breaks the error banner, so the user sees "no error" even on a
+ * genuine 401. Flatten it to a string here so every banner renders.
+ */
+const getErrorMessage = (error, fallback) => {
+    const detail = error?.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+    if (detail && typeof detail === "object") return detail.message || detail.error_type || fallback;
+    return error?.message || fallback;
+};
+
+// ===========================
 // DEVICE TYPE → API PATH MAP
 // ===========================
 
@@ -227,7 +247,7 @@ export const executeAuditWithDevice = createAsyncThunk(
             return { ...response.data, device_type: deviceType };
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to start audit"
+                getErrorMessage(error, "Failed to start audit")
             );
         }
     }
@@ -248,7 +268,7 @@ export const checkHardeningSessionStatus = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to check session status"
+                getErrorMessage(error, "Failed to check session status")
             );
         }
     }
@@ -289,7 +309,7 @@ export const fetchAuditSessions = createAsyncThunk(
             return allSessions;
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to fetch audit sessions"
+                getErrorMessage(error, "Failed to fetch audit sessions")
             );
         }
     }
@@ -310,7 +330,7 @@ export const fetchAuditResults = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to fetch audit results"
+                getErrorMessage(error, "Failed to fetch audit results")
             );
         }
     }
@@ -336,7 +356,7 @@ export const previewHardenCheck = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to preview hardening"
+                getErrorMessage(err, "Failed to preview hardening")
             );
         }
     }
@@ -382,7 +402,7 @@ export const executeHardenCheck = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to execute hardening"
+                getErrorMessage(err, "Failed to execute hardening")
             );
         }
     }
@@ -403,7 +423,7 @@ export const fetchRequiredParameters = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to fetch parameters"
+                getErrorMessage(error, "Failed to fetch parameters")
             );
         }
     }
@@ -439,7 +459,7 @@ export const autoHardenWithDefaults = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to auto harden"
+                getErrorMessage(error, "Failed to auto harden")
             );
         }
     }
@@ -467,7 +487,7 @@ export const discoverFortinetVdoms = createAsyncThunk(
             });
             return res.data; // { asset_id, asset_name, target_ip, vdoms: string[] }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "VDOM discovery failed");
+            return rejectWithValue(getErrorMessage(err, "VDOM discovery failed"));
         }
     }
 );
@@ -510,7 +530,7 @@ export const batchExecuteChecks = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                error.response?.data?.detail || "Failed to batch execute"
+                getErrorMessage(error, "Failed to batch execute")
             );
         }
     }

@@ -18,6 +18,7 @@ from app.core.dependencies import( get_current_user, require_permission, require
     check_quota_available,
     consume_quota_on_success)
 
+from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, log_action
 from .service import LinuxAuditService
 
@@ -188,6 +189,18 @@ def execute_linux_audit(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+    except SSHConnectionError as e:
+        # SSH connect/auth failure — surface the precise status (401/502/503/504)
+        log_action(
+            db=db,
+            user_id=current_user.id,
+            action="execute_audit",
+            module="linux_cis",
+            target_id=audit_request.asset_id,
+            result="failed",
+            detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(e)}"
+        )
+        raise HTTPException(status_code=e.http_status, detail=e.to_dict())
     except Exception as e:
         log_action(
             db=db,

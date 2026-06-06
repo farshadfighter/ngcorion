@@ -40,6 +40,17 @@ export const FixUnsuccessfulProcess = ({ sessionData, onComplete, onError }) => 
     useEffect(() => {
         if (!currentSession || hasCalledCallback.current) return;
 
+        // Only honor the session we're actually polling — a leftover
+        // currentSession from a previous run must not trigger a false complete.
+        const currentId = currentSession.session_id ?? currentSession.id;
+        if (
+            sessionData.session_id != null &&
+            currentId != null &&
+            String(currentId) !== String(sessionData.session_id)
+        ) {
+            return;
+        }
+
         if (currentSession.status === "completed") {
             consecutiveErrors.current = 0;
             hasCalledCallback.current = true;
@@ -56,7 +67,7 @@ export const FixUnsuccessfulProcess = ({ sessionData, onComplete, onError }) => 
             // response موفق — شمارنده خطا ریست میشه
             consecutiveErrors.current = 0;
         }
-    }, [currentSession, onComplete, onError]);
+    }, [currentSession, sessionData.session_id, onComplete, onError]);
 
     // ── وقتی خطا اومد ──
     // فقط بعد از MAX_CONSECUTIVE_ERRORS خطای پشت سر هم onError صدا زده میشه
