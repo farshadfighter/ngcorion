@@ -110,7 +110,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 50px 30px 40px;
+    padding: 20px 30px 16px;
     background: white;
     border-bottom: 1px solid #e5e7eb;
 }
@@ -215,8 +215,7 @@
    ===================================================== */
 
 .wizard-content {
-    padding: 35px 40px 40px;
-}
+    padding: 16px 24px 20px;}
 
 /* =====================================================
    CONNECTION FORM (Step 1) - شبیه Auditing
@@ -225,7 +224,7 @@
 .auditing-form-container {
     max-width: 650px;
     margin: 0 auto;
-    padding: 5px 40px;
+    padding: 5px 20px;
 }
 
 .auditing-form {

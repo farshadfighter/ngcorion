@@ -2,37 +2,54 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
 import { executeAudit } from "../../store/auditSlice";
-import { discoverFortinetVdoms } from "../../store/hardeningSlice";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
-    // ── Network ────────────────────────────────────────────────────────────────
     { value: "cisco",           label: "Cisco Router/Switch",       group: "Network"    },
-    { value: "fortinet",        label: "FortiGate Firewall",         group: "Network"    },
-    // ── Web Server ─────────────────────────────────────────────────────────────
-    { value: "apache",          label: "Apache Web Server",          group: "Web Server" },
-    // ── Database ───────────────────────────────────────────────────────────────
-    { value: "mongodb",         label: "MongoDB",                    group: "Database"   },
-    { value: "mssql-2016",      label: "SQL Server 2016",            group: "Database"   },
-    { value: "mssql-2019",      label: "SQL Server 2019",            group: "Database"   },
-    { value: "mssql-2022",      label: "SQL Server 2022",            group: "Database"   },
-    // ── Windows ────────────────────────────────────────────────────────────────
-    { value: "windows-2016",    label: "Windows Server 2016",        group: "Windows"    },
-    { value: "windows-2022",    label: "Windows Server 2022",        group: "Windows"    },
-    { value: "windows-2025",    label: "Windows Server 2025",        group: "Windows"    },
-    // ── Ubuntu ─────────────────────────────────────────────────────────────────
-    { value: "linux-ubuntu-24", label: "Linux – Ubuntu 24.04 LTS",  group: "Linux"      },
-    { value: "linux-ubuntu-22", label: "Linux – Ubuntu 22.04 LTS",  group: "Linux"      },
-    { value: "linux-ubuntu-20", label: "Linux – Ubuntu 20.04 LTS",  group: "Linux"      },
-    // ── Red Hat ────────────────────────────────────────────────────────────────
-    { value: "linux-redhat-10", label: "Linux – Red Hat 10",        group: "Linux"      },
-    { value: "linux-redhat-9",  label: "Linux – Red Hat 9",         group: "Linux"      },
-    { value: "linux-redhat-8",  label: "Linux – Red Hat 8",         group: "Linux"      },
-    // ── Rocky ──────────────────────────────────────────────────────────────────
-    { value: "linux-rocky-10",  label: "Linux – Rocky Linux 10",    group: "Linux"      },
-    { value: "linux-rocky-9",   label: "Linux – Rocky Linux 9",     group: "Linux"      },
-    { value: "linux-rocky-8",   label: "Linux – Rocky Linux 8",     group: "Linux"      },
+    { value: "fortinet",        label: "FortiGate Firewall",        group: "Network"    },
+    { value: "apache",          label: "Apache Web Server",         group: "Web Server" },
+    { value: "mongodb",         label: "MongoDB",                   group: "Database"   },
+    { value: "mssql-2016",      label: "SQL Server 2016",           group: "Database"   },
+    { value: "mssql-2019",      label: "SQL Server 2019",           group: "Database"   },
+    { value: "mssql-2022",      label: "SQL Server 2022",           group: "Database"   },
+    { value: "windows-2016",    label: "Windows Server 2016",       group: "Windows"    },
+    { value: "windows-2022",    label: "Windows Server 2022",       group: "Windows"    },
+    { value: "windows-2025",    label: "Windows Server 2025",       group: "Windows"    },
+    { value: "linux-ubuntu-24", label: "Linux – Ubuntu 24.04 LTS", group: "Linux"      },
+    { value: "linux-ubuntu-22", label: "Linux – Ubuntu 22.04 LTS", group: "Linux"      },
+    { value: "linux-ubuntu-20", label: "Linux – Ubuntu 20.04 LTS", group: "Linux"      },
+    { value: "linux-redhat-10", label: "Linux – Red Hat 10",       group: "Linux"      },
+    { value: "linux-redhat-9",  label: "Linux – Red Hat 9",        group: "Linux"      },
+    { value: "linux-redhat-8",  label: "Linux – Red Hat 8",        group: "Linux"      },
+    { value: "linux-rocky-10",  label: "Linux – Rocky Linux 10",   group: "Linux"      },
+    { value: "linux-rocky-9",   label: "Linux – Rocky Linux 9",    group: "Linux"      },
+    { value: "linux-rocky-8",   label: "Linux – Rocky Linux 8",    group: "Linux"      },
 ];
+
+// ─── Asset filter mapping ─────────────────────────────────────────────────────
+const DEVICE_TYPE_TO_ASSET_KEYWORDS = {
+    "cisco":       ["cisco", "router", "switch"],
+    "fortinet":    ["fortinet", "fortigate", "firewall"],
+    "apache":      ["apache", "web server", "web"],
+    "mongodb":     ["mongodb", "mongo", "database"],
+    "mssql-2016":  ["mssql", "sql server", "microsoft sql", "sql"],
+    "mssql-2019":  ["mssql", "sql server", "microsoft sql", "sql"],
+    "mssql-2022":  ["mssql", "sql server", "microsoft sql", "sql"],
+    "windows-2016":["windows", "windows server"],
+    "windows-2022":["windows", "windows server"],
+    "windows-2025":["windows", "windows server"],
+};
+
+const getFilteredAssets = (allAssets, deviceType) => {
+    const keywords = DEVICE_TYPE_TO_ASSET_KEYWORDS[deviceType];
+    if (!keywords) return allAssets;
+    const filtered = allAssets.filter(asset => {
+        const typeName = (asset.asset_type_name || "").toLowerCase();
+        const assetName = (asset.asset_name || "").toLowerCase();
+        return keywords.some(kw => typeName.includes(kw) || assetName.includes(kw));
+    });
+    return filtered.length > 0 ? filtered : allAssets;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const isLinux    = (dt) => dt?.startsWith("linux-");
@@ -49,7 +66,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const dispatch = useDispatch();
     const { assets } = useSelector((state) => state.assets);
     const { isExecuting } = useSelector((state) => state.audit);
-    const { vdomDiscovery } = useSelector((state) => state.hardening);
 
     const [formData, setFormData] = useState({
         device_type:      "cisco",
@@ -57,7 +73,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         job_name:         "",
         ssh_username:     "",
         ssh_password:     "",
-        ssh_port:         "22",
         enable_password:  "",
         vdom:             "",
         sudo_password:    "",
@@ -81,23 +96,18 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
     const dt = formData.device_type;
     const groups = [...new Set(DEVICE_TYPES.map((d) => d.group))];
+    const filteredAssets = getFilteredAssets(assets || [], dt);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+            ...(name === "device_type" ? { asset_id: "" } : {}),
+        }));
         if (errors[name]) {
             setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
-    };
-
-    const handleDetectVdoms = () => {
-        if (!formData.asset_id || !formData.ssh_username || !formData.ssh_password) return;
-        dispatch(discoverFortinetVdoms({
-            asset_id:     parseInt(formData.asset_id),
-            ssh_username: formData.ssh_username,
-            ssh_password: formData.ssh_password,
-            ssh_port:     parseInt(formData.ssh_port) || 22,
-        }));
     };
 
     const validate = () => {
@@ -137,7 +147,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             job_name:         formData.job_name,
             ssh_username:     formData.ssh_username,
             ssh_password:     formData.ssh_password,
-            ssh_port:         parseInt(formData.ssh_port) || 22,
             ssh_secret:       formData.enable_password,
             vdom:             formData.vdom,
             sudo_password:    formData.sudo_password,
@@ -168,7 +177,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             const result = await dispatch(
                 executeAudit({ deviceType: dt, formData: credentials })
             ).unwrap();
-
             onSubmit(result, formData.job_name);
         } catch (err) {
             const errorMessage =
@@ -185,7 +193,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             <form onSubmit={handleSubmit} className="auditing-form">
                 <div className="form-grid-two-column">
 
-                    {/* ── Device Type ──────────────────────────────────────── */}
+                    {/* ── Device Type ── */}
                     <div className="form-group form-group-full">
                         <label>
                             Device Type / Service Type
@@ -209,7 +217,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         </select>
                     </div>
 
-                    {/* ── Asset ────────────────────────────────────────────── */}
+                    {/* ── Asset (فیلتر شده بر اساس device type) ── */}
                     <div className="form-group">
                         <label>
                             Select Asset
@@ -221,8 +229,10 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                             onChange={handleChange}
                             className={errors.asset_id ? "error" : ""}
                         >
-                            <option value="">Select</option>
-                            {assets?.map((asset) => (
+                            <option value="">
+                                Select ({filteredAssets.length} available)
+                            </option>
+                            {filteredAssets.map((asset) => (
                                 <option key={asset.id} value={asset.id}>
                                     {asset.asset_name} ({asset.ip_address || "No IP"})
                                 </option>
@@ -231,7 +241,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
                     </div>
 
-                    {/* ── Job Name ─────────────────────────────────────────── */}
+                    {/* ── Job Name ── */}
                     <div className="form-group">
                         <label>
                             Job Name
@@ -244,12 +254,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                             onChange={handleChange}
                             className={errors.job_name ? "error" : ""}
                             placeholder="Enter job name"
+                            autoComplete="off"
                         />
                         {errors.job_name && <span className="error-message">{errors.job_name}</span>}
                     </div>
 
                     {/* ══════════════════════════════════════════════════════
-                        SSH-based: Cisco, Fortinet, Linux, Apache, MongoDB
+                        SSH credentials
                     ══════════════════════════════════════════════════════ */}
                     {!isWindows(dt) && !isMssql(dt) && (
                         <>
@@ -281,72 +292,20 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         placeholder="Enable password (optional)"
                                         autoComplete="off"
                                     />
-                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
-                                        Required for privileged commands
-                                    </span>
                                 </div>
                             )}
 
                             {isFortinet(dt) && (
                                 <div className="form-group">
                                     <label>VDOM</label>
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "6px" }}>
-                                        <button
-                                            type="button"
-                                            onClick={handleDetectVdoms}
-                                            disabled={vdomDiscovery?.isDiscovering || !formData.ssh_username || !formData.ssh_password || !formData.asset_id}
-                                            style={{
-                                                padding: "6px 14px", fontSize: "13px", fontWeight: "600",
-                                                background: "#2563eb", color: "white", border: "none",
-                                                borderRadius: "6px", cursor: "pointer",
-                                                opacity: (vdomDiscovery?.isDiscovering || !formData.ssh_username || !formData.ssh_password || !formData.asset_id) ? 0.5 : 1,
-                                            }}
-                                        >
-                                            {vdomDiscovery?.isDiscovering ? "Detecting…" : "Detect VDOMs"}
-                                        </button>
-                                        {vdomDiscovery?.vdoms !== null && !vdomDiscovery?.isDiscovering && (
-                                            <span style={{
-                                                padding: "3px 10px", borderRadius: "12px", fontSize: "12px", fontWeight: "600",
-                                                background: vdomDiscovery.vdoms.length > 0 ? "#d1fae5" : "#f3f4f6",
-                                                color: vdomDiscovery.vdoms.length > 0 ? "#065f46" : "#6b7280",
-                                                border: `1px solid ${vdomDiscovery.vdoms.length > 0 ? "#6ee7b7" : "#d1d5db"}`,
-                                            }}>
-                                                {vdomDiscovery.vdoms.length > 0
-                                                    ? `✓ VDOM Enabled (${vdomDiscovery.vdoms.length})`
-                                                    : "VDOM Disabled"}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {vdomDiscovery?.error && (
-                                        <span style={{ fontSize: "12px", color: "#dc2626", display: "block", marginBottom: "4px" }}>
-                                            {vdomDiscovery.error}
-                                        </span>
-                                    )}
-                                    {vdomDiscovery?.vdoms?.length > 0 ? (
-                                        <select
-                                            name="vdom"
-                                            value={formData.vdom}
-                                            onChange={handleChange}
-                                            style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "14px" }}
-                                        >
-                                            <option value="">Select VDOM (default: root)</option>
-                                            {vdomDiscovery.vdoms.map((v) => (
-                                                <option key={v} value={v}>{v}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            name="vdom"
-                                            value={formData.vdom}
-                                            onChange={handleChange}
-                                            placeholder="Virtual Domain (optional, default: root)"
-                                            autoComplete="off"
-                                        />
-                                    )}
-                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
-                                        Click "Detect VDOMs" to discover available virtual domains
-                                    </span>
+                                    <input
+                                        type="text"
+                                        name="vdom"
+                                        value={formData.vdom}
+                                        onChange={handleChange}
+                                        placeholder="VDOM name (optional)"
+                                        autoComplete="off"
+                                    />
                                 </div>
                             )}
 
@@ -361,9 +320,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         placeholder="Sudo password (optional)"
                                         autoComplete="off"
                                     />
-                                    <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
-                                        Required for root access (defaults to SSH password)
-                                    </span>
                                 </div>
                             )}
 
@@ -376,7 +332,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                             name="mongo_username"
                                             value={formData.mongo_username}
                                             onChange={handleChange}
-                                            placeholder="admin (optional)"
+                                            placeholder="MongoDB username (optional)"
                                             autoComplete="off"
                                         />
                                     </div>
@@ -421,20 +377,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 />
                                 {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
                             </div>
-
-                            <div className="form-group">
-                                <label>SSH Port</label>
-                                <input
-                                    type="number"
-                                    name="ssh_port"
-                                    value={formData.ssh_port}
-                                    onChange={handleChange}
-                                    placeholder="22"
-                                    min="1"
-                                    max="65535"
-                                    autoComplete="off"
-                                />
-                            </div>
                         </>
                     )}
 
@@ -460,17 +402,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 {errors.mssql_username && <span className="error-message">{errors.mssql_username}</span>}
                             </div>
                             <div className="form-group">
-                                <label>SQL Server Port</label>
-                                <input
-                                    type="number"
-                                    name="mssql_port"
-                                    value={formData.mssql_port}
-                                    onChange={handleChange}
-                                    placeholder="1433"
-                                    autoComplete="off"
-                                />
-                            </div>
-                            <div className="form-group form-group-full">
                                 <label>
                                     SQL Server Password
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
@@ -485,6 +416,17 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     autoComplete="current-password"
                                 />
                                 {errors.mssql_password && <span className="error-message">{errors.mssql_password}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>SQL Server Port</label>
+                                <input
+                                    type="number"
+                                    name="mssql_port"
+                                    value={formData.mssql_port}
+                                    onChange={handleChange}
+                                    placeholder="1433"
+                                    autoComplete="off"
+                                />
                             </div>
                         </>
                     )}
@@ -505,35 +447,12 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.windows_username}
                                     onChange={handleChange}
                                     className={errors.windows_username ? "error" : ""}
-                                    placeholder="Administrator or DOMAIN\user"
+                                    placeholder="Administrator"
                                     autoComplete="username"
                                 />
                                 {errors.windows_username && <span className="error-message">{errors.windows_username}</span>}
                             </div>
                             <div className="form-group">
-                                <label>WinRM Port</label>
-                                <input
-                                    type="number"
-                                    name="winrm_port"
-                                    value={formData.winrm_port}
-                                    onChange={handleChange}
-                                    placeholder="5986"
-                                    autoComplete="off"
-                                />
-                                <span style={{ fontSize: "12px", color: "#6b7280", display: "block", marginTop: "4px" }}>
-                                    Default: 5986 (HTTPS)
-                                </span>
-                            </div>
-                            <div className="form-group">
-                                <label>Transport</label>
-                                <select name="transport" value={formData.transport} onChange={handleChange}>
-                                    <option value="ntlm">NTLM</option>
-                                    <option value="kerberos">Kerberos</option>
-                                    <option value="credssp">CredSSP</option>
-                                    <option value="basic">Basic</option>
-                                </select>
-                            </div>
-                            <div className="form-group form-group-full">
                                 <label>
                                     Windows Password
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
@@ -548,6 +467,26 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     autoComplete="current-password"
                                 />
                                 {errors.windows_password && <span className="error-message">{errors.windows_password}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>WinRM Port</label>
+                                <input
+                                    type="number"
+                                    name="winrm_port"
+                                    value={formData.winrm_port}
+                                    onChange={handleChange}
+                                    placeholder="5986"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Transport</label>
+                                <select name="transport" value={formData.transport} onChange={handleChange}>
+                                    <option value="ntlm">NTLM</option>
+                                    <option value="kerberos">Kerberos</option>
+                                    <option value="credssp">CredSSP</option>
+                                    <option value="basic">Basic</option>
+                                </select>
                             </div>
                         </>
                     )}
