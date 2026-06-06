@@ -197,23 +197,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             ).unwrap();
             onSubmit(result);
         } catch (err) {
-<<<<<<< HEAD
             const msg = err?.message || err?.toString() || "Failed to create hardening session";
-=======
-            // Extract error message from various possible formats
-            let msg = "Failed to connect — please check your credentials and try again.";
-            
-            if (typeof err === "string") {
-                msg = err;
-            } else if (err?.detail) {
-                msg = err.detail;
-            } else if (err?.message) {
-                msg = err.message;
-            } else if (err?.toString && err.toString() !== "[object Object]") {
-                msg = err.toString();
-            }
-            
->>>>>>> 222b0db8fb59ae81f64bc3d84b533e46c853b57e
             setErrors({ submit: msg });
         }
     };
@@ -544,10 +528,4 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             </form>
         </div>
     );
-<<<<<<< HEAD
 };
-=======
-};
-
-export default HardeningConnectionForm;
->>>>>>> 222b0db8fb59ae81f64bc3d84b533e46c853b57e
