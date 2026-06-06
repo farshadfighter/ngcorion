@@ -38,11 +38,24 @@ api.interceptors.response.use(
         // 401 — Unauthorized: توکن نداره یا منقضی شده
         // ----------------------------------------
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('username');
-            localStorage.removeItem('role');
-            localStorage.removeItem('permissions'); // ← اضافه شد
-            window.location.href = '/';
+            // یک 401 می‌تونه دو منشأ کاملاً متفاوت داشته باشه:
+            //   ۱) نشست/توکن کاربر منقضی شده  →  باید logout بشه
+            //   ۲) احراز هویت SSH روی خودِ دستگاه (هاردنینگ/ادیت) شکست خورده —
+            //      یعنی یوزر/پسوردِ دستگاه اشتباه بوده، نه توکنِ برنامه.
+            //      اینجا نباید کاربر از برنامه بیرون انداخته بشه.
+            // خطاهای سطح دستگاه به‌صورت یک آبجکت ساختاریافته با error_type برمی‌گردن
+            // (مثل authentication_error)، ولی خطای نشست یک رشته‌ی ساده‌ست.
+            const detail = error.response.data?.detail;
+            const isDeviceSshError =
+                detail && typeof detail === 'object' && 'error_type' in detail;
+
+            if (!isDeviceSshError) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                localStorage.removeItem('role');
+                localStorage.removeItem('permissions'); // ← اضافه شد
+                window.location.href = '/';
+            }
             return Promise.reject(error);
         }
 
