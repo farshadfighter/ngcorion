@@ -38,11 +38,44 @@ api.interceptors.response.use(
         // 401 — Unauthorized: توکن نداره یا منقضی شده
         // ----------------------------------------
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('username');
-            localStorage.removeItem('role');
-            localStorage.removeItem('permissions'); // ← اضافه شد
-            window.location.href = '/';
+            // A 401 can have two completely different origins:
+            //   1) User session/token expired → should logout
+            //   2) SSH authentication on the device itself (auditing/hardening) failed —
+            //      meaning the device username/password was wrong, not the app token.
+            //      User should NOT be logged out of the app in this case.
+            // Device-level errors are returned as a structured object with error_type
+            // (like authentication_error), but session errors are simple strings.
+            const detail = error.response.data?.detail;
+            
+            // Check if this is a device SSH error by looking for:
+            // - error_type field (structured error from backend)
+            // - URL contains /audit/ or /harden/ (device operations)
+            // - detail is an object (not a simple string like "Invalid token")
+            const isDeviceOperation = 
+                error.config?.url?.includes('/audit/') || 
+                error.config?.url?.includes('/harden/') ||
+                error.config?.url?.includes('/hardening/');
+                
+            const isDeviceSshError =
+                detail && typeof detail === 'object' && 'error_type' in detail;
+
+            // Only logout if this is NOT a device SSH error AND NOT a device operation
+            const shouldLogout = !isDeviceSshError && !isDeviceOperation;
+
+            if (shouldLogout) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('username');
+                localStorage.removeItem('role');
+                localStorage.removeItem('permissions');
+                window.location.href = '/';
+            } else {
+                // This is a device authentication error - let the component handle it
+                // Make sure the error is properly formatted for the component
+                if (detail && typeof detail === 'object') {
+                    // Flatten the structured error to a string for consistent handling
+                    error.response.data.detail = detail.message || detail.error_type || 'Authentication failed';
+                }
+            }
             return Promise.reject(error);
         }
 
