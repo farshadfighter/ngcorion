@@ -62,7 +62,7 @@ def get_audit_module_logs(
     asset_id: Optional[int] = None,
     user_id: Optional[int] = None,
     audit_type: Optional[str] = None,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -116,7 +116,7 @@ def get_audit_module_logs(
 def get_logs_for_asset(
     asset_id: int,
     limit: int = Query(50, ge=1, le=500),
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -156,7 +156,7 @@ def get_logs_for_asset(
 
 @router.get("/stats")
 def get_audit_module_log_stats(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -178,7 +178,7 @@ def get_audit_module_log_stats(
 
 @router.get("/stats/cisco")
 def get_cisco_audit_module_log_stats(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """

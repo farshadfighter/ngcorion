@@ -128,7 +128,7 @@ router = APIRouter(prefix="/api/audit/fortinet", tags=["Audit - FortiGate"])
 def execute_fortinet_audit(
     request: Request,
     audit_request: FortinetAuditRequest,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
     #_quota_check: None = Depends(require_quota("audit"))
 ):
@@ -214,7 +214,7 @@ def execute_fortinet_audit(
 def discover_vdoms(
     request: Request,
     audit_request: VDOMDiscoveryRequest,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -262,7 +262,7 @@ def discover_vdoms(
 def list_audit_sessions(
     limit: int = 50,
     offset: int = 0,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -288,7 +288,7 @@ def list_audit_sessions(
 
 @router.get("/sessions/count")
 def get_fortinet_sessions_count(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -302,7 +302,7 @@ def get_fortinet_sessions_count(
 @router.get("/sessions/{session_id}", response_model=FortinetAuditSessionResponse)
 def get_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -322,7 +322,7 @@ def get_audit_session(
 @router.get("/sessions/{session_id}/results", response_model=List[FortinetAuditResultResponse])
 def get_audit_results(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -357,7 +357,7 @@ def get_audit_results(
 @router.delete("/sessions/{session_id}")
 def delete_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db)
 ):
     """

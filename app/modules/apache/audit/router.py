@@ -137,7 +137,7 @@ router = APIRouter(prefix="/api/audit/apache", tags=["Audit - Apache CIS"])
 def execute_apache_audit(
     audit_request: ApacheAuditRequest,
     request: Request,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
     # _quota_check: None = Depends(require_quota("audit"))
 ):
@@ -247,7 +247,7 @@ def execute_apache_audit(
 def list_apache_sessions(
     limit: int = 50,
     offset: int = 0,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -268,7 +268,7 @@ def list_apache_sessions(
 
 @router.get("/sessions/count")
 def get_apache_sessions_count(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     count = ApacheAuditService.get_apache_sessions_count(db)
@@ -278,7 +278,7 @@ def get_apache_sessions_count(
 @router.get("/sessions/{session_id}", response_model=ApacheAuditSessionResponse)
 def get_apache_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     summary = ApacheAuditService.get_session_summary(db, session_id)
@@ -305,7 +305,7 @@ def get_apache_session(
 )
 def get_apache_results(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     session = ApacheAuditService.get_audit_session(db, session_id)
@@ -337,7 +337,7 @@ def get_apache_results(
 )
 def get_apache_failed_checks(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     session = ApacheAuditService.get_audit_session(db, session_id)
@@ -357,7 +357,7 @@ def get_apache_failed_checks(
 def get_asset_apache_history(
     asset_id: int,
     limit: int = 10,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     from app.models import Asset
@@ -382,7 +382,7 @@ def get_asset_apache_history(
 @router.delete("/sessions/{session_id}")
 def delete_apache_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
     session = ApacheAuditService.get_audit_session(db, session_id)
@@ -426,7 +426,7 @@ def delete_apache_session(
 @router.get("/statistics", response_model=ApacheAuditStatisticsResponse)
 def get_apache_statistics(
     asset_id: Optional[int] = None,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     stats = ApacheAuditService.get_audit_statistics(db, asset_id)
@@ -435,7 +435,7 @@ def get_apache_statistics(
 
 @router.get("/benchmark-info")
 def get_benchmark_info(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
 ):
     from .cis_benchmark_map import get_benchmark_summary
 
@@ -444,7 +444,7 @@ def get_benchmark_info(
 
 @router.get("/supported-configs")
 def get_supported_configs(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
 ):
     return {
         "supported_distributions": [

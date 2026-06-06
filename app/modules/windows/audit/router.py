@@ -115,7 +115,7 @@ router = APIRouter(
 def execute_windows_audit(
     audit_request: WindowsAuditRequest,
     request: Request,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
     #_quota_check: None = Depends(require_quota("audit"))
 ):
@@ -192,7 +192,7 @@ def execute_windows_audit(
 def list_audit_sessions(
     limit: int = 50,
     offset: int = 0,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     limit = min(limit, 100)
@@ -203,7 +203,7 @@ def list_audit_sessions(
 
 @router.get("/sessions/count")
 def get_sessions_count(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     return {"total": WindowsAuditService.get_sessions_count(db)}
@@ -212,7 +212,7 @@ def get_sessions_count(
 @router.get("/sessions/{session_id}", response_model=WindowsAuditSessionResponse)
 def get_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     summary = WindowsAuditService.get_session_summary(db, session_id)
@@ -230,7 +230,7 @@ def get_audit_session(
 )
 def get_audit_results(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     session = WindowsAuditService.get_audit_session(db, session_id)
@@ -263,7 +263,7 @@ def get_audit_results(
 def get_asset_audit_history(
     asset_id: int,
     limit: int = 10,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     from app.models import Asset
@@ -283,7 +283,7 @@ def get_asset_audit_history(
 @router.delete("/sessions/{session_id}")
 def delete_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
     session = WindowsAuditService.get_audit_session(db, session_id)

@@ -107,7 +107,7 @@ router = APIRouter(prefix="/api/audit/cisco", tags=["Audit - Cisco CIS"])
 def execute_cisco_audit(
     audit_request: CiscoAuditRequest,
     request: Request,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
     """
@@ -210,7 +210,7 @@ def execute_cisco_audit(
 def list_audit_sessions(
     limit: int = 50,
     offset: int = 0,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -241,7 +241,7 @@ def list_audit_sessions(
 
 @router.get("/sessions/count")
 def get_audit_sessions_count(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -258,7 +258,7 @@ def get_audit_sessions_count(
 @router.get("/sessions/{session_id}", response_model=CiscoAuditSessionResponse)
 def get_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -282,7 +282,7 @@ def get_audit_session(
 )
 def get_audit_results(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -325,7 +325,7 @@ def get_audit_results(
 def get_asset_audit_history(
     asset_id: int,
     limit: int = 10,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -359,7 +359,7 @@ def get_asset_audit_history(
 @router.delete("/sessions/{session_id}")
 def delete_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
     """
@@ -453,7 +453,7 @@ class CISBenchmarkTableResponse(BaseModel):
 )
 def get_cis_benchmark_table(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """
@@ -517,7 +517,7 @@ class CISBenchmarkAuditRequest(BaseModel):
 def execute_cis_benchmark_audit(
     http_request: Request,
     request: CISBenchmarkAuditRequest,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
     """

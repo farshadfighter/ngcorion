@@ -124,7 +124,7 @@ router = APIRouter(prefix="/api/audit/linux", tags=["Audit - Linux CIS"])
 def execute_linux_audit(
     audit_request: LinuxAuditRequest,
     request: Request,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
     #_quota_check: None = Depends(require_quota("audit"))
 ):
@@ -208,7 +208,7 @@ def execute_linux_audit(
 def list_linux_sessions(
     limit: int = 50,
     offset: int = 0,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     limit = min(limit, 100)
@@ -225,7 +225,7 @@ def list_linux_sessions(
 
 @router.get("/sessions/count")
 def get_linux_sessions_count(
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     count = LinuxAuditService.get_linux_sessions_count(db)
@@ -235,7 +235,7 @@ def get_linux_sessions_count(
 @router.get("/sessions/{session_id}", response_model=LinuxAuditSessionResponse)
 def get_linux_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     summary = LinuxAuditService.get_session_summary(db, session_id)
@@ -259,7 +259,7 @@ def get_linux_session(
 @router.get("/sessions/{session_id}/results", response_model=List[LinuxAuditResultResponse])
 def get_linux_results(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     session = LinuxAuditService.get_audit_session(db, session_id)
@@ -289,7 +289,7 @@ def get_linux_results(
 @router.get("/sessions/{session_id}/failed", response_model=List[LinuxFailedCheckResponse])
 def get_linux_failed_checks(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     session = LinuxAuditService.get_audit_session(db, session_id)
@@ -307,7 +307,7 @@ def get_linux_failed_checks(
 def get_asset_linux_history(
     asset_id: int,
     limit: int = 10,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     from app.models import Asset
@@ -333,7 +333,7 @@ def get_asset_linux_history(
 @router.delete("/sessions/{session_id}")
 def delete_linux_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db)
 ):
     session = LinuxAuditService.get_audit_session(db, session_id)
@@ -372,7 +372,7 @@ def delete_linux_session(
 @router.get("/statistics", response_model=LinuxAuditStatisticsResponse)
 def get_linux_statistics(
     asset_id: Optional[int] = None,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
     stats = LinuxAuditService.get_audit_statistics(db, asset_id)
@@ -381,7 +381,7 @@ def get_linux_statistics(
 
 @router.get("/supported-distros")
 def get_supported_distros(
-    current_user: User = Depends(require_permission("AUDIT", "read"))
+    current_user: User = Depends(require_permission("AUDITING", "read"))
 ):
     return {
         "supported_distributions": [

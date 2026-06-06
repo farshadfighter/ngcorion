@@ -101,7 +101,7 @@ def _build_session_response(db: Session, session: AuditSession) -> dict:
 @router.get("/sessions/{session_id}", response_model=SharedAuditSessionResponse)
 def get_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """Get audit session details by ID, works for any device family."""
@@ -120,7 +120,7 @@ def get_audit_session(
 )
 def get_audit_results(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
     """Get detailed check results for any audit session."""
@@ -150,7 +150,7 @@ def get_audit_results(
 @router.delete("/sessions/{session_id}")
 def delete_audit_session(
     session_id: int,
-    current_user: User = Depends(require_permission("AUDIT", "write")),
+    current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
     """Delete an audit session and all its results, works for any device family."""
