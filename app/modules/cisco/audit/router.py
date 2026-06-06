@@ -39,7 +39,7 @@ class CiscoAuditRequest(BaseModel):
     )
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     profile: str = Field(
-        "L1", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL"
+        "FULL", pattern="^(L1|FULL)$", description="CIS profile: L1 or FULL"
     )
     job_name: Optional[str] = Field(
         None, max_length=200, description="User-friendly job name"
@@ -53,7 +53,7 @@ class CiscoAuditRequest(BaseModel):
                 "ssh_password": "********",
                 "ssh_secret": "********",
                 "ssh_port": 22,
-                "profile": "L1",
+                "profile": "FULL",
             }
         }
 
@@ -117,7 +117,7 @@ def execute_cisco_audit(
     1. User selects asset from Asset List
     2. User enters SSH credentials (not stored)
     3. System connects via SSH and runs ~40 targeted commands
-    4. System evaluates ~50 CIS security checks
+    4. System evaluates all 82 CIS Benchmark checks (FULL profile by default)
     5. Results stored permanently in database
     6. Returns compliance summary
 

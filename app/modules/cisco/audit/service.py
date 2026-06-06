@@ -172,7 +172,7 @@ class AuditService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        profile: str = "L1",
+        profile: str = "FULL",
         job_name: Optional[str] = None,
         ssh_port: int = 22
     ) -> AuditSession:
@@ -663,7 +663,7 @@ class AuditService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        profile: str = "L1",
+        profile: str = "FULL",
         job_name: Optional[str] = None,
         max_retries: int = None
     ) -> AuditSession:

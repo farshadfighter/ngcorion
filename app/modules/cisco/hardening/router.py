@@ -250,7 +250,7 @@ class AutoAuditRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_secret: Optional[str] = None
-    profile: str = Field(default="L1", pattern="^(L1|FULL)$")
+    profile: str = Field(default="FULL", pattern="^(L1|FULL)$")
     asset_id: Optional[int] = Field(None, description="Optional: link to existing asset")
 
     class Config:
@@ -260,7 +260,7 @@ class AutoAuditRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "cisco123",
                 "ssh_secret": "cisco123",
-                "profile": "L1"
+                "profile": "FULL"
             }
         }
 

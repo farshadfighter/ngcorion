@@ -612,7 +612,7 @@ class HardeningService:
         ssh_username: str,
         ssh_password: str,
         ssh_secret: Optional[str] = None,
-        profile: str = "L1",
+        profile: str = "FULL",
         asset_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
