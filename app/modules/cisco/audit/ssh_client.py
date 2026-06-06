@@ -53,8 +53,12 @@ CISCO_TURBO_COMMANDS: List[str] = [
     "show run | i ^ip ssh version|^ip ssh timeout|^ip ssh authentication-retries|^ip ssh server algorithm",
     "show ip ssh",
 
-    # Legacy/Small services off
-    "show run | i ^no service tcp-small-servers|^no service udp-small-servers|^no service pad|^no ip bootp server|^no ip finger",
+    # Service hygiene one-liners. These are default-state global services that
+    # only appear in running-config once explicitly toggled (e.g. "no service
+    # dhcp", "no ip identd", "service tcp-keepalives-in"). They MUST be grepped
+    # explicitly — otherwise checks CIS-2.1.4/2.1.5/2.1.6 never see them and
+    # report non-compliant even after hardening applies them.
+    "show run | i ^no service tcp-small-servers|^no service udp-small-servers|^no service dhcp|^no service pad|^no ip bootp server|^no ip finger|^no ip identd|^service tcp-keepalives",
 
     # AAA / Login controls / Logging
     "show run | i ^aaa |^login block-for|^login on-failure|^login on-success",
