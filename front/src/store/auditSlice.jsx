@@ -25,7 +25,7 @@ export const executeAudit = createAsyncThunk(
             const apiPath = getDeviceApiPath(deviceType);
             const endpoint = `/api/audit/${apiPath}/execute`;
 
-            const payload = { asset_id: formData.asset_id, profile: "L1" };
+            const payload = { asset_id: formData.asset_id, profile: "FULL" };
 
             if (formData.job_name)      payload.job_name      = formData.job_name;
             if (formData.ssh_username)  payload.ssh_username  = formData.ssh_username;
