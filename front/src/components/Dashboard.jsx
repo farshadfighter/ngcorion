@@ -16,6 +16,7 @@ import { ChangePasswordModal } from "./ChangePasswordModal";
 import { usePermission } from "../hooks/usePermission";
 import { LogsPage } from "./Logs/LogsPage";
 import BackupPage from "./Backup/BackupPage";
+import { AssetManagementDashboard } from "./AssetManagement/AssetManagementDashboard";
 
 
 
@@ -112,7 +113,8 @@ export const Dashboard = () => {
 
     const renderContent = () => {
         switch (activeMenu) {
-
+            case "asset-management":
+                return <AssetManagementDashboard />;
             case "dashboard":
                 return (
                     <div className="dashboard-cards">
@@ -252,7 +254,11 @@ export const Dashboard = () => {
 
                     {/* ASSET MANAGEMENT Section */}
                     {!isSidebarCollapsed && (canReadAssetReq || canReadAssetList || canReadAutoDisc) && (
-                        <div className="nav-section">
+                        <div
+                            className={`nav-section ${activeMenu === "asset-management" ? "active" : ""}`}
+                            onClick={() => setActiveMenu("asset-management")}
+                            style={{ cursor: "pointer" }}
+                        >
                             <img src="/icons/asset-management.svg" alt="" className="section-icon" />
                             <span className="nav-section-title">Asset Management</span>
                         </div>

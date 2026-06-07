@@ -1,0 +1,151 @@
+/* ============================================
+   ASSET MANAGEMENT DASHBOARD - STYLES
+   ============================================ */
+
+.amd-container {
+    padding: 32px 40px;
+}
+
+.amd-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 28px;
+}
+
+/* ── کارت‌های آماری ── */
+.amd-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.amd-stat-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: box-shadow 0.2s;
+}
+
+.amd-stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.amd-stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.amd-stat-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* ── چارت‌ها ── */
+.amd-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.amd-chart-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.amd-chart-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Legend */
+.amd-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.amd-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.amd-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.amd-legend-text {
+    color: #374151;
+}
+
+/* Empty State */
+.amd-empty {
+    text-align: center;
+    color: #9ca3af;
+    padding: 40px 0;
+    font-size: 14px;
+}
+
+/* Loading */
+.amd-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+    flex-direction: column;
+    gap: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.amd-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #1e3a5f;
+    border-radius: 50%;
+    animation: amd-spin 0.8s linear infinite;
+}
+
+@keyframes amd-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .amd-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .amd-container {
+        padding: 16px 20px;
+    }
+
+    .amd-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .amd-charts-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -42,7 +42,7 @@ export const OverviewTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds,
                     <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>Asset Name {renderSortIcon("asset_name")}</th>
                     <th onClick={() => handleSort("hostname")} style={{ cursor: "pointer" }}>Hostname {renderSortIcon("hostname")}</th>
                     <th onClick={() => handleSort("asset_type_name")} style={{ cursor: "pointer" }}>Type {renderSortIcon("asset_type_name")}</th>
-                    <th onClick={() => handleSort("asset_role")} style={{ cursor: "pointer" }}>Role {renderSortIcon("asset_role")}</th>
+                    <th onClick={() => handleSort("asset_role")} style={{ cursor: "pointer" }}>Zone {renderSortIcon("asset_role")}</th>
                     <th onClick={() => handleSort("manufacturer")} style={{ cursor: "pointer" }}>Manufacturer {renderSortIcon("manufacturer")}</th>
                     <th onClick={() => handleSort("model")} style={{ cursor: "pointer" }}>Model {renderSortIcon("model")}</th>
                     <th>Actions</th>
