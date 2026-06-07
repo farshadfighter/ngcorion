@@ -3,22 +3,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchRequiredParameters,
     autoHardenWithDefaults,
-    batchExecuteChecks,
     discoverFortinetVdoms,
     clearRequiredParameters,
     clearMessages
 } from '../../store/hardeningSlice';
+import CredentialsForm from './CredentialsForm';
+import {
+    isWindows,
+    isMssql,
+    defaultCredentialsState,
+    validateCredentials,
+    buildCredentials,
+} from './hardeningCredentials';
 import '../../assets/hardening/Hardenallmodal.css';
-
-// ─── Device type helpers ──────────────────────────────────────────────────────
-const isLinux   = (dt) => dt === 'linux' || dt?.startsWith('linux-');
-const isCisco   = (dt) => dt === 'cisco';
-const isFortinet= (dt) => dt === 'fortinet';
-const isApache  = (dt) => dt === 'apache';
-const isMongo   = (dt) => dt === 'mongodb';
-const isMssql   = (dt) => dt?.startsWith('mssql-');
-const isWindows = (dt) => dt?.startsWith('windows-');
-const needsSudo = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
 const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) => {
     const dispatch = useDispatch();
@@ -27,7 +24,6 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         isFetchingParams,
         isExecuting,
         error,
-        cisChecks,
         vdomDiscovery
     } = useSelector((state) => state.hardening);
 
@@ -35,28 +31,8 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
 
     const [step, setStep] = useState(1); // 1: Parameters, 2: Credentials, 3: Executing, 4: Results
     const [paramValues, setParamValues] = useState({});
-    const [sshCredentials, setSshCredentials] = useState({
-        // SSH-based
-        ssh_username:     '',
-        ssh_password:     '',
-        ssh_port:         '22',
-        ssh_secret:       '',       // Cisco only
-        vdom:             '',       // Fortinet only
-        sudo_password:    '',       // Linux / Apache / MongoDB
-        // MongoDB extra
-        mongo_username:   '',
-        mongo_password:   '',
-        mongo_port:       '27017',
-        // MSSQL
-        mssql_username:   '',
-        mssql_password:   '',
-        mssql_port:       '1433',
-        // Windows (WinRM)
-        windows_username: '',
-        windows_password: '',
-        winrm_port:       '5986',
-        transport:        'ntlm',
-    });
+    const [sshCredentials, setSshCredentials] = useState(defaultCredentialsState);
+    const [credErrors, setCredErrors] = useState({});
     const [executionResult, setExecutionResult] = useState(null);
 
     useEffect(() => {
@@ -75,12 +51,12 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
             Object.entries(requiredParameters.required_parameters).forEach(([key, param]) => {
                 initialValues[key] = param.default || '';
             });
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setParamValues(prev => {
                 const hasChanged = JSON.stringify(prev) !== JSON.stringify(initialValues);
                 return hasChanged ? initialValues : prev;
             });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [requiredParameters?.required_parameters]);
 
     const handleParamChange = (key, value) => setParamValues(prev => ({ ...prev, [key]: value }));
@@ -88,6 +64,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     const handleSSHChange = (e) => {
         const { name, value } = e.target;
         setSshCredentials(prev => ({ ...prev, [name]: value }));
+        setCredErrors(prev => (prev[name] ? { ...prev, [name]: undefined } : prev));
     };
 
     const handleDetectVdoms = () => {
@@ -114,18 +91,10 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         return true;
     };
 
-    const validateCredentials = () => {
-        if (isWindows(deviceType)) {
-            if (!sshCredentials.windows_username.trim()) { alert('Windows Username is required'); return false; }
-            if (!sshCredentials.windows_password.trim()) { alert('Windows Password is required'); return false; }
-        } else if (isMssql(deviceType)) {
-            if (!sshCredentials.mssql_username.trim()) { alert('SQL Server Username is required'); return false; }
-            if (!sshCredentials.mssql_password.trim()) { alert('SQL Server Password is required'); return false; }
-        } else {
-            if (!sshCredentials.ssh_username.trim()) { alert('SSH Username is required'); return false; }
-            if (!sshCredentials.ssh_password.trim()) { alert('SSH Password is required'); return false; }
-        }
-        return true;
+    const validateForm = () => {
+        const errs = validateCredentials(deviceType, sshCredentials);
+        setCredErrors(errs);
+        return Object.keys(errs).length === 0;
     };
 
     const handleNextFromParams = () => {
@@ -133,38 +102,11 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     };
 
     const handleExecute = async () => {
-        if (!validateCredentials()) return;
+        if (!validateForm()) return;
         setStep(3);
 
         try {
-            let credentials = {};
-
-            if (isWindows(deviceType)) {
-                credentials = {
-                    windows_username: sshCredentials.windows_username,
-                    windows_password: sshCredentials.windows_password,
-                    winrm_port:       parseInt(sshCredentials.winrm_port) || 5986,
-                    transport:        sshCredentials.transport || 'ntlm',
-                };
-            } else if (isMssql(deviceType)) {
-                credentials = {
-                    mssql_username: sshCredentials.mssql_username,
-                    mssql_password: sshCredentials.mssql_password,
-                    mssql_port:     parseInt(sshCredentials.mssql_port) || 1433,
-                };
-            } else {
-                credentials = {
-                    ssh_username: sshCredentials.ssh_username,
-                    ssh_password: sshCredentials.ssh_password,
-                    ssh_port:     parseInt(sshCredentials.ssh_port) || 22,
-                    ...(isCisco(deviceType)    && sshCredentials.ssh_secret     && { ssh_secret:     sshCredentials.ssh_secret }),
-                    ...(isFortinet(deviceType) && vdomEnabled && sshCredentials.vdom && { vdom:        sshCredentials.vdom }),
-                    ...(needsSudo(deviceType)  && sshCredentials.sudo_password  && { sudo_password:  sshCredentials.sudo_password }),
-                    ...(isMongo(deviceType)    && sshCredentials.mongo_username  && { mongo_username: sshCredentials.mongo_username }),
-                    ...(isMongo(deviceType)    && sshCredentials.mongo_password  && { mongo_password: sshCredentials.mongo_password }),
-                    ...(isMongo(deviceType)    && { mongo_port: parseInt(sshCredentials.mongo_port) || 27017 }),
-                };
-            }
+            const credentials = buildCredentials(deviceType, sshCredentials, { vdomEnabled });
 
             const result = await dispatch(autoHardenWithDefaults({
                 sessionId,
@@ -197,7 +139,6 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         transition: 'all 0.2s',
         background: 'white'
     };
-    const hintStyle = { fontSize: '12px', color: '#7f8c8d', display: 'block', marginTop: '4px' };
 
     // ─── Renders ──────────────────────────────────────────────────────────────
 
@@ -236,170 +177,19 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         );
     };
 
-    const renderCredentialsForm = () => {
-        // ── Windows ──────────────────────────────────────────────────────────
-        if (isWindows(deviceType)) {
-            return (
-                <div className="hardening-ssh-form">
-                    <div className="hardening-form-group">
-                        <label>Windows Username<span className="hardening-required">*</span></label>
-                        <input type="text" name="windows_username" value={sshCredentials.windows_username} onChange={handleSSHChange} placeholder="Administrator or DOMAIN\user" autoComplete="username" style={inputStyle} />
-                    </div>
-                    <div className="hardening-form-group">
-                        <label>Windows Password<span className="hardening-required">*</span></label>
-                        <input type="password" name="windows_password" value={sshCredentials.windows_password} onChange={handleSSHChange} placeholder="Windows admin password" autoComplete="current-password" style={inputStyle} />
-                    </div>
-                    <div className="hardening-form-group">
-                        <label>WinRM Port</label>
-                        <input type="number" name="winrm_port" value={sshCredentials.winrm_port} onChange={handleSSHChange} placeholder="5986" autoComplete="off" style={inputStyle} />
-                        <span style={hintStyle}>Default: 5986 (HTTPS)</span>
-                    </div>
-                    <div className="hardening-form-group">
-                        <label>Transport</label>
-                        <select name="transport" value={sshCredentials.transport} onChange={handleSSHChange} style={inputStyle}>
-                            <option value="ntlm">NTLM</option>
-                            <option value="kerberos">Kerberos</option>
-                            <option value="credssp">CredSSP</option>
-                            <option value="basic">Basic</option>
-                        </select>
-                    </div>
-                </div>
-            );
-        }
-
-        // ── MSSQL ────────────────────────────────────────────────────────────
-        if (isMssql(deviceType)) {
-            return (
-                <div className="hardening-ssh-form">
-                    <div className="hardening-form-group">
-                        <label>SQL Server Username<span className="hardening-required">*</span></label>
-                        <input type="text" name="mssql_username" value={sshCredentials.mssql_username} onChange={handleSSHChange} placeholder="sa or sysadmin account" autoComplete="username" style={inputStyle} />
-                    </div>
-                    <div className="hardening-form-group">
-                        <label>SQL Server Password<span className="hardening-required">*</span></label>
-                        <input type="password" name="mssql_password" value={sshCredentials.mssql_password} onChange={handleSSHChange} placeholder="SQL Server password" autoComplete="current-password" style={inputStyle} />
-                    </div>
-                    <div className="hardening-form-group">
-                        <label>SQL Server Port</label>
-                        <input type="number" name="mssql_port" value={sshCredentials.mssql_port} onChange={handleSSHChange} placeholder="1433" autoComplete="off" style={inputStyle} />
-                    </div>
-                </div>
-            );
-        }
-
-        // ── SSH-based: Linux, Cisco, Fortinet, Apache, MongoDB ───────────────
-        return (
-            <div className="hardening-ssh-form">
-                <div className="hardening-form-group">
-                    <label>SSH Username<span className="hardening-required">*</span></label>
-                    <input type="text" name="ssh_username" value={sshCredentials.ssh_username} onChange={handleSSHChange} placeholder="Enter SSH username" autoComplete="username" style={inputStyle} />
-                </div>
-                <div className="hardening-form-group">
-                    <label>SSH Password<span className="hardening-required">*</span></label>
-                    <input type="password" name="ssh_password" value={sshCredentials.ssh_password} onChange={handleSSHChange} placeholder="Enter SSH password" autoComplete="current-password" style={inputStyle} />
-                </div>
-                <div className="hardening-form-group">
-                    <label>SSH Port</label>
-                    <input type="number" name="ssh_port" value={sshCredentials.ssh_port} onChange={handleSSHChange} placeholder="22" min="1" max="65535" autoComplete="off" style={inputStyle} />
-                </div>
-
-                {isCisco(deviceType) && (
-                    <div className="hardening-form-group">
-                        <label>Enable Password</label>
-                        <input type="password" name="ssh_secret" value={sshCredentials.ssh_secret} onChange={handleSSHChange} placeholder="Enter enable secret (optional)" autoComplete="off" style={inputStyle} />
-                        <span style={hintStyle}>Required for privileged commands</span>
-                    </div>
-                )}
-
-                {isFortinet(deviceType) && (
-                    <div className="hardening-form-group">
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={vdomEnabled}
-                                onChange={(e) => setVdomEnabled(e.target.checked)}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                            />
-                            This FortiGate uses VDOMs
-                        </label>
-
-                        {vdomEnabled && (
-                            <div style={{ marginTop: '8px' }}>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
-                                    <button
-                                        type="button"
-                                        onClick={handleDetectVdoms}
-                                        disabled={vdomDiscovery?.isDiscovering || !sshCredentials.ssh_username || !sshCredentials.ssh_password}
-                                        style={{
-                                            padding: '6px 14px', fontSize: '13px', fontWeight: 600,
-                                            background: '#2563eb', color: 'white', border: 'none',
-                                            borderRadius: '6px', cursor: 'pointer',
-                                            opacity: (vdomDiscovery?.isDiscovering || !sshCredentials.ssh_username || !sshCredentials.ssh_password) ? 0.5 : 1,
-                                        }}
-                                    >
-                                        {vdomDiscovery?.isDiscovering ? 'Detecting…' : 'Show VDOMs'}
-                                    </button>
-                                    {vdomDiscovery?.vdoms !== null && !vdomDiscovery?.isDiscovering && (
-                                        <span style={{
-                                            padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600,
-                                            background: vdomDiscovery.vdoms.length > 0 ? '#d1fae5' : '#f3f4f6',
-                                            color: vdomDiscovery.vdoms.length > 0 ? '#065f46' : '#6b7280',
-                                            border: `1px solid ${vdomDiscovery.vdoms.length > 0 ? '#6ee7b7' : '#d1d5db'}`,
-                                        }}>
-                                            {vdomDiscovery.vdoms.length > 0
-                                                ? `✓ VDOM Enabled (${vdomDiscovery.vdoms.length})`
-                                                : 'No VDOMs found'}
-                                        </span>
-                                    )}
-                                </div>
-                                {vdomDiscovery?.error && (
-                                    <span style={{ fontSize: '12px', color: '#dc2626', display: 'block', marginBottom: '4px' }}>
-                                        {vdomDiscovery.error}
-                                    </span>
-                                )}
-                                {vdomDiscovery?.vdoms?.length > 0 ? (
-                                    <select name="vdom" value={sshCredentials.vdom} onChange={handleSSHChange} style={inputStyle}>
-                                        <option value="">Select VDOM (default: root)</option>
-                                        {vdomDiscovery.vdoms.map((v) => (
-                                            <option key={v} value={v}>{v}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <input type="text" name="vdom" value={sshCredentials.vdom} onChange={handleSSHChange} placeholder="VDOM name (e.g. root)" autoComplete="off" style={inputStyle} />
-                                )}
-                                <span style={hintStyle}>Click "Show VDOMs" to list virtual domains, then pick the target VDOM.</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {needsSudo(deviceType) && (
-                    <div className="hardening-form-group">
-                        <label>Sudo Password</label>
-                        <input type="password" name="sudo_password" value={sshCredentials.sudo_password} onChange={handleSSHChange} placeholder="Sudo password (optional)" autoComplete="off" style={inputStyle} />
-                        <span style={hintStyle}>Required for root access (defaults to SSH password)</span>
-                    </div>
-                )}
-
-                {isMongo(deviceType) && (
-                    <>
-                        <div className="hardening-form-group">
-                            <label>MongoDB Username</label>
-                            <input type="text" name="mongo_username" value={sshCredentials.mongo_username} onChange={handleSSHChange} placeholder="admin (optional)" autoComplete="off" style={inputStyle} />
-                        </div>
-                        <div className="hardening-form-group">
-                            <label>MongoDB Password</label>
-                            <input type="password" name="mongo_password" value={sshCredentials.mongo_password} onChange={handleSSHChange} placeholder="MongoDB password (optional)" autoComplete="off" style={inputStyle} />
-                        </div>
-                        <div className="hardening-form-group">
-                            <label>MongoDB Port</label>
-                            <input type="number" name="mongo_port" value={sshCredentials.mongo_port} onChange={handleSSHChange} placeholder="27017" autoComplete="off" style={inputStyle} />
-                        </div>
-                    </>
-                )}
-            </div>
-        );
-    };
+    const renderCredentialsForm = () => (
+        <CredentialsForm
+            deviceType={deviceType}
+            value={sshCredentials}
+            onChange={handleSSHChange}
+            errors={credErrors}
+            vdomEnabled={vdomEnabled}
+            onVdomEnabledChange={setVdomEnabled}
+            vdomDiscovery={vdomDiscovery}
+            onDetectVdoms={handleDetectVdoms}
+            canDetectVdoms={!!assetId && !!sshCredentials.ssh_username && !!sshCredentials.ssh_password}
+        />
+    );
 
     const renderExecuting = () => (
         <div className="hardening-modal-executing">

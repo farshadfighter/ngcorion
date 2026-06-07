@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
     require_permission,
+    assert_session_access,
     check_quota_available,
     consume_quota_on_success,
 )
@@ -289,6 +290,8 @@ def get_audit_session(
             detail=f"Audit session {session_id} not found",
         )
 
+    assert_session_access(AuditService.get_audit_session(db, session_id), current_user)
+
     return summary
 
 
@@ -313,11 +316,7 @@ def get_audit_results(
     """
     # Verify session exists
     session = AuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     results = AuditService.get_audit_results(db, session_id)
 
@@ -385,12 +384,7 @@ def delete_audit_session(
     **Note:** This permanently deletes the audit session and all associated results.
     """
     session = AuditService.get_audit_session(db, session_id)
-
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     # Get session info for logging before deletion
     from app.models import Asset
@@ -479,6 +473,8 @@ def get_cis_benchmark_table(
 
     **Permissions:** Requires AUDIT read permission
     """
+    assert_session_access(AuditService.get_audit_session(db, session_id), current_user)
+
     table = AuditService.get_cis_benchmark_table(db, session_id)
 
     if not table:

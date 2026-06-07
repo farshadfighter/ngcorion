@@ -14,7 +14,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import get_current_user, require_permission, assert_session_access
 from app.models import User, Asset, log_action
 from app.models.audit import AuditSession, AuditResult, CheckStatus
 
@@ -106,11 +106,7 @@ def get_audit_session(
 ):
     """Get audit session details by ID, works for any device family."""
     session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
     return _build_session_response(db, session)
 
 
@@ -125,11 +121,7 @@ def get_audit_results(
 ):
     """Get detailed check results for any audit session."""
     session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
     return [
@@ -155,11 +147,7 @@ def delete_audit_session(
 ):
     """Delete an audit session and all its results, works for any device family."""
     session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
     asset_name = asset.asset_name if asset else None

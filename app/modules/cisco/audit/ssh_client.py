@@ -202,15 +202,20 @@ class CiscoSSHClient:
                     auth_timeout=20     # Longer auth timeout
                 )
 
-                # Try to enter enable mode if secret provided
-                if self.secret:
-                    try:
+                # Enter enable mode if needed/possible.
+                # Always check current state first — if SSH auto-elevates to privilege 15
+                # we're already at '#' without needing to call enable().
+                try:
+                    if self.connection.check_enable_mode():
+                        self._in_enable_mode = True
+                        logger.debug(f"Already in enable mode on {self.ip}")
+                    elif self.secret:
                         self.connection.enable()
                         self._in_enable_mode = True
                         logger.debug(f"Entered enable mode on {self.ip}")
-                    except Exception as e:
-                        logger.warning(f"Failed to enter enable mode on {self.ip}: {e}")
-                        # Continue even if enable fails - some commands still work
+                except Exception as e:
+                    logger.warning(f"Failed to enter enable mode on {self.ip}: {e}")
+                    # Continue — read-only show commands still work without enable mode
 
                 # Disable paging
                 try:
@@ -392,13 +397,28 @@ class CiscoSSHClient:
             raise RuntimeError("SSH connection is no longer active.")
 
         try:
-            # Ensure we're in enable mode before entering config mode
-            if not self._in_enable_mode and self.secret:
-                try:
-                    self.connection.enable()
+            # Ensure we're in enable mode before entering config mode.
+            # Check the actual device privilege state first — SSH sessions configured
+            # for privilege 15 land at '#' without calling enable(), so _in_enable_mode
+            # would be False even though the connection is already privileged.
+            if not self._in_enable_mode:
+                if self.connection.check_enable_mode():
                     self._in_enable_mode = True
-                except Exception as e:
-                    logger.warning(f"Failed to enter enable mode: {e}")
+                elif self.secret:
+                    try:
+                        self.connection.enable()
+                        self._in_enable_mode = True
+                    except Exception as e:
+                        raise RuntimeError(
+                            "Cannot enter configuration mode: enable mode "
+                            "authentication failed. Verify the enable secret is "
+                            "correct for this device."
+                        )
+                else:
+                    raise RuntimeError(
+                        "Cannot enter configuration mode: device is not in "
+                        "privileged mode and no enable secret was provided."
+                    )
 
             # Expand any commands that contain embedded newlines (e.g. banner templates)
             # into separate list items so send_config_set handles them line-by-line.
@@ -428,6 +448,9 @@ class CiscoSSHClient:
             logger.info(f"Successfully executed {len(commands)} config commands on {self.ip}")
             return output
 
+        except RuntimeError:
+            # Re-raise RuntimeErrors directly (enable mode failures, etc.)
+            raise
         except Exception as e:
             logger.error(f"Config command execution failed on {self.ip}: {str(e)}")
             raise RuntimeError(f"Config command execution failed: {str(e)}")

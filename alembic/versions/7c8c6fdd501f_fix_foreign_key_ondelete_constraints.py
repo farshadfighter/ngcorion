@@ -37,7 +37,9 @@ def upgrade() -> None:
                existing_nullable=False)
     op.drop_constraint(op.f('hardening_actions_asset_id_fkey'), 'hardening_actions', type_='foreignkey')
     op.create_foreign_key(None, 'hardening_actions', 'asset_inventory', ['asset_id'], ['id'], ondelete='CASCADE')
-    op.drop_constraint(op.f('protocols_name_key'), 'protocols', type_='unique')
+    # Some environments enforce protocols.name uniqueness via a unique index
+    # rather than a named unique constraint, so drop the constraint defensively.
+    op.execute("ALTER TABLE protocols DROP CONSTRAINT IF EXISTS protocols_name_key")
     op.drop_index(op.f('ix_protocols_name'), table_name='protocols')
     op.create_index(op.f('ix_protocols_name'), 'protocols', ['name'], unique=True)
     # ### end Alembic commands ###

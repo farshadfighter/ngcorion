@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import (get_current_user,
     require_permission,
+    assert_session_access,
     require_quota ,
     consume_quota_on_success ,
     check_quota_available)
@@ -329,6 +330,8 @@ def get_audit_session(
             detail=f"Audit session {session_id} not found"
         )
 
+    assert_session_access(FortinetAuditService.get_audit_session(db, session_id), current_user)
+
     return summary
 
 
@@ -343,11 +346,7 @@ def get_audit_results(
     """
     # Verify session exists
     session = FortinetAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
-        )
+    assert_session_access(session, current_user)
 
     results = FortinetAuditService.get_audit_results(db, session_id)
 
@@ -378,11 +377,7 @@ def delete_audit_session(
     """
     # Verify session exists
     session = FortinetAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
-        )
+    assert_session_access(session, current_user)
 
     # Get asset info for logging before deletion
     from app.models import Asset
