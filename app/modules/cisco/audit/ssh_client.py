@@ -202,17 +202,16 @@ class CiscoSSHClient:
                     auth_timeout=20     # Longer auth timeout
                 )
 
-                # Enter enable mode if needed/possible.
-                # Always check current state first — if SSH auto-elevates to privilege 15
-                # we're already at '#' without needing to call enable().
+                # Enter enable mode if needed/possible. Always check current state
+                # first — if SSH auto-elevates to privilege 15 we're already at '#'.
                 try:
-                    if self.connection.check_enable_mode():
-                        self._in_enable_mode = True
-                        logger.debug(f"Already in enable mode on {self.ip}")
-                    elif self.secret:
-                        self.connection.enable()
-                        self._in_enable_mode = True
-                        logger.debug(f"Entered enable mode on {self.ip}")
+                    if self._ensure_enable_mode():
+                        logger.debug(f"In enable mode on {self.ip}")
+                    else:
+                        logger.info(
+                            f"Not in enable mode on {self.ip}: no enable secret "
+                            "provided (read-only commands will still work)"
+                        )
                 except Exception as e:
                     logger.warning(f"Failed to enter enable mode on {self.ip}: {e}")
                     # Continue — read-only show commands still work without enable mode
@@ -290,6 +289,51 @@ class CiscoSSHClient:
             return self.connection.is_alive()
         except Exception:
             return False
+
+    def _ensure_enable_mode(self) -> bool:
+        """
+        Ensure the session is in privileged (enable) mode.
+
+        Returns:
+            True if the session is in enable mode; False if it could not be
+            entered because no enable secret is available.
+
+        Raises:
+            Propagates netmiko errors when an enable secret was provided but the
+            elevation failed (e.g. wrong secret).
+
+        Note on fast_cli: the enable password exchange is run with fast_cli
+        temporarily disabled. fast_cli's aggressive timing can make netmiko read
+        the channel before the device's "Password:" prompt — or the post-secret
+        "#" prompt — is fully received, so it either never sends the secret or
+        wrongly concludes elevation failed. That surfaces the misleading
+        "Failed to enter enable mode. Please ensure you pass the 'secret'
+        argument to ConnectHandler." error even when the secret is correct.
+        Disabling fast_cli for just this exchange makes it reliable without
+        slowing the bulk "show" collection.
+        """
+        if self._in_enable_mode:
+            return True
+
+        prev_fast_cli = self.connection.fast_cli
+        self.connection.fast_cli = False
+        try:
+            # Already privileged? SSH users configured for privilege 15 land at
+            # '#' without any enable step. Run this check with fast_cli disabled
+            # too — under fast_cli it can misread a privileged session as
+            # unprivileged and trigger a needless (and failing) enable attempt.
+            if self.connection.check_enable_mode():
+                self._in_enable_mode = True
+                return True
+
+            if not self.secret:
+                return False
+
+            self.connection.enable()
+            self._in_enable_mode = True
+            return True
+        finally:
+            self.connection.fast_cli = prev_fast_cli
 
     def collect_turbo(self) -> str:
         """
@@ -397,24 +441,20 @@ class CiscoSSHClient:
             raise RuntimeError("SSH connection is no longer active.")
 
         try:
-            # Ensure we're in enable mode before entering config mode.
-            # Check the actual device privilege state first — SSH sessions configured
-            # for privilege 15 land at '#' without calling enable(), so _in_enable_mode
-            # would be False even though the connection is already privileged.
+            # Ensure we're in enable mode before entering config mode. The helper
+            # checks the actual device privilege state first (SSH sessions at
+            # privilege 15 are already at '#') and runs the enable exchange with
+            # fast_cli disabled so a correct secret is not rejected over timing.
             if not self._in_enable_mode:
-                if self.connection.check_enable_mode():
-                    self._in_enable_mode = True
-                elif self.secret:
-                    try:
-                        self.connection.enable()
-                        self._in_enable_mode = True
-                    except Exception as e:
-                        raise RuntimeError(
-                            "Cannot enter configuration mode: enable mode "
-                            "authentication failed. Verify the enable secret is "
-                            "correct for this device."
-                        )
-                else:
+                try:
+                    entered = self._ensure_enable_mode()
+                except Exception as e:
+                    raise RuntimeError(
+                        "Cannot enter configuration mode: enable mode "
+                        "authentication failed. Verify the enable secret is "
+                        "correct for this device."
+                    ) from e
+                if not entered:
                     raise RuntimeError(
                         "Cannot enter configuration mode: device is not in "
                         "privileged mode and no enable secret was provided."
