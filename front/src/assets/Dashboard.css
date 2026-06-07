@@ -454,3 +454,7 @@
 .nav-item.active .nav-icon-license {
     filter: invert(16%) sepia(60%) saturate(600%) hue-rotate(195deg) brightness(90%);
 }
+.nav-item:hover .nav-icon-img,
+.nav-item.active .nav-icon-img {
+    filter: brightness(0) saturate(100%) invert(18%) sepia(89%) saturate(500%) hue-rotate(196deg) brightness(85%);
+}
