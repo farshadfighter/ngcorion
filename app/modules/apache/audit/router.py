@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
     require_permission,
+    assert_session_access,
     require_quota,
     check_quota_available,
     consume_quota_on_success,
@@ -304,6 +305,7 @@ def get_apache_session(
 
     # Verify it's an Apache audit
     session = ApacheAuditService.get_audit_session(db, session_id)
+    assert_session_access(session, current_user)
     if session.device_type.value != "apache":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -322,11 +324,7 @@ def get_apache_results(
     db: Session = Depends(get_db),
 ):
     session = ApacheAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     results = ApacheAuditService.get_audit_results(db, session_id)
 
@@ -354,11 +352,7 @@ def get_apache_failed_checks(
     db: Session = Depends(get_db),
 ):
     session = ApacheAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     failed = ApacheAuditService.get_failed_checks(db, session_id)
     return failed
@@ -399,12 +393,7 @@ def delete_apache_session(
     db: Session = Depends(get_db),
 ):
     session = ApacheAuditService.get_audit_session(db, session_id)
-
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     from app.models import Asset
 

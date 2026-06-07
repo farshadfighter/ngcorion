@@ -14,7 +14,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import( get_current_user, require_permission, require_quota,
+from app.core.dependencies import( get_current_user, require_permission, assert_session_access, require_quota,
     check_quota_available,
     consume_quota_on_success)
 
@@ -260,6 +260,7 @@ def get_linux_session(
         )
 
     session = LinuxAuditService.get_audit_session(db, session_id)
+    assert_session_access(session, current_user)
     if session.device_type.value != "linux":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -276,11 +277,7 @@ def get_linux_results(
     db: Session = Depends(get_db)
 ):
     session = LinuxAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
-        )
+    assert_session_access(session, current_user)
 
     results = LinuxAuditService.get_audit_results(db, session_id)
 
@@ -306,11 +303,7 @@ def get_linux_failed_checks(
     db: Session = Depends(get_db)
 ):
     session = LinuxAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
-        )
+    assert_session_access(session, current_user)
 
     failed = LinuxAuditService.get_failed_checks(db, session_id)
     return failed
@@ -350,12 +343,7 @@ def delete_linux_session(
     db: Session = Depends(get_db)
 ):
     session = LinuxAuditService.get_audit_session(db, session_id)
-
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found"
-        )
+    assert_session_access(session, current_user)
 
     from app.models import Asset
     asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None

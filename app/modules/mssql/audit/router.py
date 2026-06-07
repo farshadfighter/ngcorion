@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
     require_permission,
+    assert_session_access,
     require_quota,
     check_quota_available,
     consume_quota_on_success)
@@ -236,6 +237,7 @@ def get_audit_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Audit session {session_id} not found",
         )
+    assert_session_access(MSSQLAuditService.get_audit_session(db, session_id), current_user)
     return summary
 
 
@@ -249,11 +251,7 @@ def get_audit_results(
     db: Session = Depends(get_db),
 ):
     session = MSSQLAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     results = MSSQLAuditService.get_audit_results(db, session_id)
     return [
@@ -302,11 +300,7 @@ def delete_audit_session(
     db: Session = Depends(get_db),
 ):
     session = MSSQLAuditService.get_audit_session(db, session_id)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit session {session_id} not found",
-        )
+    assert_session_access(session, current_user)
 
     from app.models import Asset
 

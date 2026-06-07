@@ -122,6 +122,35 @@ def require_admin_or_manager(current_user: User = Depends(get_current_user)) -> 
     return current_user
 
 
+def assert_session_access(session, current_user: User):
+    """
+    Enforce object-level ownership on an audit session.
+
+    Admins may access any session; every other user may only access sessions
+    they own. Raises 404 (not 403) when the session is missing or owned by
+    someone else, so the existence of other users' sessions is not leaked.
+
+    Args:
+        session: AuditSession instance (or None) already fetched by the caller
+        current_user: Authenticated user
+
+    Returns:
+        The session, when access is allowed.
+
+    Raises:
+        HTTPException: 404 if the session is missing or not owned by the user
+    """
+    if session is None or (
+        current_user.role.value != "admin"
+        and getattr(session, "user_id", None) != current_user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audit session not found",
+        )
+    return session
+
+
 def require_permission(module: str, permission_type: str):
     """
     Factory function to create a dependency that checks if user has specific permission.
