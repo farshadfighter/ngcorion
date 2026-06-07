@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
+import { useAssetFormOptions } from "../AssetList/useAssetFormOptions";
 import {
     PieChart, Pie, Cell, Tooltip,
     BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
@@ -25,6 +26,7 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
 export const AssetManagementDashboard = () => {
     const dispatch = useDispatch();
     const { assets, isLoading } = useSelector((state) => state.assets);
+    const { assetTypes } = useAssetFormOptions();
 
     useEffect(() => {
         dispatch(fetchAssets());
@@ -42,16 +44,20 @@ export const AssetManagementDashboard = () => {
         const newAssets = assets.filter(a => a.created_at && new Date(a.created_at) >= thirtyDaysAgo).length;
         const critical  = assets.filter(a => a.risk_level === "critical").length;
 
+        // Asset Type chart — با resolve از assetTypes
         const typeMap = {};
         assets.forEach(a => {
-            const key = a.asset_type_name || "Unknown";
+            const assetType = assetTypes.find(t => t.id === a.asset_type_id);
+            const key = assetType?.type_name || a.asset_type_name || "Unknown";
             typeMap[key] = (typeMap[key] || 0) + 1;
         });
         const typeData = Object.entries(typeMap)
+            .filter(([k]) => k !== "Unknown")
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 8);
 
+        // Vendor chart
         const vendorMap = {};
         assets.forEach(a => {
             const key = a.manufacturer || "Unknown";
@@ -63,6 +69,7 @@ export const AssetManagementDashboard = () => {
             .sort((a, b) => b.value - a.value)
             .slice(0, 8);
 
+        // OS chart
         const osMap = {};
         assets.forEach(a => {
             if (a.os_name) {
@@ -75,7 +82,7 @@ export const AssetManagementDashboard = () => {
             .slice(0, 6);
 
         return { total, active, inactive, newAssets, critical, typeData, vendorData, osData };
-    }, [assets]);
+    }, [assets, assetTypes]);
 
     if (isLoading) {
         return (
