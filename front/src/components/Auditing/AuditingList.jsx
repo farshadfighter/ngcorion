@@ -128,7 +128,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                     style={{ opacity: isAuditLimitReached ? 0.6 : 1, cursor: isAuditLimitReached ? "not-allowed" : "pointer" }}
                 >
                     <img src="/icons/audit.svg" alt="" className="btn-icon" />
-                    Auditing
+                  Add New Auditing
                 </button>
 
                 {/* Clear History */}
