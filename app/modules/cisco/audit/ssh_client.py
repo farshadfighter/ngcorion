@@ -68,11 +68,12 @@ CISCO_TURBO_COMMANDS: List[str] = [
     # (CIS-2.2.7) and "logging console" (CIS-2.2.3), so post-hardening verification
     # never saw them and reported FAIL even when the fix applied correctly.
     "show run | i ^logging ",
-    # Operational logging levels from "show logging". Some compliant values equal
+    # Operational logging state from "show logging". Some compliant values equal
     # the IOS default and are therefore suppressed from running-config — notably
-    # "logging trap informational" (CIS-2.2.5). Collect just the summary lines
-    # (Console/Trap), not the buffered message dump, so defaults stay verifiable.
-    "show logging | i (Console|Trap) logging",
+    # "logging on" -> "Syslog logging: enabled" (CIS-2.2.1) and "logging trap
+    # informational" -> "Trap logging: level informational" (CIS-2.2.5). Collect
+    # just the summary lines, not the buffered message dump, so defaults verify.
+    "show logging | i (Syslog|Console|Trap) logging",
     "show run | sec archive",
     "show archive",
 

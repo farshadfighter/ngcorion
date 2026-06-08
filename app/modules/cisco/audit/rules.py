@@ -47,7 +47,10 @@ class CiscoRegex:
     ssh_timeout = re.compile(r"^ip ssh timeout\s+(\d+)", re.M)
     ssh_retries = re.compile(r"^ip ssh authentication-retries\s+(\d+)", re.M)
     ssh_algo_line = re.compile(r"^ip ssh server algorithm .*$", re.M)
-    ssh_key_bits = re.compile(r"\b(\d{3,4})\s*bit\b", re.I)
+    # Match "2048 bit", "2048 bits", "2048-bit" and "Modulus Size : 2048 bits"
+    # forms — "show crypto key mypubkey rsa" reports the plural "bits", which the
+    # old "\s*bit\b" pattern missed, making compliant RSA keys verify as FAIL.
+    ssh_key_bits = re.compile(r"\b(\d{3,4})[\s-]*bits?\b", re.I)
 
     # Services
     svc_pwd_enc = re.compile(r"^service password-encryption", re.M)
@@ -147,6 +150,10 @@ class CiscoRegex:
 
     # Logging patterns
     logging_on = re.compile(r"^logging on", re.M)
+    # "logging on" is the IOS default and is suppressed from running-config, so
+    # it can only be confirmed from "show logging" ("Syslog logging: enabled").
+    # Used by CIS-2.2.1 verification.
+    syslog_logging_enabled = re.compile(r"Syslog logging:\s+enabled", re.M)
     logging_console = re.compile(r"^logging console\s+\S+", re.M)
     logging_source_if = re.compile(r"^logging source-interface\s+\S+", re.M)
     timestamps_debug = re.compile(r"^service timestamps debug datetime", re.M)
@@ -1399,9 +1406,16 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         severity="medium",
         level="L1",
         rationale="Enable logging for security monitoring.",
+        # "logging on" is the IOS default and hidden from running-config, so accept
+        # the operational "Syslog logging: enabled" from show logging, an explicit
+        # "logging on" line, or a configured "logging host" (which implies logging).
         remediation="Configure: logging on",
-        check=lambda c: bool(RE.logging_on.search(c)) or bool(RE.logging_host.search(c)),
-        evidence=lambda c: RE.logging_on.search(c).group(0) if RE.logging_on.search(c) else "logging on not explicit"
+        check=lambda c: bool(RE.logging_on.search(c)) or bool(RE.syslog_logging_enabled.search(c)) or bool(RE.logging_host.search(c)),
+        evidence=lambda c: (
+            RE.logging_on.search(c).group(0) if RE.logging_on.search(c)
+            else RE.syslog_logging_enabled.search(c).group(0) if RE.syslog_logging_enabled.search(c)
+            else "logging on not explicit"
+        )
     ))
 
     rules.append(CISRule(
