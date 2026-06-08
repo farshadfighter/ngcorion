@@ -67,6 +67,10 @@ class CiscoRegex:
     logging_any = re.compile(r"^logging .+", re.M)
     logging_buffered = re.compile(r"^logging buffered\s+\d+(?:\s+\S+)?", re.M)
     logging_trap = re.compile(r"^logging trap\s+\S+", re.M)
+    # "logging trap informational" is the IOS default and is hidden from
+    # running-config, so it can only be confirmed from "show logging" output
+    # ("Trap logging: level informational"). Used by CIS-2.2.5 verification.
+    trap_logging_informational = re.compile(r"Trap logging:\s+level\s+informational", re.M)
     timestamps = re.compile(r"^service timestamps log datetime.*", re.M)
     archive_block = re.compile(r"^archive\b[\s\S]*?(?=^\S|\Z)", re.M)
 
@@ -1440,8 +1444,15 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         level="L1",
         rationale="Set appropriate trap level for syslog.",
         remediation="Configure: logging trap informational",
-        check=lambda c: bool(RE.logging_trap.search(c)),
-        evidence=lambda c: RE.logging_trap.search(c).group(0) if RE.logging_trap.search(c) else "not set"
+        # Accept either an explicit "logging trap <level>" line OR the operational
+        # default "Trap logging: level informational" from show logging — the
+        # latter is hidden from running-config when the level equals the IOS default.
+        check=lambda c: bool(RE.logging_trap.search(c)) or bool(RE.trap_logging_informational.search(c)),
+        evidence=lambda c: (
+            (RE.logging_trap.search(c) or RE.trap_logging_informational.search(c)).group(0)
+            if (RE.logging_trap.search(c) or RE.trap_logging_informational.search(c))
+            else "not set"
+        )
     ))
 
     rules.append(CISRule(
