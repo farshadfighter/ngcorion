@@ -74,7 +74,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     const totalChecks = cisChecks?.length || 0;
 
     return (
-        <div className="modal-overlay result-modal-overlay" onClick={onClose}>
+        <div className="modal-overlay result-modal-overlay" onClick={!showFixSingleModal && !showHardenAllModal ? onClose : undefined}>
             <div className="result-modal-content" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="result-modal-header">
