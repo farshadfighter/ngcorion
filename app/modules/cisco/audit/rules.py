@@ -147,6 +147,14 @@ class CiscoRegex:
     no_identd = re.compile(r"^no ip identd", re.M)
     tcp_keepalives_in = re.compile(r"^service tcp-keepalives-in", re.M)
     no_service_pad = re.compile(r"^no service pad", re.M)
+    # Positive (enabling) forms. For services that are OFF by default (ip identd,
+    # service pad) the compliant "no ..." line is suppressed from running-config,
+    # so verification must key off the *absence* of the enabling command instead
+    # of the presence of the "no" line. "^ip bootp server"/"^ip identd"/"^service
+    # pad" never match their "no ..." counterparts (those start with "no ").
+    ip_bootp_enabled = re.compile(r"^ip bootp server", re.M)
+    ip_identd_enabled = re.compile(r"^ip identd", re.M)
+    service_pad_enabled = re.compile(r"^service pad", re.M)
 
     # Logging patterns
     logging_on = re.compile(r"^logging on", re.M)
@@ -1350,9 +1358,16 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         severity="low",
         level="L1",
         rationale="BOOTP server not needed on most devices.",
+        # Compliant when BOOTP is not explicitly enabled — the "no ip bootp server"
+        # line is suppressed from running-config on platforms where BOOTP is off by
+        # default, so requiring that literal line gives false FAILs after the fix.
         remediation="Configure: no ip bootp server",
-        check=lambda c: bool(RE.no_bootp.search(c)),
-        evidence=lambda c: RE.no_bootp.search(c).group(0) if RE.no_bootp.search(c) else "BOOTP may be enabled"
+        check=lambda c: not bool(RE.ip_bootp_enabled.search(c)),
+        evidence=lambda c: (
+            RE.no_bootp.search(c).group(0) if RE.no_bootp.search(c)
+            else RE.ip_bootp_enabled.search(c).group(0) if RE.ip_bootp_enabled.search(c)
+            else "BOOTP server not enabled"
+        )
     ))
 
     rules.append(CISRule(
@@ -1372,9 +1387,16 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         severity="low",
         level="L1",
         rationale="Ident protocol can leak user information.",
+        # identd is OFF by default, so "no ip identd" is the default state and is
+        # suppressed from running-config. Compliant unless identd is explicitly
+        # enabled — requiring the literal "no ip identd" line gives false FAILs.
         remediation="Configure: no ip identd",
-        check=lambda c: bool(RE.no_identd.search(c)),
-        evidence=lambda c: RE.no_identd.search(c).group(0) if RE.no_identd.search(c) else "identd may be enabled"
+        check=lambda c: not bool(RE.ip_identd_enabled.search(c)),
+        evidence=lambda c: (
+            RE.no_identd.search(c).group(0) if RE.no_identd.search(c)
+            else RE.ip_identd_enabled.search(c).group(0) if RE.ip_identd_enabled.search(c)
+            else "identd not enabled"
+        )
     ))
 
     rules.append(CISRule(
@@ -1394,9 +1416,16 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         severity="low",
         level="L1",
         rationale="PAD service not needed on modern networks.",
+        # PAD is OFF by default on modern IOS, so "no service pad" is suppressed
+        # from running-config. Compliant unless PAD is explicitly enabled — same
+        # default-suppressed case as CIS-2.1.5 (ip identd).
         remediation="Configure: no service pad",
-        check=lambda c: bool(RE.no_service_pad.search(c)),
-        evidence=lambda c: RE.no_service_pad.search(c).group(0) if RE.no_service_pad.search(c) else "PAD may be enabled"
+        check=lambda c: not bool(RE.service_pad_enabled.search(c)),
+        evidence=lambda c: (
+            RE.no_service_pad.search(c).group(0) if RE.no_service_pad.search(c)
+            else RE.service_pad_enabled.search(c).group(0) if RE.service_pad_enabled.search(c)
+            else "PAD not enabled"
+        )
     ))
 
     # 2.2 - Logging
