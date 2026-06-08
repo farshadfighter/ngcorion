@@ -240,13 +240,23 @@ class CiscoHardeningExecutor:
         try:
             logger.info(f"Verifying check {rule.id} on {self.ip}")
 
-            # Collect the SAME broad command set the audit uses (collect_turbo),
-            # not just "show running-config". Several CIS check functions evaluate
-            # data that only appears in other show commands — e.g. RSA key size from
-            # "show crypto key mypubkey rsa", "show ip ssh", "show version". Verifying
-            # against running-config alone makes those checks report FAIL even after a
-            # correct fix. Using the audit's collection keeps verify and audit in sync.
-            config = self.ssh_client.collect_turbo()
+            # Verify against the FULL running-config PLUS the turbo command set.
+            #
+            # collect_turbo() greps a fixed subset of lines for speed, so any
+            # freshly-applied line that the subset doesn't grep is invisible to
+            # the check function — the fix lands on the device but verification
+            # reports FAIL (e.g. "logging source-interface", "logging console",
+            # and other sections whose lines aren't in the turbo filter).
+            # "show running-config" guarantees every applied config line is seen.
+            #
+            # The turbo set is still appended because several CIS checks evaluate
+            # data that does NOT appear in running-config — RSA key size from
+            # "show crypto key mypubkey rsa", "show ip ssh", "show version", and
+            # default-suppressed values like "Trap logging: level informational"
+            # from "show logging" (CIS-2.2.5).
+            running_config = self.ssh_client.send_command("show running-config")
+            turbo = self.ssh_client.collect_turbo()
+            config = f"{running_config}\n{turbo}"
 
             # Run the check function
             passed = rule.check(config)
