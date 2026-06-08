@@ -371,7 +371,7 @@ export const previewHardenCheck = createAsyncThunk(
  */
 export const executeHardenCheck = createAsyncThunk(
     "hardening/executeCheck",
-    async ({ actionId, checkId, assetId, sessionId, deviceType, credentials, parameters }, { rejectWithValue }) => {
+    async ({ actionId, checkId, assetId, sessionId, deviceType, credentials, parameters, skipBackup = false }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -383,7 +383,7 @@ export const executeHardenCheck = createAsyncThunk(
                     action_id: actionId,
                     ...credPayload,
                     parameters: parameters || {},
-                    skip_backup: false,
+                    skip_backup: skipBackup,
                 };
                 const res = await api.post(endpoint, payload);
                 return res.data;
@@ -435,7 +435,7 @@ export const fetchRequiredParameters = createAsyncThunk(
  */
 export const autoHardenWithDefaults = createAsyncThunk(
     "hardening/autoHardenDefaults",
-    async ({ sessionId, assetId, deviceType, credentials }, { rejectWithValue }) => {
+    async ({ sessionId, assetId, deviceType, credentials, skipBackup = false }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -448,7 +448,7 @@ export const autoHardenWithDefaults = createAsyncThunk(
                 ...(["cisco", "fortinet"].includes(apiPath) && {
                     audit_session_id: sessionId,
                     confirmed: true,
-                    skip_backup: false,
+                    skip_backup: skipBackup,
                 }),
             };
 
@@ -494,7 +494,7 @@ export const discoverFortinetVdoms = createAsyncThunk(
 
 export const batchExecuteChecks = createAsyncThunk(
     "hardening/batchExecute",
-    async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters }, { rejectWithValue }) => {
+    async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -508,7 +508,7 @@ export const batchExecuteChecks = createAsyncThunk(
                     check_ids: checkIds || [],
                     parameters: parameters || {},
                     ...credPayload,
-                    skip_backup: false,
+                    skip_backup: skipBackup,
                 };
             } else {
                 // Linux / Apache / MongoDB / MSSQL / Windows: checks array with per-check params

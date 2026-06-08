@@ -8,6 +8,7 @@ import {
     clearMessages
 } from '../../store/hardeningSlice';
 import CredentialsForm from './CredentialsForm';
+import BackupOption from './BackupOption';
 import {
     isCisco,
     isFortinet,
@@ -35,6 +36,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
     const [sshCredentials, setSshCredentials] = useState(defaultCredentialsState);
     const [credErrors, setCredErrors] = useState({});
     const [vdomEnabled, setVdomEnabled] = useState(false);
+    const [createBackup, setCreateBackup] = useState(false);
     const [formError, setFormError] = useState(null);
     const [executionResult, setExecutionResult] = useState(null);
 
@@ -145,7 +147,8 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 sessionId:  sessionId,
                 deviceType: deviceType,
                 credentials,
-                parameters: paramValues
+                parameters: paramValues,
+                skipBackup: !createBackup,
             })).unwrap();
 
             setExecutionResult(result);
@@ -276,6 +279,9 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 onDetectVdoms={handleDetectVdoms}
                 canDetectVdoms={!!assetId && !!sshCredentials.ssh_username && !!sshCredentials.ssh_password}
             />
+            {isCiscoOrFortinet(deviceType) && (
+                <BackupOption checked={createBackup} onChange={setCreateBackup} />
+            )}
         </>
     );
 

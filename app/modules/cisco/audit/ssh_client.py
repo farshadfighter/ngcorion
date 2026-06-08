@@ -63,7 +63,16 @@ CISCO_TURBO_COMMANDS: List[str] = [
     # AAA / Login controls / Logging
     "show run | i ^aaa |^login block-for|^login on-failure|^login on-success",
     "show run | i ^service password-encryption|^service timestamps log datetime",
-    "show run | i ^logging (host|trap|buffered|facility)",
+    # Grep EVERY "logging ..." line from running-config. The old narrow filter
+    # (host|trap|buffered|facility) dropped lines like "logging source-interface"
+    # (CIS-2.2.7) and "logging console" (CIS-2.2.3), so post-hardening verification
+    # never saw them and reported FAIL even when the fix applied correctly.
+    "show run | i ^logging ",
+    # Operational logging levels from "show logging". Some compliant values equal
+    # the IOS default and are therefore suppressed from running-config — notably
+    # "logging trap informational" (CIS-2.2.5). Collect just the summary lines
+    # (Console/Trap), not the buffered message dump, so defaults stay verifiable.
+    "show logging | i (Console|Trap) logging",
     "show run | sec archive",
     "show archive",
 

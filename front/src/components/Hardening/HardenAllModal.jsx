@@ -8,9 +8,12 @@ import {
     clearMessages
 } from '../../store/hardeningSlice';
 import CredentialsForm from './CredentialsForm';
+import BackupOption from './BackupOption';
 import {
     isWindows,
     isMssql,
+    isCisco,
+    isFortinet,
     defaultCredentialsState,
     validateCredentials,
     buildCredentials,
@@ -28,6 +31,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     } = useSelector((state) => state.hardening);
 
     const [vdomEnabled, setVdomEnabled] = useState(false);
+    const [createBackup, setCreateBackup] = useState(false);
 
     const [step, setStep] = useState(1); // 1: Parameters, 2: Credentials, 3: Executing, 4: Results
     const [paramValues, setParamValues] = useState({});
@@ -113,6 +117,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                 assetId,
                 deviceType,
                 credentials,
+                skipBackup: !createBackup,
             })).unwrap();
 
             setExecutionResult(result);
@@ -189,6 +194,12 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
             onDetectVdoms={handleDetectVdoms}
             canDetectVdoms={!!assetId && !!sshCredentials.ssh_username && !!sshCredentials.ssh_password}
         />
+    );
+
+    const renderBackupOption = () => (
+        (isCisco(deviceType) || isFortinet(deviceType)) && (
+            <BackupOption checked={createBackup} onChange={setCreateBackup} />
+        )
     );
 
     const renderExecuting = () => (
@@ -300,7 +311,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
 
                 <div className="hardening-modal-body">
                     {step === 1 && renderParametersForm()}
-                    {step === 2 && renderCredentialsForm()}
+                    {step === 2 && <>{renderCredentialsForm()}{renderBackupOption()}</>}
                     {step === 3 && renderExecuting()}
                     {step === 4 && renderResults()}
                 </div>
