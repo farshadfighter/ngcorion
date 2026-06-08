@@ -204,6 +204,10 @@ class HardeningService:
             "requires_config_mode": parsed.requires_config_mode,
             "required_parameters": parsed.required_parameters,
             "optional_parameters": parsed.optional_parameters,
+            # Surface template defaults so the UI pre-fills optional fields (e.g.
+            # SOURCE_INTERFACE=Loopback0) instead of showing an empty box that
+            # users submit blank.
+            "parameter_defaults": parsed.defaults,
             "warnings": parsed.warnings
         }
 
