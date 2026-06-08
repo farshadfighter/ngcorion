@@ -888,6 +888,20 @@ def _get_line_con_block(text: str) -> str:
     return m.group(0) if m else ""
 
 
+def _line_has_aaa_login(block: str, full_config: str) -> bool:
+    """True if a line is covered by AAA login authentication.
+
+    Either the line carries an explicit "login authentication <list>", or it
+    inherits the default method list. IOS only suppresses "login authentication
+    default" from a line when "aaa new-model" is configured (that is exactly what
+    makes the line inherit the default list), so the presence of "aaa new-model"
+    is proof the line is under AAA login even when no explicit line is shown.
+    """
+    if RE.login_authentication.search(block):
+        return True
+    return bool(RE.aaa_new_model.search(full_config))
+
+
 def _get_line_tty_blocks(text: str) -> List[str]:
     """Extract all line tty blocks."""
     return RE.line_tty.findall(text)
@@ -964,8 +978,14 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         level="L1",
         rationale="Apply authentication to console line.",
         remediation="Configure: line con 0 -> login authentication <list>",
-        check=lambda c: bool(RE.login_authentication.search(_get_line_con_block(c))),
-        evidence=lambda c: _get_line_con_block(c) or "line console not found"
+        # Pass on an explicit "login authentication" OR the implicit default list
+        # under aaa new-model, since IOS hides "login authentication default" from
+        # the line config.
+        check=lambda c: _line_has_aaa_login(_get_line_con_block(c), c),
+        evidence=lambda c: _get_line_con_block(c) or (
+            "console inherits default AAA login list (aaa new-model)"
+            if RE.aaa_new_model.search(c) else "line console not found"
+        )
     ))
 
     rules.append(CISRule(
@@ -975,7 +995,7 @@ def build_cis_benchmark_rules() -> List[CISRule]:
         level="L1",
         rationale="Apply authentication to TTY lines if present.",
         remediation="Configure: line tty X -> login authentication <list>",
-        check=lambda c: (not _get_line_tty_blocks(c)) or all(RE.login_authentication.search(b) for b in _get_line_tty_blocks(c)),
+        check=lambda c: (not _get_line_tty_blocks(c)) or all(_line_has_aaa_login(b, c) for b in _get_line_tty_blocks(c)),
         evidence=lambda c: "\n".join(_get_line_tty_blocks(c)) or "no tty lines configured"
     ))
 
