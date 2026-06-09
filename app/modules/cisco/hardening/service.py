@@ -204,6 +204,10 @@ class HardeningService:
             "requires_config_mode": parsed.requires_config_mode,
             "required_parameters": parsed.required_parameters,
             "optional_parameters": parsed.optional_parameters,
+            # Surface template defaults so the UI pre-fills optional fields (e.g.
+            # SOURCE_INTERFACE=Loopback0) instead of showing an empty box that
+            # users submit blank.
+            "parameter_defaults": parsed.defaults,
             "warnings": parsed.warnings
         }
 
@@ -359,34 +363,31 @@ class HardeningService:
                     requires_config_mode=action.requires_config_mode
                 )
 
-                if not exec_result["success"]:
-                    # Execution failed
-                    action.status = "failed"
-                    action.error_message = "; ".join(exec_result["errors"])
-                    action.output = redact_secrets_in_output(exec_result["output"])
-                    action.completed_at = datetime.now(timezone.utc)
-                    db.commit()
+                # A command can be rejected for benign reasons — most commonly the
+                # platform doesn't support the feature ("% Invalid input" for
+                # "no ip identd" / "no service pad" on a switch that has no such
+                # service). Don't hard-fail on the command error alone: let the
+                # post-execution verification decide. An unsupported service can't
+                # be enabled, so the check is already satisfied on that device.
+                exec_errors = [] if exec_result["success"] else list(exec_result["errors"])
+                if exec_errors:
+                    logger.warning(
+                        f"Command(s) reported errors for action {action_id}: "
+                        f"{'; '.join(exec_errors)} — verifying actual device state"
+                    )
 
-                    logger.error(f"Hardening execution failed for action {action_id}: {action.error_message}")
-
-                    return {
-                        "action_id": action.id,
-                        "status": "failed",
-                        "verification_passed": False,
-                        "verification_evidence": "",
-                        "backup_created": backup is not None,
-                        "commands_executed": final_commands,
-                        "error_message": action.error_message
-                    }
-
-                # Save config
-                save_output = executor.save_config()
+                # Save config (harmless if a command was rejected and nothing changed)
+                try:
+                    save_output = executor.save_config()
+                except Exception as save_err:
+                    save_output = ""
+                    logger.warning(f"save_config after execute issue for action {action_id}: {save_err}")
 
                 # Store output
                 full_output = exec_result["output"] + "\n\n" + save_output
                 action.output = redact_secrets_in_output(full_output)
 
-                # 7. Verify the fix
+                # 7. Verify the fix — the device's real state is the source of truth
                 rule = HardeningService._get_rule_by_check_number(action.check_number)
                 passed, evidence = executor.verify_check(rule)
 
@@ -405,7 +406,13 @@ class HardeningService:
                     logger.info(f"Hardening action {action_id} completed successfully and verified")
                 else:
                     action.status = "failed"
-                    action.error_message = "Verification failed: check still not passing after fix"
+                    # Surface the concrete command error when one occurred (e.g. an
+                    # invalid command that genuinely changed nothing); otherwise the
+                    # commands ran but the device still isn't in the desired state.
+                    action.error_message = (
+                        "; ".join(exec_errors) if exec_errors
+                        else "Verification failed: check still not passing after fix"
+                    )
                     logger.warning(f"Hardening action {action_id} completed but verification failed")
 
                 action.completed_at = datetime.now(timezone.utc)
@@ -875,20 +882,16 @@ class HardeningService:
                         requires_config_mode=parsed.requires_config_mode
                     )
 
-                    if not exec_result["success"]:
-                        action.status = "failed"
-                        action.error_message = "; ".join(exec_result["errors"])
-                        action.output = redact_secrets_in_output(exec_result["output"])
-                        action.completed_at = datetime.now(timezone.utc)
-                        db.commit()
-                        failed_count += 1
-                        logger.warning(f"Fix failed for {check_number}: {action.error_message}")
-                        continue
+                    # Don't hard-fail on a rejected command (e.g. "% Invalid input"
+                    # when the platform lacks the service) — let verification decide.
+                    exec_errors = [] if exec_result["success"] else list(exec_result["errors"])
+                    if exec_errors:
+                        logger.warning(f"Command(s) reported errors for {check_number}: {'; '.join(exec_errors)} — verifying actual state")
 
                     # Store output
                     action.output = redact_secrets_in_output(exec_result["output"])
 
-                    # Verify fix
+                    # Verify fix — device state is the source of truth
                     passed, evidence = executor.verify_check(rule)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
@@ -901,7 +904,7 @@ class HardeningService:
                         logger.info(f"Successfully fixed {check_number}")
                     else:
                         action.status = "failed"
-                        action.error_message = "Verification failed: check still failing after fix"
+                        action.error_message = "; ".join(exec_errors) if exec_errors else "Verification failed: check still failing after fix"
                         failed_count += 1
                         logger.warning(f"Fix applied but verification failed for {check_number}")
 
@@ -1504,19 +1507,16 @@ class HardeningService:
                         requires_config_mode=parsed.requires_config_mode
                     )
 
-                    if not exec_result["success"]:
-                        action.status = "failed"
-                        action.error_message = "; ".join(exec_result["errors"])
-                        action.output = redact_secrets_in_output(exec_result["output"])
-                        action.completed_at = datetime.now(timezone.utc)
-                        db.commit()
-                        failed_count += 1
-                        continue
+                    # Don't hard-fail on a rejected command (e.g. "% Invalid input"
+                    # when the platform lacks the service) — let verification decide.
+                    exec_errors = [] if exec_result["success"] else list(exec_result["errors"])
+                    if exec_errors:
+                        logger.warning(f"Command(s) reported errors for {check_number}: {'; '.join(exec_errors)} — verifying actual state")
 
                     # Store output
                     action.output = redact_secrets_in_output(exec_result["output"])
 
-                    # Verify
+                    # Verify — device state is the source of truth
                     passed, evidence = executor.verify_check(rule)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
@@ -1533,7 +1533,7 @@ class HardeningService:
                         logger.info(f"Successfully auto-fixed {check_number}")
                     else:
                         action.status = "failed"
-                        action.error_message = "Verification failed after fix"
+                        action.error_message = "; ".join(exec_errors) if exec_errors else "Verification failed after fix"
                         failed_count += 1
 
                     action.completed_at = datetime.now(timezone.utc)
@@ -1759,25 +1759,15 @@ class HardeningService:
                         requires_config_mode=parsed.requires_config_mode
                     )
 
-                    if not exec_result["success"]:
-                        action.status = "failed"
-                        action.error_message = "; ".join(exec_result["errors"])
-                        action.output = redact_secrets_in_output(exec_result["output"])
-                        action.completed_at = datetime.now(timezone.utc)
-                        db.commit()
-                        failed_count += 1
-                        execution_results.append({
-                            "check_number": check_number,
-                            "check_title": result.check_title,
-                            "status": "failed",
-                            "action_id": action.id,
-                            "error": action.error_message
-                        })
-                        continue
+                    # Don't hard-fail on a rejected command (e.g. "% Invalid input"
+                    # when the platform lacks the service) — let verification decide.
+                    exec_errors = [] if exec_result["success"] else list(exec_result["errors"])
+                    if exec_errors:
+                        logger.warning(f"Command(s) reported errors for {check_number}: {'; '.join(exec_errors)} — verifying actual state")
 
                     action.output = redact_secrets_in_output(exec_result["output"])
 
-                    # Verify
+                    # Verify — device state is the source of truth
                     passed, evidence = executor.verify_check(rule)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
@@ -1794,7 +1784,7 @@ class HardeningService:
                         })
                     else:
                         action.status = "failed"
-                        action.error_message = "Verification failed"
+                        action.error_message = "; ".join(exec_errors) if exec_errors else "Verification failed"
                         failed_count += 1
                         execution_results.append({
                             "check_number": check_number,

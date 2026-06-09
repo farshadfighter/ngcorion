@@ -241,9 +241,17 @@ class RemediationParser:
         result = []
 
         for cmd in commands:
-            # Check for required parameters
+            # Check for required parameters. A placeholder that is absent OR
+            # present-but-blank is treated as missing — substituting "" would
+            # emit a malformed command (e.g. "logging source-interface " or
+            # "enable secret ") that configures nothing yet appears to succeed.
             required_params = RemediationParser.extract_parameters(cmd)
-            missing_params = [p for p in required_params if p not in parameters]
+            missing_params = [
+                p for p in required_params
+                if p not in parameters
+                or (isinstance(parameters[p], str) and parameters[p].strip() == "")
+                or parameters[p] is None
+            ]
 
             if missing_params:
                 raise ValueError(
@@ -359,13 +367,33 @@ def apply_defaults(
     Returns:
         Combined parameters with defaults applied
 
+    A blank/whitespace-only user value must NOT override a real template default.
+    An empty optional field (e.g. SOURCE_INTERFACE left blank in the UI) would
+    otherwise substitute to "" and send a broken command such as
+    "logging source-interface " with no interface — which configures nothing on
+    the device and then fails verification.
+
     Example:
         >>> apply_defaults(
         ...     {"TIMEOUT_MIN": "10"},
         ...     {"TIMEOUT_MIN": "5", "TIMEOUT_SEC": "0"}
         ... )
         {'TIMEOUT_MIN': '10', 'TIMEOUT_SEC': '0'}
+
+        >>> apply_defaults(
+        ...     {"SOURCE_INTERFACE": ""},
+        ...     {"SOURCE_INTERFACE": "Loopback0"}
+        ... )
+        {'SOURCE_INTERFACE': 'Loopback0'}
     """
     result = defaults.copy()
-    result.update(parameters)
+    for key, value in parameters.items():
+        # Skip None and blank strings when a non-empty default exists, so an
+        # empty optional field falls back to the template default instead of
+        # clobbering it with "".
+        if value is None:
+            continue
+        if isinstance(value, str) and value.strip() == "" and str(defaults.get(key, "")).strip() != "":
+            continue
+        result[key] = value
     return result

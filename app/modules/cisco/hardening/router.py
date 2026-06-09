@@ -138,6 +138,7 @@ class HardeningPreviewResponse(BaseModel):
     requires_config_mode: bool
     required_parameters: List[str]
     optional_parameters: List[str]
+    parameter_defaults: Dict[str, str] = {}
     warnings: List[str]
 
     class Config:
@@ -156,6 +157,7 @@ class HardeningPreviewResponse(BaseModel):
                 "requires_config_mode": True,
                 "required_parameters": ["STRONG_SECRET"],
                 "optional_parameters": [],
+                "parameter_defaults": {},
                 "warnings": ["This will remove the existing enable password"]
             }
         }

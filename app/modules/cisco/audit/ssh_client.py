@@ -57,8 +57,11 @@ CISCO_TURBO_COMMANDS: List[str] = [
     # only appear in running-config once explicitly toggled (e.g. "no service
     # dhcp", "no ip identd", "service tcp-keepalives-in"). They MUST be grepped
     # explicitly — otherwise checks CIS-2.1.4/2.1.5/2.1.6 never see them and
-    # report non-compliant even after hardening applies them.
-    "show run | i ^no service tcp-small-servers|^no service udp-small-servers|^no service dhcp|^no service pad|^no ip bootp server|^no ip finger|^no ip identd|^service tcp-keepalives",
+    # report non-compliant even after hardening applies them. The positive
+    # "ip bootp server"/"ip identd"/"service pad" forms are grepped too so the
+    # disable-service checks (off-by-default, "no ..." suppressed) can still
+    # detect a service that is explicitly ENABLED.
+    "show run | i ^no service tcp-small-servers|^no service udp-small-servers|^no service dhcp|^no service pad|^no ip bootp server|^no ip finger|^no ip identd|^service tcp-keepalives|^ip bootp server|^ip identd|^service pad",
 
     # AAA / Login controls / Logging
     "show run | i ^aaa |^login block-for|^login on-failure|^login on-success",
