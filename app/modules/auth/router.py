@@ -1,18 +1,35 @@
 """
 Auth Router - Login API with Permissions
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.security import create_access_token
-from app.core.auth_rate_limiter import check_login_rate_limit
-from app.schemas.auth import UserLogin, Token
+from app.core.auth_rate_limiter import (
+    check_login_rate_limit,
+    check_password_reset_rate_limit,
+)
+from app.core.config import settings
+from app.core.email import send_password_reset_email
+from app.schemas.auth import (
+    UserLogin,
+    Token,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    MessageResponse,
+)
 from app.models import LoginLog, UserRole
 from app.models.security_audit_log import log_action
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
+
+# Identical response for any forgot-password request, so callers cannot tell
+# whether an account with the given email exists (prevents enumeration).
+GENERIC_FORGOT_PASSWORD_MESSAGE = (
+    "If an account with that email exists, a password reset link has been sent."
+)
 
 router = APIRouter()
 
@@ -210,7 +227,7 @@ def login(
     
     # Get user permissions
     permissions = get_user_permissions(db, user.id, user.role)
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -218,3 +235,100 @@ def login(
         "role": user.role.value,
         "permissions": permissions
     }
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """
+    Request a password reset link.
+
+    Always returns the same generic message regardless of whether the email
+    matches an account, to avoid leaking which emails are registered.
+    """
+    client_ip = request.client.host
+    email = payload.email
+
+    # Rate limit before creating any token (also caps probing of unknown emails).
+    check_password_reset_rate_limit(db, client_ip, email)
+
+    auth_service = AuthService(db)
+    result = auth_service.create_password_reset_token(email, ip_address=client_ip)
+
+    if result is not None:
+        raw_token, user = result
+        reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={raw_token}"
+        background_tasks.add_task(send_password_reset_email, user.email, reset_link)
+        log_action(
+            db=db,
+            user_id=user.id,
+            username=user.username,
+            action="auth.forgot_password",
+            module="auth",
+            target_id=user.id,
+            ip_address=client_ip,
+            result="success",
+            detail="Password reset link generated",
+        )
+    else:
+        # No active account — record the attempt but reveal nothing to the caller.
+        log_action(
+            db=db,
+            username=email,
+            action="auth.forgot_password",
+            module="auth",
+            ip_address=client_ip,
+            result="failed",
+            detail="No active account for email",
+        )
+
+    return {"message": GENERIC_FORGOT_PASSWORD_MESSAGE}
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(
+    payload: ResetPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Set a new password using a token from the reset email.
+
+    The token must be unused and unexpired; it is consumed on success.
+    """
+    client_ip = request.client.host
+
+    auth_service = AuthService(db)
+    user = auth_service.reset_password_with_token(payload.token, payload.new_password)
+
+    if user is None:
+        log_action(
+            db=db,
+            action="auth.reset_password",
+            module="auth",
+            ip_address=client_ip,
+            result="failed",
+            detail="Invalid or expired reset token",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset link. Please request a new one.",
+        )
+
+    log_action(
+        db=db,
+        user_id=user.id,
+        username=user.username,
+        action="auth.reset_password",
+        module="auth",
+        target_id=user.id,
+        ip_address=client_ip,
+        result="success",
+        detail="Password reset via email link",
+    )
+
+    return {"message": "Your password has been reset. You can now log in."}

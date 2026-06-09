@@ -55,6 +55,24 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # Email (SMTP)
+    # Leave SMTP_HOST empty to log password-reset emails to the console instead of
+    # actually sending them (useful for development before a mail server exists).
+    # Fill these in via .env to switch to live sending — no code change required.
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True  # STARTTLS on SMTP_PORT; set False to use implicit SSL
+    SMTP_FROM_EMAIL: str = "no-reply@ngcorion.local"
+    SMTP_FROM_NAME: str = "NGcorion"
+
+    # Frontend base URL used to build the password-reset link sent by email.
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+
+    # How long a password-reset link stays valid.
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+
     # License Server
     LICENSE_SERVER_URL: str = "http://localhost:8001"
     LICENSE_STORAGE_DIR: str = "~/.license"

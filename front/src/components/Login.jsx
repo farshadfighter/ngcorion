@@ -91,6 +91,16 @@ export const Login = () => {
                 >
                     {isLoading ? "Logging in..." : "Login"}
                 </button>
+
+                {/* FORGOT PASSWORD */}
+                <button
+                    type="button"
+                    className="login-link"
+                    onClick={() => navigate("/forgot-password")}
+                    disabled={isLoading}
+                >
+                    Forgot password?
+                </button>
             </form>
 
             {showErrorDialog && error && (
