@@ -16,7 +16,12 @@ const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
-        if (token && !config.url.includes('/auth/login')) {
+        // Public auth endpoints must not carry a (possibly stale) bearer token.
+        const isPublicAuthPath =
+            config.url.includes('/auth/login') ||
+            config.url.includes('/auth/forgot-password') ||
+            config.url.includes('/auth/reset-password');
+        if (token && !isPublicAuthPath) {
             config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
