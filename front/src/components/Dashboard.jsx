@@ -40,7 +40,7 @@ export const Dashboard = () => {
     const canReadHardening = usePermission("hardening",            "read");
     const canReadUserMgmt  = usePermission("user_management",      "read");
     const canReadLogs      = usePermission("logs",                 "read");
-    const canReadBackup    = usePermission("backup",              "read");
+    const canReadBackup    = usePermission("backup",               "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -84,29 +84,27 @@ export const Dashboard = () => {
     const handleNavigateToLicence = () => setActiveMenu("licence");
     const handleNavigateToAuditing = () => setActiveMenu("operation-device");
 
-    // ── Page title map ────────────────────────────────────────────────────────
     const pageTitles = {
-        "dashboard":          "Dashboard",
-        "asset-management":   "Asset Management",
-        "asset-requirement":  "Asset Requirement",
-        "asset-list":         "Asset List",
-        "auto-discovery":     "Auto Discovery",
-        "auditing":           "Auditing",
-        "operation-device":   "Operation and Device",
-        "hardening":          "Hardening",
-        "hardening-operation":"Operation and Device",
-        "risk-intelligence":  "Risk Intelligence",
-        "risk-exposure":      "Risk & Exposure",
-        "attack-surface":     "Attack Surface",
-        "backup":             "Configuration Backup",
-        "user-management":    "User Management",
-        "system-logs":        "System Logs",
-        "ntp-configuration":  "NTP Configuration",
-        "snmp-configuration": "SNMP Configuration",
-        "licence":            "License Management",
+        "dashboard":           "Dashboard",
+        "asset-management":    "Asset Management",
+        "asset-requirement":   "Asset Requirement",
+        "asset-list":          "Asset List",
+        "auto-discovery":      "Auto Discovery",
+        "auditing":            "Auditing",
+        "operation-device":    "Operation and Device",
+        "hardening":           "Hardening",
+        "hardening-operation": "Operation and Device",
+        "risk-intelligence":   "Risk Intelligence",
+        "risk-exposure":       "Risk & Exposure",
+        "attack-surface":      "Attack Surface",
+        "backup":              "Configuration Backup",
+        "user-management":     "User Management",
+        "system-logs":         "System Logs",
+        "ntp-configuration":   "NTP Configuration",
+        "snmp-configuration":  "SNMP Configuration",
+        "licence":             "License Management",
     };
 
-    // ── Access Denied ─────────────────────────────────────────────────────────
     const AccessDenied = ({ menuName }) => (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: "16px", color: "#6B7280" }}>
             <div style={{ fontSize: "48px" }}>🔒</div>
@@ -116,7 +114,6 @@ export const Dashboard = () => {
         </div>
     );
 
-    // ── Placeholder برای صفحات آینده ──────────────────────────────────────────
     const ComingSoon = ({ name }) => (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: "16px", color: "#6B7280" }}>
             <div style={{ fontSize: "48px" }}>🚧</div>
@@ -125,7 +122,6 @@ export const Dashboard = () => {
         </div>
     );
 
-    // ── renderContent ─────────────────────────────────────────────────────────
     const renderContent = () => {
         switch (activeMenu) {
             case "asset-management":
@@ -167,9 +163,7 @@ export const Dashboard = () => {
                 return canReadAutoDisc ? <AutoDiscovery onNavigateToLicence={handleNavigateToLicence} /> : <AccessDenied menuName="Auto Discovery" />;
 
             case "auditing":
-                return canReadAuditing
-                    ? <AuditingDashboard />
-                    : <AccessDenied menuName="Auditing" />;
+                return canReadAuditing ? <AuditingDashboard /> : <AccessDenied menuName="Auditing" />;
 
             case "operation-device":
                 return canReadAuditing ? <AuditingList onNavigateToLicence={handleNavigateToLicence} /> : <AccessDenied menuName="Auditing" />;
@@ -224,7 +218,7 @@ export const Dashboard = () => {
 
                 <nav className="sidebar-nav">
 
-                    {/* Dashboard */}
+                    {/* ── Dashboard ── */}
                     <div className={`nav-item ${activeMenu === "dashboard" ? "active" : ""}`}
                          onClick={() => setActiveMenu("dashboard")} title="Dashboard">
                         <img src="/icons/dashboard.svg" alt="" className="nav-icon-img" />
@@ -266,14 +260,21 @@ export const Dashboard = () => {
                     )}
 
                     {/* ── AUDITING ── */}
-                    {canReadAuditing && !isSidebarCollapsed && (
-                        <div
-                            className={`nav-section nav-section-clickable ${activeMenu === "auditing" ? "nav-section-active" : ""}`}
-                            onClick={() => setActiveMenu("auditing")}
-                        >
-                            <img src="/icons/auditing.svg" alt="" className="section-icon" />
-                            <span className="nav-section-title">Auditing</span>
-                        </div>
+                    {canReadAuditing && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "auditing" ? "nav-section-active" : ""}`}
+                                     onClick={() => setActiveMenu("auditing")}>
+                                    <img src="/icons/auditing.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">Auditing</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "operation-device" ? "active" : ""}`}
+                                 onClick={() => setActiveMenu("operation-device")} title="Operation & Device">
+                                {isSidebarCollapsed && <img src="/icons/auditing.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Operation & Device</span>}
+                            </div>
+                        </>
                     )}
 
                     {/* ── HARDENING ── */}
@@ -358,7 +359,8 @@ export const Dashboard = () => {
                     </div>
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}
                          onClick={() => setActiveMenu("licence")} title="License Management">
-                        <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />                        {!isSidebarCollapsed && <span>License Management</span>}
+                        <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />
+                        {!isSidebarCollapsed && <span>License Management</span>}
                     </div>
 
                 </nav>

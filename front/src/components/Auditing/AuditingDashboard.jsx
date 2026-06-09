@@ -256,9 +256,9 @@ export const AuditingDashboard = () => {
                                 <td>{row.asset}</td>
                                 <td>{row.finding}</td>
                                 <td>
-                                        <span className={`aud-severity ${row.severity}`}>
-                                            {row.severity}
-                                        </span>
+                                      <span style={{ color: '#374151', fontSize: '13px' }}>
+    {row.severity.charAt(0).toUpperCase() + row.severity.slice(1)}
+</span>
                                 </td>
                             </tr>
                         ))}
