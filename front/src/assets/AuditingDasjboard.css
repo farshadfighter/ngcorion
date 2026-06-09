@@ -1,0 +1,300 @@
+/* ============================================
+   AUDITING DASHBOARD - STYLES
+   ============================================ */
+
+.aud-container {
+    padding: 32px 40px;
+    background: transparent;
+    min-height: 100vh;
+}
+
+/* ── Grid layouts ── */
+.aud-row {
+    display: grid;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.aud-row-2 { grid-template-columns: 1fr 1fr; }
+.aud-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ── باکس کارت عمومی ── */
+.aud-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.aud-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* ── Pie Chart Legend ── */
+.aud-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+.aud-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #374151;
+}
+
+.aud-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ── Compliance Trend ── */
+.aud-trend-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+/* ── Remediation Progress ── */
+.aud-remediation-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.aud-stat-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.aud-stat-card {
+    border: 1px solid #c7d4e8;
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-align: center;
+}
+
+.aud-stat-card-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e3a5f;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.aud-stat-card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+/* ── Compliance By Asset Type ── */
+.aud-progress-bar-wrapper {
+    margin-bottom: 14px;
+}
+
+.aud-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #374151;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.aud-progress-track {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.aud-progress-fill {
+    height: 100%;
+    background: #1e3a5f;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+}
+
+/* ── Critical Findings Table ── */
+.aud-table-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.aud-table-header {
+    padding: 16px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.aud-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.aud-table thead {
+    background: #f9fafb;
+}
+
+.aud-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.aud-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.aud-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.aud-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.aud-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #374151;
+}
+
+/* severity badges */
+.aud-severity {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.aud-severity.critical { background: #fee2e2; color: #991b1b; }
+.aud-severity.high     { background: #fed7aa; color: #9a3412; }
+.aud-severity.medium   { background: #fef3c7; color: #92400e; }
+.aud-severity.low      { background: #d1fae5; color: #065f46; }
+
+/* ── Summary Cards 5-grid ── */
+.aud-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+
+/* ── Audit Coverage ── */
+.aud-coverage-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.aud-coverage-inner {
+    border: 1px solid #c7d4e8;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+.aud-coverage-total-label {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.aud-coverage-total-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-bottom: 16px;
+}
+
+.aud-coverage-track {
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.aud-coverage-fill {
+    height: 100%;
+    background: #1e3a5f;
+    border-radius: 5px;
+    transition: width 0.6s ease;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.aud-coverage-legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    font-size: 13px;
+    color: #374151;
+}
+
+.aud-coverage-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.aud-coverage-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+/* ── Empty state ── */
+.aud-empty {
+    text-align: center;
+    color: #9ca3af;
+    padding: 30px 0;
+    font-size: 14px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+    .aud-row-2 { grid-template-columns: 1fr; }
+    .aud-summary-cards { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .aud-container { padding: 16px 20px; }
+    .aud-stat-cards { grid-template-columns: 1fr; }
+    .aud-summary-cards { grid-template-columns: repeat(2, 1fr); }
+}

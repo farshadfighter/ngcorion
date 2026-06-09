@@ -17,6 +17,7 @@ import { usePermission } from "../hooks/usePermission";
 import { LogsPage } from "./Logs/LogsPage";
 import BackupPage from "./Backup/BackupPage";
 import { AssetManagementDashboard } from "./AssetManagement/AssetManagementDashboard";
+import { AuditingDashboard } from "./Auditing/AuditingDashboard";
 
 import "../assets/Dashboard.css";
 
@@ -165,6 +166,11 @@ export const Dashboard = () => {
             case "auto-discovery":
                 return canReadAutoDisc ? <AutoDiscovery onNavigateToLicence={handleNavigateToLicence} /> : <AccessDenied menuName="Auto Discovery" />;
 
+            case "auditing":
+                return canReadAuditing
+                    ? <AuditingDashboard />
+                    : <AccessDenied menuName="Auditing" />;
+
             case "operation-device":
                 return canReadAuditing ? <AuditingList onNavigateToLicence={handleNavigateToLicence} /> : <AccessDenied menuName="Auditing" />;
 
@@ -260,20 +266,14 @@ export const Dashboard = () => {
                     )}
 
                     {/* ── AUDITING ── */}
-                    {canReadAuditing && (
-                        <>
-                            {!isSidebarCollapsed && (
-                                <div className="nav-section">
-                                    <img src="/icons/auditing.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">Auditing</span>
-                                </div>
-                            )}
-                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "operation-device" ? "active" : ""}`}
-                                 onClick={() => setActiveMenu("operation-device")} title="Operation and Device">
-                                {isSidebarCollapsed && <img src="/icons/auditing.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Operation & Device</span>}
-                            </div>
-                        </>
+                    {canReadAuditing && !isSidebarCollapsed && (
+                        <div
+                            className={`nav-section nav-section-clickable ${activeMenu === "auditing" ? "nav-section-active" : ""}`}
+                            onClick={() => setActiveMenu("auditing")}
+                        >
+                            <img src="/icons/auditing.svg" alt="" className="section-icon" />
+                            <span className="nav-section-title">Auditing</span>
+                        </div>
                     )}
 
                     {/* ── HARDENING ── */}
