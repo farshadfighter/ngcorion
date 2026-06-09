@@ -142,6 +142,53 @@ body, html {
     background: #143b7a;
 }
 
+/* Forgot-password link under the login form */
+.login-link {
+    background: none;
+    border: none;
+    color: #0A234E;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 18px;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.login-link:hover {
+    color: #143b7a;
+}
+
+/* Informational text on the forgot/reset screens */
+.login-heading {
+    margin: 0 0 6px;
+    font-size: 20px;
+    color: #0A234E;
+    text-align: center;
+}
+
+.login-subtext {
+    margin: 0 0 6px;
+    color: #555;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.login-message {
+    margin: 12px 0;
+    color: #1b5e20;
+    font-size: 15px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.login-field-error {
+    color: #b00020;
+    font-size: 13px;
+    align-self: flex-start;
+    margin-top: 6px;
+}
+
 /* Button */
 .log-button {
     width: 100%;

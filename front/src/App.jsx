@@ -5,6 +5,8 @@ import "./assets/AssetList.css";
 import "./assets/AssetRequirement.css";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Login } from "./components/Login.jsx";
+import { ForgotPassword } from "./components/ForgotPassword.jsx";
+import { ResetPassword } from "./components/ResetPassword.jsx";
 import { Dashboard } from "./components/Dashboard.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { LicenseActivationScreen } from "./components/License/LicenseActivationScreen.jsx";
@@ -76,6 +78,10 @@ function AppContent() {
                 <Routes>
                     {/* صفحه لاگین */}
                     <Route path="/" element={<Login />} />
+
+                    {/* بازیابی رمز عبور */}
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
                     {/* صفحه داشبورد - محافظت شده */}
                     <Route

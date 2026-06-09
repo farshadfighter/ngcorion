@@ -17,6 +17,7 @@ from app.models.enums import (
 # Import user models (no dependencies)
 from app.models.user import User, UserRole
 from app.models.login_log import LoginLog
+from app.models.password_reset_token import PasswordResetToken
 
 # Import user permissions
 from app.models.user_permission import UserPermission, ModuleEnum
@@ -120,6 +121,7 @@ __all__ = [
     "User",
     "UserRole",
     "LoginLog",
+    "PasswordResetToken",
     "UserPermission",
     "ModuleEnum",
     # Reference tables
