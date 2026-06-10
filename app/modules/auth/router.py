@@ -24,12 +24,6 @@ from app.models.security_audit_log import log_action
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
 
-# Identical response for any forgot-password request, so callers cannot tell
-# whether an account with the given email exists (prevents enumeration).
-GENERIC_FORGOT_PASSWORD_MESSAGE = (
-    "If an account with that email exists, a password reset code has been sent."
-)
-
 router = APIRouter()
 
 
@@ -246,8 +240,9 @@ def forgot_password(
     """
     Request a password reset OTP code.
 
-    Always returns the same generic message regardless of whether the email
-    matches an account, to avoid leaking which emails are registered.
+    Returns 404 if no active account matches the email. NOTE: this lets callers
+    discover which emails are registered (account enumeration). The rate limiter
+    still caps bulk probing.
     """
     client_ip = request.client.host
     email = payload.email
@@ -258,22 +253,8 @@ def forgot_password(
     auth_service = AuthService(db)
     result = auth_service.create_password_reset_otp(email, ip_address=client_ip)
 
-    if result is not None:
-        otp, user = result
-        background_tasks.add_task(send_password_reset_otp, user.email, otp)
-        log_action(
-            db=db,
-            user_id=user.id,
-            username=user.username,
-            action="auth.forgot_password",
-            module="auth",
-            target_id=user.id,
-            ip_address=client_ip,
-            result="success",
-            detail="Password reset code generated",
-        )
-    else:
-        # No active account — record the attempt but reveal nothing to the caller.
+    if result is None:
+        # No active account for this email — surface an error to the caller.
         log_action(
             db=db,
             username=email,
@@ -283,8 +264,26 @@ def forgot_password(
             result="failed",
             detail="No active account for email",
         )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email address.",
+        )
 
-    return {"message": GENERIC_FORGOT_PASSWORD_MESSAGE}
+    otp, user = result
+    background_tasks.add_task(send_password_reset_otp, user.email, otp)
+    log_action(
+        db=db,
+        user_id=user.id,
+        username=user.username,
+        action="auth.forgot_password",
+        module="auth",
+        target_id=user.id,
+        ip_address=client_ip,
+        result="success",
+        detail="Password reset code generated",
+    )
+
+    return {"message": "A password reset code has been sent to your email."}
 
 
 @router.post("/reset-password", response_model=MessageResponse)

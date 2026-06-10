@@ -6,23 +6,27 @@ import UserIcon from "../assets/UserIcon.jsx";
 export const ForgotPassword = () => {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
 
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!email.trim()) return;
+        setError("");
         setIsLoading(true);
         try {
             await api.post("/auth/forgot-password", { email });
-        } catch {
-            // The endpoint returns a generic success; even on error (e.g. rate
-            // limit) we proceed identically so account existence isn't revealed.
-        } finally {
-            // Go to the reset page carrying the email so the user can enter the
-            // code we (may have) emailed. We navigate regardless of whether the
-            // account exists, to avoid leaking that.
+            // Code sent — go to the reset page carrying the email.
             navigate("/reset-password", { state: { email } });
+        } catch (err) {
+            const detail = err.response?.data?.detail;
+            setError(
+                typeof detail === "string"
+                    ? detail
+                    : "Could not send a reset code. Please try again."
+            );
+        } finally {
             setIsLoading(false);
         }
     };
@@ -51,6 +55,8 @@ export const ForgotPassword = () => {
                         disabled={isLoading}
                     />
                 </div>
+
+                {error && <p className="login-field-error">{error}</p>}
 
                 <button type="submit" className="log-button" disabled={isLoading}>
                     {isLoading ? "Sending..." : "Send code"}

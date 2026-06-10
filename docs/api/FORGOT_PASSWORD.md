@@ -42,21 +42,22 @@ curl -X POST http://localhost:8000/auth/forgot-password \
   -d '{"email": "user@example.com"}'
 ```
 
-**Response — always `200`, always identical** (regardless of whether the email exists):
+**Success — `200`** (the email matched an active account; a 6-digit code is emailed via a
+FastAPI `BackgroundTask`):
 ```json
-{ "message": "If an account with that email exists, a password reset code has been sent." }
+{ "message": "A password reset code has been sent to your email." }
 ```
-
-This is deliberate: a different response for known vs. unknown emails would let an
-attacker enumerate registered accounts. If the email *does* belong to an **active**
-account, a 6-digit code is emailed (via a FastAPI `BackgroundTask`); otherwise nothing
-is sent but the response is the same.
 
 **Errors:**
 | Status | When |
 |--------|------|
+| `404`  | No active account matches the email → `"No account found with this email address."` |
 | `422`  | `email` missing or not a valid email address |
 | `429`  | Rate limit exceeded (see [Rate limiting](#rate-limiting)) |
+
+> **Note:** returning `404` for unknown emails reveals which addresses are registered
+> (account enumeration). This is an intentional product choice; the rate limiter caps
+> bulk probing.
 
 ---
 
@@ -168,7 +169,7 @@ SMTP_FROM_NAME=NGcorion
 | Expiry | `expires_at` (default 10 min); expired codes → `400` |
 | Brute-force limit | A 6-digit code has only 10⁶ values, so verification is **scoped to the user**, **attempt-limited** (`PASSWORD_RESET_MAX_ATTEMPTS`, then the code is burned), and uses a **constant-time** compare (`hmac.compare_digest`) |
 | Newest-code-wins | Creating a new code marks the user's prior unused codes as used |
-| No account enumeration | `forgot-password` always returns the same `200` message |
+| Account enumeration | **Allowed by design** — `forgot-password` returns `404` for unknown emails (intentional UX choice); rate limiting caps bulk probing |
 | Abuse protection | Rate limiting on `forgot-password` (see below) |
 | Auditability | Every request/reset is written to the audit log (`log_action`, action `auth.forgot_password` / `auth.reset_password`) |
 
