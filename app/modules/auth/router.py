@@ -11,8 +11,7 @@ from app.core.auth_rate_limiter import (
     check_login_rate_limit,
     check_password_reset_rate_limit,
 )
-from app.core.config import settings
-from app.core.email import send_password_reset_email
+from app.core.email import send_password_reset_otp
 from app.schemas.auth import (
     UserLogin,
     Token,
@@ -28,7 +27,7 @@ from .service import AuthService
 # Identical response for any forgot-password request, so callers cannot tell
 # whether an account with the given email exists (prevents enumeration).
 GENERIC_FORGOT_PASSWORD_MESSAGE = (
-    "If an account with that email exists, a password reset link has been sent."
+    "If an account with that email exists, a password reset code has been sent."
 )
 
 router = APIRouter()
@@ -245,7 +244,7 @@ def forgot_password(
     db: Session = Depends(get_db),
 ):
     """
-    Request a password reset link.
+    Request a password reset OTP code.
 
     Always returns the same generic message regardless of whether the email
     matches an account, to avoid leaking which emails are registered.
@@ -253,16 +252,15 @@ def forgot_password(
     client_ip = request.client.host
     email = payload.email
 
-    # Rate limit before creating any token (also caps probing of unknown emails).
+    # Rate limit before creating any code (also caps probing of unknown emails).
     check_password_reset_rate_limit(db, client_ip, email)
 
     auth_service = AuthService(db)
-    result = auth_service.create_password_reset_token(email, ip_address=client_ip)
+    result = auth_service.create_password_reset_otp(email, ip_address=client_ip)
 
     if result is not None:
-        raw_token, user = result
-        reset_link = f"{settings.FRONTEND_BASE_URL}/reset-password?token={raw_token}"
-        background_tasks.add_task(send_password_reset_email, user.email, reset_link)
+        otp, user = result
+        background_tasks.add_task(send_password_reset_otp, user.email, otp)
         log_action(
             db=db,
             user_id=user.id,
@@ -272,7 +270,7 @@ def forgot_password(
             target_id=user.id,
             ip_address=client_ip,
             result="success",
-            detail="Password reset link generated",
+            detail="Password reset code generated",
         )
     else:
         # No active account — record the attempt but reveal nothing to the caller.
@@ -296,27 +294,31 @@ def reset_password(
     db: Session = Depends(get_db),
 ):
     """
-    Set a new password using a token from the reset email.
+    Set a new password using the OTP code emailed to the account.
 
-    The token must be unused and unexpired; it is consumed on success.
+    The code must match, be unused and unexpired, and be within the attempt
+    limit; it is consumed on success.
     """
     client_ip = request.client.host
 
     auth_service = AuthService(db)
-    user = auth_service.reset_password_with_token(payload.token, payload.new_password)
+    user = auth_service.reset_password_with_otp(
+        payload.email, payload.otp, payload.new_password
+    )
 
     if user is None:
         log_action(
             db=db,
+            username=payload.email,
             action="auth.reset_password",
             module="auth",
             ip_address=client_ip,
             result="failed",
-            detail="Invalid or expired reset token",
+            detail="Invalid or expired reset code",
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset link. Please request a new one.",
+            detail="Invalid or expired code. Please request a new one.",
         )
 
     log_action(
@@ -328,7 +330,7 @@ def reset_password(
         target_id=user.id,
         ip_address=client_ip,
         result="success",
-        detail="Password reset via email link",
+        detail="Password reset via emailed OTP",
     )
 
     return {"message": "Your password has been reset. You can now log in."}

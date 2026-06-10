@@ -1,7 +1,7 @@
 """
 Auth Schemas - Login and Token schemas
 """
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Dict
 
 from app.schemas.user import validate_password_strength
@@ -14,13 +14,14 @@ class UserLogin(BaseModel):
 
 
 class ForgotPasswordRequest(BaseModel):
-    """Request a password-reset link for the account with this email."""
+    """Request a password-reset OTP for the account with this email."""
     email: EmailStr
 
 
 class ResetPasswordRequest(BaseModel):
-    """Set a new password using a reset token from the email link."""
-    token: str
+    """Set a new password using the OTP code emailed to the account."""
+    email: EmailStr
+    otp: str = Field(..., pattern=r"^\d{6}$", description="6-digit code from the email")
     new_password: str
 
     @field_validator('new_password')

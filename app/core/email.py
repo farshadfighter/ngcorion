@@ -67,28 +67,27 @@ def send_email(to: str, subject: str, text_body: str, html_body: str | None = No
         logger.exception("Failed to send email to %s (subject=%r)", to, subject)
 
 
-def send_password_reset_email(to_email: str, reset_link: str) -> None:
-    """Build and send the password-reset email."""
+def send_password_reset_otp(to_email: str, otp: str) -> None:
+    """Build and send the password-reset OTP email."""
     expire_minutes = settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
-    subject = f"{settings.SMTP_FROM_NAME} — Password reset"
+    subject = f"{settings.SMTP_FROM_NAME} — Password reset code"
 
     text_body = (
         "We received a request to reset the password for your account.\n\n"
-        f"Click the link below to choose a new password. This link expires in "
-        f"{expire_minutes} minutes and can be used only once:\n\n"
-        f"{reset_link}\n\n"
+        f"Your password reset code is: {otp}\n\n"
+        f"Enter it on the password reset page to choose a new password. This code "
+        f"expires in {expire_minutes} minutes and can be used only once.\n\n"
         "If you did not request a password reset, you can safely ignore this email — "
         "your password will not change.\n"
     )
 
     html_body = (
         f"<p>We received a request to reset the password for your account.</p>"
-        f"<p>Click the button below to choose a new password. "
-        f"This link expires in {expire_minutes} minutes and can be used only once.</p>"
-        f'<p><a href="{reset_link}" '
-        f'style="display:inline-block;padding:10px 18px;background:#111827;color:#fff;'
-        f'text-decoration:none;border-radius:6px;">Reset password</a></p>'
-        f'<p>Or copy this link into your browser:<br><a href="{reset_link}">{reset_link}</a></p>'
+        f"<p>Your password reset code is:</p>"
+        f'<p style="font-size:28px;font-weight:700;letter-spacing:6px;'
+        f'font-family:monospace;color:#111827;">{otp}</p>'
+        f"<p>Enter it on the password reset page to choose a new password. "
+        f"This code expires in {expire_minutes} minutes and can be used only once.</p>"
         f"<p style=\"color:#6B7280;font-size:13px;\">If you did not request a password reset, "
         f"you can safely ignore this email — your password will not change.</p>"
     )

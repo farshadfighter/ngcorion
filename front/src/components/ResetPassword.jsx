@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import api from "../config/api";
 import LockIcon from "../assets/LockIcon.jsx";
+import UserIcon from "../assets/UserIcon.jsx";
 
 // Mirror of the backend password rules, so the user gets immediate feedback.
 const validatePassword = (pwd) => {
@@ -15,9 +16,11 @@ const validatePassword = (pwd) => {
 };
 
 export const ResetPassword = () => {
-    const [searchParams] = useSearchParams();
-    const token = searchParams.get("token") || "";
-
+    const location = useLocation();
+    // Email is normally carried over from the "forgot password" step; fall back
+    // to an editable field if the user landed here directly.
+    const [email, setEmail] = useState(location.state?.email || "");
+    const [otp, setOtp] = useState("");
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const [error, setError] = useState("");
@@ -30,8 +33,12 @@ export const ResetPassword = () => {
         e.preventDefault();
         setError("");
 
-        if (!token) {
-            setError("This reset link is invalid or incomplete. Please request a new one.");
+        if (!email.trim()) {
+            setError("Please enter your email.");
+            return;
+        }
+        if (!/^\d{6}$/.test(otp)) {
+            setError("Enter the 6-digit code from your email.");
             return;
         }
         const pwdError = validatePassword(password);
@@ -46,7 +53,11 @@ export const ResetPassword = () => {
 
         setIsLoading(true);
         try {
-            await api.post("/auth/reset-password", { token, new_password: password });
+            await api.post("/auth/reset-password", {
+                email,
+                otp,
+                new_password: password,
+            });
             setDone(true);
             setTimeout(() => navigate("/"), 2500);
         } catch (err) {
@@ -54,7 +65,7 @@ export const ResetPassword = () => {
             setError(
                 typeof detail === "string"
                     ? detail
-                    : "Could not reset your password. The link may be invalid or expired."
+                    : "Could not reset your password. The code may be invalid or expired."
             );
         } finally {
             setIsLoading(false);
@@ -85,7 +96,37 @@ export const ResetPassword = () => {
                     </>
                 ) : (
                     <>
-                        <p className="login-subtext">Choose a new password for your account.</p>
+                        <p className="login-subtext">
+                            Enter the code we emailed you, then choose a new password.
+                        </p>
+
+                        <div className="input-wrapper">
+                            <UserIcon />
+                            <input
+                                type="email"
+                                className="user-input"
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <div className="input-wrapper">
+                            <LockIcon />
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                className="user-input"
+                                placeholder="6-digit code"
+                                value={otp}
+                                onChange={(e) =>
+                                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                                }
+                                disabled={isLoading}
+                            />
+                        </div>
 
                         <div className="input-wrapper">
                             <LockIcon />

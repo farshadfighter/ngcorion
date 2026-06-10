@@ -6,8 +6,6 @@ import UserIcon from "../assets/UserIcon.jsx";
 export const ForgotPassword = () => {
     const [email, setEmail] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
-    const [message, setMessage] = useState("");
 
     const navigate = useNavigate();
 
@@ -16,19 +14,15 @@ export const ForgotPassword = () => {
         if (!email.trim()) return;
         setIsLoading(true);
         try {
-            const res = await api.post("/auth/forgot-password", { email });
-            setMessage(
-                res.data?.message ||
-                "If an account with that email exists, a password reset link has been sent."
-            );
+            await api.post("/auth/forgot-password", { email });
         } catch {
-            // The endpoint returns a generic success; on the rare error (e.g. rate
-            // limit) we still avoid revealing account existence.
-            setMessage(
-                "If an account with that email exists, a password reset link has been sent."
-            );
+            // The endpoint returns a generic success; even on error (e.g. rate
+            // limit) we proceed identically so account existence isn't revealed.
         } finally {
-            setSubmitted(true);
+            // Go to the reset page carrying the email so the user can enter the
+            // code we (may have) emailed. We navigate regardless of whether the
+            // account exists, to avoid leaking that.
+            navigate("/reset-password", { state: { email } });
             setIsLoading(false);
         }
     };
@@ -42,31 +36,25 @@ export const ForgotPassword = () => {
 
                 <h1 className="login-heading">Forgot password</h1>
 
-                {submitted ? (
-                    <p className="login-message">{message}</p>
-                ) : (
-                    <>
-                        <p className="login-subtext">
-                            Enter your email and we'll send you a link to reset your password.
-                        </p>
+                <p className="login-subtext">
+                    Enter your email and we'll send you a code to reset your password.
+                </p>
 
-                        <div className="input-wrapper">
-                            <UserIcon />
-                            <input
-                                type="email"
-                                className="user-input"
-                                placeholder="Enter your email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
+                <div className="input-wrapper">
+                    <UserIcon />
+                    <input
+                        type="email"
+                        className="user-input"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
 
-                        <button type="submit" className="log-button" disabled={isLoading}>
-                            {isLoading ? "Sending..." : "Send reset link"}
-                        </button>
-                    </>
-                )}
+                <button type="submit" className="log-button" disabled={isLoading}>
+                    {isLoading ? "Sending..." : "Send code"}
+                </button>
 
                 <button
                     type="button"

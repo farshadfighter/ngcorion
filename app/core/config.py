@@ -67,11 +67,13 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "no-reply@ngcorion.local"
     SMTP_FROM_NAME: str = "NGcorion"
 
-    # Frontend base URL used to build the password-reset link sent by email.
+    # Frontend base URL (reserved; the OTP reset flow no longer emails a link).
     FRONTEND_BASE_URL: str = "http://localhost:5173"
 
-    # How long a password-reset link stays valid.
-    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+    # How long a password-reset OTP code stays valid (minutes).
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 10
+    # Max wrong-code attempts before the OTP is invalidated and a new one is needed.
+    PASSWORD_RESET_MAX_ATTEMPTS: int = 5
 
     # License Server
     LICENSE_SERVER_URL: str = "http://localhost:8001"

@@ -4,6 +4,7 @@ Auth Service - Authentication Logic
 Handles user authentication and validation.
 """
 import hashlib
+import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -14,9 +15,9 @@ from app.core.security import verify_password, get_password_hash
 from app.core.config import settings
 
 
-def _hash_token(raw_token: str) -> str:
-    """Return the SHA-256 hex digest used to store/look up a reset token."""
-    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+def _hash_code(raw_code: str) -> str:
+    """Return the SHA-256 hex digest used to store/verify an OTP code."""
+    return hashlib.sha256(raw_code.encode("utf-8")).hexdigest()
 
 
 class AuthService:
@@ -47,64 +48,80 @@ class AuthService:
             return False
         return user
 
-    def create_password_reset_token(self, email: str, ip_address: str = None):
+    def create_password_reset_otp(self, email: str, ip_address: str = None):
         """
-        Create a one-time password-reset token for the active account with this email.
+        Create a one-time numeric OTP for the active account with this email.
 
         Returns:
-            (raw_token, user) if an active account exists, else None.
-            The caller must email the raw token and otherwise treat a None result
+            (otp, user) if an active account exists, else None.
+            The caller must email the OTP and otherwise treat a None result
             identically to a success (to avoid leaking whether the email exists).
         """
         user = self.db.query(User).filter(User.email == email).first()
         if not user or not user.is_active:
             return None
 
-        # Invalidate the user's previous unused tokens so only the newest link works.
+        # Invalidate the user's previous unused codes so only the newest one works.
         now = datetime.now(timezone.utc)
         self.db.query(PasswordResetToken).filter(
             PasswordResetToken.user_id == user.id,
             PasswordResetToken.used_at.is_(None),
         ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
 
-        raw_token = secrets.token_urlsafe(32)
+        # 6-digit code, zero-padded (e.g. "004271").
+        otp = f"{secrets.randbelow(10**6):06d}"
         expires_at = now + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
-        reset_token = PasswordResetToken(
+        reset_code = PasswordResetToken(
             user_id=user.id,
-            token_hash=_hash_token(raw_token),
+            token_hash=_hash_code(otp),
             expires_at=expires_at,
             ip_address=ip_address,
         )
-        self.db.add(reset_token)
+        self.db.add(reset_code)
         self.db.commit()
 
-        return raw_token, user
+        return otp, user
 
-    def reset_password_with_token(self, raw_token: str, new_password: str):
+    def reset_password_with_otp(self, email: str, otp: str, new_password: str):
         """
-        Consume a reset token and set the user's new password.
+        Verify an emailed OTP and set the user's new password.
 
-        Returns the User on success, or None if the token is unknown, already
-        used, or expired.
+        Returns the User on success, or None if the email/code is wrong, the code
+        is expired/used, or too many wrong attempts have been made. A 6-digit code
+        is brute-forceable, so verification is scoped to the user, attempt-limited,
+        and uses a constant-time comparison.
         """
-        token_hash = _hash_token(raw_token)
         now = datetime.now(timezone.utc)
 
-        reset_token = self.db.query(PasswordResetToken).filter(
-            PasswordResetToken.token_hash == token_hash,
-            PasswordResetToken.used_at.is_(None),
-            PasswordResetToken.expires_at > now,
-        ).first()
-
-        if not reset_token:
+        user = self.db.query(User).filter(User.email == email).first()
+        if not user or not user.is_active:
             return None
 
-        user = self.db.query(User).filter(User.id == reset_token.user_id).first()
-        if not user:
+        reset_code = self.db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
+        ).order_by(PasswordResetToken.created_at.desc()).first()
+
+        if not reset_code:
+            return None
+
+        # Too many wrong tries already — burn the code and force a new request.
+        if reset_code.attempts >= settings.PASSWORD_RESET_MAX_ATTEMPTS:
+            reset_code.used_at = now
+            self.db.commit()
+            return None
+
+        if not hmac.compare_digest(_hash_code(otp), reset_code.token_hash):
+            reset_code.attempts += 1
+            # Invalidate once the limit is reached so it can't be guessed further.
+            if reset_code.attempts >= settings.PASSWORD_RESET_MAX_ATTEMPTS:
+                reset_code.used_at = now
+            self.db.commit()
             return None
 
         user.hashed_password = get_password_hash(new_password)
-        reset_token.used_at = now
+        reset_code.used_at = now
         self.db.commit()
 
         return user
