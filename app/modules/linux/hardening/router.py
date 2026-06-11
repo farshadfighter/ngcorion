@@ -98,6 +98,11 @@ class SingleFixRequest(BaseModel):
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
     check_id: str = Field(..., description="CIS check ID to fix")
+    sub_device_type: Optional[str] = Field(
+        None,
+        description="Distro variant from the audit, e.g. linux-ubuntu-22. When "
+                    "provided, skips live distro detection to speed up the fix.",
+    )
     parameters: Dict[str, str] = Field(default_factory=dict, description="Parameter values")
 
     class Config:
@@ -108,6 +113,7 @@ class SingleFixRequest(BaseModel):
                 "ssh_password": "********",
                 "ssh_port": 22,
                 "check_id": "LNX-L1-5.2.10",
+                "sub_device_type": "linux-ubuntu-22",
                 "parameters": {}
             }
         }
@@ -379,6 +385,7 @@ async def execute_single_fix(
             check_id=request.check_id,
             parameters=request.parameters,
             ssh_port=request.ssh_port,
+            sub_device_type=request.sub_device_type,
         )
         consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("success") is True

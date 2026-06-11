@@ -29,6 +29,33 @@ from .ssh_executor import LinuxHardeningBatchExecutor
 logger = logging.getLogger(__name__)
 
 
+# Maps the distro variant the audit stored on the session (sub_device_type) back
+# to the distro_id the hardening templates expect. Used to skip the redundant
+# `detect_distro()` SSH round-trip on a single fix: the audit already detected
+# the distro, so re-running `cat /etc/os-release` on a fresh connection just adds
+# latency. An unknown/None value falls back to live auto-detection (unchanged
+# behavior), so this is safe for older sessions that never recorded a variant.
+_SUB_DEVICE_TO_DISTRO_ID = {
+    "linux-ubuntu-20": "ubuntu",
+    "linux-ubuntu-22": "ubuntu",
+    "linux-ubuntu-24": "ubuntu",
+    "linux-redhat-8":  "rhel",
+    "linux-redhat-9":  "rhel",
+    "linux-redhat-10": "rhel",
+    "linux-rocky-8":   "rocky",
+    "linux-rocky-9":   "rocky",
+    "linux-rocky-10":  "rocky",
+}
+
+
+def _distro_id_from_sub_device(sub_device_type: Optional[str]) -> Optional[str]:
+    """Resolve an audit sub_device_type (e.g. 'linux-ubuntu-22') to a hardening
+    distro_id (e.g. 'ubuntu'). Returns None when unknown so callers auto-detect."""
+    if not sub_device_type:
+        return None
+    return _SUB_DEVICE_TO_DISTRO_ID.get(sub_device_type)
+
+
 class LinuxHardeningService:
     """Service for Linux CIS hardening operations."""
 
@@ -328,7 +355,8 @@ class LinuxHardeningService:
         check_id: str,
         parameters: Dict[str, str] = None,
         ssh_port: int = 22,
-        session_id: Optional[int] = None
+        session_id: Optional[int] = None,
+        sub_device_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -341,6 +369,10 @@ class LinuxHardeningService:
             sudo_password: Sudo password
             check_id: CIS check ID
             parameters: Parameter values
+            session_id: Audit session ID (used to update status and to recover the
+                already-detected distro when sub_device_type isn't supplied)
+            sub_device_type: Distro variant from the audit (e.g. 'linux-ubuntu-22');
+                lets us skip the live distro-detection round-trip on connect
 
         Returns:
             Execution result
@@ -352,14 +384,28 @@ class LinuxHardeningService:
         if not asset.ip_address:
             raise ValueError(f"Asset '{asset.asset_name}' has no IP address")
 
-        logger.info(f"Executing single fix {check_id} on {asset.ip_address}")
+        # Reuse the distro the audit already detected so the executor can skip the
+        # extra `cat /etc/os-release` round-trip. Prefer the caller's hint, then the
+        # session's stored variant; fall back to live auto-detection when neither
+        # resolves (keeps behavior identical for older/unknown sessions).
+        distro_id = _distro_id_from_sub_device(sub_device_type)
+        if distro_id is None and session_id is not None:
+            session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+            if session is not None:
+                distro_id = _distro_id_from_sub_device(session.sub_device_type)
+
+        logger.info(
+            f"Executing single fix {check_id} on {asset.ip_address} "
+            f"(distro: {distro_id or 'auto-detect'})"
+        )
 
         executor = LinuxHardeningBatchExecutor(
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
             sudo_password=sudo_password,
-            port=ssh_port
+            port=ssh_port,
+            distro_id=distro_id
         )
 
         result = executor.execute_single(check_id, parameters)

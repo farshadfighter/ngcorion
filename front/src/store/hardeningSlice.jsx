@@ -397,6 +397,9 @@ export const executeHardenCheck = createAsyncThunk(
                 ...credPayload,
                 parameters: parameters || {},
                 ...(sessionId != null && { session_id: sessionId }),
+                // Pass the known distro variant so the backend skips live distro
+                // detection (one fewer SSH round-trip). Only meaningful for Linux.
+                ...(apiPath === "linux" && deviceType?.startsWith("linux-") && { sub_device_type: deviceType }),
             };
             const res = await api.post(endpoint, payload);
             return res.data;
