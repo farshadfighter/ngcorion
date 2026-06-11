@@ -279,68 +279,7 @@ class LinuxSSHClient:
             return self._distro_info
 
         output = self.send_command("cat /etc/os-release")
-
-        distro_info = {
-            "id": "unknown",
-            "version": "unknown",
-            "version_id": "unknown",
-            "name": "Unknown Linux",
-            "profile": "linux_generic"
-        }
-
-        # Parse os-release file
-        id_match = re.search(r'^ID="?([^"\n]+)"?', output, re.M)
-        if id_match:
-            distro_info["id"] = id_match.group(1).lower()
-
-        version_match = re.search(r'^VERSION_ID="?([^"\n]+)"?', output, re.M)
-        if version_match:
-            distro_info["version_id"] = version_match.group(1)
-            # Extract major version
-            version_parts = distro_info["version_id"].split(".")
-            distro_info["version"] = version_parts[0] if version_parts else distro_info["version_id"]
-
-        name_match = re.search(r'^PRETTY_NAME="?([^"\n]+)"?', output, re.M)
-        if name_match:
-            distro_info["name"] = name_match.group(1)
-
-        # Build profile identifier
-        distro_id = distro_info["id"]
-        version = distro_info["version_id"]
-
-        if distro_id == "ubuntu":
-            if version.startswith("20"):
-                distro_info["profile"] = "ubuntu_20"
-            elif version.startswith("22"):
-                distro_info["profile"] = "ubuntu_22"
-            elif version.startswith("24"):
-                distro_info["profile"] = "ubuntu_24"
-            else:
-                distro_info["profile"] = "ubuntu_generic"
-        elif distro_id in ("rocky", "rockylinux"):
-            distro_info["id"] = "rocky"
-            if version.startswith("8"):
-                distro_info["profile"] = "rocky_8"
-            elif version.startswith("9"):
-                distro_info["profile"] = "rocky_9"
-            elif version.startswith("10"):
-                distro_info["profile"] = "rocky_10"
-            else:
-                distro_info["profile"] = "rocky_generic"
-        elif distro_id in ("rhel", "redhat"):
-            distro_info["id"] = "rhel"
-            if version.startswith("8"):
-                distro_info["profile"] = "rhel_8"
-            elif version.startswith("9"):
-                distro_info["profile"] = "rhel_9"
-            elif version.startswith("10"):
-                distro_info["profile"] = "rhel_10"
-            else:
-                distro_info["profile"] = f"rhel_{distro_info['version']}"
-        elif distro_id == "centos":
-            distro_info["profile"] = f"centos_{distro_info['version']}"
-        else:
-            distro_info["profile"] = "linux_generic"
+        distro_info = parse_os_release(output)
 
         self._distro_info = distro_info
         logger.info(f"Detected distro on {self.ip}: {distro_info['name']} (profile: {distro_info['profile']})")
@@ -407,6 +346,86 @@ class LinuxSSHClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.disconnect()
+
+
+def parse_os_release(output: str) -> Dict[str, str]:
+    """
+    Parse the contents of /etc/os-release into a distro-info dict.
+
+    Pure string parsing (no I/O) so it can be shared by any SSH transport —
+    the netmiko audit client and the paramiko hardening runner both use it,
+    guaranteeing identical distro/profile resolution.
+
+    Args:
+        output: Raw text of /etc/os-release
+
+    Returns:
+        Dict with id, version, version_id, name, profile (same shape as
+        LinuxSSHClient.detect_distro()).
+    """
+    distro_info = {
+        "id": "unknown",
+        "version": "unknown",
+        "version_id": "unknown",
+        "name": "Unknown Linux",
+        "profile": "linux_generic"
+    }
+
+    # Parse os-release file
+    id_match = re.search(r'^ID="?([^"\n]+)"?', output, re.M)
+    if id_match:
+        distro_info["id"] = id_match.group(1).lower()
+
+    version_match = re.search(r'^VERSION_ID="?([^"\n]+)"?', output, re.M)
+    if version_match:
+        distro_info["version_id"] = version_match.group(1)
+        # Extract major version
+        version_parts = distro_info["version_id"].split(".")
+        distro_info["version"] = version_parts[0] if version_parts else distro_info["version_id"]
+
+    name_match = re.search(r'^PRETTY_NAME="?([^"\n]+)"?', output, re.M)
+    if name_match:
+        distro_info["name"] = name_match.group(1)
+
+    # Build profile identifier
+    distro_id = distro_info["id"]
+    version = distro_info["version_id"]
+
+    if distro_id == "ubuntu":
+        if version.startswith("20"):
+            distro_info["profile"] = "ubuntu_20"
+        elif version.startswith("22"):
+            distro_info["profile"] = "ubuntu_22"
+        elif version.startswith("24"):
+            distro_info["profile"] = "ubuntu_24"
+        else:
+            distro_info["profile"] = "ubuntu_generic"
+    elif distro_id in ("rocky", "rockylinux"):
+        distro_info["id"] = "rocky"
+        if version.startswith("8"):
+            distro_info["profile"] = "rocky_8"
+        elif version.startswith("9"):
+            distro_info["profile"] = "rocky_9"
+        elif version.startswith("10"):
+            distro_info["profile"] = "rocky_10"
+        else:
+            distro_info["profile"] = "rocky_generic"
+    elif distro_id in ("rhel", "redhat"):
+        distro_info["id"] = "rhel"
+        if version.startswith("8"):
+            distro_info["profile"] = "rhel_8"
+        elif version.startswith("9"):
+            distro_info["profile"] = "rhel_9"
+        elif version.startswith("10"):
+            distro_info["profile"] = "rhel_10"
+        else:
+            distro_info["profile"] = f"rhel_{distro_info['version']}"
+    elif distro_id == "centos":
+        distro_info["profile"] = f"centos_{distro_info['version']}"
+    else:
+        distro_info["profile"] = "linux_generic"
+
+    return distro_info
 
 
 def redact_sensitive_linux_data(text: str) -> str:

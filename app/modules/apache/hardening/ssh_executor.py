@@ -2,14 +2,14 @@
 Apache Hardening SSH Executor
 
 Executes hardening commands on remote servers via SSH.
-Reuses LinuxSSHClient for connectivity since Apache runs on Linux.
+Uses the paramiko exec_command HardeningSSHRunner since Apache runs on Linux.
 """
 
 from typing import Dict, List, Any, Optional
 import logging
 import time
 
-from app.modules.linux.common.ssh_client import LinuxSSHClient
+from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
 from .command_templates import (
     get_apache_hardening_template,
     get_apache_template_commands_for_distro,
@@ -54,7 +54,7 @@ class ApacheSSHExecutor:
     """
     Executes Apache hardening commands via SSH with sudo support.
 
-    Reuses LinuxSSHClient for connection management.
+    Uses HardeningSSHRunner (paramiko exec_command) for connection management.
     """
 
     def __init__(
@@ -72,7 +72,7 @@ class ApacheSSHExecutor:
         self.sudo_password = sudo_password or password
         self.port = port
         self.distro_id = distro_id
-        self.ssh_client: Optional[LinuxSSHClient] = None
+        self.ssh_client: Optional[HardeningSSHRunner] = None
         self._connected = False
 
     def connect(self) -> None:
@@ -80,7 +80,7 @@ class ApacheSSHExecutor:
         if self._connected:
             return
 
-        self.ssh_client = LinuxSSHClient(
+        self.ssh_client = HardeningSSHRunner(
             ip=self.ip,
             username=self.username,
             password=self.password,
@@ -89,7 +89,8 @@ class ApacheSSHExecutor:
         )
         self.ssh_client.connect()
 
-        # Auto-detect distro if not provided
+        # Auto-detect distro if not provided. Under the fast exec runner this is a
+        # single lightweight `cat /etc/os-release` (no shell-prompt round-trip).
         if not self.distro_id:
             distro_info = self.ssh_client.detect_distro()
             self.distro_id = distro_info.get("id", "ubuntu")

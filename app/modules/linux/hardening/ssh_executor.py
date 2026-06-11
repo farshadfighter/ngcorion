@@ -10,7 +10,7 @@ import logging
 import re
 import time
 
-from app.modules.linux.common.ssh_client import LinuxSSHClient
+from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
 from .command_templates import (
     get_linux_hardening_template,
     get_linux_hardening_template_for_distro,
@@ -89,7 +89,7 @@ class LinuxSSHExecutor:
         self.sudo_password = sudo_password or password
         self.port = port
         self.distro_id = distro_id
-        self.ssh_client: Optional[LinuxSSHClient] = None
+        self.ssh_client: Optional[HardeningSSHRunner] = None
         self._connected = False
 
     def connect(self) -> None:
@@ -97,7 +97,7 @@ class LinuxSSHExecutor:
         if self._connected:
             return
 
-        self.ssh_client = LinuxSSHClient(
+        self.ssh_client = HardeningSSHRunner(
             ip=self.ip,
             username=self.username,
             password=self.password,

@@ -14,7 +14,10 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import logging
 
-from app.modules.cisco.audit.ssh_client import CiscoSSHClient
+from app.modules.cisco.audit.ssh_client import (
+    CiscoSSHClient,
+    CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS,
+)
 from app.modules.cisco.audit.rules import CISRule
 from app.core.ssh_exceptions import SSHConnectionError
 
@@ -255,7 +258,13 @@ class CiscoHardeningExecutor:
             # default-suppressed values like "Trap logging: level informational"
             # from "show logging" (CIS-2.2.5).
             running_config = self.ssh_client.send_command("show running-config")
-            turbo = self.ssh_client.collect_turbo()
+            # We already hold the full running-config, so every "show run | ..."
+            # turbo entry is redundant (it is a filtered view of what we just
+            # fetched). Collect only the supplemental show commands that surface
+            # data NOT in running-config (show ip ssh, show logging, show archive,
+            # show crypto key, show version) — ~5 commands instead of ~25, a large
+            # reduction in verify round-trips with no loss of evidence.
+            turbo = self.ssh_client.collect_turbo(CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS)
             config = f"{running_config}\n{turbo}"
 
             # Run the check function

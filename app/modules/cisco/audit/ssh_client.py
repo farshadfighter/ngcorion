@@ -109,6 +109,16 @@ CISCO_TURBO_COMMANDS: List[str] = [
     "show run | sec policy-map type control-plane",
 ]
 
+# Subset of the turbo commands that surface data NOT already present in a full
+# `show running-config`. Every "show run | include/section ..." entry above is a
+# filtered view of running-config, so it is redundant for a caller that already
+# holds the complete running-config (e.g. hardening verification). Only these
+# operational/non-config show commands add information beyond running-config.
+CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS: List[str] = [
+    cmd for cmd in CISCO_TURBO_COMMANDS
+    if not cmd.strip().lower().startswith("show run")
+]
+
 # Redaction patterns for sensitive data
 REDACT_PATTERNS = [
     # enable secret/password values
@@ -348,9 +358,16 @@ class CiscoSSHClient:
         finally:
             self.connection.fast_cli = prev_fast_cli
 
-    def collect_turbo(self) -> str:
+    def collect_turbo(self, commands: Optional[List[str]] = None) -> str:
         """
         Collect targeted command outputs (Turbo mode).
+
+        Args:
+            commands: Optional explicit list of show commands to run. Defaults to
+                the full CISCO_TURBO_COMMANDS set (used by audits). Callers that
+                already hold a full running-config (e.g. hardening verification)
+                can pass CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS to skip the
+                redundant "show run | ..." views and run far fewer commands.
 
         Returns:
             str: Concatenated command outputs
@@ -364,11 +381,12 @@ class CiscoSSHClient:
         if not self.is_connected():
             raise RuntimeError("SSH connection is no longer active.")
 
+        turbo_commands = commands if commands is not None else CISCO_TURBO_COMMANDS
         chunks: List[str] = []
         failed_commands = 0
-        total_commands = len(CISCO_TURBO_COMMANDS)
+        total_commands = len(turbo_commands)
 
-        for cmd in CISCO_TURBO_COMMANDS:
+        for cmd in turbo_commands:
             try:
                 out = self.connection.send_command(
                     cmd,
@@ -386,7 +404,7 @@ class CiscoSSHClient:
                 logger.warning(f"Command failed on {self.ip}: {cmd[:50]}... - {type(e).__name__}")
 
         # Log summary
-        success_rate = ((total_commands - failed_commands) / total_commands) * 100
+        success_rate = ((total_commands - failed_commands) / total_commands) * 100 if total_commands else 0
         logger.info(f"Turbo collection on {self.ip}: {total_commands - failed_commands}/{total_commands} commands succeeded ({success_rate:.1f}%)")
 
         return "\n".join(chunks).strip()

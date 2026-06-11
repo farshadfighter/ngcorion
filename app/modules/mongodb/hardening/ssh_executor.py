@@ -2,8 +2,8 @@
 MongoDB SSH Executor for Hardening
 
 Executes CIS remediation commands on MongoDB host servers via SSH.
-Reuses the same netmiko ConnectHandler(device_type="linux") approach as the
-MongoDB audit client, with sudo-wrapped command execution.
+Uses the paramiko exec_command HardeningSSHRunner (the audit path keeps using
+netmiko); commands are sudo-wrapped at the call site.
 """
 
 import logging
@@ -11,8 +11,8 @@ import shlex
 import time
 from typing import Any, Dict, List, Optional
 
-from netmiko import ConnectHandler
-from netmiko.exceptions import NetmikoAuthenticationException, NetmikoTimeoutException
+from app.core.ssh_exceptions import SSHAuthenticationError, SSHConnectionError
+from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
 
 from .command_templates import (
     get_mongodb_hardening_template,
@@ -85,23 +85,23 @@ class MongoDBSSHExecutor:
         if self._conn:
             return
         logger.info(f"Connecting to {self.ip}:{self.ssh_port} for hardening")
+        runner = HardeningSSHRunner(
+            ip=self.ip,
+            username=self.username,
+            password=self.password,
+            port=self.ssh_port,
+            timeout=self.timeout,
+        )
         try:
-            self._conn = ConnectHandler(
-                device_type="linux",
-                ip=self.ip,
-                username=self.username,
-                password=self.password,
-                port=self.ssh_port,
-                timeout=self.timeout,
-                conn_timeout=self.timeout,
-            )
-            logger.info(f"SSH connection established to {self.ip}")
-        except NetmikoTimeoutException as exc:
-            raise ConnectionError(f"SSH connection timed out to {self.ip}: {exc}")
-        except NetmikoAuthenticationException as exc:
+            runner.connect()
+        except SSHAuthenticationError as exc:
             raise PermissionError(f"SSH authentication failed for {self.ip}: {exc}")
+        except SSHConnectionError as exc:
+            raise ConnectionError(f"SSH connection failed to {self.ip}: {exc}")
         except Exception as exc:
             raise ConnectionError(f"SSH connection failed to {self.ip}: {exc}")
+        self._conn = runner
+        logger.info(f"SSH connection established to {self.ip}")
 
     def disconnect(self) -> None:
         """Close the SSH connection."""
@@ -141,11 +141,9 @@ class MongoDBSSHExecutor:
                     f"echo {shlex.quote(self.password)}"
                     f" | sudo -S sh -c {shlex.quote(cmd)} 2>/dev/null"
                 )
-            output = self._conn.send_command(
-                cmd,
-                read_timeout=COMMAND_TIMEOUT,
-                expect_string=r"[\$\#]\s*$",
-            )
+            # The command string is already fully formed (sudo wrapping included),
+            # so use the runner's raw exec primitive rather than its sudo helper.
+            output = self._conn.run(cmd, timeout=COMMAND_TIMEOUT)
             return (output or "").strip()
         except Exception as exc:
             logger.debug(f"Command failed [{cmd[:80]}]: {exc}")
