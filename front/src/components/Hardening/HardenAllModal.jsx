@@ -86,7 +86,10 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         if (!requiredParameters?.required_parameters) return true;
         const errors = [];
         Object.entries(requiredParameters.required_parameters).forEach(([key, param]) => {
-            if (!param.optional && !paramValues[key]?.trim()) errors.push(param.description || key);
+            // Backend marks user-input params with `required: true` (no `optional`
+            // field). Reading `param.optional` was always undefined, so every
+            // param was treated as required; key off `required` instead.
+            if (param.required && !paramValues[key]?.trim()) errors.push(param.description || key);
         });
         if (errors.length > 0) {
             alert(`Please fill in required fields:\n${errors.join('\n')}`);
@@ -170,7 +173,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                     <div key={key} className="hardening-form-group">
                         <label>
                             {param.description || key}
-                            {!param.optional && <span className="hardening-required">*</span>}
+                            {param.required && <span className="hardening-required">*</span>}
                         </label>
                         <div className="hardening-input-with-meta">
                             <input type="text" value={paramValues[key] || ''} onChange={(e) => handleParamChange(key, e.target.value)} placeholder={param.default || `Enter ${key}`} style={inputStyle} />
@@ -214,11 +217,41 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     const renderResults = () => {
         if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
 
-        const successCount = executionResult.successful || 0;
-        const failedCount  = executionResult.failed     || 0;
-        const skippedList  = Array.isArray(executionResult.skipped) ? executionResult.skipped : [];
-        const skippedCount = skippedList.length;
-        const results      = executionResult.results || [];
+        // Normalize across the device-family response shapes so the summary and
+        // table render for every device type:
+        //   Linux/Apache/MongoDB/MSSQL/Windows:
+        //     { successful, failed, skipped[], results[{check_id, success, verification_result, error_message}] }
+        //   Cisco/Fortinet auto-harden-defaults:
+        //     { fixed_count, failed_count, skipped_count, fixed_checks[{check_number}], skipped_checks[{check_number, reason}] }
+        //   Cisco/Fortinet batch-execute:
+        //     { fixed_count, failed_count, skipped_count, results[{check_number, status, ...}] }
+        // The old code only read the Linux shape, so Cisco/Fortinet always showed 0/0/0.
+        const successCount = executionResult.successful ?? executionResult.fixed_count  ?? 0;
+        const failedCount  = executionResult.failed     ?? executionResult.failed_count ?? 0;
+
+        let fixedRows = [];
+        if (Array.isArray(executionResult.results) && executionResult.results.length > 0) {
+            fixedRows = executionResult.results.map((r) => ({
+                id:      r.check_id || r.check_number,
+                title:   r.check_title || r.check_id || r.check_number,
+                success: r.success ?? (r.status === 'success'),
+                detail:  r.error_message || r.verification_result || r.verification_evidence || '—',
+            }));
+        } else if (Array.isArray(executionResult.fixed_checks)) {
+            fixedRows = executionResult.fixed_checks.map((c) => ({
+                id:      c.check_number,
+                title:   c.check_title || c.check_number,
+                success: true,
+                detail:  '—',
+            }));
+        }
+
+        const skippedRows = Array.isArray(executionResult.skipped_checks)
+            ? executionResult.skipped_checks.map((c) => ({ id: c.check_number || c, reason: c.reason || 'Requires user input' }))
+            : Array.isArray(executionResult.skipped)
+                ? executionResult.skipped.map((id) => ({ id, reason: 'Not auto-fixable' }))
+                : [];
+        const skippedCount = executionResult.skipped_count ?? skippedRows.length;
 
         return (
             <div>
@@ -238,7 +271,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                 </div>
 
                 {/* Per-check results table */}
-                {(results.length > 0 || skippedList.length > 0) && (
+                {(fixedRows.length > 0 || skippedRows.length > 0) && (
                     <div className="result-table-wrapper" style={{ marginTop: '24px', maxHeight: '340px', overflowY: 'auto' }}>
                         <table className="result-table">
                             <thead>
@@ -250,26 +283,26 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                                 </tr>
                             </thead>
                             <tbody>
-                                {results.map((r) => (
-                                    <tr key={r.check_id}>
-                                        <td style={{ color: r.success ? '#1e3a5f' : '#ef4444', fontWeight: '600' }}>{r.check_id}</td>
-                                        <td><div className="recommendation-text">{r.check_title || r.check_id}</div></td>
+                                {fixedRows.map((r) => (
+                                    <tr key={r.id}>
+                                        <td style={{ color: r.success ? '#1e3a5f' : '#ef4444', fontWeight: '600' }}>{r.id}</td>
+                                        <td><div className="recommendation-text">{r.title}</div></td>
                                         <td>
                                             {r.success
                                                 ? <span className="result-badge result-success">Fixed</span>
                                                 : <span className="result-badge result-fail">Failed</span>}
                                         </td>
                                         <td style={{ fontSize: '12px', color: '#6b7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {r.error_message || r.verification_result || '—'}
+                                            {r.detail}
                                         </td>
                                     </tr>
                                 ))}
-                                {skippedList.map((checkId) => (
-                                    <tr key={checkId}>
-                                        <td style={{ color: '#9ca3af', fontWeight: '600' }}>{checkId}</td>
+                                {skippedRows.map((s) => (
+                                    <tr key={s.id}>
+                                        <td style={{ color: '#9ca3af', fontWeight: '600' }}>{s.id}</td>
                                         <td>—</td>
                                         <td><span className="result-badge result-unknown">Skipped</span></td>
-                                        <td style={{ fontSize: '12px', color: '#9ca3af' }}>Not auto-fixable</td>
+                                        <td style={{ fontSize: '12px', color: '#9ca3af' }}>{s.reason}</td>
                                     </tr>
                                 ))}
                             </tbody>

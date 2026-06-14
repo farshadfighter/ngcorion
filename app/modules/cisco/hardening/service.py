@@ -1523,6 +1523,12 @@ class HardeningService:
 
                     if passed:
                         action.status = "success"
+                        # Flip the stored audit result to PASS so a re-fetch (and
+                        # the Harden-All results table) reflects the fix — matching
+                        # the single-fix and auto_fix_all_failures paths. Without
+                        # this, every hardened check still shows FAIL afterwards.
+                        result.status = CheckStatus.PASS
+                        result.evidence_snippet = evidence
                         fixed_count += 1
                         fixed_checks.append({
                             "check_number": check_number,
@@ -1774,6 +1780,11 @@ class HardeningService:
 
                     if passed:
                         action.status = "success"
+                        # Persist PASS on the audit result so the post-hardening
+                        # re-fetch shows the check as fixed (consistent with the
+                        # single-fix and auto_fix_all_failures paths).
+                        result.status = CheckStatus.PASS
+                        result.evidence_snippet = evidence
                         fixed_count += 1
                         execution_results.append({
                             "check_number": check_number,
