@@ -14,10 +14,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 import logging
 
-from app.modules.cisco.audit.ssh_client import (
-    CiscoSSHClient,
-    CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS,
-)
+from app.modules.cisco.audit.ssh_client import CiscoSSHClient
 from app.modules.cisco.audit.rules import CISRule
 from app.core.ssh_exceptions import SSHConnectionError
 
@@ -243,29 +240,15 @@ class CiscoHardeningExecutor:
         try:
             logger.info(f"Verifying check {rule.id} on {self.ip}")
 
-            # Verify against the FULL running-config PLUS the turbo command set.
-            #
-            # collect_turbo() greps a fixed subset of lines for speed, so any
-            # freshly-applied line that the subset doesn't grep is invisible to
-            # the check function — the fix lands on the device but verification
-            # reports FAIL (e.g. "logging source-interface", "logging console",
-            # and other sections whose lines aren't in the turbo filter).
-            # "show running-config" guarantees every applied config line is seen.
-            #
-            # The turbo set is still appended because several CIS checks evaluate
-            # data that does NOT appear in running-config — RSA key size from
-            # "show crypto key mypubkey rsa", "show ip ssh", "show version", and
-            # default-suppressed values like "Trap logging: level informational"
-            # from "show logging" (CIS-2.2.5).
-            running_config = self.ssh_client.send_command("show running-config")
-            # We already hold the full running-config, so every "show run | ..."
-            # turbo entry is redundant (it is a filtered view of what we just
-            # fetched). Collect only the supplemental show commands that surface
-            # data NOT in running-config (show ip ssh, show logging, show archive,
-            # show crypto key, show version) — ~5 commands instead of ~25, a large
-            # reduction in verify round-trips with no loss of evidence.
-            turbo = self.ssh_client.collect_turbo(CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS)
-            config = f"{running_config}\n{turbo}"
+            # Verify against the exact same dump the audit engine evaluates:
+            # full "show running-config" PLUS the supplemental show commands whose
+            # data is not in running-config (RSA key size, "show ip ssh",
+            # "show logging" summary, "show version", "show archive"). Sharing
+            # collect_config_dump() with the audit guarantees a freshly-hardened
+            # check that verifies PASS here also re-audits PASS — the two used to
+            # diverge (verify saw the full config, the audit saw only narrow
+            # greps), which made fixed checks re-audit as FAIL.
+            config = self.ssh_client.collect_config_dump()
 
             # Run the check function
             passed = rule.check(config)

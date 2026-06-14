@@ -142,6 +142,28 @@ REDACT_PATTERNS = [
     # radius-server keys
     (re.compile(r"^(radius-server\s+host\s+\S+\s+key)\s+.+$", re.M), r"\1 <REDACTED>"),
     (re.compile(r"^(radius-server\s+key)\s+.+$", re.M), r"\1 <REDACTED>"),
+
+    # The audit dump is now the full running-config (not a narrow grep subset),
+    # so it can contain secret-bearing lines the patterns above don't cover.
+    # Checks run on the raw config, so these only mask the stored/displayed dump
+    # and per-finding evidence — they never affect pass/fail.
+
+    # routing-protocol key chains (EIGRP/RIP/OSPF auth) — "key-string [0|7] <key>"
+    (re.compile(r"^(\s*key-string)\s+(?:\d+\s+)?.+$", re.M), r"\1 <REDACTED>"),
+    # generic line/interface passwords — "password [0|7] <value>" (NOT "enable
+    # password" / "username ... password", which start with another keyword and
+    # are handled above)
+    (re.compile(r"^(\s*password)\s+(?:\d+\s+)?.+$", re.M), r"\1 <REDACTED>"),
+    # BGP neighbor MD5 password
+    (re.compile(r"^(\s*neighbor\s+\S+\s+password)\s+(?:\d+\s+)?.+$", re.M), r"\1 <REDACTED>"),
+    # IKE/IPsec pre-shared keys
+    (re.compile(r"^(\s*crypto isakmp key)\s+\S+", re.M), r"\1 <REDACTED>"),
+    (re.compile(r"^(.*pre-shared-key.*\skey)\s+\S+", re.M), r"\1 <REDACTED>"),
+    # PPP CHAP/PAP credentials
+    (re.compile(r"^(\s*ppp chap password)\s+(?:\d+\s+)?.+$", re.M), r"\1 <REDACTED>"),
+    (re.compile(r"^(\s*ppp pap sent-username\s+\S+\s+password)\s+(?:\d+\s+)?.+$", re.M), r"\1 <REDACTED>"),
+    # TFTP/FTP transfer credentials
+    (re.compile(r"^(ip ftp password)\s+(?:\d+\s+)?.+$", re.M), r"\1 <REDACTED>"),
 ]
 
 
@@ -408,6 +430,43 @@ class CiscoSSHClient:
         logger.info(f"Turbo collection on {self.ip}: {total_commands - failed_commands}/{total_commands} commands succeeded ({success_rate:.1f}%)")
 
         return "\n".join(chunks).strip()
+
+    def collect_config_dump(self) -> str:
+        """
+        Collect the evidence dump that CIS checks evaluate against.
+
+        Returns the FULL "show running-config" plus the supplemental show
+        commands whose data does NOT appear in running-config (RSA key size,
+        "show ip ssh", "show logging" summary, "show version", "show archive").
+
+        This is the single source of truth shared by the audit engine and by
+        hardening verification. They previously diverged: the audit used the
+        narrow "show run | include/section ..." turbo greps while verification
+        used the full running-config. Any config line captured by one view but
+        not the other made a freshly-hardened check verify PASS yet re-audit
+        FAIL (e.g. "banner exec", "service timestamps debug", interface
+        sub-commands such as "ip verify unicast", "ip access-list ...") and made
+        protocol checks whose trigger line ("router eigrp/ospf/bgp") was never
+        grepped report a vacuous PASS. Collecting the same full dump on both
+        sides keeps audit and verify results identical.
+
+        Using one "show running-config" plus ~5 supplemental commands is also
+        fewer SSH round-trips than the ~25 turbo greps it replaces.
+
+        Returns:
+            str: running-config followed by supplemental show output
+
+        Raises:
+            RuntimeError: If not connected
+        """
+        if not self.connection:
+            raise RuntimeError("Not connected. Call connect() first.")
+        if not self.is_connected():
+            raise RuntimeError("SSH connection is no longer active.")
+
+        running_config = self.send_command("show running-config")
+        supplemental = self.collect_turbo(CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS)
+        return f"{running_config}\n{supplemental}"
 
     def send_command(self, command: str, timeout: int = 30) -> str:
         """

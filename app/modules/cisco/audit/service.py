@@ -231,17 +231,25 @@ class AuditService:
                     secret=ssh_secret,
                     port=ssh_port
                 ) as ssh_client:
-                    raw_dump = ssh_client.collect_turbo()
+                    raw_dump = ssh_client.collect_config_dump()
 
-            # 4. Redact sensitive data
+            # 4. Redact sensitive data for safe storage/display only. The checks
+            #    below run on the RAW config so redaction can never mask a token a
+            #    check inspects — e.g. "snmp-server community private" redacts to
+            #    "snmp-server community <REDACTED>", which made the no-private /
+            #    no-public SNMP checks (CIS-1.5.2/1.5.3) falsely report PASS.
             redacted_dump = redact_sensitive_data(raw_dump)
 
             # 5. Get CIS rules from cache
             rules = AuditService._get_cached_rules(profile)
 
-            # 6. Evaluate compliance
+            # 6. Evaluate compliance against the RAW config (so checks see real
+            #    values), then redact each finding's evidence snippet so nothing
+            #    sensitive is persisted to the audit results.
             with AuditService._timed_operation(f"Evaluate {len(rules)} CIS rules"):
-                report = evaluate_compliance(redacted_dump, rules)
+                report = evaluate_compliance(raw_dump, rules)
+            for _finding in report["findings"]:
+                _finding["evidence"] = redact_sensitive_data(_finding["evidence"])
 
             # 7. Update session with results
             session.status = "completed"
@@ -589,17 +597,22 @@ class AuditService:
                 secret=ssh_secret,
                 port=ssh_port
             ) as ssh_client:
-                raw_dump = ssh_client.collect_turbo()
+                raw_dump = ssh_client.collect_config_dump()
 
-            # 4. Redact sensitive data
+            # 4. Redact sensitive data for safe storage/display only. Checks run
+            #    on the RAW config (below); redacting first would mask the very
+            #    tokens some checks inspect (e.g. SNMP "private"/"public").
             redacted_dump = redact_sensitive_data(raw_dump)
 
             # 5. Build CIS Benchmark rules (uses CIS- prefixed IDs)
             rules = build_cis_benchmark_rules()
             rules = filter_rules_by_profile(rules, profile)
 
-            # 6. Evaluate compliance
-            report = evaluate_compliance(redacted_dump, rules)
+            # 6. Evaluate compliance against the RAW config, then redact each
+            #    finding's evidence snippet before it is persisted.
+            report = evaluate_compliance(raw_dump, rules)
+            for _finding in report["findings"]:
+                _finding["evidence"] = redact_sensitive_data(_finding["evidence"])
 
             # 7. Update session with results
             session.status = "completed"

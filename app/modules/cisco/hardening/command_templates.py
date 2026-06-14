@@ -874,7 +874,7 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "IOS-L1-0052": {
         "commands": [
             "configure terminal",
-            "banner exec ^\nC{BANNER_TEXT}\n^",
+            "banner exec ^{BANNER_TEXT}^",
             "end",
             "write memory"
         ],
