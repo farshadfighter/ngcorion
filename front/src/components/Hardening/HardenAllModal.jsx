@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchRequiredParameters,
     autoHardenWithDefaults,
+    batchExecuteChecks,
     discoverFortinetVdoms,
     clearRequiredParameters,
     clearMessages
@@ -108,13 +109,62 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         if (validateParameters()) setStep(2);
     };
 
+    // Cisco/Fortinet harden via batch-execute (below); other families use the
+    // defaults-only auto-harden endpoint.
+    const ciscoOrFortinet = isCisco(deviceType) || isFortinet(deviceType);
+
+    // AuditResult IDs of every fixable failed check (auto-fixable + needs-params).
+    // no_template checks are excluded — batch-execute can't remediate them.
+    const collectFixableCheckIds = () => {
+        if (!requiredParameters) return [];
+        return [
+            ...(requiredParameters.auto_fixable_checks || []),
+            ...(requiredParameters.needs_params_checks || []),
+        ]
+            .map((c) => c.result_id)
+            .filter((id) => id != null);
+    };
+
     const handleExecute = async () => {
         if (!validateForm()) return;
+
+        const credentials = buildCredentials(deviceType, sshCredentials, { vdomEnabled });
+
+        // Cisco/Fortinet: harden ALL fixable checks via batch-execute so the
+        // parameters entered above are actually applied. auto_harden_with_defaults
+        // ignores user params and skips every param-requiring check (e.g. "enable
+        // secret"), so it could never fix them. batch_execute_selected merges the
+        // submitted parameters with each check's template defaults, so both
+        // auto-fixable and param-requiring checks get remediated in one pass.
+        if (ciscoOrFortinet) {
+            const checkIds = collectFixableCheckIds();
+            if (checkIds.length === 0) {
+                alert('No fixable checks were found for this session.');
+                return;
+            }
+            setStep(3);
+            try {
+                const result = await dispatch(batchExecuteChecks({
+                    sessionId,
+                    assetId,
+                    deviceType,
+                    credentials,
+                    checkIds,
+                    parameters: paramValues,
+                    skipBackup: !createBackup,
+                })).unwrap();
+                setExecutionResult(result);
+                setStep(4);
+            } catch (error) {
+                console.error('Error executing hardening fixes:', error);
+                setStep(2);
+            }
+            return;
+        }
+
+        // Linux / Apache / MongoDB / MSSQL / Windows: defaults-only auto-harden.
         setStep(3);
-
         try {
-            const credentials = buildCredentials(deviceType, sshCredentials, { vdomEnabled });
-
             const result = await dispatch(autoHardenWithDefaults({
                 sessionId,
                 assetId,
@@ -229,14 +279,26 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         const successCount = executionResult.successful ?? executionResult.fixed_count  ?? 0;
         const failedCount  = executionResult.failed     ?? executionResult.failed_count ?? 0;
 
+        // Per-check rows. batch-execute (Cisco/Fortinet) returns skipped checks
+        // inside results[] with status:"skipped", so route those to the skipped
+        // list rather than mislabeling them as failed.
         let fixedRows = [];
+        const skippedFromResults = [];
         if (Array.isArray(executionResult.results) && executionResult.results.length > 0) {
-            fixedRows = executionResult.results.map((r) => ({
-                id:      r.check_id || r.check_number,
-                title:   r.check_title || r.check_id || r.check_number,
-                success: r.success ?? (r.status === 'success'),
-                detail:  r.error_message || r.verification_result || r.verification_evidence || '—',
-            }));
+            executionResult.results.forEach((r) => {
+                const id = r.check_id || r.check_number;
+                const status = (r.status || '').toString().toLowerCase();
+                if (status === 'skipped') {
+                    skippedFromResults.push({ id, reason: r.reason || 'Skipped' });
+                    return;
+                }
+                fixedRows.push({
+                    id,
+                    title:   r.check_title || id,
+                    success: r.success ?? (status === 'success'),
+                    detail:  r.error_message || r.verification_result || r.verification_evidence || r.reason || '—',
+                });
+            });
         } else if (Array.isArray(executionResult.fixed_checks)) {
             fixedRows = executionResult.fixed_checks.map((c) => ({
                 id:      c.check_number,
@@ -246,11 +308,14 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
             }));
         }
 
-        const skippedRows = Array.isArray(executionResult.skipped_checks)
-            ? executionResult.skipped_checks.map((c) => ({ id: c.check_number || c, reason: c.reason || 'Requires user input' }))
-            : Array.isArray(executionResult.skipped)
-                ? executionResult.skipped.map((id) => ({ id, reason: 'Not auto-fixable' }))
-                : [];
+        const skippedRows = [
+            ...skippedFromResults,
+            ...(Array.isArray(executionResult.skipped_checks)
+                ? executionResult.skipped_checks.map((c) => ({ id: c.check_number || c, reason: c.reason || 'Requires user input' }))
+                : Array.isArray(executionResult.skipped)
+                    ? executionResult.skipped.map((id) => ({ id, reason: 'Not auto-fixable' }))
+                    : []),
+        ];
         const skippedCount = executionResult.skipped_count ?? skippedRows.length;
 
         return (
