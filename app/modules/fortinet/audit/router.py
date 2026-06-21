@@ -21,7 +21,7 @@ from app.models import User, log_action
 from .service import FortinetAuditService
 
 
-# SCHEMAS 
+# SCHEMAS
 
 class FortinetAuditRequest(BaseModel):
     """Request to execute FortiGate audit."""
@@ -121,7 +121,7 @@ class VDOMDiscoveryResponse(BaseModel):
         }
 
 
-# ROUTER 
+# ROUTER
 
 router = APIRouter(prefix="/api/audit/fortinet", tags=["Audit - FortiGate"])
 

@@ -20,9 +20,8 @@ from typing import List, Dict, Optional, Any
 import re
 
 
-# =========================
 # Data Classes
-# =========================
+
 
 @dataclass
 class FortiGateRule:
@@ -60,9 +59,7 @@ class FortiGateControl:
         return self.cis_type == "Manual"
 
 
-# =========================
 # Helper Functions
-# =========================
 
 def _mk_set_bool(
     id: str, title: str, pack: str, domain: str, severity: str, level: str,
@@ -191,10 +188,10 @@ def _mk_manual(
     )
 
 
-# =========================
+
 # Official CIS FortiGate Benchmark section mapping
 # Single source of truth mapping each control to its benchmark section number.
-# =========================
+
 
 _CIS_SECTION_NAMES: Dict[str, str] = {
     "1": "Network Settings",
@@ -275,9 +272,9 @@ _CIS_SECTION_BY_CONTROL: Dict[str, str] = {
 }
 
 
-# =========================
+
 # Control Catalog
-# =========================
+
 
 def get_fortinet_controls() -> List[FortiGateControl]:
     """
@@ -325,7 +322,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
 
     controls: List[FortiGateControl] = []
 
-    # ===== BASELINE PACK (Enhanced) =====
+    # BASELINE PACK (Enhanced) 
     controls += [
         # Management Plane Security
         # FortiOS "show" omits settings at their default value. "admin-https enable" is the
@@ -511,7 +508,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
             tags=["exposure", "wan", "cis"]
         ))
 
-    # ===== HA PACK =====
+    # HA PACK 
     controls += [
         _mk_re_pre("FG-HA-001", "HA status readable", "HA", "High Availability", "Medium", "L1", HA_S,
                   r"(Mode:|mode:|Group:|group:|Master|Primary|role)",
@@ -525,7 +522,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                   "config system ha\\n set mode a-p\\nend", tags=["ha"]),
     ]
 
-    # ===== SD-WAN PACK =====
+    # SD-WAN PACK 
     controls += [
         _mk_re_pre("FG-SDW-001", "SD-WAN configuration present", "SDWAN", "SD-WAN", "Medium", "L1", SDWAN_OLD,
                   r"config\s+system\s+(virtual-wan-link|sdwan)",
@@ -535,7 +532,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                   "config system sdwan\\n config health-check\\n edit <name>\\nend", tags=["sdwan"]),
     ]
 
-    # ===== VPN PACKS =====
+    # VPN PACKS 
     controls += [
         _mk_re_abs("FG-VPN-SSL-001", "SSL-VPN TLS 1.0/1.1 disabled", "VPN_SSL", "VPN (SSL)", "High", "L2", SSL,
                   r"set\s+(ssl-min-proto-version|tls-min-version)\s+(tlsv1-0|tlsv1-1)",
@@ -573,7 +570,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                   "Bind VIP to specific WAN interface, not 'any'", tags=["vip", "exposure"]),
     ]
 
-    # ===== UTM PACK =====
+    # UTM PACK 
     controls += [
         _mk_re_abs("FG-UTM-001", "WAN inbound UTM-status not disabled", "UTM", "Security Profiles", "High", "L2", POL,
                   r"set\s+srcintf\s+\"?wan[^\" ]*\"?[\s\S]*?set\s+action\s+accept[\s\S]*?set\s+utm-status\s+disable",
@@ -590,7 +587,7 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                   "Apply web filter profiles to policies: set webfilter-profile <profile>", tags=["utm", "webfilter"]),
     ]
 
-    # ===== FAZ PACK =====
+    # FAZ PACK 
     controls += [
         _mk_set_bool("FG-FAZ-001", "FortiAnalyzer logging enabled", "FAZ", "Logging & Monitoring", "Medium", "L1", FAZ, "status", True,
                     "config log fortianalyzer setting\\n set status enable\\n set server <faz-ip>\\nend", tags=["faz", "logging"]),
@@ -599,13 +596,13 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                   "config log fortianalyzer setting\\n set server <faz-ip>\\nend", tags=["faz", "logging"]),
     ]
 
-    # =====================================================================
+
     # CIS FORTIGATE BENCHMARK COVERAGE
     # New controls added to complete coverage of the official CIS FortiGate
     # Benchmark checklist. Section numbers are assigned centrally below in
     # _CIS_SECTION_BY_CONTROL. 'Manual' recommendations use _mk_manual and are
     # excluded from the compliance score (evidence-only).
-    # =====================================================================
+    
     USB = "show system auto-install"
     AVSET = "show antivirus settings"
     AVPROF = "show antivirus profile"
