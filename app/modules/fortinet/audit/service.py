@@ -48,6 +48,92 @@ class FortinetEvaluationError(FortinetAuditError):
 _GLOBAL_LABEL = "global"
 _ROOT_LABEL = "root"
 
+# Management services that must not be reachable on a WAN-role interface
+# (CIS 1.3 / FG-NET-002). Used by the "wan_mgmt_exposed" rule type.
+_WAN_FORBIDDEN_SERVICES = ("ping", "http", "https", "ssh", "telnet", "snmp", "radius-acct")
+
+
+def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
+    """
+    Parse ``show system interface`` into a list of top-level interfaces:
+    ``[{"name", "role", "allowaccess": [...]}]``.
+
+    Handles both the wrapped form (``config system interface`` / ``edit`` / ``next``
+    / ``end``) and a bare sequence of ``edit ... next`` blocks. Nested blocks
+    (e.g. ``config secondaryip`` / ``config ipv6``) are ignored so their ``edit``
+    entries and ``set`` lines are never mistaken for an interface.
+    """
+    interfaces: List[Dict[str, Any]] = []
+    stack: List[str] = []          # open scopes: "config" or "edit"
+    current: Optional[Dict[str, Any]] = None
+    iface_level: Optional[int] = None  # stack depth of the interface's own edit
+
+    for raw in (output or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+
+        if line.startswith("config "):
+            stack.append("config")
+            continue
+
+        m_edit = re.match(r'edit\s+"?([^"]*?)"?\s*$', line)
+        if m_edit:
+            is_interface = "edit" not in stack  # first-level edit == an interface
+            stack.append("edit")
+            if is_interface:
+                current = {"name": m_edit.group(1), "role": "", "allowaccess": []}
+                iface_level = len(stack)
+            continue
+
+        if line == "end":
+            if stack and stack[-1] == "config":
+                stack.pop()
+            continue
+
+        if line == "next":
+            if stack and stack[-1] == "edit":
+                stack.pop()
+            if current is not None and (iface_level is None or len(stack) < iface_level):
+                interfaces.append(current)
+                current = None
+                iface_level = None
+            continue
+
+        # Settings are captured only at the interface's own level (not nested blocks).
+        if current is not None and len(stack) == iface_level:
+            m_role = re.match(r"set\s+role\s+(\S+)", line)
+            if m_role:
+                current["role"] = m_role.group(1).strip().strip('"').lower()
+                continue
+            m_aa = re.match(r"set\s+allowaccess\s+(.+?)\s*$", line)
+            if m_aa:
+                current["allowaccess"] = [s for s in m_aa.group(1).split() if s]
+
+    if current is not None:  # output truncated before a closing 'next'
+        interfaces.append(current)
+    return interfaces
+
+
+def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
+    """
+    Return WAN-role interfaces that expose management services.
+
+    An interface is a violation when ``role == wan`` AND its ``allowaccess`` set
+    contains at least one forbidden service. Each entry:
+    ``{"name", "role", "exposed": [services...]}``.
+    """
+    forbidden_set = {s.lower() for s in (forbidden or _WAN_FORBIDDEN_SERVICES)}
+    violations: List[Dict[str, Any]] = []
+    for itf in _parse_interfaces(output):
+        if itf["role"] != "wan":
+            continue
+        exposed = [s for s in itf["allowaccess"] if s.lower() in forbidden_set]
+        if exposed:
+            violations.append({"name": itf["name"], "role": itf["role"], "exposed": exposed})
+    return violations
+
+
 # Secrets to redact from captured command output before persisting.
 _REDACTION_PATTERNS = [
     (re.compile(r"(set\s+(?:password|passwd|key|community|secret|auth-pwd|auth-password|"
@@ -116,6 +202,11 @@ class FortinetAuditService:
                 match = re.search(rf"set\s+{re.escape(rule.key)}\s+(\S+)", output, re.IGNORECASE)
                 return bool(match) and match.group(1).strip('"') == str(rule.expected)
 
+            if rule.type == "wan_mgmt_exposed":
+                # Compliant (pass) only when NO WAN-role interface exposes a
+                # management service in its allowaccess.
+                return not _wan_mgmt_violations(output, rule.expected)
+
             if rule.type == "regex_present":
                 return bool(re.search(rule.pattern, output, re.IGNORECASE | re.MULTILINE))
 
@@ -134,6 +225,16 @@ class FortinetAuditService:
         for rule in control.rules:
             out = outputs.get(rule.cmd, "")
             if not out:
+                continue
+            if rule.type == "wan_mgmt_exposed":
+                viols = _wan_mgmt_violations(out, rule.expected)
+                if viols:
+                    lines.extend(
+                        f"{v['name']} (role={v['role']}) exposes: {', '.join(v['exposed'])}"
+                        for v in viols
+                    )
+                else:
+                    lines.append("No WAN-role interface exposes management services")
                 continue
             if rule.key:
                 lines.extend(re.findall(rf".*{re.escape(rule.key)}.*", out, re.IGNORECASE | re.MULTILINE)[:3])
