@@ -655,6 +655,9 @@ const hardeningSlice = createSlice({
         clearPreviewData: (state) => {
             state.previewData = null;
         },
+        clearVdomDiscovery: (state) => {
+            state.vdomDiscovery = { vdoms: null, isDiscovering: false, error: null };
+        },
     },
 
     extraReducers: (builder) => {
@@ -858,6 +861,7 @@ export const {
     resetWizard,
     clearRequiredParameters,
     clearPreviewData,
+    clearVdomDiscovery,
 } = hardeningSlice.actions;
 
 export default hardeningSlice.reducer;

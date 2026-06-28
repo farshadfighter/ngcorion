@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
 import { executeAudit } from "../../store/auditSlice";
+import { discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -66,6 +67,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const dispatch = useDispatch();
     const { assets } = useSelector((state) => state.assets);
     const { isExecuting } = useSelector((state) => state.audit);
+    const vdomDiscovery = useSelector((state) => state.hardening.vdomDiscovery);
 
     const [formData, setFormData] = useState({
         device_type:      "cisco",
@@ -73,6 +75,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         job_name:         "",
         ssh_username:     "",
         ssh_password:     "",
+        ssh_port:         "22",
         enable_password:  "",
         vdom:             "",
         sudo_password:    "",
@@ -92,6 +95,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
     useEffect(() => {
         dispatch(fetchAssets());
+        dispatch(clearVdomDiscovery());
     }, [dispatch]);
 
     const dt = formData.device_type;
@@ -103,11 +107,32 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         setFormData((prev) => ({
             ...prev,
             [name]: value,
-            ...(name === "device_type" ? { asset_id: "" } : {}),
+            ...(name === "device_type" ? { asset_id: "", vdom: "" } : {}),
+            ...(name === "asset_id" ? { vdom: "" } : {}),
         }));
+        // Discovered VDOMs are asset/device-specific — drop them when either changes.
+        if (name === "device_type" || name === "asset_id") {
+            dispatch(clearVdomDiscovery());
+        }
         if (errors[name]) {
             setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
+    };
+
+    const handleDetectVdoms = () => {
+        const newErrors = {};
+        if (!formData.asset_id) newErrors.asset_id = "Please select an asset";
+        if (!formData.ssh_username?.trim()) newErrors.ssh_username = "Username is required";
+        if (!formData.ssh_password?.trim()) newErrors.ssh_password = "Password is required";
+        if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
+
+        dispatch(discoverFortinetVdoms({
+            asset_id:     parseInt(formData.asset_id),
+            ssh_username: formData.ssh_username,
+            ssh_password: formData.ssh_password,
+            ssh_port:     parseInt(formData.ssh_port) || 22,
+            mode:         "audit",
+        }));
     };
 
     const validate = () => {
@@ -147,6 +172,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             job_name:         formData.job_name,
             ssh_username:     formData.ssh_username,
             ssh_password:     formData.ssh_password,
+            ssh_port:         formData.ssh_port,
             ssh_secret:       formData.enable_password,
             vdom:             formData.vdom,
             sudo_password:    formData.sudo_password,
@@ -305,19 +331,73 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
                             {isFortinet(dt) && (
                                 <div className="form-group">
-                                    <label>VDOM</label>
+                                    <label>SSH Port</label>
                                     <input
-                                        type="text"
-                                        name="vdom"
-                                        value={formData.vdom}
+                                        type="number"
+                                        name="ssh_port"
+                                        value={formData.ssh_port}
                                         onChange={handleChange}
-                                        placeholder="Leave blank to audit all VDOMs"
+                                        placeholder="22"
+                                        min="1"
+                                        max="65535"
                                         autoComplete="off"
                                     />
-                                    <small className="form-hint">
-                                        On a VDOM-enabled device, leave blank to audit every VDOM.
-                                        Enter a name to audit just that VDOM.
-                                    </small>
+                                </div>
+                            )}
+
+                            {isFortinet(dt) && (
+                                <div className="form-group">
+                                    <label>VDOM</label>
+                                    {vdomDiscovery?.vdoms?.length > 0 ? (
+                                        <select
+                                            name="vdom"
+                                            value={formData.vdom}
+                                            onChange={handleChange}
+                                        >
+                                            <option value="">All VDOMs</option>
+                                            {vdomDiscovery.vdoms.map((v) => (
+                                                <option key={v} value={v}>{v}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="vdom"
+                                            value={formData.vdom}
+                                            onChange={handleChange}
+                                            placeholder="Leave blank to audit all VDOMs"
+                                            autoComplete="off"
+                                        />
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={handleDetectVdoms}
+                                        disabled={vdomDiscovery?.isDiscovering}
+                                        style={{ marginTop: "8px" }}
+                                    >
+                                        {vdomDiscovery?.isDiscovering ? "Detecting VDOMs…" : "Detect VDOMs"}
+                                    </button>
+                                    {vdomDiscovery?.error && (
+                                        <span className="error-message">{vdomDiscovery.error}</span>
+                                    )}
+                                    {vdomDiscovery?.vdoms?.length > 0 && (
+                                        <small className="form-hint">
+                                            Detected {vdomDiscovery.vdoms.length} active VDOM(s):{" "}
+                                            {vdomDiscovery.vdoms.join(", ")}. Choose one, or “All VDOMs” to audit every VDOM.
+                                        </small>
+                                    )}
+                                    {vdomDiscovery?.vdoms?.length === 0 && (
+                                        <small className="form-hint">
+                                            No VDOMs detected — device is not VDOM-enabled. The audit runs against the single (root) context.
+                                        </small>
+                                    )}
+                                    {!vdomDiscovery?.vdoms && !vdomDiscovery?.isDiscovering && (
+                                        <small className="form-hint">
+                                            Enter credentials, then click “Detect VDOMs” to list active VDOMs.
+                                            Leave blank to audit every VDOM.
+                                        </small>
+                                    )}
                                 </div>
                             )}
 

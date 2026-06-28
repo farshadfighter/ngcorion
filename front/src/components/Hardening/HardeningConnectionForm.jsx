@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
-import { executeAuditWithDevice } from "../../store/hardeningSlice";
+import { executeAuditWithDevice, discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -70,6 +70,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     const dispatch = useDispatch();
     const { assets }    = useSelector((state) => state.assets);
     const { isLoading } = useSelector((state) => state.hardening);
+    const vdomDiscovery = useSelector((state) => state.hardening.vdomDiscovery);
 
     const [formData, setFormData] = useState({
         device_type:      "cisco",
@@ -77,6 +78,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         job_name:         "",
         ssh_username:     "",
         ssh_password:     "",
+        ssh_port:         "22",
         ssh_secret:       "",
         vdom:             "",
         sudo_password:    "",
@@ -96,6 +98,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
 
     useEffect(() => {
         dispatch(fetchAssets());
+        dispatch(clearVdomDiscovery());
     }, [dispatch]);
 
     const dt = formData.device_type;
@@ -106,11 +109,32 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             ...prev,
             [name]: value,
             // وقتی device_type عوض شد، asset انتخاب شده رو reset کن
-            ...(name === "device_type" ? { asset_id: "" } : {}),
+            ...(name === "device_type" ? { asset_id: "", vdom: "" } : {}),
+            ...(name === "asset_id" ? { vdom: "" } : {}),
         }));
+        // Discovered VDOMs are asset/device-specific — drop them when either changes.
+        if (name === "device_type" || name === "asset_id") {
+            dispatch(clearVdomDiscovery());
+        }
         if (errors[name]) {
             setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
+    };
+
+    const handleDetectVdoms = () => {
+        const errs = {};
+        if (!formData.asset_id) errs.asset_id = "Please select an asset";
+        if (!formData.ssh_username?.trim()) errs.ssh_username = "Username is required";
+        if (!formData.ssh_password?.trim()) errs.ssh_password = "Password is required";
+        if (Object.keys(errs).length) { setErrors(errs); return; }
+
+        dispatch(discoverFortinetVdoms({
+            asset_id:     parseInt(formData.asset_id),
+            ssh_username: formData.ssh_username,
+            ssh_password: formData.ssh_password,
+            ssh_port:     parseInt(formData.ssh_port) || 22,
+            mode:         "hardening",
+        }));
     };
 
     const validate = () => {
@@ -167,6 +191,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             credentials = {
                 ssh_username: formData.ssh_username,
                 ssh_password: formData.ssh_password,
+                ...(isFortinet(dt) && { ssh_port: parseInt(formData.ssh_port) || 22 }),
                 ...(isCisco(dt)    && formData.ssh_secret    && { ssh_secret:    formData.ssh_secret }),
                 ...(isFortinet(dt) && formData.vdom          && { vdom:          formData.vdom }),
                 ...(needsSudo(dt)  && formData.sudo_password && { sudo_password: formData.sudo_password }),
@@ -327,15 +352,72 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
 
                             {needsVdom(dt) && (
                                 <div className="form-group">
-                                    <label>VDOM</label>
+                                    <label>SSH Port</label>
                                     <input
-                                        type="text"
-                                        name="vdom"
-                                        value={formData.vdom}
+                                        type="number"
+                                        name="ssh_port"
+                                        value={formData.ssh_port}
                                         onChange={handleChange}
-                                        placeholder="VDOM name (optional)"
+                                        placeholder="22"
+                                        min="1"
+                                        max="65535"
                                         autoComplete="off"
                                     />
+                                </div>
+                            )}
+
+                            {needsVdom(dt) && (
+                                <div className="form-group">
+                                    <label>VDOM</label>
+                                    {vdomDiscovery?.vdoms?.length > 0 ? (
+                                        <select
+                                            name="vdom"
+                                            value={formData.vdom}
+                                            onChange={handleChange}
+                                        >
+                                            <option value="">All VDOMs</option>
+                                            {vdomDiscovery.vdoms.map((v) => (
+                                                <option key={v} value={v}>{v}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="vdom"
+                                            value={formData.vdom}
+                                            onChange={handleChange}
+                                            placeholder="VDOM name (optional)"
+                                            autoComplete="off"
+                                        />
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="btn-cancel"
+                                        onClick={handleDetectVdoms}
+                                        disabled={vdomDiscovery?.isDiscovering}
+                                        style={{ marginTop: "8px" }}
+                                    >
+                                        {vdomDiscovery?.isDiscovering ? "Detecting VDOMs…" : "Detect VDOMs"}
+                                    </button>
+                                    {vdomDiscovery?.error && (
+                                        <span className="error-message">{vdomDiscovery.error}</span>
+                                    )}
+                                    {vdomDiscovery?.vdoms?.length > 0 && (
+                                        <small className="form-hint">
+                                            Detected {vdomDiscovery.vdoms.length} active VDOM(s):{" "}
+                                            {vdomDiscovery.vdoms.join(", ")}. Choose one, or “All VDOMs”.
+                                        </small>
+                                    )}
+                                    {vdomDiscovery?.vdoms?.length === 0 && (
+                                        <small className="form-hint">
+                                            No VDOMs detected — device is not VDOM-enabled.
+                                        </small>
+                                    )}
+                                    {!vdomDiscovery?.vdoms && !vdomDiscovery?.isDiscovering && (
+                                        <small className="form-hint">
+                                            Enter credentials, then click “Detect VDOMs” to list active VDOMs.
+                                        </small>
+                                    )}
                                 </div>
                             )}
 
