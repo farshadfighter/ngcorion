@@ -1,109 +1,257 @@
-# FortiGate Security Audit Module
+# FortiGate CIS Benchmark Audit & Hardening Module
 
 ## Overview
 
-This module provides comprehensive security auditing for FortiGate firewalls following CIS benchmarks and enterprise best practices. It includes 120+ security controls covering management plane security, cryptography, VPN configuration, UTM policies, and more.
+This module audits FortiGate firewalls against the **CIS FortiGate Benchmark**
+(`docs/forti_cis_benchmark.docx`) and applies guided hardening. The control
+catalog implements the benchmark checklist **exactly**:
+
+- **53 recommendations** across the benchmark's 8 sections
+- **28 Automated** (verified from configuration and scored) +
+  **25 Manual** (evidence-only, excluded from the compliance score)
+- **VDOM-aware**: each control is evaluated in the correct scope
+  (`global`, per-VDOM, or management-VDOM) and, on VDOM-enabled devices, the
+  per-VDOM controls are evaluated for every active VDOM.
+
+The catalog is the single source of truth in
+[`audit/rules.py`](audit/rules.py); the benchmark section ↔ control-ID mapping
+lives in [`audit/cis_map.py`](audit/cis_map.py). The full checklist is
+reproduced in [Audit Benchmark Checklist](#audit-benchmark-checklist) below.
 
 ## Architecture
 
-The module follows the same pattern as the Cisco audit module:
-
 ```
-/app/modules/fortinet/
-├── __init__.py                    # Module initialization
-├── fortinet_ssh_client.py         # SSH connection management
-├── fortinet_rules.py              # CIS benchmark control catalog (65+ controls)
-├── fortinet_service.py            # Audit orchestration service
-├── fortinet_router.py             # FastAPI API endpoints
-├── fortinet_cis_map.py            # CIS benchmark mapping
-└── README.md                      # This file
-```
-
-## Components
-
-### 1. FortiGate SSH Client (`fortinet_ssh_client.py`)
-
-**Classes:**
-- `FortiGateSSHClient`: Main SSH client for FortiGate devices
-- `ConnectionPool`: Thread-safe connection pool for parallel VDOM processing
-
-**Features:**
-- VDOM context switching and discovery
-- Command output caching (5-minute TTL)
-- Automatic pagination handling (--More--)
-- Batch command execution
-- Context manager support
-
-**Usage:**
-```python
-from app.modules.fortinet import FortiGateSSHClient
-
-# Using context manager
-with FortiGateSSHClient("192.168.1.1", "admin", "password") as client:
-    status = client.get_system_status()
-    print(f"FortiOS Version: {status['fortios_version']}")
-
-    # Discover VDOMs
-    vdoms = client.discover_vdoms()
-
-    # Enter VDOM context
-    if vdoms:
-        client.enter_vdom(vdoms[0])
-        config = client.send_command("show system global")
-        client.exit_vdom()
+app/modules/fortinet/
+├── __init__.py
+├── audit/
+│   ├── ssh_client.py      # SSH client: VDOM discovery + scoped collection
+│   ├── rules.py           # The 53 CIS controls (catalog / source of truth)
+│   ├── cis_map.py         # CIS section ↔ control-ID mapping
+│   ├── service.py         # Audit orchestration, scoring, per-VDOM evaluation
+│   └── router.py          # FastAPI endpoints (/api/audit/fortinet/*)
+├── hardening/
+│   ├── ssh_executor.py    # Applies remediation commands over SSH
+│   ├── command_templates.py
+│   ├── command_parser.py
+│   ├── parameter_metadata.py
+│   ├── service.py         # Hardening orchestration + backup
+│   └── router.py          # FastAPI endpoints (/api/hardening/fortinet/*)
+└── README.md              # This file
 ```
 
-### 2. Control Catalog (`fortinet_rules.py`) - Planned
+## Scope model
 
-Will contain 120+ security controls organized into packs:
-- **BASELINE**: Core security controls (~90 checks)
-- **HA**: High availability configuration
-- **SDWAN**: SD-WAN best practices
-- **VPN_SSL**: SSL-VPN security
-- **VPN_IPSEC**: IPsec VPN security
-- **CENTRAL_NAT**: Central SNAT configuration
-- **LOCAL_IN**: Local-in policy controls
-- **EXPOSURE**: VIP and exposure management
-- **UTM**: Security profile enforcement
-- **FAZ**: FortiAnalyzer integration
-- **SHADOW**: Shadow rule analysis
-- **UNUSED**: Unused object detection
-- **COVERAGE**: Policy coverage metrics
+FortiOS `show` omits values left at their default, and settings live in
+different configuration contexts. Each control therefore declares a **scope**
+that tells the SSH engine where to read it:
 
-### 3. Audit Service (`fortinet_service.py`) - Planned
+| Scope       | Read from                              | Notes                                            |
+|-------------|----------------------------------------|--------------------------------------------------|
+| `global`    | `config global` (or flat top-level)    | Read once per device                             |
+| per-VDOM    | inside each `config vdom` / `edit <n>` | Evaluated once **per active VDOM**               |
+| mgmt-VDOM   | the management VDOM (`root`) only      | Device-wide settings that live under a VDOM      |
 
-Orchestration layer providing:
-- Control evaluation and scoring
-- Analytics (shadow rules, unused objects, UTM coverage)
-- Result caching and batch insertion
-- Parallel VDOM processing
-- HTML/JSON/CSV report generation
+Evaluation respects the "show omits defaults" behaviour:
 
-### 4. API Router (`fortinet_router.py`)
+- a secure setting that is **default-ON**  → pass when `set X disable` is **absent**
+- a secure setting that is **default-OFF** → pass when `set X enable` is **present**
+- numeric thresholds → compared against the control's documented default when the line is omitted
 
-FastAPI endpoints:
-- `POST /api/fortinet/audit/execute` - Execute FortiGate audit
-- `POST /api/fortinet/vdoms/discover` - Discover VDOMs
-- `GET /api/fortinet/audit/sessions` - List audit sessions
-- `GET /api/fortinet/audit/sessions/{session_id}` - Get session details
-- `GET /api/fortinet/audit/sessions/{session_id}/results` - Get audit results
-- `DELETE /api/fortinet/audit/sessions/{session_id}` - Delete session
+Manual controls cannot be reliably proven from config alone, so they run their
+command, capture evidence, and are **excluded from the compliance score**.
 
-## API Usage
+## Audit Benchmark Checklist
 
-### 1. Discover VDOMs
+All 53 CIS FortiGate Benchmark recommendations, with the internal control that
+backs each one, the scope it is read in, and the command it inspects.
+**Type** is the benchmark's own classification.
+
+### 1. Network Settings
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 1.1 | Ensure DNS server is configured | Automated | `FG-BL-043` | global | `show system dns` |
+| 1.2 | Ensure intra-zone traffic is not always allowed | Manual | `FG-NET-001` | per-VDOM | `show system zone` |
+| 1.3 | Disable all management related services on WAN port | Manual | `FG-NET-002` | global | `show system interface` |
+
+### 2. System Settings
+
+#### 2.1 General Settings
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 2.1.1 | Ensure 'Pre-Login Banner' is set | Automated | `FG-BL-092` | global | `show system global` |
+| 2.1.2 | Ensure 'Post-Login-Banner' is set | Automated | `FG-SYS-001` | global | `show system global` |
+| 2.1.3 | Ensure timezone is properly configured | Manual | `FG-SYS-002` | global | `show system global` |
+| 2.1.4 | Ensure correct system time is configured through NTP | Automated | `FG-BL-040` | global | `show system ntp` |
+| 2.1.5 | Ensure hostname is set | Automated | `FG-SYS-003` | global | `show system global` |
+| 2.1.6 | Ensure the latest firmware is installed | Manual | `FG-SYS-004` | global | `get system status` |
+| 2.1.7 | Disable USB Firmware and configuration installation | Automated | `FG-SYS-005` | global | `show system auto-install` |
+| 2.1.8 | Disable static keys for TLS | Automated | `FG-SYS-006` | global | `show system global` |
+| 2.1.9 | Enable Global Strong Encryption | Automated | `FG-BL-090` | global | `show system global` |
+| 2.1.10 | Ensure management GUI listens on secure TLS version | Manual | `FG-BL-005` | global | `show system global` |
+
+#### 2.2 Password Policy
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 2.2.1 | Ensure 'Password Policy' is enabled | Automated | `FG-BL-030` | mgmt-VDOM | `show system password-policy` |
+| 2.2.2 | Ensure administrator password retries and lockout time are configured | Automated | `FG-PW-001` | global | `show system global` |
+
+#### 2.3 SNMP
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 2.3.1 | Ensure only SNMPv3 is enabled | Automated | `FG-BL-050` | global | `show system snmp community` |
+| 2.3.2 | Allow only trusted hosts in SNMPv3 | Manual | `FG-SNMP-001` | global | `show system snmp user` |
+
+#### 2.4 Administrators and Admin Profiles
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 2.4.1 | Ensure default 'admin' password is changed | Manual | `FG-BL-021` | global | `show system admin` |
+| 2.4.2 | Ensure all the login accounts having specific trusted hosts enabled | Manual | `FG-BL-020` | global | `show system admin` |
+| 2.4.3 | Ensure admin accounts with different privileges have their correct profiles assigned | Manual | `FG-ADM-001` | global | `show system admin` |
+| 2.4.4 | Ensure idle timeout time is configured | Automated | `FG-BL-004` | global | `show system global` |
+| 2.4.5 | Ensure only encrypted access channels are enabled | Automated | `FG-BL-002` | global | `show system global` |
+| 2.4.6 | Apply Local-in Policies | Manual | `FG-LIP-001` | per-VDOM | `show firewall local-in-policy` |
+| 2.4.7 | Ensure default Admin ports are changed | Manual | `FG-BL-007` | global | `show system global` |
+
+#### 2.5 High Availability
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 2.5.1 | Ensure High Availability configuration is enabled | Automated | `FG-HA-004` | global | `show system ha` |
+| 2.5.2 | Ensure 'Monitor Interfaces' for High Availability devices is enabled | Automated | `FG-HA-005` | global | `show system ha` |
+| 2.5.3 | Ensure HA Reserved Management Interface is configured | Manual | `FG-HA-006` | global | `show system ha` |
+
+### 3. Policy and Objects
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 3.1 | Ensure that unused policies are reviewed regularly | Manual | `FG-POL-001` | per-VDOM | `show firewall policy` |
+| 3.2 | Ensure that policies do not use 'ALL' as Service | Automated | `FG-BL-080` | per-VDOM | `show firewall policy` |
+| 3.3 | Ensure firewall policy denying all traffic to/from Tor, malicious server, or scanner IP addresses using ISDB | Manual | `FG-POL-002` | per-VDOM | `show firewall policy` |
+| 3.4 | Ensure logging is enabled on all firewall policies | Manual | `FG-BL-082` | per-VDOM | `show firewall policy` |
+
+### 4. Security Profiles
+
+#### 4.1 Intrusion Prevention System (IPS)
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 4.1.1 | Detect Botnet connections | Manual | `FG-IPS-001` | per-VDOM | `show firewall policy` |
+| 4.1.2 | Apply IPS Security Profile to Policies | Manual | `FG-UTM-003` | per-VDOM | `show firewall policy` |
+
+#### 4.2 Antivirus
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 4.2.1 | Ensure Antivirus Definition Push Updates are Configured | Automated | `FG-AV-001` | global | `show system autoupdate push-update` |
+| 4.2.2 | Apply Antivirus Security Profile to Policies | Manual | `FG-UTM-002` | per-VDOM | `show firewall policy` |
+| 4.2.3 | Enable Outbreak Prevention Database | Automated | `FG-AV-002` | per-VDOM | `show antivirus profile` |
+| 4.2.4 | Enable AI/heuristic based malware detection | Automated | `FG-AV-003` | per-VDOM | `show antivirus settings` |
+| 4.2.5 | Enable grayware detection on antivirus | Automated | `FG-AV-004` | per-VDOM | `show antivirus settings` |
+
+#### 4.3 DNS Filter
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 4.3.1 | Enable Botnet C&C Domain Blocking DNS Filter | Automated | `FG-DNS-001` | per-VDOM | `show dnsfilter profile` |
+| 4.3.2 | Ensure DNS Filter logs all DNS queries and responses | Manual | `FG-DNS-002` | per-VDOM | `show dnsfilter profile` |
+| 4.3.3 | Apply DNS Filter Security Profile to Policies | Manual | `FG-DNS-003` | per-VDOM | `show firewall policy` |
+
+#### 4.4 Application Control
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 4.4.1 | Block high risk categories on Application Control | Manual | `FG-APP-001` | per-VDOM | `show application list` |
+| 4.4.2 | Block applications running on non-default ports | Automated | `FG-APP-002` | per-VDOM | `show application list` |
+| 4.4.3 | Ensure all Application Control related traffic is logged | Manual | `FG-APP-003` | per-VDOM | `show application list` |
+| 4.4.4 | Apply Application Control Security Profile to Policies | Manual | `FG-APP-004` | per-VDOM | `show firewall policy` |
+
+### 5. Security Fabric
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 5.1.1 | Enable Compromised Host Quarantine | Automated | `FG-FAB-001` | global | `show system automation-stitch` |
+| 5.2.1.1 | Ensure Security Fabric is Configured | Automated | `FG-FAB-002` | global | `show system csf` |
+
+### 6. VPN
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 6.1.1 | Apply a Trusted Signed Certificate for VPN Portal | Manual | `FG-VPN-SSL-003` | per-VDOM | `show vpn ssl settings` |
+| 6.1.2 | Enable Limited TLS Versions for SSL VPN | Manual | `FG-VPN-SSL-001` | per-VDOM | `show vpn ssl settings` |
+
+### 7. Users and Authentication
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 7.1 | Configuring the maximum login attempts and lockout period | Automated | `FG-USER-001` | per-VDOM | `show user setting` |
+
+### 8. Logs and Reports
+
+| CIS § | Recommendation | Type | Control ID | Scope | Reads |
+|-------|----------------|------|------------|-------|-------|
+| 8.1.1 | Enable Event Logging | Automated | `FG-LOG-001` | per-VDOM | `show log eventfilter` |
+| 8.2.1 | Encrypt Log Transmission to FortiAnalyzer / FortiManager | Automated | `FG-LOG-002` | global | `show log fortianalyzer setting` |
+| 8.3.1 | Centralized Logging and Reporting | Automated | `FG-FAZ-001` | global | `show log fortianalyzer setting` |
+
+**Totals:** 53 controls — 28 Automated (scored) · 25 Manual (evidence-only).
+
+> Legend — **Automated**: verified programmatically from configuration and
+> included in the compliance score. **Manual**: requires human review; the
+> command output is captured as evidence but does not affect the score.
+
+## VDOM-aware evaluation
+
+1. The SSH client checks whether the device is VDOM-enabled
+   (`is_vdom_enabled()`).
+2. If it is, active VDOMs are enumerated (`enumerate_vdoms()`); the audit can
+   target one VDOM or every VDOM.
+3. `global` and `mgmt-VDOM` controls are evaluated once; per-VDOM controls are
+   evaluated for each target VDOM, and each result is stored with its `vdom`
+   label so the UI can group findings by VDOM.
+
+## API endpoints
+
+### Audit (`/api/audit/fortinet`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/audit/fortinet/vdoms/discover` | Discover active VDOMs before auditing |
+| POST | `/api/audit/fortinet/execute` | Run the CIS audit (one VDOM or all) |
+| GET  | `/api/audit/fortinet/sessions` | List audit sessions |
+| GET  | `/api/audit/fortinet/sessions/{id}` | Session details + compliance summary |
+| GET  | `/api/audit/fortinet/sessions/{id}/results` | Per-check results (incl. `vdom`) |
+| DELETE | `/api/audit/fortinet/sessions/{id}` | Delete a session |
+
+### Hardening (`/api/hardening/fortinet`)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/api/hardening/fortinet/vdoms/discover` | Discover active VDOMs before hardening |
+| POST | `/api/hardening/fortinet/preview` | Preview the commands a fix would run |
+| POST | `/api/hardening/fortinet/execute` | Apply a single remediation |
+| POST | `/api/hardening/fortinet/batch-execute` | Apply multiple remediations |
+| POST | `/api/hardening/fortinet/auto-harden-defaults` | Apply default hardening set |
+| GET  | `/api/hardening/fortinet/actions` | List hardening actions |
+
+### Example: discover VDOMs
+
 ```bash
-curl -X POST http://localhost:8000/api/fortinet/vdoms/discover \
+curl -X POST http://localhost:8000/api/audit/fortinet/vdoms/discover \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
     "asset_id": 42,
     "ssh_username": "admin",
-    "ssh_password": "password"
+    "ssh_password": "password",
+    "ssh_port": 22
   }'
 ```
 
-**Response:**
 ```json
 {
   "asset_id": 42,
@@ -113,338 +261,76 @@ curl -X POST http://localhost:8000/api/fortinet/vdoms/discover \
 }
 ```
 
-### 2. Execute Audit
+### Example: execute audit
+
 ```bash
-curl -X POST http://localhost:8000/api/fortinet/audit/execute \
+curl -X POST http://localhost:8000/api/audit/fortinet/execute \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
     "asset_id": 42,
     "ssh_username": "admin",
     "ssh_password": "password",
-    "vdom": "root",
-    "profile": "L1"
+    "ssh_port": 22,
+    "vdom": null,
+    "profile": "FULL"
   }'
 ```
 
-**Response:**
-```json
-{
-  "session_id": 123,
-  "asset_id": 42,
-  "asset_name": "fw-hq-01",
-  "target_ip": "192.168.1.1",
-  "device_type": "fortinet",
-  "status": "completed",
-  "started_at": "2026-01-29T10:00:00Z",
-  "completed_at": "2026-01-29T10:02:30Z",
-  "duration_seconds": 150.5,
-  "compliance": {
-    "total_checks": 65,
-    "passed": 52,
-    "failed": 13,
-    "compliance_pct": 80.0
-  },
-  "connection_error": null
-}
-```
+> `vdom: null` audits **every** VDOM on a VDOM-enabled device; pass a name to
+> scope the audit to a single VDOM. `ssh_port` may be set if the device does
+> not use the default port 22.
 
-### 3. Get Audit Results
-```bash
-curl http://localhost:8000/api/fortinet/audit/sessions/123/results \
-  -H "Authorization: Bearer $TOKEN"
-```
+A per-check result carries the backing control ID in `check_number` (map it to
+the CIS section via [`cis_map.py`](audit/cis_map.py)) and, on VDOM devices, the
+originating VDOM in `vdom`:
 
-**Response:**
 ```json
 [
   {
     "id": 1,
-    "check_number": "FG-BL-001",
-    "check_title": "Admin HTTPS enabled",
-    "severity": "high",
+    "check_number": "FG-BL-092",
+    "check_title": "Pre-Login Banner is set",
+    "severity": "Low",
     "level": "L1",
+    "vdom": "global",
     "status": "pass",
-    "evidence_snippet": "set admin-https enable",
-    "checked_at": "2026-01-29T10:01:00Z"
-  },
-  {
-    "id": 2,
-    "check_number": "FG-BL-002",
-    "check_title": "Admin HTTP disabled",
-    "severity": "high",
-    "level": "L1",
-    "status": "fail",
-    "evidence_snippet": "set admin-http enable",
-    "checked_at": "2026-01-29T10:01:00Z"
+    "evidence_snippet": "set pre-login-banner enable",
+    "checked_at": "2026-06-28T10:01:00Z"
   }
 ]
 ```
 
-### 4. List Sessions
-```bash
-curl http://localhost:8000/api/fortinet/audit/sessions?limit=10 \
-  -H "Authorization: Bearer $TOKEN"
-```
+## Frontend
 
-### 5. Delete Session
-```bash
-curl -X DELETE http://localhost:8000/api/fortinet/audit/sessions/123 \
-  -H "Authorization: Bearer $TOKEN"
-```
+The audit (`AuditingForm`) and hardening (`HardeningConnectionForm`,
+`CredentialsForm`) flows expose, for FortiGate:
 
-## Standalone CLI Tool
+- a **manual SSH port** field, and
+- a **Detect VDOMs** button that calls the discovery endpoint and lists the
+  active VDOMs so the operator can target one or audit all of them.
 
-For immediate use, a full-featured CLI tool is available:
+## Security considerations
 
-**Location:** `/scripts/fortinet_audit_cli.py`
-
-**Usage:**
-```bash
-# Basic audit
-python scripts/fortinet_audit_cli.py \
-  --host 192.168.1.1 \
-  --username admin \
-  --password 'SecurePass123' \
-  --out-prefix fg_audit
-
-# Audit all VDOMs in parallel
-python scripts/fortinet_audit_cli.py \
-  --host 192.168.1.1 \
-  --username admin \
-  --password 'SecurePass123' \
-  --all-vdoms \
-  --workers 4
-
-# Export control catalog
-python scripts/fortinet_audit_cli.py \
-  --export-catalog controls.yaml
-```
-
-**Output:**
-- `fg_audit_<vdom>.json` - Full audit data
-- `fg_audit_<vdom>.csv` - Findings table
-- `fg_audit_<vdom>.html` - Interactive HTML report
-- `fg_audit_ALL.json` - Aggregated results
-
-## Security Controls
-
-### Example Controls
-
-**Management Plane:**
-- `FG-BL-001`: Admin HTTPS enabled (CIS 1.1.1)
-- `FG-BL-002`: Admin HTTP disabled (CIS 1.1.2)
-- `FG-BL-003`: Admin Telnet disabled (CIS 1.1.3)
-- `FG-BL-004`: Admin idle timeout ≤ 10 minutes
-- `FG-BL-005`: TLS 1.0/1.1 disabled on GUI
-
-**Identity & Access:**
-- `FG-BL-020`: Admin trusthost configured
-- `FG-BL-021`: Default 'admin' account disabled/renamed
-- `FG-BL-022`: Multi-factor authentication configured
-- `FG-BL-030-036`: Password policy controls (length, complexity)
-
-**Cryptography:**
-- `FG-BL-090`: Strong encryption required
-- `FG-VPN-SSL-001`: SSL-VPN TLS 1.0/1.1 disabled
-- `FG-VPN-IPSEC-001`: IPsec weak proposals disabled
-
-**Logging:**
-- `FG-BL-060`: Remote syslog enabled
-- `FG-BL-061`: Remote syslog server configured
-- `FG-FAZ-001`: FortiAnalyzer logging enabled
-
-**Policy Best Practices:**
-- `FG-BL-080`: No Any/Any/ALL ACCEPT policy
-- `FG-BL-082`: Policy logging enabled
-
-### Control Packs
-
-Controls are organized into feature-based packs that are automatically enabled based on device configuration:
-
-| Pack | Auto-Enabled When | Controls |
-|------|-------------------|----------|
-| BASELINE | Always | 90+ core controls |
-| HA | HA mode detected | 4 HA-specific checks |
-| SDWAN | SD-WAN configured | 2 SD-WAN checks |
-| VPN_SSL | SSL-VPN enabled | 2 SSL-VPN security checks |
-| VPN_IPSEC | IPsec configured | 2 IPsec security checks |
-| CENTRAL_NAT | Central SNAT in use | 1 NAT review check |
-| LOCAL_IN | Local-in policy exists | 1 mgmt security check |
-| EXPOSURE | VIP objects exist | 2 exposure checks |
-| UTM | Always | 4 UTM policy checks |
-| FAZ | FortiAnalyzer configured | 2 FAZ logging checks |
-| SHADOW | Always | Shadow rule analysis |
-| UNUSED | Always | Unused object analysis |
-| COVERAGE | Always | UTM coverage metrics |
-
-## Database Integration
-
-The database already supports FortiGate devices via the `DeviceType.FORTINET` enum in `app/models/audit.py`.
-
-**Audit Tables:**
-- `audit_templates` - Control templates
-- `audit_checks` - Individual checks (FG-BL-001, etc.)
-- `audit_sessions` - Audit execution records
-- `audit_results` - Check results (PASS/FAIL/WARN/ERROR)
-
-## CIS Benchmark Mapping
-
-FortiGate controls are mapped to CIS FortiGate Benchmark sections:
-
-| CIS Section | Description | Controls |
-|-------------|-------------|----------|
-| 1.1 | Management Access | FG-BL-001 to FG-BL-005 |
-| 1.2 | Session Management | FG-BL-004 |
-| 1.3-1.4 | Cryptography | FG-BL-005, FG-BL-006, FG-BL-090 |
-| 2.1-2.2 | Access Control & Auth | FG-BL-020 to FG-BL-036 |
-| 3.1 | Time Services | FG-BL-040 to FG-BL-042 |
-| 4.1 | SNMP Security | FG-BL-050 to FG-BL-052 |
-| 5.1 | Logging & Monitoring | FG-BL-060 to FG-BL-065 |
-| 6.1-6.2 | Firewall Policy | FG-BL-080 to FG-BL-082 |
-| 7.1-7.2 | Interface & Mgmt Security | FG-BL-WAN-*, FG-LIP-001 |
-| 8.1-8.2 | VPN Security | FG-VPN-SSL-*, FG-VPN-IPSEC-* |
-| 9.1 | UTM Profiles | FG-UTM-* |
-
-## Analytics Features
-
-### 1. Shadow Rule Detection
-Identifies policies that are unreachable due to earlier, more permissive rules.
-
-**Algorithm:**
-- Compares all enabled ACCEPT policies sequentially
-- Checks if earlier policy subsumes later policy (srcintf, dstintf, srcaddr, dstaddr, service)
-- Reports shadowed policy ID and shadowing policy ID
-
-### 2. Unused Object Analysis
-Detects firewall address and service objects not referenced in any policy.
-
-**Process:**
-- Extracts all address/service object names
-- Cross-references with policy srcaddr/dstaddr/service fields
-- Reports unused objects (excludes built-in 'all' tokens)
-
-### 3. UTM Coverage Metrics
-Analyzes security profile usage across policies.
-
-**Metrics:**
-- Accept policies count
-- UTM-enabled policies count and percentage
-- Individual profile usage: AV, IPS, Web Filter, App Control, SSL-SSH
-
-## Integration Roadmap
-
-### Phase 1: Database Schema (Completed)
-- ✅ `DeviceType.FORTINET` enum added
-- ✅ Audit tables support generic device types
-
-### Phase 2: SSH Client (Completed)
-- ✅ `FortiGateSSHClient` implemented
-- ✅ VDOM discovery and context switching
-- ✅ Command caching and pagination handling
-
-### Phase 3: Control Catalog (Completed)
-- ✅ 65+ controls extracted and organized
-- ✅ CIS benchmark mapping implemented
-- ✅ `fortinet_rules.py` created
-
-### Phase 4: Service Layer (Completed)
-- ✅ `FortinetAuditService` implemented
-- ✅ Control evaluation and scoring
-- ✅ VDOM context support
-- ✅ Data redaction and security
-
-### Phase 5: API Endpoints (Completed)
-- ✅ `fortinet_router.py` created
-- ✅ Request/response schemas defined
-- ✅ Routes registered in `app/main.py`
-
-### Phase 6: Frontend Integration (Planned)
-- Add FortiGate audit UI component
-- VDOM selection interface
-- Analytics dashboard
-
-## Performance Optimizations
-
-1. **Command Caching**: 5-minute TTL reduces redundant SSH commands
-2. **Connection Pooling**: Reusable connections for parallel VDOM audits
-3. **Batch Command Execution**: Single SSH session for multiple commands
-4. **Parallel VDOM Processing**: ThreadPoolExecutor with configurable workers (default: 4)
-5. **Rule Caching**: In-memory control catalog (similar to Cisco pattern)
-
-## Testing
-
-### Manual Testing
-```python
-# Test SSH connection
-from app.modules.fortinet import FortiGateSSHClient
-
-client = FortiGateSSHClient("192.168.1.1", "admin", "password")
-client.connect()
-status = client.get_system_status()
-print(status)
-client.disconnect()
-```
-
-### Integration Testing
-```bash
-# Run CLI tool audit
-python scripts/fortinet_audit_cli.py \
-  --host <test-fortigate> \
-  --username <user> \
-  --password <pass> \
-  --out-prefix test_audit
-```
+1. **Credentials** are never stored — they are used only for the duration of an
+   audit/hardening run.
+2. **Audit is read-only** — every audit command is a non-modifying
+   `show` / `get`.
+3. **VDOM isolation** — each VDOM is read in its own context.
+4. **Hardening** changes are previewable and can be backed up before they are
+   applied.
 
 ## Dependencies
 
-**Required:**
-- `netmiko` (4.6.0+) - SSH automation
-- `jinja2` (3.1.6+) - HTML report generation
-- `pyyaml` (6.0.3+) - YAML catalog support (optional)
+- `netmiko` — SSH automation (FortiGate driver)
+- PostgreSQL (via SQLAlchemy) — audit sessions and results storage
 
-**Installed via:**
+## Tests
+
 ```bash
-pip install -r requirements.txt
+pytest tests/test_fortinet_rules.py tests/test_fortinet_ssh_scope.py
 ```
 
-## Security Considerations
-
-1. **Credentials**: SSH passwords are never stored; used only during audit execution
-2. **Command Output**: Can be excluded from reports via `--no-evidence` flag
-3. **VDOM Isolation**: Each VDOM audit runs in isolated context
-4. **Read-Only**: All audit commands are non-modifying (show/get/diagnose only)
-
-## Related Files
-
-- **CLI Tool**: `/scripts/fortinet_audit_cli.py` (v4, 2200+ lines)
-- **Legacy CLI**: `/scripts/fortinet_audit_legacy_v3.py` (v3, 1350+ lines)
-- **Database Models**: `/app/models/audit.py`
-- **Cisco Reference**: `/app/modules/audit/` (similar pattern)
-
-## Support
-
-For issues or questions:
-1. Check logs in audit_results table
-2. Enable verbose output: set `--no-evidence false`
-3. Review CIS FortiGate Benchmark documentation
-4. Compare with working Cisco audit module structure
-
-## Version History
-
-- **v4.0** (2026-01-29): Modular architecture with FastAPI integration
-  - 120+ controls with CIS mapping
-  - Parallel VDOM processing
-  - HTML reporting with dashboard
-  - Advanced analytics (shadow, unused, coverage)
-  - Performance optimizations (caching, pooling)
-
-- **v3.0** (2025): Standalone enterprise auditor
-  - ~100 controls
-  - Multi-VDOM support
-  - YAML catalog support
-  - Shadow rule detection
-
-- **v2.0**: Initial NGCorion baseline
-  - Basic CIS controls
-  - Single VDOM support
+These assert the catalog is exactly the 53 CIS controls (28 Automated /
+25 Manual), that every `cis_map` section maps 1:1 to a defined control, and that
+each control is collected in its correct VDOM scope.
