@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
 import { executeAudit } from "../../store/auditSlice";
 import { discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
+import { FortinetBenchmarkModal } from "./FortinetBenchmarkModal";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -92,6 +93,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     });
 
     const [errors, setErrors] = useState({});
+    const [showBenchmark, setShowBenchmark] = useState(false);
 
     useEffect(() => {
         dispatch(fetchAssets());
@@ -224,6 +226,9 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
     return (
         <div className="auditing-form-container">
+            {showBenchmark && (
+                <FortinetBenchmarkModal onClose={() => setShowBenchmark(false)} />
+            )}
             <form onSubmit={handleSubmit} className="auditing-form">
                 <div className="form-grid-two-column">
 
@@ -326,6 +331,20 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         placeholder="Enable password (optional)"
                                         autoComplete="off"
                                     />
+                                </div>
+                            )}
+
+                            {isFortinet(dt) && (
+                                <div className="form-group form-group-full">
+                                    <button
+                                        type="button"
+                                        className="btn-modal-secondary"
+                                        onClick={() => setShowBenchmark(true)}
+                                        style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                                        title="View the full CIS FortiGate Benchmark checklist (53 controls)"
+                                    >
+                                        <i className="fa-solid fa-list-check"></i> Show CIS Benchmark
+                                    </button>
                                 </div>
                             )}
 

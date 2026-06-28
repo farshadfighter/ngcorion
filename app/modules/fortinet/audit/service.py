@@ -284,10 +284,10 @@ class FortinetAuditService:
                             findings.append(cls._evaluate_control(c, v_out, v_label))
                         cls._merge_dump(raw_dump, v_out, SCOPE_VDOM, v_label)
 
-            # Compliance metrics — Manual controls are evidence-only (excluded).
-            scored = [f for f in findings if not f["manual"]]
-            passed = sum(1 for f in scored if f["passed"])
-            total = len(scored)
+            # Compliance metrics — the entire CIS checklist is scored (Manual
+            # controls included; every control yields a PASS/FAIL).
+            passed = sum(1 for f in findings if f["passed"])
+            total = len(findings)
             failed = total - passed
             compliance_pct = round(100.0 * passed / total, 2) if total else 0.0
 
@@ -337,10 +337,9 @@ class FortinetAuditService:
     def _bulk_insert_results(cls, db: Session, session_id: int, findings: List[Dict[str, Any]]) -> None:
         results: List[AuditResult] = []
         for f in findings:
-            if f["manual"]:
-                status = CheckStatus.NOT_APPLICABLE
-            else:
-                status = CheckStatus.PASS if f["passed"] else CheckStatus.FAIL
+            # Every control is scored — Manual controls are no longer marked
+            # NOT_APPLICABLE; they get a PASS/FAIL like the Automated ones.
+            status = CheckStatus.PASS if f["passed"] else CheckStatus.FAIL
             results.append(AuditResult(
                 session_id=session_id,
                 check_number=f["control_id"],
