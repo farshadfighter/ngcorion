@@ -130,3 +130,54 @@ def get_benchmark_summary() -> Dict[str, Any]:
         "automated": automated,
         "manual": manual,
     }
+
+
+# Friendly labels for the per-control evaluation scope (see rules.py).
+_SCOPE_LABELS: Dict[str, str] = {
+    "global": "Global",
+    "vdom": "Per-VDOM",
+    "vdom_root": "Management VDOM",
+}
+
+
+def _section_sort_key(section: str) -> List[int]:
+    """Numeric sort key so 2.1.10 sorts after 2.1.2."""
+    return [int(p) for p in section.split(".")]
+
+
+def get_benchmark_catalog() -> Dict[str, Any]:
+    """
+    Return the full CIS checklist joined with the backing control catalog.
+
+    Each entry pairs a benchmark section (number / recommendation / type) with
+    the control that implements it (id, scope, severity, command, remediation),
+    so the whole 53-item checklist can be displayed without running an audit.
+    """
+    # Imported here to avoid any import-time coupling between the map and the catalog.
+    from .rules import get_fortinet_controls
+
+    controls = {c.cis_id: c for c in get_fortinet_controls()}
+
+    items: List[Dict[str, Any]] = []
+    for section in sorted(CIS_BENCHMARK_SECTIONS, key=lambda s: _section_sort_key(s["section"])):
+        control = controls.get(section["section"])
+        items.append({
+            "section": section["section"],
+            "recommendation": section["recommendation"],
+            "type": section["type"],
+            "control_id": section["rule_id"],
+            "section_group": control.cis_section if control else "",
+            "scope": _SCOPE_LABELS.get(control.scope, control.scope) if control else "",
+            "severity": control.severity if control else "",
+            "command": control.rules[0].cmd if (control and control.rules) else "",
+            "remediation": control.remediation if control else "",
+        })
+
+    summary = get_benchmark_summary()
+    return {
+        "version": CIS_BENCHMARK_VERSION,
+        "total": summary["total_sections"],
+        "automated": summary["automated"],
+        "manual": summary["manual"],
+        "controls": items,
+    }

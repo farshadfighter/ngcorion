@@ -273,6 +273,19 @@ def discover_vdoms(
         )
 
 
+@router.get("/benchmark")
+def get_fortinet_benchmark(
+    current_user: User = Depends(require_permission("AUDITING", "read")),
+):
+    """
+    Return the full CIS FortiGate Benchmark checklist (all 53 recommendations)
+    joined with the backing control catalog, so the UI can display every control
+    without running an audit.
+    """
+    from .cis_map import get_benchmark_catalog
+    return get_benchmark_catalog()
+
+
 @router.get("/sessions", response_model=List[FortinetAuditSessionResponse])
 def list_audit_sessions(
     limit: int = 50,

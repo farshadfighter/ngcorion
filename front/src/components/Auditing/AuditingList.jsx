@@ -8,6 +8,7 @@ import {
 } from "../../store/auditSlice";
 import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
+import { FortinetBenchmarkModal } from "./FortinetBenchmarkModal";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
@@ -28,6 +29,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
     );
 
     const [showWizard, setShowWizard] = useState(false);
+    const [showBenchmark, setShowBenchmark] = useState(false);
     const [showResultModal, setShowResultModal] = useState(false);
     const [selectedSession, setSelectedSession] = useState(null);
 
@@ -120,6 +122,16 @@ export const AuditingList = ({ onNavigateToLicence }) => {
         <div className="auditing-container">
             {/* Header */}
             <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                {/* CIS Benchmark checklist (read-only, all 53 controls) */}
+                <button
+                    className="btn-modal-secondary"
+                    onClick={() => setShowBenchmark(true)}
+                    style={{ position: "absolute", left: 0, display: "flex", alignItems: "center", gap: "6px" }}
+                    title="View the full CIS FortiGate Benchmark checklist (53 controls)"
+                >
+                    <i className="fa-solid fa-list-check"></i> CIS Benchmark
+                </button>
+
                 <button
                     className="btn-auditing-primary"
                     onClick={() => isAuditLimitReached ? setShowLimitModal(true) : setShowWizard(true)}
@@ -284,6 +296,11 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                     onClose={() => setShowWizard(false)}
                     onComplete={handleWizardComplete}
                 />
+            )}
+
+            {/* ── CIS Benchmark Checklist ───────────────────────────────────────── */}
+            {showBenchmark && (
+                <FortinetBenchmarkModal onClose={() => setShowBenchmark(false)} />
             )}
 
             {/* ── Result Modal ──────────────────────────────────────────────────── */}

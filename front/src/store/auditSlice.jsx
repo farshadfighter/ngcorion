@@ -166,6 +166,18 @@ export const clearAllAuditSessions = createAsyncThunk(
     }
 );
 
+export const fetchFortinetBenchmark = createAsyncThunk(
+    "audit/fetchFortinetBenchmark",
+    async (_arg, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/audit/fortinet/benchmark");
+            return res.data; // { version, total, automated, manual, controls: [...] }
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "Failed to load CIS benchmark");
+        }
+    }
+);
+
 export const checkAuditStatus = createAsyncThunk(
     "audit/checkStatus",
     async (sessionId, { rejectWithValue }) => {
@@ -193,6 +205,7 @@ const auditSlice = createSlice({
         isClearing: false,
         error: null,
         successMessage: null,
+        benchmark: { data: null, isLoading: false, error: null },
     },
     reducers: {
         clearMessages: (state) => {
@@ -241,7 +254,11 @@ const auditSlice = createSlice({
 
             .addCase(checkAuditStatus.fulfilled, (state, action) => {
                 state.currentSession = action.payload;
-            });
+            })
+
+            .addCase(fetchFortinetBenchmark.pending,   (state) => { state.benchmark = { data: null, isLoading: true, error: null }; })
+            .addCase(fetchFortinetBenchmark.fulfilled, (state, action) => { state.benchmark = { data: action.payload, isLoading: false, error: null }; })
+            .addCase(fetchFortinetBenchmark.rejected,  (state, action) => { state.benchmark = { data: null, isLoading: false, error: action.payload }; });
     },
 });
 
