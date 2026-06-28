@@ -162,6 +162,95 @@ def _ntp_status_failures(status: Dict[str, Any]) -> List[str]:
     return failures
 
 
+def _parse_snmp_users(output: str) -> List[str]:
+    """
+    Extract SNMPv3 user names from ``get system snmp user`` output.
+    Entries appear as ``== [ <name> ]`` headers; falls back to ``edit "<name>"``
+    or ``name: <name>`` lines for other output styles. Empty when no users.
+    """
+    out = output or ""
+    names = re.findall(r"==\s*\[\s*([^\]]+?)\s*\]", out)
+    if not names:
+        names = re.findall(r'^\s*edit\s+"?([^"\n]+?)"?\s*$', out, re.MULTILINE)
+    if not names:
+        names = re.findall(r"^\s*name\s*:\s*(\S+)", out, re.MULTILINE | re.IGNORECASE)
+    return [n.strip() for n in names if n.strip()]
+
+
+# Interactive SNMPv3 remediation guide (shown in the FG-BL-050 report only when
+# NON-COMPLIANT). Placeholders are <username> <ip> <password>; choose ONE option.
+_SNMPV3_REMEDIATION_GUIDE = """
+--- Remediation: configure an SNMPv3 user (choose ONE security level) ---
+Placeholders: <username> = SNMP user name, <ip> = trap/notify host, <password> = a strong secret.
+
+OPTION 1 - no-auth-no-priv (least secure):
+  config system snmp user
+    edit <username>
+      set notify-hosts <ip>
+      set security-level no-auth-no-priv
+    next
+  end
+
+OPTION 2 - auth-no-priv:
+  config system snmp user
+    edit <username>
+      set notify-hosts <ip>
+      set security-level auth-no-priv
+      set auth-proto <md5|sha>
+      set auth-pwd <password>
+    next
+  end
+
+OPTION 3 - auth-priv (MOST SECURE, RECOMMENDED; best practice: sha512 + aes256):
+  config system snmp user
+    edit <username>
+      set notify-hosts <ip>
+      set security-level auth-priv
+      set auth-proto <md5|sha|sha224|sha256|sha384|sha512>
+      set auth-pwd <password>
+      set priv-proto <aes|des|aes256|aes256cisco>
+      set priv-pwd <password>
+    next
+  end
+
+Note: the correct keyword is "security-level" (FortiOS docs sometimes mis-spell it "secuity-level").
+""".strip()
+
+
+def _snmp_evidence(control, outputs: Dict[str, str]) -> str:
+    """
+    Combined two-step SNMPv3 report (FG-BL-050): SNMP master status, the SNMPv3
+    users found, which step failed, and the overall verdict. When NON-COMPLIANT
+    the interactive 3-option remediation guide is appended to the report.
+    """
+    sysinfo = users_out = ""
+    for r in control.rules:
+        if r.type == "snmp_status_enabled":
+            sysinfo = outputs.get(r.cmd, "")
+        elif r.type == "snmp_user_exists":
+            users_out = outputs.get(r.cmd, "")
+
+    status = (_get_field_value(sysinfo, "status") or "unknown").lower()
+    parts = [f"SNMP status={status}"]
+    non_compliant = True
+
+    if status != "enable":
+        parts.append("FAILED step 1: SNMP status is disabled (SNMP not configured)")
+    else:
+        users = _parse_snmp_users(users_out)
+        parts.append(f"SNMPv3 users=[{', '.join(users) if users else 'none'}]")
+        if users:
+            non_compliant = False
+        else:
+            parts.append("FAILED step 2: SNMP enabled but no SNMPv3 user configured")
+
+    parts.append("NON-COMPLIANT" if non_compliant else "COMPLIANT")
+    report = " | ".join(parts)
+    if non_compliant:
+        report += "\n\n" + _SNMPV3_REMEDIATION_GUIDE
+    return report
+
+
 def _get_field_value(output: str, key: str) -> Optional[str]:
     """
     Return the value of a ``get``-style ``key : value`` field (e.g. from
@@ -308,6 +397,14 @@ class FortinetAuditService:
                 value, active = _field_forbidden_tokens(output, rule.key, rule.expected)
                 return value is not None and not active
 
+            if rule.type == "snmp_status_enabled":
+                # Step 1: SNMP master switch must be enabled.
+                return (_get_field_value(output, "status") or "").lower() == "enable"
+
+            if rule.type == "snmp_user_exists":
+                # Step 2: at least one SNMPv3 user must be configured.
+                return len(_parse_snmp_users(output)) > 0
+
             if rule.type == "ntp_status_ok":
                 # Compliant only when synchronized + ntpsync + server-mode are
                 # all good and no forbidden (FortiGuard) NTP server is in use.
@@ -327,6 +424,13 @@ class FortinetAuditService:
 
     @staticmethod
     def _extract_evidence(control: FortiGateControl, outputs: Dict[str, str]) -> str:
+        # Multi-command SNMPv3 check produces a single combined report (and must
+        # run before the per-rule loop, which skips empty command outputs).
+        # Returned in full — the NON-COMPLIANT case embeds the multi-line
+        # remediation guide, which must not be truncated to 500 chars.
+        if any(r.type == "snmp_status_enabled" for r in control.rules):
+            return _snmp_evidence(control, outputs)
+
         lines: List[str] = []
         for rule in control.rules:
             out = outputs.get(rule.cmd, "")
@@ -595,7 +699,9 @@ class FortinetAuditService:
                 level=f["level"],
                 vdom=f["vdom"],
                 status=status,
-                evidence_snippet=(f["evidence"][:1000] if f["evidence"] else None),
+                # Cap is generous so the FG-BL-050 NON-COMPLIANT report can carry
+                # the full multi-line SNMPv3 remediation guide. Column is TEXT.
+                evidence_snippet=(f["evidence"][:4000] if f["evidence"] else None),
                 checked_at=datetime.now(timezone.utc),
             ))
             if len(results) >= cls.BATCH_SIZE:

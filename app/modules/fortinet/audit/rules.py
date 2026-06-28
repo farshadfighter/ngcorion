@@ -121,6 +121,8 @@ AUTOINST = "show system auto-install"
 PWPOL = "show system password-policy"
 SNMPC = "show system snmp community"
 SNMPU = "show system snmp user"
+SNMPINFO = "get system snmp sysinfo"   # SNMP master status (enable/disable)
+SNMPUSERG = "get system snmp user"     # configured SNMPv3 users
 ADMIN = "show system admin"
 HA = "show system ha"
 ZONE = "show system zone"
@@ -220,10 +222,17 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                 "config system global\n set admin-lockout-threshold 3\n set admin-lockout-duration 60\nend"),
 
         # ===== 2.3 SNMP =====
-        _absent("FG-BL-050", "Only SNMPv3 is enabled", "2.3.1", SCOPE_GLOBAL, "High",
-                SNMPC, r"^\s*edit\s+\S+",
-                "Delete SNMP v1/v2c communities (config system snmp community) and use SNMPv3 "
-                "users with auth-priv only."),
+        # Two-step parse: (1) `get system snmp sysinfo` status must be enable,
+        # then (2) `get system snmp user` must list at least one SNMPv3 user
+        # (see service._snmp_evidence). Both rules must pass to be COMPLIANT.
+        _ctl("FG-BL-050", "Only SNMPv3 is enabled", "2.3.1", "Automated",
+             SCOPE_GLOBAL, "High", "L1",
+             [FortiGateRule(type="snmp_status_enabled", cmd=SNMPINFO),
+              FortiGateRule(type="snmp_user_exists", cmd=SNMPUSERG)],
+             "config system snmp sysinfo\n set status enable\nend\n"
+             "config system snmp user\n edit <name>\n set security-level auth-priv\n "
+             "set auth-proto sha256\n set priv-proto aes256\n next\nend\n"
+             "(and delete any SNMP v1/v2c communities under config system snmp community)"),
         _manual("FG-SNMP-001", "Only trusted hosts allowed in SNMPv3", "2.3.2", SCOPE_GLOBAL, "Medium",
                 SNMPU, r"set\s+(notify-hosts|hosts)\s+\S+",
                 "config system snmp user\n edit <name>\n set notify-hosts <trusted-ip>\nend"),
