@@ -113,6 +113,7 @@ def _manual(id, title, cis_id, scope, severity, cmd, pattern, remediation, level
 
 # Command shortcuts (the show/get each control reads, in its own scope).
 SG = "show system global"
+GG = "get system global"   # human-readable field view (e.g. "timezone : (GMT+3:30) Tehran")
 DNS = "show system dns"
 NTP = "show system ntp"
 AUTOINST = "show system auto-install"
@@ -166,9 +167,13 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         _present("FG-SYS-001", "Post-Login Banner is set", "2.1.2", SCOPE_GLOBAL, "Low",
                  SG, r"set\s+post-login-banner\s+enable",
                  "config system global\n set post-login-banner enable\nend"),
-        _manual("FG-SYS-002", "Timezone is properly configured", "2.1.3", SCOPE_GLOBAL, "Low",
-                SG, r"set\s+timezone\s+\S+",
-                "config system global\n set timezone <id>\nend"),
+        # Parsed from `get system global`: NON-COMPLIANT unless the timezone
+        # field equals the expected value (see service._get_field_value).
+        _ctl("FG-SYS-002", "Timezone is properly configured", "2.1.3", "Manual",
+             SCOPE_GLOBAL, "Low", "L1",
+             [FortiGateRule(type="get_field_eq", cmd=GG, key="timezone",
+                            expected="(GMT+3:30) Tehran")],
+             "config system global\n set timezone 41\nend"),
         _absent("FG-BL-040", "System time configured through NTP", "2.1.4", SCOPE_GLOBAL, "Medium",
                 NTP, r"set\s+ntpsync\s+disable",
                 "config system ntp\n set ntpsync enable\n set type custom\n config ntpserver\n "

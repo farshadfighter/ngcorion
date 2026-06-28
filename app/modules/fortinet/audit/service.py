@@ -115,6 +115,23 @@ def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
     return interfaces
 
 
+def _get_field_value(output: str, key: str) -> Optional[str]:
+    """
+    Return the value of a ``get``-style ``key : value`` field (e.g. from
+    ``get system global``), or ``None`` when the field is absent.
+    Example line: ``timezone            : (GMT+3:30) Tehran``.
+    """
+    m = re.search(rf"^\s*{re.escape(key)}\s*:\s*(.+?)\s*$",
+                  output or "", re.IGNORECASE | re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+
+def _norm_field(value: str) -> str:
+    """Normalize a field value for tolerant comparison: drop whitespace, lowercase.
+    Lets ``(GMT+3:30) Tehran`` match ``(GMT+3:30)Tehran`` across FortiOS spacing."""
+    return re.sub(r"\s+", "", value or "").lower()
+
+
 def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
     """
     Return WAN-role interfaces that expose management services.
@@ -207,6 +224,14 @@ class FortinetAuditService:
                 # management service in its allowaccess.
                 return not _wan_mgmt_violations(output, rule.expected)
 
+            if rule.type == "get_field_eq":
+                # Compliant (pass) only when the parsed `key : value` field
+                # equals the expected value (whitespace-insensitive).
+                actual = _get_field_value(output, rule.key)
+                if actual is None:
+                    return False
+                return _norm_field(actual) == _norm_field(str(rule.expected))
+
             if rule.type == "regex_present":
                 return bool(re.search(rule.pattern, output, re.IGNORECASE | re.MULTILINE))
 
@@ -235,6 +260,15 @@ class FortinetAuditService:
                     )
                 else:
                     lines.append("No WAN-role interface exposes management services")
+                continue
+            if rule.type == "get_field_eq":
+                actual = _get_field_value(out, rule.key)
+                if actual is None:
+                    lines.append(f"{rule.key}: <not found> (NON-COMPLIANT, expected {rule.expected})")
+                elif _norm_field(actual) == _norm_field(str(rule.expected)):
+                    lines.append(f"{rule.key}: {actual} (compliant)")
+                else:
+                    lines.append(f"{rule.key}: {actual} (NON-COMPLIANT, expected {rule.expected})")
                 continue
             if rule.key:
                 lines.extend(re.findall(rf".*{re.escape(rule.key)}.*", out, re.IGNORECASE | re.MULTILINE)[:3])
