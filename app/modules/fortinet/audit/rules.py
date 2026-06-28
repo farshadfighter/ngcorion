@@ -203,9 +203,13 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         _present("FG-BL-090", "Global Strong Encryption enabled", "2.1.9", SCOPE_GLOBAL, "High",
                  SG, r"set\s+strong-crypto\s+enable",
                  "config system global\n set strong-crypto enable\nend"),
-        _manual("FG-BL-005", "Management GUI listens on secure TLS version", "2.1.10", SCOPE_GLOBAL, "High",
-                SG, r"set\s+admin-https-ssl-versions\s+.+",
-                "config system global\n set admin-https-ssl-versions tlsv1-2 tlsv1-3\nend"),
+        # Parsed from `get system global`: NON-COMPLIANT if admin-https-ssl-versions
+        # contains tlsv1-0/tlsv1-1, or is absent (default includes weak versions).
+        _ctl("FG-BL-005", "Management GUI listens on secure TLS version", "2.1.10", "Manual",
+             SCOPE_GLOBAL, "High", "L1",
+             [FortiGateRule(type="get_field_excludes", cmd=GG, key="admin-https-ssl-versions",
+                            expected=["tlsv1-0", "tlsv1-1"])],
+             "config system global\n set admin-https-ssl-versions tlsv1-2 tlsv1-3\nend"),
 
         # ===== 2.2 Password Policy =====
         _present("FG-BL-030", "Password Policy is enabled", "2.2.1", SCOPE_VDOM_ROOT, "High",

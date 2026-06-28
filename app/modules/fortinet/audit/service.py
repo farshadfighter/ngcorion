@@ -179,6 +179,21 @@ def _norm_field(value: str) -> str:
     return re.sub(r"\s+", "", value or "").lower()
 
 
+def _field_forbidden_tokens(output: str, key: str, forbidden) -> tuple:
+    """
+    For a space-separated ``get``-style field, return
+    ``(value_or_None, [forbidden tokens present])``. ``value`` is ``None`` when
+    the field is absent (e.g. left at default). Token match is whole-word and
+    case-insensitive.
+    """
+    value = _get_field_value(output, key)
+    if value is None:
+        return None, []
+    tokens = {t.lower() for t in value.split()}
+    active = [f for f in (forbidden or []) if f.lower() in tokens]
+    return value, active
+
+
 def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
     """
     Return WAN-role interfaces that expose management services.
@@ -287,6 +302,12 @@ class FortinetAuditService:
                     return False
                 return not bool(re.search(rule.pattern, actual))
 
+            if rule.type == "get_field_excludes":
+                # Compliant only when the field is present AND contains none of
+                # the forbidden tokens. Absent/default field == non-compliant.
+                value, active = _field_forbidden_tokens(output, rule.key, rule.expected)
+                return value is not None and not active
+
             if rule.type == "ntp_status_ok":
                 # Compliant only when synchronized + ntpsync + server-mode are
                 # all good and no forbidden (FortiGuard) NTP server is in use.
@@ -338,6 +359,15 @@ class FortinetAuditService:
                     lines.append(f"{rule.key}: {actual} (NON-COMPLIANT — hostname matches default FGT serial pattern)")
                 else:
                     lines.append(f"{rule.key}: {actual} (compliant)")
+                continue
+            if rule.type == "get_field_excludes":
+                value, active = _field_forbidden_tokens(out, rule.key, rule.expected)
+                if value is None:
+                    lines.append(f"{rule.key}: <not set / default> (NON-COMPLIANT)")
+                elif active:
+                    lines.append(f"{rule.key}: {value} (NON-COMPLIANT — insecure: {', '.join(active)})")
+                else:
+                    lines.append(f"{rule.key}: {value} (compliant)")
                 continue
             if rule.type == "ntp_status_ok":
                 st = _parse_ntp_status(out)
