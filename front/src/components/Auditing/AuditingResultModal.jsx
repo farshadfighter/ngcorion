@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchAuditSession } from "../../store/auditSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
@@ -8,6 +8,14 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     const { results, isLoadingResults } = useSelector((state) => state.audit);
     const [sessionDetails, setSessionDetails] = useState(session);
     const [showHardeningWizard, setShowHardeningWizard] = useState(false);
+    const [expandedRows, setExpandedRows] = useState(() => new Set());
+
+    const toggleRow = (id) =>
+        setExpandedRows((prev) => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
 
     useEffect(() => {
         if (isOpen && session) {
@@ -59,7 +67,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     // FortiGate multi-VDOM audits tag each result with its VDOM ("global"/"root"/<name>).
     // Only show the VDOM column when at least one result carries it.
     const hasVdom = Array.isArray(results) && results.some((r) => r.vdom);
-    const resultColSpan = hasVdom ? 4 : 3;
+    // Columns: Section [+ VDOM] + Recommendation + Result + Details.
+    const colCount = hasVdom ? 5 : 4;
 
     const getResultBadge = (status) => {
         const normalizedStatus = status?.toString().toUpperCase();
@@ -184,25 +193,89 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                 {hasVdom && <th>VDOM</th>}
                                 <th>Recommendation</th>
                                 <th>Result</th>
+                                <th>Details</th>
                             </tr>
                             </thead>
                             <tbody>
                             {results && results.length > 0 ? (
-                                results.map((result) => (
-                                    <tr key={result.id}>
-                                        <td>{result.check_number}</td>
-                                        {hasVdom && <td>{result.vdom || "—"}</td>}
-                                        <td>
-                                            <div className="recommendation-text">
-                                                {result.check_title}
-                                            </div>
-                                        </td>
-                                        <td>{getResultBadge(result.status)}</td>
-                                    </tr>
-                                ))
+                                results.map((result) => {
+                                    const hasEvidence = !!result.evidence_snippet;
+                                    const isExpanded = expandedRows.has(result.id);
+                                    return (
+                                        <Fragment key={result.id}>
+                                            <tr>
+                                                <td>{result.check_number}</td>
+                                                {hasVdom && <td>{result.vdom || "—"}</td>}
+                                                <td>
+                                                    <div className="recommendation-text">
+                                                        {result.check_title}
+                                                    </div>
+                                                </td>
+                                                <td>{getResultBadge(result.status)}</td>
+                                                <td>
+                                                    {hasEvidence ? (
+                                                        <button
+                                                            type="button"
+                                                            className="btn-evidence-toggle"
+                                                            onClick={() => toggleRow(result.id)}
+                                                            aria-expanded={isExpanded}
+                                                            style={{
+                                                                background: "transparent",
+                                                                border: "1px solid #d1d5db",
+                                                                borderRadius: "6px",
+                                                                padding: "4px 10px",
+                                                                fontSize: "12px",
+                                                                cursor: "pointer",
+                                                                color: "#374151",
+                                                                whiteSpace: "nowrap",
+                                                            }}
+                                                        >
+                                                            {isExpanded ? "▼ Hide" : "▶ Details"}
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{ color: "#9ca3af" }}>—</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                            {hasEvidence && isExpanded && (
+                                                <tr className="evidence-row">
+                                                    <td colSpan={colCount} style={{ background: "#f9fafb", padding: "12px 16px" }}>
+                                                        <div style={{
+                                                            fontSize: "12px",
+                                                            fontWeight: 600,
+                                                            color: "#6b7280",
+                                                            textTransform: "uppercase",
+                                                            letterSpacing: "0.04em",
+                                                            marginBottom: "6px",
+                                                        }}>
+                                                            Evidence / Remediation
+                                                        </div>
+                                                        <pre style={{
+                                                            margin: 0,
+                                                            whiteSpace: "pre-wrap",
+                                                            wordBreak: "break-word",
+                                                            fontFamily: "monospace",
+                                                            fontSize: "12px",
+                                                            lineHeight: 1.5,
+                                                            color: "#111827",
+                                                            background: "#ffffff",
+                                                            border: "1px solid #e5e7eb",
+                                                            borderRadius: "6px",
+                                                            padding: "10px 12px",
+                                                            maxHeight: "360px",
+                                                            overflow: "auto",
+                                                        }}>
+                                                            {result.evidence_snippet}
+                                                        </pre>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })
                             ) : (
                                 <tr>
-                                    <td colSpan={resultColSpan} style={{ textAlign: "center", padding: "40px" }}>
+                                    <td colSpan={colCount} style={{ textAlign: "center", padding: "40px" }}>
                                         {totalChecks > 0
                                             ? `Total: ${totalChecks} checks (${passedChecks} passed, ${failedChecks} failed)`
                                             : "No results available"}

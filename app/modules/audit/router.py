@@ -50,6 +50,7 @@ class SharedAuditResultResponse(BaseModel):
     severity: str
     level: str
     status: str
+    vdom: Optional[str] = None
     evidence_snippet: Optional[str] = None
     checked_at: str
 
@@ -132,6 +133,7 @@ def get_audit_results(
             "severity": r.severity or "medium",
             "level": r.level or "L1",
             "status": r.status.value,
+            "vdom": getattr(r, "vdom", None),
             "evidence_snippet": r.evidence_snippet,
             "checked_at": r.checked_at.isoformat() if r.checked_at else "",
         }
