@@ -183,9 +183,13 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              [FortiGateRule(type="ntp_status_ok", cmd=NTPSTAT)],
              "config system ntp\n set type custom\n config ntpserver\n edit 1\n "
              "set server pool.ntp.org\n next\n edit 2\n set server 1.1.1.1\n end\nend"),
-        _present("FG-SYS-003", "Hostname is set", "2.1.5", SCOPE_GLOBAL, "Low",
-                 SG, r"set\s+hostname\s+\S+",
-                 "config system global\n set hostname <name>\nend"),
+        # Parsed from `get system global`: NON-COMPLIANT when hostname still
+        # matches the default FGT<model><serial> pattern (see service evidence).
+        _ctl("FG-SYS-003", "Hostname is set", "2.1.5", "Automated",
+             SCOPE_GLOBAL, "Low", "L1",
+             [FortiGateRule(type="get_field_not_match", cmd=GG, key="hostname",
+                            pattern=r"^FGT[A-Z0-9]+$")],
+             'config system global\n set hostname "NEW-HOSTNAME"\nend'),
         _manual("FG-SYS-004", "Latest firmware is installed", "2.1.6", SCOPE_GLOBAL, "Medium",
                 STATUS, r"Version:\s*.+",
                 "Review FortiGuard for the latest recommended release and upgrade."),

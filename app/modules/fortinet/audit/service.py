@@ -279,6 +279,14 @@ class FortinetAuditService:
                     return False
                 return _norm_field(actual) == _norm_field(str(rule.expected))
 
+            if rule.type == "get_field_not_match":
+                # Compliant (pass) only when the parsed `key : value` field does
+                # NOT match the pattern (e.g. a default FGT<serial> hostname).
+                actual = _get_field_value(output, rule.key)
+                if actual is None:
+                    return False
+                return not bool(re.search(rule.pattern, actual))
+
             if rule.type == "ntp_status_ok":
                 # Compliant only when synchronized + ntpsync + server-mode are
                 # all good and no forbidden (FortiGuard) NTP server is in use.
@@ -321,6 +329,15 @@ class FortinetAuditService:
                     lines.append(f"{rule.key}: {actual} (compliant)")
                 else:
                     lines.append(f"{rule.key}: {actual} (NON-COMPLIANT, expected {rule.expected})")
+                continue
+            if rule.type == "get_field_not_match":
+                actual = _get_field_value(out, rule.key)
+                if actual is None:
+                    lines.append(f"{rule.key}: <not found> (NON-COMPLIANT)")
+                elif re.search(rule.pattern, actual):
+                    lines.append(f"{rule.key}: {actual} (NON-COMPLIANT — hostname matches default FGT serial pattern)")
+                else:
+                    lines.append(f"{rule.key}: {actual} (compliant)")
                 continue
             if rule.type == "ntp_status_ok":
                 st = _parse_ntp_status(out)
