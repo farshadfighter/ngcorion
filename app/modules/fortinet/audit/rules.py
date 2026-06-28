@@ -116,6 +116,7 @@ SG = "show system global"
 GG = "get system global"   # human-readable field view (e.g. "timezone : (GMT+3:30) Tehran")
 DNS = "show system dns"
 NTP = "show system ntp"
+NTPSTAT = "diagnose sys ntp status"   # runtime sync state + active NTP servers
 AUTOINST = "show system auto-install"
 PWPOL = "show system password-policy"
 SNMPC = "show system snmp community"
@@ -174,10 +175,14 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              [FortiGateRule(type="get_field_eq", cmd=GG, key="timezone",
                             expected="(GMT+3:30) Tehran")],
              "config system global\n set timezone 41\nend"),
-        _absent("FG-BL-040", "System time configured through NTP", "2.1.4", SCOPE_GLOBAL, "Medium",
-                NTP, r"set\s+ntpsync\s+disable",
-                "config system ntp\n set ntpsync enable\n set type custom\n config ntpserver\n "
-                "edit 1\n set server <ntp-ip>\n next\n end\nend"),
+        # Parsed from `diagnose sys ntp status`: COMPLIANT only when synchronized,
+        # ntpsync + server-mode (custom) enabled, and no *.fortiguard.com server
+        # (see service._parse_ntp_status / _ntp_status_failures).
+        _ctl("FG-BL-040", "System time configured through NTP", "2.1.4", "Automated",
+             SCOPE_GLOBAL, "Medium", "L1",
+             [FortiGateRule(type="ntp_status_ok", cmd=NTPSTAT)],
+             "config system ntp\n set type custom\n config ntpserver\n edit 1\n "
+             "set server pool.ntp.org\n next\n edit 2\n set server 1.1.1.1\n end\nend"),
         _present("FG-SYS-003", "Hostname is set", "2.1.5", SCOPE_GLOBAL, "Low",
                  SG, r"set\s+hostname\s+\S+",
                  "config system global\n set hostname <name>\nend"),

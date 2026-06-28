@@ -115,6 +115,53 @@ def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
     return interfaces
 
 
+# Forbidden NTP server domain for CIS 2.1.4 / FG-BL-040 (default FortiGuard pool
+# must be replaced by a custom server).
+_NTP_FORBIDDEN_DOMAIN = "fortiguard.com"
+
+
+def _parse_ntp_status(output: str) -> Dict[str, Any]:
+    """
+    Parse ``diagnose sys ntp status`` into
+    ``{"synchronized", "ntpsync", "server_mode", "servers": [...]}``.
+
+    The header line looks like::
+
+        synchronized: yes, ntpsync: enabled, server-mode: enabled
+
+    and each NTP server appears as ``ipv4 server(<host-or-ip>) <ip> -- ...``.
+    Missing fields are ``None``; values are lowercased.
+    """
+    out = output or ""
+
+    def field(name: str) -> Optional[str]:
+        m = re.search(rf"{re.escape(name)}\s*:\s*(\w+)", out, re.IGNORECASE)
+        return m.group(1).lower() if m else None
+
+    servers = re.findall(r"server\(([^)]+)\)", out, re.IGNORECASE)
+    return {
+        "synchronized": field("synchronized"),
+        "ntpsync": field("ntpsync"),
+        "server_mode": field("server-mode"),
+        "servers": [s.strip() for s in servers],
+    }
+
+
+def _ntp_status_failures(status: Dict[str, Any]) -> List[str]:
+    """Return the list of failed NTP conditions (empty == compliant)."""
+    failures: List[str] = []
+    if status["synchronized"] != "yes":
+        failures.append(f"synchronized={status['synchronized'] or 'unknown'} (expected yes)")
+    if status["ntpsync"] != "enabled":
+        failures.append(f"ntpsync={status['ntpsync'] or 'unknown'} (expected enabled)")
+    if status["server_mode"] != "enabled":
+        failures.append(f"server-mode={status['server_mode'] or 'unknown'} (expected enabled/custom)")
+    fg = [s for s in status["servers"] if _NTP_FORBIDDEN_DOMAIN in s.lower()]
+    if fg:
+        failures.append(f"FortiGuard NTP server(s): {', '.join(fg)}")
+    return failures
+
+
 def _get_field_value(output: str, key: str) -> Optional[str]:
     """
     Return the value of a ``get``-style ``key : value`` field (e.g. from
@@ -232,6 +279,11 @@ class FortinetAuditService:
                     return False
                 return _norm_field(actual) == _norm_field(str(rule.expected))
 
+            if rule.type == "ntp_status_ok":
+                # Compliant only when synchronized + ntpsync + server-mode are
+                # all good and no forbidden (FortiGuard) NTP server is in use.
+                return not _ntp_status_failures(_parse_ntp_status(output))
+
             if rule.type == "regex_present":
                 return bool(re.search(rule.pattern, output, re.IGNORECASE | re.MULTILINE))
 
@@ -269,6 +321,19 @@ class FortinetAuditService:
                     lines.append(f"{rule.key}: {actual} (compliant)")
                 else:
                     lines.append(f"{rule.key}: {actual} (NON-COMPLIANT, expected {rule.expected})")
+                continue
+            if rule.type == "ntp_status_ok":
+                st = _parse_ntp_status(out)
+                servers = ", ".join(st["servers"]) if st["servers"] else "none"
+                report = (
+                    f"synchronized={st['synchronized'] or 'unknown'} | "
+                    f"ntpsync={st['ntpsync'] or 'unknown'} | "
+                    f"server-mode={st['server_mode'] or 'unknown'} | "
+                    f"servers=[{servers}]"
+                )
+                fails = _ntp_status_failures(st)
+                report += " | FAILED: " + "; ".join(fails) if fails else " | COMPLIANT"
+                lines.append(report)
                 continue
             if rule.key:
                 lines.extend(re.findall(rf".*{re.escape(rule.key)}.*", out, re.IGNORECASE | re.MULTILINE)[:3])
