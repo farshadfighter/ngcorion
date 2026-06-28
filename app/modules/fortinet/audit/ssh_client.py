@@ -1,16 +1,33 @@
 """
-FortiGate SSH Client
+FortiGate SSH client (scope-aware).
 
-Provides SSH connection management for FortiGate devices with:
-- VDOM context switching
-- Connection pooling for parallel operations
-- Command caching for performance
-- Automatic pagination handling (--More--)
+Owns all CLI context switching for FortiGate devices so callers (audit +
+hardening) never have to manage global vs per-VDOM scope by hand.
+
+Scope model (see rules.FortiGateControl.scope):
+  - "global"     -> read/written in ``config global`` on VDOM-enabled devices,
+                    or at the top-level CLI on single-VDOM (flat) devices.
+  - "vdom"       -> read/written inside ``config vdom`` / ``edit <name>``.
+  - "vdom_root"  -> like "vdom" but always the built-in management VDOM ("root")
+                    (for settings that live in a VDOM yet are device-wide, e.g.
+                    the admin password policy).
+
+On a device with VDOMs disabled there is only one flat context, so every scope
+collapses to running the command at the top-level prompt. Detection is automatic
+via ``get system status`` (``Virtual domain configuration:``).
+
+Features retained from the previous client:
+  - configurable SSH port,
+  - rich SSH exception mapping (``app.core.ssh_exceptions``),
+  - ``--More--`` pagination handling,
+  - per (scope, vdom, command) output caching.
 """
 
 import re
 import time
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
+
 from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 
 # Import paramiko exceptions for algorithm/key errors
@@ -18,11 +35,10 @@ try:
     from paramiko.ssh_exception import (
         SSHException,
         BadHostKeyException,
-        NoValidConnectionsError
+        NoValidConnectionsError,
     )
     from paramiko.transport import IncompatiblePeer
-except ImportError:
-    # Fallback if paramiko structure changes
+except ImportError:  # pragma: no cover - fallback if paramiko structure changes
     SSHException = Exception
     BadHostKeyException = Exception
     NoValidConnectionsError = Exception
@@ -35,76 +51,34 @@ from app.core.ssh_exceptions import (
     SSHNetworkError,
     SSHAlgorithmMismatchError,
     SSHHostKeyError,
-    map_ssh_exception
+    map_ssh_exception,
+)
+
+# Scope constants (kept in sync with rules.FortiGateControl.scope)
+SCOPE_GLOBAL = "global"
+SCOPE_VDOM = "vdom"
+SCOPE_VDOM_ROOT = "vdom_root"
+ROOT_VDOM = "root"
+
+# FortiGate substrings that indicate a command was rejected. Used to decide
+# whether a context switch / enumeration command actually worked.
+_BAD_OUTPUT_PATTERNS = (
+    "command fail",
+    "command parse error",
+    "parse error",
+    "unknown command",
+    "unknown action",
+    "permission denied",
+    "return code -",
 )
 
 
-class ConnectionPool:
-    """Thread-safe connection pool for parallel VDOM processing"""
-
-    def __init__(self, host: str, username: str, password: str, port: int = 22, max_connections: int = 4):
-        self.host = host
-        self.username = username
-        self.password = password
-        self.port = port
-        self.max_connections = max_connections
-        self._connections: List[ConnectHandler] = []
-
-    def get_connection(self) -> ConnectHandler:
-        """Get or create a connection"""
-        if self._connections:
-            return self._connections.pop()
-        return self._create_connection()
-
-    def return_connection(self, conn: ConnectHandler) -> None:
-        """Return connection to pool"""
-        if len(self._connections) < self.max_connections:
-            self._connections.append(conn)
-        else:
-            try:
-                conn.disconnect()
-            except Exception:
-                pass
-
-    def _create_connection(self) -> ConnectHandler:
-        """Create new connection"""
-        base = dict(
-            host=self.host,
-            username=self.username,
-            password=self.password,
-            port=self.port,
-            fast_cli=False,
-            global_delay_factor=1
-        )
-        for device_type in ("fortinet", "fortigate"):
-            try:
-                params = dict(base)
-                params["device_type"] = device_type
-                return ConnectHandler(**params)
-            except Exception as e:
-                last_error = e
-        raise last_error if 'last_error' in locals() else RuntimeError("Unable to connect to FortiGate")
-
-    def close_all(self) -> None:
-        """Close all pooled connections"""
-        for conn in self._connections:
-            try:
-                conn.disconnect()
-            except Exception:
-                pass
-        self._connections.clear()
+class FortiGateContextError(RuntimeError):
+    """Raised when entering a global/VDOM CLI context fails."""
 
 
 class FortiGateSSHClient:
-    """
-    SSH client for FortiGate devices with advanced features.
-
-    Features:
-    - VDOM context management
-    - Command output caching (5-minute TTL)
-    - Automatic --More-- pagination handling
-    - Batch command execution
-    """
+    """SSH client for FortiGate devices with automatic global/VDOM scoping."""
 
     def __init__(self, host: str, username: str, password: str, port: int = 22):
         self.host = host
@@ -114,19 +88,17 @@ class FortiGateSSHClient:
         self._connection: Optional[ConnectHandler] = None
         self._cmd_cache: Dict[str, Tuple[str, float]] = {}
         self._cache_ttl = 300  # 5 minutes
-        self._current_vdom: Optional[str] = None
+        self._vdom_enabled: Optional[bool] = None
 
+    # ------------------------------------------------------------------
+    # Connection lifecycle
+    # ------------------------------------------------------------------
     def connect(self) -> None:
         """
-        Establish SSH connection to FortiGate.
+        Establish the SSH connection to the FortiGate.
 
-        Raises:
-            SSHAuthenticationError: If authentication fails
-            SSHConnectionTimeoutError: If connection times out
-            SSHNetworkError: If device is unreachable
-            SSHAlgorithmMismatchError: If SSH algorithm negotiation fails
-            SSHHostKeyError: If host key verification fails
-            SSHConnectionError: For other SSH failures
+        Raises the appropriate ``app.core.ssh_exceptions`` subclass on failure
+        (auth, timeout, network, algorithm mismatch, host key, generic).
         """
         if self._connection:
             return
@@ -137,7 +109,7 @@ class FortiGateSSHClient:
             password=self.password,
             port=self.port,
             fast_cli=False,
-            global_delay_factor=1
+            global_delay_factor=1,
         )
 
         last_error = None
@@ -146,50 +118,52 @@ class FortiGateSSHClient:
                 params = dict(base)
                 params["device_type"] = device_type
                 self._connection = ConnectHandler(**params)
+                self._prime_session()
                 return
 
             except NetmikoAuthenticationException as e:
-                # Don't retry on auth failures
                 raise SSHAuthenticationError(self.host, original_error=e)
-
             except IncompatiblePeer as e:
-                # Don't retry on algorithm mismatch
                 raise SSHAlgorithmMismatchError(self.host, original_error=e)
-
             except BadHostKeyException as e:
-                # Don't retry on host key errors
                 raise SSHHostKeyError(self.host, original_error=e)
-
             except NoValidConnectionsError as e:
-                # Don't retry on connection refused
                 raise SSHNetworkError(self.host, original_error=e)
-
             except NetmikoTimeoutException as e:
-                last_error = e
-                # Try next device type
-
+                last_error = e  # try next device type
             except OSError as e:
-                # Socket-level errors - check if retryable
-                if hasattr(e, 'errno') and e.errno in (111, 113):
+                if hasattr(e, "errno") and e.errno in (111, 113):
                     raise SSHNetworkError(self.host, original_error=e)
                 last_error = e
-
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - mapped below
                 last_error = e
 
-        # All device types failed - map the last exception
         if last_error:
             raise map_ssh_exception(last_error, self.host)
-        else:
-            raise SSHConnectionError(
-                message=f"Unable to connect to FortiGate at {self.host}",
-                device_ip=self.host,
-                suggestions=["Check network connectivity to the device"],
-                original_error=None
+        raise SSHConnectionError(
+            message=f"Unable to connect to FortiGate at {self.host}",
+            device_ip=self.host,
+            suggestions=["Check network connectivity to the device"],
+            original_error=None,
+        )
+
+    def _prime_session(self) -> None:
+        """Disable the interactive pager so output is never paginated."""
+        try:
+            # Both forms exist across FortiOS versions; ignore failures.
+            self._connection.send_command_timing(
+                "config system console", strip_prompt=False, strip_command=False
             )
+            self._connection.send_command_timing(
+                "set output standard", strip_prompt=False, strip_command=False
+            )
+            self._connection.send_command_timing(
+                "end", strip_prompt=False, strip_command=False
+            )
+        except Exception:  # pragma: no cover - best effort
+            pass
 
     def disconnect(self) -> None:
-        """Close SSH connection"""
         if self._connection:
             try:
                 self._connection.disconnect()
@@ -197,254 +171,287 @@ class FortiGateSSHClient:
                 pass
             finally:
                 self._connection = None
-                self._current_vdom = None
-
-    def send_command(self, command: str, use_cache: bool = True) -> str:
-        """
-        Execute command and return output.
-
-        Args:
-            command: FortiGate CLI command
-            use_cache: Use cached result if available
-
-        Returns:
-            Command output as string
-        """
-        if not self._connection:
-            raise RuntimeError("Not connected. Call connect() first.")
-
-        # Check cache
-        cache_key = f"{self._current_vdom}:{command}" if self._current_vdom else command
-        if use_cache and cache_key in self._cmd_cache:
-            cached_out, timestamp = self._cmd_cache[cache_key]
-            if time.time() - timestamp < self._cache_ttl:
-                return cached_out
-
-        # Execute command
-        output = self._connection.send_command_timing(
-            command,
-            strip_prompt=False,
-            strip_command=False
-        )
-
-        # Handle pagination (--More--)
-        while re.search(r"--More--", output or "", flags=re.IGNORECASE):
-            output = re.sub(r"--More--", "", output, flags=re.IGNORECASE)
-            output += self._connection.send_command_timing(
-                " ",
-                strip_prompt=False,
-                strip_command=False
-            )
-
-        # Cache result
-        if use_cache:
-            self._cmd_cache[cache_key] = (output, time.time())
-
-        return output
-
-    def send_commands(self, commands: List[str]) -> Dict[str, str]:
-        """
-        Execute multiple commands in batch.
-
-        Args:
-            commands: List of FortiGate CLI commands
-
-        Returns:
-            Dictionary mapping command to output
-        """
-        results = {}
-        for cmd in commands:
-            try:
-                results[cmd] = self.send_command(cmd)
-            except Exception as e:
-                results[cmd] = f"__ERROR__: {e}"
-        return results
-
-    def enter_vdom(self, vdom: str) -> bool:
-        """
-        Enter VDOM context.
-
-        Args:
-            vdom: VDOM name
-
-        Returns:
-            True if successful, False otherwise
-        """
-        if not self._connection:
-            raise RuntimeError("Not connected. Call connect() first.")
-
-        try:
-            out1 = self._connection.send_command_timing(
-                "config vdom",
-                strip_prompt=False,
-                strip_command=False
-            )
-            out2 = self._connection.send_command_timing(
-                f"edit {vdom}",
-                strip_prompt=False,
-                strip_command=False
-            )
-
-            combined = (out1 or "") + "\n" + (out2 or "")
-            success = self._is_command_ok(combined)
-
-            if success:
-                self._current_vdom = vdom
-
-            return success
-
-        except Exception:
-            return False
-
-    def exit_vdom(self) -> None:
-        """Exit VDOM context"""
-        if not self._connection:
-            return
-
-        try:
-            self._connection.send_command_timing(
-                "end",
-                strip_prompt=False,
-                strip_command=False
-            )
-            self._current_vdom = None
-        except Exception:
-            pass
-
-    def discover_vdoms(self) -> List[str]:
-        """
-        Discover all VDOMs on the device.
-
-        Returns:
-            List of VDOM names
-        """
-        commands = [
-            "get system vdom-property",
-            "diagnose sys vdom list",
-            "show vdom"
-        ]
-
-        vdoms: List[str] = []
-
-        for cmd in commands:
-            output = self.send_command(cmd)
-            if not self._is_command_ok(output):
-                continue
-
-            # Try different parsing patterns
-            if "vdom-property" in cmd:
-                for m in re.finditer(
-                    r"^\s*(?:name|VDOM name)\s*:\s*([A-Za-z0-9._-]+)\s*$",
-                    output,
-                    flags=re.MULTILINE
-                ):
-                    vdoms.append(m.group(1))
-
-            elif "diagnose" in cmd:
-                for m in re.finditer(
-                    r"^\s*name\s*=\s*([A-Za-z0-9._-]+)\b",
-                    output,
-                    flags=re.MULTILINE | re.IGNORECASE
-                ):
-                    vdoms.append(m.group(1))
-
-            elif "show vdom" in cmd:
-                for m in re.finditer(
-                    r'^\s*edit\s+"?([A-Za-z0-9._-]+)"?\s*$',
-                    output,
-                    flags=re.MULTILINE | re.IGNORECASE
-                ):
-                    vdoms.append(m.group(1))
-
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_vdoms = []
-        for v in vdoms:
-            if v not in seen:
-                seen.add(v)
-                unique_vdoms.append(v)
-
-        return unique_vdoms
-
-    def get_system_status(self) -> Dict[str, str]:
-        """
-        Get system status information.
-
-        Returns:
-            Dictionary with version, hostname, serial, model, etc.
-        """
-        output = self.send_command("get system status")
-        meta = {"fortios_version": "0.0.0"}
-
-        # Parse version
-        m_ver = re.search(r"^\s*Version:\s*(.+)\s*$", output, flags=re.MULTILINE | re.IGNORECASE)
-        if m_ver:
-            meta["version_line"] = m_ver.group(1).strip()
-
-            # Extract FortiOS version
-            mv = re.search(r"\bv(\d+\.\d+(?:\.\d+)?)\b", meta["version_line"])
-            if mv:
-                meta["fortios_version"] = mv.group(1)
-
-            # Extract build number
-            mb = re.search(r"\bbuild(\d+)\b", meta["version_line"])
-            if mb:
-                meta["build"] = mb.group(1)
-
-            # Extract model
-            mm = re.search(r"^(.+?)\s+v\d+\.\d+", meta["version_line"])
-            if mm:
-                meta["model"] = mm.group(1).strip()
-
-        # Parse hostname
-        m_hn = re.search(r"^\s*Hostname:\s*(.+)\s*$", output, flags=re.MULTILINE | re.IGNORECASE)
-        if m_hn:
-            meta["hostname"] = m_hn.group(1).strip()
-
-        # Parse serial number
-        m_sn = re.search(r"^\s*Serial-Number:\s*(.+)\s*$", output, flags=re.MULTILINE | re.IGNORECASE)
-        if m_sn:
-            meta["serial"] = m_sn.group(1).strip()
-
-        # Check VDOM status
-        m_vdom = re.search(
-            r"Virtual\s+domain\s+configuration:\s*(enable|disable)",
-            output,
-            flags=re.IGNORECASE
-        )
-        if m_vdom:
-            meta["vdom_enabled"] = (m_vdom.group(1).lower() == "enable")
-
-        return meta
-
-    @staticmethod
-    def _is_command_ok(output: str) -> bool:
-        """Check if command executed successfully"""
-        if (output or "").startswith("__ERROR__"):
-            return False
-
-        low = (output or "").lower()
-        bad_patterns = [
-            "command fail",
-            "parse error",
-            "unknown command",
-            "unknown action",
-            "invalid",
-            "not found",
-            "permission denied",
-        ]
-
-        return not any(pattern in low for pattern in bad_patterns)
-
-    def clear_cache(self) -> None:
-        """Clear command output cache"""
-        self._cmd_cache.clear()
 
     def __enter__(self):
-        """Context manager entry"""
         self.connect()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
         self.disconnect()
+
+    # ------------------------------------------------------------------
+    # Low-level send
+    # ------------------------------------------------------------------
+    def _raw_send(self, command: str) -> str:
+        """Send a single command, handling ``--More--`` pagination."""
+        if not self._connection:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        output = self._connection.send_command_timing(
+            command, strip_prompt=False, strip_command=False
+        )
+        # Defensive: drain any pager prompt that slipped through.
+        guard = 0
+        while output and re.search(r"--More--", output, flags=re.IGNORECASE) and guard < 50:
+            output = re.sub(r"--More--", "", output, flags=re.IGNORECASE)
+            output += self._connection.send_command_timing(
+                " ", strip_prompt=False, strip_command=False
+            )
+            guard += 1
+        return output or ""
+
+    @staticmethod
+    def _is_command_ok(output: str) -> bool:
+        low = (output or "").lower()
+        if low.startswith("__error__"):
+            return False
+        return not any(p in low for p in _BAD_OUTPUT_PATTERNS)
+
+    # ------------------------------------------------------------------
+    # System status / VDOM detection
+    # ------------------------------------------------------------------
+    def get_system_status(self) -> Dict[str, object]:
+        """Parse ``get system status`` (version, hostname, serial, VDOM mode)."""
+        output = self._raw_send("get system status")
+        meta: Dict[str, object] = {"fortios_version": "0.0.0"}
+
+        m_ver = re.search(r"^\s*Version:\s*(.+)$", output, flags=re.MULTILINE | re.IGNORECASE)
+        if m_ver:
+            version_line = m_ver.group(1).strip()
+            meta["version_line"] = version_line
+            mv = re.search(r"\bv(\d+\.\d+(?:\.\d+)?)\b", version_line)
+            if mv:
+                meta["fortios_version"] = mv.group(1)
+            mb = re.search(r"\bbuild(\d+)\b", version_line)
+            if mb:
+                meta["build"] = mb.group(1)
+            mm = re.search(r"^(.+?)\s+v\d+\.\d+", version_line)
+            if mm:
+                meta["model"] = mm.group(1).strip()
+
+        m_hn = re.search(r"^\s*Hostname:\s*(.+)$", output, flags=re.MULTILINE | re.IGNORECASE)
+        if m_hn:
+            meta["hostname"] = m_hn.group(1).strip()
+
+        m_sn = re.search(r"^\s*Serial-Number:\s*(.+)$", output, flags=re.MULTILINE | re.IGNORECASE)
+        if m_sn:
+            meta["serial"] = m_sn.group(1).strip()
+
+        # Virtual domain configuration: disable | enable | multiple | split-task ...
+        vdom_enabled = False
+        m_vdom = re.search(
+            r"Virtual\s+domain\s+configuration:\s*(.+)", output, flags=re.IGNORECASE
+        )
+        if m_vdom:
+            val = m_vdom.group(1).strip().lower()
+            # Anything that is not "disable" and mentions a real mode means VDOMs are on.
+            vdom_enabled = bool(val) and ("disable" not in val)
+        meta["vdom_enabled"] = vdom_enabled
+        self._vdom_enabled = vdom_enabled
+        return meta
+
+    def is_vdom_enabled(self) -> bool:
+        """Return whether VDOM mode is enabled (cached after first detection)."""
+        if self._vdom_enabled is None:
+            try:
+                self.get_system_status()
+            except Exception:
+                self._vdom_enabled = False  # safest default: treat as flat device
+        return bool(self._vdom_enabled)
+
+    def enumerate_vdoms(self) -> List[str]:
+        """
+        Return every VDOM on the device (``root`` first). Empty list when VDOM
+        mode is disabled. Always returns at least ``["root"]`` when enabled.
+        """
+        if not self.is_vdom_enabled():
+            return []
+
+        vdoms: List[str] = []
+
+        # Primary: diagnose sys vdom list (works at the top level on most FortiOS).
+        out = self._raw_send("diagnose sys vdom list")
+        if self._is_command_ok(out):
+            for m in re.finditer(r"\bname=([A-Za-z0-9._\-]+)", out):
+                vdoms.append(m.group(1))
+            if not vdoms:
+                for m in re.finditer(r"^\s*vd\s+([A-Za-z0-9._\-]+)/", out, flags=re.MULTILINE):
+                    vdoms.append(m.group(1))
+
+        # Fallback: enumerate the config VDOM table from the global context.
+        if not vdoms:
+            try:
+                with self.scope(SCOPE_GLOBAL):
+                    cfg = self._raw_send("show system vdom-property")
+                for m in re.finditer(r'^\s*edit\s+"?([A-Za-z0-9._\-]+)"?\s*$', cfg, flags=re.MULTILINE):
+                    vdoms.append(m.group(1))
+            except Exception:
+                pass
+
+        # De-duplicate, keep order, force root to the front, default to root.
+        seen, unique = set(), []
+        for v in vdoms:
+            if v and v not in seen:
+                seen.add(v)
+                unique.append(v)
+        if not unique:
+            unique = [ROOT_VDOM]
+        unique.sort(key=lambda v: (v != ROOT_VDOM, v))
+        return unique
+
+    # Backwards-compatible alias used by a few callers/tests.
+    def discover_vdoms(self) -> List[str]:
+        return self.enumerate_vdoms()
+
+    # ------------------------------------------------------------------
+    # Scope handling
+    # ------------------------------------------------------------------
+    @staticmethod
+    def effective_vdom(scope: str, vdom: Optional[str]) -> Optional[str]:
+        """The VDOM a control will actually be evaluated in for a given scope."""
+        if scope == SCOPE_VDOM_ROOT:
+            return ROOT_VDOM
+        if scope == SCOPE_VDOM:
+            return vdom or ROOT_VDOM
+        return None  # global
+
+    @contextmanager
+    def scope(self, scope: str, vdom: Optional[str] = None):
+        """
+        Context manager that enters the correct CLI context for ``scope`` and
+        always returns to the top-level prompt on exit. No-op on flat devices.
+        """
+        opened = self._open_scope(scope, vdom)
+        try:
+            yield
+        finally:
+            if opened:
+                self._close_scope()
+
+    def _open_scope(self, scope: str, vdom: Optional[str]) -> bool:
+        if not self.is_vdom_enabled():
+            return False  # flat device: single top-level context
+
+        if scope == SCOPE_GLOBAL:
+            out = self._raw_send("config global")
+            if not self._is_command_ok(out):
+                raise FortiGateContextError(f"Failed to enter global context: {out.strip()[:160]}")
+            return True
+
+        target = self.effective_vdom(scope, vdom) or ROOT_VDOM
+        out1 = self._raw_send("config vdom")
+        out2 = self._raw_send(f"edit {target}")
+        if not (self._is_command_ok(out1) and self._is_command_ok(out2)):
+            # Best effort to back out before failing.
+            try:
+                self._raw_send("end")
+            except Exception:
+                pass
+            raise FortiGateContextError(
+                f"Failed to enter VDOM '{target}': {(out1 + out2).strip()[:160]}"
+            )
+        return True
+
+    def _close_scope(self) -> None:
+        try:
+            self._raw_send("end")
+        except Exception:  # pragma: no cover - best effort
+            pass
+
+    # ------------------------------------------------------------------
+    # Public read / collect (audit)
+    # ------------------------------------------------------------------
+    def _cache_key(self, scope: str, vdom: Optional[str], command: str) -> str:
+        return f"{scope}|{self.effective_vdom(scope, vdom)}|{command}"
+
+    def collect(
+        self,
+        commands: List[str],
+        scope: str = SCOPE_GLOBAL,
+        vdom: Optional[str] = None,
+        use_cache: bool = True,
+    ) -> Dict[str, str]:
+        """
+        Run several read commands inside one scope context and return
+        ``{command: output}``. Enters the context once for efficiency.
+        """
+        results: Dict[str, str] = {}
+        to_run: List[str] = []
+
+        for cmd in commands:
+            key = self._cache_key(scope, vdom, cmd)
+            if use_cache and key in self._cmd_cache:
+                out, ts = self._cmd_cache[key]
+                if time.time() - ts < self._cache_ttl:
+                    results[cmd] = out
+                    continue
+            to_run.append(cmd)
+
+        if to_run:
+            with self.scope(scope, vdom):
+                for cmd in to_run:
+                    out = self._raw_send(cmd)
+                    results[cmd] = out
+                    if use_cache:
+                        self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
+
+        return results
+
+    def run(
+        self,
+        command: str,
+        scope: str = SCOPE_GLOBAL,
+        vdom: Optional[str] = None,
+        use_cache: bool = True,
+    ) -> str:
+        """Run a single read command in the given scope and return its output."""
+        return self.collect([command], scope=scope, vdom=vdom, use_cache=use_cache)[command]
+
+    def send_raw(self, command: str) -> str:
+        """
+        Run a command at the top-level prompt with no scope wrapper. Use for
+        device-wide operations that are valid anywhere (``get system status``,
+        ``show full-configuration``, ``execute backup ...``).
+        """
+        return self._raw_send(command)
+
+    # ------------------------------------------------------------------
+    # Config execution (hardening)
+    # ------------------------------------------------------------------
+    def run_config(
+        self,
+        commands: List[str],
+        scope: str = SCOPE_GLOBAL,
+        vdom: Optional[str] = None,
+    ) -> Dict[str, object]:
+        """
+        Execute a block of config commands inside the correct scope context.
+
+        ``commands`` carry only the inner config (e.g. ``config system global`` /
+        ``set ... `` / ``end``); the scope wrapper (``config global`` or
+        ``config vdom`` / ``edit <name>``) is added automatically here.
+
+        Returns ``{"success": bool, "output": str, "errors": [str]}``.
+        """
+        outputs: List[str] = []
+        errors: List[str] = []
+
+        with self.scope(scope, vdom):
+            for cmd in commands:
+                if not cmd.strip():
+                    continue
+                try:
+                    out = self._raw_send(cmd)
+                    outputs.append(f"# {cmd}\n{out}")
+                    for line in out.splitlines():
+                        low = line.lower()
+                        if any(p in low for p in _BAD_OUTPUT_PATTERNS):
+                            errors.append(line.strip())
+                except Exception as e:  # noqa: BLE001
+                    errors.append(f"Command '{cmd}' failed: {e}")
+                    outputs.append(f"# {cmd}\nERROR: {e}")
+
+        return {"success": not errors, "output": "\n\n".join(outputs), "errors": errors}
+
+    def clear_cache(self) -> None:
+        self._cmd_cache.clear()

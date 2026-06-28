@@ -19,7 +19,7 @@ CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
     # 1 Network Settings
     {"section": "1.1", "recommendation": "Ensure DNS server is configured", "type": "Automated", "rule_id": "FG-BL-043"},
     {"section": "1.2", "recommendation": "Ensure intra-zone traffic is not always allowed", "type": "Manual", "rule_id": "FG-NET-001"},
-    {"section": "1.3", "recommendation": "Disable all management related services on WAN port", "type": "Manual", "rule_id": "FG-BL-WAN-HTTPS"},
+    {"section": "1.3", "recommendation": "Disable all management related services on WAN port", "type": "Manual", "rule_id": "FG-NET-002"},
 
     # 2.1 General Settings
     {"section": "2.1.1", "recommendation": "Ensure 'Pre-Login Banner' is set", "type": "Automated", "rule_id": "FG-BL-092"},

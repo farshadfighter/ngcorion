@@ -29,6 +29,7 @@ from app.models import (
 )
 from app.models.audit import CheckStatus
 from app.modules.fortinet.audit.rules import get_fortinet_controls, FortiGateControl
+from app.modules.fortinet.audit.ssh_client import SCOPE_VDOM
 from .command_parser import FortiGateRemediationParser, apply_fortigate_defaults
 from .ssh_executor import (
     FortiGateHardeningExecutor,
@@ -260,7 +261,7 @@ class FortiGateHardeningService:
             "check_number": result.check_number,
             "check_title": result.check_title,
             "commands": test_commands,
-            "vdom_context": parsed.vdom_context,
+            "vdom_context": control.scope,
             "required_parameters": parsed.required_parameters,
             "optional_parameters": parsed.optional_parameters,
             "parameter_defaults": parsed.defaults,
@@ -366,6 +367,12 @@ class FortiGateHardeningService:
         except ValueError as e:
             raise FortiGateMissingParametersError(str(e))
 
+        # Resolve the control and the VDOM this fix must target. Per-VDOM controls
+        # are applied in the VDOM the finding came from (audit_result.vdom);
+        # global/root controls ignore the VDOM (the SSH engine routes by scope).
+        control = FortiGateHardeningService._get_control_by_id(action.check_number)
+        target_vdom = audit_result.vdom if control.scope == SCOPE_VDOM else None
+
         # Update action to executing status
         action.action_type = "execute"
         action.status = "executing"
@@ -395,8 +402,8 @@ class FortiGateHardeningService:
                 # Execute commands
                 exec_result = executor.execute_commands(
                     final_commands,
-                    vdom=vdom,
-                    vdom_context=parsed.vdom_context
+                    scope=control.scope,
+                    vdom=target_vdom,
                 )
 
                 # Store output regardless of execution errors
@@ -411,10 +418,7 @@ class FortiGateHardeningService:
                 # Always verify: FortiGate sometimes returns "Command fail. Return code -7"
                 # when a setting is already at the requested value (idempotent no-op).
                 # Verification is the authoritative check of whether the fix succeeded.
-                control = FortiGateHardeningService._get_control_by_id(action.check_number)
-                passed, evidence = executor.verify_check(
-                    control, vdom=vdom, vdom_context=parsed.vdom_context
-                )
+                passed, evidence = executor.verify_check(control, vdom=target_vdom)
 
                 action.verification_passed = passed
                 action.verification_evidence = evidence
@@ -736,6 +740,7 @@ class FortiGateHardeningService:
 
                     # Get control and parse
                     control = FortiGateHardeningService._get_control_by_id(check_id)
+                    target_vdom = result.vdom if control.scope == SCOPE_VDOM else None
                     parsed = FortiGateRemediationParser.parse_remediation(
                         remediation=control.remediation,
                         check_id=check_id
@@ -772,8 +777,8 @@ class FortiGateHardeningService:
                     # Execute commands
                     exec_result = executor.execute_commands(
                         final_commands,
-                        vdom=vdom,
-                        vdom_context=parsed.vdom_context
+                        scope=control.scope,
+                        vdom=target_vdom,
                     )
 
                     # Store output regardless of execution errors
@@ -787,9 +792,7 @@ class FortiGateHardeningService:
 
                     # Always verify — FortiGate may return non-fatal errors (e.g.
                     # "Command fail. Return code -7") when a value is already set.
-                    passed, evidence = executor.verify_check(
-                        control, vdom=vdom, vdom_context=parsed.vdom_context
-                    )
+                    passed, evidence = executor.verify_check(control, vdom=target_vdom)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
 
@@ -941,6 +944,7 @@ class FortiGateHardeningService:
 
                     # Get control and parse
                     control = FortiGateHardeningService._get_control_by_id(check_id)
+                    target_vdom = result.vdom if control.scope == SCOPE_VDOM else None
                     parsed = FortiGateRemediationParser.parse_remediation(
                         remediation=control.remediation,
                         check_id=check_id
@@ -990,8 +994,8 @@ class FortiGateHardeningService:
                     # Execute
                     exec_result = executor.execute_commands(
                         final_commands,
-                        vdom=vdom,
-                        vdom_context=parsed.vdom_context
+                        scope=control.scope,
+                        vdom=target_vdom,
                     )
 
                     # Store output regardless of execution errors
@@ -1005,9 +1009,7 @@ class FortiGateHardeningService:
 
                     # Always verify — FortiGate may return non-fatal errors (e.g.
                     # "Command fail. Return code -7") when a value is already set.
-                    passed, evidence = executor.verify_check(
-                        control, vdom=vdom, vdom_context=parsed.vdom_context
-                    )
+                    passed, evidence = executor.verify_check(control, vdom=target_vdom)
                     action.verification_passed = passed
                     action.verification_evidence = evidence
 

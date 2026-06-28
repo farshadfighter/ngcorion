@@ -129,6 +129,11 @@ class AuditResult(Base):
     severity = Column(String(20), nullable=True)
     level = Column(String(10), nullable=True)
 
+    # VDOM context this result was evaluated in (FortiGate multi-VDOM audits).
+    # "global"/"root" for global/root-scoped controls, the VDOM name for per-VDOM
+    # controls, and NULL for non-VDOM devices and non-FortiGate device types.
+    vdom = Column(String(80), nullable=True)
+
     status = Column(SQLEnum(CheckStatus), nullable=False)
     evidence_snippet = Column(Text, nullable=True)  # NEW: Redacted evidence excerpt
     checked_at = Column(DateTime, default=datetime.utcnow)

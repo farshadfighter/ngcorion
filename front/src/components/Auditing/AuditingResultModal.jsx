@@ -56,6 +56,11 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     const nonConformityPercent = totalChecks > 0 ? Math.round((failedChecks / totalChecks) * 100) : 0;
     const otherChecks = Math.max(totalChecks - passedChecks - failedChecks, 0);
 
+    // FortiGate multi-VDOM audits tag each result with its VDOM ("global"/"root"/<name>).
+    // Only show the VDOM column when at least one result carries it.
+    const hasVdom = Array.isArray(results) && results.some((r) => r.vdom);
+    const resultColSpan = hasVdom ? 4 : 3;
+
     const getResultBadge = (status) => {
         const normalizedStatus = status?.toString().toUpperCase();
 
@@ -176,6 +181,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                             <thead>
                             <tr>
                                 <th>Section</th>
+                                {hasVdom && <th>VDOM</th>}
                                 <th>Recommendation</th>
                                 <th>Result</th>
                             </tr>
@@ -185,6 +191,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                 results.map((result) => (
                                     <tr key={result.id}>
                                         <td>{result.check_number}</td>
+                                        {hasVdom && <td>{result.vdom || "—"}</td>}
                                         <td>
                                             <div className="recommendation-text">
                                                 {result.check_title}
@@ -195,7 +202,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="3" style={{ textAlign: "center", padding: "40px" }}>
+                                    <td colSpan={resultColSpan} style={{ textAlign: "center", padding: "40px" }}>
                                         {totalChecks > 0
                                             ? `Total: ${totalChecks} checks (${passedChecks} passed, ${failedChecks} failed)`
                                             : "No results available"}

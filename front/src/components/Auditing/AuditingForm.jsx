@@ -311,9 +311,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         name="vdom"
                                         value={formData.vdom}
                                         onChange={handleChange}
-                                        placeholder="VDOM name (optional)"
+                                        placeholder="Leave blank to audit all VDOMs"
                                         autoComplete="off"
                                     />
+                                    <small className="form-hint">
+                                        On a VDOM-enabled device, leave blank to audit every VDOM.
+                                        Enter a name to audit just that VDOM.
+                                    </small>
                                 </div>
                             )}
 

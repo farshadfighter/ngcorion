@@ -9,7 +9,6 @@ from .ssh_client import FortiGateSSHClient
 from .rules import (
     get_fortinet_controls,
     get_controls_by_level,
-    get_controls_by_pack,
     get_unique_commands,
     FortiGateControl,
     FortiGateRule
@@ -22,7 +21,6 @@ __all__ = [
     "FortiGateSSHClient",
     "get_fortinet_controls",
     "get_controls_by_level",
-    "get_controls_by_pack",
     "get_unique_commands",
     "FortiGateControl",
     "FortiGateRule",

@@ -30,7 +30,7 @@ class FortinetAuditRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
-    vdom: Optional[str] = Field(None, description="Optional VDOM name (root if omitted)")
+    vdom: Optional[str] = Field(None, description="Optional VDOM name. If omitted on a VDOM-enabled device, every VDOM is audited.")
     profile: str = Field("L1", pattern="^(L1|L2|FULL)$", description="Audit profile")
     job_name: Optional[str] = Field(None, max_length=200, description="User-friendly job name")
 
@@ -94,6 +94,7 @@ class FortinetAuditResultResponse(BaseModel):
     check_title: str
     severity: str
     level: str
+    vdom: Optional[str] = None
     status: str
     evidence_snippet: Optional[str]
     checked_at: str
@@ -358,6 +359,7 @@ def get_audit_results(
             "check_title": r.check_title,
             "severity": r.severity,
             "level": r.level or "L1",
+            "vdom": r.vdom,
             "status": r.status.value,
             "evidence_snippet": r.evidence_snippet,
             "checked_at": r.checked_at.isoformat() if r.checked_at else None
