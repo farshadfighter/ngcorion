@@ -283,23 +283,170 @@ def _field_forbidden_tokens(output: str, key: str, forbidden) -> tuple:
     return value, active
 
 
-def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
+def _iface_allowaccess_violations(output: str, forbidden, role: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    Return WAN-role interfaces that expose management services.
-
-    An interface is a violation when ``role == wan`` AND its ``allowaccess`` set
-    contains at least one forbidden service. Each entry:
-    ``{"name", "role", "exposed": [services...]}``.
+    Return interfaces whose ``allowaccess`` exposes a forbidden service. When
+    ``role`` is given, only interfaces with that role are considered; otherwise
+    every interface is checked. Each entry: ``{"name", "role", "exposed": [...]}``.
     """
-    forbidden_set = {s.lower() for s in (forbidden or _WAN_FORBIDDEN_SERVICES)}
+    forbidden_set = {s.lower() for s in (forbidden or [])}
     violations: List[Dict[str, Any]] = []
     for itf in _parse_interfaces(output):
-        if itf["role"] != "wan":
+        if role and itf["role"] != role:
             continue
         exposed = [s for s in itf["allowaccess"] if s.lower() in forbidden_set]
         if exposed:
-            violations.append({"name": itf["name"], "role": itf["role"], "exposed": exposed})
+            violations.append({"name": itf["name"], "role": itf["role"] or "-", "exposed": exposed})
     return violations
+
+
+def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
+    """WAN-role interfaces that expose a management service (CIS 1.3 / FG-NET-002)."""
+    return _iface_allowaccess_violations(output, forbidden or _WAN_FORBIDDEN_SERVICES, role="wan")
+
+
+# ---------------------------------------------------------------------------
+# Generic `get`-style field rules (parse the live value of `key : value`)
+# ---------------------------------------------------------------------------
+_GET_FIELD_TYPES = frozenset({
+    "get_field_eq", "get_field_ne", "get_field_in", "get_field_matches",
+    "get_field_not_match", "get_field_int_le", "get_field_int_ge",
+})
+
+
+def _eval_get_field(rule, output: str) -> bool:
+    """Evaluate any generic `get`-style field rule. Absent field == non-compliant
+    (a `get` command always prints the resolved value, so absence means error)."""
+    t = rule.type
+    val = _get_field_value(output, rule.key)
+
+    if t in ("get_field_int_le", "get_field_int_ge"):
+        m = re.search(r"-?\d+", val) if val else None
+        actual = int(m.group()) if m else rule.default
+        if actual is None:
+            return False
+        return actual <= rule.expected if t.endswith("le") else actual >= rule.expected
+
+    if val is None:
+        return False
+    if t == "get_field_eq":
+        return _norm_field(val) == _norm_field(str(rule.expected))
+    if t == "get_field_ne":
+        return _norm_field(val) != _norm_field(str(rule.expected))
+    if t == "get_field_in":
+        return _norm_field(val) in {_norm_field(str(x)) for x in (rule.expected or [])}
+    if t == "get_field_matches":
+        return bool(re.search(rule.pattern, val, re.IGNORECASE))
+    if t == "get_field_not_match":
+        return not re.search(rule.pattern, val, re.IGNORECASE)
+    return False
+
+
+def _field_evidence_line(rule, output: str) -> str:
+    """One-line report for a generic field rule: current value + verdict + expectation."""
+    val = _get_field_value(output, rule.key)
+    ok = _eval_get_field(rule, output)
+    shown = val if val is not None else "<not found>"
+    if ok:
+        return f"{rule.key}: {shown} (compliant)"
+    exp = {
+        "get_field_eq": f"expected {rule.expected}",
+        "get_field_ne": f"must not be {rule.expected}",
+        "get_field_in": f"allowed: {', '.join(map(str, rule.expected or []))}",
+        "get_field_matches": f"must match /{rule.pattern}/",
+        "get_field_not_match": f"must not match /{rule.pattern}/",
+        "get_field_int_le": f"must be <= {rule.expected}",
+        "get_field_int_ge": f"must be >= {rule.expected}",
+    }.get(rule.type, "")
+    return f"{rule.key}: {shown} (NON-COMPLIANT, {exp})"
+
+
+# ---------------------------------------------------------------------------
+# Generic config-table rules (parse `edit ... next` entries, evaluate each)
+# ---------------------------------------------------------------------------
+def _parse_table_entries(output: str) -> List[Dict[str, str]]:
+    """
+    Parse a `show`/`get` table into top-level entries: ``[{"name", "body"}]`` where
+    ``body`` is the raw text of that entry (nested config blocks included). Used to
+    evaluate a per-entry condition across ALL entries instead of mere presence.
+    """
+    entries: List[Dict[str, str]] = []
+    name: Optional[str] = None
+    body: List[str] = []
+    cfg = 0   # open `config` blocks
+    ed = 0    # open `edit` blocks
+    for raw in (output or "").splitlines():
+        s = raw.strip()
+        if s.startswith("config "):
+            if name is not None:
+                body.append(raw)
+            cfg += 1
+            continue
+        m = re.match(r'edit\s+"?([^"]*?)"?\s*$', s)
+        if m:
+            if ed == 0:
+                name, body = m.group(1), []
+            elif name is not None:
+                body.append(raw)
+            ed += 1
+            continue
+        if s == "next":
+            ed = max(0, ed - 1)
+            if ed == 0 and name is not None:
+                entries.append({"name": name, "body": "\n".join(body)})
+                name, body = None, []
+            elif name is not None:
+                body.append(raw)
+            continue
+        if s == "end":
+            cfg = max(0, cfg - 1)
+            if name is not None:
+                body.append(raw)
+            continue
+        if name is not None:
+            body.append(raw)
+    if name is not None:
+        entries.append({"name": name, "body": "\n".join(body)})
+    return entries
+
+
+def _eval_table(rule, output: str) -> bool:
+    entries = _parse_table_entries(output)
+    pat = rule.pattern
+
+    def hit(e):
+        return bool(re.search(pat, e["body"], re.IGNORECASE | re.MULTILINE))
+
+    if rule.type == "table_none_match":
+        return not any(hit(e) for e in entries)
+    if rule.type == "table_all_match":
+        return all(hit(e) for e in entries)            # vacuously True when empty
+    if rule.type == "table_any_match":
+        return any(hit(e) for e in entries)            # best-effort: needs >=1
+    return False
+
+
+def _table_evidence_line(rule, output: str) -> str:
+    entries = _parse_table_entries(output)
+    n = len(entries)
+    label = rule.key or "condition"
+
+    def hit(e):
+        return bool(re.search(rule.pattern, e["body"], re.IGNORECASE | re.MULTILINE))
+
+    if rule.type == "table_none_match":
+        off = [e["name"] for e in entries if hit(e)]
+        return (f"{n} entries; '{label}' violated by: {', '.join(off)} (NON-COMPLIANT)"
+                if off else f"{n} entries; none violate '{label}' (compliant)")
+    if rule.type == "table_all_match":
+        off = [e["name"] for e in entries if not hit(e)]
+        return (f"{n} entries; missing '{label}': {', '.join(off)} (NON-COMPLIANT)"
+                if off else f"{n} entries; all satisfy '{label}' (compliant)")
+    if rule.type == "table_any_match":
+        hits = [e["name"] for e in entries if hit(e)]
+        return (f"{n} entries; '{label}' present in: {', '.join(hits)} (best-effort PASS)"
+                if hits else f"{n} entries; '{label}' found in none (best-effort FAIL)")
+    return f"{n} entries"
 
 
 # Prepended to the evidence of ambiguous (heuristic) checks so the report itself
@@ -383,21 +530,20 @@ class FortinetAuditService:
                 # management service in its allowaccess.
                 return not _wan_mgmt_violations(output, rule.expected)
 
-            if rule.type == "get_field_eq":
-                # Compliant (pass) only when the parsed `key : value` field
-                # equals the expected value (whitespace-insensitive).
-                actual = _get_field_value(output, rule.key)
-                if actual is None:
-                    return False
-                return _norm_field(actual) == _norm_field(str(rule.expected))
+            if rule.type == "iface_allowaccess_excludes":
+                # No interface (optionally filtered to rule.key role) exposes a
+                # forbidden service (rule.expected) in its allowaccess.
+                return not _iface_allowaccess_violations(output, rule.expected, role=(rule.key or None))
 
-            if rule.type == "get_field_not_match":
-                # Compliant (pass) only when the parsed `key : value` field does
-                # NOT match the pattern (e.g. a default FGT<serial> hostname).
-                actual = _get_field_value(output, rule.key)
-                if actual is None:
-                    return False
-                return not bool(re.search(rule.pattern, actual))
+            if rule.type in _GET_FIELD_TYPES:
+                # Parse the live value of a `get`-style `key : value` field and
+                # compare it (eq/ne/in/matches/not_match/int_le/int_ge).
+                return _eval_get_field(rule, output)
+
+            if rule.type in ("table_none_match", "table_all_match", "table_any_match"):
+                # Parse every `edit ... next` entry and evaluate the per-entry
+                # condition across all of them (not mere presence).
+                return _eval_table(rule, output)
 
             if rule.type == "get_field_excludes":
                 # Compliant only when the field is present AND contains none of
@@ -444,33 +590,26 @@ class FortinetAuditService:
             out = outputs.get(rule.cmd, "")
             if not out:
                 continue
-            if rule.type == "wan_mgmt_exposed":
-                viols = _wan_mgmt_violations(out, rule.expected)
+            if rule.type in ("wan_mgmt_exposed", "iface_allowaccess_excludes"):
+                if rule.type == "wan_mgmt_exposed":
+                    viols = _wan_mgmt_violations(out, rule.expected)
+                    none_msg = "No WAN-role interface exposes management services"
+                else:
+                    viols = _iface_allowaccess_violations(out, rule.expected, role=(rule.key or None))
+                    none_msg = "No interface exposes the forbidden services"
                 if viols:
                     lines.extend(
                         f"{v['name']} (role={v['role']}) exposes: {', '.join(v['exposed'])}"
                         for v in viols
                     )
                 else:
-                    lines.append("No WAN-role interface exposes management services")
+                    lines.append(none_msg)
                 continue
-            if rule.type == "get_field_eq":
-                actual = _get_field_value(out, rule.key)
-                if actual is None:
-                    lines.append(f"{rule.key}: <not found> (NON-COMPLIANT, expected {rule.expected})")
-                elif _norm_field(actual) == _norm_field(str(rule.expected)):
-                    lines.append(f"{rule.key}: {actual} (compliant)")
-                else:
-                    lines.append(f"{rule.key}: {actual} (NON-COMPLIANT, expected {rule.expected})")
+            if rule.type in _GET_FIELD_TYPES:
+                lines.append(_field_evidence_line(rule, out))
                 continue
-            if rule.type == "get_field_not_match":
-                actual = _get_field_value(out, rule.key)
-                if actual is None:
-                    lines.append(f"{rule.key}: <not found> (NON-COMPLIANT)")
-                elif re.search(rule.pattern, actual):
-                    lines.append(f"{rule.key}: {actual} (NON-COMPLIANT — hostname matches default FGT serial pattern)")
-                else:
-                    lines.append(f"{rule.key}: {actual} (compliant)")
+            if rule.type in ("table_none_match", "table_all_match", "table_any_match"):
+                lines.append(_table_evidence_line(rule, out))
                 continue
             if rule.type == "get_field_excludes":
                 value, active = _field_forbidden_tokens(out, rule.key, rule.expected)
