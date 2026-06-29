@@ -24,6 +24,12 @@ from typing import Any, Dict, List, Optional
 from .ssh_client import SCOPE_GLOBAL, SCOPE_VDOM, SCOPE_VDOM_ROOT
 
 
+# Rule types that only test for the presence/absence of a config line — a coarse
+# heuristic, not a definitive parse of the actual setting. Used to decide which
+# verdicts are ambiguous (see FortiGateControl.needs_review).
+_HEURISTIC_RULE_TYPES = frozenset({"regex_present", "regex_absent"})
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -55,8 +61,19 @@ class FortiGateControl:
 
     @property
     def is_manual(self) -> bool:
-        """Manual controls are evidence-only and excluded from the compliance score."""
+        """Whether this is a CIS 'Manual' recommendation — one the benchmark says
+        cannot be fully verified from configuration alone. (All controls are still
+        scored; this only classifies the recommendation.)"""
         return self.cis_type == "Manual"
+
+    @property
+    def needs_review(self) -> bool:
+        """True when the automated verdict is *ambiguous*: a Manual recommendation
+        evaluated only by presence/absence heuristics, so its PASS/FAIL is merely
+        indicative and must be confirmed by a human. Controls backed by a dedicated
+        parser (e.g. FG-NET-002, FG-SYS-002, FG-BL-005) are definitive and are
+        therefore NOT flagged, even though CIS still labels them Manual."""
+        return self.is_manual and all(r.type in _HEURISTIC_RULE_TYPES for r in self.rules)
 
 
 # Benchmark area names keyed by top-level section number.

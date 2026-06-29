@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission, assert_session_access
 from app.models import User, Asset, log_action
-from app.models.audit import AuditSession, AuditResult, CheckStatus
+from app.models.audit import AuditSession, AuditResult, CheckStatus, DeviceType
 
 
 router = APIRouter(prefix="/api/audit", tags=["Audit - Shared"])
@@ -51,6 +51,7 @@ class SharedAuditResultResponse(BaseModel):
     level: str
     status: str
     vdom: Optional[str] = None
+    needs_review: bool = False
     evidence_snippet: Optional[str] = None
     checked_at: str
 
@@ -125,6 +126,14 @@ def get_audit_results(
     assert_session_access(session, current_user)
 
     results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+
+    # FortiGate: some checks are heuristic (Manual + presence/absence rules); flag
+    # those so the UI can mark their PASS/FAIL as "needs manual review".
+    review_ids: set = set()
+    if session and session.device_type == DeviceType.FORTINET:
+        from app.modules.fortinet.audit.rules import get_fortinet_controls
+        review_ids = {c.id for c in get_fortinet_controls() if c.needs_review}
+
     return [
         {
             "id": r.id,
@@ -134,6 +143,7 @@ def get_audit_results(
             "level": r.level or "L1",
             "status": r.status.value,
             "vdom": getattr(r, "vdom", None),
+            "needs_review": (r.check_number in review_ids),
             "evidence_snippet": r.evidence_snippet,
             "checked_at": r.checked_at.isoformat() if r.checked_at else "",
         }

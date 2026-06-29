@@ -211,7 +211,28 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                         {result.check_title}
                                                     </div>
                                                 </td>
-                                                <td>{getResultBadge(result.status)}</td>
+                                                <td>
+                                                    {getResultBadge(result.status)}
+                                                    {result.needs_review && (
+                                                        <span
+                                                            title="Heuristic check — this PASS/FAIL is indicative only and must be verified manually."
+                                                            style={{
+                                                                display: "inline-block",
+                                                                marginTop: "4px",
+                                                                padding: "2px 8px",
+                                                                borderRadius: "10px",
+                                                                fontSize: "11px",
+                                                                fontWeight: 600,
+                                                                background: "#fef3c7",
+                                                                color: "#92400e",
+                                                                border: "1px solid #fcd34d",
+                                                                whiteSpace: "nowrap",
+                                                            }}
+                                                        >
+                                                            ⚠ Manual review
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td>
                                                     {hasEvidence ? (
                                                         <button

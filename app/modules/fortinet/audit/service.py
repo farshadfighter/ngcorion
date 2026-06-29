@@ -302,6 +302,14 @@ def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
     return violations
 
 
+# Prepended to the evidence of ambiguous (heuristic) checks so the report itself
+# documents that the PASS/FAIL is indicative only. Kept ASCII for clean exports;
+# the UI also renders a "Manual review" badge from the API's needs_review flag.
+_REVIEW_NOTICE = ("[MANUAL REVIEW REQUIRED] Heuristic check: the PASS/FAIL below is "
+                  "indicative only (based on presence/absence of config) and must be "
+                  "verified manually.")
+
+
 # Secrets to redact from captured command output before persisting.
 _REDACTION_PATTERNS = [
     (re.compile(r"(set\s+(?:password|passwd|key|community|secret|auth-pwd|auth-password|"
@@ -501,12 +509,18 @@ class FortinetAuditService:
     @classmethod
     def _evaluate_control(cls, control: FortiGateControl, outputs: Dict[str, str], vdom_label: Optional[str]) -> Dict[str, Any]:
         passed = all(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
+        evidence = cls._extract_evidence(control, outputs)
+        # Ambiguous (heuristic) checks: document the uncertainty in the report itself
+        # so a PASS/FAIL is never mistaken for a definitive result.
+        if control.needs_review:
+            evidence = f"{_REVIEW_NOTICE}\n{evidence}"
         return {
             "control_id": control.id,
             "title": control.title,
             "passed": passed,
             "manual": control.is_manual,
-            "evidence": cls._extract_evidence(control, outputs),
+            "needs_review": control.needs_review,
+            "evidence": evidence,
             "severity": control.severity,
             "level": control.level,
             "vdom": vdom_label,
