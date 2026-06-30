@@ -112,31 +112,105 @@ def test_template_placeholders_resolve_and_are_registered():
 # --------------------------------------------------------------------------
 # Evaluation idioms (show omits defaults)
 # --------------------------------------------------------------------------
-def test_default_on_setting_passes_when_omitted_fails_when_disabled():
-    # FG-BL-002: pass unless admin-telnet/admin-http are explicitly enabled.
+def test_iface_allowaccess_excludes_cleartext():
+    # FG-BL-002: parse `show system interface`; NON-COMPLIANT if any interface
+    # exposes telnet/http in allowaccess.
     ctl = BY_ID["FG-BL-002"]
-    empty = {r.cmd: "" for r in ctl.rules}
-    assert Svc._evaluate_control(ctl, empty, "global")["passed"] is True
-    bad = {r.cmd: "set admin-telnet enable\n" for r in ctl.rules}
-    assert Svc._evaluate_control(ctl, bad, "global")["passed"] is False
+    clean = {r.cmd: 'config system interface\n edit "a"\n set allowaccess ping https ssh\n next\nend'
+             for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, clean, None)["passed"] is True
+    bad = {r.cmd: 'config system interface\n edit "a"\n set allowaccess https telnet\n next\nend'
+           for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, bad, None)["passed"] is False
 
 
 def test_numeric_default_admintimeout():
-    # FG-BL-004: admintimeout default 5 <= 10 -> pass when omitted; 30 -> fail.
+    # FG-BL-004: `get system global` admintimeout <= 10 (default 5 when absent).
     rule = BY_ID["FG-BL-004"].rules[0]
-    assert Svc._evaluate_rule(rule, "") is True             # default 5
-    assert Svc._evaluate_rule(rule, "set admintimeout 30") is False
-    assert Svc._evaluate_rule(rule, "set admintimeout 10") is True
+    assert Svc._evaluate_rule(rule, "") is True                  # default 5
+    assert Svc._evaluate_rule(rule, "admintimeout : 30") is False
+    assert Svc._evaluate_rule(rule, "admintimeout : 10") is True
 
 
-def test_present_setting_requires_explicit_enable():
-    # FG-BL-090: strong-crypto must be explicitly enabled.
+def test_get_field_requires_explicit_enable():
+    # FG-BL-090: `get system global` strong-crypto field must read enable.
     rule = BY_ID["FG-BL-090"].rules[0]
     assert Svc._evaluate_rule(rule, "") is False
-    assert Svc._evaluate_rule(rule, "set strong-crypto enable") is True
+    assert Svc._evaluate_rule(rule, "strong-crypto : disable") is False
+    assert Svc._evaluate_rule(rule, "strong-crypto : enable") is True
 
 
 def test_manual_control_excluded_from_score():
     manual = next(c for c in CONTROLS if c.is_manual)
     finding = Svc._evaluate_control(manual, {r.cmd: "" for r in manual.rules}, "root")
     assert finding["manual"] is True
+
+
+# --------------------------------------------------------------------------
+# Detection flow: SSH command output -> parsed value -> verdict (no presence/
+# absence heuristics for definitive checks). Added with the get/diagnose rebuild.
+# --------------------------------------------------------------------------
+def test_no_definitive_check_uses_presence_heuristics():
+    # Every non-review (definitive) control must parse a value, never just test
+    # for the presence/absence of a config line.
+    for c in CONTROLS:
+        if c.needs_review:
+            continue
+        for r in c.rules:
+            assert r.type not in ("regex_present", "regex_absent"), \
+                f"{c.id} still uses {r.type}"
+
+
+def test_all_controls_evaluate_without_crash():
+    # All 53 evaluate on a bare device (empty outputs) with no exception.
+    outs = {}
+    for c in CONTROLS:
+        for r in c.rules:
+            outs.setdefault(r.cmd, "")
+    for c in CONTROLS:
+        finding = Svc._evaluate_control(c, outs, None)
+        assert set(finding) >= {"control_id", "passed", "needs_review", "evidence"}
+
+
+def test_get_field_rule_types():
+    eq = FortiGateRule(type="get_field_eq", cmd="x", key="strong-crypto", expected="enable")
+    assert Svc._evaluate_rule(eq, "strong-crypto : enable") is True
+    assert Svc._evaluate_rule(eq, "strong-crypto : disable") is False
+
+    ne = FortiGateRule(type="get_field_ne", cmd="x", key="admin-sport", expected="443")
+    assert Svc._evaluate_rule(ne, "admin-sport : 10443") is True
+    assert Svc._evaluate_rule(ne, "admin-sport : 443") is False
+
+    inn = FortiGateRule(type="get_field_in", cmd="x", key="ssl-min-proto-version",
+                        expected=["tlsv1-2", "tlsv1-3"])
+    assert Svc._evaluate_rule(inn, "ssl-min-proto-version : tlsv1-2") is True
+    assert Svc._evaluate_rule(inn, "ssl-min-proto-version : tlsv1-0") is False
+
+    ge = FortiGateRule(type="get_field_int_ge", cmd="x", key="auth-lockout-threshold",
+                       expected=1, default=3)
+    assert Svc._evaluate_rule(ge, "") is True                       # default 3
+    assert Svc._evaluate_rule(ge, "auth-lockout-threshold : 0") is False
+
+
+def test_table_rule_types():
+    pol = ('config firewall policy\n edit 1\n set service "ALL"\n set logtraffic disable\n next\n'
+           ' edit 2\n set service "HTTPS"\n set logtraffic all\n next\nend')
+    none_all = FortiGateRule(type="table_none_match", cmd="x", key="service ALL",
+                             pattern=r'set\s+service\s+"?ALL"?')
+    assert Svc._evaluate_rule(none_all, pol) is False              # policy 1 violates
+    any_av = FortiGateRule(type="table_any_match", cmd="x", key="av-profile",
+                           pattern=r"set\s+av-profile\s+\S")
+    assert Svc._evaluate_rule(any_av, pol) is False               # none apply av
+    zones = 'config system zone\n edit "z1"\n set intrazone deny\n next\nend'
+    all_intra = FortiGateRule(type="table_all_match", cmd="x", key="intrazone deny",
+                              pattern=r"set\s+intrazone\s+deny")
+    assert Svc._evaluate_rule(all_intra, zones) is True
+
+
+def test_best_effort_checks_keep_review_flag():
+    # 19 controls are best-effort (review_required) — their verdict isn't definitive.
+    review = [c.id for c in CONTROLS if c.needs_review]
+    assert "FG-BL-021" in review        # admin password — undetectable via CLI
+    assert "FG-UTM-002" in review       # profile-applied — site-specific
+    assert "FG-BL-080" not in review    # service ALL — definitive table parse
+    assert all(BY_ID[i].needs_review for i in review)
