@@ -53,7 +53,7 @@ class NmapScanner:
         return False
 
     @staticmethod
-    def calculate_timeout(target: str, scan_type: str, version_detection: bool) -> int:
+    def calculate_timeout(target: str, scan_type: str, version_detection: bool, protocol: str = "TCP") -> int:
         """
         Calculate appropriate timeout based on scan parameters.
 
@@ -87,6 +87,11 @@ class NmapScanner:
         else:
             # custom_ports: conservative middle estimate
             time_per_host = 300 if version_detection else 120
+
+        # UDP scans are rate-limited by nmap and run far slower than TCP.
+        # Give them substantially more headroom (BOTH runs TCP+UDP back to back).
+        if (protocol or "TCP").upper() in ("UDP", "BOTH"):
+            time_per_host *= 2
 
         if num_hosts <= 1:
             calculated_timeout = time_per_host
@@ -132,10 +137,31 @@ class NmapScanner:
 
         cmd = ["nmap", "-oX", "-"]  # XML output to stdout
 
-        # Core scan flags: TCP connect, skip host discovery, no DNS resolution
+        # Scan technique depends on the requested protocol:
+        #   TCP  -> -sT (TCP connect, no privileges required)
+        #   UDP  -> -sU (requires root / raw sockets)
+        #   BOTH -> -sT -sU (combined TCP + UDP in a single run)
+        proto = (protocol or "TCP").upper()
+        if proto == "UDP":
+            scan_flags = ["-sU"]
+        elif proto == "BOTH":
+            scan_flags = ["-sT", "-sU"]
+        else:
+            scan_flags = ["-sT"]
+
+        # UDP scanning needs raw-socket privileges. Fail early with a clear message
+        # rather than letting nmap abort mid-run (or silently return nothing).
+        if "-sU" in scan_flags and not NmapScanner.is_root():
+            raise PermissionError(
+                "UDP scanning requires root privileges. "
+                "Run the backend as root (or grant CAP_NET_RAW), or use protocol 'TCP'."
+            )
+
+        # Core flags: skip host discovery, no DNS resolution.
         # Note: -v is intentionally omitted — verbose output on some nmap versions
         # goes to stdout and corrupts the XML stream.
-        cmd.extend(["-sT", "-Pn", "-n"])
+        cmd.extend(scan_flags)
+        cmd.extend(["-Pn", "-n"])
 
         # Only add -sV if explicitly requested (it's MUCH slower)
         if version_detection:
@@ -162,11 +188,15 @@ class NmapScanner:
         # Single-IP scans let T4 timing run to completion naturally.
         is_range = NmapScanner.is_ip_range(target)
         if is_range:
-            host_timeout = "300s" if version_detection else "120s"
+            if "-sU" in scan_flags:
+                # UDP per-host scans are much slower; allow more time per host.
+                host_timeout = "900s" if version_detection else "600s"
+            else:
+                host_timeout = "300s" if version_detection else "120s"
             cmd.append(f"--host-timeout={host_timeout}")
-            logger.info(f"Range scan '{target}': host-timeout={host_timeout}, version_detection={version_detection}")
+            logger.info(f"Range scan '{target}': host-timeout={host_timeout}, protocol={proto}, version_detection={version_detection}")
         else:
-            logger.info(f"Single-IP scan '{target}': using T4 defaults, version_detection={version_detection}")
+            logger.info(f"Single-IP scan '{target}': using T4 defaults, protocol={proto}, version_detection={version_detection}")
 
         cmd.append(target)
         return cmd
@@ -525,7 +555,7 @@ class NmapScanner:
 
             # Calculate timeout if not provided
             if timeout is None:
-                timeout = NmapScanner.calculate_timeout(target, scan_type, version_detection)
+                timeout = NmapScanner.calculate_timeout(target, scan_type, version_detection, protocol)
             result["timeout_used"] = timeout
             logger.info(f"Using timeout: {timeout}s for target '{target}'")
 
