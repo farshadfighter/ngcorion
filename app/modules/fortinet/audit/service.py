@@ -52,6 +52,14 @@ _ROOT_LABEL = "root"
 # (CIS 1.3 / FG-NET-002). Used by the "wan_mgmt_exposed" rule type.
 _WAN_FORBIDDEN_SERVICES = ("ping", "http", "https", "ssh", "telnet", "snmp", "radius-acct")
 
+# Rule types whose evidence is a detailed, possibly multi-line per-entry report
+# (one interface / Policy ID per line) that handles empty/error output itself —
+# so its evidence is newline-joined and exempt from the short-snippet truncation.
+_DETAILED_RULE_TYPES = frozenset({
+    "wan_mgmt_exposed", "iface_allowaccess_excludes",
+    "policy_field_eq", "policy_field_present",
+})
+
 
 def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
     """
@@ -305,6 +313,59 @@ def _wan_mgmt_violations(output: str, forbidden=None) -> List[Dict[str, Any]]:
     return _iface_allowaccess_violations(output, forbidden or _WAN_FORBIDDEN_SERVICES, role="wan")
 
 
+def _interfaces_or_error(output: str) -> tuple:
+    """
+    Parse interfaces, returning ``(interfaces, error_message)``. ``error_message``
+    is set when the output is empty/an error marker or no interface could be
+    parsed at all — so an interface check fails closed (surfaced as unverifiable)
+    instead of silently PASSING on missing data.
+    """
+    if (output or "").lstrip().lower().startswith("__error__"):
+        return [], "could not read interfaces (collection error)"
+    if not (output or "").strip():
+        return [], "no interface output returned"
+    ifaces = _parse_interfaces(output)
+    if not ifaces:
+        return [], "no interfaces could be parsed from output"
+    return ifaces, None
+
+
+def _wan_mgmt_evidence(output: str, forbidden=None) -> str:
+    """Per-interface report for FG-NET-002 (management services exposed on WAN)."""
+    forbidden = forbidden or _WAN_FORBIDDEN_SERVICES
+    ifaces, error = _interfaces_or_error(output)
+    if error:
+        return f"{error} - unable to verify WAN exposure (NON-COMPLIANT)"
+    viols = _iface_allowaccess_violations(output, forbidden, role="wan")
+    if viols:
+        return "\n".join(
+            f"Interface {v['name']} (role={v['role']}) exposes: "
+            f"{', '.join(v['exposed'])} (NON-COMPLIANT)"
+            for v in viols
+        )
+    wan_ifaces = [i["name"] for i in ifaces if i["role"] == "wan"]
+    if wan_ifaces:
+        return (f"{len(ifaces)} interfaces; WAN-role interface(s) "
+                f"{', '.join(wan_ifaces)} expose no management services (COMPLIANT)")
+    return (f"{len(ifaces)} interfaces checked; none has role=wan "
+            f"(no WAN-role interface to expose management services) (COMPLIANT)")
+
+
+def _iface_excludes_evidence(output: str, forbidden, role) -> str:
+    """Per-interface report for FG-BL-002 (no cleartext mgmt on any interface)."""
+    ifaces, error = _interfaces_or_error(output)
+    if error:
+        return f"{error} - unable to verify (NON-COMPLIANT)"
+    viols = _iface_allowaccess_violations(output, forbidden, role=(role or None))
+    if viols:
+        return "\n".join(
+            f"Interface {v['name']} (role={v['role']}) exposes: "
+            f"{', '.join(v['exposed'])} (NON-COMPLIANT)"
+            for v in viols
+        )
+    return f"{len(ifaces)} interfaces; none exposes the forbidden services (COMPLIANT)"
+
+
 # ---------------------------------------------------------------------------
 # Generic `get`-style field rules (parse the live value of `key : value`)
 # ---------------------------------------------------------------------------
@@ -449,6 +510,76 @@ def _table_evidence_line(rule, output: str) -> str:
     return f"{n} entries"
 
 
+# ---------------------------------------------------------------------------
+# Per-policy field rules (parse `edit <id> ... next`, evaluate a field per entry
+# and report each failing Policy ID individually).
+# ---------------------------------------------------------------------------
+def _entry_field_value(body: str, key: str) -> Optional[str]:
+    """Return the value of ``set <key> <value>`` inside one table entry body,
+    or ``None`` when the line is absent (left at its FortiOS default)."""
+    m = re.search(rf"^\s*set\s+{re.escape(key)}\s+(.+?)\s*$",
+                  body or "", re.IGNORECASE | re.MULTILINE)
+    return m.group(1).strip().strip('"') if m else None
+
+
+def _policy_in_scope(entry: Dict[str, str], scope_pattern: Optional[str]) -> bool:
+    """Whether a policy entry is in scope for a per-policy rule. With no
+    ``scope_pattern`` every entry counts; otherwise only those whose body matches
+    (e.g. only ``set action accept`` policies for profile checks)."""
+    if not scope_pattern:
+        return True
+    return bool(re.search(scope_pattern, entry["body"], re.IGNORECASE | re.MULTILINE))
+
+
+def _policy_field_failures(rule, output: str) -> tuple:
+    """
+    Evaluate a ``policy_field_eq`` / ``policy_field_present`` rule per policy.
+
+    Returns ``(failures, in_scope_count, error)`` where ``failures`` is a list of
+    ``{"name", "value"}`` for each in-scope policy that violates the rule and
+    ``error`` is a message when the policy output could not be read at all
+    (so the verdict can fail closed rather than silently pass).
+    """
+    if (output or "").lstrip().lower().startswith("__error__"):
+        return [], 0, "could not read firewall policies (collection error)"
+    entries = _parse_table_entries(output)
+    in_scope = [e for e in entries if _policy_in_scope(e, rule.scope_pattern)]
+    failures: List[Dict[str, Any]] = []
+    for e in in_scope:
+        val = _entry_field_value(e["body"], rule.key)
+        if rule.type == "policy_field_eq":
+            if val is None or _norm_field(val) != _norm_field(str(rule.expected)):
+                failures.append({"name": e["name"], "value": val})
+        else:  # policy_field_present
+            if not val:
+                failures.append({"name": e["name"], "value": val})
+    return failures, len(in_scope), None
+
+
+def _policy_field_evidence(rule, output: str) -> str:
+    """Per-policy report listing each failing Policy ID individually."""
+    failures, scope_n, error = _policy_field_failures(rule, output)
+    if error:
+        return f"{error} - unable to verify (NON-COMPLIANT)"
+
+    if rule.type == "policy_field_eq":
+        if not failures:
+            return f"{scope_n} policies; all have {rule.key} = {rule.expected} (COMPLIANT)"
+        lines = [
+            f"Policy ID {f['name']}: {rule.key} = "
+            f"{f['value'] if f['value'] is not None else '<not set>'} (NON-COMPLIANT)"
+            for f in failures
+        ]
+        return f"{len(failures)}/{scope_n} policies NON-COMPLIANT:\n" + "\n".join(lines)
+
+    # policy_field_present
+    if not failures:
+        return f"{scope_n} accept policies; all have {rule.key} (COMPLIANT)"
+    lines = [f"Policy ID {f['name']}: missing {rule.key} (NON-COMPLIANT)" for f in failures]
+    return (f"{len(failures)}/{scope_n} accept policies missing {rule.key}:\n"
+            + "\n".join(lines))
+
+
 # Prepended to the evidence of ambiguous (heuristic) checks so the report itself
 # documents that the PASS/FAIL is indicative only. Kept ASCII for clean exports;
 # the UI also renders a "Manual review" badge from the API's needs_review flag.
@@ -527,13 +658,26 @@ class FortinetAuditService:
 
             if rule.type == "wan_mgmt_exposed":
                 # Compliant (pass) only when NO WAN-role interface exposes a
-                # management service in its allowaccess.
+                # management service in its allowaccess. Fail closed when the
+                # interface output is empty/error or yields no parseable
+                # interface — otherwise a collection failure would silently PASS.
+                if not _parse_interfaces(output):
+                    return False
                 return not _wan_mgmt_violations(output, rule.expected)
 
             if rule.type == "iface_allowaccess_excludes":
                 # No interface (optionally filtered to rule.key role) exposes a
-                # forbidden service (rule.expected) in its allowaccess.
+                # forbidden service (rule.expected) in its allowaccess. Fail
+                # closed when no interface could be parsed (empty/error output).
+                if not _parse_interfaces(output):
+                    return False
                 return not _iface_allowaccess_violations(output, rule.expected, role=(rule.key or None))
+
+            if rule.type in ("policy_field_eq", "policy_field_present"):
+                # Per-policy field check: PASS only when no in-scope policy fails
+                # and the policy output was readable (errors fail closed).
+                failures, _scope_n, error = _policy_field_failures(rule, output)
+                return not error and not failures
 
             if rule.type in _GET_FIELD_TYPES:
                 # Parse the live value of a `get`-style `key : value` field and
@@ -585,25 +729,27 @@ class FortinetAuditService:
         if any(r.type == "snmp_status_enabled" for r in control.rules):
             return _snmp_evidence(control, outputs)
 
+        # Detailed per-interface / per-policy reports do their own empty/error
+        # handling (so a collection failure is surfaced, never silently passed)
+        # and can be multi-line (one Policy ID per line) — so they bypass the
+        # short-snippet truncation below.
+        detailed = any(r.type in _DETAILED_RULE_TYPES for r in control.rules)
+
         lines: List[str] = []
         for rule in control.rules:
             out = outputs.get(rule.cmd, "")
-            if not out:
+
+            if rule.type == "wan_mgmt_exposed":
+                lines.append(_wan_mgmt_evidence(out, rule.expected))
                 continue
-            if rule.type in ("wan_mgmt_exposed", "iface_allowaccess_excludes"):
-                if rule.type == "wan_mgmt_exposed":
-                    viols = _wan_mgmt_violations(out, rule.expected)
-                    none_msg = "No WAN-role interface exposes management services"
-                else:
-                    viols = _iface_allowaccess_violations(out, rule.expected, role=(rule.key or None))
-                    none_msg = "No interface exposes the forbidden services"
-                if viols:
-                    lines.extend(
-                        f"{v['name']} (role={v['role']}) exposes: {', '.join(v['exposed'])}"
-                        for v in viols
-                    )
-                else:
-                    lines.append(none_msg)
+            if rule.type == "iface_allowaccess_excludes":
+                lines.append(_iface_excludes_evidence(out, rule.expected, rule.key))
+                continue
+            if rule.type in ("policy_field_eq", "policy_field_present"):
+                lines.append(_policy_field_evidence(rule, out))
+                continue
+
+            if not out:
                 continue
             if rule.type in _GET_FIELD_TYPES:
                 lines.append(_field_evidence_line(rule, out))
@@ -631,6 +777,9 @@ class FortinetAuditService:
                 )
                 fails = _ntp_status_failures(st)
                 report += " | FAILED: " + "; ".join(fails) if fails else " | COMPLIANT"
+                # NTP is a single global service even with VDOMs enabled; the
+                # finding's vdom label records the scope it was read in.
+                report += " | (NTP is global; read at device top-level)"
                 lines.append(report)
                 continue
             if rule.key:
@@ -640,10 +789,14 @@ class FortinetAuditService:
                 if m:
                     sample = m[0] if isinstance(m[0], str) else " ".join(x for x in m[0] if x)
                     lines.append(f"match: {sample}")
-        evidence = " | ".join(x.strip() for x in lines if x and x.strip())
+        sep = "\n" if detailed else " | "
+        evidence = sep.join(x.strip() for x in lines if x and x.strip())
         if not evidence:
             evidence = "No matching configuration found"
-        return evidence[:497] + "..." if len(evidence) > 500 else evidence
+        # Detailed reports get a larger budget (many Policy IDs); the cap leaves
+        # headroom under the 4000-char column for a prepended review banner.
+        cap = 3600 if detailed else 500
+        return evidence[:cap - 3] + "..." if len(evidence) > cap else evidence
 
     @classmethod
     def _evaluate_control(cls, control: FortiGateControl, outputs: Dict[str, str], vdom_label: Optional[str]) -> Dict[str, Any]:

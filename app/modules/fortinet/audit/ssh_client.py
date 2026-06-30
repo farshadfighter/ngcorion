@@ -73,6 +73,21 @@ _BAD_OUTPUT_PATTERNS = (
 )
 
 
+def _is_operational_command(command: str) -> bool:
+    """
+    Whether ``command`` is an operational command that must run at the top-level
+    prompt rather than inside a config context.
+
+    ``diagnose``/``execute`` are rejected inside ``config global`` / ``config vdom``
+    (they only work at the operational prompt), so on VDOM-enabled devices they
+    must be issued BEFORE entering any scope. They read device-wide/global state
+    (e.g. ``diagnose sys ntp status``), so a single top-level read is correct
+    regardless of the requested config scope.
+    """
+    c = (command or "").strip().lower()
+    return c.startswith(("diagnose ", "diag ", "execute ", "exec "))
+
+
 class FortiGateContextError(RuntimeError):
     """Raised when entering a global/VDOM CLI context fails."""
 
@@ -388,12 +403,26 @@ class FortiGateSSHClient:
             to_run.append(cmd)
 
         if to_run:
-            with self.scope(scope, vdom):
-                for cmd in to_run:
-                    out = self._raw_send(cmd)
-                    results[cmd] = out
-                    if use_cache:
-                        self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
+            # Operational commands (diagnose/execute) can't run inside a config
+            # context, so issue them at the top-level prompt BEFORE entering scope.
+            # This fixes VDOM-enabled devices, where wrapping e.g.
+            # `diagnose sys ntp status` in `config global` made the command fail.
+            operational = [c for c in to_run if _is_operational_command(c)]
+            config_cmds = [c for c in to_run if not _is_operational_command(c)]
+
+            for cmd in operational:
+                out = self._raw_send(cmd)
+                results[cmd] = out
+                if use_cache:
+                    self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
+
+            if config_cmds:
+                with self.scope(scope, vdom):
+                    for cmd in config_cmds:
+                        out = self._raw_send(cmd)
+                        results[cmd] = out
+                        if use_cache:
+                            self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
 
         return results
 

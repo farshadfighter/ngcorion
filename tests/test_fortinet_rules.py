@@ -214,3 +214,117 @@ def test_best_effort_checks_keep_review_flag():
     assert "FG-UTM-002" in review       # profile-applied — site-specific
     assert "FG-BL-080" not in review    # service ALL — definitive table parse
     assert all(BY_ID[i].needs_review for i in review)
+
+
+# --------------------------------------------------------------------------
+# Client-reported fixes (2026-06): FG-NET-002, FG-BL-082, FG-UTM-002/003,
+# FG-APP-004 per-policy reporting, and FG-BL-040 NTP under VDOM.
+# --------------------------------------------------------------------------
+def test_fg_net_002_flags_wan_mgmt_services():
+    # role==wan + any insecure service in allowaccess -> NON-COMPLIANT, naming the
+    # interface and the exact services found.
+    ctl = BY_ID["FG-NET-002"]
+    bad = {r.cmd: 'config system interface\n edit "wan1"\n set allowaccess http https ssh telnet\n'
+                  ' set role wan\n next\nend' for r in ctl.rules}
+    f = Svc._evaluate_control(ctl, bad, None)
+    assert f["passed"] is False
+    assert "wan1" in f["evidence"]
+    for svc in ("http", "https", "ssh", "telnet"):
+        assert svc in f["evidence"]
+
+
+def test_fg_net_002_compliant_when_wan_clean_or_absent():
+    ctl = BY_ID["FG-NET-002"]
+    clean = {r.cmd: 'config system interface\n edit "wan1"\n set allowaccess fgfm\n set role wan\n next\nend'
+             for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, clean, None)["passed"] is True
+    # No interface tagged role=wan -> nothing to expose -> compliant.
+    no_wan = {r.cmd: 'config system interface\n edit "lan"\n set allowaccess https ssh\n set role lan\n next\nend'
+              for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, no_wan, None)["passed"] is True
+
+
+def test_fg_net_002_does_not_silently_pass_on_no_data():
+    # The reported bug: empty/error interface output must NOT be a silent PASS.
+    ctl = BY_ID["FG-NET-002"]
+    for out in ("", "__ERROR__: FortiGateContextError: failed to enter global"):
+        f = Svc._evaluate_control(ctl, {r.cmd: out for r in ctl.rules}, None)
+        assert f["passed"] is False
+        assert "unable to verify" in f["evidence"].lower()
+
+
+def test_fg_bl_082_flags_each_policy_not_logtraffic_all():
+    ctl = BY_ID["FG-BL-082"]
+    pol = ('config firewall policy\n'
+           ' edit 1\n set logtraffic all\n next\n'
+           ' edit 3\n set logtraffic disable\n next\n'
+           ' edit 7\n set logtraffic utm\n next\n'
+           ' edit 9\n next\n'                      # unset -> default, not 'all'
+           'end')
+    f = Svc._evaluate_control(ctl, {r.cmd: pol for r in ctl.rules}, "root")
+    assert f["passed"] is False
+    ev = f["evidence"]
+    assert "Policy ID 3" in ev and "disable" in ev
+    assert "Policy ID 7" in ev and "utm" in ev
+    assert "Policy ID 9" in ev                     # unset is flagged
+    assert "Policy ID 1:" not in ev                # logtraffic all is compliant
+
+
+def test_fg_bl_082_all_compliant_when_all_logtraffic_all():
+    ctl = BY_ID["FG-BL-082"]
+    pol = 'config firewall policy\n edit 1\n set logtraffic all\n next\n edit 2\n set logtraffic all\n next\nend'
+    assert Svc._evaluate_control(ctl, {r.cmd: pol for r in ctl.rules}, "root")["passed"] is True
+
+
+def test_policy_profile_checks_flag_accept_policies_only():
+    # FG-UTM-002 (av-profile), FG-UTM-003 (ips-sensor), FG-APP-004 (application-list):
+    # each accept policy must carry the profile; deny policies are out of scope; the
+    # report lists each failing Policy ID.
+    fields = {"FG-UTM-002": "av-profile", "FG-UTM-003": "ips-sensor", "FG-APP-004": "application-list"}
+    for cid, key in fields.items():
+        ctl = BY_ID[cid]
+        pol = ('config firewall policy\n'
+               f' edit 1\n set action accept\n set {key} "x"\n next\n'   # has it -> ok
+               ' edit 2\n set action accept\n next\n'                    # missing -> flagged
+               ' edit 5\n set action deny\n next\n'                      # deny -> skipped
+               'end')
+        f = Svc._evaluate_control(ctl, {r.cmd: pol for r in ctl.rules}, "root")
+        assert f["passed"] is False, cid
+        assert "Policy ID 2" in f["evidence"], cid
+        assert "Policy ID 5" not in f["evidence"], cid     # deny out of scope
+        assert "Policy ID 1:" not in f["evidence"], cid    # compliant policy not listed
+
+
+def test_policy_profile_checks_pass_when_all_accept_have_profile():
+    ctl = BY_ID["FG-UTM-002"]
+    pol = ('config firewall policy\n'
+           ' edit 1\n set action accept\n set av-profile "default"\n next\n'
+           ' edit 5\n set action deny\n next\n'
+           'end')
+    assert Svc._evaluate_control(ctl, {r.cmd: pol for r in ctl.rules}, "root")["passed"] is True
+
+
+def test_operational_commands_run_at_top_level_on_vdom():
+    # FG-BL-040 root cause: diagnose/execute must NOT be wrapped in `config global`
+    # on VDOM devices (the wrapper makes them fail). They run at the top-level prompt.
+    from app.modules.fortinet.audit.ssh_client import FortiGateSSHClient, _is_operational_command
+
+    assert _is_operational_command("diagnose sys ntp status") is True
+    assert _is_operational_command("execute backup config") is True
+    assert _is_operational_command("get system global") is False
+    assert _is_operational_command("show system interface") is False
+
+    class Fake(FortiGateSSHClient):
+        def __init__(self):
+            super().__init__("h", "u", "p")
+            self.sent = []
+            self._vdom_enabled = True   # simulate VDOM-enabled device
+        def _raw_send(self, command):
+            self.sent.append(command)
+            return "synchronized: yes" if command.startswith("diagnose") else ""
+
+    c = Fake()
+    c.collect(["diagnose sys ntp status", "show system global"], scope=SCOPE_GLOBAL)
+    # diagnose issued BEFORE entering config global; the show command runs inside it.
+    assert c.sent.index("diagnose sys ntp status") < c.sent.index("config global")
+    assert c.sent.index("config global") < c.sent.index("show system global")

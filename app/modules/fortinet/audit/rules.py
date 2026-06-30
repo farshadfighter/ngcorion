@@ -42,6 +42,10 @@ class FortiGateRule:
     expected: Any = None
     pattern: Optional[str] = None
     default: Optional[int] = None  # assumed value when a numeric line is omitted
+    # Optional regex restricting which table entries a per-entry rule applies to
+    # (e.g. r"set\s+action\s+accept" so a profile check only targets accept
+    # policies). When None, every entry is in scope. Used by policy_field_* rules.
+    scope_pattern: Optional[str] = None
 
 
 @dataclass
@@ -371,11 +375,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                             pattern=r"set\s+internet-service\S*\s+\S")],
              "Create deny policies using Internet Service DB objects (Tor/Botnet/Scanner).",
              review_required=True),
-        # `show firewall policy` → no policy may have logtraffic explicitly disabled.
+        # `show firewall policy` → EVERY policy must have logtraffic explicitly set
+        # to "all". Anything else (disable, utm, or unset→default) is NON-COMPLIANT;
+        # the report lists each failing Policy ID with its current value.
         _ctl("FG-BL-082", "Logging enabled on all firewall policies", "3.4", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_none_match", cmd=POL, key="logtraffic disable",
-                            pattern=r"set\s+logtraffic\s+disable")],
-             "On each policy: set logtraffic all (or utm)."),
+             [FortiGateRule(type="policy_field_eq", cmd=POL, key="logtraffic", expected="all")],
+             "Per non-compliant policy:\nconfig firewall policy\n edit <policy ID>\n set logtraffic all\nend"),
 
         # ===== 4.1 Intrusion Prevention System =====
         # `show firewall policy` → best-effort: report policies that block botnet /
@@ -385,10 +390,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                             pattern=r"set\s+scan-botnet-connections\s+(block|monitor)")],
              "On each policy: set scan-botnet-connections block.",
              review_required=True),
+        # `show firewall policy` → each ACCEPT policy should carry an IPS sensor;
+        # the report lists every accept Policy ID missing `set ips-sensor`.
         _ctl("FG-UTM-003", "Apply IPS Security Profile to policies", "4.1.2", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=POL, key="ips-sensor",
-                            pattern=r"set\s+ips-sensor\s+\S")],
-             "Apply an IPS sensor to relevant firewall policies: set ips-sensor <sensor>.",
+             [FortiGateRule(type="policy_field_present", cmd=POL, key="ips-sensor",
+                            scope_pattern=r"set\s+action\s+accept")],
+             "On each accept policy missing it:\nconfig firewall policy\n edit <policy ID>\n set ips-sensor <sensor>\nend",
              review_required=True),
 
         # ===== 4.2 Antivirus =====
@@ -396,11 +403,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         _ctl("FG-AV-001", "Antivirus Definition Push Updates configured", "4.2.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
              [FortiGateRule(type="get_field_eq", cmd=GPUSHUPD, key="status", expected="enable")],
              "config system autoupdate push-update\n set status enable\nend"),
-        # `show firewall policy` → best-effort: report policies applying an AV profile.
+        # `show firewall policy` → each ACCEPT policy should carry an AV profile;
+        # the report lists every accept Policy ID missing `set av-profile`.
         _ctl("FG-UTM-002", "Apply Antivirus Security Profile to policies", "4.2.2", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=POL, key="av-profile",
-                            pattern=r"set\s+av-profile\s+\S")],
-             "Apply an AV profile to relevant firewall policies: set av-profile <profile>.",
+             [FortiGateRule(type="policy_field_present", cmd=POL, key="av-profile",
+                            scope_pattern=r"set\s+action\s+accept")],
+             "On each accept policy missing it:\nconfig firewall policy\n edit <policy ID>\n set av-profile <profile>\nend",
              review_required=True),
         # `show antivirus profile` → best-effort: report profiles with outbreak
         # prevention; only matters once the profile is applied (keep review flag).
@@ -450,10 +458,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                             pattern=r"set\s+(other-application-log|unknown-application-log)\s+enable")],
              "config application list\n edit <list>\n set other-application-log enable\nend",
              review_required=True),
+        # `show firewall policy` → each ACCEPT policy should carry an application
+        # control list; the report lists every accept Policy ID missing it.
         _ctl("FG-APP-004", "Apply Application Control Security Profile to policies", "4.4.4", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=POL, key="application-list",
-                            pattern=r"set\s+application-list\s+\S")],
-             "Apply an application-list profile to relevant firewall policies.",
+             [FortiGateRule(type="policy_field_present", cmd=POL, key="application-list",
+                            scope_pattern=r"set\s+action\s+accept")],
+             "On each accept policy missing it:\nconfig firewall policy\n edit <policy ID>\n set application-list <list>\nend",
              review_required=True),
 
         # ===== 5 Security Fabric =====
