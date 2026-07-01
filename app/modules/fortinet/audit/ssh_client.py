@@ -23,10 +23,13 @@ Features retained from the previous client:
   - per (scope, vdom, command) output caching.
 """
 
+import logging
 import re
 import time
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 
@@ -71,6 +74,18 @@ _BAD_OUTPUT_PATTERNS = (
     "permission denied",
     "return code -",
 )
+
+
+def _ends_with_prompt(output: str) -> bool:
+    """
+    Whether ``output`` ends with a FortiOS CLI prompt (``… # `` for admin or
+    ``… $``). FortiOS echoes the prompt once a command finishes, so its presence
+    at the end is a reliable "the full output arrived" signal — used to detect a
+    timing-based read that returned a long command (e.g. ``get system global``)
+    before the device finished streaming.
+    """
+    tail = (output or "").rstrip()
+    return tail.endswith("#") or tail.endswith("$")
 
 
 def _is_operational_command(command: str) -> bool:
@@ -213,6 +228,38 @@ class FortiGateSSHClient:
                 " ", strip_prompt=False, strip_command=False
             )
             guard += 1
+
+        # A timing-based read can return a long output (e.g. `get system global`,
+        # ~150 fields) BEFORE the device has finished streaming, silently dropping
+        # the tail — so alphabetically-late fields like `strong-crypto` go missing
+        # and their checks then fail regardless of the real value. Keep draining
+        # until the CLI prompt reappears (or we time out). This only does extra
+        # reads when the output is not already prompt-terminated, so the common
+        # (complete) case has no added latency.
+        settle = 0
+        read_more = getattr(self._connection, "read_channel_timing", None)
+        while callable(read_more) and output and not _ends_with_prompt(output) and settle < 8:
+            try:
+                more = read_more(last_read=1.0, read_timeout=15)
+            except Exception:  # noqa: BLE001 - best-effort drain; never fail a read
+                break
+            if not more:
+                break
+            if re.search(r"--More--", more, flags=re.IGNORECASE):
+                more = re.sub(r"--More--", "", more, flags=re.IGNORECASE)
+                more += self._connection.send_command_timing(
+                    " ", strip_prompt=False, strip_command=False
+                )
+            output += more
+            settle += 1
+
+        if output and not _ends_with_prompt(output):
+            logger.warning(
+                "Command %r output may be truncated (%d chars, no trailing prompt "
+                "after %d drain attempts)", command, len(output), settle,
+            )
+        logger.debug("FG raw %r -> %d chars (complete=%s)",
+                     command, len(output or ""), _ends_with_prompt(output or ""))
         return output or ""
 
     @staticmethod

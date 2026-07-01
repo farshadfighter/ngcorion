@@ -304,6 +304,59 @@ def test_policy_profile_checks_pass_when_all_accept_have_profile():
     assert Svc._evaluate_control(ctl, {r.cmd: pol for r in ctl.rules}, "root")["passed"] is True
 
 
+def test_fg_bl_090_strong_crypto_parsing():
+    # FG-BL-090: get system global / strong-crypto — enable passes, disable fails.
+    rule = BY_ID["FG-BL-090"].rules[0]
+    assert rule.cmd == "get system global"
+    assert rule.key == "strong-crypto"
+    # Realistic padded `get : value` lines, both verdicts.
+    assert Svc._evaluate_rule(rule, "strong-crypto       : enable") is True
+    assert Svc._evaluate_rule(rule, "strong-crypto       : disable") is False
+    # Absent field (e.g. truncated capture) must NOT read as compliant.
+    assert Svc._evaluate_rule(rule, "hostname : FGT-LAB") is False
+
+
+def test_raw_send_drains_truncated_long_output():
+    # Root cause of FG-BL-090: a timing-based read can return a long output (e.g.
+    # `get system global`) before the device finishes streaming, dropping trailing
+    # fields like strong-crypto. _raw_send must keep reading until the CLI prompt
+    # reappears so the tail is recovered.
+    from app.modules.fortinet.audit.ssh_client import FortiGateSSHClient
+
+    head = "config global\nhostname : FGT\n"                 # truncated, no prompt
+    tail = "strong-crypto : enable\nFGT (global) # "          # rest + prompt
+
+    class Conn:
+        def __init__(self):
+            self.drain_calls = 0
+        def send_command_timing(self, command, **kw):
+            return head
+        def read_channel_timing(self, **kw):
+            self.drain_calls += 1
+            return tail if self.drain_calls == 1 else ""
+
+    c = FortiGateSSHClient("h", "u", "p")
+    c._connection = Conn()
+    out = c._raw_send("get system global")
+    assert "strong-crypto" in out                  # tail recovered
+    assert c._connection.drain_calls == 1
+
+    # A complete read (already prompt-terminated) must NOT trigger extra drains.
+    class Conn2:
+        def __init__(self):
+            self.drain_calls = 0
+        def send_command_timing(self, command, **kw):
+            return "strong-crypto : enable\nFGT # "
+        def read_channel_timing(self, **kw):
+            self.drain_calls += 1
+            return ""
+
+    c2 = FortiGateSSHClient("h", "u", "p")
+    c2._connection = Conn2()
+    c2._raw_send("get system global")
+    assert c2._connection.drain_calls == 0
+
+
 def test_operational_commands_run_at_top_level_on_vdom():
     # FG-BL-040 root cause: diagnose/execute must NOT be wrapped in `config global`
     # on VDOM devices (the wrapper makes them fail). They run at the top-level prompt.

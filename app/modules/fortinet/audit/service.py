@@ -682,6 +682,18 @@ class FortinetAuditService:
             if rule.type in _GET_FIELD_TYPES:
                 # Parse the live value of a `get`-style `key : value` field and
                 # compare it (eq/ne/in/matches/not_match/int_le/int_ge).
+                if (output and not output.lstrip().lower().startswith("__error__")
+                        and _get_field_value(output, rule.key) is None):
+                    # Field absent from a non-empty `get` output almost always
+                    # means a truncated/incomplete capture (a `get` prints every
+                    # field incl. defaults), NOT a real config state — so the
+                    # resulting NON-COMPLIANT would be a false negative. Surface it.
+                    logger.warning(
+                        "get-field %r NOT FOUND in `%s` output (%d chars) — likely "
+                        "truncated capture, verdict may be a false NON-COMPLIANT. "
+                        "First 160 chars: %r",
+                        rule.key, rule.cmd, len(output), output[:160],
+                    )
                 return _eval_get_field(rule, output)
 
             if rule.type in ("table_none_match", "table_all_match", "table_any_match"):
