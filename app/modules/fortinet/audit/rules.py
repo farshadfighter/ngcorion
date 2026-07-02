@@ -201,10 +201,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              "config system zone\n edit <zone>\n set intrazone deny\nend"),
         # Parsed per-interface: NON-COMPLIANT if any role=wan interface exposes a
         # management service in allowaccess (see service._wan_mgmt_violations).
+        # Only the cleartext/interactive management services count here; ping,
+        # snmp and radius-acct are intentionally NOT flagged (per client scope).
         _ctl("FG-NET-002", "Management services disabled on WAN interface", "1.3", "Manual",
              SCOPE_GLOBAL, "High", "L1",
              [FortiGateRule(type="wan_mgmt_exposed", cmd=IFACE,
-                            expected=["ping", "http", "https", "ssh", "telnet", "snmp", "radius-acct"])],
+                            expected=["http", "https", "ssh", "telnet"])],
              "On every WAN-role interface remove management services from allowaccess "
              "(config system interface / edit <wan-iface> / set allowaccess to a minimal set, "
              "e.g. unset it); use a dedicated management interface and local-in policies."),

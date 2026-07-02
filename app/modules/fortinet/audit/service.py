@@ -49,8 +49,9 @@ _GLOBAL_LABEL = "global"
 _ROOT_LABEL = "root"
 
 # Management services that must not be reachable on a WAN-role interface
-# (CIS 1.3 / FG-NET-002). Used by the "wan_mgmt_exposed" rule type.
-_WAN_FORBIDDEN_SERVICES = ("ping", "http", "https", "ssh", "telnet", "snmp", "radius-acct")
+# (CIS 1.3 / FG-NET-002). Used by the "wan_mgmt_exposed" rule type. ping, snmp
+# and radius-acct are intentionally excluded (only cleartext/interactive mgmt).
+_WAN_FORBIDDEN_SERVICES = ("http", "https", "ssh", "telnet")
 
 # Rule types whose evidence is a detailed, possibly multi-line per-entry report
 # (one interface / Policy ID per line) that handles empty/error output itself —
@@ -328,6 +329,21 @@ def _interfaces_or_error(output: str) -> tuple:
     if not ifaces:
         return [], "no interfaces could be parsed from output"
     return ifaces, None
+
+
+def _looks_truncated(output: str) -> bool:
+    """
+    Heuristic: a non-empty capture that does not end at a CLI prompt (``…#``/``$``)
+    nor at the config terminator ``end`` was very likely cut off mid-stream. A
+    truncated ``show system interface`` can drop trailing interface blocks (so a
+    late WAN interface goes unseen) while earlier ones still parse — which would
+    turn a real violation into a false COMPLIANT. Used for logging only.
+    """
+    tail = (output or "").rstrip()
+    if not tail:
+        return False
+    last = tail.splitlines()[-1].strip()
+    return not (last.endswith("#") or last.endswith("$") or last == "end")
 
 
 def _wan_mgmt_evidence(output: str, forbidden=None) -> str:
@@ -661,9 +677,31 @@ class FortinetAuditService:
                 # management service in its allowaccess. Fail closed when the
                 # interface output is empty/error or yields no parseable
                 # interface — otherwise a collection failure would silently PASS.
-                if not _parse_interfaces(output):
+                ifaces = _parse_interfaces(output)
+                if not ifaces:
                     return False
-                return not _wan_mgmt_violations(output, rule.expected)
+                viols = _wan_mgmt_violations(output, rule.expected)
+                if not viols:
+                    # A PASS here is only trustworthy if we actually saw the WAN
+                    # interfaces. If none parsed AND the capture looks truncated,
+                    # the real WAN interface was probably dropped from the read —
+                    # surface it so it isn't a silent false negative.
+                    wan = [i["name"] for i in ifaces if i["role"] == "wan"]
+                    if not wan and _looks_truncated(output):
+                        logger.warning(
+                            "FG-NET-002 PASS is suspect: %d interfaces parsed but "
+                            "NONE has role=wan, and `show system interface` output "
+                            "looks truncated (%d chars, no trailing prompt). The WAN "
+                            "interface may have been dropped from the capture — "
+                            "verdict COMPLIANT may be a false negative.",
+                            len(ifaces), len(output or ""),
+                        )
+                    else:
+                        logger.debug(
+                            "FG-NET-002: %d interfaces parsed, WAN-role=%s, none "
+                            "exposes %s", len(ifaces), wan or "(none)", list(rule.expected or []),
+                        )
+                return not viols
 
             if rule.type == "iface_allowaccess_excludes":
                 # No interface (optionally filtered to rule.key role) exposes a

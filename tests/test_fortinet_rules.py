@@ -253,6 +253,25 @@ def test_fg_net_002_does_not_silently_pass_on_no_data():
         assert "unable to verify" in f["evidence"].lower()
 
 
+def test_fg_net_002_ignores_ping_snmp_radius_but_flags_cleartext():
+    # Per client scope: only http/https/ssh/telnet count; ping, snmp and
+    # radius-acct on a WAN interface are NOT violations.
+    ctl = BY_ID["FG-NET-002"]
+    irrelevant = {r.cmd: 'config system interface\n edit "wan1"\n'
+                         ' set allowaccess ping snmp radius-acct\n set role wan\n next\nend'
+                  for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, irrelevant, None)["passed"] is True
+    # ...but a single cleartext service alongside the ignored ones still fails,
+    # and the evidence names only the offending service (not ping/snmp).
+    mixed = {r.cmd: 'config system interface\n edit "wan1"\n'
+                    ' set allowaccess ping snmp http\n set role wan\n next\nend'
+             for r in ctl.rules}
+    f = Svc._evaluate_control(ctl, mixed, None)
+    assert f["passed"] is False
+    assert "http" in f["evidence"]
+    assert "snmp" not in f["evidence"] and "ping" not in f["evidence"]
+
+
 def test_fg_bl_082_flags_each_policy_not_logtraffic_all():
     ctl = BY_ID["FG-BL-082"]
     pol = ('config firewall policy\n'
