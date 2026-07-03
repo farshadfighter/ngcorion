@@ -272,6 +272,25 @@ def test_fg_net_002_ignores_ping_snmp_radius_but_flags_cleartext():
     assert "snmp" not in f["evidence"] and "ping" not in f["evidence"]
 
 
+def test_evidence_extraction_failure_does_not_crash_audit(monkeypatch):
+    # A bug in evidence formatting for one control must NOT 500 the whole audit
+    # (regression for the real-device TypeError). The finding is still produced,
+    # the PASS/FAIL is preserved, and the evidence degrades to a placeholder.
+    ctl = BY_ID["FG-NET-002"]
+
+    def boom(*_a, **_k):
+        raise TypeError("simulated evidence bug")
+
+    monkeypatch.setattr(Svc, "_extract_evidence", staticmethod(boom))
+    bad = {r.cmd: 'config system interface\n edit "wan1"\n'
+                  ' set allowaccess http\n set role wan\n next\nend' for r in ctl.rules}
+    f = Svc._evaluate_control(ctl, bad, None)          # must not raise
+    assert f["control_id"] == "FG-NET-002"
+    assert f["passed"] is False                        # PASS/FAIL still computed
+    assert "evidence unavailable" in f["evidence"].lower()
+    assert "TypeError" in f["evidence"]
+
+
 def test_fg_bl_082_flags_each_policy_not_logtraffic_all():
     ctl = BY_ID["FG-BL-082"]
     pol = ('config firewall policy\n'

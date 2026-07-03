@@ -851,7 +851,19 @@ class FortinetAuditService:
     @classmethod
     def _evaluate_control(cls, control: FortiGateControl, outputs: Dict[str, str], vdom_label: Optional[str]) -> Dict[str, Any]:
         passed = all(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
-        evidence = cls._extract_evidence(control, outputs)
+        # Evidence formatting must never fail the whole audit: a single control's
+        # edge case (unexpected real-device output shape) should degrade to a
+        # placeholder, not raise a 500. The PASS/FAIL above is already computed by
+        # the exception-safe _evaluate_rule, so the finding stays meaningful.
+        try:
+            evidence = cls._extract_evidence(control, outputs)
+        except Exception as e:  # noqa: BLE001
+            logger.error(
+                "Evidence extraction failed for control %s (%s) — recording a "
+                "placeholder so the audit can complete. Full traceback follows.",
+                control.id, type(e).__name__, exc_info=True,
+            )
+            evidence = f"(evidence unavailable — {type(e).__name__}: {e})"
         # Ambiguous (heuristic) checks: document the uncertainty in the report itself
         # so a PASS/FAIL is never mistaken for a definitive result.
         if control.needs_review:
@@ -1005,7 +1017,7 @@ class FortinetAuditService:
             session.failed_checks = failed
             session.error_checks = 0
             session.compliance_pct = compliance_pct
-            session.turbo_dump = json.dumps(raw_dump, indent=2)[:1_000_000]
+            session.turbo_dump = json.dumps(raw_dump, indent=2, default=str)[:1_000_000]
             db.commit()
 
             with cls._timed_operation("Insert audit results"):
@@ -1029,7 +1041,10 @@ class FortinetAuditService:
             session.connection_error = msg[:500]
             db.commit()
             db.refresh(session)
-            logger.error("Audit failed for asset %s (%s): %s", asset_id, target_ip, type(e).__name__)
+            # Log the FULL traceback (type + message + file:line), not just the
+            # exception class name — a bare "TypeError" is undiagnosable.
+            logger.error("Audit failed for asset %s (%s): %s: %s",
+                         asset_id, target_ip, type(e).__name__, e, exc_info=True)
             raise
 
     @classmethod
