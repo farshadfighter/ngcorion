@@ -269,8 +269,10 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              "config system global\n set admin-https-ssl-versions tlsv1-2 tlsv1-3\nend"),
 
         # ===== 2.2 Password Policy =====
-        # `get system password-policy` → status must read enable.
-        _ctl("FG-BL-030", "Password Policy is enabled", "2.2.1", "Automated", SCOPE_VDOM_ROOT, "High", "L1",
+        # `get system password-policy` → status must read enable. Read in GLOBAL
+        # scope: the admin password-policy is global in multi-VDOM mode (reading it
+        # inside a VDOM returns "command parse error before 'password-policy'").
+        _ctl("FG-BL-030", "Password Policy is enabled", "2.2.1", "Automated", SCOPE_GLOBAL, "High", "L1",
              [FortiGateRule(type="get_field_eq", cmd=GPWPOL, key="status", expected="enable")],
              "config system password-policy\n set status enable\n set minimum-length 8\nend"),
         # `get system global` → admin-lockout-threshold must be >= 1 (not disabled).
@@ -401,9 +403,11 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              review_required=True),
 
         # ===== 4.2 Antivirus =====
-        # `get system autoupdate push-update` → status must read enable.
+        # `show system autoupdate push-update` → `set status enable` must be present.
+        # (`get system autoupdate push-update` is rejected by FortiOS even in global;
+        # `show` reads the sub-table and prints `set status enable` when configured.)
         _ctl("FG-AV-001", "Antivirus Definition Push Updates configured", "4.2.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
-             [FortiGateRule(type="get_field_eq", cmd=GPUSHUPD, key="status", expected="enable")],
+             [FortiGateRule(type="set_eq", cmd=PUSHUPD, key="status", expected="enable")],
              "config system autoupdate push-update\n set status enable\nend"),
         # `show firewall policy` → each ACCEPT policy should carry an AV profile;
         # the report lists every accept Policy ID missing `set av-profile`.
@@ -482,15 +486,17 @@ def get_fortinet_controls() -> List[FortiGateControl]:
 
         # ===== 6 VPN =====
         # `get vpn ssl settings` → servercert must not be the factory/self-signed
-        # cert; ssl-min-proto-version must be tlsv1-2 or tlsv1-3.
+        # cert; ssl-min-proto-ver must be tls1-2 or tls1-3. NOTE: the `get` output
+        # field is `ssl-min-proto-ver` with values `tls1-N` (not the config/GUI
+        # spelling `ssl-min-proto-version` / `tlsv1-N`).
         _ctl("FG-VPN-SSL-003", "Trusted signed certificate applied for SSL-VPN portal", "6.1.1", "Manual", SCOPE_VDOM, "High", "L1",
              [FortiGateRule(type="get_field_not_match", cmd=GSSLVPN, key="servercert",
                             pattern=r"^(Fortinet_|self-sign)")],
              "config vpn ssl settings\n set servercert <trusted-cert>\nend"),
         _ctl("FG-VPN-SSL-001", "Limited TLS versions enabled for SSL VPN", "6.1.2", "Manual", SCOPE_VDOM, "High", "L1",
-             [FortiGateRule(type="get_field_in", cmd=GSSLVPN, key="ssl-min-proto-version",
-                            expected=["tlsv1-2", "tlsv1-3"])],
-             "config vpn ssl settings\n set ssl-min-proto-version tlsv1-2\nend"),
+             [FortiGateRule(type="get_field_in", cmd=GSSLVPN, key="ssl-min-proto-ver",
+                            expected=["tls1-2", "tls1-3", "tlsv1-2", "tlsv1-3"])],
+             "config vpn ssl settings\n set ssl-min-proto-ver tls1-2\nend"),
 
         # ===== 7 Users and Authentication =====
         # `get user setting` → auth-lockout-threshold must be >= 1 (not disabled).

@@ -419,6 +419,35 @@ def _eval_get_field(rule, output: str) -> bool:
     return False
 
 
+def _field_expectation(rule) -> str:
+    """
+    Human-readable expectation for a NON-COMPLIANT generic field rule.
+
+    Computed per-type (NOT as an eager dict) so a scalar ``expected`` on an
+    int/eq rule is never fed to the list-formatting branch meant for
+    ``get_field_in`` — the eager dict previously ran ``map(str, rule.expected)``
+    for *every* type, which raised ``'int' object is not iterable`` on an
+    ``expected=10`` int rule (FG-BL-004).
+    """
+    t, exp, pat = rule.type, rule.expected, rule.pattern
+    if t == "get_field_eq":
+        return f"expected {exp}"
+    if t == "get_field_ne":
+        return f"must not be {exp}"
+    if t == "get_field_in":
+        allowed = exp if isinstance(exp, (list, tuple, set)) else [exp]
+        return f"allowed: {', '.join(map(str, allowed))}"
+    if t == "get_field_matches":
+        return f"must match /{pat}/"
+    if t == "get_field_not_match":
+        return f"must not match /{pat}/"
+    if t == "get_field_int_le":
+        return f"must be <= {exp}"
+    if t == "get_field_int_ge":
+        return f"must be >= {exp}"
+    return ""
+
+
 def _field_evidence_line(rule, output: str) -> str:
     """One-line report for a generic field rule: current value + verdict + expectation."""
     val = _get_field_value(output, rule.key)
@@ -426,16 +455,7 @@ def _field_evidence_line(rule, output: str) -> str:
     shown = val if val is not None else "<not found>"
     if ok:
         return f"{rule.key}: {shown} (compliant)"
-    exp = {
-        "get_field_eq": f"expected {rule.expected}",
-        "get_field_ne": f"must not be {rule.expected}",
-        "get_field_in": f"allowed: {', '.join(map(str, rule.expected or []))}",
-        "get_field_matches": f"must match /{rule.pattern}/",
-        "get_field_not_match": f"must not match /{rule.pattern}/",
-        "get_field_int_le": f"must be <= {rule.expected}",
-        "get_field_int_ge": f"must be >= {rule.expected}",
-    }.get(rule.type, "")
-    return f"{rule.key}: {shown} (NON-COMPLIANT, {exp})"
+    return f"{rule.key}: {shown} (NON-COMPLIANT, {_field_expectation(rule)})"
 
 
 # ---------------------------------------------------------------------------
@@ -722,15 +742,25 @@ class FortinetAuditService:
                 # compare it (eq/ne/in/matches/not_match/int_le/int_ge).
                 if (output and not output.lstrip().lower().startswith("__error__")
                         and _get_field_value(output, rule.key) is None):
-                    # Field absent from a non-empty `get` output almost always
-                    # means a truncated/incomplete capture (a `get` prints every
-                    # field incl. defaults), NOT a real config state — so the
-                    # resulting NON-COMPLIANT would be a false negative. Surface it.
+                    # The field is missing from a non-empty capture. Distinguish
+                    # the (very different) reasons so a false NON-COMPLIANT is
+                    # diagnosable instead of always blaming truncation.
+                    low = output.lower()
+                    if ("command parse error" in low or "command fail" in low
+                            or "unknown action" in low):
+                        reason = ("device REJECTED the command (parse error) — the "
+                                  "command/scope is wrong for this FortiOS build")
+                    elif _looks_truncated(output):
+                        reason = ("capture looks TRUNCATED (no trailing prompt) — "
+                                  "the read was cut off")
+                    else:
+                        reason = ("field absent from a COMPLETE capture — it may be "
+                                  "unset/default, the feature may be disabled, or the "
+                                  "rule key may not match this build's field name")
                     logger.warning(
-                        "get-field %r NOT FOUND in `%s` output (%d chars) — likely "
-                        "truncated capture, verdict may be a false NON-COMPLIANT. "
-                        "First 160 chars: %r",
-                        rule.key, rule.cmd, len(output), output[:160],
+                        "get-field %r NOT FOUND in `%s` output (%d chars): %s. "
+                        "Verdict may be a false NON-COMPLIANT. First 160 chars: %r",
+                        rule.key, rule.cmd, len(output), reason, output[:160],
                     )
                 return _eval_get_field(rule, output)
 

@@ -64,9 +64,9 @@ def test_every_control_has_valid_scope_and_section_name():
 def test_scope_distribution():
     from collections import Counter
     dist = Counter(c.scope for c in CONTROLS)
-    assert dist[SCOPE_GLOBAL] == 29
+    assert dist[SCOPE_GLOBAL] == 30
     assert dist[SCOPE_VDOM] == 23
-    assert dist[SCOPE_VDOM_ROOT] == 1
+    assert dist[SCOPE_VDOM_ROOT] == 0
 
 
 def test_cis_map_is_one_to_one_with_catalogue():
@@ -270,6 +270,51 @@ def test_fg_net_002_ignores_ping_snmp_radius_but_flags_cleartext():
     assert f["passed"] is False
     assert "http" in f["evidence"]
     assert "snmp" not in f["evidence"] and "ping" not in f["evidence"]
+
+
+def test_fg_bl_004_int_rule_noncompliant_evidence_renders():
+    # Regression for the real-device crash: an int (get_field_int_le) rule that is
+    # NON-COMPLIANT must render its expectation ("must be <= 10") without raising.
+    # Previously the eager exp-dict ran map(str, <int expected>) -> TypeError.
+    ctl = BY_ID["FG-BL-004"]
+    out = {r.cmd: "get system global\nadmintimeout        : 30\n\nFG (global) # "
+           for r in ctl.rules}
+    f = Svc._evaluate_control(ctl, out, None)          # must not raise
+    assert f["passed"] is False
+    assert "admintimeout" in f["evidence"] and "must be <= 10" in f["evidence"]
+    assert "evidence unavailable" not in f["evidence"].lower()  # not the placeholder path
+
+
+def test_fg_vpn_ssl_001_matches_get_output_field_and_values():
+    # `get vpn ssl settings` prints `ssl-min-proto-ver : tls1-2` — the check must
+    # read THAT field/values, not the config spelling (ssl-min-proto-version/tlsv1-2)
+    # which never appears in `get` output and made the check always NON-COMPLIANT.
+    ctl = BY_ID["FG-VPN-SSL-001"]
+    for good in ("ssl-min-proto-ver   : tls1-2", "ssl-min-proto-ver : tls1-3",
+                 "ssl-min-proto-ver : tlsv1-2"):
+        out = {r.cmd: f"get vpn ssl settings\n{good}\n\nFG (root) # " for r in ctl.rules}
+        assert Svc._evaluate_control(ctl, out, "root")["passed"] is True, good
+    weak = {r.cmd: "get vpn ssl settings\nssl-min-proto-ver   : tls1-1\n\nFG (root) # "
+            for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, weak, "root")["passed"] is False
+
+
+def test_fg_bl_030_password_policy_read_in_global_scope():
+    # Admin password-policy is global in multi-VDOM (reading it in a VDOM errors),
+    # so the control must be evaluated in GLOBAL scope.
+    assert BY_ID["FG-BL-030"].scope == SCOPE_GLOBAL
+
+
+def test_fg_av_001_reads_push_update_via_show():
+    # `get system autoupdate push-update` is rejected by FortiOS; the check now uses
+    # `show system autoupdate push-update` and matches `set status enable`.
+    ctl = BY_ID["FG-AV-001"]
+    assert all(r.cmd == "show system autoupdate push-update" for r in ctl.rules)
+    on = {r.cmd: "config system autoupdate push-update\n set status enable\nend"
+          for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, on, None)["passed"] is True
+    off = {r.cmd: "config system autoupdate push-update\nend" for r in ctl.rules}
+    assert Svc._evaluate_control(ctl, off, None)["passed"] is False
 
 
 def test_evidence_extraction_failure_does_not_crash_audit(monkeypatch):
