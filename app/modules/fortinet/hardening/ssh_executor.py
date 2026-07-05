@@ -15,7 +15,8 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.modules.fortinet.audit.rules import FortiGateControl, FortiGateRule
+from app.modules.fortinet.audit.rules import FortiGateControl
+from app.modules.fortinet.audit.service import FortinetAuditService
 from app.modules.fortinet.audit.ssh_client import SCOPE_GLOBAL, FortiGateSSHClient
 
 logger = logging.getLogger(__name__)
@@ -109,40 +110,18 @@ class FortiGateHardeningExecutor:
             for rule in control.rules:
                 out = outputs.get(rule.cmd, "")
                 evidence_parts.append(f"# {rule.cmd}\n{out[:500]}")
-                if not self._evaluate_rule(rule, out):
+                # Reuse the audit service's authoritative evaluator (single source
+                # of truth). A previous local copy handled only set_*/regex_* and
+                # returned False for the newer get_field_*/table_*/policy_* types,
+                # so post-fix verification silently failed those controls (e.g.
+                # FG-BL-090 get_field_eq) even when the device was correctly fixed.
+                if not FortinetAuditService._evaluate_rule(rule, out):
                     passed = False
             return passed, "\n\n".join(evidence_parts)
         except Exception as e:  # noqa: BLE001
             logger.error("FortiGate verification failed on %s (control=%s)",
                          self.ip, getattr(control, "id", "?"), exc_info=True)
             raise FortiGateHardeningVerificationError(f"Failed to verify check: {e}")
-
-    @staticmethod
-    def _evaluate_rule(rule: FortiGateRule, output: str) -> bool:
-        """Mirror of audit.service evaluation (incl. numeric defaults)."""
-        output = output or ""
-        try:
-            if rule.type == "set_bool":
-                opposite = "disable" if rule.expected else "enable"
-                return not bool(re.search(rf"set\s+{re.escape(rule.key)}\s+{opposite}",
-                                          output, re.IGNORECASE | re.MULTILINE))
-            if rule.type in ("set_int_le", "set_int_ge"):
-                m = re.search(rf"set\s+{re.escape(rule.key)}\s+(\d+)", output, re.IGNORECASE)
-                actual = int(m.group(1)) if m else rule.default
-                if actual is None:
-                    return False
-                return actual <= rule.expected if rule.type == "set_int_le" else actual >= rule.expected
-            if rule.type == "set_eq":
-                m = re.search(rf"set\s+{re.escape(rule.key)}\s+(\S+)", output, re.IGNORECASE)
-                return bool(m) and m.group(1).strip('"') == str(rule.expected)
-            if rule.type == "regex_present":
-                return bool(re.search(rule.pattern, output, re.IGNORECASE | re.MULTILINE))
-            if rule.type == "regex_absent":
-                return not bool(re.search(rule.pattern, output, re.IGNORECASE | re.MULTILINE))
-            return False
-        except Exception as e:  # noqa: BLE001
-            logger.error("verify rule error (%s): %s", rule.type, e)
-            return False
 
     def save_config(self) -> str:
         if not self.ssh_client:
