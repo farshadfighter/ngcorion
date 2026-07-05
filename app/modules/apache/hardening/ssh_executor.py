@@ -226,8 +226,15 @@ class ApacheSSHExecutor:
                     result.success = False
                     result.error_message = "Verification failed"
                 else:
-                    # Assume success if no explicit FAIL
-                    result.success = True
+                    # No explicit PASS marker (e.g. a VERIFY_ERROR from a failed
+                    # verify command). Cannot confirm the fix, so fail closed — do
+                    # NOT report success (which would flip the audit row to PASS
+                    # without the host being confirmed remediated). Matches the
+                    # Linux executor's behaviour.
+                    result.success = False
+                    result.error_message = (
+                        "Verification did not return an explicit PASS marker"
+                    )
             else:
                 # No verification commands - assume success if commands ran
                 result.success = True

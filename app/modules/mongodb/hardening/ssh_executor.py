@@ -218,8 +218,14 @@ class MongoDBSSHExecutor:
                 elif "PASS" in result.verification_result:
                     result.success = True
                 else:
-                    # No PASS/FAIL signal — assume success if commands ran
-                    result.success = True
+                    # No PASS/FAIL signal (e.g. an ERROR from a failed verify
+                    # command). Cannot confirm the fix, so fail closed — do NOT
+                    # report success (which would flip the audit row to PASS without
+                    # the host being confirmed remediated). Matches the Linux executor.
+                    result.success = False
+                    result.error_message = (
+                        "Verification did not return an explicit PASS marker"
+                    )
             else:
                 result.success = True
 
