@@ -64,6 +64,7 @@ class FortiGateHardeningExecutor:
             )
             return header + config
         except Exception as e:  # noqa: BLE001
+            logger.error("FortiGate config backup failed on %s", self.ip, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Failed to backup config: {e}")
 
     def execute_commands(
@@ -84,6 +85,8 @@ class FortiGateHardeningExecutor:
                 logger.warning("FortiGate execution errors on %s: %s", self.ip, result["errors"])
             return result
         except Exception as e:  # noqa: BLE001
+            logger.error("FortiGate command execution failed on %s (scope=%s vdom=%s)",
+                         self.ip, scope, vdom or self.default_vdom, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Failed to execute commands: {e}")
 
     def verify_check(
@@ -110,6 +113,8 @@ class FortiGateHardeningExecutor:
                     passed = False
             return passed, "\n\n".join(evidence_parts)
         except Exception as e:  # noqa: BLE001
+            logger.error("FortiGate verification failed on %s (control=%s)",
+                         self.ip, getattr(control, "id", "?"), exc_info=True)
             raise FortiGateHardeningVerificationError(f"Failed to verify check: {e}")
 
     @staticmethod
@@ -145,6 +150,7 @@ class FortiGateHardeningExecutor:
         try:
             return self.ssh_client.send_raw("execute backup config flash")
         except Exception as e:  # noqa: BLE001
+            logger.error("FortiGate config save failed on %s", self.ip, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Failed to verify config save: {e}")
 
     def test_connectivity(self) -> bool:
@@ -154,6 +160,7 @@ class FortiGateHardeningExecutor:
             output = self.ssh_client.send_raw("get system status")
             return bool(output and "Version:" in output)
         except Exception as e:  # noqa: BLE001
+            logger.error("FortiGate connectivity test failed on %s", self.ip, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Device not responding: {e}")
 
     def get_system_info(self) -> Dict[str, object]:
@@ -162,6 +169,7 @@ class FortiGateHardeningExecutor:
         try:
             return self.ssh_client.get_system_status()
         except Exception as e:  # noqa: BLE001
+            logger.error("FortiGate get_system_info failed on %s", self.ip, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Failed to get system info: {e}")
 
 

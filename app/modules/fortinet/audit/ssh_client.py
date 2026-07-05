@@ -191,14 +191,16 @@ class FortiGateSSHClient:
                 "end", strip_prompt=False, strip_command=False
             )
         except Exception:  # pragma: no cover - best effort
-            pass
+            logger.debug("FG pager priming failed on %s (best-effort; continuing "
+                         "without disabling the pager)", self.host, exc_info=True)
 
     def disconnect(self) -> None:
         if self._connection:
             try:
                 self._connection.disconnect()
             except Exception:
-                pass
+                logger.debug("FG disconnect cleanup failed on %s (ignored)",
+                             self.host, exc_info=True)
             finally:
                 self._connection = None
 
@@ -217,9 +219,17 @@ class FortiGateSSHClient:
         if not self._connection:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        output = self._connection.send_command_timing(
-            command, strip_prompt=False, strip_command=False
-        )
+        # Wrap the actual SSH send so a device-side failure on ANY command
+        # (including the very first one hardening issues) is logged with the
+        # exact command and a full traceback (file + line) before it propagates.
+        try:
+            output = self._connection.send_command_timing(
+                command, strip_prompt=False, strip_command=False
+            )
+        except Exception:
+            logger.error("FG command send failed: %r on %s",
+                         command, self.host, exc_info=True)
+            raise
         # Defensive: drain any pager prompt that slipped through.
         guard = 0
         while output and re.search(r"--More--", output, flags=re.IGNORECASE) and guard < 50:
@@ -242,6 +252,8 @@ class FortiGateSSHClient:
             try:
                 more = read_more(last_read=1.0, read_timeout=15)
             except Exception:  # noqa: BLE001 - best-effort drain; never fail a read
+                logger.debug("FG drain read failed for %r on %s (best-effort)",
+                             command, self.host, exc_info=True)
                 break
             if not more:
                 break
@@ -348,7 +360,8 @@ class FortiGateSSHClient:
                 for m in re.finditer(r'^\s*edit\s+"?([A-Za-z0-9._\-]+)"?\s*$', cfg, flags=re.MULTILINE):
                     vdoms.append(m.group(1))
             except Exception:
-                pass
+                logger.debug("FG VDOM enumeration fallback failed on %s (ignored)",
+                             self.host, exc_info=True)
 
         # De-duplicate, keep order, force root to the front, default to root.
         seen, unique = set(), []
@@ -418,7 +431,8 @@ class FortiGateSSHClient:
         try:
             self._raw_send("end")
         except Exception:  # pragma: no cover - best effort
-            pass
+            logger.debug("FG scope close ('end') failed on %s (ignored)",
+                         self.host, exc_info=True)
 
     # ------------------------------------------------------------------
     # Public read / collect (audit)
@@ -524,6 +538,8 @@ class FortiGateSSHClient:
                         if any(p in low for p in _BAD_OUTPUT_PATTERNS):
                             errors.append(line.strip())
                 except Exception as e:  # noqa: BLE001
+                    logger.error("FG config command failed: %r (scope=%s vdom=%s) on %s",
+                                 cmd, scope, vdom, self.host, exc_info=True)
                     errors.append(f"Command '{cmd}' failed: {e}")
                     outputs.append(f"# {cmd}\nERROR: {e}")
 

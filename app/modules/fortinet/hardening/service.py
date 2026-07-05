@@ -455,7 +455,10 @@ class FortiGateHardeningService:
             action.completed_at = datetime.now(timezone.utc)
             db.commit()
 
-            logger.error(f"FortiGate hardening exception for action {action_id}: {str(e)}")
+            logger.error(
+                "FortiGate hardening exception for action %s: %s",
+                action_id, e, exc_info=True,
+            )
             raise
 
     @staticmethod
@@ -820,7 +823,10 @@ class FortiGateHardeningService:
                     db.commit()
 
                 except Exception as e:
-                    logger.error(f"Error auto-fixing FortiGate check {check_id}: {str(e)}")
+                    logger.error(
+                        "Error auto-fixing FortiGate check %s: %s",
+                        check_id, e, exc_info=True,
+                    )
                     failed_count += 1
 
         logger.info(
@@ -1044,7 +1050,10 @@ class FortiGateHardeningService:
                     db.commit()
 
                 except Exception as e:
-                    logger.error(f"Error fixing FortiGate check {check_id}: {str(e)}")
+                    logger.error(
+                        "Error fixing FortiGate check %s: %s",
+                        check_id, e, exc_info=True,
+                    )
                     failed_count += 1
                     execution_results.append({
                         "check_number": check_id,
