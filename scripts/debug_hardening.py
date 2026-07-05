@@ -220,9 +220,13 @@ def main() -> int:
 
     finally:
         # Best-effort unwind of any config context we entered, then disconnect.
+        # Stop as soon as an `end` is rejected (we're back at the top level), so
+        # the teardown doesn't emit a spurious "Command fail" from one `end` too many.
         try:
-            for _ in range(3):
-                client._raw_send("end")
+            for _ in range(4):
+                out = client._raw_send("end")
+                if not FortiGateSSHClient._is_command_ok(out):
+                    break
         except Exception:  # noqa: BLE001
             pass
         client.disconnect()

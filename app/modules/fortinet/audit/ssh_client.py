@@ -178,21 +178,32 @@ class FortiGateSSHClient:
         )
 
     def _prime_session(self) -> None:
-        """Disable the interactive pager so output is never paginated."""
+        """
+        Belt-and-suspenders disable of the interactive pager.
+
+        netmiko's FortinetSSH already disables paging during session preparation,
+        and does it VDOM-aware (it enters ``config global`` first when VDOMs are
+        enabled). We repeat it defensively, but MUST use the same scope: on a
+        VDOM-enabled device ``config system console`` is a global-only command and
+        is rejected at the root prompt with
+        ``8757: Unknown action / Command fail. Return code -1`` (harmless but noisy,
+        and each rejection costs a ~2s read timeout).
+
+        Routing through ``self.scope(SCOPE_GLOBAL)`` enters ``config global`` first
+        on VDOM devices and is a no-op on flat devices, so the pager-disable block
+        lands in the correct context either way. ``_raw_send`` also drains any
+        stray ``--More--`` as a further safety net.
+        """
         try:
-            # Both forms exist across FortiOS versions; ignore failures.
-            self._connection.send_command_timing(
-                "config system console", strip_prompt=False, strip_command=False
-            )
-            self._connection.send_command_timing(
-                "set output standard", strip_prompt=False, strip_command=False
-            )
-            self._connection.send_command_timing(
-                "end", strip_prompt=False, strip_command=False
-            )
+            # Detect VDOM mode first (cached) so scope() opens the right context.
+            self.is_vdom_enabled()
+            with self.scope(SCOPE_GLOBAL):
+                for cmd in ("config system console", "set output standard", "end"):
+                    self._raw_send(cmd)
         except Exception:  # pragma: no cover - best effort
-            logger.debug("FG pager priming failed on %s (best-effort; continuing "
-                         "without disabling the pager)", self.host, exc_info=True)
+            logger.debug("FG pager priming failed on %s (best-effort; netmiko "
+                         "already disables paging on connect)",
+                         self.host, exc_info=True)
 
     def disconnect(self) -> None:
         if self._connection:
