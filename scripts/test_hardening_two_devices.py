@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Full FortiGate hardening flow test against TWO real devices — SSH only, no DB.
+Full FortiGate hardening + audit coverage test against TWO real devices — SSH
+only, no DB. Every one of the 53 CIS controls is exercised on each device:
+18 through the hardening flow, the other 35 through an audit-only sweep.
 
 For every AUTO-FIXABLE CIS check (every control that has a remediation template
 AND all of whose parameters have defaults — 18 checks, not just FG-BL-090), this
@@ -20,6 +22,20 @@ script, per device:
   5. Restores the ORIGINAL value in a finally block. Restores are registered
      BEFORE the device is touched and run LIFO even if the script crashes
      mid-check, so neither device is left weakened.
+
+For the other 35 MANUAL / AUDIT-ONLY controls (everything not auto-fixable —
+Manual recommendations plus templated checks that need operator-supplied
+parameters) hardening can't be exercised, so a read-only sweep instead confirms
+the audit itself is healthy on the device:
+
+  1. the control's read command(s) actually RUN in the right scope,
+  2. they return parseable output (not empty and not a device rejection like
+     "command parse error" / "Command fail. Return code -N"),
+  3. the production evaluator yields a clean PASS/NON-COMPLIANT verdict without
+     raising.
+
+Pass -> AUDIT-OK, any of the above failing -> AUDIT-ERROR. The device is never
+mutated by this sweep; it runs first, on the pristine config.
 
 Production-fidelity notes
 -------------------------
@@ -63,9 +79,14 @@ from app.modules.fortinet.audit.rules import (  # noqa: E402
     get_fortinet_controls,
 )
 from app.modules.fortinet.audit.service import (  # noqa: E402
+    FortinetAuditService,
     _entry_field_value,
     _get_field_value,
     _parse_table_entries,
+)
+from app.modules.fortinet.audit.ssh_client import (  # noqa: E402
+    _BAD_OUTPUT_PATTERNS,
+    FortiGateSSHClient,
 )
 from app.modules.fortinet.hardening.command_parser import (  # noqa: E402
     FortiGateRemediationParser,
@@ -167,9 +188,10 @@ UNTESTABLE: Dict[str, str] = {
 @dataclass
 class Result:
     check_id: str
-    status: str            # PASS | FAIL | SKIP | ERROR
+    status: str            # auto: PASS|FAIL|SKIP|ERROR ; manual: AUDIT-OK|AUDIT-ERROR
     reason: str = ""
     initial: str = ""      # COMPLIANT / NON-COMPLIANT at start (for context)
+    kind: str = "auto"     # "auto" (hardening) | "manual" (audit-only)
 
 
 @dataclass
@@ -192,6 +214,14 @@ def auto_fixable_ids(controls: Dict[str, FortiGateControl]) -> List[str]:
     """Exactly the production 'auto-fixable' set, in catalog order."""
     return [cid for cid in controls
             if has_fortigate_template(cid) and is_fortigate_check_auto_fixable(cid)]
+
+
+def manual_ids(controls: Dict[str, FortiGateControl], auto_ids: List[str]) -> List[str]:
+    """Every control that is NOT auto-fixable — the manual / audit-only set, in
+    catalog order. Includes Manual recommendations and templated checks that
+    require operator-supplied parameters (no defaults to auto-apply)."""
+    auto = set(auto_ids)
+    return [cid for cid in controls if cid not in auto]
 
 
 def build_fix_commands(control: FortiGateControl) -> List[str]:
@@ -351,14 +381,82 @@ def restore_all(tag: str, executor: FortiGateHardeningExecutor, restores: List[R
 
 
 # ---------------------------------------------------------------------------
+# Manual / audit-only runner (read-only)
+# ---------------------------------------------------------------------------
+def _first_bad_line(output: str) -> str:
+    """The first output line that shows a FortiOS rejection, for a concise reason."""
+    for line in (output or "").splitlines():
+        if any(p in line.lower() for p in _BAD_OUTPUT_PATTERNS):
+            return line.strip()[:100]
+    return "unparseable output"
+
+
+def run_manual_audit(executor: FortiGateHardeningExecutor, control: FortiGateControl,
+                     vdom: Optional[str]) -> Result:
+    """Audit-only health check for a non-auto-fixable control: run its read
+    command(s) through the production SSH path and confirm they execute, return
+    parseable output, and yield a clean verdict via the production evaluator.
+    Never mutates the device."""
+    cid = control.id
+    client = executor.ssh_client
+
+    cmds: List[str] = []
+    for r in control.rules:
+        if r.cmd not in cmds:
+            cmds.append(r.cmd)
+
+    # 1. commands run (one scope entry; use_cache shares reads across controls)
+    try:
+        outputs = client.collect(cmds, scope=control.scope, vdom=vdom, use_cache=True)
+    except Exception as e:  # noqa: BLE001
+        return Result(cid, "AUDIT-ERROR", f"collect raised: {type(e).__name__}: {e}", kind="manual")
+
+    # 2. output is present and not a device rejection
+    for cmd in cmds:
+        out = outputs.get(cmd, "")
+        if not out.strip():
+            return Result(cid, "AUDIT-ERROR", f"`{cmd}` returned empty output", kind="manual")
+        if not FortiGateSSHClient._is_command_ok(out):
+            return Result(cid, "AUDIT-ERROR", f"`{cmd}` -> {_first_bad_line(out)}", kind="manual")
+
+    # 3. the production evaluator produces a clean PASS/NON-COMPLIANT verdict
+    try:
+        passed = all(FortinetAuditService._evaluate_rule(r, outputs.get(r.cmd, ""))
+                     for r in control.rules)
+    except Exception as e:  # noqa: BLE001 - evaluator is meant to be exception-safe
+        return Result(cid, "AUDIT-ERROR", f"evaluation crashed: {type(e).__name__}: {e}", kind="manual")
+
+    verdict = "COMPLIANT" if passed else "NON-COMPLIANT"
+    if control.needs_review:
+        verdict += " [review]"
+    return Result(cid, "AUDIT-OK", f"verdict: {verdict}", kind="manual")
+
+
+def _print_result_line(tag: str, res: Result) -> None:
+    if res.kind == "manual":
+        detail = ("command ran + parsed; " + res.reason if res.status == "AUDIT-OK"
+                  else res.reason)
+        suffix = f"(manual, {detail})"
+    elif res.status == "PASS":
+        suffix = f"(auto-fixable, hardened; was {res.initial})" if res.initial else "(auto-fixable, hardened)"
+    else:
+        detail = res.reason or (f"was {res.initial}" if res.initial else "")
+        suffix = f"(auto-fixable, {detail})" if detail else "(auto-fixable)"
+    print(f"[{tag}] {res.check_id:12} -> {res.status:11} {suffix}")
+
+
+# ---------------------------------------------------------------------------
 # Per-device driver
 # ---------------------------------------------------------------------------
 def run_device(host: str, label: str, user: str, password: str, port: int,
-               check_ids: List[str], controls: Dict[str, FortiGateControl],
+               auto_check_ids: List[str], manual_check_ids: List[str],
+               controls: Dict[str, FortiGateControl],
                do_backup: bool, scratch: str) -> Dict[str, Result]:
     tag = host
     results: Dict[str, Result] = {}
     restores: List[Restore] = []
+    all_ids = manual_check_ids + auto_check_ids
+    vdom = None  # route by scope: SCOPE_VDOM -> root, SCOPE_GLOBAL -> global
 
     print(f"\n{SEP}\nDEVICE {host}  ({label})\n{SEP}")
 
@@ -367,8 +465,10 @@ def run_device(host: str, label: str, user: str, password: str, port: int,
         executor.__enter__()
     except Exception as e:  # noqa: BLE001
         print(f"[{tag}] CONNECT FAILED: {type(e).__name__}: {e}")
-        for cid in check_ids:
-            results[cid] = Result(cid, "ERROR", f"connect failed: {type(e).__name__}", "")
+        for cid in all_ids:
+            kind = "manual" if cid in manual_check_ids else "auto"
+            status = "AUDIT-ERROR" if kind == "manual" else "ERROR"
+            results[cid] = Result(cid, status, f"connect failed: {type(e).__name__}", kind=kind)
         return results
 
     try:
@@ -387,16 +487,21 @@ def run_device(host: str, label: str, user: str, password: str, port: int,
             except Exception as e:  # noqa: BLE001
                 print(f"[{tag}] WARNING backup failed (continuing): {type(e).__name__}: {e}")
 
-        for cid in check_ids:
-            control = controls[cid]
-            res = run_check(tag, executor, control, restores)
-            results[cid] = res
-            line = f"[{tag}] {cid:12} -> {res.status}"
-            if res.reason:
-                line += f"  ({res.reason})"
-            elif res.initial:
-                line += f"  (was {res.initial})"
-            print(line)
+        # --- manual / audit-only sweep first, on the pristine (read-only) config ---
+        if manual_check_ids:
+            print(f"\n[{tag}] --- manual audit sweep ({len(manual_check_ids)} checks, read-only) ---")
+            for cid in manual_check_ids:
+                res = run_manual_audit(executor, controls[cid], vdom)
+                results[cid] = res
+                _print_result_line(tag, res)
+
+        # --- auto-fixable hardening (mutates + restores in the finally block) ---
+        if auto_check_ids:
+            print(f"\n[{tag}] --- auto-fixable hardening ({len(auto_check_ids)} checks) ---")
+            for cid in auto_check_ids:
+                res = run_check(tag, executor, controls[cid], restores)
+                results[cid] = res
+                _print_result_line(tag, res)
 
     finally:
         # Always restore, even on a mid-run crash, then close the SSH session.
@@ -411,29 +516,47 @@ def run_device(host: str, label: str, user: str, password: str, port: int,
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
-def _totals(results: Dict[str, Result]) -> str:
-    p = sum(1 for r in results.values() if r.status == "PASS")
-    f = sum(1 for r in results.values() if r.status == "FAIL")
-    s = sum(1 for r in results.values() if r.status in ("SKIP", "ERROR"))
-    return f"{p}/{p + f} PASS  ({s} skipped/error)"
+_ICONS = {"PASS": "PASS", "FAIL": "FAIL", "SKIP": "skip", "ERROR": "ERR ",
+          "AUDIT-OK": "OK", "AUDIT-ERROR": "ERROR"}
 
 
-def print_summary(devices: List, per_device: Dict[str, Dict[str, Result]], check_ids: List[str]) -> None:
+def print_summary(devices: List, per_device: Dict[str, Dict[str, Result]],
+                  auto_ids: List[str], manual_ids_: List[str]) -> None:
     hosts = [d[0] for d in devices]
     print(f"\n{SEP}\nSUMMARY (side by side)\n{SEP}")
     header = f"{'CHECK':<12} " + " ".join(f"{h:>17}" for h in hosts)
+
+    def _rows(title: str, ids: List[str]) -> None:
+        if not ids:
+            return
+        print(f"-- {title} --")
+        for cid in ids:
+            cells = []
+            for h in hosts:
+                r = per_device.get(h, {}).get(cid)
+                cells.append(f"{(_ICONS.get(r.status, '-') if r else '-'):>17}")
+            print(f"{cid:<12} " + " ".join(cells))
+
     print(header)
     print("-" * len(header))
-    icons = {"PASS": "PASS", "FAIL": "FAIL", "SKIP": "skip", "ERROR": "ERR "}
-    for cid in check_ids:
-        cells = []
-        for h in hosts:
-            r = per_device.get(h, {}).get(cid)
-            cells.append(f"{(icons.get(r.status, '-') if r else '-'):>17}")
-        print(f"{cid:<12} " + " ".join(cells))
+    _rows("auto-fixable (hardening)", auto_ids)
+    _rows("manual (audit-only)", manual_ids_)
     print("-" * len(header))
+
     for h in hosts:
-        print(f"[{h}] DEVICE TOTAL: {_totals(per_device.get(h, {}))}")
+        res = per_device.get(h, {})
+        ap = sum(1 for cid in auto_ids if res.get(cid) and res[cid].status == "PASS")
+        af = sum(1 for cid in auto_ids if res.get(cid) and res[cid].status == "FAIL")
+        ask = sum(1 for cid in auto_ids if res.get(cid) and res[cid].status in ("SKIP", "ERROR"))
+        mo = sum(1 for cid in manual_ids_ if res.get(cid) and res[cid].status == "AUDIT-OK")
+        me = sum(1 for cid in manual_ids_ if res.get(cid) and res[cid].status == "AUDIT-ERROR")
+        total = len(auto_ids) + len(manual_ids_)
+        print(f"\n[{h}]")
+        if auto_ids:
+            print(f"  Auto-fixable:  {ap}/{ap + af} PASS,  {af} FAIL   ({ask} skipped)")
+        if manual_ids_:
+            print(f"  Manual audit:  {mo}/{mo + me} OK,    {me} ERROR")
+        print(f"  Total:         {ap + mo}/{total} OK")
 
 
 # ---------------------------------------------------------------------------
@@ -455,35 +578,50 @@ def main() -> int:
     ap.add_argument("--user", help="SSH username for both devices (default: admin / $FG_USER)")
     ap.add_argument("--port", type=int, default=22)
     ap.add_argument("--only", nargs="+", metavar="CHECK_ID",
-                    help="restrict to specific check IDs (e.g. FG-BL-090 FG-AV-004)")
+                    help="restrict to specific check IDs (auto or manual, e.g. FG-BL-090 FG-LIP-001)")
+    ap.add_argument("--phase", choices=("both", "auto", "manual"), default="both",
+                    help="run only the auto-fixable hardening phase, only the manual audit "
+                         "sweep, or both (default: both)")
     ap.add_argument("--no-backup", action="store_true", help="skip the per-device full-config backup")
     ap.add_argument("--list", action="store_true",
-                    help="print the auto-fixable checks + their plan and exit (no device access)")
+                    help="print all 53 checks + their plan and exit (no device access)")
     args = ap.parse_args()
 
     controls = _control_map()
-    check_ids = auto_fixable_ids(controls)
+    auto_ids = auto_fixable_ids(controls) if args.phase in ("both", "auto") else []
+    man_ids = manual_ids(controls, auto_fixable_ids(controls)) if args.phase in ("both", "manual") else []
+
     if args.only:
         wanted = {c.upper() for c in args.only}
-        unknown = wanted - set(check_ids)
+        unknown = wanted - set(controls)
         if unknown:
-            print(f"[warn] not auto-fixable / unknown, ignoring: {', '.join(sorted(unknown))}")
-        check_ids = [c for c in check_ids if c in wanted]
-        if not check_ids:
-            print("[abort] no valid auto-fixable checks selected")
+            print(f"[warn] unknown check id(s), ignoring: {', '.join(sorted(unknown))}")
+        auto_ids = [c for c in auto_ids if c in wanted]
+        man_ids = [c for c in man_ids if c in wanted]
+        if not auto_ids and not man_ids:
+            print("[abort] no checks selected (check --only ids / --phase)")
             return 2
 
     if args.list:
-        print(f"{len(check_ids)} auto-fixable checks:\n")
-        for cid in check_ids:
-            c = controls[cid]
-            if cid in UNTESTABLE:
-                plan = f"SKIP — {UNTESTABLE[cid]}"
-            else:
-                br = BREAKERS.get(cid)
-                plan = (f"break via `config {br.section}` -> {br.bad}" if br
-                        else "no breaker defined")
-            print(f"  {cid:12} [{c.scope:10}] {c.title}\n               {plan}")
+        print(f"{len(auto_ids)} auto-fixable + {len(man_ids)} manual = "
+              f"{len(auto_ids) + len(man_ids)} checks:\n")
+        if auto_ids:
+            print("AUTO-FIXABLE (hardened):")
+            for cid in auto_ids:
+                c = controls[cid]
+                if cid in UNTESTABLE:
+                    plan = f"SKIP — {UNTESTABLE[cid]}"
+                else:
+                    br = BREAKERS.get(cid)
+                    plan = (f"break via `config {br.section}` -> {br.bad}" if br
+                            else "no breaker defined")
+                print(f"  {cid:12} [{c.scope:10}] {c.title}\n               {plan}")
+        if man_ids:
+            print("\nMANUAL (audit-only — command runs + parses + verdict):")
+            for cid in man_ids:
+                c = controls[cid]
+                cmds = ", ".join(dict.fromkeys(r.cmd for r in c.rules))
+                print(f"  {cid:12} [{c.scope:10}] {c.title}\n               reads: {cmds}")
         return 0
 
     devices = [(ip, "") for ip in args.devices] if args.devices else list(DEFAULT_DEVICES)
@@ -497,28 +635,39 @@ def main() -> int:
     scratch = os.environ.get("CLAUDE_SCRATCH", "/tmp")
     os.makedirs(scratch, exist_ok=True)
 
-    print(f"Testing {len(check_ids)} auto-fixable checks on {len(devices)} device(s): "
-          f"{', '.join(ip for ip, _ in devices)}")
+    all_ids = man_ids + auto_ids
+    print(f"Testing {len(auto_ids)} auto-fixable + {len(man_ids)} manual = {len(all_ids)} checks "
+          f"on {len(devices)} device(s): {', '.join(ip for ip, _ in devices)}")
+
+    def _err_dict(status_reason: str) -> Dict[str, Result]:
+        out = {}
+        for cid in all_ids:
+            kind = "manual" if cid in man_ids else "auto"
+            out[cid] = Result(cid, "AUDIT-ERROR" if kind == "manual" else "ERROR",
+                              status_reason, kind=kind)
+        return out
 
     per_device: Dict[str, Dict[str, Result]] = {}
     for host, label in devices:
         user, password = _creds_for(host, args)
         if not password:
-            per_device[host] = {cid: Result(cid, "ERROR", "no password", "") for cid in check_ids}
+            per_device[host] = _err_dict("no password")
             print(f"\n[{host}] SKIPPED: no password (set FG_PASS or FG_PASS_{host.rsplit('.', 1)[-1]})")
             continue
         try:
             per_device[host] = run_device(host, label, user, password, args.port,
-                                          check_ids, controls, not args.no_backup, scratch)
+                                          auto_ids, man_ids, controls, not args.no_backup, scratch)
         except Exception as e:  # noqa: BLE001 - one device must not abort the other
             print(f"\n[{host}] DEVICE-LEVEL ERROR: {type(e).__name__}: {e}")
-            per_device[host] = {cid: Result(cid, "ERROR", str(e), "") for cid in check_ids}
+            per_device[host] = _err_dict(str(e))
 
-    print_summary(devices, per_device, check_ids)
+    print_summary(devices, per_device, auto_ids, man_ids)
 
-    # Non-zero exit if any real FAIL occurred (SKIP/ERROR do not gate CI-style use).
-    any_fail = any(r.status == "FAIL" for d in per_device.values() for r in d.values())
-    return 1 if any_fail else 0
+    # Non-zero exit if any hardening FAIL or audit AUDIT-ERROR occurred
+    # (SKIP does not gate CI-style use).
+    bad = {"FAIL", "AUDIT-ERROR"}
+    any_bad = any(r.status in bad for d in per_device.values() for r in d.values())
+    return 1 if any_bad else 0
 
 
 if __name__ == "__main__":
