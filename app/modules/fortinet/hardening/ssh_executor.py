@@ -106,17 +106,25 @@ class FortiGateHardeningExecutor:
             outputs = self.ssh_client.collect(
                 cmds, scope=control.scope, vdom=vdom or self.default_vdom, use_cache=False
             )
-            evidence_parts, passed = [], True
+            # An off/absent feature (na_gate) is not a verification failure — mirror
+            # the audit so post-fix verify agrees with what the audit will report.
+            applicable, na_reason = FortinetAuditService._applicability(control, outputs)
+            if not applicable:
+                return True, f"[NOT APPLICABLE] {na_reason}"
+            # Reuse the audit service's authoritative evaluator (single source of
+            # truth) and its rule-combine semantics: "all" (AND) normally, "any"
+            # (OR) for controls whose setting has >1 build-specific spelling (e.g.
+            # FG-AV-003 machine-learning-detection vs the older heuristic node).
+            # A previous local copy handled only set_*/regex_* and returned False
+            # for the newer get_field_*/table_*/policy_* types, silently failing
+            # post-fix verification even when the device was correctly fixed.
+            evidence_parts, results = [], []
             for rule in control.rules:
                 out = outputs.get(rule.cmd, "")
                 evidence_parts.append(f"# {rule.cmd}\n{out[:500]}")
-                # Reuse the audit service's authoritative evaluator (single source
-                # of truth). A previous local copy handled only set_*/regex_* and
-                # returned False for the newer get_field_*/table_*/policy_* types,
-                # so post-fix verification silently failed those controls (e.g.
-                # FG-BL-090 get_field_eq) even when the device was correctly fixed.
-                if not FortinetAuditService._evaluate_rule(rule, out):
-                    passed = False
+                results.append(FortinetAuditService._evaluate_rule(rule, out))
+            combiner = any if getattr(control, "rule_combine", "all") == "any" else all
+            passed = combiner(results) if results else False
             return passed, "\n\n".join(evidence_parts)
         except Exception as e:  # noqa: BLE001
             logger.error("FortiGate verification failed on %s (control=%s)",

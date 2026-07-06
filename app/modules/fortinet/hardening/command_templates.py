@@ -114,9 +114,16 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": ["Enables FortiGuard antivirus definition push updates."],
     },
     "FG-AV-003": {  # 4.2.4 AI/heuristic detection (per-VDOM)
-        "commands": ["config antivirus settings", "set machine-learning-detection enable", "end"],
+        # Two build spellings: newer builds use `machine-learning-detection` under
+        # antivirus settings; 60F/older builds have no such field and use
+        # `config antivirus heuristic` (mode). Apply BOTH — the executor tolerates
+        # the block that doesn't exist on a given build, and verify
+        # (rule_combine="any") passes if EITHER took effect.
+        "commands": ["config antivirus settings", "set machine-learning-detection enable", "end",
+                     "config antivirus heuristic", "set mode pass", "end"],
         "required_params": [], "optional_params": [], "defaults": {},
-        "warnings": ["Enables AI/heuristic (machine-learning) malware detection."],
+        "warnings": ["Enables AI/heuristic malware detection (machine-learning-detection, or the "
+                     "antivirus heuristic node on builds without that field)."],
     },
     "FG-AV-004": {  # 4.2.5 grayware (per-VDOM)
         "commands": ["config antivirus settings", "set grayware enable", "end"],
@@ -134,13 +141,12 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     },
 
     # ---- 4.4 Application Control ----
-    "FG-APP-002": {  # 4.4.2 enforce default ports (per-VDOM)
-        "commands": ["config application list", "edit {APP_LIST}",
-                     "set enforce-default-app-port enable", "next", "end"],
-        "required_params": [], "optional_params": ["APP_LIST"],
-        "defaults": {"APP_LIST": "default"},
-        "warnings": ["Enforces default ports for applications on the application control list."],
-    },
+    # FG-APP-002 (4.4.2, enforce default app ports) has NO template on purpose:
+    # the `enforce-default-app-port` field is build-specific and absent on some
+    # models (e.g. 60F), where pushing it fails with "command parse error". It is
+    # a Manual/review-only control (see rules.py review_required), so it is audited
+    # best-effort but never auto-hardened. Add a template back only once the field
+    # is confirmed present across the supported build matrix.
 
     # ---- 7 Users and Authentication ----
     "FG-USER-001": {  # 7.1 login attempts/lockout (per-VDOM)

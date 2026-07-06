@@ -17,7 +17,7 @@ import re
 import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -925,7 +925,9 @@ class FortinetAuditService:
                 if m:
                     sample = m[0] if isinstance(m[0], str) else " ".join(x for x in m[0] if x)
                     lines.append(f"match: {sample}")
-        sep = "\n" if detailed else " | "
+        # "any"-combined controls (one setting, several build spellings) read as an
+        # OR so a PASS via one form isn't confused by the other form's absence.
+        sep = "\n" if detailed else (" OR " if control.rule_combine == "any" else " | ")
         evidence = sep.join(x.strip() for x in lines if x and x.strip())
         if not evidence:
             evidence = "No matching configuration found"
@@ -934,21 +936,29 @@ class FortinetAuditService:
         cap = 3600 if detailed else 500
         return evidence[:cap - 3] + "..." if len(evidence) > cap else evidence
 
+    @staticmethod
+    def _applicability(control: FortiGateControl, outputs: Dict[str, str]) -> Tuple[bool, str]:
+        """Return (applicable, reason). A control is NOT_APPLICABLE when its
+        ``na_gate`` matches — the feature is switched off (gate field == an
+        off value) or not present on this build (gate command was rejected)."""
+        gate = getattr(control, "na_gate", None)
+        if gate is None:
+            return True, ""
+        out = outputs.get(gate.cmd, "")
+        if gate.na_if_cmd_error and out and not FortiGateSSHClient._is_command_ok(out):
+            return False, gate.note or "feature not present on this build (command rejected)"
+        if gate.key:
+            val = _get_field_value(out, gate.key)
+            if val is not None and _norm_field(val) in {_norm_field(v) for v in gate.off_values}:
+                return False, gate.note or f"{gate.key}={val}"
+        return True, ""
+
     @classmethod
     def _evaluate_control(cls, control: FortiGateControl, outputs: Dict[str, str], vdom_label: Optional[str]) -> Dict[str, Any]:
         # Applicability gate: score NOT_APPLICABLE (not NON-COMPLIANT) when the
-        # underlying feature is switched off, so an absent sub-field isn't reported
-        # as a false finding (e.g. HA reserved-mgmt on a standalone box, FAZ log
-        # encryption when FortiAnalyzer logging is disabled).
-        applicable, na_reason = True, ""
-        gate = control.na_gate
-        if gate is not None:
-            gate_val = _get_field_value(outputs.get(gate.cmd, ""), gate.key)
-            if gate_val is not None and _norm_field(gate_val) in {
-                _norm_field(v) for v in gate.off_values
-            }:
-                applicable = False
-                na_reason = gate.note or f"{gate.key}={gate_val}"
+        # underlying feature is switched off or absent from this build, so a
+        # legitimately-absent sub-field isn't reported as a false finding.
+        applicable, na_reason = cls._applicability(control, outputs)
 
         if not applicable:
             # Feature is off — skip the sub-rules entirely (their fields are
@@ -956,7 +966,10 @@ class FortinetAuditService:
             # NON-COMPLIANT + "field NOT FOUND" noise) and record just why.
             passed, evidence = False, f"{_NA_NOTICE} {na_reason}"
         else:
-            passed = all(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
+            # "any" for controls whose setting has >1 build-specific spelling
+            # (compliant if EITHER form is enabled); "all" (AND) otherwise.
+            combiner = any if control.rule_combine == "any" else all
+            passed = combiner(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
             # Evidence formatting must never fail the whole audit: a single
             # control's edge case (unexpected real-device output shape) should
             # degrade to a placeholder, not raise a 500. The PASS/FAIL above is
@@ -1112,12 +1125,16 @@ class FortinetAuditService:
                             findings.append(cls._evaluate_control(c, v_out, v_label))
                         cls._merge_dump(raw_dump, v_out, SCOPE_VDOM, v_label)
 
-            # Compliance metrics — the entire CIS checklist is scored (Manual
-            # controls included; every control yields a PASS/FAIL).
-            passed = sum(1 for f in findings if f["passed"])
+            # Compliance metrics — Manual controls are scored like Automated ones,
+            # but NOT_APPLICABLE controls (na_gate matched: feature off/absent) are
+            # excluded from the score entirely, so an off feature neither passes nor
+            # drags the percentage down. total_checks still counts every result row.
+            na = sum(1 for f in findings if not f.get("applicable", True))
+            passed = sum(1 for f in findings if f.get("applicable", True) and f["passed"])
             total = len(findings)
-            failed = total - passed
-            compliance_pct = round(100.0 * passed / total, 2) if total else 0.0
+            failed = total - passed - na
+            scored = passed + failed
+            compliance_pct = round(100.0 * passed / scored, 2) if scored else 0.0
 
             session.status = "completed"
             session.completed_at = datetime.now(timezone.utc)

@@ -161,8 +161,9 @@ BREAKERS: Dict[str, Breaker] = {
     # ---- 4.3 / 4.4 profile tables (per-VDOM) ----
     "FG-DNS-001": Breaker("dnsfilter profile", {"block-botnet": "disable"},
                           kind="profile", profile="default"),
-    "FG-APP-002": Breaker("application list", {"enforce-default-app-port": "disable"},
-                          kind="profile", profile="default"),
+    # FG-APP-002 is intentionally review-only now (no template — the
+    # enforce-default-app-port field is absent on some builds), so it is covered
+    # by the manual audit sweep, not here.
     # ---- 7 Users / 8 Logs (per-VDOM + global) ----
     "FG-USER-001": Breaker("user setting", {"auth-lockout-threshold": "0"}, forceable=False,
                            force_note="control passes for threshold >= 1 and FortiOS rejects 0 "
@@ -294,6 +295,23 @@ def restore_commands(br: Breaker, snap: Dict[str, Optional[str]]) -> List[str]:
 # ---------------------------------------------------------------------------
 # Per-check runner
 # ---------------------------------------------------------------------------
+def _na_check(executor: FortiGateHardeningExecutor, control: FortiGateControl,
+              vdom: Optional[str]) -> Optional[str]:
+    """If the control's na_gate matches (feature off/absent on this build), return
+    the reason so we skip hardening it; otherwise None. Reuses the production
+    applicability logic so the test agrees with the audit."""
+    gate = getattr(control, "na_gate", None)
+    if gate is None:
+        return None
+    try:
+        out = executor.ssh_client.collect([gate.cmd], scope=control.scope,
+                                          vdom=vdom, use_cache=False).get(gate.cmd, "")
+    except Exception:  # noqa: BLE001 - a read failure isn't an N/A determination
+        return None
+    applicable, reason = FortinetAuditService._applicability(control, {gate.cmd: out})
+    return None if applicable else reason
+
+
 def run_check(tag: str, executor: FortiGateHardeningExecutor,
               control: FortiGateControl, restores: List[Restore]) -> Result:
     cid = control.id
@@ -310,6 +328,11 @@ def run_check(tag: str, executor: FortiGateHardeningExecutor,
         except Exception as e:  # noqa: BLE001
             initial = f"read-error: {type(e).__name__}"
         return Result(cid, "SKIP", UNTESTABLE[cid], initial)
+
+    # N/A gate (feature off/absent on this build) — don't try to harden it.
+    na = _na_check(executor, control, vdom)
+    if na:
+        return Result(cid, "SKIP", f"N/A — {na}", "N/A")
 
     br = BREAKERS.get(cid)
     if br is None:

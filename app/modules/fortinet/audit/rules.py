@@ -50,21 +50,25 @@ class FortiGateRule:
 
 @dataclass
 class ApplicabilityGate:
-    """Marks a control NOT_APPLICABLE when the underlying feature is switched off.
+    """Marks a control NOT_APPLICABLE when the underlying feature is off/absent.
 
     Some controls check a sub-setting that only exists once a feature is enabled
-    (e.g. the HA reserved-management interface only when HA is configured, or
-    FortiAnalyzer log encryption only when FAZ logging is on). When the feature is
-    off the sub-field is simply absent — reporting NON-COMPLIANT there is a false
-    finding, so the control is scored NOT_APPLICABLE instead.
+    (HA reserved-mgmt only when HA is configured, FAZ log encryption only when FAZ
+    logging is on), or a feature that a given FortiOS build/model doesn't ship at
+    all (e.g. FortiGuard AV push-update on a 60F). Reporting NON-COMPLIANT there is
+    a false finding, so the control is scored NOT_APPLICABLE.
 
-    The control is N/A when field ``key`` in ``cmd``'s output equals one of
-    ``off_values`` (case/space-insensitive).
+    N/A when either:
+      * ``key`` is set and field ``key`` in ``cmd``'s output equals one of
+        ``off_values`` (case/space-insensitive)  — feature switched off; or
+      * ``na_if_cmd_error`` and ``cmd``'s output is a device rejection (parse
+        error / unknown action / command fail) — feature not present on this build.
     """
     cmd: str
-    key: str
-    off_values: List[str]
+    key: Optional[str] = None
+    off_values: List[str] = field(default_factory=list)
     note: str = ""
+    na_if_cmd_error: bool = False
 
 
 @dataclass
@@ -87,6 +91,10 @@ class FortiGateControl:
     # Optional gate: when set and matched, the control is scored NOT_APPLICABLE
     # (feature switched off) rather than NON-COMPLIANT. See ApplicabilityGate.
     na_gate: Optional[ApplicabilityGate] = None
+    # How to combine multiple rules: "all" (AND, default) or "any" (OR — for a
+    # control whose setting has more than one build-specific spelling, so ANY
+    # matching form is enough, e.g. ML-detection vs the older heuristic node).
+    rule_combine: str = "all"
     tags: List[str] = field(default_factory=list)
 
     @property
@@ -128,12 +136,12 @@ def _section_name(cis_id: str) -> str:
 
 
 def _ctl(id, title, cis_id, cis_type, scope, severity, level, rules, remediation,
-         review_required=False, na_gate=None) -> FortiGateControl:
+         review_required=False, na_gate=None, rule_combine="all") -> FortiGateControl:
     return FortiGateControl(
         id=id, title=title, cis_id=cis_id, cis_section=_section_name(cis_id),
         cis_type=cis_type, scope=scope, severity=severity, level=level,
         rules=rules, remediation=remediation, review_required=review_required,
-        na_gate=na_gate,
+        na_gate=na_gate, rule_combine=rule_combine,
     )
 
 
@@ -205,6 +213,7 @@ GUSRSET = "get user setting"
 GEVENTF = "get log eventfilter"
 GFAZ = "get log fortianalyzer setting"
 GAVSET = "get antivirus settings"
+GAVHEUR = "get antivirus heuristic"   # older/lower-end builds (e.g. 60F) put AI/heuristic here
 GPUSHUPD = "get system autoupdate push-update"
 
 
@@ -433,9 +442,14 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         # `show system autoupdate push-update` → `set status enable` must be present.
         # (`get system autoupdate push-update` is rejected by FortiOS even in global;
         # `show` reads the sub-table and prints `set status enable` when configured.)
+        # N/A on builds that don't ship FortiGuard push-update at all (e.g. 60F):
+        # `show system autoupdate push-update` is rejected (parse error / unknown
+        # action), so there's no setting to be compliant/non-compliant about.
         _ctl("FG-AV-001", "Antivirus Definition Push Updates configured", "4.2.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
              [FortiGateRule(type="set_eq", cmd=PUSHUPD, key="status", expected="enable")],
-             "config system autoupdate push-update\n set status enable\nend"),
+             "config system autoupdate push-update\n set status enable\nend",
+             na_gate=ApplicabilityGate(cmd=PUSHUPD, na_if_cmd_error=True,
+                                       note="FortiGuard push-update not supported on this build")),
         # `show firewall policy` → each ACCEPT policy should carry an AV profile;
         # the report lists every accept Policy ID missing `set av-profile`.
         _ctl("FG-UTM-002", "Apply Antivirus Security Profile to policies", "4.2.2", "Manual", SCOPE_VDOM, "Medium", "L1",
@@ -451,9 +465,17 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              "config antivirus profile\n edit <profile>\n config http\n set outbreak-prevention block\nend",
              review_required=True),
         # `get antivirus settings` → ML detection enabled, grayware enabled.
+        # Two build spellings for AI/heuristic AV: newer builds expose
+        # `machine-learning-detection` under `get antivirus settings`; older/60F
+        # builds have no such field and use `config antivirus heuristic` (mode:
+        # pass|block|disable). rule_combine="any" -> compliant if EITHER form is
+        # enabled (the other's field is simply absent on that build).
         _ctl("FG-AV-003", "AI/heuristic based malware detection enabled", "4.2.4", "Automated", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="get_field_ne", cmd=GAVSET, key="machine-learning-detection", expected="disable")],
-             "config antivirus settings\n set machine-learning-detection enable\nend"),
+             [FortiGateRule(type="get_field_ne", cmd=GAVSET, key="machine-learning-detection", expected="disable"),
+              FortiGateRule(type="get_field_ne", cmd=GAVHEUR, key="mode", expected="disable")],
+             "config antivirus settings\n set machine-learning-detection enable\nend\n"
+             "(on builds without that field: config antivirus heuristic / set mode pass)",
+             rule_combine="any"),
         _ctl("FG-AV-004", "Grayware detection enabled", "4.2.5", "Automated", SCOPE_VDOM, "Low", "L1",
              [FortiGateRule(type="get_field_eq", cmd=GAVSET, key="grayware", expected="enable")],
              "config antivirus settings\n set grayware enable\nend"),
