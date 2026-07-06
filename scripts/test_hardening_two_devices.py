@@ -65,6 +65,7 @@ Credentials (username defaults to ``admin``):
     FG_USER_40 / FG_PASS_40                override for 172.16.200.40
 """
 import argparse
+import logging
 import os
 import re
 import sys
@@ -192,6 +193,7 @@ class Result:
     reason: str = ""
     initial: str = ""      # COMPLIANT / NON-COMPLIANT at start (for context)
     kind: str = "auto"     # "auto" (hardening) | "manual" (audit-only)
+    suspect: bool = False  # manual AUDIT-OK whose verdict hinges on an absent field
 
 
 @dataclass
@@ -391,6 +393,30 @@ def _first_bad_line(output: str) -> str:
     return "unparseable output"
 
 
+# get-field rule types whose verdict is auto-NON-COMPLIANT when the key is absent
+# (string comparisons). Int types are excluded — they legitimately fall back to
+# the rule's numeric default when the line is omitted, so absence isn't suspect.
+_SUSPECT_TYPES = frozenset({
+    "get_field_eq", "get_field_ne", "get_field_in",
+    "get_field_matches", "get_field_not_match", "get_field_excludes",
+})
+
+
+def _suspect_absent_fields(control: FortiGateControl, outputs: Dict[str, str]) -> List[str]:
+    """Return the keys of string get-field rules whose field is ABSENT from a
+    complete, non-error capture — the production 'may be a false NON-COMPLIANT'
+    signal (usually a build-specific output-format mismatch). Such a verdict ran
+    cleanly (so it's AUDIT-OK) but shouldn't be trusted without a look."""
+    suspects: List[str] = []
+    for r in control.rules:
+        if r.type in _SUSPECT_TYPES and r.key:
+            out = outputs.get(r.cmd, "")
+            if out.strip() and FortiGateSSHClient._is_command_ok(out) \
+                    and _get_field_value(out, r.key) is None:
+                suspects.append(r.key)
+    return suspects
+
+
 def run_manual_audit(executor: FortiGateHardeningExecutor, control: FortiGateControl,
                      vdom: Optional[str]) -> Result:
     """Audit-only health check for a non-auto-fixable control: run its read
@@ -419,17 +445,25 @@ def run_manual_audit(executor: FortiGateHardeningExecutor, control: FortiGateCon
         if not FortiGateSSHClient._is_command_ok(out):
             return Result(cid, "AUDIT-ERROR", f"`{cmd}` -> {_first_bad_line(out)}", kind="manual")
 
-    # 3. the production evaluator produces a clean PASS/NON-COMPLIANT verdict
+    # 3. the production control evaluator produces a clean verdict — PASS,
+    #    NON-COMPLIANT, or NOT_APPLICABLE (na_gate) — without raising.
     try:
-        passed = all(FortinetAuditService._evaluate_rule(r, outputs.get(r.cmd, ""))
-                     for r in control.rules)
+        finding = FortinetAuditService._evaluate_control(control, outputs, None)
     except Exception as e:  # noqa: BLE001 - evaluator is meant to be exception-safe
         return Result(cid, "AUDIT-ERROR", f"evaluation crashed: {type(e).__name__}: {e}", kind="manual")
 
-    verdict = "COMPLIANT" if passed else "NON-COMPLIANT"
+    if not finding["applicable"]:
+        return Result(cid, "AUDIT-OK", f"verdict: N/A ({finding['na_reason']})", kind="manual")
+
+    verdict = "COMPLIANT" if finding["passed"] else "NON-COMPLIANT"
     if control.needs_review:
         verdict += " [review]"
-    return Result(cid, "AUDIT-OK", f"verdict: {verdict}", kind="manual")
+    suspects = _suspect_absent_fields(control, outputs)
+    reason = f"verdict: {verdict}"
+    if suspects:
+        reason += (f"  SUSPECT: {', '.join(suspects)} absent from output "
+                   f"— verdict may be a false NON-COMPLIANT (build format mismatch)")
+    return Result(cid, "AUDIT-OK", reason, kind="manual", suspect=bool(suspects))
 
 
 def _print_result_line(tag: str, res: Result) -> None:
@@ -534,7 +568,10 @@ def print_summary(devices: List, per_device: Dict[str, Dict[str, Result]],
             cells = []
             for h in hosts:
                 r = per_device.get(h, {}).get(cid)
-                cells.append(f"{(_ICONS.get(r.status, '-') if r else '-'):>17}")
+                icon = _ICONS.get(r.status, "-") if r else "-"
+                if r and r.suspect:
+                    icon += "*"          # AUDIT-OK but verdict hinges on an absent field
+                cells.append(f"{icon:>17}")
             print(f"{cid:<12} " + " ".join(cells))
 
     print(header)
@@ -550,12 +587,14 @@ def print_summary(devices: List, per_device: Dict[str, Dict[str, Result]],
         ask = sum(1 for cid in auto_ids if res.get(cid) and res[cid].status in ("SKIP", "ERROR"))
         mo = sum(1 for cid in manual_ids_ if res.get(cid) and res[cid].status == "AUDIT-OK")
         me = sum(1 for cid in manual_ids_ if res.get(cid) and res[cid].status == "AUDIT-ERROR")
+        msus = sum(1 for cid in manual_ids_ if res.get(cid) and res[cid].suspect)
         total = len(auto_ids) + len(manual_ids_)
         print(f"\n[{h}]")
         if auto_ids:
             print(f"  Auto-fixable:  {ap}/{ap + af} PASS,  {af} FAIL   ({ask} skipped)")
         if manual_ids_:
-            print(f"  Manual audit:  {mo}/{mo + me} OK,    {me} ERROR")
+            suspect_note = f"   ({msus} suspect* — verify)" if msus else ""
+            print(f"  Manual audit:  {mo}/{mo + me} OK,    {me} ERROR{suspect_note}")
         print(f"  Total:         {ap + mo}/{total} OK")
 
 
@@ -583,9 +622,17 @@ def main() -> int:
                     help="run only the auto-fixable hardening phase, only the manual audit "
                          "sweep, or both (default: both)")
     ap.add_argument("--no-backup", action="store_true", help="skip the per-device full-config backup")
+    ap.add_argument("--verbose", action="store_true",
+                    help="keep the fortinet module's WARNING logs (absent-field / exec-error "
+                         "details); by default they are quieted since the report surfaces them")
     ap.add_argument("--list", action="store_true",
                     help="print all 53 checks + their plan and exit (no device access)")
     args = ap.parse_args()
+
+    # Quiet the interleaved module warnings by default — the per-check lines and
+    # the SUSPECT annotations already carry the salient detail.
+    logging.getLogger("app.modules.fortinet").setLevel(
+        logging.WARNING if args.verbose else logging.ERROR)
 
     controls = _control_map()
     auto_ids = auto_fixable_ids(controls) if args.phase in ("both", "auto") else []

@@ -49,6 +49,25 @@ class FortiGateRule:
 
 
 @dataclass
+class ApplicabilityGate:
+    """Marks a control NOT_APPLICABLE when the underlying feature is switched off.
+
+    Some controls check a sub-setting that only exists once a feature is enabled
+    (e.g. the HA reserved-management interface only when HA is configured, or
+    FortiAnalyzer log encryption only when FAZ logging is on). When the feature is
+    off the sub-field is simply absent — reporting NON-COMPLIANT there is a false
+    finding, so the control is scored NOT_APPLICABLE instead.
+
+    The control is N/A when field ``key`` in ``cmd``'s output equals one of
+    ``off_values`` (case/space-insensitive).
+    """
+    cmd: str
+    key: str
+    off_values: List[str]
+    note: str = ""
+
+
+@dataclass
 class FortiGateControl:
     """A CIS FortiGate Benchmark recommendation."""
     id: str
@@ -65,6 +84,9 @@ class FortiGateControl:
     # best-effort checks whose CLI output can't fully prove the control (e.g.
     # "profile applied to the right policies", "latest firmware", admin password).
     review_required: bool = False
+    # Optional gate: when set and matched, the control is scored NOT_APPLICABLE
+    # (feature switched off) rather than NON-COMPLIANT. See ApplicabilityGate.
+    na_gate: Optional[ApplicabilityGate] = None
     tags: List[str] = field(default_factory=list)
 
     @property
@@ -106,11 +128,12 @@ def _section_name(cis_id: str) -> str:
 
 
 def _ctl(id, title, cis_id, cis_type, scope, severity, level, rules, remediation,
-         review_required=False) -> FortiGateControl:
+         review_required=False, na_gate=None) -> FortiGateControl:
     return FortiGateControl(
         id=id, title=title, cis_id=cis_id, cis_section=_section_name(cis_id),
         cis_type=cis_type, scope=scope, severity=severity, level=level,
         rules=rules, remediation=remediation, review_required=review_required,
+        na_gate=na_gate,
     )
 
 
@@ -356,9 +379,13 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         _ctl("FG-HA-005", "Monitor Interfaces for HA is enabled", "2.5.2", "Automated", SCOPE_GLOBAL, "Medium", "L1",
              [FortiGateRule(type="get_field_matches", cmd=GHA, key="monitor", pattern=r"\S")],
              "config system ha\n set monitor <port1> <port2>\nend"),
+        # N/A on standalone devices: ha-mgmt-status only exists once HA is set up,
+        # so its absence when mode=standalone is "HA not configured", not a finding.
         _ctl("FG-HA-006", "HA Reserved Management Interface configured", "2.5.3", "Manual", SCOPE_GLOBAL, "Low", "L1",
              [FortiGateRule(type="get_field_eq", cmd=GHA, key="ha-mgmt-status", expected="enable")],
-             "config system ha\n set ha-mgmt-status enable\n config ha-mgmt-interfaces\n ...\nend"),
+             "config system ha\n set ha-mgmt-status enable\n config ha-mgmt-interfaces\n ...\nend",
+             na_gate=ApplicabilityGate(cmd=GHA, key="mode", off_values=["standalone"],
+                                       note="HA not configured (mode=standalone)")),
 
         # ===== 3 Policy and Objects =====
         # `show firewall policy` → best-effort: report policy count; "reviewed
@@ -493,10 +520,14 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              [FortiGateRule(type="get_field_not_match", cmd=GSSLVPN, key="servercert",
                             pattern=r"^(Fortinet_|self-sign)")],
              "config vpn ssl settings\n set servercert <trusted-cert>\nend"),
+        # Two output formats across builds: a single `ssl-min-proto-ver : tls1-2`
+        # field, OR per-version booleans `tlsv1-0/1/2/3 : enable/disable`. The
+        # sslvpn_min_tls evaluator handles both (compliant only when no TLS < 1.2
+        # is enabled). key is kept for evidence.
         _ctl("FG-VPN-SSL-001", "Limited TLS versions enabled for SSL VPN", "6.1.2", "Manual", SCOPE_VDOM, "High", "L1",
-             [FortiGateRule(type="get_field_in", cmd=GSSLVPN, key="ssl-min-proto-ver",
-                            expected=["tls1-2", "tls1-3", "tlsv1-2", "tlsv1-3"])],
-             "config vpn ssl settings\n set ssl-min-proto-ver tls1-2\nend"),
+             [FortiGateRule(type="sslvpn_min_tls", cmd=GSSLVPN, key="ssl-min-proto-ver")],
+             "config vpn ssl settings\n set ssl-min-proto-ver tls1-2\nend\n"
+             "(on builds without ssl-min-proto-ver: set tlsv1-0 disable / set tlsv1-1 disable)"),
 
         # ===== 7 Users and Authentication =====
         # `get user setting` → auth-lockout-threshold must be >= 1 (not disabled).
@@ -512,9 +543,14 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              "config log eventfilter\n set event enable\nend"),
         # `get log fortianalyzer setting` → enc-algorithm must not be disable, and
         # status must be enable for the FAZ destination.
+        # N/A when FortiAnalyzer logging is off: enc-algorithm only appears once
+        # `status` is enable, so its absence with status=disable means "no FAZ
+        # configured", not unencrypted transmission.
         _ctl("FG-LOG-002", "Log transmission to FortiAnalyzer/FortiManager encrypted", "8.2.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
              [FortiGateRule(type="get_field_ne", cmd=GFAZ, key="enc-algorithm", expected="disable")],
-             "config log fortianalyzer setting\n set reliable enable\n set enc-algorithm high\nend"),
+             "config log fortianalyzer setting\n set reliable enable\n set enc-algorithm high\nend",
+             na_gate=ApplicabilityGate(cmd=GFAZ, key="status", off_values=["disable"],
+                                       note="FortiAnalyzer logging disabled (status=disable)")),
         _ctl("FG-FAZ-001", "Centralized Logging and Reporting configured", "8.3.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
              [FortiGateRule(type="get_field_eq", cmd=GFAZ, key="status", expected="enable")],
              "config log fortianalyzer setting\n set status enable\n set server <faz-ip>\nend"),

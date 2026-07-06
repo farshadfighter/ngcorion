@@ -419,6 +419,35 @@ def _eval_get_field(rule, output: str) -> bool:
     return False
 
 
+# TLS versions that satisfy "SSL-VPN min proto >= 1.2" in the single-field format.
+_SSLVPN_OK_MIN = frozenset({"tls1-2", "tls1-3", "tlsv1-2", "tlsv1-3"})
+# Per-version boolean fields for the weak protocols that must NOT be enabled.
+_SSLVPN_WEAK_FIELDS = ("tlsv1-0", "tlsv1-1")
+
+
+def _sslvpn_min_tls_ok(output: str) -> bool:
+    """SSL-VPN must allow only TLS >= 1.2. Handles BOTH build output formats:
+
+    * single resolved field ``ssl-min-proto-ver : tls1-2`` -> value must be 1.2/1.3;
+    * per-version booleans ``tlsv1-0/1/2/3 : enable/disable`` (some 60F builds have
+      no ``ssl-min-proto-ver`` at all) -> compliant only when no weak version
+      (TLS 1.0/1.1) is enabled.
+    """
+    v = _get_field_value(output, "ssl-min-proto-ver")
+    if v is not None:
+        return _norm_field(v) in {_norm_field(x) for x in _SSLVPN_OK_MIN}
+    saw_bool = False
+    for weak in _SSLVPN_WEAK_FIELDS:
+        b = _get_field_value(output, weak)
+        if b is not None:
+            saw_bool = True
+            if b.strip().lower() == "enable":
+                return False  # a weak TLS version is enabled -> NON-COMPLIANT
+    # Compliant only if we actually parsed the booleans and none weak was enabled;
+    # neither format present -> can't confirm -> fail closed.
+    return saw_bool
+
+
 def _field_expectation(rule) -> str:
     """
     Human-readable expectation for a NON-COMPLIANT generic field rule.
@@ -623,6 +652,8 @@ _REVIEW_NOTICE = ("[MANUAL REVIEW REQUIRED] Heuristic check: the PASS/FAIL below
                   "indicative only (based on presence/absence of config) and must be "
                   "verified manually.")
 
+_NA_NOTICE = "[NOT APPLICABLE]"
+
 
 # Secrets to redact from captured command output before persisting.
 _REDACTION_PATTERNS = [
@@ -775,6 +806,11 @@ class FortinetAuditService:
                 value, active = _field_forbidden_tokens(output, rule.key, rule.expected)
                 return value is not None and not active
 
+            if rule.type == "sslvpn_min_tls":
+                # SSL-VPN min TLS >= 1.2, tolerant of the ssl-min-proto-ver field
+                # OR the per-version tlsv1-N booleans some builds use instead.
+                return _sslvpn_min_tls_ok(output)
+
             if rule.type == "snmp_status_enabled":
                 # Step 1: SNMP master switch must be enabled.
                 return (_get_field_value(output, "status") or "").lower() == "enable"
@@ -846,6 +882,26 @@ class FortinetAuditService:
                 else:
                     lines.append(f"{rule.key}: {value} (compliant)")
                 continue
+            if rule.type == "sslvpn_min_tls":
+                v = _get_field_value(out, "ssl-min-proto-ver")
+                if v is not None:
+                    ok = _norm_field(v) in {_norm_field(x) for x in _SSLVPN_OK_MIN}
+                    lines.append(f"ssl-min-proto-ver: {v} "
+                                 f"({'compliant' if ok else 'NON-COMPLIANT — must be tls1-2+'})")
+                else:
+                    states = {k: _get_field_value(out, k)
+                              for k in ("tlsv1-0", "tlsv1-1", "tlsv1-2", "tlsv1-3")}
+                    present = {k: val for k, val in states.items() if val is not None}
+                    weak_on = [k for k in _SSLVPN_WEAK_FIELDS
+                               if (present.get(k) or "").lower() == "enable"]
+                    shown = ", ".join(f"{k}={val}" for k, val in present.items())
+                    if not present:
+                        lines.append("no ssl-min-proto-ver / tlsv1-N fields found (NON-COMPLIANT)")
+                    elif weak_on:
+                        lines.append(f"weak TLS enabled: {', '.join(weak_on)} [{shown}] (NON-COMPLIANT)")
+                    else:
+                        lines.append(f"only TLS 1.2+ enabled [{shown}] (compliant)")
+                continue
             if rule.type == "ntp_status_ok":
                 st = _parse_ntp_status(out)
                 servers = ", ".join(st["servers"]) if st["servers"] else "none"
@@ -880,28 +936,51 @@ class FortinetAuditService:
 
     @classmethod
     def _evaluate_control(cls, control: FortiGateControl, outputs: Dict[str, str], vdom_label: Optional[str]) -> Dict[str, Any]:
-        passed = all(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
-        # Evidence formatting must never fail the whole audit: a single control's
-        # edge case (unexpected real-device output shape) should degrade to a
-        # placeholder, not raise a 500. The PASS/FAIL above is already computed by
-        # the exception-safe _evaluate_rule, so the finding stays meaningful.
-        try:
-            evidence = cls._extract_evidence(control, outputs)
-        except Exception as e:  # noqa: BLE001
-            logger.error(
-                "Evidence extraction failed for control %s (%s) — recording a "
-                "placeholder so the audit can complete. Full traceback follows.",
-                control.id, type(e).__name__, exc_info=True,
-            )
-            evidence = f"(evidence unavailable — {type(e).__name__}: {e})"
-        # Ambiguous (heuristic) checks: document the uncertainty in the report itself
-        # so a PASS/FAIL is never mistaken for a definitive result.
-        if control.needs_review:
-            evidence = f"{_REVIEW_NOTICE}\n{evidence}"
+        # Applicability gate: score NOT_APPLICABLE (not NON-COMPLIANT) when the
+        # underlying feature is switched off, so an absent sub-field isn't reported
+        # as a false finding (e.g. HA reserved-mgmt on a standalone box, FAZ log
+        # encryption when FortiAnalyzer logging is disabled).
+        applicable, na_reason = True, ""
+        gate = control.na_gate
+        if gate is not None:
+            gate_val = _get_field_value(outputs.get(gate.cmd, ""), gate.key)
+            if gate_val is not None and _norm_field(gate_val) in {
+                _norm_field(v) for v in gate.off_values
+            }:
+                applicable = False
+                na_reason = gate.note or f"{gate.key}={gate_val}"
+
+        if not applicable:
+            # Feature is off — skip the sub-rules entirely (their fields are
+            # legitimately absent, so evaluating them only yields a misleading
+            # NON-COMPLIANT + "field NOT FOUND" noise) and record just why.
+            passed, evidence = False, f"{_NA_NOTICE} {na_reason}"
+        else:
+            passed = all(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
+            # Evidence formatting must never fail the whole audit: a single
+            # control's edge case (unexpected real-device output shape) should
+            # degrade to a placeholder, not raise a 500. The PASS/FAIL above is
+            # already computed by the exception-safe _evaluate_rule, so the finding
+            # stays meaningful.
+            try:
+                evidence = cls._extract_evidence(control, outputs)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "Evidence extraction failed for control %s (%s) — recording a "
+                    "placeholder so the audit can complete. Full traceback follows.",
+                    control.id, type(e).__name__, exc_info=True,
+                )
+                evidence = f"(evidence unavailable — {type(e).__name__}: {e})"
+            # Ambiguous (heuristic) checks: document the uncertainty in the report
+            # itself so a PASS/FAIL is never mistaken for a definitive result.
+            if control.needs_review:
+                evidence = f"{_REVIEW_NOTICE}\n{evidence}"
         return {
             "control_id": control.id,
             "title": control.title,
             "passed": passed,
+            "applicable": applicable,
+            "na_reason": na_reason,
             "manual": control.is_manual,
             "needs_review": control.needs_review,
             "evidence": evidence,
@@ -1089,9 +1168,13 @@ class FortinetAuditService:
     def _bulk_insert_results(cls, db: Session, session_id: int, findings: List[Dict[str, Any]]) -> None:
         results: List[AuditResult] = []
         for f in findings:
-            # Every control is scored — Manual controls are no longer marked
-            # NOT_APPLICABLE; they get a PASS/FAIL like the Automated ones.
-            status = CheckStatus.PASS if f["passed"] else CheckStatus.FAIL
+            # Every control is scored — Manual controls get a PASS/FAIL like the
+            # Automated ones. The only NOT_APPLICABLE cases are controls whose
+            # na_gate matched (the underlying feature is switched off).
+            if not f.get("applicable", True):
+                status = CheckStatus.NOT_APPLICABLE
+            else:
+                status = CheckStatus.PASS if f["passed"] else CheckStatus.FAIL
             results.append(AuditResult(
                 session_id=session_id,
                 check_number=f["control_id"],
