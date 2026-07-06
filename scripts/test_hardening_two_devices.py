@@ -126,6 +126,10 @@ class Breaker:
       - "show_set": a ``set <key> <val>`` line from a ``show`` command; the field
                     is omitted when left at its default (snapshot -> None -> unset).
       - "profile" : a field on one entry of a profile table (``edit <profile>``).
+      - "either"  : a control whose setting has >1 build-specific spelling — carries
+                    ``variants`` (concrete field breakers, each with its own
+                    ``read_cmd``); the first variant whose field exists on the
+                    device is used, so the same control is exercised on every build.
     """
     section: str                       # inner config section, e.g. "system global"
     bad: Dict[str, str]                # field -> value that makes the control FAIL
@@ -133,6 +137,8 @@ class Breaker:
     profile: Optional[str] = None      # entry name for kind == "profile"
     forceable: bool = True             # False -> the control has no valid non-compliant
     force_note: str = ""               # value on-device, so skip when already COMPLIANT
+    read_cmd: Optional[str] = None     # override read cmd (default: control.rules[0].cmd)
+    variants: Optional[List["Breaker"]] = None  # kind == "either": try each in order
 
     @property
     def fields(self) -> List[str]:
@@ -156,7 +162,15 @@ BREAKERS: Dict[str, Breaker] = {
     "FG-BL-004":  Breaker("system global", {"admintimeout": "480"}),  # > 10 -> non-compliant
     # ---- 4.2 Antivirus ----
     "FG-AV-001":  Breaker("system autoupdate push-update", {"status": "disable"}, kind="show_set"),
-    "FG-AV-003":  Breaker("antivirus settings", {"machine-learning-detection": "disable"}),
+    # Build-aware: newer builds have machine-learning-detection under antivirus
+    # settings; 60F/older builds use `config antivirus heuristic` (mode). Whichever
+    # field the device actually exposes is the one snapshot/break/restore targets.
+    "FG-AV-003":  Breaker("", {}, kind="either", variants=[
+        Breaker("antivirus settings", {"machine-learning-detection": "disable"},
+                read_cmd="get antivirus settings"),
+        Breaker("antivirus heuristic", {"mode": "disable"},
+                read_cmd="get antivirus heuristic"),
+    ]),
     "FG-AV-004":  Breaker("antivirus settings", {"grayware": "disable"}),
     # ---- 4.3 / 4.4 profile tables (per-VDOM) ----
     "FG-DNS-001": Breaker("dnsfilter profile", {"block-botnet": "disable"},
@@ -244,6 +258,22 @@ def _profile_block(section: str, profile: str, assignments: List[str]) -> List[s
     return [f"config {section}", f"edit {profile}", *assignments, "next", "end"]
 
 
+def _resolve_and_snapshot(client, control: FortiGateControl, br: Breaker,
+                          vdom: Optional[str]):
+    """Return ``(effective_breaker, snapshot)``. For a build-aware ``either``
+    breaker, pick the first variant whose field actually exists on this device
+    (so the same control is exercised whatever spelling the build uses)."""
+    if br.kind != "either":
+        return br, snapshot_original(client, control, br, vdom)
+    errors = []
+    for variant in br.variants or []:
+        try:
+            return variant, snapshot_original(client, control, variant, vdom)
+        except RuntimeError as e:
+            errors.append(str(e))
+    raise RuntimeError("no build variant applies (" + "; ".join(errors) + ")")
+
+
 def snapshot_original(client, control: FortiGateControl, br: Breaker,
                       vdom: Optional[str]) -> Dict[str, Optional[str]]:
     """Read each field's ORIGINAL value so it can be restored exactly.
@@ -251,7 +281,7 @@ def snapshot_original(client, control: FortiGateControl, br: Breaker,
     Raises RuntimeError when the state needed to break/restore isn't present
     (e.g. the profile entry doesn't exist) so the caller can SKIP cleanly.
     """
-    read_cmd = control.rules[0].cmd
+    read_cmd = br.read_cmd or control.rules[0].cmd
     out = client.collect([read_cmd], scope=control.scope, vdom=vdom, use_cache=False)[read_cmd]
 
     snap: Dict[str, Optional[str]] = {}
@@ -352,18 +382,19 @@ def run_check(tag: str, executor: FortiGateHardeningExecutor,
     if compliant0 and not br.forceable:
         return Result(cid, "SKIP", br.force_note, initial)
 
-    # 2. snapshot ORIGINAL + register restore BEFORE any mutation
+    # 2. resolve the build-specific field variant, snapshot ORIGINAL, and register
+    #    the restore BEFORE any mutation
     try:
-        snap = snapshot_original(client, control, br, vdom)
+        eff_br, snap = _resolve_and_snapshot(client, control, br, vdom)
     except RuntimeError as e:
         return Result(cid, "SKIP", str(e), initial)
     except Exception as e:  # noqa: BLE001
         return Result(cid, "ERROR", f"snapshot failed: {type(e).__name__}: {e}", initial)
-    restores.append(Restore(cid, control, restore_commands(br, snap), vdom))
+    restores.append(Restore(cid, control, restore_commands(eff_br, snap), vdom))
 
     # 3. force NON-COMPLIANT if needed (always exercise the real fix path)
     if compliant0:
-        res = client.run_config(break_commands(br), scope=control.scope, vdom=vdom)
+        res = client.run_config(break_commands(eff_br), scope=control.scope, vdom=vdom)
         if not res["success"]:
             return Result(cid, "SKIP", f"could not force non-compliant: {'; '.join(res['errors'])[:120]}", initial)
         broke, _ = executor.verify_check(control, vdom=vdom)
@@ -683,8 +714,13 @@ def main() -> int:
                     plan = f"SKIP — {UNTESTABLE[cid]}"
                 else:
                     br = BREAKERS.get(cid)
-                    plan = (f"break via `config {br.section}` -> {br.bad}" if br
-                            else "no breaker defined")
+                    if br is None:
+                        plan = "no breaker defined"
+                    elif br.kind == "either":
+                        opts = " | ".join(f"`config {v.section}` -> {v.bad}" for v in br.variants or [])
+                        plan = f"break via first available of: {opts}"
+                    else:
+                        plan = f"break via `config {br.section}` -> {br.bad}"
                 print(f"  {cid:12} [{c.scope:10}] {c.title}\n               {plan}")
         if man_ids:
             print("\nMANUAL (audit-only — command runs + parses + verdict):")
