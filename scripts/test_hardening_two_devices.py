@@ -109,6 +109,8 @@ class Breaker:
     bad: Dict[str, str]                # field -> value that makes the control FAIL
     kind: str = "field"
     profile: Optional[str] = None      # entry name for kind == "profile"
+    forceable: bool = True             # False -> the control has no valid non-compliant
+    force_note: str = ""               # value on-device, so skip when already COMPLIANT
 
     @property
     def fields(self) -> List[str]:
@@ -125,7 +127,9 @@ BREAKERS: Dict[str, Breaker] = {
     "FG-BL-090":  Breaker("system global", {"strong-crypto": "disable"}),
     # ---- 2.2 Password Policy (global) ----
     "FG-BL-030":  Breaker("system password-policy", {"status": "disable"}),
-    "FG-PW-001":  Breaker("system global", {"admin-lockout-threshold": "0"}),
+    "FG-PW-001":  Breaker("system global", {"admin-lockout-threshold": "0"}, forceable=False,
+                          force_note="control passes for threshold >= 1 and FortiOS rejects 0 "
+                                     "(value parse error) — no valid non-compliant state to force"),
     # ---- 2.4 Administrators (global) ----
     "FG-BL-004":  Breaker("system global", {"admintimeout": "480"}),  # > 10 -> non-compliant
     # ---- 4.2 Antivirus ----
@@ -138,7 +142,9 @@ BREAKERS: Dict[str, Breaker] = {
     "FG-APP-002": Breaker("application list", {"enforce-default-app-port": "disable"},
                           kind="profile", profile="default"),
     # ---- 7 Users / 8 Logs (per-VDOM + global) ----
-    "FG-USER-001": Breaker("user setting", {"auth-lockout-threshold": "0"}),
+    "FG-USER-001": Breaker("user setting", {"auth-lockout-threshold": "0"}, forceable=False,
+                           force_note="control passes for threshold >= 1 and FortiOS rejects 0 "
+                                      "(value parse error) — no valid non-compliant state to force"),
     "FG-LOG-001":  Breaker("log eventfilter", {"event": "disable"}),
     "FG-LOG-002":  Breaker("log fortianalyzer setting", {"enc-algorithm": "disable"}),
 }
@@ -283,6 +289,13 @@ def run_check(tag: str, executor: FortiGateHardeningExecutor,
     except Exception as e:  # noqa: BLE001
         return Result(cid, "ERROR", f"initial read failed: {type(e).__name__}: {e}", "")
     initial = "COMPLIANT" if compliant0 else "NON-COMPLIANT"
+
+    # A control with no valid non-compliant value (e.g. a `>= 1` threshold the
+    # device won't let us drop below 1) can't be exercised when already COMPLIANT;
+    # skip cleanly without touching it. If it were somehow already NON-COMPLIANT we
+    # still fall through and harden it.
+    if compliant0 and not br.forceable:
+        return Result(cid, "SKIP", br.force_note, initial)
 
     # 2. snapshot ORIGINAL + register restore BEFORE any mutation
     try:
