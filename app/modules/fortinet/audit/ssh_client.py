@@ -161,6 +161,15 @@ class FortiGateSSHClient:
                 raise SSHNetworkError(self.host, original_error=e)
             except NetmikoTimeoutException as e:
                 last_error = e  # try next device type
+            except ValueError as e:
+                # netmiko raises ValueError("Unsupported device_type ...") for a
+                # platform it doesn't know. 'fortigate' is NOT a valid netmiko
+                # platform (only 'fortinet' is), so this fallback iteration must
+                # never OVERWRITE the real transport error captured on the
+                # 'fortinet' attempt — otherwise every genuine connect failure is
+                # reported as a misleading "Unsupported device_type" wall of text.
+                if last_error is None:
+                    last_error = e
             except OSError as e:
                 if hasattr(e, "errno") and e.errno in (111, 113):
                     raise SSHNetworkError(self.host, original_error=e)
