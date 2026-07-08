@@ -92,12 +92,19 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "defaults": {"ADMIN_TIMEOUT": "10"},
         "warnings": ["Sets the admin idle timeout in minutes."],
     },
-    "FG-BL-002": {  # 2.4.5 encrypted channels only
-        "commands": ["config system global",
-                     "set admin-telnet disable",
-                     "set admin-http disable", "end"],
+    "FG-BL-002": {  # 2.4.5 encrypted channels only (per-interface allowaccess)
+        # Remediation is computed at EXECUTE time from live `show system interface`
+        # (see IFACE_ALLOWACCESS_FORBIDDEN / build_iface_allowaccess_commands):
+        # strip only telnet/http from each interface's allowaccess, preserving all
+        # other services. A static global `set admin-telnet/http disable` does NOT
+        # satisfy this control — the audit measures per-interface allowaccess — and
+        # returns "Command fail. Return code -7" on builds lacking those global
+        # fields. Commands are left empty here so no wrong/static block is pushed.
+        "commands": [],
         "required_params": [], "optional_params": [], "defaults": {},
-        "warnings": ["Disables Telnet and HTTP admin access. Ensure SSH/HTTPS work first."],
+        "dynamic": "iface_allowaccess",
+        "warnings": ["Removes cleartext Telnet/HTTP from each interface's management "
+                     "access (allowaccess); other services (HTTPS/SSH/ping/…) are kept."],
     },
 
     # ---- 2.5 High Availability ----
@@ -195,3 +202,51 @@ def has_fortigate_template(check_id: str) -> bool:
 def get_all_fortigate_templated_checks() -> List[str]:
     """All FortiGate check IDs that can be auto-remediated."""
     return list(FORTIGATE_COMMAND_TEMPLATES.keys())
+
+
+# ---------------------------------------------------------------------------
+# Dynamic (device-state-aware) remediation
+# ---------------------------------------------------------------------------
+# Some controls can't be fixed by a static command list because the correct
+# commands depend on the device's current configuration. FG-BL-002 is one: the
+# audit measures each interface's `allowaccess`, so the fix must read the live
+# interfaces and remove ONLY the forbidden cleartext services from each,
+# preserving every other service (removing https/ssh would lock out management).
+#
+# check_id -> forbidden services to strip from every interface's allowaccess.
+IFACE_ALLOWACCESS_FORBIDDEN: Dict[str, List[str]] = {
+    "FG-BL-002": ["telnet", "http"],
+}
+
+
+def build_iface_allowaccess_commands(
+    interfaces: List[Dict[str, Any]], forbidden: List[str]
+) -> List[str]:
+    """
+    Build object-level config commands that strip ``forbidden`` services from the
+    ``allowaccess`` of every interface that currently exposes one, preserving all
+    other services. The scope wrapper (``config global`` / ``config vdom``) is
+    added by the SSH engine, so only the ``config system interface`` block is
+    returned here.
+
+    ``interfaces`` is the parsed form from the audit's ``_parse_interfaces``:
+    ``[{"name", "role", "allowaccess": [...]}]``. Returns ``[]`` when no interface
+    exposes a forbidden service (already compliant — nothing to change).
+    """
+    forbidden_l = {s.lower() for s in forbidden}
+    inner: List[str] = []
+    for itf in interfaces:
+        access = itf.get("allowaccess") or []
+        exposed = [s for s in access if s.lower() in forbidden_l]
+        if not exposed:
+            continue
+        remaining = [s for s in access if s.lower() not in forbidden_l]
+        inner.append(f'edit "{itf["name"]}"')
+        # Replace the whole list with the surviving services, or clear it if the
+        # interface exposed nothing but forbidden services.
+        inner.append("set allowaccess " + " ".join(remaining) if remaining
+                     else "unset allowaccess")
+        inner.append("next")
+    if not inner:
+        return []
+    return ["config system interface", *inner, "end"]

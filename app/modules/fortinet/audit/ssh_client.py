@@ -454,6 +454,35 @@ class FortiGateSSHClient:
             logger.debug("FG scope close ('end') failed on %s (ignored)",
                          self.host, exc_info=True)
 
+    def _ensure_top_level(self, max_depth: int = 8) -> None:
+        """
+        Guarantee the session sits at the top-level operational prompt.
+
+        Operational commands (``diagnose``/``execute``) are rejected inside ANY
+        config context (``8757: Unknown action 0 / Command fail. Return code -1``).
+        Running them at the top level is normally guaranteed by ``scope()``'s
+        ``finally: end``, but a preceding command block (e.g. a hardening
+        ``execute_commands`` whose remediation opened an object/sub-object context)
+        can leave the session one or more levels deep. Before issuing an
+        operational command we therefore back out of any lingering scope.
+
+        A FortiGate config prompt shows its context in parentheses
+        (``hostname (global) #`` / ``hostname (ntp) #``); the top-level prompt has
+        none. We send ``end`` until the prompt is context-free (bounded).
+        """
+        find_prompt = getattr(self._connection, "find_prompt", None)
+        if not callable(find_prompt):
+            return
+        for _ in range(max_depth):
+            try:
+                prompt = find_prompt()
+            except Exception:  # noqa: BLE001 - best effort; never fail a read
+                return
+            # A config-context prompt has " (context) #"; a bare hostname does not.
+            if not re.search(r"\s\([^)]*\)\s*[#$]\s*$", prompt or ""):
+                return
+            self._raw_send("end")
+
     # ------------------------------------------------------------------
     # Public read / collect (audit)
     # ------------------------------------------------------------------
@@ -491,11 +520,16 @@ class FortiGateSSHClient:
             operational = [c for c in to_run if _is_operational_command(c)]
             config_cmds = [c for c in to_run if not _is_operational_command(c)]
 
-            for cmd in operational:
-                out = self._raw_send(cmd)
-                results[cmd] = out
-                if use_cache:
-                    self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
+            if operational:
+                # A prior command block may have left the session inside a config
+                # context; back out to the top-level prompt so diagnose/execute
+                # don't fail with "8757: Unknown action 0".
+                self._ensure_top_level()
+                for cmd in operational:
+                    out = self._raw_send(cmd)
+                    results[cmd] = out
+                    if use_cache:
+                        self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
 
             if config_cmds:
                 with self.scope(scope, vdom):

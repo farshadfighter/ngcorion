@@ -93,7 +93,10 @@ from app.modules.fortinet.hardening.command_parser import (  # noqa: E402
     FortiGateRemediationParser,
     apply_fortigate_defaults,
 )
-from app.modules.fortinet.hardening.command_templates import has_fortigate_template  # noqa: E402
+from app.modules.fortinet.hardening.command_templates import (  # noqa: E402
+    has_fortigate_template,
+    IFACE_ALLOWACCESS_FORBIDDEN,
+)
 from app.modules.fortinet.hardening.parameter_metadata import (  # noqa: E402
     get_fortigate_check_defaults,
     is_fortigate_check_auto_fixable,
@@ -189,12 +192,15 @@ BREAKERS: Dict[str, Breaker] = {
 # Auto-fixable controls we deliberately DO NOT mutate. They are read + reported
 # for context, but their result is SKIP with the reason below.
 UNTESTABLE: Dict[str, str] = {
-    "FG-BL-002": ("template sets GLOBAL admin-telnet/admin-http, but the audit measures "
-                  "per-interface allowaccess — forcing/fixing would change global admin "
-                  "access (lockout risk) and still can't satisfy this control"),
-    "FG-BL-040": ("verification (ntp_status_ok) depends on live NTP synchronisation with a "
-                  "custom server, which `set ntpsync enable` can't achieve synchronously — "
-                  "not exercised to avoid desyncing the device"),
+    "FG-BL-002": ("auto-fix is now correct (dynamic per-interface allowaccess strip via "
+                  "build_iface_allowaccess_fix — removes only telnet/http, keeps other "
+                  "services); NOT force-broken here because that would toggle real "
+                  "management access on a live interface. Exercise via the UI 'Harden "
+                  "Single' or a manual run"),
+    "FG-BL-040": ("scope bug fixed (diagnose now runs at top level); still skipped because "
+                  "the ntp_status_ok VERDICT depends on live NTP synchronisation, which "
+                  "`set ntpsync enable` can't achieve synchronously — skipping avoids "
+                  "desyncing the device and a timing-based FAIL"),
 }
 
 
@@ -401,9 +407,16 @@ def run_check(tag: str, executor: FortiGateHardeningExecutor,
         if broke:  # still compliant -> break didn't take (e.g. another profile matches)
             return Result(cid, "SKIP", "break did not flip the control to NON-COMPLIANT", initial)
 
-    # 4. harden through the production path (execute_commands + verify_check)
+    # 4. harden through the production path (execute_commands + verify_check).
+    #    Device-state-aware controls (e.g. FG-BL-002 per-interface allowaccess)
+    #    compute their fix from the live config, exactly like execute_hardening.
     try:
-        fix_cmds = build_fix_commands(control)
+        if cid in IFACE_ALLOWACCESS_FORBIDDEN:
+            fix_cmds = executor.build_iface_allowaccess_fix(
+                scope=control.scope, vdom=vdom,
+                forbidden=IFACE_ALLOWACCESS_FORBIDDEN[cid])
+        else:
+            fix_cmds = build_fix_commands(control)
         exec_res = executor.execute_commands(fix_cmds, scope=control.scope, vdom=vdom)
         passed, evidence = executor.verify_check(control, vdom=vdom)
     except Exception as e:  # noqa: BLE001

@@ -36,7 +36,7 @@ from .ssh_executor import (
     redact_fortigate_secrets,
     FortiGateHardeningExecutionError
 )
-from .command_templates import has_fortigate_template
+from .command_templates import has_fortigate_template, IFACE_ALLOWACCESS_FORBIDDEN
 
 logger = logging.getLogger(__name__)
 
@@ -398,6 +398,18 @@ class FortiGateHardeningService:
                     backup = executor.backup_config()
                     action.backup_config = backup
                     db.commit()
+
+                # Dynamic (device-state-aware) remediation: controls like FG-BL-002
+                # can't use a static template — the correct fix depends on each
+                # interface's current allowaccess. Now that we're connected, read the
+                # live config and strip only the forbidden cleartext services,
+                # preserving the rest. Empty result = already compliant (no-op).
+                if action.check_number in IFACE_ALLOWACCESS_FORBIDDEN:
+                    final_commands = executor.build_iface_allowaccess_fix(
+                        scope=control.scope,
+                        vdom=target_vdom,
+                        forbidden=IFACE_ALLOWACCESS_FORBIDDEN[action.check_number],
+                    )
 
                 # Execute commands
                 exec_result = executor.execute_commands(

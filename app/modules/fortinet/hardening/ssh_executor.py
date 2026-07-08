@@ -15,9 +15,10 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.modules.fortinet.audit.rules import FortiGateControl
-from app.modules.fortinet.audit.service import FortinetAuditService
+from app.modules.fortinet.audit.rules import FortiGateControl, IFACE
+from app.modules.fortinet.audit.service import FortinetAuditService, _parse_interfaces
 from app.modules.fortinet.audit.ssh_client import SCOPE_GLOBAL, FortiGateSSHClient
+from .command_templates import build_iface_allowaccess_commands
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,32 @@ class FortiGateHardeningExecutor:
             logger.error("FortiGate command execution failed on %s (scope=%s vdom=%s)",
                          self.ip, scope, vdom or self.default_vdom, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Failed to execute commands: {e}")
+
+    def build_iface_allowaccess_fix(
+        self,
+        scope: str = SCOPE_GLOBAL,
+        vdom: Optional[str] = None,
+        forbidden: Optional[List[str]] = None,
+    ) -> List[str]:
+        """
+        Compute the per-interface remediation for an ``allowaccess`` control
+        (e.g. FG-BL-002) from the device's LIVE config.
+
+        Reads ``show system interface`` in the control's scope, then returns
+        object-level config commands that strip only the ``forbidden`` cleartext
+        services (default ``telnet``/``http``) from each interface that exposes
+        one, preserving every other service. Returns ``[]`` when the device is
+        already compliant. The caller feeds the result to ``execute_commands``,
+        which adds the ``config global``/``config vdom`` scope wrapper.
+        """
+        if not self.ssh_client:
+            raise FortiGateHardeningExecutionError("Not connected to device")
+        forbidden = forbidden or ["telnet", "http"]
+        raw = self.ssh_client.collect(
+            [IFACE], scope=scope, vdom=vdom or self.default_vdom, use_cache=False
+        )[IFACE]
+        interfaces = _parse_interfaces(raw)
+        return build_iface_allowaccess_commands(interfaces, forbidden)
 
     def verify_check(
         self,
