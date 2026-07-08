@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchFortinetTemplatedChecks } from "../../store/hardeningSlice";
 import HardenAllModal from './HardenAllModal';
 import FixSingleModal from './FixSingleModal';
+import ViewFixModal from './ViewFixModal';
 
 export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
@@ -10,6 +11,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
     const [showHardenAllModal, setShowHardenAllModal] = useState(false);
     const [showFixSingleModal, setShowFixSingleModal] = useState(false);
     const [selectedCheck, setSelectedCheck] = useState(null);
+    const [viewFixCheck, setViewFixCheck] = useState(null);
     const [activeTab, setActiveTab] = useState('audit');
 
     const isFortinet = sessionData?.device_type === 'fortinet';
@@ -52,6 +54,8 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         setSelectedCheck(check);
         setShowFixSingleModal(true);
     };
+
+    const handleViewFix = (check) => setViewFixCheck(check);
 
     const handleFixSingleSuccess = () => {
         if (sessionData?.session_id && sessionData?.device_type) {
@@ -227,12 +231,13 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                             🛡️ Harden
                                                         </button>
                                                     ) : (
-                                                        <span
-                                                            title="This check has no automated remediation and must be applied manually on the device."
-                                                            style={{ display: 'inline-block', padding: '6px 14px', background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'help' }}
+                                                        <button
+                                                            onClick={() => handleViewFix(check)}
+                                                            title="No automated fix — view the manual remediation commands"
+                                                            style={{ padding: '8px 16px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
                                                         >
-                                                            Manual
-                                                        </span>
+                                                            📋 View Fix
+                                                        </button>
                                                     )
                                                 )}
                                             </td>
@@ -274,6 +279,14 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                         setSelectedCheck(null);
                     }}
                     onSuccess={handleFixSingleSuccess}
+                />
+            )}
+
+            {viewFixCheck && (
+                <ViewFixModal
+                    checkId={viewFixCheck.check_number}
+                    checkTitle={viewFixCheck.check_title}
+                    onClose={() => setViewFixCheck(null)}
                 />
             )}
         </div>

@@ -516,6 +516,26 @@ export const fetchFortinetTemplatedChecks = createAsyncThunk(
     }
 );
 
+/**
+ * Fetch read-only remediation guidance for a manual (non-auto-fixable) FortiGate
+ * check: the exact CLI commands + human guidance from the catalog. Powers the
+ * "View Fix" modal — NO SSH / no device execution.
+ * GET /api/hardening/fortinet/manual-guidance/{check_id}
+ */
+export const fetchFortinetManualGuidance = createAsyncThunk(
+    "hardening/fetchFortinetManualGuidance",
+    async (checkId, { rejectWithValue }) => {
+        try {
+            const res = await api.get(`/api/hardening/fortinet/manual-guidance/${checkId}`);
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(
+                getErrorMessage(err, "Failed to load remediation guidance")
+            );
+        }
+    }
+);
+
 export const batchExecuteChecks = createAsyncThunk(
     "hardening/batchExecute",
     async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false }, { rejectWithValue }) => {

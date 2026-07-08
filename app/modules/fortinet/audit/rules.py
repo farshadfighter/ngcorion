@@ -71,6 +71,20 @@ class ApplicabilityGate:
     na_if_cmd_error: bool = False
 
 
+# FortiOS keywords that begin a configuration line. Used to split a control's
+# free-text ``remediation`` into copy-pasteable CLI commands vs human guidance.
+_CLI_LINE_PREFIXES = (
+    "config ", "edit ", "set ", "unset ", "get ", "show ", "diagnose ", "diag ",
+    "execute ", "exec ", "delete ", "append ", "select ", "clear ", "purge",
+)
+
+
+def _is_cli_line(line: str) -> bool:
+    """Whether a remediation line is a FortiOS CLI command (vs prose)."""
+    low = line.strip().lower()
+    return low in ("end", "next") or low.startswith(_CLI_LINE_PREFIXES)
+
+
 @dataclass
 class FortiGateControl:
     """A CIS FortiGate Benchmark recommendation."""
@@ -113,6 +127,22 @@ class FortiGateControl:
         if self.review_required:
             return True
         return self.is_manual and all(r.type in _HEURISTIC_RULE_TYPES for r in self.rules)
+
+    @property
+    def remediation_commands(self) -> List[str]:
+        """The copy-pasteable CLI lines from ``remediation`` (config/edit/set/…),
+        in order, with catalog indentation preserved. Empty when the remediation
+        is pure prose (e.g. 'upgrade to the latest firmware'). Used by the manual
+        'View Fix' guidance so the operator can copy the exact commands."""
+        return [ln.rstrip() for ln in self.remediation.splitlines() if _is_cli_line(ln)]
+
+    @property
+    def remediation_guidance(self) -> str:
+        """The human-readable (non-CLI) portion of ``remediation`` — the sentences
+        that explain what to do. Empty when the remediation is entirely CLI."""
+        prose = [ln.strip() for ln in self.remediation.splitlines()
+                 if ln.strip() and not _is_cli_line(ln)]
+        return " ".join(prose)
 
 
 # Benchmark area names keyed by top-level section number.

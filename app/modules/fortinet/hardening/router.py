@@ -41,7 +41,7 @@ from .service import (
     FortiGateMissingParametersError,
     FortiGateNotAutoFixableError
 )
-from .command_templates import get_all_fortigate_templated_checks
+from .command_templates import get_all_fortigate_templated_checks, has_fortigate_template
 
 class FortiGatePreviewRequest(BaseModel):
     """Request to preview FortiGate hardening commands."""
@@ -414,6 +414,53 @@ def list_fortinet_templated_checks(
     **Permissions:** Requires HARDENING read permission
     """
     return get_all_fortigate_templated_checks()
+
+
+class FortiGateManualGuidanceResponse(BaseModel):
+    """Read-only remediation guidance for a manual (non-auto-fixable) check."""
+    check_id: str
+    check_title: str
+    cis_id: str
+    cis_section: str
+    severity: str
+    scope: str
+    is_manual: bool
+    has_auto_fix: bool
+    remediation_commands: List[str] = Field(default_factory=list)
+    remediation_guidance: str = ""
+
+
+@router.get("/manual-guidance/{check_id}", response_model=FortiGateManualGuidanceResponse)
+def get_fortinet_manual_guidance(
+    check_id: str,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+):
+    """
+    Return the catalog remediation for a FortiGate check as copy-pasteable CLI
+    commands plus human guidance. Powers the manual "View Fix" modal — read-only,
+    NO SSH / no device execution.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    try:
+        control = FortiGateHardeningService._get_control_by_id(check_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown FortiGate check '{check_id}'",
+        )
+    return FortiGateManualGuidanceResponse(
+        check_id=control.id,
+        check_title=control.title,
+        cis_id=control.cis_id,
+        cis_section=control.cis_section,
+        severity=control.severity,
+        scope=control.scope,
+        is_manual=control.is_manual,
+        has_auto_fix=has_fortigate_template(control.id),
+        remediation_commands=control.remediation_commands,
+        remediation_guidance=control.remediation_guidance,
+    )
 
 
 @router.post("/vdoms/discover", response_model=FortiGateVDOMDiscoveryResponse)

@@ -21,7 +21,8 @@ from app.modules.fortinet.hardening.command_templates import (
     has_fortigate_template,
 )
 
-BY_ID = {c.id: c for c in get_fortinet_controls()}
+CONTROLS = get_fortinet_controls()
+BY_ID = {c.id: c for c in CONTROLS}
 
 
 def _fake_client(initial_depth: int):
@@ -97,3 +98,35 @@ def test_fg_bl_002_template_is_dynamic_not_static_global():
     assert t["commands"] == []                 # no wrong static global block
     assert t.get("dynamic") == "iface_allowaccess"
     assert has_fortigate_template("FG-BL-002")  # still counts as auto-fixable
+
+
+def test_remediation_split_pure_cli():
+    c = BY_ID["FG-NET-001"]  # all CLI
+    assert c.remediation_commands == [
+        "config system zone", " edit <zone>", " set intrazone deny", "end",
+    ]
+    assert c.remediation_guidance == ""
+
+
+def test_remediation_split_pure_prose():
+    c = BY_ID["FG-NET-002"]  # no CLI lines
+    assert c.remediation_commands == []
+    assert c.remediation_guidance.startswith("On every WAN-role interface")
+
+
+def test_remediation_split_mixed():
+    c = BY_ID["FG-BL-050"]  # CLI + a trailing parenthetical note
+    assert c.remediation_commands[0] == "config system snmp sysinfo"
+    assert "end" in c.remediation_commands
+    assert c.remediation_guidance.startswith("(and delete any SNMP")
+    # the prose note must not leak into the copy-pasteable commands
+    assert not any("delete any SNMP" in cmd for cmd in c.remediation_commands)
+
+
+def test_every_manual_check_has_some_guidance_or_commands():
+    # A manual check with neither commands nor guidance would render an empty
+    # "View Fix" modal — guard against that.
+    for c in CONTROLS:
+        if has_fortigate_template(c.id):
+            continue
+        assert c.remediation_commands or c.remediation_guidance, c.id
