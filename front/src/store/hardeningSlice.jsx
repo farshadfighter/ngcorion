@@ -495,6 +495,27 @@ export const discoverFortinetVdoms = createAsyncThunk(
     }
 );
 
+/**
+ * Fetch the list of FortiGate check IDs that have an auto-fix template.
+ * Checks NOT in this list are manual/review-only — previewing them returns a
+ * 400 ("must be applied manually"), so the UI shows a "Manual" badge instead
+ * of a dead-end "Harden" button.
+ * GET /api/hardening/fortinet/templated-checks
+ */
+export const fetchFortinetTemplatedChecks = createAsyncThunk(
+    "hardening/fetchFortinetTemplatedChecks",
+    async (_arg, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/hardening/fortinet/templated-checks");
+            return res.data; // string[] of check numbers
+        } catch (err) {
+            return rejectWithValue(
+                getErrorMessage(err, "Failed to fetch auto-fixable checks")
+            );
+        }
+    }
+);
+
 export const batchExecuteChecks = createAsyncThunk(
     "hardening/batchExecute",
     async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false }, { rejectWithValue }) => {
@@ -568,6 +589,11 @@ const initialState = {
 
     // VDOM discovery (FortiGate)
     vdomDiscovery: { vdoms: null, isDiscovering: false, error: null },
+
+    // FortiGate check IDs that have an auto-fix template (used to gate the
+    // "Harden" button vs a "Manual" badge in the results table). Empty until
+    // fetched; an empty list means "don't gate" so we never hide Harden by mistake.
+    fortinetTemplatedChecks: [],
 
     // Loading states
     isLoading:       false,
@@ -840,6 +866,19 @@ const hardeningSlice = createSlice({
                     isDiscovering: false,
                     error: action.payload,
                 };
+            });
+
+        // ── fetchFortinetTemplatedChecks ───────────────────────
+        builder
+            .addCase(fetchFortinetTemplatedChecks.fulfilled, (state, action) => {
+                state.fortinetTemplatedChecks = Array.isArray(action.payload)
+                    ? action.payload
+                    : [];
+            })
+            .addCase(fetchFortinetTemplatedChecks.rejected, (state) => {
+                // Non-fatal: leave the list empty so every check keeps its
+                // "Harden" button (fail open — never hide the action on error).
+                state.fortinetTemplatedChecks = [];
             });
     },
 });

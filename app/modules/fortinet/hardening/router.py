@@ -41,6 +41,7 @@ from .service import (
     FortiGateMissingParametersError,
     FortiGateNotAutoFixableError
 )
+from .command_templates import get_all_fortigate_templated_checks
 
 class FortiGatePreviewRequest(BaseModel):
     """Request to preview FortiGate hardening commands."""
@@ -396,6 +397,23 @@ class FortiGateVDOMDiscoveryResponse(BaseModel):
 
 
 router = APIRouter(prefix="/api/hardening/fortinet", tags=["Hardening - FortiGate"])
+
+
+@router.get("/templated-checks", response_model=List[str])
+def list_fortinet_templated_checks(
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+):
+    """
+    List FortiGate check IDs that have an automated remediation template.
+
+    The hardening UI uses this to distinguish auto-fixable checks from
+    manual/review-only checks: checks not in this list have no template and
+    can only be applied by hand, so previewing them returns a 400
+    (FortiGateNotAutoFixableError). Returns a flat list of check-number strings.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    return get_all_fortigate_templated_checks()
 
 
 @router.post("/vdoms/discover", response_model=FortiGateVDOMDiscoveryResponse)

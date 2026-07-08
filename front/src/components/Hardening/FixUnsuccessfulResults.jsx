@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAuditResults } from "../../store/hardeningSlice";
+import { fetchAuditResults, fetchFortinetTemplatedChecks } from "../../store/hardeningSlice";
 import HardenAllModal from './HardenAllModal';
 import FixSingleModal from './FixSingleModal';
 
 export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
-    const { cisChecks, isLoading } = useSelector((state) => state.hardening);
+    const { cisChecks, isLoading, fortinetTemplatedChecks } = useSelector((state) => state.hardening);
     const [showHardenAllModal, setShowHardenAllModal] = useState(false);
     const [showFixSingleModal, setShowFixSingleModal] = useState(false);
     const [selectedCheck, setSelectedCheck] = useState(null);
     const [activeTab, setActiveTab] = useState('audit');
+
+    const isFortinet = sessionData?.device_type === 'fortinet';
 
     useEffect(() => {
         if (sessionData?.session_id && sessionData?.device_type) {
@@ -20,6 +22,19 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
             }));
         }
     }, [sessionData?.session_id, sessionData?.device_type, dispatch]);
+
+    // FortiGate: load which checks are auto-fixable so we can show a "Manual"
+    // badge (instead of a dead-end "Harden" button) for review-only checks.
+    useEffect(() => {
+        if (isFortinet) dispatch(fetchFortinetTemplatedChecks());
+    }, [isFortinet, dispatch]);
+
+    // A check is auto-fixable when it's not a FortiGate device, or the templated
+    // list hasn't loaded (fail open — never hide "Harden" by mistake), or the
+    // check number is in the templated set.
+    const templatedSet = new Set(fortinetTemplatedChecks || []);
+    const isAutoFixable = (check) =>
+        !isFortinet || templatedSet.size === 0 || templatedSet.has(check.check_number);
 
     const handleHardenAll = () => setShowHardenAllModal(true);
 
@@ -204,12 +219,21 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                             <td>{getStatusBadge(check.status)}</td>
                                             <td style={{ textAlign: 'center' }}>
                                                 {check.status?.toString().toUpperCase() === 'FAIL' && (
-                                                    <button
-                                                        onClick={() => handleHardenSingle(check)}
-                                                        style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-                                                    >
-                                                        🛡️ Harden
-                                                    </button>
+                                                    isAutoFixable(check) ? (
+                                                        <button
+                                                            onClick={() => handleHardenSingle(check)}
+                                                            style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                                                        >
+                                                            🛡️ Harden
+                                                        </button>
+                                                    ) : (
+                                                        <span
+                                                            title="This check has no automated remediation and must be applied manually on the device."
+                                                            style={{ display: 'inline-block', padding: '6px 14px', background: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'help' }}
+                                                        >
+                                                            Manual
+                                                        </span>
+                                                    )
                                                 )}
                                             </td>
                                         </tr>

@@ -188,6 +188,24 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             );
         }
         if (!previewData) {
+            // Surface the real backend reason (already flattened to a string in
+            // state.error by getErrorMessage) instead of a generic failure. The
+            // common 400 here is "this check has no automated remediation and must
+            // be applied manually" — an expected outcome, not an outage.
+            const errorText = error
+                ? (typeof error === 'string' ? error : (error?.message || null))
+                : null;
+            const isManual = errorText && /manual|no automated remediation/i.test(errorText);
+            if (errorText) {
+                return (
+                    <div className="hardening-modal-error" style={{ padding: '20px', borderRadius: '10px', borderLeft: isManual ? '5px solid #f59e0b' : '5px solid #ef4444', background: isManual ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700', color: isManual ? '#92400e' : '#c0392b' }}>
+                            {isManual ? '🛠️ Manual remediation required' : '⚠️ Could not load hardening preview'}
+                        </h3>
+                        <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#4b5563', whiteSpace: 'pre-wrap' }}>{errorText}</p>
+                    </div>
+                );
+            }
             return <div className="hardening-modal-error"><p>Failed to load hardening preview.</p></div>;
         }
         return (
@@ -391,7 +409,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                     {step === 1 && (
                         <>
                             <button className="hardening-btn-secondary" onClick={onClose}>Cancel</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromPreview} disabled={isLoading}>Next</button>
+                            <button className="hardening-btn-primary" onClick={handleNextFromPreview} disabled={isLoading || !previewData}>Next</button>
                         </>
                     )}
                     {step === 2 && (
@@ -411,7 +429,9 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                     )}
                 </div>
 
-                {(error || formError) && step !== 5 && (
+                {/* Suppress the banner on the preview step when the preview body
+                    is already rendering the error (avoids showing it twice). */}
+                {(error || formError) && step !== 5 && !(step === 1 && !previewData) && (
                     <div className="hardening-error-message" style={{ margin: '16px 24px' }}>
                         <span>⚠</span>
                         <p>{formError || (typeof error === 'string' ? error : (error?.message || 'Operation failed'))}</p>
