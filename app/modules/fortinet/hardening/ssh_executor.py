@@ -191,7 +191,7 @@ def redact_fortigate_secrets(output: str) -> str:
     """Redact secrets/passwords from FortiGate command output."""
     redacted = output or ""
     redacted = re.sub(r"(set\s+(?:password|passwd|secret|psksecret|ppk-secret|auth-pwd|"
-                      r"auth-password|key|private-key|api-key|auth-keychain)\s+)\S+",
+                      r"priv-pwd|auth-password|key|private-key|api-key|auth-keychain)\s+)\S+",
                       r"\1<REDACTED>", redacted, flags=re.IGNORECASE)
     redacted = re.sub(r"ENC\s+[A-Za-z0-9+/=]+", "ENC <REDACTED>", redacted)
     return redacted

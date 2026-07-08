@@ -37,6 +37,12 @@ from .ssh_executor import (
     FortiGateHardeningExecutionError
 )
 from .command_templates import has_fortigate_template, IFACE_ALLOWACCESS_FORBIDDEN
+from .manual_remediation import (
+    has_manual_remediation,
+    render_manual_commands,
+    redact_manual_secret_values,
+    ManualParameterError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +64,11 @@ class FortiGateMissingParametersError(FortiGateHardeningError):
 
 class FortiGateNotAutoFixableError(FortiGateHardeningError):
     """Raised when a check has no automated remediation template (manual/review only)."""
+    pass
+
+
+class FortiGateManualNotExecutableError(FortiGateHardeningError):
+    """Raised when a manual check has no executable remediation template (guidance only)."""
     pass
 
 
@@ -470,6 +481,149 @@ class FortiGateHardeningService:
             logger.error(
                 "FortiGate hardening exception for action %s: %s",
                 action_id, e, exc_info=True,
+            )
+            raise
+
+    @staticmethod
+    def execute_manual_remediation(
+        db: Session,
+        audit_result_id: int,
+        user_id: int,
+        ssh_username: str,
+        ssh_password: str,
+        parameters: Optional[Dict[str, str]] = None,
+        vdom: Optional[str] = None,
+        skip_backup: bool = True,
+        ssh_port: int = 22,
+    ) -> Dict[str, Any]:
+        """
+        Execute a MANUAL check's remediation on the device.
+
+        Unlike :meth:`execute_hardening` (auto-fix templates), this path:
+          * renders a parameterised block from the manual-remediation catalog,
+          * pushes it in the control's scope/VDOM via the same SSH engine,
+          * performs **NO verification** and never flips the audit result to PASS
+            (a Manual control can't be proven from config alone),
+          * records the attempt as a ``manual-execute`` HardeningAction.
+
+        Returns ``{success, output, errors, commands_executed, check_number,
+        check_title}``.
+        """
+        parameters = parameters or {}
+
+        # Resolve the failed result -> session/asset/control.
+        result = db.query(AuditResult).filter(AuditResult.id == audit_result_id).first()
+        if not result:
+            raise ValueError(f"Audit result {audit_result_id} not found")
+
+        control = FortiGateHardeningService._get_control_by_id(result.check_number)
+
+        if not has_manual_remediation(result.check_number):
+            raise FortiGateManualNotExecutableError(
+                f"Check {result.check_number} ('{control.title}') has no executable "
+                "remediation and can only be applied by hand."
+            )
+
+        session = db.query(AuditSession).filter(
+            AuditSession.id == result.session_id
+        ).first()
+        if not session or not session.target_ip:
+            raise ValueError(f"No device IP found for audit result {audit_result_id}")
+
+        asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
+        device_ip = session.target_ip
+
+        # Render the command block (raises FortiGateMissingParametersError on gaps).
+        try:
+            commands = render_manual_commands(result.check_number, parameters)
+        except ManualParameterError as e:
+            raise FortiGateMissingParametersError(str(e))
+
+        # Per-VDOM controls target the VDOM the finding came from; global controls
+        # ignore it (the SSH engine routes by scope).
+        target_vdom = result.vdom if control.scope == SCOPE_VDOM else None
+
+        redacted_cmds = redact_manual_secret_values(
+            "\n".join(commands), result.check_number, parameters
+        ).split("\n")
+
+        action = HardeningAction(
+            audit_result_id=audit_result_id,
+            user_id=user_id,
+            asset_id=asset.id if asset else None,
+            audit_session_id=session.id,
+            check_number=result.check_number,
+            check_title=result.check_title,
+            action_type="manual-execute",
+            status="executing",
+            commands_json=json.dumps(redacted_cmds),
+            requires_config_mode=True,
+            credentials_provided=True,
+            executed_at=datetime.now(timezone.utc),
+        )
+        db.add(action)
+        db.commit()
+        db.refresh(action)
+
+        try:
+            with FortiGateHardeningExecutor(
+                ip=device_ip,
+                username=ssh_username,
+                password=ssh_password,
+                vdom=vdom,
+                port=ssh_port,
+            ) as executor:
+                executor.test_connectivity()
+
+                backup = None
+                if not skip_backup:
+                    backup = executor.backup_config()
+                    action.backup_config = backup
+                    db.commit()
+
+                exec_result = executor.execute_commands(
+                    commands, scope=control.scope, vdom=target_vdom,
+                )
+
+                # Redact both the generic secrets and this check's secret params.
+                clean_output = redact_manual_secret_values(
+                    redact_fortigate_secrets(exec_result["output"]),
+                    result.check_number, parameters,
+                )
+                clean_errors = [
+                    redact_manual_secret_values(
+                        redact_fortigate_secrets(e), result.check_number, parameters
+                    )
+                    for e in exec_result["errors"]
+                ]
+
+                action.output = clean_output
+                # No verification is performed for manual checks; leave
+                # verification_passed NULL so nothing is reported as verified.
+                action.status = "success" if exec_result["success"] else "failed"
+                if not exec_result["success"]:
+                    action.error_message = "; ".join(clean_errors)
+                action.completed_at = datetime.now(timezone.utc)
+                db.commit()
+
+                return {
+                    "success": exec_result["success"],
+                    "output": clean_output,
+                    "errors": clean_errors,
+                    "commands_executed": redacted_cmds,
+                    "backup_created": backup is not None,
+                    "check_number": result.check_number,
+                    "check_title": result.check_title,
+                }
+
+        except Exception as e:
+            action.status = "failed"
+            action.error_message = f"{type(e).__name__}: {str(e)}"
+            action.completed_at = datetime.now(timezone.utc)
+            db.commit()
+            logger.error(
+                "FortiGate manual remediation exception for result %s (check %s): %s",
+                audit_result_id, result.check_number, e, exc_info=True,
             )
             raise
 

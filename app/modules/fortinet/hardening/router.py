@@ -39,9 +39,15 @@ from .service import (
     FortiGateHardeningService,
     FortiGateCheckAlreadyPassingError,
     FortiGateMissingParametersError,
-    FortiGateNotAutoFixableError
+    FortiGateNotAutoFixableError,
+    FortiGateManualNotExecutableError,
 )
 from .command_templates import get_all_fortigate_templated_checks, has_fortigate_template
+from .manual_remediation import (
+    has_manual_remediation,
+    get_manual_remediation,
+    get_manual_parameters,
+)
 
 class FortiGatePreviewRequest(BaseModel):
     """Request to preview FortiGate hardening commands."""
@@ -417,7 +423,13 @@ def list_fortinet_templated_checks(
 
 
 class FortiGateManualGuidanceResponse(BaseModel):
-    """Read-only remediation guidance for a manual (non-auto-fixable) check."""
+    """Remediation guidance for a manual (non-auto-fixable) check.
+
+    ``executable`` marks checks the modal can also RUN (via ``manual-execute``);
+    ``parameters`` describes the inputs to collect first. When ``executable`` is
+    true, ``remediation_commands`` is the parameterised template block that will
+    be pushed; otherwise it's the catalog's copy-paste prose commands.
+    """
     check_id: str
     check_title: str
     cis_id: str
@@ -426,6 +438,9 @@ class FortiGateManualGuidanceResponse(BaseModel):
     scope: str
     is_manual: bool
     has_auto_fix: bool
+    executable: bool = False
+    parameters: List[Dict[str, Any]] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
     remediation_commands: List[str] = Field(default_factory=list)
     remediation_guidance: str = ""
 
@@ -436,9 +451,9 @@ def get_fortinet_manual_guidance(
     current_user: User = Depends(require_permission("HARDENING", "read")),
 ):
     """
-    Return the catalog remediation for a FortiGate check as copy-pasteable CLI
-    commands plus human guidance. Powers the manual "View Fix" modal — read-only,
-    NO SSH / no device execution.
+    Return the catalog remediation for a FortiGate check as CLI commands plus
+    human guidance, and (for supported manual checks) the parameter form + template
+    needed to EXECUTE the fix from the modal. The read-only path performs no SSH.
 
     **Permissions:** Requires HARDENING read permission
     """
@@ -449,6 +464,17 @@ def get_fortinet_manual_guidance(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Unknown FortiGate check '{check_id}'",
         )
+
+    executable = has_manual_remediation(control.id)
+    parameters: List[Dict[str, Any]] = []
+    warnings: List[str] = []
+    commands = control.remediation_commands
+    if executable:
+        rem = get_manual_remediation(control.id)
+        parameters = [p.to_dict() for p in rem.parameters]
+        warnings = list(rem.warnings)
+        commands = list(rem.commands)  # template block (with {PARAM} tokens)
+
     return FortiGateManualGuidanceResponse(
         check_id=control.id,
         check_title=control.title,
@@ -458,9 +484,133 @@ def get_fortinet_manual_guidance(
         scope=control.scope,
         is_manual=control.is_manual,
         has_auto_fix=has_fortigate_template(control.id),
-        remediation_commands=control.remediation_commands,
+        executable=executable,
+        parameters=parameters,
+        warnings=warnings,
+        remediation_commands=commands,
         remediation_guidance=control.remediation_guidance,
     )
+
+
+class FortiGateManualExecuteRequest(BaseModel):
+    """Request to execute a MANUAL check's remediation on the device."""
+    audit_result_id: int = Field(..., description="ID of the failed audit result")
+    ssh_username: str = Field(..., min_length=1, description="SSH username")
+    ssh_password: str = Field(..., min_length=1, description="SSH password")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+    parameters: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Operator-supplied parameter values for the template",
+    )
+    vdom: Optional[str] = Field(None, description="VDOM context (optional)")
+    skip_backup: bool = Field(default=True, description="Skip config backup (manual fixes skip by default)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "audit_result_id": 1523,
+                "ssh_username": "admin",
+                "ssh_password": "********",
+                "ssh_port": 22,
+                "parameters": {"ZONE": "zone1"},
+                "vdom": None,
+                "skip_backup": True,
+            }
+        }
+
+
+class FortiGateManualExecuteResponse(BaseModel):
+    """Result of a manual remediation execution (NO verification is performed)."""
+    success: bool
+    output: str
+    errors: List[str] = Field(default_factory=list)
+    commands_executed: List[str] = Field(default_factory=list)
+    backup_created: bool = False
+    check_number: str
+    check_title: str
+
+
+@router.post("/manual-execute", response_model=FortiGateManualExecuteResponse)
+async def execute_fortinet_manual_remediation(
+    http_request: Request,
+    request: FortiGateManualExecuteRequest,
+    current_user: User = Depends(require_permission("HARDENING", "write")),
+    db: Session = Depends(get_db),
+    _quota_check: None = Depends(check_quota_available("harden")),
+):
+    """
+    Execute a MANUAL FortiGate check's remediation over SSH.
+
+    Renders the parameterised command block for the check, pushes it in the
+    control's scope/VDOM, and returns the raw device output/errors. It performs
+    **no verification** and does NOT mark the check as passing — manual controls
+    cannot be proven from configuration alone.
+
+    **Permissions:** Requires HARDENING write permission
+    """
+    consume_quota = consume_quota_on_success("harden")
+
+    def _fail(err):
+        log_execute_outcome(
+            db, device_type="fortinet",
+            action_id=None, user_id=current_user.id,
+            status_value="failed", error=str(err),
+        )
+
+    try:
+        result = FortiGateHardeningService.execute_manual_remediation(
+            db=db,
+            audit_result_id=request.audit_result_id,
+            user_id=current_user.id,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            parameters=request.parameters,
+            vdom=request.vdom,
+            skip_backup=request.skip_backup,
+            ssh_port=request.ssh_port,
+        )
+        consume_quota(http_request)
+        log_execute_outcome(
+            db, device_type="fortinet",
+            action_id=None, user_id=current_user.id,
+            status_value="success" if result.get("success") else "failed",
+            error=None if result.get("success") else "; ".join(result.get("errors", [])),
+        )
+        return result
+
+    except FortiGateManualNotExecutableError as e:
+        _fail(e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except FortiGateMissingParametersError as e:
+        _fail(e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except SSHAuthenticationError as e:
+        _fail(f"SSH authentication failed: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=e.to_dict())
+    except SSHConnectionTimeoutError as e:
+        _fail(f"SSH connection timeout: {e}")
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=e.to_dict())
+    except SSHNetworkError as e:
+        _fail(f"SSH network error: {e}")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=e.to_dict())
+    except SSHAlgorithmMismatchError as e:
+        _fail(f"SSH algorithm mismatch: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=e.to_dict())
+    except SSHHostKeyError as e:
+        _fail(f"SSH host key error: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=e.to_dict())
+    except SSHConnectionError as e:
+        _fail(f"SSH connection error: {e}")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=e.to_dict())
+    except ValueError as e:
+        _fail(e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        _fail(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Manual execution failed: {str(e)}",
+        )
 
 
 @router.post("/vdoms/discover", response_model=FortiGateVDOMDiscoveryResponse)

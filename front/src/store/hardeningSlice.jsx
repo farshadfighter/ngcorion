@@ -536,6 +536,33 @@ export const fetchFortinetManualGuidance = createAsyncThunk(
     }
 );
 
+/**
+ * Execute a MANUAL FortiGate check's remediation over SSH. Renders the
+ * parameterised template with the operator's values, pushes it in the control's
+ * scope, and returns the raw device output/errors. NO verification is performed.
+ * POST /api/hardening/fortinet/manual-execute
+ */
+export const executeFortinetManualFix = createAsyncThunk(
+    "hardening/executeFortinetManualFix",
+    async ({ auditResultId, parameters, credentials, skipBackup = true }, { rejectWithValue }) => {
+        try {
+            const credPayload = buildCredentialsPayload("fortinet", credentials);
+            const payload = {
+                audit_result_id: auditResultId,
+                ...credPayload,
+                parameters: parameters || {},
+                skip_backup: skipBackup,
+            };
+            const res = await api.post("/api/hardening/fortinet/manual-execute", payload);
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(
+                getErrorMessage(err, "Failed to execute manual remediation")
+            );
+        }
+    }
+);
+
 export const batchExecuteChecks = createAsyncThunk(
     "hardening/batchExecute",
     async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false }, { rejectWithValue }) => {

@@ -286,7 +286,10 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 <ViewFixModal
                     checkId={viewFixCheck.check_number}
                     checkTitle={viewFixCheck.check_title}
+                    resultId={viewFixCheck.id}
+                    assetId={sessionData?.asset_id}
                     onClose={() => setViewFixCheck(null)}
+                    onSuccess={handleModalSuccess}
                 />
             )}
         </div>
