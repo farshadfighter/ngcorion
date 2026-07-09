@@ -29,7 +29,8 @@ from app.models import (
 )
 from app.models.audit import CheckStatus
 from app.modules.fortinet.audit.rules import get_fortinet_controls, FortiGateControl
-from app.modules.fortinet.audit.ssh_client import SCOPE_VDOM
+from app.modules.fortinet.audit.service import _parse_table_entries
+from app.modules.fortinet.audit.ssh_client import SCOPE_GLOBAL, SCOPE_VDOM
 from .command_parser import FortiGateRemediationParser, apply_fortigate_defaults
 from .ssh_executor import (
     FortiGateHardeningExecutor,
@@ -38,8 +39,10 @@ from .ssh_executor import (
 )
 from .command_templates import has_fortigate_template, IFACE_ALLOWACCESS_FORBIDDEN
 from .manual_remediation import (
+    DEVICE_OPTION_TYPES,
+    device_option_types_for_check,
     has_manual_remediation,
-    render_manual_commands,
+    render_manual_command_blocks,
     redact_manual_secret_values,
     ManualParameterError,
 )
@@ -533,11 +536,14 @@ class FortiGateHardeningService:
         asset = db.query(Asset).filter(Asset.id == session.asset_id).first() if session.asset_id else None
         device_ip = session.target_ip
 
-        # Render the command block (raises FortiGateMissingParametersError on gaps).
+        # Render the command block(s) (raises FortiGateMissingParametersError on
+        # gaps). Multi-target checks (e.g. several failing policy IDs) render one
+        # block per target; single-target checks render one (None, commands) block.
         try:
-            commands = render_manual_commands(result.check_number, parameters)
+            blocks = render_manual_command_blocks(result.check_number, parameters)
         except ManualParameterError as e:
             raise FortiGateMissingParametersError(str(e))
+        commands = [cmd for _target, cmds in blocks for cmd in cmds]
 
         # Per-VDOM controls target the VDOM the finding came from; global controls
         # ignore it (the SSH engine routes by scope).
@@ -581,39 +587,57 @@ class FortiGateHardeningService:
                     action.backup_config = backup
                     db.commit()
 
-                exec_result = executor.execute_commands(
-                    commands, scope=control.scope, vdom=target_vdom,
-                )
-
-                # Redact both the generic secrets and this check's secret params.
-                clean_output = redact_manual_secret_values(
-                    redact_fortigate_secrets(exec_result["output"]),
-                    result.check_number, parameters,
-                )
-                clean_errors = [
-                    redact_manual_secret_values(
-                        redact_fortigate_secrets(e), result.check_number, parameters
+                # Run every block in this one SSH session, tracking per-target
+                # success/failure (multi-policy selections keep going after one
+                # policy errors, so the report shows exactly which ones failed).
+                def _clean(text: str) -> str:
+                    return redact_manual_secret_values(
+                        redact_fortigate_secrets(text), result.check_number, parameters,
                     )
-                    for e in exec_result["errors"]
-                ]
+
+                per_target: List[Dict[str, Any]] = []
+                output_parts: List[str] = []
+                all_errors: List[str] = []
+                overall_success = True
+                for target, block in blocks:
+                    exec_result = executor.execute_commands(
+                        block, scope=control.scope, vdom=target_vdom,
+                    )
+                    block_output = _clean(exec_result["output"])
+                    block_errors = [_clean(e) for e in exec_result["errors"]]
+                    overall_success = overall_success and exec_result["success"]
+                    if target is not None:
+                        output_parts.append(f"### Target {target}\n{block_output}")
+                        all_errors.extend(f"[{target}] {e}" for e in block_errors)
+                        per_target.append({
+                            "target": target,
+                            "success": exec_result["success"],
+                            "errors": block_errors,
+                        })
+                    else:
+                        output_parts.append(block_output)
+                        all_errors.extend(block_errors)
+
+                clean_output = "\n\n".join(output_parts)
 
                 action.output = clean_output
                 # No verification is performed for manual checks; leave
                 # verification_passed NULL so nothing is reported as verified.
-                action.status = "success" if exec_result["success"] else "failed"
-                if not exec_result["success"]:
-                    action.error_message = "; ".join(clean_errors)
+                action.status = "success" if overall_success else "failed"
+                if not overall_success:
+                    action.error_message = "; ".join(all_errors)
                 action.completed_at = datetime.now(timezone.utc)
                 db.commit()
 
                 return {
-                    "success": exec_result["success"],
+                    "success": overall_success,
                     "output": clean_output,
-                    "errors": clean_errors,
+                    "errors": all_errors,
                     "commands_executed": redacted_cmds,
                     "backup_created": backup is not None,
                     "check_number": result.check_number,
                     "check_title": result.check_title,
+                    "per_target": per_target,
                 }
 
         except Exception as e:
@@ -626,6 +650,59 @@ class FortiGateHardeningService:
                 audit_result_id, result.check_number, e, exc_info=True,
             )
             raise
+
+    @staticmethod
+    def get_device_options(
+        db: Session,
+        audit_result_id: int,
+        option_type: str,
+        ssh_username: str,
+        ssh_password: str,
+        ssh_port: int = 22,
+    ) -> List[str]:
+        """
+        Fetch the existing device objects behind one smart-dropdown parameter
+        (e.g. antivirus profile names for FG-UTM-002's AV_PROFILE).
+
+        Read-only: runs the option type's ``show`` command over SSH in the
+        control's scope (or global, for global-only objects) and returns the
+        entry names. Only option types actually declared by the failing check's
+        parameters are allowed.
+        """
+        result = db.query(AuditResult).filter(AuditResult.id == audit_result_id).first()
+        if not result:
+            raise ValueError(f"Audit result {audit_result_id} not found")
+
+        control = FortiGateHardeningService._get_control_by_id(result.check_number)
+
+        allowed = device_option_types_for_check(result.check_number)
+        if option_type not in allowed:
+            raise ValueError(
+                f"Option type '{option_type}' is not used by check {result.check_number}"
+            )
+        spec = DEVICE_OPTION_TYPES[option_type]
+
+        session = db.query(AuditSession).filter(
+            AuditSession.id == result.session_id
+        ).first()
+        if not session or not session.target_ip:
+            raise ValueError(f"No device IP found for audit result {audit_result_id}")
+
+        scope = SCOPE_GLOBAL if spec.scope_override == "global" else control.scope
+        vdom = result.vdom if scope == SCOPE_VDOM else None
+
+        with FortiGateHardeningExecutor(
+            ip=session.target_ip,
+            username=ssh_username,
+            password=ssh_password,
+            port=ssh_port,
+        ) as executor:
+            raw = executor.ssh_client.collect(
+                [spec.command], scope=scope, vdom=vdom, use_cache=False,
+            )[spec.command]
+
+        names = [e["name"].strip().strip('"') for e in _parse_table_entries(raw)]
+        return list(dict.fromkeys(n for n in names if n))
 
     @staticmethod
     def get_session_parameters(

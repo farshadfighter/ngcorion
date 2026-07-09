@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchFortinetManualGuidance,
     executeFortinetManualFix,
+    fetchFortinetDeviceOptions,
     discoverFortinetVdoms,
 } from '../../store/hardeningSlice';
 import CredentialsForm from './CredentialsForm';
@@ -18,9 +19,18 @@ import '../../assets/hardening/Hardenallmodal.css';
  * "View Fix" for a manual (non-auto-fixable) FortiGate check.
  *
  * Guidance-only checks keep the original read-only behaviour (show commands +
- * copy). Checks the backend marks ``executable`` can also be RUN: the modal
- * collects any parameters, then SSH credentials, calls ``manual-execute``, and
- * shows the raw device output. Manual fixes are never auto-verified.
+ * copy). Checks the backend marks ``executable`` can also be RUN. Parameters are
+ * smart dropdowns populated from real data, not free text:
+ *   - source "audit_evidence": options are the failing objects already listed in
+ *     the audit evidence (e.g. Policy IDs) — rendered as a multi-select; the
+ *     command block repeats per selected target.
+ *   - source "device": options are existing device objects fetched live over SSH
+ *     (AV profiles, IPS sensors, application lists, interfaces, admins, ...) —
+ *     rendered as a dropdown. Because the fetch needs SSH credentials, the
+ *     credentials step now comes BEFORE the parameters step.
+ *   - no source: values the operator must invent (new passwords, hostnames, IPs)
+ *     stay free-text.
+ * Manual fixes are never auto-verified.
  */
 const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSuccess }) => {
     const dispatch = useDispatch();
@@ -31,9 +41,11 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     const [error, setError] = useState(null);
     const [copied, setCopied] = useState(false);
 
-    // Execution flow. step: 1 guidance, 2 params, 3 credentials, 4 executing, 5 results
+    // Execution flow. step: 1 guidance, 2 credentials, 3 params, 4 executing, 5 results
     const [step, setStep] = useState(1);
-    const [paramValues, setParamValues] = useState({});
+    const [paramValues, setParamValues] = useState({});   // multi params hold arrays
+    const [extraValues, setExtraValues] = useState({});   // "not listed" additions for multi params
+    const [deviceOptions, setDeviceOptions] = useState({}); // option_type -> {loading, options, error}
     const [sshCredentials, setSshCredentials] = useState(defaultCredentialsState);
     const [credErrors, setCredErrors] = useState({});
     const [vdomEnabled, setVdomEnabled] = useState(false);
@@ -46,39 +58,128 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         let active = true;
         setLoading(true);
         setError(null);
-        dispatch(fetchFortinetManualGuidance(checkId))
+        dispatch(fetchFortinetManualGuidance({ checkId, resultId }))
             .unwrap()
             .then((data) => {
                 if (!active) return;
                 setGuidance(data);
-                // Seed parameter form with defaults.
+                // Seed the parameter form: multi-selects start with every failing
+                // target selected (they are all non-compliant); others use defaults.
                 const seed = {};
-                (data.parameters || []).forEach((p) => { seed[p.name] = p.default ?? ''; });
+                (data.parameters || []).forEach((p) => {
+                    seed[p.name] = p.multi ? (p.options || []) : (p.default ?? '');
+                });
                 setParamValues(seed);
             })
             .catch((err) => { if (active) setError(typeof err === 'string' ? err : 'Failed to load remediation guidance.'); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [dispatch, checkId]);
+    }, [dispatch, checkId, resultId]);
 
     const commands = guidance?.remediation_commands ?? [];
     const parameters = guidance?.parameters ?? [];
     const executable = !!guidance?.executable && !!resultId;
     const title = guidance?.check_title || checkTitle || checkId;
 
-    // Live preview of the commands with the operator's values substituted.
+    // ─── Parameter helpers ──────────────────────────────────────────────────
+    const multiSelected = (p) => {
+        const v = paramValues[p.name];
+        if (Array.isArray(v)) return v;
+        return v ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : [];
+    };
+
+    const parseExtra = (p) =>
+        (extraValues[p.name] || '')
+            .split(p.type === 'number' ? /[\s,]+/ : /,/)
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+    // Final value used for preview + execution (multi -> array of targets).
+    const effectiveValue = (p) => {
+        if (p.multi) return [...new Set([...multiSelected(p), ...parseExtra(p)])];
+        return (paramValues[p.name] ?? p.default ?? '').toString();
+    };
+
+    const deviceState = (p) => deviceOptions[p.option_type] || {};
+
+    // Fetched device options, with the catalog default kept as a choice.
+    const deviceChoices = (p) => {
+        const fetched = deviceState(p).options || [];
+        return p.default && !fetched.includes(p.default) ? [p.default, ...fetched] : fetched;
+    };
+
+    // Load device-backed dropdowns as soon as the params step opens (credentials
+    // were collected in the previous step).
+    useEffect(() => {
+        if (step !== 3) return;
+        const types = [...new Set(
+            parameters.filter((p) => p.source === 'device' && p.option_type).map((p) => p.option_type)
+        )];
+        types.forEach((t) => {
+            const cur = deviceOptions[t];
+            if (cur?.loading || cur?.options) return;
+            setDeviceOptions((prev) => ({ ...prev, [t]: { loading: true } }));
+            dispatch(fetchFortinetDeviceOptions({
+                auditResultId: resultId,
+                optionType: t,
+                credentials: buildCredentials('fortinet', sshCredentials, { vdomEnabled }),
+            }))
+                .unwrap()
+                .then((data) => setDeviceOptions((prev) => ({
+                    ...prev, [t]: { loading: false, options: data.options || [] },
+                })))
+                .catch((err) => setDeviceOptions((prev) => ({
+                    ...prev,
+                    [t]: {
+                        loading: false,
+                        options: [],
+                        error: typeof err === 'string' ? err : 'Could not load options from the device.',
+                    },
+                })));
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step]);
+
+    // When a device dropdown loads and the current value isn't a valid choice,
+    // snap to the default (if listed) or the first option.
+    useEffect(() => {
+        parameters.forEach((p) => {
+            if (p.source !== 'device') return;
+            const st = deviceState(p);
+            if (st.loading || !st.options || st.error || !st.options.length) return;
+            const choices = deviceChoices(p);
+            const cur = (paramValues[p.name] ?? '').toString();
+            if (!choices.includes(cur)) {
+                setParamValues((prev) => ({ ...prev, [p.name]: choices[0] }));
+            }
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [deviceOptions]);
+
+    // Live preview; a multi parameter repeats the whole command block per target.
     const previewCommands = useMemo(() => {
         if (!parameters.length) return commands;
-        return commands.map((line) => {
+        const substitute = (vals) => commands.map((line) => {
             let out = line;
             parameters.forEach((p) => {
-                const val = paramValues[p.name] ?? p.default ?? '';
+                const val = vals[p.name] ?? '';
                 const shown = p.secret && val ? '********' : val;
                 out = out.split(`{${p.name}}`).join(shown);
             });
             return out;
         });
-    }, [commands, parameters, paramValues]);
+        const base = {};
+        parameters.forEach((p) => { if (!p.multi) base[p.name] = effectiveValue(p); });
+        const multiParam = parameters.find((p) => p.multi);
+        if (!multiParam) return substitute(base);
+        const targets = effectiveValue(multiParam);
+        if (!targets.length) return substitute({ ...base, [multiParam.name]: `{${multiParam.name}}` });
+        return targets.flatMap((t, i) => {
+            const block = substitute({ ...base, [multiParam.name]: t });
+            return i < targets.length - 1 ? [...block, ''] : block;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [commands, parameters, paramValues, extraValues]);
 
     const handleCopy = async () => {
         const text = (executable ? previewCommands : commands).join('\n');
@@ -100,6 +201,12 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
     const handleParamChange = (name, value) => setParamValues((prev) => ({ ...prev, [name]: value }));
 
+    const toggleMultiValue = (p, value) => {
+        const cur = multiSelected(p);
+        const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+        setParamValues((prev) => ({ ...prev, [p.name]: next }));
+    };
+
     const handleSSHChange = (e) => {
         const { name, value } = e.target;
         setSshCredentials((prev) => ({ ...prev, [name]: value }));
@@ -119,12 +226,16 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
     const startExecute = () => {
         setFormError(null);
-        setStep(parameters.length > 0 ? 2 : 3);
+        setStep(2);
     };
 
     const validateParams = () => {
         const missing = parameters
-            .filter((p) => p.required && !(paramValues[p.name] ?? p.default ?? '').toString().trim())
+            .filter((p) => {
+                const v = effectiveValue(p);
+                if (p.multi) return v.length === 0;
+                return p.required && !v.trim();
+            })
             .map((p) => p.label);
         if (missing.length) {
             setFormError(`Please fill in required field(s): ${missing.join(', ')}`);
@@ -134,13 +245,28 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         return true;
     };
 
-    const handleNextFromParams = () => { if (validateParams()) setStep(3); };
+    const handleNextFromCredentials = () => {
+        const errs = validateCredentials('fortinet', sshCredentials);
+        setCredErrors(errs);
+        if (Object.keys(errs).length > 0) return;
+        setFormError(null);
+        if (parameters.length > 0) setStep(3);
+        else handleExecute();
+    };
 
     const handleExecute = async () => {
         const errs = validateCredentials('fortinet', sshCredentials);
         setCredErrors(errs);
-        if (Object.keys(errs).length > 0) return;
-        if (!validateParams()) { setStep(2); return; }
+        if (Object.keys(errs).length > 0) { setStep(2); return; }
+        if (parameters.length > 0 && !validateParams()) return;
+
+        // Multi parameters are sent comma-joined; the backend renders one command
+        // block per target and reports per-target success.
+        const payloadParams = {};
+        parameters.forEach((p) => {
+            const v = effectiveValue(p);
+            payloadParams[p.name] = p.multi ? v.join(',') : v;
+        });
 
         setFormError(null);
         setExecuting(true);
@@ -149,7 +275,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             const credentials = buildCredentials('fortinet', sshCredentials, { vdomEnabled });
             const data = await dispatch(executeFortinetManualFix({
                 auditResultId: resultId,
-                parameters: paramValues,
+                parameters: payloadParams,
                 credentials,
                 skipBackup: !createBackup,
             })).unwrap();
@@ -158,7 +284,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             if (data?.success && onSuccess) onSuccess();
         } catch (err) {
             setFormError(typeof err === 'string' ? err : (err?.message || 'Execution failed.'));
-            setStep(3);
+            setStep(parameters.length > 0 ? 3 : 2);
         } finally {
             setExecuting(false);
         }
@@ -202,7 +328,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     <pre style={preStyle}>{commands.join('\n')}</pre>
                     {executable && parameters.length > 0 && (
                         <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                            ℹ️ Values in <code>{'{BRACES}'}</code> are collected in the next step before running.
+                            ℹ️ Values in <code>{'{BRACES}'}</code> are selected from real device/audit data before running.
                         </p>
                     )}
                 </div>
@@ -214,6 +340,104 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         </div>
     );
 
+    const renderCredentials = () => (
+        <>
+            <CredentialsForm
+                deviceType="fortinet"
+                value={sshCredentials}
+                onChange={handleSSHChange}
+                errors={credErrors}
+                vdomEnabled={vdomEnabled}
+                onVdomEnabledChange={setVdomEnabled}
+                vdomDiscovery={vdomDiscovery}
+                onDetectVdoms={handleDetectVdoms}
+                canDetectVdoms={!!assetId && !!sshCredentials.ssh_username && !!sshCredentials.ssh_password}
+            />
+            <BackupOption checked={createBackup} onChange={setCreateBackup} />
+        </>
+    );
+
+    // Multi-select over the failing objects parsed from the audit evidence.
+    const renderEvidenceMultiParam = (p) => {
+        const options = p.options ?? [];
+        const selected = multiSelected(p);
+        return (
+            <>
+                {options.length > 0 ? (
+                    <div style={multiBoxStyle}>
+                        {options.map((o) => (
+                            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 2px', fontSize: '13px', fontWeight: 400, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selected.includes(o)}
+                                    onChange={() => toggleMultiValue(p, o)}
+                                />
+                                <span>{p.name === 'POLICY_ID' ? `Policy ${o}` : o}</span>
+                            </label>
+                        ))}
+                    </div>
+                ) : (
+                    <p style={{ margin: '4px 0', fontSize: '12px', color: '#b45309' }}>
+                        ⚠️ No failing entries could be read from the audit evidence — enter them manually below.
+                    </p>
+                )}
+                <input
+                    type="text"
+                    value={extraValues[p.name] ?? ''}
+                    onChange={(e) => setExtraValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
+                    placeholder={options.length > 0 ? 'Add other values not listed (comma-separated, optional)' : `Enter ${p.label} (comma-separated)`}
+                    style={{ ...inputStyle, marginTop: '6px' }}
+                />
+                {selected.length + parseExtra(p).length > 1 && (
+                    <span style={{ fontSize: '12px', color: '#166534', display: 'block', marginTop: '4px' }}>
+                        The command block will run once per selected entry ({[...new Set([...selected, ...parseExtra(p)])].length} blocks).
+                    </span>
+                )}
+            </>
+        );
+    };
+
+    // Dropdown over existing device objects fetched live over SSH.
+    const renderDeviceParam = (p) => {
+        const st = deviceState(p);
+        if (st.loading) {
+            return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <select disabled style={{ ...inputStyle, color: '#6b7280' }}>
+                        <option>Loading from device…</option>
+                    </select>
+                    <div className="hardening-spinner" style={{ width: '18px', height: '18px' }}></div>
+                </div>
+            );
+        }
+        const choices = deviceChoices(p);
+        if (st.error || choices.length === 0) {
+            return (
+                <>
+                    <input
+                        type="text"
+                        value={paramValues[p.name] ?? ''}
+                        onChange={(e) => handleParamChange(p.name, e.target.value)}
+                        placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : `Enter ${p.label}`)}
+                        style={inputStyle}
+                    />
+                    <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '4px' }}>
+                        ⚠️ {st.error || 'The device returned no entries.'} Enter the name manually.
+                    </span>
+                </>
+            );
+        }
+        return (
+            <select
+                value={(paramValues[p.name] ?? p.default ?? '').toString()}
+                onChange={(e) => handleParamChange(p.name, e.target.value)}
+                style={inputStyle}
+            >
+                {choices.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+        );
+    };
+
     const renderParams = () => (
         <div className="hardening-params-form">
             <h3 style={{ fontSize: '16px', color: '#1e3a5f', margin: '0 0 16px 0', fontWeight: 700 }}>Configure parameters</h3>
@@ -221,10 +445,14 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 <div key={p.name} className="hardening-form-group">
                     <label>
                         {p.label}
-                        {p.required ? <span className="hardening-required">*</span>
+                        {p.required || p.multi ? <span className="hardening-required">*</span>
                                     : <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>(optional)</span>}
+                        {p.source === 'audit_evidence' && <span style={{ ...sourceTag, background: '#fef3c7', color: '#92400e' }}>from audit</span>}
+                        {p.source === 'device' && <span style={{ ...sourceTag, background: '#dbeafe', color: '#1e40af' }}>from device</span>}
                     </label>
-                    {p.type === 'select' ? (
+                    {p.source === 'audit_evidence' && p.multi ? renderEvidenceMultiParam(p)
+                        : p.source === 'device' ? renderDeviceParam(p)
+                        : p.type === 'select' ? (
                         <select value={paramValues[p.name] ?? p.default ?? ''} onChange={(e) => handleParamChange(p.name, e.target.value)} style={inputStyle}>
                             {(p.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
                         </select>
@@ -248,23 +476,6 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         </div>
     );
 
-    const renderCredentials = () => (
-        <>
-            <CredentialsForm
-                deviceType="fortinet"
-                value={sshCredentials}
-                onChange={handleSSHChange}
-                errors={credErrors}
-                vdomEnabled={vdomEnabled}
-                onVdomEnabledChange={setVdomEnabled}
-                vdomDiscovery={vdomDiscovery}
-                onDetectVdoms={handleDetectVdoms}
-                canDetectVdoms={!!assetId && !!sshCredentials.ssh_username && !!sshCredentials.ssh_password}
-            />
-            <BackupOption checked={createBackup} onChange={setCreateBackup} />
-        </>
-    );
-
     const renderExecuting = () => (
         <div className="hardening-modal-executing">
             <div className="hardening-spinner-large"></div>
@@ -276,6 +487,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     const renderResults = () => {
         if (!result) return <div className="hardening-modal-error"><p>No results available.</p></div>;
         const ok = result.success === true;
+        const perTarget = result.per_target ?? [];
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ padding: '20px', borderRadius: '12px', borderLeft: ok ? '5px solid #1e3a5f' : '5px solid #ef4444', background: ok ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
@@ -288,6 +500,25 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                             : 'The device returned one or more errors. Review the output below.'}
                     </p>
                 </div>
+
+                {perTarget.length > 0 && (
+                    <div>
+                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>Per-entry result</h4>
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                            {perTarget.map((t, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 14px', borderTop: i > 0 ? '1px solid #e5e7eb' : 'none', background: t.success ? '#f0fdf4' : '#fef2f2' }}>
+                                    <span style={{ fontWeight: 700, color: t.success ? '#166534' : '#b91c1c' }}>{t.success ? '✓' : '✗'}</span>
+                                    <div style={{ fontSize: '13px' }}>
+                                        <span style={{ fontWeight: 600, color: '#1e3a5f' }}>{t.target}</span>
+                                        {!t.success && (t.errors ?? []).length > 0 && (
+                                            <div style={{ color: '#b91c1c', marginTop: '2px' }}>{t.errors.join('; ')}</div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {(result.errors ?? []).length > 0 && (
                     <div className="hardening-warnings-box">
@@ -322,8 +553,8 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     const infoText = () => {
         if (step === 1) return 'Review the remediation for this manual check.'
             + (executable ? ' You can apply it below.' : ' Apply the steps on the device manually — nothing is executed for guidance-only checks.');
-        if (step === 2) return 'Provide the values for this remediation.';
-        if (step === 3) return 'Enter SSH credentials to apply the fix.';
+        if (step === 2) return 'Enter SSH credentials. They are also used to read existing profile/object names from the device for the next step.';
+        if (step === 3) return 'Pick the values for this remediation — options come from the audit evidence and the live device.';
         return '';
     };
 
@@ -356,8 +587,8 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     {!loading && !error && guidance && (
                         <>
                             {step === 1 && renderGuidance()}
-                            {step === 2 && renderParams()}
-                            {step === 3 && renderCredentials()}
+                            {step === 2 && renderCredentials()}
+                            {step === 3 && renderParams()}
                             {step === 4 && renderExecuting()}
                             {step === 5 && renderResults()}
                         </>
@@ -383,12 +614,14 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     {step === 2 && (
                         <>
                             <button className="hardening-btn-secondary" onClick={() => setStep(1)}>Back</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromParams}>Next</button>
+                            <button className="hardening-btn-primary" onClick={handleNextFromCredentials} disabled={executing}>
+                                {parameters.length > 0 ? 'Next' : '⚡ Execute Fix'}
+                            </button>
                         </>
                     )}
                     {step === 3 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(parameters.length > 0 ? 2 : 1)}>Back</button>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(2)}>Back</button>
                             <button className="hardening-btn-primary" onClick={handleExecute} disabled={executing}>⚡ Execute Fix</button>
                         </>
                     )}
@@ -409,6 +642,15 @@ const badge = {
     border: '1px solid #dbe3ee',
     borderRadius: '999px',
     fontSize: '12px',
+    fontWeight: 600,
+};
+
+const sourceTag = {
+    display: 'inline-block',
+    marginLeft: '8px',
+    padding: '2px 8px',
+    borderRadius: '999px',
+    fontSize: '11px',
     fontWeight: 600,
 };
 
@@ -433,6 +675,17 @@ const inputStyle = {
     borderRadius: '6px',
     fontSize: '13px',
     color: '#111827',
+    background: 'white',
+};
+
+const multiBoxStyle = {
+    width: '450px',
+    maxWidth: '100%',
+    maxHeight: '180px',
+    overflowY: 'auto',
+    padding: '8px 12px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
     background: 'white',
 };
 

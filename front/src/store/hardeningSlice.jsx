@@ -524,13 +524,47 @@ export const fetchFortinetTemplatedChecks = createAsyncThunk(
  */
 export const fetchFortinetManualGuidance = createAsyncThunk(
     "hardening/fetchFortinetManualGuidance",
-    async (checkId, { rejectWithValue }) => {
+    async (arg, { rejectWithValue }) => {
+        // Accepts a bare checkId (legacy) or { checkId, resultId }. With a
+        // resultId, evidence-sourced parameters (e.g. failing Policy IDs) come
+        // back with their options pre-populated from that audit result.
+        const { checkId, resultId } = typeof arg === "object" && arg !== null ? arg : { checkId: arg };
         try {
-            const res = await api.get(`/api/hardening/fortinet/manual-guidance/${checkId}`);
+            const query = resultId ? `?audit_result_id=${resultId}` : "";
+            const res = await api.get(`/api/hardening/fortinet/manual-guidance/${checkId}${query}`);
             return res.data;
         } catch (err) {
             return rejectWithValue(
                 getErrorMessage(err, "Failed to load remediation guidance")
+            );
+        }
+    }
+);
+
+/**
+ * Fetch the LIVE device objects behind a smart-dropdown parameter (antivirus
+ * profiles, IPS sensors, application lists, interfaces, admin accounts, ...).
+ * Needs SSH credentials — read-only `show` command on the device.
+ * POST /api/hardening/fortinet/device-options/{audit_result_id}
+ */
+export const fetchFortinetDeviceOptions = createAsyncThunk(
+    "hardening/fetchFortinetDeviceOptions",
+    async ({ auditResultId, optionType, credentials }, { rejectWithValue }) => {
+        try {
+            const credPayload = buildCredentialsPayload("fortinet", credentials);
+            const res = await api.post(
+                `/api/hardening/fortinet/device-options/${auditResultId}`,
+                {
+                    option_type: optionType,
+                    ssh_username: credPayload.ssh_username,
+                    ssh_password: credPayload.ssh_password,
+                    ssh_port: credPayload.ssh_port,
+                }
+            );
+            return res.data; // { option_type, options: string[] }
+        } catch (err) {
+            return rejectWithValue(
+                getErrorMessage(err, "Failed to load options from the device")
             );
         }
     }

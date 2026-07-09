@@ -47,6 +47,7 @@ from .manual_remediation import (
     has_manual_remediation,
     get_manual_remediation,
     get_manual_parameters,
+    parse_evidence_options,
 )
 
 class FortiGatePreviewRequest(BaseModel):
@@ -448,12 +449,18 @@ class FortiGateManualGuidanceResponse(BaseModel):
 @router.get("/manual-guidance/{check_id}", response_model=FortiGateManualGuidanceResponse)
 def get_fortinet_manual_guidance(
     check_id: str,
+    audit_result_id: Optional[int] = None,
     current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db),
 ):
     """
     Return the catalog remediation for a FortiGate check as CLI commands plus
     human guidance, and (for supported manual checks) the parameter form + template
     needed to EXECUTE the fix from the modal. The read-only path performs no SSH.
+
+    When ``audit_result_id`` is given, parameters sourced from the audit evidence
+    (e.g. the failing Policy IDs of FG-UTM-002) come back with their ``options``
+    pre-populated from that result's evidence.
 
     **Permissions:** Requires HARDENING read permission
     """
@@ -474,6 +481,15 @@ def get_fortinet_manual_guidance(
         parameters = [p.to_dict() for p in rem.parameters]
         warnings = list(rem.warnings)
         commands = list(rem.commands)  # template block (with {PARAM} tokens)
+
+        if audit_result_id is not None:
+            from app.models import AuditResult
+            result = db.query(AuditResult).filter(AuditResult.id == audit_result_id).first()
+            if result and result.check_number == control.id:
+                evidence_options = parse_evidence_options(control.id, result.evidence_snippet)
+                for p in parameters:
+                    if p["name"] in evidence_options:
+                        p["options"] = evidence_options[p["name"]]
 
     return FortiGateManualGuidanceResponse(
         check_id=control.id,
@@ -520,7 +536,10 @@ class FortiGateManualExecuteRequest(BaseModel):
 
 
 class FortiGateManualExecuteResponse(BaseModel):
-    """Result of a manual remediation execution (NO verification is performed)."""
+    """Result of a manual remediation execution (NO verification is performed).
+
+    ``per_target`` is filled for multi-target checks (one entry per selected
+    policy ID / zone, with that target's own success flag and errors)."""
     success: bool
     output: str
     errors: List[str] = Field(default_factory=list)
@@ -528,6 +547,7 @@ class FortiGateManualExecuteResponse(BaseModel):
     backup_created: bool = False
     check_number: str
     check_title: str
+    per_target: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 @router.post("/manual-execute", response_model=FortiGateManualExecuteResponse)
@@ -610,6 +630,79 @@ async def execute_fortinet_manual_remediation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Manual execution failed: {str(e)}",
+        )
+
+
+class FortiGateDeviceOptionsRequest(BaseModel):
+    """Request to fetch smart-dropdown options (existing device objects) over SSH."""
+    option_type: str = Field(..., description="Which object class to list (e.g. av_profiles)")
+    ssh_username: str = Field(..., min_length=1, description="SSH username")
+    ssh_password: str = Field(..., min_length=1, description="SSH password")
+    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "option_type": "av_profiles",
+                "ssh_username": "admin",
+                "ssh_password": "********",
+                "ssh_port": 22,
+            }
+        }
+
+
+class FortiGateDeviceOptionsResponse(BaseModel):
+    """Existing device object names for one smart-dropdown parameter."""
+    option_type: str
+    options: List[str] = Field(default_factory=list)
+
+
+@router.post("/device-options/{audit_result_id}", response_model=FortiGateDeviceOptionsResponse)
+def get_fortinet_device_options(
+    audit_result_id: int,
+    request: FortiGateDeviceOptionsRequest,
+    current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db),
+):
+    """
+    Fetch the LIVE device objects behind a manual-remediation dropdown — e.g. the
+    antivirus profile names for FG-UTM-002, IPS sensors for FG-UTM-003, or
+    application lists for FG-APP-004. Read-only (one `show` command over SSH, in
+    the failing check's scope/VDOM). Only option types declared by that check's
+    parameters are allowed.
+
+    POST (not GET) because SSH credentials must travel in the body.
+
+    **Permissions:** Requires HARDENING read permission
+    """
+    try:
+        options = FortiGateHardeningService.get_device_options(
+            db=db,
+            audit_result_id=audit_result_id,
+            option_type=request.option_type,
+            ssh_username=request.ssh_username,
+            ssh_password=request.ssh_password,
+            ssh_port=request.ssh_port,
+        )
+        return {"option_type": request.option_type, "options": options}
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except SSHAuthenticationError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=e.to_dict())
+    except SSHConnectionTimeoutError as e:
+        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=e.to_dict())
+    except (
+        SSHNetworkError,
+        SSHAlgorithmMismatchError,
+        SSHHostKeyError,
+        SSHConnectionError,
+    ) as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=e.to_dict())
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Device option fetch failed: {str(e)}",
         )
 
 
