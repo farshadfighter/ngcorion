@@ -591,18 +591,33 @@ async def preview_hardening(
     - 500: Internal error
     """
     consume_quota = consume_quota_on_success("harden")
+    # Read the id while the session is healthy: current_user may be expired, and
+    # refreshing it inside an exception handler (after a failed flush) raises
+    # PendingRollbackError, masking the real error.
+    user_id = current_user.id
+
+    def _fail(err):
+        db.rollback()  # clear any failed transaction before logging
+        _log_preview_outcome(
+            db,
+            audit_result_id=request.audit_result_id,
+            user_id=user_id,
+            status_value="failed",
+            error=str(err),
+        )
+
     try:
         preview = HardeningService.preview_hardening(
             db=db,
             audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
+            user_id=user_id,
             parameters=request.parameters
         )
 
         _log_preview_outcome(
             db,
             audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
+            user_id=user_id,
             status_value="success",
             check_number=preview.get("check_number", ""),
             check_title=preview.get("check_title", ""),
@@ -611,37 +626,19 @@ async def preview_hardening(
         return preview
 
     except CheckAlreadyPassingError as e:
-        _log_preview_outcome(
-            db,
-            audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
-            status_value="failed",
-            error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except ValueError as e:
-        _log_preview_outcome(
-            db,
-            audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
-            status_value="failed",
-            error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        _log_preview_outcome(
-            db,
-            audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
-            status_value="failed",
-            error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Preview failed: {str(e)}"
@@ -683,11 +680,23 @@ def execute_hardening(
     - 504: Connection timeout
     - 500: Other execution errors
     """
+    # Read the id while the session is healthy: current_user may be expired, and
+    # refreshing it inside an exception handler (after a failed flush) raises
+    # PendingRollbackError, masking the real error.
+    user_id = current_user.id
+
+    def _fail(err):
+        db.rollback()  # clear any failed transaction before logging
+        _log_execute_outcome(
+            db, action_id=request.action_id, user_id=user_id,
+            status_value="failed", error=str(err),
+        )
+
     try:
         result = HardeningService.execute_hardening(
             db=db,
             action_id=request.action_id,
-            user_id=current_user.id,
+            user_id=user_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             ssh_secret=request.ssh_secret,
@@ -704,7 +713,7 @@ def execute_hardening(
         _log_execute_outcome(
             db,
             action_id=request.action_id,
-            user_id=current_user.id,
+            user_id=user_id,
             status_value="success" if succeeded else "failed",
             verification_passed=verification_passed,
             error=result.get("error_message"),
@@ -713,91 +722,61 @@ def execute_hardening(
         return result
 
     except CheckAlreadyPassingError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except MissingParametersError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except SSHAuthenticationError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=f"SSH authentication failed: {e}",
-        )
+        _fail(f"SSH authentication failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=e.to_dict()
         )
     except SSHConnectionTimeoutError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=f"SSH connection timeout: {e}",
-        )
+        _fail(f"SSH connection timeout: {e}")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail=e.to_dict()
         )
     except SSHNetworkError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=f"SSH network error: {e}",
-        )
+        _fail(f"SSH network error: {e}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=e.to_dict()
         )
     except SSHAlgorithmMismatchError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=f"SSH algorithm mismatch: {e}",
-        )
+        _fail(f"SSH algorithm mismatch: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except SSHHostKeyError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=f"SSH host key error: {e}",
-        )
+        _fail(f"SSH host key error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except SSHConnectionError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=f"SSH connection error: {e}",
-        )
+        _fail(f"SSH connection error: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=e.to_dict()
         )
     except ValueError as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        _log_execute_outcome(
-            db, action_id=request.action_id, user_id=current_user.id,
-            status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Execution failed: {str(e)}"

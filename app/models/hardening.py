@@ -33,10 +33,10 @@ class HardeningAction(Base):
     audit_session_id = Column(Integer, ForeignKey("audit_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Action metadata
-    check_number = Column(String(20), nullable=False, index=True)  # e.g., "IOS-L1-001"
+    check_number = Column(String(50), nullable=False, index=True)  # e.g., "LNX-RHEL-L1-5.3.1.1"
     check_title = Column(String(500), nullable=False)
-    action_type = Column(String(10), nullable=False)  # "preview" or "execute"
-    status = Column(String(20), nullable=False, index=True)  # "pending", "success", "failed", "blocked"
+    action_type = Column(String(30), nullable=False)  # "preview", "execute" or "manual-execute"
+    status = Column(String(30), nullable=False, index=True)  # "pending", "executing", "success", "failed", "blocked"
 
     # Command details
     commands_json = Column(Text, nullable=False)  # JSON array of commands

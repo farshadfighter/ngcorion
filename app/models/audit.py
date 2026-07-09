@@ -58,7 +58,7 @@ class AuditCheck(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     template_id = Column(Integer, ForeignKey("audit_templates.id"), nullable=False)
-    check_number = Column(String(20), nullable=False)  # "IOS-L1-001"
+    check_number = Column(String(50), nullable=False)  # "IOS-L1-001", "LNX-RHEL-L1-5.3.1.1"
     title = Column(String(500), nullable=False)
     description = Column(Text)
     severity = Column(String(20), default="medium")  # high, medium, low, info
@@ -90,7 +90,7 @@ class AuditSession(Base):
 
     started_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
-    status = Column(String(20), default="running")  # running, completed, failed
+    status = Column(String(30), default="running")  # running, completed, failed
 
     total_checks = Column(Integer, default=0)
     passed_checks = Column(Integer, default=0)
@@ -124,7 +124,7 @@ class AuditResult(Base):
     )  # Nullable for runtime checks
 
     # Check details (stored here for runtime CIS checks without check_id)
-    check_number = Column(String(20), nullable=True)  # "IOS-L1-001"
+    check_number = Column(String(50), nullable=True)  # "IOS-L1-001", "LNX-RHEL-L1-5.3.1.1"
     check_title = Column(String(500), nullable=True)
     severity = Column(String(20), nullable=True)
     level = Column(String(10), nullable=True)

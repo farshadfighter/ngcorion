@@ -258,6 +258,10 @@ async def auto_harden_with_defaults(
     **Note:** SSH credentials are used only during execution and never stored.
     """
     consume_quota = consume_quota_on_success("harden")
+    # Read the id while the session is healthy: current_user may be expired,
+    # and refreshing it inside an exception handler (after a failed flush)
+    # raises PendingRollbackError, masking the real error.
+    user_id = current_user.id
     try:
         result = ApacheHardeningService.auto_harden_with_defaults(
             db=db,
@@ -272,7 +276,7 @@ async def auto_harden_with_defaults(
         log_session_execute_outcome(
             db, device_type="apache", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
-            user_id=current_user.id,
+            user_id=user_id,
             success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
             failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
@@ -281,14 +285,14 @@ async def auto_harden_with_defaults(
         log_session_execute_outcome(
             db, device_type="apache", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
-            user_id=current_user.id, failed_count=1, error=str(e),
+            user_id=user_id, failed_count=1, error=str(e),
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         log_session_execute_outcome(
             db, device_type="apache", action="auto_harden",
             session_id=request.session_id, asset_id=request.asset_id,
-            user_id=current_user.id, failed_count=1, error=str(e),
+            user_id=user_id, failed_count=1, error=str(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -317,6 +321,10 @@ async def batch_execute_selected(
     consume_quota=consume_quota_on_success("harden")
     check_ids = [c.check_id for c in request.checks]
 
+    # Read the id while the session is healthy: current_user may be expired,
+    # and refreshing it inside an exception handler (after a failed flush)
+    # raises PendingRollbackError, masking the real error.
+    user_id = current_user.id
     try:
         checks = [
             {"check_id": c.check_id, "parameters": c.parameters}
@@ -338,7 +346,7 @@ async def batch_execute_selected(
         log_session_execute_outcome(
             db, device_type="apache", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
-            user_id=current_user.id, check_ids=check_ids,
+            user_id=user_id, check_ids=check_ids,
             success_count=(result or {}).get("successful", 0) if isinstance(result, dict) else 0,
             failed_count=(result or {}).get("failed", 0) if isinstance(result, dict) else 0,
         )
@@ -348,7 +356,7 @@ async def batch_execute_selected(
         log_session_execute_outcome(
             db, device_type="apache", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
-            user_id=current_user.id, check_ids=check_ids,
+            user_id=user_id, check_ids=check_ids,
             failed_count=len(check_ids) or 1, error=str(e),
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -356,7 +364,7 @@ async def batch_execute_selected(
         log_session_execute_outcome(
             db, device_type="apache", action="batch_execute",
             session_id=request.session_id, asset_id=request.asset_id,
-            user_id=current_user.id, check_ids=check_ids,
+            user_id=user_id, check_ids=check_ids,
             failed_count=len(check_ids) or 1, error=str(e),
         )
         raise HTTPException(
@@ -379,6 +387,10 @@ async def execute_single_fix(
     **Permissions:** Requires HARDENING write permission
     """
     consume_quota = consume_quota_on_success("harden")
+    # Read the id while the session is healthy: current_user may be expired,
+    # and refreshing it inside an exception handler (after a failed flush)
+    # raises PendingRollbackError, masking the real error.
+    user_id = current_user.id
     try:
         result = ApacheHardeningService.execute_single_fix(
             db=db,
@@ -396,7 +408,7 @@ async def execute_single_fix(
         log_session_execute_outcome(
             db, device_type="apache", action="execute_single",
             session_id=None, asset_id=request.asset_id,
-            user_id=current_user.id, check_ids=[request.check_id],
+            user_id=user_id, check_ids=[request.check_id],
             success_count=1 if succeeded else 0,
             failed_count=0 if succeeded else 1,
             error=(result or {}).get("error_message") if isinstance(result, dict) else None,
@@ -407,7 +419,7 @@ async def execute_single_fix(
         log_session_execute_outcome(
             db, device_type="apache", action="execute_single",
             session_id=None, asset_id=request.asset_id,
-            user_id=current_user.id, check_ids=[request.check_id],
+            user_id=user_id, check_ids=[request.check_id],
             failed_count=1, error=str(e),
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -415,7 +427,7 @@ async def execute_single_fix(
         log_session_execute_outcome(
             db, device_type="apache", action="execute_single",
             session_id=None, asset_id=request.asset_id,
-            user_id=current_user.id, check_ids=[request.check_id],
+            user_id=user_id, check_ids=[request.check_id],
             failed_count=1, error=str(e),
         )
         raise HTTPException(

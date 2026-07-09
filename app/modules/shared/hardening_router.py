@@ -644,6 +644,9 @@ async def execute_hardening_controls(
                         db.commit()
 
                 except Exception as e:
+                    # A failed flush leaves the session in pending-rollback; roll
+                    # back so the remaining controls in this loop can still commit.
+                    db.rollback()
                     failed_count += 1
                     logger.error(f"Error executing control {cs.control_id}: {str(e)}")
                     results.append(ControlExecutionResult(

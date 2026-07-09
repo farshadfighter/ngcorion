@@ -21,6 +21,24 @@ from app.models import (
 )
 
 
+def ensure_session_usable(db: Session) -> None:
+    """
+    Recover the session if a failed flush left it in pending-rollback state.
+
+    Outcome loggers run inside routers' exception handlers, typically right
+    after a DB error (e.g. a value too long for a column). Without this
+    rollback, the first query here raises PendingRollbackError — which used to
+    replace the real error in the HTTP 500 and lose the audit-log entry.
+    Rolls back only an already-doomed transaction, so calling it on the
+    success path is a no-op.
+    """
+    try:
+        if not db.is_active:
+            db.rollback()
+    except Exception:
+        pass
+
+
 def _resolve_audit_result_context(db: Session, audit_result_id: Optional[int]):
     """Return (asset, session_id, check_number, check_title) for a result id."""
     asset = None
@@ -77,6 +95,7 @@ def log_preview_outcome(
     error: Optional[str] = None,
 ) -> None:
     """Best-effort hardening-preview audit log. Never raises."""
+    ensure_session_usable(db)
     try:
         asset, session_id, ar_check_number, ar_check_title = _resolve_audit_result_context(
             db, audit_result_id
@@ -108,6 +127,7 @@ def log_execute_outcome(
     error: Optional[str] = None,
 ) -> None:
     """Best-effort hardening-execute audit log. Never raises."""
+    ensure_session_usable(db)
     try:
         asset, session_id, check_number, check_title = _resolve_action_context(db, action_id)
         log_hardening_execute(
@@ -156,6 +176,7 @@ def log_session_execute_outcome(
     Uses log_batch_hardening for batch-style actions and
     log_auto_hardening for auto-harden actions. Never raises.
     """
+    ensure_session_usable(db)
     try:
         asset = _resolve_asset(db, asset_id)
         kwargs = dict(

@@ -569,11 +569,16 @@ async def execute_fortinet_manual_remediation(
     **Permissions:** Requires HARDENING write permission
     """
     consume_quota = consume_quota_on_success("harden")
+    # Read the id while the session is healthy: current_user may be expired, and
+    # refreshing it inside an exception handler (after a failed flush) raises
+    # PendingRollbackError, masking the real error.
+    user_id = current_user.id
 
     def _fail(err):
+        db.rollback()  # clear any failed transaction before logging
         log_execute_outcome(
             db, device_type="fortinet",
-            action_id=None, user_id=current_user.id,
+            action_id=None, user_id=user_id,
             status_value="failed", error=str(err),
         )
 
@@ -581,7 +586,7 @@ async def execute_fortinet_manual_remediation(
         result = FortiGateHardeningService.execute_manual_remediation(
             db=db,
             audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
+            user_id=user_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             parameters=request.parameters,
@@ -592,7 +597,7 @@ async def execute_fortinet_manual_remediation(
         consume_quota(http_request)
         log_execute_outcome(
             db, device_type="fortinet",
-            action_id=None, user_id=current_user.id,
+            action_id=None, user_id=user_id,
             status_value="success" if result.get("success") else "failed",
             error=None if result.get("success") else "; ".join(result.get("errors", [])),
         )
@@ -788,17 +793,28 @@ def preview_fortinet_hardening(
     **Permissions:** Requires HARDENING write permission
     """
     consume_quota = consume_quota_on_success("harden")
+    # Read while the session is healthy — see execute_fortinet_manual_remediation.
+    user_id = current_user.id
+
+    def _fail(err):
+        db.rollback()  # clear any failed transaction before logging
+        log_preview_outcome(
+            db, device_type="fortinet",
+            audit_result_id=request.audit_result_id,
+            user_id=user_id, status_value="failed", error=str(err),
+        )
+
     try:
         preview = FortiGateHardeningService.preview_hardening(
             db=db,
             audit_result_id=request.audit_result_id,
-            user_id=current_user.id,
+            user_id=user_id,
             parameters=request.parameters
         )
         log_preview_outcome(
             db, device_type="fortinet",
             audit_result_id=request.audit_result_id,
-            user_id=current_user.id, status_value="success",
+            user_id=user_id, status_value="success",
             check_number=preview.get("check_number", "") if isinstance(preview, dict) else "",
             check_title=preview.get("check_title", "") if isinstance(preview, dict) else "",
         )
@@ -806,31 +822,19 @@ def preview_fortinet_hardening(
         return preview
 
     except (FortiGateCheckAlreadyPassingError, FortiGateNotAutoFixableError) as e:
-        log_preview_outcome(
-            db, device_type="fortinet",
-            audit_result_id=request.audit_result_id,
-            user_id=current_user.id, status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except ValueError as e:
-        log_preview_outcome(
-            db, device_type="fortinet",
-            audit_result_id=request.audit_result_id,
-            user_id=current_user.id, status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        log_preview_outcome(
-            db, device_type="fortinet",
-            audit_result_id=request.audit_result_id,
-            user_id=current_user.id, status_value="failed", error=str(e),
-        )
+        _fail(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Preview failed: {str(e)}"
@@ -867,11 +871,14 @@ async def execute_fortinet_hardening(
     - 500: Other execution errors
     """
     consume_quota = consume_quota_on_success("harden")
+    # Read while the session is healthy — see execute_fortinet_manual_remediation.
+    user_id = current_user.id
 
     def _fail(err):
+        db.rollback()  # clear any failed transaction before logging
         log_execute_outcome(
             db, device_type="fortinet",
-            action_id=request.action_id, user_id=current_user.id,
+            action_id=request.action_id, user_id=user_id,
             status_value="failed", error=str(err),
         )
 
@@ -879,7 +886,7 @@ async def execute_fortinet_hardening(
         result = FortiGateHardeningService.execute_hardening(
             db=db,
             action_id=request.action_id,
-            user_id=current_user.id,
+            user_id=user_id,
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             parameters=request.parameters,
@@ -896,7 +903,7 @@ async def execute_fortinet_hardening(
         )
         log_execute_outcome(
             db, device_type="fortinet",
-            action_id=request.action_id, user_id=current_user.id,
+            action_id=request.action_id, user_id=user_id,
             status_value="success" if succeeded else "failed",
             verification_passed=verification_passed,
             error=result.get("error_message") if isinstance(result, dict) else None,
