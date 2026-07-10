@@ -65,7 +65,8 @@ _DETAILED_RULE_TYPES = frozenset({
 def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
     """
     Parse ``show system interface`` into a list of top-level interfaces:
-    ``[{"name", "role", "allowaccess": [...]}]``.
+    ``[{"name", "role", "allowaccess": [...], "ip"}]`` (``ip`` is the address
+    without the netmask, '' when unset/DHCP).
 
     Handles both the wrapped form (``config system interface`` / ``edit`` / ``next``
     / ``end``) and a bare sequence of ``edit ... next`` blocks. Nested blocks
@@ -91,7 +92,7 @@ def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
             is_interface = "edit" not in stack  # first-level edit == an interface
             stack.append("edit")
             if is_interface:
-                current = {"name": m_edit.group(1), "role": "", "allowaccess": []}
+                current = {"name": m_edit.group(1), "role": "", "allowaccess": [], "ip": ""}
                 iface_level = len(stack)
             continue
 
@@ -118,6 +119,10 @@ def _parse_interfaces(output: str) -> List[Dict[str, Any]]:
             m_aa = re.match(r"set\s+allowaccess\s+(.+?)\s*$", line)
             if m_aa:
                 current["allowaccess"] = [s for s in m_aa.group(1).split() if s]
+                continue
+            m_ip = re.match(r"set\s+ip\s+(\S+)", line)
+            if m_ip:
+                current["ip"] = m_ip.group(1)
 
     if current is not None:  # output truncated before a closing 'next'
         interfaces.append(current)

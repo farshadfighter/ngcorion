@@ -41,6 +41,7 @@ from .command_templates import has_fortigate_template, IFACE_ALLOWACCESS_FORBIDD
 from .manual_remediation import (
     DEVICE_OPTION_TYPES,
     device_option_types_for_check,
+    get_manual_remediation,
     has_manual_remediation,
     render_manual_command_blocks,
     redact_manual_secret_values,
@@ -599,6 +600,37 @@ class FortiGateHardeningService:
                 output_parts: List[str] = []
                 all_errors: List[str] = []
                 overall_success = True
+
+                # Dynamic manual checks (FG-NET-002): the catalog block is empty
+                # on purpose — the per-interface commands are computed NOW from
+                # the live config (same mechanism as FG-BL-002's auto-fix), only
+                # for the selected interfaces. Targets with nothing to push
+                # (already compliant / unknown interface / lockout guard) go
+                # straight to the per-target report without touching the device.
+                if get_manual_remediation(result.check_number).dynamic == "wan_iface_allowaccess":
+                    built = executor.build_wan_iface_allowaccess_blocks(
+                        selections=[t for t, _cmds in blocks],
+                        scope=control.scope,
+                        vdom=target_vdom,
+                    )
+                    blocks = [(b["target"], b["commands"]) for b in built if b["commands"]]
+                    for b in built:
+                        if b["commands"]:
+                            continue
+                        per_target.append({"target": b["target"], "success": b["success"],
+                                           "errors": [] if b["success"] else [b["skip_reason"]],
+                                           "note": b["skip_reason"]})
+                        output_parts.append(f"### Target {b['target']}\n[skipped] {b['skip_reason']}")
+                        if not b["success"]:
+                            all_errors.append(f"[{b['target']}] {b['skip_reason']}")
+                            overall_success = False
+                    # Record the real commands now that they are known (the
+                    # pre-connection render had none for a dynamic check).
+                    commands = [c for _t, cmds in blocks for c in cmds]
+                    redacted_cmds = list(commands)
+                    action.commands_json = json.dumps(redacted_cmds)
+                    db.commit()
+
                 for target, block in blocks:
                     exec_result = executor.execute_commands(
                         block, scope=control.scope, vdom=target_vdom,

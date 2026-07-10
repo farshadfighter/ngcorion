@@ -188,6 +188,80 @@ def test_verify_ntp_does_not_poll_when_config_is_wrong(monkeypatch):
     assert "[NTP NOT SYNCED YET]" not in evidence
 
 
+# --------------------------------------------------------------------------
+# FG-NET-002: per-selected-WAN-interface dynamic fix (manual smart params)
+# --------------------------------------------------------------------------
+_LIVE_IFACE_OUTPUT = """
+config system interface
+    edit "wan1"
+        set ip 203.0.113.5 255.255.255.0
+        set role wan
+        set allowaccess ping https ssh snmp
+    next
+    edit "wan2"
+        set role wan
+        set allowaccess http telnet
+    next
+    edit "mgmt"
+        set ip 172.16.200.20 255.255.255.0
+        set role lan
+        set allowaccess https ssh ping
+    next
+    edit "dmz"
+        set role dmz
+        set allowaccess ping
+    next
+end
+"""
+
+
+def _executor_with_live_ifaces(device_ip="172.16.200.20"):
+    ex = FortiGateHardeningExecutor(device_ip, "u", "p")
+
+    class FakeClient:
+        def collect(self, cmds, scope=None, vdom=None, use_cache=True):
+            return {c: _LIVE_IFACE_OUTPUT for c in cmds}
+
+    ex.ssh_client = FakeClient()
+    return ex
+
+
+def test_wan_iface_blocks_strip_only_forbidden_and_report_per_target():
+    ex = _executor_with_live_ifaces()
+    report = ex.build_wan_iface_allowaccess_blocks(
+        ["wan1 (https ssh)", "wan2 (http telnet)", "dmz", "mgmt", "ghost0"]
+    )
+    by_target = {r["target"]: r for r in report}
+    assert list(by_target) == ["wan1", "wan2", "dmz", "mgmt", "ghost0"]
+
+    # wan1: https/ssh stripped, ping+snmp preserved
+    assert by_target["wan1"]["commands"] == [
+        "config system interface", 'edit "wan1"',
+        "set allowaccess ping snmp", "next", "end",
+    ]
+    # wan2: nothing but forbidden services -> unset
+    assert "unset allowaccess" in by_target["wan2"]["commands"]
+    # dmz: nothing forbidden exposed -> skipped as success
+    assert by_target["dmz"]["commands"] == [] and by_target["dmz"]["success"] is True
+    assert "already compliant" in by_target["dmz"]["skip_reason"]
+    # mgmt holds the IP this session is connected to -> lockout guard refuses
+    assert by_target["mgmt"]["commands"] == [] and by_target["mgmt"]["success"] is False
+    assert "lock out" in by_target["mgmt"]["skip_reason"]
+    # unknown interface -> reported as failure, nothing pushed
+    assert by_target["ghost0"]["success"] is False
+    assert "not found" in by_target["ghost0"]["skip_reason"]
+
+
+def test_wan_iface_lockout_guard_only_matches_connected_ip():
+    # Connected via a different IP: the mgmt interface is fixable like any other.
+    ex = _executor_with_live_ifaces(device_ip="10.9.9.9")
+    report = ex.build_wan_iface_allowaccess_blocks(["mgmt"])
+    assert report[0]["commands"] == [
+        "config system interface", 'edit "mgmt"',
+        "set allowaccess ping", "next", "end",
+    ]
+
+
 def test_iface_allowaccess_strips_only_forbidden_services():
     interfaces = [
         {"name": "port1", "allowaccess": ["ping", "https", "ssh", "http", "telnet"]},

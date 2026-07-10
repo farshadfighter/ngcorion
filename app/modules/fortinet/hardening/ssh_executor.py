@@ -25,8 +25,14 @@ from app.modules.fortinet.audit.service import (
 )
 from app.modules.fortinet.audit.ssh_client import SCOPE_GLOBAL, FortiGateSSHClient
 from .command_templates import build_iface_allowaccess_commands
+from .manual_remediation import selection_object_name
 
 logger = logging.getLogger(__name__)
+
+# Management services stripped from WAN-role interfaces for FG-NET-002 (CIS 1.3).
+# Kept in sync with the audit's _WAN_FORBIDDEN_SERVICES; ping/snmp/radius-acct
+# are intentionally NOT touched (per client scope).
+WAN_MGMT_FORBIDDEN = ["http", "https", "ssh", "telnet"]
 
 # NTP re-sync after switching to a new server is not instant. When the config
 # side of FG-BL-040 is already right (ntpsync on, custom mode, no FortiGuard
@@ -129,6 +135,63 @@ class FortiGateHardeningExecutor:
         )[IFACE]
         interfaces = _parse_interfaces(raw)
         return build_iface_allowaccess_commands(interfaces, forbidden)
+
+    def build_wan_iface_allowaccess_blocks(
+        self,
+        selections: List[str],
+        scope: str = SCOPE_GLOBAL,
+        vdom: Optional[str] = None,
+        forbidden: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Per-interface remediation blocks for FG-NET-002, computed from the LIVE
+        config — the same read/strip mechanism as :meth:`build_iface_allowaccess_fix`
+        (FG-BL-002), but restricted to the operator-SELECTED interfaces and shaped
+        for per-target reporting.
+
+        ``selections`` may carry the evidence label ("wan1 (http ssh)"); only the
+        leading interface name is used. Returns one entry per selection:
+        ``{"target", "commands", "skip_reason", "success"}``. Empty ``commands``
+        + ``skip_reason`` means nothing is pushed for that interface:
+          * already compliant                       -> success True
+          * not found on the device / lockout guard -> success False
+        The lockout guard refuses the interface holding the IP this session is
+        connected to: stripping HTTPS/SSH there would cut off management access.
+        """
+        if not self.ssh_client:
+            raise FortiGateHardeningExecutionError("Not connected to device")
+        forbidden_l = sorted({s.lower() for s in (forbidden or WAN_MGMT_FORBIDDEN)})
+        raw = self.ssh_client.collect(
+            [IFACE], scope=scope, vdom=vdom or self.default_vdom, use_cache=False
+        )[IFACE]
+        live = {i["name"]: i for i in _parse_interfaces(raw)}
+        report: List[Dict[str, Any]] = []
+        for sel in selections:
+            name = selection_object_name(sel)
+            itf = live.get(name)
+            if itf is None:
+                report.append({"target": name, "commands": [], "success": False,
+                               "skip_reason": "not found in the device's live "
+                                              "interface list"})
+                continue
+            if itf.get("ip") and itf["ip"] == self.ip:
+                report.append({"target": name, "commands": [], "success": False,
+                               "skip_reason": (f"refused: interface holds {self.ip}, the "
+                                               "management IP this session is connected "
+                                               "through — removing HTTPS/SSH would lock out "
+                                               "administration; fix it from the console or "
+                                               "another interface")})
+                continue
+            exposed = [s for s in itf.get("allowaccess", [])
+                       if s.lower() in set(forbidden_l)]
+            if not exposed:
+                report.append({"target": name, "commands": [], "success": True,
+                               "skip_reason": "already compliant (no forbidden "
+                                              "management services exposed)"})
+                continue
+            report.append({"target": name, "success": None, "skip_reason": None,
+                           "commands": build_iface_allowaccess_commands([itf], forbidden_l)})
+        return report
 
     def verify_check(
         self,

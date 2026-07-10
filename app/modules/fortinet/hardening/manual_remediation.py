@@ -19,10 +19,12 @@ flips the audit result to PASS — a manual control cannot be proven from config
 alone (that's why it is Manual). The endpoint just renders + pushes the block and
 reports the device output/errors.
 
-Controls that are pure prose (e.g. "upgrade firmware"), need per-object judgement
-(rewriting policies, blocking app categories), or must be computed from live
-device state (WAN-interface allowaccess) intentionally have NO entry here and stay
-read-only in the modal.
+Controls that are pure prose (e.g. "upgrade firmware") or need per-object
+judgement (rewriting policies, blocking app categories) intentionally have NO
+entry here and stay read-only in the modal. Controls whose fix must be computed
+from live device state declare ``dynamic`` with an empty ``commands`` list
+(FG-NET-002 WAN allowaccess): their per-target block is built at execute time
+from ``show system interface``, never from this catalog.
 """
 
 import re
@@ -75,10 +77,18 @@ class ManualParam:
 
 @dataclass
 class ManualRemediation:
-    """An executable remediation for a CIS 'Manual' FortiGate control."""
+    """An executable remediation for a CIS 'Manual' FortiGate control.
+
+    ``dynamic`` marks a check whose commands cannot be a static block and are
+    computed at execute time from live device state (``commands`` stays empty):
+      "wan_iface_allowaccess" -> FG-NET-002; per selected WAN interface, strip
+      only the forbidden management services from the live ``allowaccess``
+      (FortiGateHardeningExecutor.build_wan_iface_allowaccess_blocks).
+    """
     commands: List[str]
     parameters: List[ManualParam] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    dynamic: Optional[str] = None
 
 
 @dataclass
@@ -127,6 +137,29 @@ MANUAL_REMEDIATION_TEMPLATES: Dict[str, ManualRemediation] = {
                                    "zones from the audit evidence.",
                        source="audit_evidence", evidence_parser="table_names", multi=True)],
         warnings=["The command block is applied once per selected zone."],
+    ),
+
+    "FG-NET-002": ManualRemediation(  # 1.3 mgmt services exposed on WAN interfaces
+        # Computed at EXECUTE time from live `show system interface` (the same
+        # mechanism as FG-BL-002's dynamic auto-fix): for each SELECTED WAN
+        # interface, strip only http/https/ssh/telnet from allowaccess and
+        # preserve every other service (ping/snmp/fgfm/...). No static block is
+        # possible — the surviving services depend on the device's live config.
+        commands=[],
+        dynamic="wan_iface_allowaccess",
+        parameters=[_P("INTERFACES", "WAN interface(s)", placeholder="wan1",
+                       description="WAN-role interfaces exposing management services — the "
+                                   "flagged interfaces from the audit evidence, with the "
+                                   "exposed services shown in parentheses. Only the selected "
+                                   "interfaces are changed.",
+                       source="audit_evidence", evidence_parser="wan_iface_services",
+                       multi=True)],
+        warnings=["Removes HTTP/HTTPS/SSH/Telnet from each selected interface's management "
+                  "access (allowaccess); other services (ping/snmp/fgfm/...) are preserved.",
+                  "LOCKOUT RISK: selecting the interface your own management session enters "
+                  "through cuts off remote administration on it. The app refuses to modify "
+                  "the interface holding the IP it is connected to — fix that one from the "
+                  "console or a dedicated management interface."],
     ),
 
     # ===== 2.1 General Settings =====
@@ -426,13 +459,30 @@ class ManualParameterError(ValueError):
 
 # Evidence parsers (source="audit_evidence"). These match the evidence strings
 # built by app/modules/fortinet/audit/service.py:
-#   policy_ids  -> `_policy_field_evidence`: one "Policy ID <id>: ..." line per
-#                  failing policy (policy_field_eq / policy_field_present rules).
-#   table_names -> `_table_evidence_line` for table_all_match: the failing entry
-#                  names after "missing '<label>':" up to "(NON-COMPLIANT)".
+#   policy_ids         -> `_policy_field_evidence`: one "Policy ID <id>: ..." line
+#                         per failing policy (policy_field_eq/_present rules).
+#   table_names        -> `_table_evidence_line` for table_all_match: the failing
+#                         entry names after "missing '<label>':" up to
+#                         "(NON-COMPLIANT)".
+#   wan_iface_services -> `_wan_mgmt_evidence` (FG-NET-002): one
+#                         "Interface <name> (role=wan) exposes: http, ssh
+#                         (NON-COMPLIANT)" line per flagged WAN interface. The
+#                         option keeps the services in the label —
+#                         "wan1 (http ssh)" — space-separated, because the comma
+#                         is the multi-select join character; only the leading
+#                         name is used at execute time (selection_object_name).
 _POLICY_ID_RE = re.compile(r"Policy ID (\S+?):")
 _TABLE_MISSING_RE = re.compile(r"missing '[^']*':\s*(.+?)\s*\(NON-COMPLIANT\)",
                                re.IGNORECASE | re.DOTALL)
+_WAN_IFACE_EXPOSED_RE = re.compile(
+    r"Interface\s+(\S+)\s+\(role=[^)]*\)\s+exposes:\s*(.+?)\s*\(NON-COMPLIANT\)",
+    re.IGNORECASE)
+
+
+def selection_object_name(value: str) -> str:
+    """Object name inside an evidence-derived selection: 'wan1 (http ssh)' ->
+    'wan1' (a bare name passes through unchanged)."""
+    return (value or "").split(" (", 1)[0].strip()
 
 
 def parse_evidence_options(check_id: str, evidence: Optional[str]) -> Dict[str, List[str]]:
@@ -456,6 +506,11 @@ def parse_evidence_options(check_id: str, evidence: Optional[str]) -> Dict[str, 
             m = _TABLE_MISSING_RE.search(text)
             if m:
                 values = [v.strip() for v in m.group(1).split(",") if v.strip()]
+        elif spec.evidence_parser == "wan_iface_services":
+            values = [
+                f"{name} ({' '.join(s.strip() for s in svcs.split(',') if s.strip())})"
+                for name, svcs in _WAN_IFACE_EXPOSED_RE.findall(text)
+            ]
         # dedupe, preserving evidence order
         out[spec.name] = list(dict.fromkeys(values))
     return out

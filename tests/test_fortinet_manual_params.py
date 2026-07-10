@@ -21,6 +21,7 @@ from app.modules.fortinet.hardening.manual_remediation import (
     parse_evidence_options,
     render_manual_command_blocks,
     render_manual_commands,
+    selection_object_name,
 )
 
 
@@ -34,7 +35,8 @@ def test_every_param_is_classified_consistently():
             if p.source == "device":
                 assert p.option_type in DEVICE_OPTION_TYPES, (check_id, p.name)
             if p.source == "audit_evidence":
-                assert p.evidence_parser in ("policy_ids", "table_names"), (check_id, p.name)
+                assert p.evidence_parser in ("policy_ids", "table_names",
+                                             "wan_iface_services"), (check_id, p.name)
             if p.multi:
                 assert p.source == "audit_evidence", (check_id, p.name)
 
@@ -101,6 +103,44 @@ def test_parse_policy_ids_from_logtraffic_evidence():
 def test_parse_zone_names_from_table_evidence():
     evidence = "4 entries; missing 'intrazone deny': dmz-zone, lan zone (NON-COMPLIANT)"
     assert parse_evidence_options("FG-NET-001", evidence) == {"ZONE": ["dmz-zone", "lan zone"]}
+
+
+def test_parse_wan_interfaces_from_fg_net_002_evidence():
+    # Exact format of _wan_mgmt_evidence: one line per flagged WAN interface.
+    evidence = (
+        "Interface wan1 (role=wan) exposes: http, ssh (NON-COMPLIANT)\n"
+        "Interface wan2 (role=wan) exposes: https (NON-COMPLIANT)"
+    )
+    assert parse_evidence_options("FG-NET-002", evidence) == {
+        # services ride along in the label, space-separated (comma is the
+        # multi-select join character)
+        "INTERFACES": ["wan1 (http ssh)", "wan2 (https)"]
+    }
+    # compliant / unreadable evidence -> no options (UI falls back to free input)
+    assert parse_evidence_options(
+        "FG-NET-002",
+        "12 interfaces; WAN-role interface(s) wan1 expose no management services (COMPLIANT)",
+    ) == {"INTERFACES": []}
+
+
+def test_selection_object_name_strips_service_label():
+    assert selection_object_name("wan1 (http ssh)") == "wan1"
+    assert selection_object_name("wan1") == "wan1"
+    assert selection_object_name("") == ""
+
+
+def test_fg_net_002_renders_one_empty_block_per_selection():
+    # The catalog block is empty (dynamic) — rendering just validates/dedupes the
+    # selections; the real commands are built at execute time from live config.
+    rem = MANUAL_REMEDIATION_TEMPLATES["FG-NET-002"]
+    assert rem.dynamic == "wan_iface_allowaccess" and rem.commands == []
+    blocks = render_manual_command_blocks(
+        "FG-NET-002", {"INTERFACES": "wan1 (http ssh), wan2 (https)"}
+    )
+    assert [t for t, _ in blocks] == ["wan1 (http ssh)", "wan2 (https)"]
+    assert all(cmds == [] for _t, cmds in blocks)
+    with pytest.raises(ManualParameterError):
+        render_manual_command_blocks("FG-NET-002", {"INTERFACES": ""})
 
 
 def test_parse_evidence_handles_missing_or_foreign_evidence():
