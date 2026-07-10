@@ -37,6 +37,27 @@ export const loginUser = createAsyncThunk(
     }
 );
 
+// Validate the stored token against the backend on app load.
+// Resolves with the fresh identity/permissions if the token is still valid;
+// rejects (→ logout) if it is missing, expired, or otherwise invalid. This is
+// what stops an expired token from rendering the dashboard before the first
+// real API call bounces the user back to login.
+export const verifyToken = createAsyncThunk(
+    "auth/verify",
+    async (_, { rejectWithValue }) => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            return rejectWithValue("no-token");
+        }
+        try {
+            const response = await api.get("/auth/me");
+            return response.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.status || "invalid-token");
+        }
+    }
+);
+
 // ==========================================
 // Helper - بررسی دسترسی کاربر
 // ==========================================
@@ -60,6 +81,10 @@ const authSlice = createSlice({
         permissions: JSON.parse(localStorage.getItem("permissions") || "{}"),
         isLoading:   false,
         error:       null,
+        // Auth-verification gate: protected routes must not render until the
+        // stored token has been confirmed valid against the backend.
+        authChecked:     false,
+        isAuthenticating: false,
     },
     reducers: {
         logout: (state) => {
@@ -100,6 +125,39 @@ const authSlice = createSlice({
             .addCase(loginUser.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error     = action.payload;
+            })
+
+            // ── Token verification on app load ──
+            .addCase(verifyToken.pending, (state) => {
+                state.isAuthenticating = true;
+            })
+            .addCase(verifyToken.fulfilled, (state, action) => {
+                state.isAuthenticating = false;
+                state.authChecked      = true;
+                // Refresh identity/permissions from the server (may have changed
+                // since the token was issued).
+                state.username    = action.payload.username;
+                state.role        = action.payload.role;
+                state.permissions = action.payload.permissions || {};
+
+                localStorage.setItem("username",    action.payload.username);
+                localStorage.setItem("role",        action.payload.role);
+                localStorage.setItem("permissions", JSON.stringify(action.payload.permissions || {}));
+            })
+            .addCase(verifyToken.rejected, (state) => {
+                // Token missing/expired/invalid → clear the session so
+                // ProtectedRoute sends the user straight to login (no flash).
+                state.isAuthenticating = false;
+                state.authChecked      = true;
+                state.token       = null;
+                state.username    = null;
+                state.role        = null;
+                state.permissions = {};
+
+                localStorage.removeItem("token");
+                localStorage.removeItem("username");
+                localStorage.removeItem("role");
+                localStorage.removeItem("permissions");
             });
     },
 });

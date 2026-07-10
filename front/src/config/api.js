@@ -56,16 +56,21 @@ api.interceptors.response.use(
             // - error_type field (structured error from backend)
             // - URL contains /audit/ or /harden/ (device operations)
             // - detail is an object (not a simple string like "Invalid token")
-            const isDeviceOperation = 
-                error.config?.url?.includes('/audit/') || 
+            const isDeviceOperation =
+                error.config?.url?.includes('/audit/') ||
                 error.config?.url?.includes('/harden/') ||
                 error.config?.url?.includes('/hardening/');
-                
+
             const isDeviceSshError =
                 detail && typeof detail === 'object' && 'error_type' in detail;
 
+            // The app-load token check (/auth/me) handles its own 401 through the
+            // verifyToken thunk (clears state, routes to login). Skipping the hard
+            // redirect here avoids a full page reload on startup.
+            const isAuthVerify = error.config?.url?.includes('/auth/me');
+
             // Only logout if this is NOT a device SSH error AND NOT a device operation
-            const shouldLogout = !isDeviceSshError && !isDeviceOperation;
+            const shouldLogout = !isDeviceSshError && !isDeviceOperation && !isAuthVerify;
 
             if (shouldLogout) {
                 localStorage.removeItem('token');

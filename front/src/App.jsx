@@ -33,10 +33,12 @@ import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./store/index";
 import { useEffect, useState } from "react";
 import { getLicenseStatusThunk } from "./store/licenseSlice";
+import { verifyToken } from "./store/authSlice";
 
 function AppContent() {
     const dispatch = useDispatch();
     const { isValid, isValidating } = useSelector((state) => state.license);
+    const { authChecked } = useSelector((state) => state.auth);
     const [licenseChecked, setLicenseChecked] = useState(false);
 
     // چک کردن وضعیت لایسنس در startup
@@ -46,8 +48,17 @@ function AppContent() {
         });
     }, [dispatch]);
 
-    // نمایش loading تا زمانی که لایسنس چک شود
-    if (!licenseChecked) {
+    // Validate the stored token against the backend BEFORE rendering any
+    // protected route. verifyToken resolves authChecked either way (valid →
+    // stay logged in; missing/expired → session cleared, route to login), so no
+    // protected content renders until the session is confirmed. Fixes the
+    // "dashboard flash then kicked to login" on load.
+    useEffect(() => {
+        dispatch(verifyToken());
+    }, [dispatch]);
+
+    // نمایش loading تا زمانی که لایسنس چک شود و توکن اعتبارسنجی شود
+    if (!licenseChecked || !authChecked) {
         return (
             <div
                 style={{

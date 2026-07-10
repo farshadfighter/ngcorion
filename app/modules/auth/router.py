@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.core.security import create_access_token
 from app.core.auth_rate_limiter import (
     check_login_rate_limit,
@@ -19,7 +20,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     MessageResponse,
 )
-from app.models import LoginLog, UserRole
+from app.models import LoginLog, UserRole, User
 from app.models.security_audit_log import log_action
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
@@ -227,6 +228,29 @@ def login(
         "username": user.username,
         "role": user.role.value,
         "permissions": permissions
+    }
+
+
+@router.get("/me")
+def read_current_user(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Validate the caller's JWT and return the current user's identity/permissions.
+
+    Used by the frontend on app load to confirm the stored token is still valid
+    BEFORE rendering any protected route. Returns 401 (via get_current_user) if
+    the token is missing, malformed, or expired, and 403 if the account is
+    disabled — so an expired session can never slip past the client-side guard.
+
+    Permissions are re-read from the DB so they reflect any changes made since
+    the token was issued, rather than trusting the stale copy in localStorage.
+    """
+    return {
+        "username": current_user.username,
+        "role": current_user.role.value,
+        "permissions": get_user_permissions(db, current_user.id, current_user.role),
     }
 
 
