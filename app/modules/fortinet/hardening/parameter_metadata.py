@@ -47,6 +47,15 @@ FORTIGATE_PARAMETER_REGISTRY: Dict[str, FortiGateParameterMetadata] = {
         name="ADMIN_LOCKOUT_DURATION", input_type="number", label="Admin Lockout Duration (seconds)",
         description="Lockout period after exceeding the admin login retry threshold",
         required=False, default="60", min_value=1, max_value=86400),
+    "NTP_SERVER_1": FortiGateParameterMetadata(
+        name="NTP_SERVER_1", input_type="text", label="NTP Server 1",
+        description="Primary NTP server (hostname or IP); use a local/reachable "
+                    "server if public pools are blocked",
+        required=False, default="pool.ntp.org", placeholder="pool.ntp.org"),
+    "NTP_SERVER_2": FortiGateParameterMetadata(
+        name="NTP_SERVER_2", input_type="text", label="NTP Server 2",
+        description="Secondary NTP server (hostname or IP)",
+        required=False, default="1.1.1.1", placeholder="1.1.1.1"),
     "HA_MONITOR_INTERFACE": FortiGateParameterMetadata(
         name="HA_MONITOR_INTERFACE", input_type="text", label="HA Monitored Interface(s)",
         description="Interface(s) to monitor for HA failover (space-separated)",
@@ -80,7 +89,7 @@ FORTIGATE_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "FG-BL-043": ["DNS_PRIMARY"],
     "FG-BL-092": [],
     "FG-SYS-001": [],
-    "FG-BL-040": [],
+    "FG-BL-040": ["NTP_SERVER_1", "NTP_SERVER_2"],
     "FG-SYS-003": ["HOSTNAME"],
     "FG-SYS-005": [],
     "FG-SYS-006": [],

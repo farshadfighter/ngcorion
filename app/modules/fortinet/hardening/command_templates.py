@@ -43,9 +43,29 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         "warnings": ["Enables the post-login banner."],
     },
     "FG-BL-040": {  # 2.1.4 NTP
-        "commands": ["config system ntp", "set ntpsync enable", "end"],
-        "required_params": [], "optional_params": [], "defaults": {},
-        "warnings": ["Enables NTP synchronization (configure a custom NTP server separately if required)."],
+        # The check requires ntpsync enabled AND type=custom AND no
+        # *.fortiguard.com servers, so `set ntpsync enable` alone can never make
+        # the device compliant (server-mode stays disabled, FortiGuard pool stays
+        # active). Push the full block: custom mode + two operator-configurable
+        # servers (the client may prefer local/in-country NTP sources).
+        "commands": ["config system ntp",
+                     "set ntpsync enable",
+                     "set type custom",
+                     "config ntpserver",
+                     "edit 1",
+                     "set server {NTP_SERVER_1}",
+                     "next",
+                     "edit 2",
+                     "set server {NTP_SERVER_2}",
+                     "next",
+                     "end",
+                     "end"],
+        "required_params": [], "optional_params": ["NTP_SERVER_1", "NTP_SERVER_2"],
+        "defaults": {"NTP_SERVER_1": "pool.ntp.org", "NTP_SERVER_2": "1.1.1.1"},
+        "warnings": ["Switches NTP to custom mode and replaces the FortiGuard pool with the "
+                     "servers above — pick reachable ones (local servers are fine).",
+                     "Initial synchronization to a new server can take several minutes; "
+                     "verification polls briefly and may report 'not yet synchronized'."],
     },
     "FG-SYS-003": {  # 2.1.5 hostname
         "commands": ["config system global", "set hostname {HOSTNAME}", "end"],

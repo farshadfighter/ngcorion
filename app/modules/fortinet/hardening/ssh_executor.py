@@ -12,15 +12,28 @@ forwards the control's ``scope`` and the target ``vdom``.
 
 import logging
 import re
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.modules.fortinet.audit.rules import FortiGateControl, IFACE
-from app.modules.fortinet.audit.service import FortinetAuditService, _parse_interfaces
+from app.modules.fortinet.audit.service import (
+    FortinetAuditService,
+    _ntp_status_failures,
+    _parse_interfaces,
+    _parse_ntp_status,
+)
 from app.modules.fortinet.audit.ssh_client import SCOPE_GLOBAL, FortiGateSSHClient
 from .command_templates import build_iface_allowaccess_commands
 
 logger = logging.getLogger(__name__)
+
+# NTP re-sync after switching to a new server is not instant. When the config
+# side of FG-BL-040 is already right (ntpsync on, custom mode, no FortiGuard
+# servers) and ONLY the `synchronized` flag is still missing, verification
+# polls for a short while instead of failing immediately.
+NTP_SYNC_VERIFY_ATTEMPTS = 4        # 1 initial check + 3 retries
+NTP_SYNC_VERIFY_DELAY_SECONDS = 10  # ~30s total wait
 
 
 class FortiGateHardeningExecutionError(Exception):
@@ -122,41 +135,92 @@ class FortiGateHardeningExecutor:
         control: FortiGateControl,
         vdom: Optional[str] = None,
     ) -> Tuple[bool, str]:
-        """Re-read the control in its own scope/VDOM and re-evaluate its rules."""
+        """
+        Re-read the control in its own scope/VDOM and re-evaluate its rules.
+
+        Controls with an ``ntp_status_ok`` rule get a short poll: right after the
+        fix the config is correct but the device may not have synchronized to the
+        new server yet, so a one-shot read would fail on the ``synchronized``
+        flag alone. We retry only while that is the sole remaining failure.
+        """
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
-            cmds = []
-            for r in control.rules:
-                if r.cmd not in cmds:
-                    cmds.append(r.cmd)
-            outputs = self.ssh_client.collect(
-                cmds, scope=control.scope, vdom=vdom or self.default_vdom, use_cache=False
-            )
-            # An off/absent feature (na_gate) is not a verification failure — mirror
-            # the audit so post-fix verify agrees with what the audit will report.
-            applicable, na_reason = FortinetAuditService._applicability(control, outputs)
-            if not applicable:
-                return True, f"[NOT APPLICABLE] {na_reason}"
-            # Reuse the audit service's authoritative evaluator (single source of
-            # truth) and its rule-combine semantics: "all" (AND) normally, "any"
-            # (OR) for controls whose setting has >1 build-specific spelling (e.g.
-            # FG-AV-003 machine-learning-detection vs the older heuristic node).
-            # A previous local copy handled only set_*/regex_* and returned False
-            # for the newer get_field_*/table_*/policy_* types, silently failing
-            # post-fix verification even when the device was correctly fixed.
-            evidence_parts, results = [], []
-            for rule in control.rules:
-                out = outputs.get(rule.cmd, "")
-                evidence_parts.append(f"# {rule.cmd}\n{out[:500]}")
-                results.append(FortinetAuditService._evaluate_rule(rule, out))
-            combiner = any if getattr(control, "rule_combine", "all") == "any" else all
-            passed = combiner(results) if results else False
-            return passed, "\n\n".join(evidence_parts)
+            has_ntp_rule = any(r.type == "ntp_status_ok" for r in control.rules)
+            attempts = NTP_SYNC_VERIFY_ATTEMPTS if has_ntp_rule else 1
+            passed, evidence, sync_pending = self._verify_once(control, vdom)
+            for attempt in range(1, attempts):
+                if passed or not sync_pending:
+                    break
+                logger.info("FG %s verify on %s: NTP config applied but not "
+                            "synchronized yet (attempt %d/%d) — waiting %ds",
+                            control.id, self.ip, attempt, attempts,
+                            NTP_SYNC_VERIFY_DELAY_SECONDS)
+                time.sleep(NTP_SYNC_VERIFY_DELAY_SECONDS)
+                passed, evidence, sync_pending = self._verify_once(control, vdom)
+            if not passed and sync_pending:
+                waited = (attempts - 1) * NTP_SYNC_VERIFY_DELAY_SECONDS
+                evidence = (
+                    "[NTP NOT SYNCED YET] NTP configuration verified (ntpsync on, "
+                    "custom servers, no FortiGuard pool) but the device has not "
+                    f"synchronized after ~{waited}s. Initial sync to a new server "
+                    "can take several minutes — re-run the audit shortly; no "
+                    "further remediation is needed.\n\n" + evidence
+                )
+            return passed, evidence
         except Exception as e:  # noqa: BLE001
             logger.error("FortiGate verification failed on %s (control=%s)",
                          self.ip, getattr(control, "id", "?"), exc_info=True)
             raise FortiGateHardeningVerificationError(f"Failed to verify check: {e}")
+
+    def _verify_once(
+        self,
+        control: FortiGateControl,
+        vdom: Optional[str] = None,
+    ) -> Tuple[bool, str, bool]:
+        """
+        One verification pass. Returns ``(passed, evidence, sync_pending)`` where
+        ``sync_pending`` means every failing rule is an ``ntp_status_ok`` whose
+        only unmet condition is the ``synchronized`` flag (config already right,
+        device just hasn't synced yet) — the caller may retry those.
+        """
+        cmds = []
+        for r in control.rules:
+            if r.cmd not in cmds:
+                cmds.append(r.cmd)
+        outputs = self.ssh_client.collect(
+            cmds, scope=control.scope, vdom=vdom or self.default_vdom, use_cache=False
+        )
+        # An off/absent feature (na_gate) is not a verification failure — mirror
+        # the audit so post-fix verify agrees with what the audit will report.
+        applicable, na_reason = FortinetAuditService._applicability(control, outputs)
+        if not applicable:
+            return True, f"[NOT APPLICABLE] {na_reason}", False
+        # Reuse the audit service's authoritative evaluator (single source of
+        # truth) and its rule-combine semantics: "all" (AND) normally, "any"
+        # (OR) for controls whose setting has >1 build-specific spelling (e.g.
+        # FG-AV-003 machine-learning-detection vs the older heuristic node).
+        # A previous local copy handled only set_*/regex_* and returned False
+        # for the newer get_field_*/table_*/policy_* types, silently failing
+        # post-fix verification even when the device was correctly fixed.
+        evidence_parts, results, pending_flags = [], [], []
+        for rule in control.rules:
+            out = outputs.get(rule.cmd, "")
+            evidence_parts.append(f"# {rule.cmd}\n{out[:500]}")
+            ok = FortinetAuditService._evaluate_rule(rule, out)
+            results.append(ok)
+            if not ok:
+                if rule.type == "ntp_status_ok":
+                    fails = _ntp_status_failures(_parse_ntp_status(out))
+                    pending_flags.append(
+                        bool(fails) and all(f.startswith("synchronized") for f in fails)
+                    )
+                else:
+                    pending_flags.append(False)
+        combiner = any if getattr(control, "rule_combine", "all") == "any" else all
+        passed = combiner(results) if results else False
+        sync_pending = (not passed) and bool(pending_flags) and all(pending_flags)
+        return passed, "\n\n".join(evidence_parts), sync_pending
 
     def save_config(self) -> str:
         if not self.ssh_client:

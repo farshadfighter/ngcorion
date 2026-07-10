@@ -21,6 +21,16 @@ from app.modules.fortinet.hardening.command_templates import (
     FORTIGATE_COMMAND_TEMPLATES,
     has_fortigate_template,
 )
+from app.modules.fortinet.hardening.command_parser import (
+    FortiGateRemediationParser,
+    apply_fortigate_defaults,
+)
+from app.modules.fortinet.hardening.parameter_metadata import (
+    get_fortigate_check_defaults,
+    is_fortigate_check_auto_fixable,
+)
+from app.modules.fortinet.hardening import ssh_executor as fg_executor_mod
+from app.modules.fortinet.hardening.ssh_executor import FortiGateHardeningExecutor
 
 CONTROLS = get_fortinet_controls()
 BY_ID = {c.id: c for c in CONTROLS}
@@ -66,6 +76,116 @@ def test_diagnose_backs_out_of_leaked_scope_first():
     assert sent[0] == "end", "must unwind the leaked config context first"
     assert sent[1:] == ["config global", "diagnose sys ntp status", "end"]
     assert state["depth"] == 0, "leaked context fully unwound before re-entering"
+
+
+# --------------------------------------------------------------------------
+# FG-BL-040: full NTP remediation template + sync-aware verification
+# --------------------------------------------------------------------------
+_NTP_OUT_SYNCED = (
+    "synchronized: yes, ntpsync: enabled, server-mode: enabled\n\n"
+    "ipv4 server(pool.ntp.org) 162.159.200.1 -- reachable(0xff) S:1 T:9\n"
+    "ipv4 server(1.1.1.1) 1.1.1.1 -- reachable(0xff) S:2 T:9\n"
+)
+_NTP_OUT_CONFIG_OK_NOT_SYNCED = (
+    "synchronized: no, ntpsync: enabled, server-mode: enabled\n\n"
+    "ipv4 server(pool.ntp.org) 162.159.200.1 -- unreachable S:1 T:0\n"
+)
+_NTP_OUT_STILL_FORTIGUARD = (
+    "synchronized: no, ntpsync: enabled, server-mode: disabled\n\n"
+    "ipv4 server(ntp1.fortiguard.com) 208.91.114.21 -- reachable(0xff) S:1 T:9\n"
+    "ipv4 server(ntp2.fortiguard.com) 208.91.114.22 -- reachable(0xff) S:2 T:9\n"
+)
+
+
+def test_fg_bl_040_template_is_full_remediation():
+    # `set ntpsync enable` alone leaves server-mode disabled and the FortiGuard
+    # pool active -> correctly NON-COMPLIANT. The template must push the full
+    # block: custom mode + replace the servers (user-configurable, defaulted).
+    tpl = FORTIGATE_COMMAND_TEMPLATES["FG-BL-040"]
+    assert "set type custom" in tpl["commands"]
+    assert "config ntpserver" in tpl["commands"]
+    assert tpl["optional_params"] == ["NTP_SERVER_1", "NTP_SERVER_2"]
+    assert tpl["defaults"] == {"NTP_SERVER_1": "pool.ntp.org", "NTP_SERVER_2": "1.1.1.1"}
+    # nested config blocks are balanced (config system ntp + config ntpserver)
+    assert tpl["commands"].count("end") == sum(
+        1 for c in tpl["commands"] if c.startswith("config ")
+    )
+
+    # defaults substitute cleanly through the standard param mechanism
+    parsed = FortiGateRemediationParser.parse_remediation("", "FG-BL-040")
+    final = FortiGateRemediationParser.substitute_parameters(
+        parsed.commands, apply_fortigate_defaults({}, parsed.defaults)
+    )
+    assert "set server pool.ntp.org" in final
+    assert "set server 1.1.1.1" in final
+
+    # user-supplied (e.g. local Iranian) servers override the defaults
+    final_local = FortiGateRemediationParser.substitute_parameters(
+        parsed.commands,
+        apply_fortigate_defaults({"NTP_SERVER_1": "ntp.day.ir",
+                                  "NTP_SERVER_2": "192.168.1.10"}, parsed.defaults),
+    )
+    assert "set server ntp.day.ir" in final_local
+    assert "set server 192.168.1.10" in final_local
+
+    # both params have defaults so batch auto-fix still treats it as fixable
+    assert is_fortigate_check_auto_fixable("FG-BL-040")
+    assert get_fortigate_check_defaults("FG-BL-040") == tpl["defaults"]
+
+
+def _executor_with_ntp_outputs(outputs_sequence):
+    """Executor whose ssh_client returns the given diagnose outputs in order
+    (last one repeats), counting collect() calls."""
+    ex = FortiGateHardeningExecutor("h", "u", "p")
+
+    class FakeClient:
+        def __init__(self):
+            self.calls = 0
+
+        def collect(self, cmds, scope=None, vdom=None, use_cache=True):
+            out = outputs_sequence[min(self.calls, len(outputs_sequence) - 1)]
+            self.calls += 1
+            return {c: out for c in cmds}
+
+    ex.ssh_client = FakeClient()
+    return ex
+
+
+def test_verify_ntp_polls_until_synchronized(monkeypatch):
+    # Config lands correctly but sync takes a moment: verify must poll (bounded)
+    # instead of failing on the first read.
+    sleeps = []
+    monkeypatch.setattr(fg_executor_mod.time, "sleep", lambda s: sleeps.append(s))
+    ex = _executor_with_ntp_outputs(
+        [_NTP_OUT_CONFIG_OK_NOT_SYNCED, _NTP_OUT_CONFIG_OK_NOT_SYNCED, _NTP_OUT_SYNCED]
+    )
+    passed, evidence = ex.verify_check(BY_ID["FG-BL-040"])
+    assert passed is True
+    assert ex.ssh_client.calls == 3
+    assert sleeps == [fg_executor_mod.NTP_SYNC_VERIFY_DELAY_SECONDS] * 2
+
+
+def test_verify_ntp_fails_with_clear_message_when_sync_never_arrives(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(fg_executor_mod.time, "sleep", lambda s: sleeps.append(s))
+    ex = _executor_with_ntp_outputs([_NTP_OUT_CONFIG_OK_NOT_SYNCED])
+    passed, evidence = ex.verify_check(BY_ID["FG-BL-040"])
+    assert passed is False
+    assert evidence.startswith("[NTP NOT SYNCED YET]")
+    assert len(sleeps) == fg_executor_mod.NTP_SYNC_VERIFY_ATTEMPTS - 1
+
+
+def test_verify_ntp_does_not_poll_when_config_is_wrong(monkeypatch):
+    # Servers still FortiGuard / server-mode disabled: waiting cannot help, so
+    # verification must fail immediately (single read, no misleading banner).
+    sleeps = []
+    monkeypatch.setattr(fg_executor_mod.time, "sleep", lambda s: sleeps.append(s))
+    ex = _executor_with_ntp_outputs([_NTP_OUT_STILL_FORTIGUARD])
+    passed, evidence = ex.verify_check(BY_ID["FG-BL-040"])
+    assert passed is False
+    assert sleeps == []
+    assert ex.ssh_client.calls == 1
+    assert "[NTP NOT SYNCED YET]" not in evidence
 
 
 def test_iface_allowaccess_strips_only_forbidden_services():
