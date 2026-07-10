@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, clearError } from "../store/authSlice";
 import UserIcon from "../assets/UserIcon.jsx";
 import LockIcon from "../assets/LockIcon.jsx";
@@ -12,13 +12,17 @@ export const Login = () => {
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const location = useLocation();
     const { isLoading, error, token } = useSelector((state) => state.auth);
 
     useEffect(() => {
         if (token) {
-            navigate("/dashboard");
+            // Return to the originally requested URL (set by ProtectedRoute),
+            // falling back to the overview home page.
+            const dest = location.state?.from?.pathname || "/overview";
+            navigate(dest, { replace: true });
         }
-    }, [token, navigate]);
+    }, [token, navigate, location]);
 
     useEffect(() => {
         if (error) setShowErrorDialog(true);

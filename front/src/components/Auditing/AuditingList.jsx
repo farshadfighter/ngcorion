@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
 import {
     fetchAuditSessions,
     deleteAuditSession,
@@ -14,8 +15,10 @@ import { getDeviceName } from "../../store/hardeningSlice";
 
 import "../../assets/Auditing.css";
 
-export const AuditingList = ({ onNavigateToLicence }) => {
+export const AuditingList = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const { sessionId } = useParams();
     const { usage, limits } = useSelector((state) => state.license);
     const [showLimitModal, setShowLimitModal] = useState(false);
 
@@ -28,8 +31,13 @@ export const AuditingList = ({ onNavigateToLicence }) => {
     );
 
     const [showWizard, setShowWizard] = useState(false);
-    const [showResultModal, setShowResultModal] = useState(false);
-    const [selectedSession, setSelectedSession] = useState(null);
+
+    // The open result modal is derived from the URL (:sessionId) rather than
+    // stored in state, so a deep link and a click behave identically.
+    const selectedSession = sessionId && sessions
+        ? sessions.find((s) => String(s.session_id) === String(sessionId))
+        : null;
+    const showResultModal = Boolean(selectedSession);
 
     // Delete single
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -87,11 +95,26 @@ export const AuditingList = ({ onNavigateToLicence }) => {
         }
     };
 
+    // Deep-link guard: if the URL points at a session id that doesn't exist
+    // (once sessions have loaded), fall back to the plain list URL.
+    useEffect(() => {
+        if (sessionId && sessions && sessions.length > 0 && !selectedSession) {
+            navigate("/audit/sessions", { replace: true });
+        }
+    }, [sessionId, sessions, selectedSession, navigate]);
+
     // ── Misc ──────────────────────────────────────────────────────────────────
+    // Navigating updates the URL, which derives the open modal above — so a deep
+    // link and a click land in exactly the same state.
     const handleSeeResult = (session) => {
-        setSelectedSession(session);
-        setShowResultModal(true);
+        navigate(`/audit/sessions/${session.session_id}`);
     };
+
+    const handleCloseResult = () => {
+        navigate("/audit/sessions");
+    };
+
+    const handleNavigateToLicence = () => navigate("/settings/license");
 
     const handleWizardComplete = () => {
         setShowWizard(false);
@@ -292,10 +315,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                 <AuditingResultModal
                     session={selectedSession}
                     isOpen={showResultModal}
-                    onClose={() => {
-                        setShowResultModal(false);
-                        setSelectedSession(null);
-                    }}
+                    onClose={handleCloseResult}
                 />
             )}
 
@@ -307,7 +327,7 @@ export const AuditingList = ({ onNavigateToLicence }) => {
                     onClose={() => setShowLimitModal(false)}
                     onGoToLicence={() => {
                         setShowLimitModal(false);
-                        onNavigateToLicence();
+                        handleNavigateToLicence();
                     }}
                 />
             )}

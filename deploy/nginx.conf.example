@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# NGINX config EXAMPLE for serving the built React SPA (front/dist)
+# ---------------------------------------------------------------------------
+# This file is a REFERENCE ONLY — it is not wired into anything yet.
+# Today the frontend is run with `npm run dev` (Vite), which already does
+# client-side-routing fallback automatically, so no server config is needed.
+#
+# When you switch to serving the built bundle behind nginx, copy this into
+# your nginx sites config and adjust `root` + the backend `proxy_pass` target.
+#
+# The KEY line for client-side routing is the `try_files ... /index.html;`
+# inside `location /`. Without it, refreshing a deep link such as
+# https://host/audit/sessions/42 returns 404 because no such file exists on
+# disk — the fallback hands every unknown path to index.html so React Router
+# can resolve the route in the browser.
+# ---------------------------------------------------------------------------
+
+server {
+    listen 80;
+    server_name _;                       # e.g. netease.example.com
+
+    # Absolute path to the built frontend (output of `npm run build`)
+    root /opt/netease/front/dist;
+    index index.html;
+
+    # --- API + auth: proxy to the FastAPI backend (uvicorn) ----------------
+    # These must come BEFORE the SPA fallback so they are never rewritten to
+    # index.html.
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /auth/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Backend-served static assets (Swagger UI, etc.)
+    location /static/ {
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    # --- Hashed build assets: cache aggressively ---------------------------
+    location /assets/ {
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # --- SPA fallback: THE important part ----------------------------------
+    # Serve the file if it exists, otherwise hand the request to index.html
+    # so React Router (BrowserRouter) can render the correct route.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

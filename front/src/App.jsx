@@ -3,15 +3,32 @@ import "./assets/Dashboard.css";
 import "./assets/UserManagement.css";
 import "./assets/AssetList.css";
 import "./assets/AssetRequirement.css";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Login } from "./components/Login.jsx";
 import { ForgotPassword } from "./components/ForgotPassword.jsx";
 import { ResetPassword } from "./components/ResetPassword.jsx";
-import { Dashboard } from "./components/Dashboard.jsx";
+import { DashboardLayout } from "./components/DashboardLayout.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { LicenseActivationScreen } from "./components/License/LicenseActivationScreen.jsx";
 import QuotaExhaustedModal from './components/License/QuotaExhaustedModal';
 import {PermissionToast} from "./components/UserManagement/Permissiontoast.jsx";
+
+import { AssetRequirement } from "./components/AssetRequirement/AssetRequirement";
+import { AssetManagementDashboard } from "./components/AssetManagement/AssetManagementDashboard";
+import { AuditingDashboard } from "./components/Auditing/AuditingDashboard";
+import { AuditingList } from "./components/Auditing/AuditingList";
+import { UserManagement } from "./components/UserManagement/UserManagement";
+import { LogsPage } from "./components/Logs/LogsPage";
+import BackupPage from "./components/Backup/BackupPage";
+import { License } from "./components/License/License";
+import {
+    RequirePermission,
+    ComingSoon,
+    OverviewHome,
+    AssetListRoute,
+    AutoDiscoveryRoute,
+    HardeningRoute,
+} from "./components/routePages.jsx";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./store/index";
 import { useEffect, useState } from "react";
@@ -83,15 +100,90 @@ function AppContent() {
                     <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
 
-                    {/* صفحه داشبورد - محافظت شده */}
+                    {/* ── Protected app: shared layout (sidebar + header) with a
+                           child route per section, so every section has its own
+                           deep-linkable URL. ── */}
                     <Route
-                        path="/dashboard"
                         element={
                             <ProtectedRoute>
-                                <Dashboard />
+                                <DashboardLayout />
                             </ProtectedRoute>
                         }
-                    />
+                    >
+                        <Route path="/overview" element={<OverviewHome />} />
+
+                        {/* Asset Management */}
+                        <Route path="/assets" element={<AssetManagementDashboard />} />
+                        <Route path="/assets/requirements" element={
+                            <RequirePermission module="asset_requirement" name="Asset Requirement">
+                                <AssetRequirement />
+                            </RequirePermission>
+                        } />
+                        <Route path="/assets/inventory" element={
+                            <RequirePermission module="asset_list" name="Asset List">
+                                <AssetListRoute />
+                            </RequirePermission>
+                        } />
+                        <Route path="/assets/discovery" element={
+                            <RequirePermission module="asset_auto_discovery" name="Auto Discovery">
+                                <AutoDiscoveryRoute />
+                            </RequirePermission>
+                        } />
+
+                        {/* Auditing */}
+                        <Route path="/audit" element={
+                            <RequirePermission module="auditing" name="Auditing">
+                                <AuditingDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/audit/sessions" element={
+                            <RequirePermission module="auditing" name="Auditing">
+                                <AuditingList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/audit/sessions/:sessionId" element={
+                            <RequirePermission module="auditing" name="Auditing">
+                                <AuditingList />
+                            </RequirePermission>
+                        } />
+
+                        {/* Hardening */}
+                        <Route path="/hardening" element={
+                            <RequirePermission module="hardening" name="Hardening">
+                                <HardeningRoute />
+                            </RequirePermission>
+                        } />
+
+                        {/* Configuration Backup */}
+                        <Route path="/backup" element={
+                            <RequirePermission module="backup" name="Configuration Backup">
+                                <BackupPage />
+                            </RequirePermission>
+                        } />
+
+                        {/* System Settings */}
+                        <Route path="/settings/users" element={
+                            <RequirePermission module="user_management" name="User Management">
+                                <UserManagement />
+                            </RequirePermission>
+                        } />
+                        <Route path="/settings/logs" element={
+                            <RequirePermission module="logs" name="System Logs">
+                                <LogsPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/settings/license" element={<License />} />
+                        <Route path="/settings/ntp" element={<ComingSoon name="NTP Configuration" />} />
+                        <Route path="/settings/snmp" element={<ComingSoon name="SNMP Configuration" />} />
+
+                        {/* Risk Intelligence (placeholders) */}
+                        <Route path="/risk/exposure" element={<ComingSoon name="Risk & Exposure" />} />
+                        <Route path="/risk/attack-surface" element={<ComingSoon name="Attack Surface" />} />
+                    </Route>
+
+                    {/* Legacy /dashboard → overview, plus catch-all */}
+                    <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
+                    <Route path="*" element={<Navigate to="/overview" replace />} />
                 </Routes>
             </BrowserRouter>
 
