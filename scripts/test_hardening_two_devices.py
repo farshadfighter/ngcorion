@@ -197,7 +197,8 @@ UNTESTABLE: Dict[str, str] = {
                   "services); NOT force-broken here because that would toggle real "
                   "management access on a live interface. Exercise via the UI 'Harden "
                   "Single' or a manual run"),
-    "FG-BL-040": ("scope bug fixed (diagnose now runs at top level); still skipped because "
+    "FG-BL-040": ("scope bug fixed (diagnose runs inside config global on VDOM devices, "
+                  "top level on flat ones); still skipped because "
                   "the ntp_status_ok VERDICT depends on live NTP synchronisation, which "
                   "`set ntpsync enable` can't achieve synchronously — skipping avoids "
                   "desyncing the device and a timing-based FAIL"),

@@ -440,9 +440,11 @@ def test_raw_send_drains_truncated_long_output():
     assert c2._connection.drain_calls == 0
 
 
-def test_operational_commands_run_at_top_level_on_vdom():
-    # FG-BL-040 root cause: diagnose/execute must NOT be wrapped in `config global`
-    # on VDOM devices (the wrapper makes them fail). They run at the top-level prompt.
+def test_operational_commands_run_inside_config_global_on_vdom():
+    # FG-BL-040 root cause: on VDOM devices the post-login prompt is the
+    # RESTRICTED inter-VDOM prompt — it rejects `diagnose sys ntp status` with
+    # "8757: Unknown action 0". Per Fortinet's KB, global diagnostics must run
+    # INSIDE `config global` there (top level is only correct on flat devices).
     from app.modules.fortinet.audit.ssh_client import FortiGateSSHClient, _is_operational_command
 
     assert _is_operational_command("diagnose sys ntp status") is True
@@ -451,16 +453,21 @@ def test_operational_commands_run_at_top_level_on_vdom():
     assert _is_operational_command("show system interface") is False
 
     class Fake(FortiGateSSHClient):
-        def __init__(self):
+        def __init__(self, vdom_enabled):
             super().__init__("h", "u", "p")
             self.sent = []
-            self._vdom_enabled = True   # simulate VDOM-enabled device
+            self._vdom_enabled = vdom_enabled
         def _raw_send(self, command):
             self.sent.append(command)
             return "synchronized: yes" if command.startswith("diagnose") else ""
 
-    c = Fake()
+    c = Fake(vdom_enabled=True)
     c.collect(["diagnose sys ntp status", "show system global"], scope=SCOPE_GLOBAL)
-    # diagnose issued BEFORE entering config global; the show command runs inside it.
-    assert c.sent.index("diagnose sys ntp status") < c.sent.index("config global")
-    assert c.sent.index("config global") < c.sent.index("show system global")
+    # diagnose wrapped in its own config global block, closed before the config read.
+    assert c.sent[:3] == ["config global", "diagnose sys ntp status", "end"]
+    assert c.sent.index("show system global") > 2
+
+    # Flat device: no `config global` exists — diagnose runs at the bare prompt.
+    f = Fake(vdom_enabled=False)
+    f.collect(["diagnose sys ntp status"], scope=SCOPE_GLOBAL)
+    assert f.sent == ["diagnose sys ntp status"]

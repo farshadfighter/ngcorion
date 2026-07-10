@@ -2,9 +2,10 @@
 Regression tests for two FortiGate hardening fixes (no DB / no device required):
 
 1. FG-BL-040 scope: operational verify commands (``diagnose sys ntp status``) must
-   run at the TOP-LEVEL prompt. If a prior command block left the session inside a
-   config context, ``collect()`` must back out first — otherwise the device rejects
-   the diagnose with "8757: Unknown action 0 / Command fail. Return code -1".
+   run INSIDE ``config global`` on VDOM-enabled devices (the restricted inter-VDOM
+   login prompt rejects them with "8757: Unknown action 0 / Command fail. Return
+   code -1"), and at the top-level prompt on flat devices. If a prior command block
+   left the session inside a config context, ``collect()`` must back out first.
 
 2. FG-BL-002 remediation: the fix must strip only telnet/http from each interface's
    ``allowaccess`` (per-interface), preserving every other service — NOT set the
@@ -50,11 +51,11 @@ def _fake_client(initial_depth: int):
     return c, sent, state
 
 
-def test_diagnose_runs_at_top_level_when_already_top():
+def test_diagnose_runs_inside_config_global_on_vdom_device():
     c, sent, _ = _fake_client(initial_depth=0)
     ctrl = BY_ID["FG-BL-040"]
     c.collect([r.cmd for r in ctrl.rules], scope=ctrl.scope, vdom="root", use_cache=False)
-    assert sent == ["diagnose sys ntp status"]
+    assert sent == ["config global", "diagnose sys ntp status", "end"]
 
 
 def test_diagnose_backs_out_of_leaked_scope_first():
@@ -63,8 +64,8 @@ def test_diagnose_backs_out_of_leaked_scope_first():
     ctrl = BY_ID["FG-BL-040"]
     c.collect([r.cmd for r in ctrl.rules], scope=ctrl.scope, vdom="root", use_cache=False)
     assert sent[0] == "end", "must unwind the leaked config context first"
-    assert sent[-1] == "diagnose sys ntp status"
-    assert state["depth"] == 0, "diagnose issued only after reaching top level"
+    assert sent[1:] == ["config global", "diagnose sys ntp status", "end"]
+    assert state["depth"] == 0, "leaked context fully unwound before re-entering"
 
 
 def test_iface_allowaccess_strips_only_forbidden_services():

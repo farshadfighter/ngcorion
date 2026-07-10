@@ -90,14 +90,18 @@ def _ends_with_prompt(output: str) -> bool:
 
 def _is_operational_command(command: str) -> bool:
     """
-    Whether ``command`` is an operational command that must run at the top-level
-    prompt rather than inside a config context.
+    Whether ``command`` is an operational command (``diagnose``/``execute``)
+    rather than a config read.
 
-    ``diagnose``/``execute`` are rejected inside ``config global`` / ``config vdom``
-    (they only work at the operational prompt), so on VDOM-enabled devices they
-    must be issued BEFORE entering any scope. They read device-wide/global state
-    (e.g. ``diagnose sys ntp status``), so a single top-level read is correct
-    regardless of the requested config scope.
+    These need special context handling (see ``_run_operational``): on a
+    VDOM-enabled device the post-login prompt is the RESTRICTED inter-VDOM
+    prompt — it shows no ``(context)`` suffix so it LOOKS top-level, but it
+    rejects global diagnostics such as ``diagnose sys ntp status`` with
+    ``8757: Unknown action 0 / Command fail. Return code -1``. Per Fortinet's
+    KB they must run inside ``config global`` there. On flat devices the
+    top-level prompt IS the operational prompt and ``config global`` does not
+    exist. They read device-wide/global state, so a single global read is
+    correct regardless of the requested config scope.
     """
     c = (command or "").strip().lower()
     return c.startswith(("diagnose ", "diag ", "execute ", "exec "))
@@ -470,18 +474,66 @@ class FortiGateSSHClient:
         (``hostname (global) #`` / ``hostname (ntp) #``); the top-level prompt has
         none. We send ``end`` until the prompt is context-free (bounded).
         """
-        find_prompt = getattr(self._connection, "find_prompt", None)
-        if not callable(find_prompt):
-            return
-        for _ in range(max_depth):
-            try:
-                prompt = find_prompt()
-            except Exception:  # noqa: BLE001 - best effort; never fail a read
+        for step in range(max_depth):
+            prompt = self._current_prompt()
+            if not prompt:
                 return
             # A config-context prompt has " (context) #"; a bare hostname does not.
-            if not re.search(r"\s\([^)]*\)\s*[#$]\s*$", prompt or ""):
+            at_top = not re.search(r"\s\([^)]*\)\s*[#$]\s*$", prompt)
+            logger.info("FG ensure-top-level on %s: prompt=%r at_top=%s (step %d)",
+                        self.host, prompt, at_top, step)
+            if at_top:
                 return
             self._raw_send("end")
+
+    def _current_prompt(self) -> str:
+        """Best-effort read of the current CLI prompt ('' when unavailable)."""
+        find_prompt = getattr(self._connection, "find_prompt", None)
+        if not callable(find_prompt):
+            return ""
+        try:
+            return find_prompt() or ""
+        except Exception:  # noqa: BLE001 - best effort; never fail a read
+            return ""
+
+    def _run_operational(self, command: str) -> str:
+        """
+        Run a ``diagnose``/``execute`` command in the context FortiOS accepts.
+
+        VDOM-enabled device: the session must be INSIDE ``config global`` —
+        the inter-VDOM login prompt looks top-level (bare ``hostname #``) but
+        rejects global diagnostics with ``8757: Unknown action 0`` (Fortinet KB:
+        "log in, config global, diagnose sys ntp status"). Flat device: run at
+        the top-level prompt (``config global`` does not exist there).
+
+        If the preferred context rejects the command anyway, retry once in the
+        other context so a build-specific quirk costs one extra round-trip
+        instead of a false NON-COMPLIANT / failed post-fix verification.
+        """
+        vdom_on = self.is_vdom_enabled()
+        logger.info("FG operational %r on %s: prompt=%r vdom_enabled=%s context=%s",
+                    command, self.host, self._current_prompt(), vdom_on,
+                    "config global" if vdom_on else "top-level")
+        if vdom_on:
+            try:
+                with self.scope(SCOPE_GLOBAL):
+                    out = self._raw_send(command)
+                if self._is_command_ok(out):
+                    return out
+                logger.warning("FG operational %r rejected inside config global on %s "
+                               "(%r); retrying at top level",
+                               command, self.host, (out or "").strip()[:160])
+            except FortiGateContextError as e:
+                logger.warning("FG cannot enter config global for %r on %s (%s); "
+                               "retrying at top level", command, self.host, e)
+            self._ensure_top_level()
+            return self._raw_send(command)
+
+        out = self._raw_send(command)
+        if not self._is_command_ok(out):
+            logger.warning("FG operational %r rejected at top level on flat device %s: %r",
+                           command, self.host, (out or "").strip()[:160])
+        return out
 
     # ------------------------------------------------------------------
     # Public read / collect (audit)
@@ -513,20 +565,20 @@ class FortiGateSSHClient:
             to_run.append(cmd)
 
         if to_run:
-            # Operational commands (diagnose/execute) can't run inside a config
-            # context, so issue them at the top-level prompt BEFORE entering scope.
-            # This fixes VDOM-enabled devices, where wrapping e.g.
-            # `diagnose sys ntp status` in `config global` made the command fail.
+            # Operational commands (diagnose/execute) need their own context
+            # handling: `config global` on VDOM-enabled devices, top level on
+            # flat devices (see _run_operational). Config reads run inside the
+            # requested scope as usual.
             operational = [c for c in to_run if _is_operational_command(c)]
             config_cmds = [c for c in to_run if not _is_operational_command(c)]
 
             if operational:
                 # A prior command block may have left the session inside a config
-                # context; back out to the top-level prompt so diagnose/execute
-                # don't fail with "8757: Unknown action 0".
+                # context; back out to the top-level prompt first so the
+                # `config global` / diagnose that follows starts from a known state.
                 self._ensure_top_level()
                 for cmd in operational:
-                    out = self._raw_send(cmd)
+                    out = self._run_operational(cmd)
                     results[cmd] = out
                     if use_cache:
                         self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
