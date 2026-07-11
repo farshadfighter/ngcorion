@@ -30,7 +30,12 @@ from app.models import (
 from app.models.audit import CheckStatus
 from app.modules.fortinet.audit.rules import get_fortinet_controls, FortiGateControl
 from app.modules.fortinet.audit.service import _parse_table_entries
-from app.modules.fortinet.audit.ssh_client import SCOPE_GLOBAL, SCOPE_VDOM
+from app.modules.fortinet.audit.ssh_client import (
+    SCOPE_GLOBAL,
+    SCOPE_VDOM,
+    SCOPE_VDOM_ROOT,
+    ROOT_VDOM,
+)
 from .command_parser import FortiGateRemediationParser, apply_fortigate_defaults
 from .ssh_executor import (
     FortiGateHardeningExecutor,
@@ -116,6 +121,22 @@ class FortiGateHardeningService:
                 return control
 
         raise ValueError(f"FortiGate control {check_id} not found")
+
+    @staticmethod
+    def _display_target_vdom(scope: str, result_vdom: Optional[str]) -> Optional[str]:
+        """
+        The VDOM context a fix for this control lands in, for display/records:
+        "global" for global-scope controls, "root" for vdom_root, the finding's
+        own VDOM for per-VDOM controls. ``None`` when the audit recorded no VDOM
+        (flat device — there is only one context, so no VDOM is shown).
+        """
+        if not result_vdom:
+            return None
+        if scope == SCOPE_GLOBAL:
+            return "global"
+        if scope == SCOPE_VDOM_ROOT:
+            return ROOT_VDOM
+        return result_vdom
 
     @staticmethod
     def discover_vdoms(
@@ -251,6 +272,11 @@ class FortiGateHardeningService:
             # Missing required parameters - that's fine for preview
             test_commands = parsed.commands  # Show placeholders
 
+        # The VDOM context the fix will land in (shown in the UI and recorded).
+        target_vdom = FortiGateHardeningService._display_target_vdom(
+            control.scope, result.vdom
+        )
+
         # Create preview record in database
         action = HardeningAction(
             audit_result_id=audit_result_id,
@@ -263,7 +289,8 @@ class FortiGateHardeningService:
             status="pending",
             commands_json=json.dumps(parsed.commands),
             requires_config_mode=True,  # FortiGate always uses config mode
-            credentials_provided=False
+            credentials_provided=False,
+            target_vdom=target_vdom
         )
         db.add(action)
         db.commit()
@@ -277,6 +304,8 @@ class FortiGateHardeningService:
             "check_title": result.check_title,
             "commands": test_commands,
             "vdom_context": control.scope,
+            "scope": control.scope,
+            "target_vdom": target_vdom,
             "required_parameters": parsed.required_parameters,
             "optional_parameters": parsed.optional_parameters,
             "parameter_defaults": parsed.defaults,
@@ -387,12 +416,16 @@ class FortiGateHardeningService:
         # global/root controls ignore the VDOM (the SSH engine routes by scope).
         control = FortiGateHardeningService._get_control_by_id(action.check_number)
         target_vdom = audit_result.vdom if control.scope == SCOPE_VDOM else None
+        display_vdom = FortiGateHardeningService._display_target_vdom(
+            control.scope, audit_result.vdom
+        )
 
         # Update action to executing status
         action.action_type = "execute"
         action.status = "executing"
         action.executed_at = datetime.now(timezone.utc)
         action.credentials_provided = True
+        action.target_vdom = display_vdom
         db.commit()
 
         try:
@@ -473,7 +506,10 @@ class FortiGateHardeningService:
                     "verification_evidence": evidence,
                     "backup_created": backup is not None,
                     "commands_executed": final_commands,
-                    "error_message": action.error_message
+                    "error_message": action.error_message,
+                    "check_number": action.check_number,
+                    "scope": control.scope,
+                    "target_vdom": display_vdom
                 }
 
         except Exception as e:
@@ -549,6 +585,9 @@ class FortiGateHardeningService:
         # Per-VDOM controls target the VDOM the finding came from; global controls
         # ignore it (the SSH engine routes by scope).
         target_vdom = result.vdom if control.scope == SCOPE_VDOM else None
+        display_vdom = FortiGateHardeningService._display_target_vdom(
+            control.scope, result.vdom
+        )
 
         redacted_cmds = redact_manual_secret_values(
             "\n".join(commands), result.check_number, parameters
@@ -567,6 +606,7 @@ class FortiGateHardeningService:
             requires_config_mode=True,
             credentials_provided=True,
             executed_at=datetime.now(timezone.utc),
+            target_vdom=display_vdom,
         )
         db.add(action)
         db.commit()
@@ -670,6 +710,8 @@ class FortiGateHardeningService:
                     "check_number": result.check_number,
                     "check_title": result.check_title,
                     "per_target": per_target,
+                    "scope": control.scope,
+                    "target_vdom": display_vdom,
                 }
 
         except Exception as e:
@@ -1019,6 +1061,9 @@ class FortiGateHardeningService:
                     # Get control and parse
                     control = FortiGateHardeningService._get_control_by_id(check_id)
                     target_vdom = result.vdom if control.scope == SCOPE_VDOM else None
+                    display_vdom = FortiGateHardeningService._display_target_vdom(
+                        control.scope, result.vdom
+                    )
                     parsed = FortiGateRemediationParser.parse_remediation(
                         remediation=control.remediation,
                         check_id=check_id
@@ -1045,7 +1090,8 @@ class FortiGateHardeningService:
                         requires_config_mode=True,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,
-                        executed_at=datetime.now(timezone.utc)
+                        executed_at=datetime.now(timezone.utc),
+                        target_vdom=display_vdom
                     )
                     db.add(action)
                     db.commit()
@@ -1083,7 +1129,8 @@ class FortiGateHardeningService:
                             "check_number": check_id,
                             "check_title": result.check_title,
                             "action_id": action.id,
-                            "defaults_applied": defaults
+                            "defaults_applied": defaults,
+                            "vdom": display_vdom
                         })
                         logger.info(f"Successfully auto-fixed FortiGate check {check_id}")
                     else:
@@ -1226,6 +1273,9 @@ class FortiGateHardeningService:
                     # Get control and parse
                     control = FortiGateHardeningService._get_control_by_id(check_id)
                     target_vdom = result.vdom if control.scope == SCOPE_VDOM else None
+                    display_vdom = FortiGateHardeningService._display_target_vdom(
+                        control.scope, result.vdom
+                    )
                     parsed = FortiGateRemediationParser.parse_remediation(
                         remediation=control.remediation,
                         check_id=check_id
@@ -1265,7 +1315,8 @@ class FortiGateHardeningService:
                         requires_config_mode=True,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,
-                        executed_at=datetime.now(timezone.utc)
+                        executed_at=datetime.now(timezone.utc),
+                        target_vdom=display_vdom
                     )
                     db.add(action)
                     db.commit()
@@ -1304,7 +1355,8 @@ class FortiGateHardeningService:
                             "check_title": result.check_title,
                             "status": "success",
                             "action_id": action.id,
-                            "verification_passed": True
+                            "verification_passed": True,
+                            "vdom": display_vdom
                         })
                     else:
                         action.status = "failed"
@@ -1318,7 +1370,8 @@ class FortiGateHardeningService:
                             "check_title": result.check_title,
                             "status": "failed",
                             "action_id": action.id,
-                            "verification_passed": False
+                            "verification_passed": False,
+                            "vdom": display_vdom
                         })
 
                     action.completed_at = datetime.now(timezone.utc)

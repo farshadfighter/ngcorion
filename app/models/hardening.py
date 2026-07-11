@@ -48,6 +48,10 @@ class HardeningAction(Base):
     verification_passed = Column(Boolean, nullable=True)  # Did check pass after fix?
     verification_evidence = Column(Text, nullable=True)  # Evidence from post-fix check
 
+    # FortiGate: which VDOM context the fix was applied in
+    # ("global"/"root"/<vdom name>); NULL for flat devices and other device types.
+    target_vdom = Column(String(80), nullable=True)
+
     # Error tracking
     error_message = Column(Text, nullable=True)
 

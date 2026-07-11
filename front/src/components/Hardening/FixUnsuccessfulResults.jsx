@@ -68,11 +68,42 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         setSelectedCheck(null);
     };
 
-    const getStatusBadge = (status) => {
-        const s = status?.toString().toUpperCase();
-        if (s === 'PASS') return <span className="result-badge result-success">successful</span>;
-        if (s === 'FAIL') return <span className="result-badge result-fail">Unsuccessful</span>;
-        return <span className="result-badge result-unknown">unknown</span>;
+    const chipStyle = {
+        display: 'inline-block',
+        marginTop: '4px',
+        padding: '2px 8px',
+        borderRadius: '10px',
+        fontSize: '11px',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+    };
+
+    const getStatusBadge = (check) => {
+        const s = check.status?.toString().toUpperCase();
+        const base =
+            s === 'PASS' ? <span className="result-badge result-success">successful</span>
+            : s === 'FAIL' ? <span className="result-badge result-fail">Unsuccessful</span>
+            : <span className="result-badge result-unknown">unknown</span>;
+        // Live feedback from this session's hardening (set by markCheckHardened —
+        // no reload / re-audit needed to see it).
+        const vdomSuffix = check.hardenedVdom ? ` (VDOM: ${check.hardenedVdom})` : '';
+        return (
+            <>
+                {base}
+                {check.justHardened && (
+                    <span style={{ ...chipStyle, display: 'block', background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}
+                          title={`Fixed and verified in this session${vdomSuffix}`}>
+                        ✓ Hardened{vdomSuffix}
+                    </span>
+                )}
+                {check.manualApplied && !check.justHardened && (
+                    <span style={{ ...chipStyle, display: 'block', background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}
+                          title={`Remediation pushed to the device${vdomSuffix}; manual checks are not auto-verified`}>
+                        🛠 Applied — re-audit to verify{vdomSuffix}
+                    </span>
+                )}
+            </>
+        );
     };
 
     const getDeviceLabel = (dt) => {
@@ -220,7 +251,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                             <td>
                                                 <div className="recommendation-text">{check.check_title}</div>
                                             </td>
-                                            <td>{getStatusBadge(check.status)}</td>
+                                            <td>{getStatusBadge(check)}</td>
                                             <td style={{ textAlign: 'center' }}>
                                                 {check.status?.toString().toUpperCase() === 'FAIL' && (
                                                     isAutoFixable(check) ? (

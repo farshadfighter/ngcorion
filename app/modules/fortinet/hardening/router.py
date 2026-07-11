@@ -76,6 +76,10 @@ class FortiGatePreviewResponse(BaseModel):
     check_title: str
     commands: List[str]
     vdom_context: str
+    # Control scope ("global" / "vdom" / "vdom_root") and the VDOM context the
+    # fix will land in ("global"/"root"/<name>; None on flat non-VDOM devices).
+    scope: str = ""
+    target_vdom: Optional[str] = None
     required_parameters: List[str]
     optional_parameters: List[str]
     parameter_defaults: Dict[str, str] = {}
@@ -136,6 +140,10 @@ class FortiGateExecuteResponse(BaseModel):
     backup_created: bool
     commands_executed: List[str]
     error_message: Optional[str]
+    check_number: Optional[str] = None
+    # Scope + VDOM context the fix was applied in (shown on the success screen).
+    scope: Optional[str] = None
+    target_vdom: Optional[str] = None
 
     class Config:
         json_schema_extra = {
@@ -359,6 +367,7 @@ class FortiGateActionResponse(BaseModel):
     action_type: str
     status: str
     verification_passed: Optional[bool]
+    target_vdom: Optional[str] = None
     created_at: str
     executed_at: Optional[str]
     completed_at: Optional[str]
@@ -439,6 +448,9 @@ class FortiGateManualGuidanceResponse(BaseModel):
     scope: str
     is_manual: bool
     has_auto_fix: bool
+    # VDOM context a fix would land in ("global"/"root"/<name>); only known when
+    # an audit_result_id is supplied and that finding carries a VDOM.
+    target_vdom: Optional[str] = None
     executable: bool = False
     parameters: List[Dict[str, Any]] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
@@ -476,20 +488,30 @@ def get_fortinet_manual_guidance(
     parameters: List[Dict[str, Any]] = []
     warnings: List[str] = []
     commands = control.remediation_commands
+
+    # Resolve the audit finding (when given) so the modal can show which VDOM
+    # the fix targets, even for guidance-only checks.
+    result = None
+    if audit_result_id is not None:
+        from app.models import AuditResult
+        result = db.query(AuditResult).filter(AuditResult.id == audit_result_id).first()
+        if result and result.check_number != control.id:
+            result = None
+    target_vdom = FortiGateHardeningService._display_target_vdom(
+        control.scope, result.vdom if result else None
+    )
+
     if executable:
         rem = get_manual_remediation(control.id)
         parameters = [p.to_dict() for p in rem.parameters]
         warnings = list(rem.warnings)
         commands = list(rem.commands)  # template block (with {PARAM} tokens)
 
-        if audit_result_id is not None:
-            from app.models import AuditResult
-            result = db.query(AuditResult).filter(AuditResult.id == audit_result_id).first()
-            if result and result.check_number == control.id:
-                evidence_options = parse_evidence_options(control.id, result.evidence_snippet)
-                for p in parameters:
-                    if p["name"] in evidence_options:
-                        p["options"] = evidence_options[p["name"]]
+        if result is not None:
+            evidence_options = parse_evidence_options(control.id, result.evidence_snippet)
+            for p in parameters:
+                if p["name"] in evidence_options:
+                    p["options"] = evidence_options[p["name"]]
 
     return FortiGateManualGuidanceResponse(
         check_id=control.id,
@@ -500,6 +522,7 @@ def get_fortinet_manual_guidance(
         scope=control.scope,
         is_manual=control.is_manual,
         has_auto_fix=has_fortigate_template(control.id),
+        target_vdom=target_vdom,
         executable=executable,
         parameters=parameters,
         warnings=warnings,
@@ -548,6 +571,9 @@ class FortiGateManualExecuteResponse(BaseModel):
     check_number: str
     check_title: str
     per_target: List[Dict[str, Any]] = Field(default_factory=list)
+    # Scope + VDOM context the remediation was pushed in.
+    scope: Optional[str] = None
+    target_vdom: Optional[str] = None
 
 
 @router.post("/manual-execute", response_model=FortiGateManualExecuteResponse)
@@ -1309,6 +1335,7 @@ def list_fortinet_hardening_actions(
             "action_type": a.action_type,
             "status": a.status,
             "verification_passed": a.verification_passed,
+            "target_vdom": a.target_vdom,
             "created_at": a.created_at.isoformat() if a.created_at else None,
             "executed_at": a.executed_at.isoformat() if a.executed_at else None,
             "completed_at": a.completed_at.isoformat() if a.completed_at else None
@@ -1356,6 +1383,7 @@ def get_fortinet_hardening_action(
         "backup_config": action.backup_config,
         "verification_passed": action.verification_passed,
         "verification_evidence": action.verification_evidence,
+        "target_vdom": action.target_vdom,
         "error_message": action.error_message,
         "created_at": action.created_at.isoformat() if action.created_at else None,
         "executed_at": action.executed_at.isoformat() if action.executed_at else None,

@@ -57,6 +57,21 @@ from app.core.ssh_exceptions import (
     map_ssh_exception,
 )
 
+# ── Per-command read timing ─────────────────────────────────────────────────
+# netmiko's send_command_timing returns once the channel has been SILENT for
+# `last_read` seconds (or at the `read_timeout` hard cap). So each command costs
+# roughly <device output time> + CMD_LAST_READ. 2.0s is netmiko's default and a
+# deliberate choice: shortening it makes every command "faster" but raises the
+# odds that a long streaming output (e.g. `get system global`, ~150 fields) gets
+# cut mid-stream and must be rescued by the prompt-drain loop in _raw_send —
+# which pays DRAIN_LAST_READ per extra read. Do NOT lower CMD_READ_TIMEOUT much:
+# it is the only bound on genuinely long transfers (`show full-configuration`
+# backups) that stream continuously with no silent gap.
+CMD_LAST_READ = 2.0        # seconds of channel silence that ends a normal read
+CMD_READ_TIMEOUT = 120.0   # hard cap per command (long outputs: config backups)
+DRAIN_LAST_READ = 1.0      # silence window per prompt-drain read
+DRAIN_READ_TIMEOUT = 15.0  # hard cap per prompt-drain read (max 8 drains)
+
 # Scope constants (kept in sync with rules.FortiGateControl.scope)
 SCOPE_GLOBAL = "global"
 SCOPE_VDOM = "vdom"
@@ -248,7 +263,8 @@ class FortiGateSSHClient:
         # exact command and a full traceback (file + line) before it propagates.
         try:
             output = self._connection.send_command_timing(
-                command, strip_prompt=False, strip_command=False
+                command, strip_prompt=False, strip_command=False,
+                last_read=CMD_LAST_READ, read_timeout=CMD_READ_TIMEOUT,
             )
         except Exception:
             logger.error("FG command send failed: %r on %s",
@@ -259,7 +275,8 @@ class FortiGateSSHClient:
         while output and re.search(r"--More--", output, flags=re.IGNORECASE) and guard < 50:
             output = re.sub(r"--More--", "", output, flags=re.IGNORECASE)
             output += self._connection.send_command_timing(
-                " ", strip_prompt=False, strip_command=False
+                " ", strip_prompt=False, strip_command=False,
+                last_read=CMD_LAST_READ, read_timeout=CMD_READ_TIMEOUT,
             )
             guard += 1
 
@@ -274,7 +291,7 @@ class FortiGateSSHClient:
         read_more = getattr(self._connection, "read_channel_timing", None)
         while callable(read_more) and output and not _ends_with_prompt(output) and settle < 8:
             try:
-                more = read_more(last_read=1.0, read_timeout=15)
+                more = read_more(last_read=DRAIN_LAST_READ, read_timeout=DRAIN_READ_TIMEOUT)
             except Exception:  # noqa: BLE001 - best-effort drain; never fail a read
                 logger.debug("FG drain read failed for %r on %s (best-effort)",
                              command, self.host, exc_info=True)
@@ -284,7 +301,8 @@ class FortiGateSSHClient:
             if re.search(r"--More--", more, flags=re.IGNORECASE):
                 more = re.sub(r"--More--", "", more, flags=re.IGNORECASE)
                 more += self._connection.send_command_timing(
-                    " ", strip_prompt=False, strip_command=False
+                    " ", strip_prompt=False, strip_command=False,
+                    last_read=CMD_LAST_READ, read_timeout=CMD_READ_TIMEOUT,
                 )
             output += more
             settle += 1

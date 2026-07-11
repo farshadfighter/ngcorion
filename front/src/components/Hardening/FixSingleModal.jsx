@@ -5,10 +5,12 @@ import {
     executeHardenCheck,
     discoverFortinetVdoms,
     clearPreviewData,
-    clearMessages
+    clearMessages,
+    markCheckHardened
 } from '../../store/hardeningSlice';
 import CredentialsForm from './CredentialsForm';
 import BackupOption from './BackupOption';
+import { vdomBadgeLabel, scopeWrapper } from './vdomScope';
 import {
     isCisco,
     isFortinet,
@@ -151,6 +153,17 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 skipBackup: !createBackup,
             })).unwrap();
 
+            // Reflect the fix in the results list right away (no reload / re-audit):
+            // a verified success flips the row to PASS with a "Hardened" badge.
+            const succeeded = result?.status === 'success' || result?.success === true;
+            if (succeeded && result?.verification_passed !== false) {
+                dispatch(markCheckHardened({
+                    resultId:   check.id,
+                    verified:   true,
+                    targetVdom: result?.target_vdom,
+                }));
+            }
+
             setExecutionResult(result);
             setStep(5);
         } catch (error) {
@@ -208,21 +221,46 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             }
             return <div className="hardening-modal-error"><p>Failed to load hardening preview.</p></div>;
         }
+        const targetVdom = previewData.target_vdom;
+        const wrapper = scopeWrapper(previewData.scope || previewData.vdom_context, targetVdom);
+        const wrapperLineStyle = { fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '13px', color: '#6d28d9', padding: '6px 14px', background: '#f5f3ff', border: '1px dashed #c4b5fd', borderRadius: '8px' };
         return (
             <div className="hardening-preview-section">
                 <h3 style={{ fontSize: '18px', color: '#1e3a5f', margin: '0 0 20px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     📋 Hardening Preview
                 </h3>
+                {targetVdom && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', marginBottom: '16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderLeft: '5px solid #7c3aed', borderRadius: '10px' }}>
+                        <span style={{ fontSize: '18px' }}>🎯</span>
+                        <span style={{ fontSize: '14px', color: '#4c1d95' }}>
+                            Target VDOM: <strong>{vdomBadgeLabel(targetVdom)}</strong>
+                            <span style={{ color: '#6b7280', marginLeft: '8px', fontSize: '12px' }}>
+                                — the fix runs inside this context on the device
+                            </span>
+                        </span>
+                    </div>
+                )}
                 {previewData.commands && previewData.commands.length > 0 && (
                     <div className="hardening-commands-preview">
                         <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>Commands to Execute:</h4>
                         <div style={{ background: 'linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e8edf5' }}>
+                            {wrapper && wrapper.open.map((line, i) => (
+                                <div key={`open-${i}`} style={wrapperLineStyle}>{line}</div>
+                            ))}
                             {previewData.commands.map((cmd, index) => (
-                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderLeft: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)' }}>
+                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderLeft: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)', marginLeft: wrapper ? '18px' : 0 }}>
                                     <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
                                     <code style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '13px', color: '#1f2937', lineHeight: '1.6', wordBreak: 'break-word', background: '#f8f9fb', padding: '2px 6px', borderRadius: '4px' }}>{cmd}</code>
                                 </div>
                             ))}
+                            {wrapper && wrapper.close.map((line, i) => (
+                                <div key={`close-${i}`} style={wrapperLineStyle}>{line}</div>
+                            ))}
+                            {wrapper && (
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                                    Dashed lines are the VDOM scope wrapper — added automatically on VDOM-enabled devices.
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -320,15 +358,26 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
         const isWarning = executionResult.status === 'warning';
         const displayMessage = executionResult.message || executionResult.check_title || 'Hardening operation completed.';
         const verificationText = executionResult.verification_evidence || executionResult.verification_result;
+        const modifiedVdom = executionResult.target_vdom;
 
         return (
             <div className="hardening-single-result" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 <div style={{ padding: '24px', borderRadius: '12px', borderLeft: isSuccess ? '5px solid #1e3a5f' : isWarning ? '5px solid #f59e0b' : '5px solid #ef4444', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', background: isSuccess ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : isWarning ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
                     <h3 style={{ fontSize: '20px', margin: '0 0 12px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px', color: isSuccess ? '#1e3a5f' : isWarning ? '#92400e' : '#c0392b' }}>
                         {isSuccess && <span style={{ background: '#1e3a5f', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
-                        {isSuccess ? 'Hardening Successful' : isWarning ? '⚠ Completed with Warnings' : '✗ Hardening Failed'}
+                        {isSuccess ? 'Successfully Hardened' : isWarning ? '⚠ Completed with Warnings' : '✗ Hardening Failed'}
                     </h3>
                     <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>{displayMessage}</p>
+                    {isSuccess && (
+                        <p style={{ margin: '8px 0 0 0', color: '#166534', fontSize: '13px', fontWeight: 600 }}>
+                            The check's status has been updated in the results list.
+                        </p>
+                    )}
+                    {modifiedVdom && (
+                        <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4c1d95' }}>
+                            🎯 Modified VDOM: <strong>{vdomBadgeLabel(modifiedVdom)}</strong>
+                        </p>
+                    )}
                 </div>
 
                 {(executionResult.verification_passed !== undefined || verificationText) && (

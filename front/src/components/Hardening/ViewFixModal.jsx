@@ -5,7 +5,9 @@ import {
     executeFortinetManualFix,
     fetchFortinetDeviceOptions,
     discoverFortinetVdoms,
+    markCheckHardened,
 } from '../../store/hardeningSlice';
+import { vdomBadgeLabel, wrapCommandsForDisplay } from './vdomScope';
 import CredentialsForm from './CredentialsForm';
 import BackupOption from './BackupOption';
 import {
@@ -80,6 +82,10 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     const parameters = guidance?.parameters ?? [];
     const executable = !!guidance?.executable && !!resultId;
     const title = guidance?.check_title || checkTitle || checkId;
+    // VDOM context the fix lands in ("global"/"root"/<name>; null on flat devices).
+    const targetVdom = guidance?.target_vdom || null;
+    // Display-only: show the scope wrapper the SSH engine adds around the block.
+    const forDisplay = (cmds) => wrapCommandsForDisplay(cmds, guidance?.scope, targetVdom);
 
     // ─── Parameter helpers ──────────────────────────────────────────────────
     const multiSelected = (p) => {
@@ -281,7 +287,17 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             })).unwrap();
             setResult(data);
             setStep(5);
-            if (data?.success && onSuccess) onSuccess();
+            if (data?.success) {
+                // Tag the row in the results list immediately. Manual fixes are
+                // never auto-verified, so the status stays FAIL — the badge says
+                // "applied, re-audit to verify" instead of flipping to PASS.
+                dispatch(markCheckHardened({
+                    resultId,
+                    verified: false,
+                    targetVdom: data?.target_vdom,
+                }));
+                if (onSuccess) onSuccess();
+            }
         } catch (err) {
             setFormError(typeof err === 'string' ? err : (err?.message || 'Execution failed.'));
             setStep(parameters.length > 0 ? 3 : 2);
@@ -304,6 +320,18 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 </div>
             </div>
 
+            {targetVdom && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderLeft: '5px solid #7c3aed', borderRadius: '10px' }}>
+                    <span style={{ fontSize: '18px' }}>🎯</span>
+                    <span style={{ fontSize: '14px', color: '#4c1d95' }}>
+                        Target VDOM: <strong>{vdomBadgeLabel(targetVdom)}</strong>
+                        <span style={{ color: '#6b7280', marginLeft: '8px', fontSize: '12px' }}>
+                            — the remediation runs inside this context on the device
+                        </span>
+                    </span>
+                </div>
+            )}
+
             {guidance.remediation_guidance && (
                 <div className="hardening-info-box">
                     <p style={{ margin: 0, lineHeight: 1.6 }}>{guidance.remediation_guidance}</p>
@@ -325,7 +353,12 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                             {copied ? '✓ Copied' : '📄 Copy commands'}
                         </button>
                     </div>
-                    <pre style={preStyle}>{commands.join('\n')}</pre>
+                    <pre style={preStyle}>{forDisplay(commands).join('\n')}</pre>
+                    {targetVdom && (
+                        <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
+                            The <code>config global</code> / <code>config vdom</code> wrapper shows the VDOM scope — it is added automatically when executing.
+                        </p>
+                    )}
                     {executable && parameters.length > 0 && (
                         <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
                             ℹ️ Values in <code>{'{BRACES}'}</code> are selected from real device/audit data before running.
@@ -470,8 +503,15 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 </div>
             ))}
             <div style={{ marginTop: '8px' }}>
-                <h4 style={{ fontSize: '13px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>Preview</h4>
-                <pre style={preStyle}>{previewCommands.join('\n')}</pre>
+                <h4 style={{ fontSize: '13px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>
+                    Preview
+                    {targetVdom && (
+                        <span style={{ marginLeft: '10px', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#ede9fe', color: '#4c1d95', border: '1px solid #c4b5fd' }}>
+                            🎯 VDOM: {vdomBadgeLabel(targetVdom)}
+                        </span>
+                    )}
+                </h4>
+                <pre style={preStyle}>{forDisplay(previewCommands).join('\n')}</pre>
             </div>
         </div>
     );
@@ -492,13 +532,18 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div style={{ padding: '20px', borderRadius: '12px', borderLeft: ok ? '5px solid #1e3a5f' : '5px solid #ef4444', background: ok ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
                     <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', fontWeight: 700, color: ok ? '#1e3a5f' : '#c0392b' }}>
-                        {ok ? '✓ Commands applied' : '✗ Execution reported errors'}
+                        {ok ? '✓ Successfully applied' : '✗ Execution reported errors'}
                     </h3>
                     <p style={{ margin: 0, color: '#6b7280', fontSize: '13px', lineHeight: 1.6 }}>
                         {ok
-                            ? 'The device accepted the remediation. This is a manual control, so it was not automatically re-verified — re-run the audit to confirm compliance.'
+                            ? 'The device accepted the remediation. This is a manual control, so it was not automatically re-verified — re-run the audit to confirm compliance. The results list now marks this check as applied.'
                             : 'The device returned one or more errors. Review the output below.'}
                     </p>
+                    {result.target_vdom && (
+                        <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4c1d95' }}>
+                            🎯 Modified VDOM: <strong>{vdomBadgeLabel(result.target_vdom)}</strong>
+                        </p>
+                    )}
                 </div>
 
                 {perTarget.length > 0 && (
@@ -626,7 +671,9 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                         </>
                     )}
                     {step === 5 && (
-                        <button className="hardening-btn-primary" onClick={() => { if (onSuccess && result?.success) onSuccess(); onClose(); }}>Finish</button>
+                        // onSuccess already fired when execution succeeded (list is
+                        // updated live); Finish only closes the modal.
+                        <button className="hardening-btn-primary" onClick={onClose}>Finish</button>
                     )}
                 </div>
             </div>

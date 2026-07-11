@@ -765,6 +765,33 @@ const hardeningSlice = createSlice({
         clearVdomDiscovery: (state) => {
             state.vdomDiscovery = { vdoms: null, isDiscovering: false, error: null };
         },
+
+        // Reflect a successful harden in the loaded results list immediately —
+        // no page reload / re-audit round-trip. `verified: true` (auto-fix whose
+        // post-fix verification passed; the backend has already flipped the DB
+        // row to PASS) turns the row green with a "Hardened" badge.
+        // `verified: false` (manual remediation — never auto-verified) keeps the
+        // FAIL status but tags the row "applied, re-audit to verify".
+        markCheckHardened: (state, action) => {
+            const { resultId, verified, targetVdom } = action.payload || {};
+            const apply = (check) => {
+                if (!check || check.id !== resultId) return;
+                if (verified) {
+                    check.status = "PASS";
+                    check.justHardened = true;
+                } else {
+                    check.manualApplied = true;
+                }
+                if (targetVdom) check.hardenedVdom = targetVdom;
+            };
+            (state.cisChecks || []).forEach(apply);
+            (state.auditResults || []).forEach(apply);
+            if (verified) {
+                state.failedChecks = (state.failedChecks || []).filter(
+                    (c) => c.id !== resultId
+                );
+            }
+        },
     },
 
     extraReducers: (builder) => {
@@ -837,9 +864,26 @@ const hardeningSlice = createSlice({
             })
             .addCase(fetchAuditResults.fulfilled, (state, action) => {
                 state.isLoading    = false;
-                state.auditResults = action.payload;
-                state.cisChecks    = action.payload;
-                state.failedChecks = action.payload.filter((check) => {
+                // Carry "just hardened" flags across the refetch so the badge
+                // set by markCheckHardened doesn't vanish when the list refreshes
+                // after the modal closes. (Verified fixes come back as PASS from
+                // the server anyway; the flags only style the row.)
+                const prevFlags = {};
+                (state.cisChecks || []).forEach((c) => {
+                    if (c.justHardened || c.manualApplied) {
+                        prevFlags[c.id] = {
+                            justHardened:  c.justHardened,
+                            manualApplied: c.manualApplied,
+                            hardenedVdom:  c.hardenedVdom,
+                        };
+                    }
+                });
+                const merged = (action.payload || []).map((c) =>
+                    prevFlags[c.id] ? { ...c, ...prevFlags[c.id] } : c
+                );
+                state.auditResults = merged;
+                state.cisChecks    = merged;
+                state.failedChecks = merged.filter((check) => {
                     const s = check.status?.toString().toUpperCase();
                     return s === "FAIL" || s === "FAILED";
                 });
@@ -982,6 +1026,7 @@ export const {
     clearRequiredParameters,
     clearPreviewData,
     clearVdomDiscovery,
+    markCheckHardened,
 } = hardeningSlice.actions;
 
 export default hardeningSlice.reducer;
