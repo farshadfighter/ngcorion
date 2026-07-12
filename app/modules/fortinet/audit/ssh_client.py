@@ -33,6 +33,12 @@ logger = logging.getLogger(__name__)
 
 from netmiko import ConnectHandler, NetmikoAuthenticationException, NetmikoTimeoutException
 
+try:
+    from netmiko.exceptions import ReadTimeout
+except ImportError:  # pragma: no cover - older netmiko layouts
+    class ReadTimeout(Exception):
+        pass
+
 # Import paramiko exceptions for algorithm/key errors
 try:
     from paramiko.ssh_exception import (
@@ -138,6 +144,9 @@ class FortiGateSSHClient:
         self._cmd_cache: Dict[str, Tuple[str, float]] = {}
         self._cache_ttl = 300  # 5 minutes
         self._vdom_enabled: Optional[bool] = None
+        # Parsed `get system status` (device-constant for a session): cached so
+        # connectivity checks / metadata readers don't re-send the command.
+        self._system_status: Optional[Dict[str, object]] = None
 
     # ------------------------------------------------------------------
     # Connection lifecycle
@@ -151,6 +160,8 @@ class FortiGateSSHClient:
         """
         if self._connection:
             return
+
+        t0 = time.perf_counter()
 
         base = dict(
             host=self.host,
@@ -167,7 +178,10 @@ class FortiGateSSHClient:
                 params = dict(base)
                 params["device_type"] = device_type
                 self._connection = ConnectHandler(**params)
+                t_conn = time.perf_counter()
                 self._prime_session()
+                logger.info("FG timing: connect=%.2fs prime=%.2fs on %s",
+                            t_conn - t0, time.perf_counter() - t_conn, self.host)
                 return
 
             except NetmikoAuthenticationException as e:
@@ -207,21 +221,28 @@ class FortiGateSSHClient:
 
     def _prime_session(self) -> None:
         """
-        Belt-and-suspenders disable of the interactive pager.
+        Post-connect session setup with ZERO extra round-trips when possible.
 
-        netmiko's FortinetSSH already disables paging during session preparation,
-        and does it VDOM-aware (it enters ``config global`` first when VDOMs are
-        enabled). We repeat it defensively, but MUST use the same scope: on a
-        VDOM-enabled device ``config system console`` is a global-only command and
-        is rejected at the root prompt with
-        ``8757: Unknown action / Command fail. Return code -1`` (harmless but noisy,
-        and each rejection costs a ~2s read timeout).
+        netmiko's FortinetSSH ``session_preparation`` has already (a) detected
+        VDOM mode (stored on ``connection._vdoms``) and (b) disabled the
+        interactive pager VDOM-aware (``set output standard``, entering
+        ``config global`` first when needed). Re-doing both here used to cost
+        4-6 extra commands per connection — a large share of hardening wall
+        time. Reuse the driver's answer instead.
 
-        Routing through ``self.scope(SCOPE_GLOBAL)`` enters ``config global`` first
-        on VDOM devices and is a no-op on flat devices, so the pager-disable block
-        lands in the correct context either way. ``_raw_send`` also drains any
-        stray ``--More--`` as a further safety net.
+        Only when ``_vdoms`` is missing (non-netmiko/custom connection) fall
+        back to the old belt-and-suspenders path: detect VDOM mode via
+        ``get system status`` and re-disable the pager in the global scope
+        (on VDOM devices ``config system console`` is global-only and is
+        rejected at the root prompt with ``8757: Unknown action``).
+        ``_raw_send`` still drains any stray ``--More--`` as a safety net.
         """
+        vdoms = getattr(self._connection, "_vdoms", None)
+        if isinstance(vdoms, bool):
+            self._vdom_enabled = vdoms
+            logger.debug("FG prime: reused netmiko VDOM detection (%s) and pager "
+                         "setup on %s — no extra commands", vdoms, self.host)
+            return
         try:
             # Detect VDOM mode first (cached) so scope() opens the right context.
             self.is_vdom_enabled()
@@ -253,19 +274,70 @@ class FortiGateSSHClient:
     # ------------------------------------------------------------------
     # Low-level send
     # ------------------------------------------------------------------
+    def _prompt_pattern(self) -> Optional[str]:
+        """
+        Regex for prompt-anchored reads, or ``None`` when unavailable.
+
+        Anchored to the hostname netmiko captured at login (``base_prompt``) so
+        a bare ``#`` inside command output (e.g. ``#config-version=...`` comment
+        lines) can't end a read early; the optional ``(context)`` group matches
+        every config-context prompt (``host (global) #``, ``host (ntp) #``).
+        ``--More--`` is included so an unexpected pager stalls the read for one
+        round-trip instead of the full read-timeout (the caller's pager loop
+        then drains it). ``None`` (no base_prompt / non-netmiko fake) routes the
+        caller to the timing-based fallback.
+        """
+        conn = self._connection
+        host = (getattr(conn, "base_prompt", "") or "").strip()
+        if (not host
+                or not callable(getattr(conn, "write_channel", None))
+                or not callable(getattr(conn, "read_until_pattern", None))):
+            return None
+        return rf"(?:--More--|{re.escape(host)}(?:\s\([^)]*\))?\s*[#$]\s*$)"
+
     def _raw_send(self, command: str) -> str:
         """Send a single command, handling ``--More--`` pagination."""
         if not self._connection:
             raise RuntimeError("Not connected. Call connect() first.")
 
+        t0 = time.perf_counter()
+
+        # Fast path: prompt-based read — write the command and return as soon as
+        # the hostname-anchored CLI prompt reappears (~1 network round-trip).
+        # send_command_timing (the fallback) instead waits until the channel has
+        # been SILENT for CMD_LAST_READ (2s), which used to add ~2s to EVERY
+        # command and dominated hardening wall time (9-15 commands per action).
+        #
         # Wrap the actual SSH send so a device-side failure on ANY command
         # (including the very first one hardening issues) is logged with the
         # exact command and a full traceback (file + line) before it propagates.
+        pattern = self._prompt_pattern()
+        read_mode = "prompt" if pattern else "timing"
         try:
-            output = self._connection.send_command_timing(
-                command, strip_prompt=False, strip_command=False,
-                last_read=CMD_LAST_READ, read_timeout=CMD_READ_TIMEOUT,
-            )
+            if pattern:
+                self._connection.write_channel(command.rstrip() + "\n")
+                try:
+                    output = self._connection.read_until_pattern(
+                        pattern=pattern, read_timeout=CMD_READ_TIMEOUT
+                    )
+                except ReadTimeout:
+                    # No prompt within the cap (netmiko discards what it read so
+                    # far). Salvage what is still arriving with a timing drain so
+                    # the session isn't left mid-stream for the next command.
+                    logger.warning(
+                        "FG prompt read timed out (%.0fs) for %r on %s; "
+                        "draining with timing read",
+                        CMD_READ_TIMEOUT, command, self.host,
+                    )
+                    read_more = getattr(self._connection, "read_channel_timing", None)
+                    output = (read_more(last_read=CMD_LAST_READ,
+                                        read_timeout=CMD_READ_TIMEOUT)
+                              if callable(read_more) else "")
+            else:
+                output = self._connection.send_command_timing(
+                    command, strip_prompt=False, strip_command=False,
+                    last_read=CMD_LAST_READ, read_timeout=CMD_READ_TIMEOUT,
+                )
         except Exception:
             logger.error("FG command send failed: %r on %s",
                          command, self.host, exc_info=True)
@@ -312,8 +384,12 @@ class FortiGateSSHClient:
                 "Command %r output may be truncated (%d chars, no trailing prompt "
                 "after %d drain attempts)", command, len(output), settle,
             )
-        logger.debug("FG raw %r -> %d chars (complete=%s)",
-                     command, len(output or ""), _ends_with_prompt(output or ""))
+        # Per-command timing: the profiling signal for hardening slowness. With
+        # timing-based reads every command pays ~CMD_LAST_READ of silence on top
+        # of the device's own output time — this log shows exactly where.
+        logger.info("FG timing: cmd=%r %.2fs (mode=%s, %d chars, drains=%d, complete=%s)",
+                    command, time.perf_counter() - t0, read_mode, len(output or ""),
+                    settle, _ends_with_prompt(output or ""))
         return output or ""
 
     @staticmethod
@@ -327,7 +403,15 @@ class FortiGateSSHClient:
     # System status / VDOM detection
     # ------------------------------------------------------------------
     def get_system_status(self) -> Dict[str, object]:
-        """Parse ``get system status`` (version, hostname, serial, VDOM mode)."""
+        """
+        Parse ``get system status`` (version, hostname, serial, VDOM mode).
+
+        Cached for the lifetime of the session — the values are constant, and
+        every caller (connectivity test, metadata, VDOM detection fallback)
+        used to pay one more round-trip for the same answer.
+        """
+        if self._system_status is not None:
+            return self._system_status
         output = self._raw_send("get system status")
         meta: Dict[str, object] = {"fortios_version": "0.0.0"}
 
@@ -363,7 +447,11 @@ class FortiGateSSHClient:
             # Anything that is not "disable" and mentions a real mode means VDOMs are on.
             vdom_enabled = bool(val) and ("disable" not in val)
         meta["vdom_enabled"] = vdom_enabled
-        self._vdom_enabled = vdom_enabled
+        # Do not overwrite VDOM state already sourced from netmiko's own
+        # detection (_prime_session) — both read the same device fact anyway.
+        if self._vdom_enabled is None:
+            self._vdom_enabled = vdom_enabled
+        self._system_status = meta
         return meta
 
     def is_vdom_enabled(self) -> bool:
@@ -449,6 +537,8 @@ class FortiGateSSHClient:
         if not self.is_vdom_enabled():
             return False  # flat device: single top-level context
 
+        logger.info("FG timing: scope switch -> %s (vdom=%s) on %s",
+                    scope, self.effective_vdom(scope, vdom), self.host)
         if scope == SCOPE_GLOBAL:
             out = self._raw_send("config global")
             if not self._is_command_ok(out):
@@ -570,6 +660,7 @@ class FortiGateSSHClient:
         Run several read commands inside one scope context and return
         ``{command: output}``. Enters the context once for efficiency.
         """
+        t0 = time.perf_counter()
         results: Dict[str, str] = {}
         to_run: List[str] = []
 
@@ -609,6 +700,10 @@ class FortiGateSSHClient:
                         if use_cache:
                             self._cmd_cache[self._cache_key(scope, vdom, cmd)] = (out, time.time())
 
+        if to_run:
+            logger.info("FG timing: collect %d cmd(s) scope=%s vdom=%s -> %.2fs "
+                        "(%d cached)", len(to_run), scope, vdom,
+                        time.perf_counter() - t0, len(commands) - len(to_run))
         return results
 
     def run(
@@ -647,6 +742,7 @@ class FortiGateSSHClient:
 
         Returns ``{"success": bool, "output": str, "errors": [str]}``.
         """
+        t0 = time.perf_counter()
         outputs: List[str] = []
         errors: List[str] = []
 
@@ -667,6 +763,9 @@ class FortiGateSSHClient:
                     errors.append(f"Command '{cmd}' failed: {e}")
                     outputs.append(f"# {cmd}\nERROR: {e}")
 
+        logger.info("FG timing: run_config %d cmd(s) scope=%s vdom=%s -> %.2fs "
+                    "(errors=%d)", len(commands), scope, vdom,
+                    time.perf_counter() - t0, len(errors))
         return {"success": not errors, "output": "\n\n".join(outputs), "errors": errors}
 
     def clear_cache(self) -> None:

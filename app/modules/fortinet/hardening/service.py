@@ -429,6 +429,11 @@ class FortiGateHardeningService:
         db.commit()
 
         try:
+            # Per-phase wall-time profile for this action (logged as a single
+            # summary line below — the go-to signal for "why was this slow?").
+            timings: Dict[str, float] = {}
+            t_start = time.perf_counter()
+
             # Execute via SSH
             with FortiGateHardeningExecutor(
                 ip=device_ip,
@@ -437,13 +442,19 @@ class FortiGateHardeningService:
                 vdom=vdom,
                 port=ssh_port
             ) as executor:
+                timings["connect"] = time.perf_counter() - t_start
+
                 # Test connectivity
+                t0 = time.perf_counter()
                 executor.test_connectivity()
+                timings["connectivity"] = time.perf_counter() - t0
 
                 # Backup config
                 backup = None
                 if not skip_backup:
+                    t0 = time.perf_counter()
                     backup = executor.backup_config()
+                    timings["backup"] = time.perf_counter() - t0
                     action.backup_config = backup
                     db.commit()
 
@@ -460,11 +471,13 @@ class FortiGateHardeningService:
                     )
 
                 # Execute commands
+                t0 = time.perf_counter()
                 exec_result = executor.execute_commands(
                     final_commands,
                     scope=control.scope,
                     vdom=target_vdom,
                 )
+                timings["execute"] = time.perf_counter() - t0
 
                 # Store output regardless of execution errors
                 action.output = redact_fortigate_secrets(exec_result["output"])
@@ -478,7 +491,9 @@ class FortiGateHardeningService:
                 # Always verify: FortiGate sometimes returns "Command fail. Return code -7"
                 # when a setting is already at the requested value (idempotent no-op).
                 # Verification is the authoritative check of whether the fix succeeded.
+                t0 = time.perf_counter()
                 passed, evidence = executor.verify_check(control, vdom=target_vdom)
+                timings["verify"] = time.perf_counter() - t0
 
                 action.verification_passed = passed
                 action.verification_evidence = evidence
@@ -498,6 +513,13 @@ class FortiGateHardeningService:
 
                 action.completed_at = datetime.now(timezone.utc)
                 db.commit()
+
+                timings["total"] = time.perf_counter() - t_start
+                logger.info(
+                    "FG timing: action %s (%s) %s",
+                    action_id, action.check_number,
+                    " ".join(f"{k}={v:.2f}s" for k, v in timings.items()),
+                )
 
                 return {
                     "action_id": action.id,

@@ -77,7 +77,10 @@ class FortiGateHardeningExecutor:
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
+            t0 = time.perf_counter()
             config = self.ssh_client.send_raw("show full-configuration")
+            logger.info("FG timing: backup_config -> %.2fs (%d chars) on %s",
+                        time.perf_counter() - t0, len(config or ""), self.ip)
             header = (
                 f"#\n# FortiGate Configuration Backup\n"
                 f"# Backup taken at: {datetime.utcnow().isoformat()}\n"
@@ -101,7 +104,10 @@ class FortiGateHardeningExecutor:
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
+            t0 = time.perf_counter()
             result = self.ssh_client.run_config(commands, scope=scope, vdom=vdom or self.default_vdom)
+            logger.info("FG timing: execute_commands %d cmd(s) -> %.2fs on %s",
+                        len(commands), time.perf_counter() - t0, self.ip)
             if not result["success"]:
                 logger.warning("FortiGate execution errors on %s: %s", self.ip, result["errors"])
             return result
@@ -208,6 +214,7 @@ class FortiGateHardeningExecutor:
         """
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
+        t0 = time.perf_counter()
         try:
             has_ntp_rule = any(r.type == "ntp_status_ok" for r in control.rules)
             attempts = NTP_SYNC_VERIFY_ATTEMPTS if has_ntp_rule else 1
@@ -230,6 +237,8 @@ class FortiGateHardeningExecutor:
                     "can take several minutes — re-run the audit shortly; no "
                     "further remediation is needed.\n\n" + evidence
                 )
+            logger.info("FG timing: verify_check %s -> %.2fs (passed=%s) on %s",
+                        control.id, time.perf_counter() - t0, passed, self.ip)
             return passed, evidence
         except Exception as e:  # noqa: BLE001
             logger.error("FortiGate verification failed on %s (control=%s)",
@@ -298,8 +307,15 @@ class FortiGateHardeningExecutor:
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
-            output = self.ssh_client.send_raw("get system status")
-            return bool(output and "Version:" in output)
+            t0 = time.perf_counter()
+            # get_system_status is session-cached: the first call costs one
+            # round-trip, later calls (or a status already read during connect
+            # fallbacks) cost none — the old code re-sent `get system status`
+            # on every action.
+            meta = self.ssh_client.get_system_status()
+            logger.info("FG timing: test_connectivity -> %.2fs on %s",
+                        time.perf_counter() - t0, self.ip)
+            return bool(meta.get("version_line"))
         except Exception as e:  # noqa: BLE001
             logger.error("FortiGate connectivity test failed on %s", self.ip, exc_info=True)
             raise FortiGateHardeningExecutionError(f"Device not responding: {e}")
