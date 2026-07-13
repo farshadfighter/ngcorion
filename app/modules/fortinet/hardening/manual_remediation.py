@@ -316,6 +316,54 @@ MANUAL_REMEDIATION_TEMPLATES: Dict[str, ManualRemediation] = {
     ),
 
     # ===== 3 Policy =====
+    "FG-BL-080": ManualRemediation(  # 3.2 no 'ALL' as Service
+        commands=["config firewall policy", "edit {POLICY_ID}",
+                  'set service "{SERVICE}"', "next", "end"],
+        parameters=[
+            _P("POLICY_ID", "Policy ID(s)", input_type="number", placeholder="1",
+               description="Policies using 'ALL' as Service (from the audit evidence).",
+               source="audit_evidence", evidence_parser="policy_ids", multi=True),
+            _P("SERVICE", "Replacement service", placeholder="HTTPS",
+               description="Service object that replaces ALL (fetched from the device).",
+               source="device", option_type="services"),
+        ],
+        warnings=["REPLACES each selected policy's entire service list with the chosen "
+                  "service — traffic on any other service will no longer match the "
+                  "policy. Pick the service the policy actually needs."],
+    ),
+    "FG-POL-002": ManualRemediation(  # 3.3 ISDB deny policy (Tor/malicious/scanner)
+        commands=["config firewall policy", "edit 0",
+                  'set name "{POLICY_NAME}"',
+                  'set srcintf "{SRC_INTF}"', 'set dstintf "{DST_INTF}"',
+                  "set action deny",
+                  'set srcaddr "all"',
+                  "set internet-service enable",
+                  "set internet-service-name {ISDB_NAMES}",
+                  'set schedule "always"',
+                  'set service "ALL"',
+                  "set logtraffic all",
+                  "next", "end"],
+        parameters=[
+            _P("SRC_INTF", "Source interface", placeholder="internal",
+               description="Interface the denied traffic originates from (usually LAN).",
+               source="device", option_type="interfaces"),
+            _P("DST_INTF", "Destination interface", placeholder="wan1",
+               description="Interface the denied traffic exits through (usually WAN).",
+               source="device", option_type="interfaces"),
+            _P("POLICY_NAME", "Policy name", required=False, default="Deny-ISDB-Malicious",
+               description="Name for the new deny policy."),
+            _P("ISDB_NAMES", "ISDB objects", required=False,
+               default='"Tor-Exit.Node" "Tor-Relay.Node" "Malicious-Malicious.Server" "Botnet-C&C.Server"',
+               description="Internet Service DB objects to deny, space-separated and "
+                           "quoted. Edit to match the names on this device "
+                           "(config firewall internet-service-name)."),
+        ],
+        warnings=["Creates a NEW deny policy at the BOTTOM of the policy list ('edit 0' "
+                  "auto-assigns the next ID) — move it ABOVE any accept policies that "
+                  "match the same traffic or it will never be evaluated.",
+                  "ISDB object names vary with the FortiGuard database version — verify "
+                  "each name exists on the device or the edit will be rejected."],
+    ),
     "FG-BL-082": ManualRemediation(  # 3.4 logging on firewall policy
         commands=["config firewall policy", "edit {POLICY_ID}", "set logtraffic all", "next", "end"],
         parameters=[_P("POLICY_ID", "Policy ID(s)", input_type="number", placeholder="1",
@@ -326,6 +374,16 @@ MANUAL_REMEDIATION_TEMPLATES: Dict[str, ManualRemediation] = {
     ),
 
     # ===== 4.1 IPS =====
+    "FG-IPS-001": ManualRemediation(  # 4.1.1 botnet C&C scanning (on the IPS sensor in 7.0.x)
+        commands=["config ips sensor", 'edit "{IPS_SENSOR}"',
+                  "set scan-botnet-connections block", "next", "end"],
+        parameters=[_P("IPS_SENSOR", "IPS sensor", required=False, default="default",
+                       description="IPS sensor to enable botnet C&C scanning on "
+                                   "(fetched from the device).",
+                       source="device", option_type="ips_sensors")],
+        warnings=["The sensor must also be APPLIED to the relevant firewall policies "
+                  "(see check 4.1.2) for botnet detection to take effect."],
+    ),
     "FG-UTM-003": ManualRemediation(  # 4.1.2 apply IPS sensor to policy
         commands=["config firewall policy", "edit {POLICY_ID}",
                   "set utm-status enable", 'set ips-sensor "{IPS_SENSOR}"', "next", "end"],

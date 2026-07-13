@@ -217,6 +217,7 @@ ZONE = "show system zone"
 IFACE = "show system interface"
 LOCALIN = "show firewall local-in-policy"
 POL = "show firewall policy"
+IPSSENS = "show ips sensor"            # botnet C&C scanning lives here in 7.0.x
 PUSHUPD = "show system autoupdate push-update"
 AVPROF = "show antivirus profile"
 AVSET = "show antivirus settings"
@@ -427,22 +428,33 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                                        note="HA not configured (mode=standalone)")),
 
         # ===== 3 Policy and Objects =====
-        # `show firewall policy` → best-effort: report policy count; "reviewed
-        # regularly" is a process, not a config state (keep review flag).
+        # `show firewall policy` → review worksheet: policy count, each Policy ID
+        # with name/status, disabled policies flagged as removal candidates.
+        # "Reviewed regularly" is a process — the check can't fail a config state,
+        # so it passes (review-flagged) whenever the table was readable; an EMPTY
+        # policy table is compliant (nothing to review), not a finding.
         _ctl("FG-POL-001", "Unused policies are reviewed regularly", "3.1", "Manual", SCOPE_VDOM, "Low", "L1",
-             [FortiGateRule(type="table_any_match", cmd=POL, key="firewall policy", pattern=r"set\s+\S")],
+             [FortiGateRule(type="policy_inventory", cmd=POL, key="firewall policy")],
              "Review policy hit counts and remove/disable unused firewall policies.",
              review_required=True),
-        # `show firewall policy` → no policy may use service "ALL" (parsed per entry).
+        # `show firewall policy` → no policy's `set service` list may contain the
+        # object "ALL" (exact token, ANY position — client confirmed: ALL policies
+        # including deny, per the CIS text). Exact-token match so the specific
+        # ALL_TCP / ALL_UDP / ALL_ICMP objects do NOT false-flag; evidence lists
+        # each failing Policy ID with its full service list.
         _ctl("FG-BL-080", "Policies do not use 'ALL' as Service", "3.2", "Automated", SCOPE_VDOM, "High", "L1",
-             [FortiGateRule(type="table_none_match", cmd=POL, key="service ALL",
-                            pattern=r'set\s+service\s+"?ALL"?')],
-             "Replace 'ALL' service in firewall policies with specific service objects."),
-        # `show firewall policy` → best-effort: report policies that use ISDB
-        # deny objects; which destinations should be denied is site-specific.
+             [FortiGateRule(type="policy_field_forbidden_token", cmd=POL, key="service",
+                            expected="ALL")],
+             "Per non-compliant policy:\nconfig firewall policy\n edit <policy ID>\n set service <specific services>\nend"),
+        # `show firewall policy` → best-effort: a qualifying entry must be a DENY
+        # policy (deny is the action default, so `show` prints no `set action`
+        # line for it) that references Tor/Malicious/Scanner/Botnet ISDB objects
+        # (`set internet-service(-src)-name|-id ...`, 7.0.x spelling). A mere
+        # `set internet-service enable` on an accept policy (SD-WAN steering,
+        # ISDB allow rules) is NOT evidence of this control.
         _ctl("FG-POL-002", "Deny traffic to/from Tor, malicious or scanner IPs (ISDB)", "3.3", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=POL, key="internet-service (ISDB)",
-                            pattern=r"set\s+internet-service\S*\s+\S")],
+             [FortiGateRule(type="isdb_deny_present", cmd=POL, key="ISDB deny policy",
+                            pattern=r"tor|malicious|scanner|botnet")],
              "Create deny policies using Internet Service DB objects (Tor/Botnet/Scanner).",
              review_required=True),
         # `show firewall policy` → EVERY policy must have logtraffic explicitly set
@@ -453,12 +465,16 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              "Per non-compliant policy:\nconfig firewall policy\n edit <policy ID>\n set logtraffic all\nend"),
 
         # ===== 4.1 Intrusion Prevention System =====
-        # `show firewall policy` → best-effort: report policies that block botnet /
-        # apply an IPS sensor; which policies should is site-specific (review flag).
+        # `show ips sensor` → in FortiOS 7.0.x `scan-botnet-connections` moved
+        # OFF the firewall policy and onto the IPS sensor — reading the policy
+        # table (the 6.x location) always found nothing and produced a permanent
+        # false NON-COMPLIANT. Best-effort PASS when at least one sensor scans
+        # botnet connections (block|monitor); FG-UTM-003 (4.1.2) covers whether
+        # sensors are actually applied to policies.
         _ctl("FG-IPS-001", "Detect Botnet connections", "4.1.1", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=POL, key="scan-botnet-connections",
-                            pattern=r"set\s+scan-botnet-connections\s+(block|monitor)")],
-             "On each policy: set scan-botnet-connections block.",
+             [FortiGateRule(type="table_any_match", cmd=IPSSENS, key="scan-botnet-connections block/monitor",
+                            pattern=r"set\s+scan-botnet-connections\s+(?:block|monitor)")],
+             "config ips sensor\n edit <sensor>\n  set scan-botnet-connections block\n next\nend",
              review_required=True),
         # `show firewall policy` → each ACCEPT policy should carry an IPS sensor;
         # the report lists every accept Policy ID missing `set ips-sensor`.

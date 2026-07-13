@@ -58,7 +58,8 @@ _WAN_FORBIDDEN_SERVICES = ("http", "https", "ssh", "telnet")
 # so its evidence is newline-joined and exempt from the short-snippet truncation.
 _DETAILED_RULE_TYPES = frozenset({
     "wan_mgmt_exposed", "iface_allowaccess_excludes",
-    "policy_field_eq", "policy_field_present",
+    "policy_field_eq", "policy_field_present", "policy_field_forbidden_token",
+    "policy_inventory", "isdb_deny_present",
 })
 
 
@@ -601,9 +602,27 @@ def _policy_in_scope(entry: Dict[str, str], scope_pattern: Optional[str]) -> boo
     return bool(re.search(scope_pattern, entry["body"], re.IGNORECASE | re.MULTILINE))
 
 
+def _entry_field_raw(body: str, key: str) -> Optional[str]:
+    """Like :func:`_entry_field_value` but returns the value UNSTRIPPED — for
+    multi-object fields (``set service "HTTP" "ALL"``) where stripping the outer
+    quotes would corrupt the token boundaries."""
+    m = re.search(rf"^\s*set\s+{re.escape(key)}\s+(.+?)\s*$",
+                  body or "", re.IGNORECASE | re.MULTILINE)
+    return m.group(1) if m else None
+
+
+def _field_value_tokens(value: Optional[str]) -> List[str]:
+    """Split a multi-object field value (``"ALL" "HTTP"`` or bare ``ALL``) into
+    its object-name tokens, quotes stripped."""
+    if not value:
+        return []
+    return [q or b for q, b in re.findall(r'"([^"]*)"|(\S+)', value)]
+
+
 def _policy_field_failures(rule, output: str) -> tuple:
     """
-    Evaluate a ``policy_field_eq`` / ``policy_field_present`` rule per policy.
+    Evaluate a ``policy_field_eq`` / ``policy_field_present`` /
+    ``policy_field_forbidden_token`` rule per policy.
 
     Returns ``(failures, in_scope_count, error)`` where ``failures`` is a list of
     ``{"name", "value"}`` for each in-scope policy that violates the rule and
@@ -620,6 +639,15 @@ def _policy_field_failures(rule, output: str) -> tuple:
         if rule.type == "policy_field_eq":
             if val is None or _norm_field(val) != _norm_field(str(rule.expected)):
                 failures.append({"name": e["name"], "value": val})
+        elif rule.type == "policy_field_forbidden_token":
+            # The field's object LIST must not contain the forbidden object as an
+            # exact token in ANY position ("ALL" matches; "ALL_TCP" does not).
+            # Token-split the RAW value: _entry_field_value strips outer quotes,
+            # which corrupts multi-object lists like `"HTTP" "ALL"`.
+            raw = _entry_field_raw(e["body"], rule.key)
+            tokens = _field_value_tokens(raw)
+            if any(t.upper() == str(rule.expected).upper() for t in tokens):
+                failures.append({"name": e["name"], "value": raw})
         else:  # policy_field_present
             if not val:
                 failures.append({"name": e["name"], "value": val})
@@ -642,11 +670,103 @@ def _policy_field_evidence(rule, output: str) -> str:
         ]
         return f"{len(failures)}/{scope_n} policies NON-COMPLIANT:\n" + "\n".join(lines)
 
+    if rule.type == "policy_field_forbidden_token":
+        if not failures:
+            return (f"{scope_n} policies; none use {rule.key} {rule.expected} "
+                    f"(COMPLIANT)")
+        lines = [
+            f"Policy ID {f['name']}: {rule.key} = {f['value']} (NON-COMPLIANT)"
+            for f in failures
+        ]
+        return (f"{len(failures)}/{scope_n} policies use '{rule.expected}' as "
+                f"{rule.key}:\n" + "\n".join(lines))
+
     # policy_field_present
     if not failures:
         return f"{scope_n} accept policies; all have {rule.key} (COMPLIANT)"
     lines = [f"Policy ID {f['name']}: missing {rule.key} (NON-COMPLIANT)" for f in failures]
     return (f"{len(failures)}/{scope_n} accept policies missing {rule.key}:\n"
+            + "\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
+# 3.1 policy review worksheet & 3.3 ISDB deny detection
+# ---------------------------------------------------------------------------
+def _policy_inventory_report(output: str) -> Tuple[bool, str]:
+    """
+    FG-POL-001 (CIS 3.1): "unused policies reviewed regularly" is a process, not
+    a config state — so the check passes whenever the policy table was readable
+    and instead produces a review WORKSHEET: total count, each Policy ID with
+    name/status, disabled policies called out as removal candidates. An empty
+    policy table is compliant (nothing to review), not a finding.
+
+    Returns ``(passed, evidence)``; fails closed when the table couldn't be read.
+    """
+    if not (output or "").strip() or output.lstrip().lower().startswith("__error__"):
+        return False, "could not read firewall policies - unable to verify (NON-COMPLIANT)"
+    entries = _parse_table_entries(output)
+    if not entries:
+        return True, "0 firewall policies configured - nothing to review (COMPLIANT)"
+    lines: List[str] = []
+    disabled = 0
+    for e in entries:
+        name = _entry_field_value(e["body"], "name") or "<unnamed>"
+        status = (_entry_field_value(e["body"], "status") or "enable").lower()
+        if status == "disable":
+            disabled += 1
+            lines.append(f"Policy ID {e['name']}: {name} - DISABLED (review for removal)")
+        else:
+            lines.append(f"Policy ID {e['name']}: {name} - enabled")
+    header = (f"{len(entries)} firewall policies ({disabled} disabled). Review usage "
+              f"(hit counts / last-used in GUI) and remove or disable unused ones:")
+    return True, header + "\n" + "\n".join(lines)
+
+
+# 7.0.x ISDB reference fields on a firewall policy (destination and source
+# directions, name- and id-based spellings).
+_ISDB_FIELD_RE = re.compile(
+    r"^\s*set\s+internet-service(?:-src)?-(?:name|id)\s+(.+?)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+_ACTION_ACCEPT_RE = re.compile(r"^\s*set\s+action\s+accept\b", re.IGNORECASE | re.MULTILINE)
+
+
+def _isdb_deny_matches(rule, output: str) -> List[Dict[str, Any]]:
+    """
+    FG-POL-002 (CIS 3.3): qualifying entries are DENY policies (deny is the
+    action default, so ``show`` prints no ``set action`` line for them) whose
+    ISDB object references match ``rule.pattern`` (Tor/Malicious/Scanner/Botnet).
+    ``set internet-service enable`` alone — common on accept policies for
+    SD-WAN steering / ISDB allow rules — does NOT qualify.
+
+    Returns ``[{"name", "objects"}]`` for each qualifying deny policy.
+    """
+    matches: List[Dict[str, Any]] = []
+    for e in _parse_table_entries(output):
+        if _ACTION_ACCEPT_RE.search(e["body"]):
+            continue  # accept policy — not a deny rule, whatever it references
+        objects: List[str] = []
+        for value in _ISDB_FIELD_RE.findall(e["body"]):
+            objects.extend(
+                t for t in _field_value_tokens(value)
+                if re.search(rule.pattern, t, re.IGNORECASE)
+            )
+        if objects:
+            matches.append({"name": e["name"], "objects": objects})
+    return matches
+
+
+def _isdb_deny_evidence(rule, output: str) -> str:
+    if not (output or "").strip() or output.lstrip().lower().startswith("__error__"):
+        return "could not read firewall policies - unable to verify (NON-COMPLIANT)"
+    matches = _isdb_deny_matches(rule, output)
+    n = len(_parse_table_entries(output))
+    if not matches:
+        return (f"{n} policies; no DENY policy references Tor/Malicious/Scanner/"
+                f"Botnet ISDB objects (best-effort FAIL)")
+    lines = [f"Policy ID {m['name']}: deny via {', '.join(m['objects'])}"
+             for m in matches]
+    return (f"{n} policies; ISDB deny policies found (best-effort PASS):\n"
             + "\n".join(lines))
 
 
@@ -767,11 +887,25 @@ class FortinetAuditService:
                     return False
                 return not _iface_allowaccess_violations(output, rule.expected, role=(rule.key or None))
 
-            if rule.type in ("policy_field_eq", "policy_field_present"):
+            if rule.type in ("policy_field_eq", "policy_field_present",
+                             "policy_field_forbidden_token"):
                 # Per-policy field check: PASS only when no in-scope policy fails
                 # and the policy output was readable (errors fail closed).
                 failures, _scope_n, error = _policy_field_failures(rule, output)
                 return not error and not failures
+
+            if rule.type == "policy_inventory":
+                # 3.1 review worksheet: passes when the policy table was readable
+                # (incl. empty table); the value is in the per-policy evidence.
+                passed, _ = _policy_inventory_report(output)
+                return passed
+
+            if rule.type == "isdb_deny_present":
+                # 3.3: at least one DENY policy referencing Tor/Malicious/Scanner/
+                # Botnet ISDB objects. Fails closed on unreadable output.
+                if not output.strip() or output.lstrip().lower().startswith("__error__"):
+                    return False
+                return bool(_isdb_deny_matches(rule, output))
 
             if rule.type in _GET_FIELD_TYPES:
                 # Parse the live value of a `get`-style `key : value` field and
@@ -866,8 +1000,15 @@ class FortinetAuditService:
             if rule.type == "iface_allowaccess_excludes":
                 lines.append(_iface_excludes_evidence(out, rule.expected, rule.key))
                 continue
-            if rule.type in ("policy_field_eq", "policy_field_present"):
+            if rule.type in ("policy_field_eq", "policy_field_present",
+                             "policy_field_forbidden_token"):
                 lines.append(_policy_field_evidence(rule, out))
+                continue
+            if rule.type == "policy_inventory":
+                lines.append(_policy_inventory_report(out)[1])
+                continue
+            if rule.type == "isdb_deny_present":
+                lines.append(_isdb_deny_evidence(rule, out))
                 continue
 
             if not out:
