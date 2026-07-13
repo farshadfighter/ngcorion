@@ -410,14 +410,6 @@ MANUAL_REMEDIATION_TEMPLATES: Dict[str, ManualRemediation] = {
                source="device", option_type="av_profiles"),
         ],
     ),
-    "FG-AV-002": ManualRemediation(  # 4.2.3 outbreak prevention
-        commands=["config antivirus profile", 'edit "{AV_PROFILE}"',
-                  "config http", "set outbreak-prevention block", "end", "next", "end"],
-        parameters=[_P("AV_PROFILE", "AV profile", required=False, default="default",
-                       description="Antivirus profile to enable outbreak prevention on.",
-                       source="device", option_type="av_profiles")],
-    ),
-
     # ===== 4.3 DNS Filter =====
     "FG-DNS-002": ManualRemediation(  # 4.3.2 log all DNS
         commands=["config dnsfilter profile", 'edit "{DNS_PROFILE}"',

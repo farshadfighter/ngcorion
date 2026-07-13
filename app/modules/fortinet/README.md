@@ -6,9 +6,9 @@ This module audits FortiGate firewalls against the **CIS FortiGate Benchmark**
 (`docs/forti_cis_benchmark.docx`) and applies guided hardening. The control
 catalog implements the benchmark checklist **exactly**:
 
-- **53 recommendations** across the benchmark's 8 sections
-- **28 Automated** (verified from configuration and scored) +
-  **25 Manual** (evidence-only, excluded from the compliance score)
+- **49 recommendations** across the benchmark's 8 sections
+- **25 Automated** (verified from configuration and scored) +
+  **24 Manual** (evidence-only, excluded from the compliance score)
 - **VDOM-aware**: each control is evaluated in the correct scope
   (`global`, per-VDOM, or management-VDOM) and, on VDOM-enabled devices, the
   per-VDOM controls are evaluated for every active VDOM.
@@ -25,7 +25,7 @@ app/modules/fortinet/
 ├── __init__.py
 ├── audit/
 │   ├── ssh_client.py      # SSH client: VDOM discovery + scoped collection
-│   ├── rules.py           # The 53 CIS controls (catalog / source of truth)
+│   ├── rules.py           # The 49 CIS controls (catalog / source of truth)
 │   ├── cis_map.py         # CIS section ↔ control-ID mapping
 │   ├── service.py         # Audit orchestration, scoring, per-VDOM evaluation
 │   └── router.py          # FastAPI endpoints (/api/audit/fortinet/*)
@@ -62,7 +62,7 @@ command, capture evidence, and are **excluded from the compliance score**.
 
 ## Audit Benchmark Checklist
 
-All 53 CIS FortiGate Benchmark recommendations, with the internal control that
+All 49 CIS FortiGate Benchmark recommendations, with the internal control that
 backs each one, the scope it is read in, and the command it inspects.
 **Type** is the benchmark's own classification.
 
@@ -85,7 +85,6 @@ backs each one, the scope it is read in, and the command it inspects.
 | 2.1.3 | Ensure timezone is properly configured | Manual | `FG-SYS-002` | global | `show system global` |
 | 2.1.4 | Ensure correct system time is configured through NTP | Automated | `FG-BL-040` | global | `show system ntp` |
 | 2.1.5 | Ensure hostname is set | Automated | `FG-SYS-003` | global | `show system global` |
-| 2.1.6 | Ensure the latest firmware is installed | Manual | `FG-SYS-004` | global | `get system status` |
 | 2.1.7 | Disable USB Firmware and configuration installation | Automated | `FG-SYS-005` | global | `show system auto-install` |
 | 2.1.8 | Disable static keys for TLS | Automated | `FG-SYS-006` | global | `show system global` |
 | 2.1.9 | Enable Global Strong Encryption | Automated | `FG-BL-090` | global | `show system global` |
@@ -147,9 +146,7 @@ backs each one, the scope it is read in, and the command it inspects.
 
 | CIS § | Recommendation | Type | Control ID | Scope | Reads |
 |-------|----------------|------|------------|-------|-------|
-| 4.2.1 | Ensure Antivirus Definition Push Updates are Configured | Automated | `FG-AV-001` | global | `show system autoupdate push-update` |
 | 4.2.2 | Apply Antivirus Security Profile to Policies | Manual | `FG-UTM-002` | per-VDOM | `show firewall policy` |
-| 4.2.3 | Enable Outbreak Prevention Database | Automated | `FG-AV-002` | per-VDOM | `show antivirus profile` |
 | 4.2.4 | Enable AI/heuristic based malware detection | Automated | `FG-AV-003` | per-VDOM | `show antivirus settings` |
 | 4.2.5 | Enable grayware detection on antivirus | Automated | `FG-AV-004` | per-VDOM | `show antivirus settings` |
 
@@ -174,7 +171,6 @@ backs each one, the scope it is read in, and the command it inspects.
 
 | CIS § | Recommendation | Type | Control ID | Scope | Reads |
 |-------|----------------|------|------------|-------|-------|
-| 5.1.1 | Enable Compromised Host Quarantine | Automated | `FG-FAB-001` | global | `show system automation-stitch` |
 | 5.2.1.1 | Ensure Security Fabric is Configured | Automated | `FG-FAB-002` | global | `show system csf` |
 
 ### 6. VPN
@@ -198,7 +194,7 @@ backs each one, the scope it is read in, and the command it inspects.
 | 8.2.1 | Encrypt Log Transmission to FortiAnalyzer / FortiManager | Automated | `FG-LOG-002` | global | `show log fortianalyzer setting` |
 | 8.3.1 | Centralized Logging and Reporting | Automated | `FG-FAZ-001` | global | `show log fortianalyzer setting` |
 
-**Totals:** 53 controls — 28 Automated (scored) · 25 Manual (evidence-only).
+**Totals:** 49 controls — 25 Automated (scored) · 24 Manual (evidence-only).
 
 > Legend — **Automated**: verified programmatically from configuration and
 > included in the compliance score. **Manual**: requires human review; the
@@ -331,6 +327,6 @@ The audit (`AuditingForm`) and hardening (`HardeningConnectionForm`,
 pytest tests/test_fortinet_rules.py tests/test_fortinet_ssh_scope.py
 ```
 
-These assert the catalog is exactly the 53 CIS controls (28 Automated /
-25 Manual), that every `cis_map` section maps 1:1 to a defined control, and that
+These assert the catalog is exactly the 49 CIS controls (25 Automated /
+24 Manual), that every `cis_map` section maps 1:1 to a defined control, and that
 each control is collected in its correct VDOM scope.

@@ -455,34 +455,82 @@ class FortiGateSSHClient:
         return meta
 
     def is_vdom_enabled(self) -> bool:
-        """Return whether VDOM mode is enabled (cached after first detection)."""
+        """Return whether VDOM mode is enabled (cached after first detection).
+
+        A device that IS VDOM-enabled but gets misdetected here as flat
+        silently collapses every per-VDOM control down to a single evaluation
+        instead of one per real VDOM — the audit still "succeeds" but quietly
+        under-counts. So a failure to read ``get system status`` is retried
+        once before falling back, and the fallback is logged loudly (not
+        swallowed at debug level) so the under-count is diagnosable.
+        """
         if self._vdom_enabled is None:
             try:
                 self.get_system_status()
             except Exception:
-                self._vdom_enabled = False  # safest default: treat as flat device
+                logger.warning(
+                    "FG VDOM-mode detection failed on %s ('get system status' "
+                    "errored); retrying once before assuming a flat device.",
+                    self.host, exc_info=True,
+                )
+                try:
+                    self.get_system_status()
+                except Exception:
+                    logger.error(
+                        "FG VDOM-mode detection failed twice on %s; treating as "
+                        "a flat (non-VDOM) device for this audit. If this "
+                        "device actually has VDOMs enabled, every per-VDOM "
+                        "control will be under-counted (evaluated once instead "
+                        "of once per VDOM).",
+                        self.host, exc_info=True,
+                    )
+                    self._vdom_enabled = False
         return bool(self._vdom_enabled)
 
     def enumerate_vdoms(self) -> List[str]:
         """
         Return every VDOM on the device (``root`` first). Empty list when VDOM
         mode is disabled. Always returns at least ``["root"]`` when enabled.
+
+        Undercounting here (returning fewer VDOMs than the device really has)
+        silently shrinks the audit's scope, so every silent-failure path below
+        is retried once and/or logged loudly instead of swallowed quietly.
         """
         if not self.is_vdom_enabled():
             return []
 
         vdoms: List[str] = []
 
-        # Primary: diagnose sys vdom list (works at the top level on most FortiOS).
+        # Primary: diagnose sys vdom list (works at the top level on most
+        # FortiOS). One retry: a rejected first attempt is not proof the
+        # device only has one VDOM, and trusting it silently would scope the
+        # rest of the audit to whatever fragment of the device we managed to
+        # read.
         out = self._raw_send("diagnose sys vdom list")
+        if not self._is_command_ok(out):
+            logger.warning(
+                "FG VDOM enumeration: 'diagnose sys vdom list' rejected on %s "
+                "(%r); retrying once.",
+                self.host, out.strip()[:160],
+            )
+            out = self._raw_send("diagnose sys vdom list")
         if self._is_command_ok(out):
             for m in re.finditer(r"\bname=([A-Za-z0-9._\-]+)", out):
                 vdoms.append(m.group(1))
             if not vdoms:
                 for m in re.finditer(r"^\s*vd\s+([A-Za-z0-9._\-]+)/", out, flags=re.MULTILINE):
                     vdoms.append(m.group(1))
+        else:
+            logger.warning(
+                "FG VDOM enumeration: 'diagnose sys vdom list' rejected twice "
+                "on %s (%r); falling back to 'show system vdom-property'.",
+                self.host, out.strip()[:160],
+            )
 
         # Fallback: enumerate the config VDOM table from the global context.
+        # Tried whenever the primary method found nothing — whether it was
+        # rejected outright or "succeeded" with zero matches, both are equally
+        # inconclusive about how many VDOMs actually exist.
         if not vdoms:
             try:
                 with self.scope(SCOPE_GLOBAL):
@@ -490,8 +538,12 @@ class FortiGateSSHClient:
                 for m in re.finditer(r'^\s*edit\s+"?([A-Za-z0-9._\-]+)"?\s*$', cfg, flags=re.MULTILINE):
                     vdoms.append(m.group(1))
             except Exception:
-                logger.debug("FG VDOM enumeration fallback failed on %s (ignored)",
-                             self.host, exc_info=True)
+                logger.warning(
+                    "FG VDOM enumeration fallback ('show system vdom-property') "
+                    "failed on %s; the device may have more VDOMs than this "
+                    "audit will see.",
+                    self.host, exc_info=True,
+                )
 
         # De-duplicate, keep order, force root to the front, default to root.
         seen, unique = set(), []
@@ -500,6 +552,13 @@ class FortiGateSSHClient:
                 seen.add(v)
                 unique.append(v)
         if not unique:
+            logger.warning(
+                "FG VDOM enumeration found NO VDOMs on %s despite VDOM mode "
+                "being enabled; defaulting to ['root'] only. If this device "
+                "actually has more VDOMs, this audit will under-count "
+                "per-VDOM checks.",
+                self.host,
+            )
             unique = [ROOT_VDOM]
         unique.sort(key=lambda v: (v != ROOT_VDOM, v))
         return unique

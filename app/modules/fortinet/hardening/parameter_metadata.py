@@ -99,7 +99,6 @@ FORTIGATE_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "FG-BL-004": ["ADMIN_TIMEOUT"],
     "FG-BL-002": [],
     "FG-HA-005": ["HA_MONITOR_INTERFACE"],
-    "FG-AV-001": [],
     "FG-AV-003": [],
     "FG-AV-004": [],
     "FG-DNS-001": ["DNSFILTER_PROFILE"],

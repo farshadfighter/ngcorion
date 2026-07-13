@@ -2,7 +2,7 @@
 FortiGate CIS catalogue + evaluation tests (no DB required).
 
 Covers:
-  - the catalogue is exactly the 53 CIS benchmark items (28 Automated / 25 Manual),
+  - the catalogue is exactly the 49 CIS benchmark items (25 Automated / 24 Manual),
   - every control has a valid scope and unique id / CIS section,
   - cis_map stays 1:1 with the catalogue,
   - auto-remediation templates map to real Automated controls with valid params,
@@ -34,15 +34,15 @@ VALID_SCOPES = {SCOPE_GLOBAL, SCOPE_VDOM, SCOPE_VDOM_ROOT}
 # --------------------------------------------------------------------------
 # Catalogue shape
 # --------------------------------------------------------------------------
-def test_exactly_53_controls():
-    assert len(CONTROLS) == 53
+def test_exactly_49_controls():
+    assert len(CONTROLS) == 49
 
 
 def test_automated_manual_split():
     automated = [c for c in CONTROLS if c.cis_type == "Automated"]
     manual = [c for c in CONTROLS if c.cis_type == "Manual"]
-    assert len(automated) == 28
-    assert len(manual) == 25
+    assert len(automated) == 25
+    assert len(manual) == 24
     assert all(c.is_manual for c in manual)
     assert not any(c.is_manual for c in automated)
 
@@ -50,8 +50,8 @@ def test_automated_manual_split():
 def test_unique_ids_and_sections():
     ids = [c.id for c in CONTROLS]
     secs = [c.cis_id for c in CONTROLS]
-    assert len(set(ids)) == 53
-    assert len(set(secs)) == 53
+    assert len(set(ids)) == 49
+    assert len(set(secs)) == 49
 
 
 def test_every_control_has_valid_scope_and_section_name():
@@ -64,8 +64,8 @@ def test_every_control_has_valid_scope_and_section_name():
 def test_scope_distribution():
     from collections import Counter
     dist = Counter(c.scope for c in CONTROLS)
-    assert dist[SCOPE_GLOBAL] == 30
-    assert dist[SCOPE_VDOM] == 23
+    assert dist[SCOPE_GLOBAL] == 27
+    assert dist[SCOPE_VDOM] == 22
     assert dist[SCOPE_VDOM_ROOT] == 0
 
 
@@ -162,7 +162,7 @@ def test_no_definitive_check_uses_presence_heuristics():
 
 
 def test_all_controls_evaluate_without_crash():
-    # All 53 evaluate on a bare device (empty outputs) with no exception.
+    # All 49 evaluate on a bare device (empty outputs) with no exception.
     outs = {}
     for c in CONTROLS:
         for r in c.rules:
@@ -303,18 +303,6 @@ def test_fg_bl_030_password_policy_read_in_global_scope():
     # Admin password-policy is global in multi-VDOM (reading it in a VDOM errors),
     # so the control must be evaluated in GLOBAL scope.
     assert BY_ID["FG-BL-030"].scope == SCOPE_GLOBAL
-
-
-def test_fg_av_001_reads_push_update_via_show():
-    # `get system autoupdate push-update` is rejected by FortiOS; the check now uses
-    # `show system autoupdate push-update` and matches `set status enable`.
-    ctl = BY_ID["FG-AV-001"]
-    assert all(r.cmd == "show system autoupdate push-update" for r in ctl.rules)
-    on = {r.cmd: "config system autoupdate push-update\n set status enable\nend"
-          for r in ctl.rules}
-    assert Svc._evaluate_control(ctl, on, None)["passed"] is True
-    off = {r.cmd: "config system autoupdate push-update\nend" for r in ctl.rules}
-    assert Svc._evaluate_control(ctl, off, None)["passed"] is False
 
 
 def test_evidence_extraction_failure_does_not_crash_audit(monkeypatch):

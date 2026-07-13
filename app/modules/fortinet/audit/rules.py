@@ -1,8 +1,8 @@
 """
 FortiGate CIS Benchmark control catalog.
 
-Exactly the 53 recommendations of the CIS FortiGate Benchmark
-(``docs/forti_cis_benchmark.docx`` — 8 sections, 28 Automated / 25 Manual).
+Exactly the 49 recommendations of the CIS FortiGate Benchmark
+(``docs/forti_cis_benchmark.docx`` — 8 sections, 25 Automated / 24 Manual).
 
 Each control declares a ``scope`` that tells the SSH engine where to read it:
   - "global"     — ``config global`` (or flat top-level on single-VDOM devices)
@@ -218,18 +218,14 @@ IFACE = "show system interface"
 LOCALIN = "show firewall local-in-policy"
 POL = "show firewall policy"
 IPSSENS = "show ips sensor"            # botnet C&C scanning lives here in 7.0.x
-PUSHUPD = "show system autoupdate push-update"
-AVPROF = "show antivirus profile"
 AVSET = "show antivirus settings"
 DNSF = "show dnsfilter profile"
 APPL = "show application list"
-STITCH = "show system automation-stitch"
 CSF = "show system csf"
 SSLVPN = "show vpn ssl settings"
 USRSET = "show user setting"
 EVENTF = "show log eventfilter"
 FAZ = "show log fortianalyzer setting"
-STATUS = "get system status"
 
 # `get`-form commands — return the resolved value of every field (including
 # defaults), so detection parses live values instead of presence/absence of a
@@ -245,11 +241,10 @@ GEVENTF = "get log eventfilter"
 GFAZ = "get log fortianalyzer setting"
 GAVSET = "get antivirus settings"
 GAVHEUR = "get antivirus heuristic"   # older/lower-end builds (e.g. 60F) put AI/heuristic here
-GPUSHUPD = "get system autoupdate push-update"
 
 
 def get_fortinet_controls() -> List[FortiGateControl]:
-    """Return all 53 CIS FortiGate Benchmark controls."""
+    """Return all 49 CIS FortiGate Benchmark controls."""
     controls: List[FortiGateControl] = [
         # ===== 1 Network Settings =====
         # `get system dns` → primary must be a real (non-zero) IPv4 address.
@@ -304,12 +299,6 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              [FortiGateRule(type="get_field_not_match", cmd=GG, key="hostname",
                             pattern=r"^FGT[A-Z0-9]+$")],
              'config system global\n set hostname "NEW-HOSTNAME"\nend'),
-        # `get system status` → report running firmware; "latest" can't be known
-        # from the device, so best-effort + keep the manual-review flag.
-        _ctl("FG-SYS-004", "Latest firmware is installed", "2.1.6", "Manual", SCOPE_GLOBAL, "Medium", "L1",
-             [FortiGateRule(type="get_field_matches", cmd=STATUS, key="Version", pattern=r"v?\d+\.\d+")],
-             "Review FortiGuard for the latest recommended release and upgrade.",
-             review_required=True),
         # `get system auto-install` → both auto-install fields must be disable.
         _ctl("FG-SYS-005", "USB firmware/configuration installation disabled", "2.1.7", "Automated",
              SCOPE_GLOBAL, "High", "L1",
@@ -485,30 +474,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              review_required=True),
 
         # ===== 4.2 Antivirus =====
-        # `show system autoupdate push-update` → `set status enable` must be present.
-        # (`get system autoupdate push-update` is rejected by FortiOS even in global;
-        # `show` reads the sub-table and prints `set status enable` when configured.)
-        # N/A on builds that don't ship FortiGuard push-update at all (e.g. 60F):
-        # `show system autoupdate push-update` is rejected (parse error / unknown
-        # action), so there's no setting to be compliant/non-compliant about.
-        _ctl("FG-AV-001", "Antivirus Definition Push Updates configured", "4.2.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
-             [FortiGateRule(type="set_eq", cmd=PUSHUPD, key="status", expected="enable")],
-             "config system autoupdate push-update\n set status enable\nend",
-             na_gate=ApplicabilityGate(cmd=PUSHUPD, na_if_cmd_error=True,
-                                       note="FortiGuard push-update not supported on this build")),
         # `show firewall policy` → each ACCEPT policy should carry an AV profile;
         # the report lists every accept Policy ID missing `set av-profile`.
         _ctl("FG-UTM-002", "Apply Antivirus Security Profile to policies", "4.2.2", "Manual", SCOPE_VDOM, "Medium", "L1",
              [FortiGateRule(type="policy_field_present", cmd=POL, key="av-profile",
                             scope_pattern=r"set\s+action\s+accept")],
              "On each accept policy missing it:\nconfig firewall policy\n edit <policy ID>\n set av-profile <profile>\nend",
-             review_required=True),
-        # `show antivirus profile` → best-effort: report profiles with outbreak
-        # prevention; only matters once the profile is applied (keep review flag).
-        _ctl("FG-AV-002", "Outbreak Prevention Database enabled", "4.2.3", "Automated", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=AVPROF, key="outbreak-prevention",
-                            pattern=r"outbreak-prevention\s+(block|monitor|enable)")],
-             "config antivirus profile\n edit <profile>\n config http\n set outbreak-prevention block\nend",
              review_required=True),
         # `get antivirus settings` → ML detection enabled, grayware enabled.
         # Two build spellings for AI/heuristic AV: newer builds expose
@@ -568,12 +539,6 @@ def get_fortinet_controls() -> List[FortiGateControl]:
              review_required=True),
 
         # ===== 5 Security Fabric =====
-        # `show system automation-stitch` → best-effort: report stitches with a
-        # quarantine action (the action set is site-specific → review flag).
-        _ctl("FG-FAB-001", "Compromised Host Quarantine enabled", "5.1.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
-             [FortiGateRule(type="table_any_match", cmd=STITCH, key="quarantine action", pattern=r"quarantine")],
-             "Create an automation stitch with a quarantine action (e.g. Quarantine FortiClient via EMS).",
-             review_required=True),
         # `get system csf` → Security Fabric status must read enable.
         _ctl("FG-FAB-002", "Security Fabric is Configured", "5.2.1.1", "Automated", SCOPE_GLOBAL, "Medium", "L1",
              [FortiGateRule(type="get_field_eq", cmd=GCSF, key="status", expected="enable")],

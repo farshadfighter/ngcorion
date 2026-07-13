@@ -135,11 +135,6 @@ FORTIGATE_COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     },
 
     # ---- 4.2 Antivirus ----
-    "FG-AV-001": {  # 4.2.1 push updates (global)
-        "commands": ["config system autoupdate push-update", "set status enable", "end"],
-        "required_params": [], "optional_params": [], "defaults": {},
-        "warnings": ["Enables FortiGuard antivirus definition push updates."],
-    },
     "FG-AV-003": {  # 4.2.4 AI/heuristic detection (per-VDOM)
         # Two build spellings: newer builds use `machine-learning-detection` under
         # antivirus settings; 60F/older builds have no such field and use

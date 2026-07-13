@@ -164,7 +164,6 @@ BREAKERS: Dict[str, Breaker] = {
     # ---- 2.4 Administrators (global) ----
     "FG-BL-004":  Breaker("system global", {"admintimeout": "480"}),  # > 10 -> non-compliant
     # ---- 4.2 Antivirus ----
-    "FG-AV-001":  Breaker("system autoupdate push-update", {"status": "disable"}, kind="show_set"),
     # Build-aware: newer builds have machine-learning-detection under antivirus
     # settings; 60F/older builds use `config antivirus heuristic` (mode). Whichever
     # field the device actually exposes is the one snapshot/break/restore targets.

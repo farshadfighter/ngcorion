@@ -27,7 +27,6 @@ CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
     {"section": "2.1.3", "recommendation": "Ensure timezone is properly configured", "type": "Manual", "rule_id": "FG-SYS-002"},
     {"section": "2.1.4", "recommendation": "Ensure correct system time is configured through NTP", "type": "Automated", "rule_id": "FG-BL-040"},
     {"section": "2.1.5", "recommendation": "Ensure hostname is set", "type": "Automated", "rule_id": "FG-SYS-003"},
-    {"section": "2.1.6", "recommendation": "Ensure the latest firmware is installed", "type": "Manual", "rule_id": "FG-SYS-004"},
     {"section": "2.1.7", "recommendation": "Disable USB Firmware and configuration installation", "type": "Automated", "rule_id": "FG-SYS-005"},
     {"section": "2.1.8", "recommendation": "Disable static keys for TLS", "type": "Automated", "rule_id": "FG-SYS-006"},
     {"section": "2.1.9", "recommendation": "Enable Global Strong Encryption", "type": "Automated", "rule_id": "FG-BL-090"},
@@ -66,9 +65,7 @@ CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
     {"section": "4.1.2", "recommendation": "Apply IPS Security Profile to Policies", "type": "Manual", "rule_id": "FG-UTM-003"},
 
     # 4.2 Antivirus
-    {"section": "4.2.1", "recommendation": "Ensure Antivirus Definition Push Updates are Configured", "type": "Automated", "rule_id": "FG-AV-001"},
     {"section": "4.2.2", "recommendation": "Apply Antivirus Security Profile to Policies", "type": "Manual", "rule_id": "FG-UTM-002"},
-    {"section": "4.2.3", "recommendation": "Enable Outbreak Prevention Database", "type": "Automated", "rule_id": "FG-AV-002"},
     {"section": "4.2.4", "recommendation": "Enable AI/heuristic based malware detection", "type": "Automated", "rule_id": "FG-AV-003"},
     {"section": "4.2.5", "recommendation": "Enable grayware detection on antivirus", "type": "Automated", "rule_id": "FG-AV-004"},
 
@@ -84,7 +81,6 @@ CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
     {"section": "4.4.4", "recommendation": "Apply Application Control Security Profile to Policies", "type": "Manual", "rule_id": "FG-APP-004"},
 
     # 5 Security Fabric
-    {"section": "5.1.1", "recommendation": "Enable Compromised Host Quarantine", "type": "Automated", "rule_id": "FG-FAB-001"},
     {"section": "5.2.1.1", "recommendation": "Ensure Security Fabric is Configured", "type": "Automated", "rule_id": "FG-FAB-002"},
 
     # 6 VPN
@@ -151,7 +147,7 @@ def get_benchmark_catalog() -> Dict[str, Any]:
 
     Each entry pairs a benchmark section (number / recommendation / type) with
     the control that implements it (id, scope, severity, command, remediation),
-    so the whole 53-item checklist can be displayed without running an audit.
+    so the whole 49-item checklist can be displayed without running an audit.
     """
     # Imported here to avoid any import-time coupling between the map and the catalog.
     from .rules import get_fortinet_controls
