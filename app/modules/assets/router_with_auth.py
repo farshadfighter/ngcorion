@@ -111,6 +111,13 @@ assets_router = APIRouter(prefix="/api/assets", tags=["Assets"])
 def get_assets(
     page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
     page_size: Optional[int] = Query(None, ge=1, le=100, description="Items per page"),
+    device_type: Optional[str] = Query(
+        None,
+        description="Filter assets by hardening/audit device type (e.g. 'fortinet', "
+                    "'linux-ubuntu-22', 'mssql-2019'). Matching assets and assets whose "
+                    "type can't be determined (unknown) are returned; assets belonging to "
+                    "a different known family are excluded.",
+    ),
     current_user: User = Depends(require_permission("ASSET_LIST", "read")),
     db: Session = Depends(get_db)
 ):
@@ -119,14 +126,31 @@ def get_assets(
 
     Supports optional pagination via page and page_size query parameters.
     If pagination params are omitted, returns all results (backward compatible).
+    Optionally filters by device_type so hardening/audit flows only list assets
+    matching the selected service/vendor (plus unknown-type assets).
     Users with read permission for ASSET_LIST can see all assets.
 
     """
+    from sqlalchemy.orm import joinedload
     from app.models import Asset
 
     # Build base query - no user_id filtering, permission-based access
     # Sort by asset_name instead of ID (makes ID gaps invisible)
     query = db.query(Asset).order_by(Asset.asset_name)
+
+    # Device-type filtering is a Python-side heuristic over free-text fields +
+    # the asset_type relationship, so eager-load the type and filter in memory.
+    if device_type:
+        from app.utils.device_classification import (
+            normalize_device_type, infer_device_family, family_matches
+        )
+        requested = normalize_device_type(device_type)
+        assets = query.options(joinedload(Asset.asset_type)).all()
+        assets = [a for a in assets if family_matches(infer_device_family(a), requested)]
+        if page is not None and page_size is not None:
+            start = (page - 1) * page_size
+            return assets[start:start + page_size]
+        return assets
 
     # If pagination requested, return paginated results
     if page is not None and page_size is not None:

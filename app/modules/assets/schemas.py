@@ -179,7 +179,10 @@ class AssetResponse(AssetBase):
     user_id: int
     created_at: datetime
     updated_at: datetime
-    
+    # Best-effort device family (cisco/fortinet/linux/...) for filtering the
+    # asset list by selected service. None = unknown (Other/Unknown group).
+    inferred_device_type: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 # Owner/Location Schemas

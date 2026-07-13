@@ -449,6 +449,16 @@ class Asset(Base):
         return self.os_name
 
     @property
+    def inferred_device_type(self) -> Optional[str]:
+        """Best-effort hardening/audit device family (cisco, fortinet, linux, ...).
+
+        Heuristic over manufacturer/os_name/model/asset_type/name; None when it
+        can't be determined. Used to filter the asset list by selected service.
+        """
+        from app.utils.device_classification import infer_device_family
+        return infer_device_family(self)
+
+    @property
     def is_high_risk(self) -> bool:
         """True if risk level is high or critical."""
         if not self.risk_level:

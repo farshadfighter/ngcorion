@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAssets } from "../../store/assetSlice";
+import api from "../../config/api.js";
 import { executeAuditWithDevice, discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
@@ -27,29 +27,17 @@ const DEVICE_TYPES = [
 ];
 
 // ─── Asset filter mapping ─────────────────────────────────────────────────────
-const DEVICE_TYPE_TO_ASSET_KEYWORDS = {
-    "cisco":       ["cisco", "router", "switch"],
-    "fortinet":    ["fortinet", "fortigate", "firewall"],
-    "apache":      ["apache", "web server", "web"],
-    "mongodb":     ["mongodb", "mongo", "database"],
-    "mssql-2016":  ["mssql", "sql server", "microsoft sql", "sql"],
-    "mssql-2019":  ["mssql", "sql server", "microsoft sql", "sql"],
-    "mssql-2022":  ["mssql", "sql server", "microsoft sql", "sql"],
-    "windows-2016":["windows", "windows server"],
-    "windows-2022":["windows", "windows server"],
-    "windows-2025":["windows", "windows server"],
-};
-
-const getFilteredAssets = (allAssets, deviceType) => {
-    const keywords = DEVICE_TYPE_TO_ASSET_KEYWORDS[deviceType];
-    if (!keywords) return allAssets; // linux و بقیه همه رو نشون میده
-    const filtered = allAssets.filter(asset => {
-        const typeName = (asset.asset_type_name || "").toLowerCase();
-        const assetName = (asset.asset_name || "").toLowerCase();
-        return keywords.some(kw => typeName.includes(kw) || assetName.includes(kw));
-    });
-    // اگه هیچ asset مطابقی پیدا نشد، همه رو نشون بده
-    return filtered.length > 0 ? filtered : allAssets;
+// The backend filters assets by device_type (?device_type=...) and returns each
+// asset's inferred_device_type (family). We collapse the granular device_type to
+// its family here so we can split the returned assets into a "matches" group and
+// an "Other / Unknown type" group.
+const normalizeFamily = (deviceType) => {
+    if (!deviceType) return null;
+    const d = deviceType.toLowerCase();
+    if (d.startsWith("linux"))   return "linux";
+    if (d.startsWith("windows")) return "windows";
+    if (d.startsWith("mssql"))   return "mssql";
+    return d; // cisco, fortinet, apache, mongodb
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -68,9 +56,13 @@ const needsSecret= (dt) => isCisco(dt);
 // ─── Component ────────────────────────────────────────────────────────────────
 export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     const dispatch = useDispatch();
-    const { assets }    = useSelector((state) => state.assets);
     const { isLoading } = useSelector((state) => state.hardening);
     const vdomDiscovery = useSelector((state) => state.hardening.vdomDiscovery);
+
+    // Assets are fetched per selected device type (backend-filtered), kept in
+    // local state so we don't clobber the shared assets list used elsewhere.
+    const [assetOptions, setAssetOptions] = useState([]);
+    const [assetsLoading, setAssetsLoading] = useState(false);
 
     const [formData, setFormData] = useState({
         device_type:      "cisco",
@@ -97,11 +89,21 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
-        dispatch(fetchAssets());
         dispatch(clearVdomDiscovery());
     }, [dispatch]);
 
     const dt = formData.device_type;
+
+    // Fetch assets filtered by the selected device type from the backend.
+    useEffect(() => {
+        let cancelled = false;
+        setAssetsLoading(true);
+        api.get(`/api/assets/?device_type=${encodeURIComponent(dt)}`)
+            .then((res) => { if (!cancelled) setAssetOptions(res.data || []); })
+            .catch(() => { if (!cancelled) setAssetOptions([]); })
+            .finally(() => { if (!cancelled) setAssetsLoading(false); });
+        return () => { cancelled = true; };
+    }, [dt]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -201,7 +203,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             };
         }
 
-        const selectedAsset = assets.find((a) => a.id === assetId);
+        const selectedAsset = assetOptions.find((a) => a.id === assetId);
         const tempSessionData = {
             session_id:  "pending",
             asset_name:  selectedAsset?.asset_name || "N/A",
@@ -240,7 +242,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
     };
 
     const groups = [...new Set(DEVICE_TYPES.map((d) => d.group))];
-    const filteredAssets = getFilteredAssets(assets || [], dt);
+    const family = normalizeFamily(dt);
+    const matchedAssets = assetOptions.filter((a) => a.inferred_device_type === family);
+    const otherAssets   = assetOptions.filter((a) => a.inferred_device_type !== family);
 
     return (
         <div className="auditing-form-container">
@@ -283,15 +287,31 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                             value={formData.asset_id}
                             onChange={handleChange}
                             className={errors.asset_id ? "error" : ""}
+                            disabled={assetsLoading}
                         >
                             <option value="">
-                                Select ({filteredAssets.length} available)
+                                {assetsLoading
+                                    ? "Loading assets…"
+                                    : `Select (${assetOptions.length} available)`}
                             </option>
-                            {filteredAssets.map((asset) => (
-                                <option key={asset.id} value={asset.id}>
-                                    {asset.asset_name} ({asset.ip_address || "No IP"})
-                                </option>
-                            ))}
+                            {matchedAssets.length > 0 && (
+                                <optgroup label="Matching this device type">
+                                    {matchedAssets.map((asset) => (
+                                        <option key={asset.id} value={asset.id}>
+                                            {asset.asset_name} ({asset.ip_address || "No IP"})
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
+                            {otherAssets.length > 0 && (
+                                <optgroup label="Other / Unknown type">
+                                    {otherAssets.map((asset) => (
+                                        <option key={asset.id} value={asset.id}>
+                                            {asset.asset_name} ({asset.ip_address || "No IP"})
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )}
                         </select>
                         {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
                     </div>
