@@ -216,6 +216,7 @@ class Result:
     initial: str = ""      # COMPLIANT / NON-COMPLIANT at start (for context)
     kind: str = "auto"     # "auto" (hardening) | "manual" (audit-only)
     suspect: bool = False  # manual AUDIT-OK whose verdict hinges on an absent field
+    evidence: str = ""     # manual: full production evidence text (shown with --verbose)
 
 
 @dataclass
@@ -520,8 +521,10 @@ def run_manual_audit(executor: FortiGateHardeningExecutor, control: FortiGateCon
     except Exception as e:  # noqa: BLE001 - evaluator is meant to be exception-safe
         return Result(cid, "AUDIT-ERROR", f"evaluation crashed: {type(e).__name__}: {e}", kind="manual")
 
+    evidence = finding.get("evidence", "")
     if not finding["applicable"]:
-        return Result(cid, "AUDIT-OK", f"verdict: N/A ({finding['na_reason']})", kind="manual")
+        return Result(cid, "AUDIT-OK", f"verdict: N/A ({finding['na_reason']})",
+                      kind="manual", evidence=evidence)
 
     verdict = "COMPLIANT" if finding["passed"] else "NON-COMPLIANT"
     if control.needs_review:
@@ -531,7 +534,14 @@ def run_manual_audit(executor: FortiGateHardeningExecutor, control: FortiGateCon
     if suspects:
         reason += (f"  SUSPECT: {', '.join(suspects)} absent from output "
                    f"— verdict may be a false NON-COMPLIANT (build format mismatch)")
-    return Result(cid, "AUDIT-OK", reason, kind="manual", suspect=bool(suspects))
+    return Result(cid, "AUDIT-OK", reason, kind="manual", suspect=bool(suspects),
+                  evidence=evidence)
+
+
+# Set from --verbose in main(): print the full production evidence text under
+# each manual check's result line, so the parsed values (worksheets, per-policy
+# service lists, sensor names) are visible — not just the verdict.
+SHOW_EVIDENCE = False
 
 
 def _print_result_line(tag: str, res: Result) -> None:
@@ -545,6 +555,9 @@ def _print_result_line(tag: str, res: Result) -> None:
         detail = res.reason or (f"was {res.initial}" if res.initial else "")
         suffix = f"(auto-fixable, {detail})" if detail else "(auto-fixable)"
     print(f"[{tag}] {res.check_id:12} -> {res.status:11} {suffix}")
+    if SHOW_EVIDENCE and res.kind == "manual" and res.evidence:
+        for line in res.evidence.splitlines():
+            print(f"[{tag}]      | {line}")
 
 
 # ---------------------------------------------------------------------------
@@ -692,7 +705,8 @@ def main() -> int:
     ap.add_argument("--no-backup", action="store_true", help="skip the per-device full-config backup")
     ap.add_argument("--verbose", action="store_true",
                     help="keep the fortinet module's WARNING logs (absent-field / exec-error "
-                         "details); by default they are quieted since the report surfaces them")
+                         "details) AND print each manual check's full production evidence "
+                         "text under its result line")
     ap.add_argument("--list", action="store_true",
                     help="print all 53 checks + their plan and exit (no device access)")
     args = ap.parse_args()
@@ -701,6 +715,8 @@ def main() -> int:
     # the SUSPECT annotations already carry the salient detail.
     logging.getLogger("app.modules.fortinet").setLevel(
         logging.WARNING if args.verbose else logging.ERROR)
+    global SHOW_EVIDENCE
+    SHOW_EVIDENCE = args.verbose
 
     controls = _control_map()
     auto_ids = auto_fixable_ids(controls) if args.phase in ("both", "auto") else []

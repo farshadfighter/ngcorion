@@ -576,8 +576,14 @@ def _table_evidence_line(rule, output: str) -> str:
                 if off else f"{n} entries; all satisfy '{label}' (compliant)")
     if rule.type == "table_any_match":
         hits = [e["name"] for e in entries if hit(e)]
-        return (f"{n} entries; '{label}' present in: {', '.join(hits)} (best-effort PASS)"
-                if hits else f"{n} entries; '{label}' found in none (best-effort FAIL)")
+        if hits:
+            return f"{n} entries; '{label}' present in: {', '.join(hits)} (best-effort PASS)"
+        # Name what WAS parsed so a FAIL is verifiable (e.g. which IPS sensors
+        # exist and simply lack the setting) — capped so huge tables stay readable.
+        checked = ", ".join(e["name"] for e in entries[:20])
+        more = f" (+{n - 20} more)" if n > 20 else ""
+        suffix = f" — entries checked: {checked}{more}" if checked else ""
+        return f"{n} entries; '{label}' found in none (best-effort FAIL){suffix}"
     return f"{n} entries"
 
 
@@ -672,8 +678,18 @@ def _policy_field_evidence(rule, output: str) -> str:
 
     if rule.type == "policy_field_forbidden_token":
         if not failures:
-            return (f"{scope_n} policies; none use {rule.key} {rule.expected} "
-                    f"(COMPLIANT)")
+            # Show WHAT was parsed, not just the verdict — a COMPLIANT here is
+            # only trustworthy if the per-policy object lists are visible (e.g.
+            # "ALL_ICMP" must appear as parsed-and-accepted, not silently skipped).
+            entries = _parse_table_entries(output)
+            lines = [
+                f"Policy ID {e['name']}: {rule.key} = "
+                f"{_entry_field_raw(e['body'], rule.key) or '<not set>'} (ok)"
+                for e in entries
+            ]
+            return (f"{scope_n} policies; none use '{rule.expected}' as {rule.key} "
+                    f"(COMPLIANT):\n" + "\n".join(lines)) if lines else \
+                   f"0 policies configured (COMPLIANT)"
         lines = [
             f"Policy ID {f['name']}: {rule.key} = {f['value']} (NON-COMPLIANT)"
             for f in failures
