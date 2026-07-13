@@ -81,6 +81,59 @@ class FortiGateManualNotExecutableError(FortiGateHardeningError):
     pass
 
 
+def _save_device_backup(
+    db: Session,
+    *,
+    backup: str,
+    device_ip: str,
+    user_id: Optional[int],
+    asset_id: Optional[int],
+    action_id: Optional[int] = None,
+) -> None:
+    """
+    Record a hardening-time config backup in ``device_backups`` so it appears in
+    the Backups page (GET /api/backups reads only that table —
+    ``hardening_actions.backup_config`` is invisible to it; Cisco has written
+    this row all along, Fortinet didn't, which presented as "backup not taken").
+
+    Best-effort: a failure here must never fail the hardening run.
+    ``device_backups.asset_id`` is NOT NULL, so runs without an inventory asset
+    are logged and skipped (the backup still lives on the action row).
+    """
+    if not backup:
+        logger.warning("FG backup: empty backup content for %s — no device_backups row", device_ip)
+        return
+    if not asset_id:
+        logger.warning(
+            "FG backup: no asset linked to this session — backup (%d chars) kept on "
+            "hardening_actions.backup_config only, not visible in Backups page",
+            len(backup),
+        )
+        return
+    try:
+        from app.models.backup import DeviceBackup
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        row = DeviceBackup(
+            asset_id=asset_id,
+            asset_name=asset.asset_name if asset else None,
+            device_ip=device_ip,
+            device_type="fortinet",
+            config_content=backup,
+            source="hardening",
+            hardening_action_id=action_id,
+            created_by=user_id,
+        )
+        db.add(row)
+        db.commit()
+        logger.info(
+            "FG backup: saved device_backups row id=%s (%d chars, action=%s, asset=%s)",
+            row.id, len(backup), action_id, asset_id,
+        )
+    except Exception as _be:  # noqa: BLE001 - best-effort, never break hardening
+        logger.warning("FG backup: failed to save device_backups row: %s", _be)
+        db.rollback()
+
+
 class FortiGateHardeningService:
     """Service for automated FortiGate device hardening."""
 
@@ -452,11 +505,19 @@ class FortiGateHardeningService:
                 # Backup config
                 backup = None
                 if not skip_backup:
+                    logger.info("FG backup: requested for action %s — taking config backup", action_id)
                     t0 = time.perf_counter()
                     backup = executor.backup_config()
                     timings["backup"] = time.perf_counter() - t0
                     action.backup_config = backup
                     db.commit()
+                    logger.info("FG backup: stored on action %s (%d chars)", action_id, len(backup))
+                    _save_device_backup(
+                        db, backup=backup, device_ip=device_ip, user_id=user_id,
+                        asset_id=action.asset_id, action_id=action.id,
+                    )
+                else:
+                    logger.info("FG backup: skip_backup=True for action %s — NO backup taken", action_id)
 
                 # Dynamic (device-state-aware) remediation: controls like FG-BL-002
                 # can't use a static template — the correct fix depends on each
@@ -646,9 +707,17 @@ class FortiGateHardeningService:
 
                 backup = None
                 if not skip_backup:
+                    logger.info("FG backup: requested for manual action %s — taking config backup", action.id)
                     backup = executor.backup_config()
                     action.backup_config = backup
                     db.commit()
+                    logger.info("FG backup: stored on manual action %s (%d chars)", action.id, len(backup))
+                    _save_device_backup(
+                        db, backup=backup, device_ip=device_ip, user_id=user_id,
+                        asset_id=asset.id if asset else None, action_id=action.id,
+                    )
+                else:
+                    logger.info("FG backup: skip_backup=True for manual action %s — NO backup taken", action.id)
 
                 # Run every block in this one SSH session, tracking per-target
                 # success/failure (multi-policy selections keep going after one
@@ -1072,6 +1141,12 @@ class FortiGateHardeningService:
             if not skip_backup:
                 logger.info(f"Creating backup for FortiGate {device_ip}")
                 backup = executor.backup_config()
+                _save_device_backup(
+                    db, backup=backup, device_ip=device_ip, user_id=user_id,
+                    asset_id=session.asset_id,
+                )
+            else:
+                logger.info("FG backup: skip_backup=True for auto-harden on %s — NO backup taken", device_ip)
 
             # Process each auto-fixable check
             for result in auto_fixable:
@@ -1263,6 +1338,12 @@ class FortiGateHardeningService:
             if not skip_backup:
                 logger.info(f"Creating backup for FortiGate {device_ip}")
                 backup = executor.backup_config()
+                _save_device_backup(
+                    db, backup=backup, device_ip=device_ip, user_id=user_id,
+                    asset_id=session.asset_id,
+                )
+            else:
+                logger.info("FG backup: skip_backup=True for batch-execute on %s — NO backup taken", device_ip)
 
             for result in results:
                 check_id = result.check_number

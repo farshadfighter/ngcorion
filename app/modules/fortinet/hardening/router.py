@@ -13,10 +13,14 @@ Endpoints:
 - GET /api/hardening/fortinet/actions - List FortiGate hardening history
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.dependencies import (
@@ -608,6 +612,8 @@ async def execute_fortinet_manual_remediation(
             status_value="failed", error=str(err),
         )
 
+    logger.info("FG manual-execute: result=%s skip_backup=%s user=%s",
+                request.audit_result_id, request.skip_backup, user_id)
     try:
         result = FortiGateHardeningService.execute_manual_remediation(
             db=db,
@@ -908,6 +914,8 @@ async def execute_fortinet_hardening(
             status_value="failed", error=str(err),
         )
 
+    logger.info("FG execute: action=%s skip_backup=%s user=%s",
+                request.action_id, request.skip_backup, user_id)
     try:
         result = FortiGateHardeningService.execute_hardening(
             db=db,
@@ -1119,6 +1127,8 @@ async def auto_harden_fortinet_with_defaults(
             detail="You must confirm by setting confirmed=true after reviewing defaults"
         )
     consume_quota = consume_quota_on_success("harden")
+    logger.info("FG auto-harden: session=%s skip_backup=%s user=%s",
+                request.audit_session_id, request.skip_backup, current_user.id)
     try:
         result = FortiGateHardeningService.auto_harden_with_defaults(
             db=db,
@@ -1227,6 +1237,9 @@ async def batch_execute_fortinet_selected(
             detail="No checks selected for execution"
         )
     consume_quota = consume_quota_on_success("harden")
+    logger.info("FG batch-execute: session=%s checks=%d skip_backup=%s user=%s",
+                request.audit_session_id, len(request.check_ids),
+                request.skip_backup, current_user.id)
     try:
         result = FortiGateHardeningService.batch_execute_selected(
             db=db,
