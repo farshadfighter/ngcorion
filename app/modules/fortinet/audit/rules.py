@@ -46,6 +46,10 @@ class FortiGateRule:
     # (e.g. r"set\s+action\s+accept" so a profile check only targets accept
     # policies). When None, every entry is in scope. Used by policy_field_* rules.
     scope_pattern: Optional[str] = None
+    # Optional SECOND command collected alongside ``cmd`` for rule types that
+    # correlate two outputs (e.g. "policy_unused" joins `show firewall policy`
+    # with the per-policy byte counters from `diagnose firewall iprope list`).
+    aux_cmd: Optional[str] = None
 
 
 @dataclass
@@ -217,6 +221,11 @@ ZONE = "show system zone"
 IFACE = "show system interface"
 LOCALIN = "show firewall local-in-policy"
 POL = "show firewall policy"
+# Kernel forward-policy table (group 100004) — per-policy traffic counters
+# ("pol_stats: bytes=N(all) ..."). Read in the control's VDOM context; a policy
+# absent from it (disabled policies are unloaded from the kernel) counts as
+# 0 bytes. Used by FG-POL-001 to find disabled-AND-never-used policies.
+POLSTATS = "diagnose firewall iprope list 100004"
 IPSSENS = "show ips sensor"            # botnet C&C scanning lives here in 7.0.x
 AVSET = "show antivirus settings"
 DNSF = "show dnsfilter profile"
@@ -417,14 +426,15 @@ def get_fortinet_controls() -> List[FortiGateControl]:
                                        note="HA not configured (mode=standalone)")),
 
         # ===== 3 Policy and Objects =====
-        # `show firewall policy` → review worksheet: policy count, each Policy ID
-        # with name/status, disabled policies flagged as removal candidates.
-        # "Reviewed regularly" is a process — the check can't fail a config state,
-        # so it passes (review-flagged) whenever the table was readable; an EMPTY
-        # policy table is compliant (nothing to review), not a finding.
+        # `show firewall policy` + `diagnose firewall iprope list 100004` →
+        # NON-COMPLIANT when any policy is DISABLED and has 0 traffic bytes
+        # (never used) — those are unused policies that must be deleted. Enabled
+        # policies still get a review worksheet in the evidence. An EMPTY policy
+        # table is compliant (nothing to review), not a finding.
         _ctl("FG-POL-001", "Unused policies are reviewed regularly", "3.1", "Manual", SCOPE_VDOM, "Low", "L1",
-             [FortiGateRule(type="policy_inventory", cmd=POL, key="firewall policy")],
-             "Review policy hit counts and remove/disable unused firewall policies.",
+             [FortiGateRule(type="policy_unused", cmd=POL, key="firewall policy",
+                            aux_cmd=POLSTATS)],
+             "Per unused (disabled, 0-byte) policy:\nconfig firewall policy\n delete <policy ID>\nend",
              review_required=True),
         # `show firewall policy` → no policy's `set service` list may contain the
         # object "ALL" (exact token, ANY position — client confirmed: ALL policies

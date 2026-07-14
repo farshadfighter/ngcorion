@@ -65,11 +65,11 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             .then((data) => {
                 if (!active) return;
                 setGuidance(data);
-                // Seed the parameter form: multi-selects start with every failing
-                // target selected (they are all non-compliant); others use defaults.
+                // Seed the parameter form: multi-selects start EMPTY — the operator
+                // must explicitly tick the entries to act on; others use defaults.
                 const seed = {};
                 (data.parameters || []).forEach((p) => {
-                    seed[p.name] = p.multi ? (p.options || []) : (p.default ?? '');
+                    seed[p.name] = (p.multi || p.multi_join) ? [] : (p.default ?? '');
                 });
                 setParamValues(seed);
             })
@@ -100,9 +100,9 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             .map((s) => s.trim())
             .filter(Boolean);
 
-    // Final value used for preview + execution (multi -> array of targets).
+    // Final value used for preview + execution (multi/multi_join -> array).
     const effectiveValue = (p) => {
-        if (p.multi) return [...new Set([...multiSelected(p), ...parseExtra(p)])];
+        if (p.multi || p.multi_join) return [...new Set([...multiSelected(p), ...parseExtra(p)])];
         return (paramValues[p.name] ?? p.default ?? '').toString();
     };
 
@@ -150,7 +150,8 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     // snap to the default (if listed) or the first option.
     useEffect(() => {
         parameters.forEach((p) => {
-            if (p.source !== 'device') return;
+            // multi_join params hold arrays and start unchecked — never snap them.
+            if (p.source !== 'device' || p.multi || p.multi_join) return;
             const st = deviceState(p);
             if (st.loading || !st.options || st.error || !st.options.length) return;
             const choices = deviceChoices(p);
@@ -162,7 +163,13 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [deviceOptions]);
 
-    // Live preview; a multi parameter repeats the whole command block per target.
+    // Options parsed from audit evidence may carry a display label — "13 (Allow-Web)".
+    // Only the leading token before " (" is sent to the device (mirrors the
+    // backend's selection_object_name()).
+    const bareTarget = (t) => String(t).split(' (')[0].trim();
+
+    // Live preview; a multi parameter repeats the whole command block per target,
+    // a multi_join parameter becomes ONE quoted object list ("A" "B" "C").
     const previewCommands = useMemo(() => {
         if (!parameters.length) return commands;
         const substitute = (vals) => commands.map((line) => {
@@ -175,10 +182,24 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             return out;
         });
         const base = {};
-        parameters.forEach((p) => { if (!p.multi) base[p.name] = effectiveValue(p); });
+        parameters.forEach((p) => {
+            if (p.multi) return;
+            if (p.multi_join) {
+                const names = effectiveValue(p);
+                base[p.name] = names.length
+                    ? names.map((n) => `"${n}"`).join(' ')
+                    : `{${p.name}}`;
+            } else {
+                base[p.name] = effectiveValue(p);
+            }
+        });
         const multiParam = parameters.find((p) => p.multi);
         if (!multiParam) return substitute(base);
-        const targets = effectiveValue(multiParam);
+        // Number-type targets carry a "(name)" display label — send only the ID
+        // (the backend strips it the same way at execute time).
+        const targets = multiParam.type === 'number'
+            ? effectiveValue(multiParam).map(bareTarget)
+            : effectiveValue(multiParam);
         if (!targets.length) return substitute({ ...base, [multiParam.name]: `{${multiParam.name}}` });
         return targets.flatMap((t, i) => {
             const block = substitute({ ...base, [multiParam.name]: t });
@@ -239,7 +260,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         const missing = parameters
             .filter((p) => {
                 const v = effectiveValue(p);
-                if (p.multi) return v.length === 0;
+                if (p.multi || p.multi_join) return v.length === 0;
                 return p.required && !v.trim();
             })
             .map((p) => p.label);
@@ -271,7 +292,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         const payloadParams = {};
         parameters.forEach((p) => {
             const v = effectiveValue(p);
-            payloadParams[p.name] = p.multi ? v.join(',') : v;
+            payloadParams[p.name] = (p.multi || p.multi_join) ? v.join(',') : v;
         });
 
         setFormError(null);
@@ -391,24 +412,40 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     );
 
     // Multi-select over the failing objects parsed from the audit evidence.
+    // Nothing is pre-checked — the operator ticks the entries to act on.
     const renderEvidenceMultiParam = (p) => {
         const options = p.options ?? [];
         const selected = multiSelected(p);
         return (
             <>
                 {options.length > 0 ? (
-                    <div style={multiBoxStyle}>
-                        {options.map((o) => (
-                            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 2px', fontSize: '13px', fontWeight: 400, cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={selected.includes(o)}
-                                    onChange={() => toggleMultiValue(p, o)}
-                                />
-                                <span>{p.name === 'POLICY_ID' ? `Policy ${o}` : o}</span>
-                            </label>
-                        ))}
-                    </div>
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '2px 0 6px 0' }}>
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                                {selected.length} of {options.length} selected
+                            </span>
+                            <button type="button" style={miniBtnStyle}
+                                onClick={() => setParamValues((prev) => ({ ...prev, [p.name]: [...options] }))}>
+                                Select all
+                            </button>
+                            <button type="button" style={miniBtnStyle}
+                                onClick={() => setParamValues((prev) => ({ ...prev, [p.name]: [] }))}>
+                                Clear
+                            </button>
+                        </div>
+                        <div style={multiBoxStyle}>
+                            {options.map((o) => (
+                                <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 2px', fontSize: '13px', fontWeight: 400, cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selected.includes(o)}
+                                        onChange={() => toggleMultiValue(p, o)}
+                                    />
+                                    <span>{p.name === 'POLICY_ID' ? `Policy ${o}` : o}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </>
                 ) : (
                     <p style={{ margin: '4px 0', fontSize: '12px', color: '#b45309' }}>
                         ⚠️ No failing entries could be read from the audit evidence — enter them manually below.
@@ -445,6 +482,22 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
         }
         const choices = deviceChoices(p);
         if (st.error || choices.length === 0) {
+            if (p.multi_join) {
+                return (
+                    <>
+                        <input
+                            type="text"
+                            value={extraValues[p.name] ?? ''}
+                            onChange={(e) => setExtraValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
+                            placeholder={`Enter ${p.label} (comma-separated)`}
+                            style={inputStyle}
+                        />
+                        <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '4px' }}>
+                            ⚠️ {st.error || 'The device returned no entries.'} Enter the name(s) manually.
+                        </span>
+                    </>
+                );
+            }
             return (
                 <>
                     <input
@@ -456,6 +509,44 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     />
                     <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '4px' }}>
                         ⚠️ {st.error || 'The device returned no entries.'} Enter the name manually.
+                    </span>
+                </>
+            );
+        }
+        if (p.multi_join) {
+            const selected = multiSelected(p);
+            return (
+                <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '2px 0 6px 0' }}>
+                        <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                            {selected.length} of {choices.length} selected
+                        </span>
+                        <button type="button" style={miniBtnStyle}
+                            onClick={() => setParamValues((prev) => ({ ...prev, [p.name]: [] }))}>
+                            Clear
+                        </button>
+                    </div>
+                    <div style={multiBoxStyle}>
+                        {choices.map((o) => (
+                            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 2px', fontSize: '13px', fontWeight: 400, cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selected.includes(o)}
+                                    onChange={() => toggleMultiValue(p, o)}
+                                />
+                                <span>{o}</span>
+                            </label>
+                        ))}
+                    </div>
+                    <input
+                        type="text"
+                        value={extraValues[p.name] ?? ''}
+                        onChange={(e) => setExtraValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
+                        placeholder="Add other names not listed (comma-separated, optional)"
+                        style={{ ...inputStyle, marginTop: '6px' }}
+                    />
+                    <span style={{ fontSize: '12px', color: '#166534', display: 'block', marginTop: '4px' }}>
+                        Selected names are combined into one object list on the command line.
                     </span>
                 </>
             );
@@ -478,7 +569,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 <div key={p.name} className="hardening-form-group">
                     <label>
                         {p.label}
-                        {p.required || p.multi ? <span className="hardening-required">*</span>
+                        {p.required || p.multi || p.multi_join ? <span className="hardening-required">*</span>
                                     : <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>(optional)</span>}
                         {p.source === 'audit_evidence' && <span style={{ ...sourceTag, background: '#fef3c7', color: '#92400e' }}>from audit</span>}
                         {p.source === 'device' && <span style={{ ...sourceTag, background: '#dbeafe', color: '#1e40af' }}>from device</span>}
@@ -728,12 +819,23 @@ const inputStyle = {
 const multiBoxStyle = {
     width: '450px',
     maxWidth: '100%',
-    maxHeight: '180px',
+    maxHeight: '280px',
     overflowY: 'auto',
     padding: '8px 12px',
     border: '1px solid #d1d5db',
     borderRadius: '6px',
     background: 'white',
+};
+
+const miniBtnStyle = {
+    padding: '2px 10px',
+    background: '#eef2f7',
+    color: '#1e3a5f',
+    border: '1px solid #dbe3ee',
+    borderRadius: '999px',
+    fontSize: '11px',
+    fontWeight: 600,
+    cursor: 'pointer',
 };
 
 export default ViewFixModal;

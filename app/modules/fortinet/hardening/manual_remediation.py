@@ -57,6 +57,11 @@ class ManualParam:
     option_type: Optional[str] = None       # DEVICE_OPTION_TYPES key (source="device")
     evidence_parser: Optional[str] = None   # "policy_ids" | "table_names" (source="audit_evidence")
     multi: bool = False                     # multi-select; the block repeats per value
+    # Multi-select whose values are joined into ONE substitution as a quoted
+    # FortiOS object list (`set service "A" "B"`), instead of repeating the
+    # block per value like ``multi``. The template token must be UNQUOTED
+    # (``set service {SERVICE}``) — quoting is added per object here.
+    multi_join: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -72,6 +77,7 @@ class ManualParam:
             "source": self.source,
             "option_type": self.option_type,
             "multi": self.multi,
+            "multi_join": self.multi_join,
         }
 
 
@@ -316,20 +322,34 @@ MANUAL_REMEDIATION_TEMPLATES: Dict[str, ManualRemediation] = {
     ),
 
     # ===== 3 Policy =====
+    "FG-POL-001": ManualRemediation(  # 3.1 delete unused (disabled, 0-byte) policies
+        commands=["config firewall policy", "delete {POLICY_ID}", "end"],
+        parameters=[
+            _P("POLICY_ID", "Policy ID(s)", input_type="number", placeholder="1",
+               description="Unused policies — disabled with 0 traffic bytes (from the "
+                           "audit evidence) — to DELETE from the device.",
+               source="audit_evidence", evidence_parser="policy_ids", multi=True),
+        ],
+        warnings=["DELETES each selected firewall policy PERMANENTLY — this cannot be "
+                  "undone from the app. Take a configuration backup first.",
+                  "Only delete policies you have confirmed are unused; a disabled "
+                  "policy may have been switched off temporarily."],
+    ),
     "FG-BL-080": ManualRemediation(  # 3.2 no 'ALL' as Service
         commands=["config firewall policy", "edit {POLICY_ID}",
-                  'set service "{SERVICE}"', "next", "end"],
+                  "set service {SERVICE}", "next", "end"],
         parameters=[
             _P("POLICY_ID", "Policy ID(s)", input_type="number", placeholder="1",
                description="Policies using 'ALL' as Service (from the audit evidence).",
                source="audit_evidence", evidence_parser="policy_ids", multi=True),
-            _P("SERVICE", "Replacement service", placeholder="HTTPS",
-               description="Service object that replaces ALL (fetched from the device).",
-               source="device", option_type="services"),
+            _P("SERVICE", "Replacement service(s)", placeholder="HTTPS",
+               description="Service object(s) that replace ALL (fetched from the "
+                           "device) — select every service the policy needs.",
+               source="device", option_type="services", multi_join=True),
         ],
         warnings=["REPLACES each selected policy's entire service list with the chosen "
-                  "service — traffic on any other service will no longer match the "
-                  "policy. Pick the service the policy actually needs."],
+                  "service(s) — traffic on any other service will no longer match the "
+                  "policy. Select every service the policy actually needs."],
     ),
     "FG-POL-002": ManualRemediation(  # 3.3 ISDB deny policy (Tor/malicious/scanner)
         commands=["config firewall policy", "edit 0",
@@ -509,8 +529,12 @@ class ManualParameterError(ValueError):
 
 # Evidence parsers (source="audit_evidence"). These match the evidence strings
 # built by app/modules/fortinet/audit/service.py:
-#   policy_ids         -> `_policy_field_evidence`: one "Policy ID <id>: ..." line
-#                         per failing policy (policy_field_eq/_present rules).
+#   policy_ids         -> `_policy_field_evidence` / `_policy_unused_report`: one
+#                         "Policy ID <id> (<name>): ..." line per failing policy
+#                         (policy_field_* and policy_unused rules; older results
+#                         have the bare "Policy ID <id>:" form). The option keeps
+#                         the "<id> (<name>)" label; only the leading ID is used
+#                         at execute time (selection_object_name).
 #   table_names        -> `_table_evidence_line` for table_all_match: the failing
 #                         entry names after "missing '<label>':" up to
 #                         "(NON-COMPLIANT)".
@@ -521,7 +545,7 @@ class ManualParameterError(ValueError):
 #                         "wan1 (http ssh)" — space-separated, because the comma
 #                         is the multi-select join character; only the leading
 #                         name is used at execute time (selection_object_name).
-_POLICY_ID_RE = re.compile(r"Policy ID (\S+?):")
+_POLICY_ID_RE = re.compile(r"Policy ID ([^:\n]+?):")
 _TABLE_MISSING_RE = re.compile(r"missing '[^']*':\s*(.+?)\s*\(NON-COMPLIANT\)",
                                re.IGNORECASE | re.DOTALL)
 _WAN_IFACE_EXPOSED_RE = re.compile(
@@ -574,9 +598,6 @@ def _validate_param_value(spec: ManualParam, value: str) -> None:
         raise ManualParameterError(f"Invalid value for {spec.label}: '{value}' is not a number")
 
 
-_MULTI_SPLIT_RE = re.compile(r"[,\s]+")
-
-
 def _substitute(commands: List[str], resolved: Dict[str, str]) -> List[str]:
     rendered: List[str] = []
     for line in commands:
@@ -624,6 +645,22 @@ def render_manual_command_blocks(
             else:
                 val = ""
         val = str(val).strip()
+        if spec.multi_join:
+            # Comma-separated selection -> one quoted FortiOS object list
+            # (`"HTTPS" "SSH"`); the template token must be unquoted.
+            names = list(dict.fromkeys(v.strip() for v in val.split(",") if v.strip()))
+            if not names:
+                if spec.required:
+                    missing.append(f"{spec.label} (select at least one)")
+                resolved[spec.name] = ""
+                continue
+            for name in names:
+                _validate_param_value(spec, name)
+                if '"' in name:
+                    raise ManualParameterError(
+                        f"Invalid value for {spec.label}: quotes are not allowed")
+            resolved[spec.name] = " ".join(f'"{n}"' for n in names)
+            continue
         if val:
             _validate_param_value(spec, val)
         resolved[spec.name] = val
@@ -637,10 +674,14 @@ def render_manual_command_blocks(
         return [(None, _substitute(rem.commands, resolved))]
 
     raw = str(params.get(multi_spec.name) or "").strip()
-    # Numeric targets (policy IDs) split on commas/whitespace; string targets
-    # (zone names may contain spaces) split on commas only.
+    # Numeric targets (policy IDs) split on commas, then each selection is
+    # reduced to its leading object name — evidence-derived options carry a
+    # display label ("13 (Allow-Web)" -> "13"). Bare space-separated input
+    # ("1 2 3") still works via the whitespace fallback. String targets (zone
+    # names may contain spaces) split on commas only.
     if multi_spec.input_type == "number":
-        targets = [v for v in _MULTI_SPLIT_RE.split(raw) if v]
+        targets = [t for seg in raw.split(",")
+                   for t in selection_object_name(seg.strip()).split() if t]
     else:
         targets = [v.strip() for v in raw.split(",") if v.strip()]
     if not targets:

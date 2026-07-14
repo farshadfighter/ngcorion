@@ -59,7 +59,7 @@ _WAN_FORBIDDEN_SERVICES = ("http", "https", "ssh", "telnet")
 _DETAILED_RULE_TYPES = frozenset({
     "wan_mgmt_exposed", "iface_allowaccess_excludes",
     "policy_field_eq", "policy_field_present", "policy_field_forbidden_token",
-    "policy_inventory", "isdb_deny_present",
+    "policy_unused", "isdb_deny_present",
 })
 
 
@@ -625,15 +625,24 @@ def _field_value_tokens(value: Optional[str]) -> List[str]:
     return [q or b for q, b in re.findall(r'"([^"]*)"|(\S+)', value)]
 
 
+def _policy_label(entry: Dict[str, str]) -> str:
+    """Human-readable policy reference for evidence lines: ``"13 (Allow-Web)"``
+    (or bare ``"13"`` for unnamed policies). The leading ID is what the
+    hardening UI extracts back out (see manual_remediation._POLICY_ID_RE /
+    selection_object_name), so it must always come first."""
+    name = _entry_field_value(entry["body"], "name")
+    return f"{entry['name']} ({name})" if name else str(entry["name"])
+
+
 def _policy_field_failures(rule, output: str) -> tuple:
     """
     Evaluate a ``policy_field_eq`` / ``policy_field_present`` /
     ``policy_field_forbidden_token`` rule per policy.
 
     Returns ``(failures, in_scope_count, error)`` where ``failures`` is a list of
-    ``{"name", "value"}`` for each in-scope policy that violates the rule and
-    ``error`` is a message when the policy output could not be read at all
-    (so the verdict can fail closed rather than silently pass).
+    ``{"name", "label", "value"}`` for each in-scope policy that violates the
+    rule and ``error`` is a message when the policy output could not be read at
+    all (so the verdict can fail closed rather than silently pass).
     """
     if (output or "").lstrip().lower().startswith("__error__"):
         return [], 0, "could not read firewall policies (collection error)"
@@ -644,7 +653,7 @@ def _policy_field_failures(rule, output: str) -> tuple:
         val = _entry_field_value(e["body"], rule.key)
         if rule.type == "policy_field_eq":
             if val is None or _norm_field(val) != _norm_field(str(rule.expected)):
-                failures.append({"name": e["name"], "value": val})
+                failures.append({"name": e["name"], "label": _policy_label(e), "value": val})
         elif rule.type == "policy_field_forbidden_token":
             # The field's object LIST must not contain the forbidden object as an
             # exact token in ANY position ("ALL" matches; "ALL_TCP" does not).
@@ -653,10 +662,10 @@ def _policy_field_failures(rule, output: str) -> tuple:
             raw = _entry_field_raw(e["body"], rule.key)
             tokens = _field_value_tokens(raw)
             if any(t.upper() == str(rule.expected).upper() for t in tokens):
-                failures.append({"name": e["name"], "value": raw})
+                failures.append({"name": e["name"], "label": _policy_label(e), "value": raw})
         else:  # policy_field_present
             if not val:
-                failures.append({"name": e["name"], "value": val})
+                failures.append({"name": e["name"], "label": _policy_label(e), "value": val})
     return failures, len(in_scope), None
 
 
@@ -670,7 +679,7 @@ def _policy_field_evidence(rule, output: str) -> str:
         if not failures:
             return f"{scope_n} policies; all have {rule.key} = {rule.expected} (COMPLIANT)"
         lines = [
-            f"Policy ID {f['name']}: {rule.key} = "
+            f"Policy ID {f['label']}: {rule.key} = "
             f"{f['value'] if f['value'] is not None else '<not set>'} (NON-COMPLIANT)"
             for f in failures
         ]
@@ -683,7 +692,7 @@ def _policy_field_evidence(rule, output: str) -> str:
             # "ALL_ICMP" must appear as parsed-and-accepted, not silently skipped).
             entries = _parse_table_entries(output)
             lines = [
-                f"Policy ID {e['name']}: {rule.key} = "
+                f"Policy ID {_policy_label(e)}: {rule.key} = "
                 f"{_entry_field_raw(e['body'], rule.key) or '<not set>'} (ok)"
                 for e in entries
             ]
@@ -691,7 +700,7 @@ def _policy_field_evidence(rule, output: str) -> str:
                     f"(COMPLIANT):\n" + "\n".join(lines)) if lines else \
                    f"0 policies configured (COMPLIANT)"
         lines = [
-            f"Policy ID {f['name']}: {rule.key} = {f['value']} (NON-COMPLIANT)"
+            f"Policy ID {f['label']}: {rule.key} = {f['value']} (NON-COMPLIANT)"
             for f in failures
         ]
         return (f"{len(failures)}/{scope_n} policies use '{rule.expected}' as "
@@ -700,42 +709,109 @@ def _policy_field_evidence(rule, output: str) -> str:
     # policy_field_present
     if not failures:
         return f"{scope_n} accept policies; all have {rule.key} (COMPLIANT)"
-    lines = [f"Policy ID {f['name']}: missing {rule.key} (NON-COMPLIANT)" for f in failures]
+    lines = [f"Policy ID {f['label']}: missing {rule.key} (NON-COMPLIANT)" for f in failures]
     return (f"{len(failures)}/{scope_n} accept policies missing {rule.key}:\n"
             + "\n".join(lines))
 
 
 # ---------------------------------------------------------------------------
-# 3.1 policy review worksheet & 3.3 ISDB deny detection
+# 3.1 unused-policy detection & 3.3 ISDB deny detection
 # ---------------------------------------------------------------------------
-def _policy_inventory_report(output: str) -> Tuple[bool, str]:
-    """
-    FG-POL-001 (CIS 3.1): "unused policies reviewed regularly" is a process, not
-    a config state — so the check passes whenever the policy table was readable
-    and instead produces a review WORKSHEET: total count, each Policy ID with
-    name/status, disabled policies called out as removal candidates. An empty
-    policy table is compliant (nothing to review), not a finding.
+# One kernel policy block in `diagnose firewall iprope list 100004` starts with
+# "policy index=<policy ID>" and carries its traffic counters in a
+# "pol_stats: bytes=N(all) packets=N(all), ..." line.
+_IPROPE_POLICY_ID_RE = re.compile(r"policy\s+index\s*=\s*(\d+)", re.IGNORECASE)
+_IPROPE_BYTES_RE = re.compile(r"\bbytes\s*[=:]\s*(\d+)", re.IGNORECASE)
 
-    Returns ``(passed, evidence)``; fails closed when the table couldn't be read.
+
+def _parse_policy_bytes(stats_output: str) -> Optional[Dict[str, int]]:
     """
+    Parse ``diagnose firewall iprope list 100004`` into ``{policy_id: bytes}``.
+
+    Returns ``None`` when the output is missing/rejected/unparseable — the
+    caller then treats byte counters as unavailable (0) rather than trusting a
+    bad read.
+    """
+    out = (stats_output or "").strip()
+    if not out or out.lower().startswith("__error__"):
+        return None
+    counters: Dict[str, int] = {}
+    current_id: Optional[str] = None
+    for line in out.splitlines():
+        m_id = _IPROPE_POLICY_ID_RE.search(line)
+        if m_id:
+            current_id = m_id.group(1)
+            counters.setdefault(current_id, 0)
+            continue
+        if current_id is not None:
+            m_bytes = _IPROPE_BYTES_RE.search(line)
+            if m_bytes:
+                counters[current_id] = max(counters[current_id], int(m_bytes.group(1)))
+    return counters if counters else None
+
+
+def _policy_unused_report(rule, outputs: Dict[str, str]) -> Tuple[bool, str]:
+    """
+    FG-POL-001 (CIS 3.1): a policy that is DISABLED (``set status disable``) and
+    has 0 traffic bytes (per the kernel counters, ``rule.aux_cmd``) was never
+    used — it is an unused policy and the check FAILS, listing each one as a
+    deletion candidate. Disabled policies are unloaded from the kernel table, so
+    a policy absent from the counters counts as 0 bytes; an unreadable counter
+    read degrades the same way (noted in the evidence) instead of passing.
+
+    Only failing policies get the ``Policy ID <id> (<name>):`` line prefix —
+    that is what the hardening UI parses into the delete multi-select — the
+    review worksheet for the remaining policies uses a different shape.
+
+    Returns ``(passed, evidence)``; fails closed when the policy table couldn't
+    be read. An empty policy table is compliant (nothing to review).
+    """
+    output = outputs.get(rule.cmd, "")
     if not (output or "").strip() or output.lstrip().lower().startswith("__error__"):
         return False, "could not read firewall policies - unable to verify (NON-COMPLIANT)"
     entries = _parse_table_entries(output)
     if not entries:
         return True, "0 firewall policies configured - nothing to review (COMPLIANT)"
-    lines: List[str] = []
-    disabled = 0
+
+    counters = _parse_policy_bytes(outputs.get(rule.aux_cmd, "") if rule.aux_cmd else "")
+    counters_note = ""
+    if counters is None:
+        counters_note = ("byte counters could not be read from the device "
+                         "(diagnose firewall iprope list 100004) — disabled "
+                         "policies are treated as 0 bytes")
+
+    unused: List[str] = []      # "Policy ID <label>: ..." lines (parseable)
+    worksheet: List[str] = []   # non-parseable review lines for the rest
     for e in entries:
-        name = _entry_field_value(e["body"], "name") or "<unnamed>"
+        label = _policy_label(e)
         status = (_entry_field_value(e["body"], "status") or "enable").lower()
-        if status == "disable":
-            disabled += 1
-            lines.append(f"Policy ID {e['name']}: {name} - DISABLED (review for removal)")
+        pbytes = (counters or {}).get(str(e["name"]), 0)
+        shown_bytes = pbytes if counters is not None else "unknown"
+        if status == "disable" and pbytes == 0:
+            unused.append(f"Policy ID {label}: status=disable, bytes=0 "
+                          f"(NON-COMPLIANT — unused, candidate for deletion)")
+        elif status == "disable":
+            worksheet.append(f"  #{label} - disabled, bytes={shown_bytes} (has past traffic; review)")
         else:
-            lines.append(f"Policy ID {e['name']}: {name} - enabled")
-    header = (f"{len(entries)} firewall policies ({disabled} disabled). Review usage "
-              f"(hit counts / last-used in GUI) and remove or disable unused ones:")
-    return True, header + "\n" + "\n".join(lines)
+            worksheet.append(f"  #{label} - enabled, bytes={shown_bytes}")
+
+    if unused:
+        header = (f"{len(unused)}/{len(entries)} policies are disabled with 0 traffic "
+                  f"bytes — unused, delete them:")
+        parts = [header] + unused
+        if counters_note:
+            parts.append(f"NOTE: {counters_note}.")
+        parts.append(f"Remaining {len(entries) - len(unused)} policies "
+                     f"(review usage / hit counts in the GUI):")
+        parts.extend(worksheet)
+        return False, "\n".join(parts)
+
+    header = (f"{len(entries)} firewall policies; none is disabled with 0 traffic bytes "
+              f"(COMPLIANT). Review usage and remove or disable unused ones:")
+    parts = [header] + worksheet
+    if counters_note:
+        parts.append(f"NOTE: {counters_note}.")
+    return True, "\n".join(parts)
 
 
 # 7.0.x ISDB reference fields on a firewall policy (destination and source
@@ -910,11 +986,8 @@ class FortinetAuditService:
                 failures, _scope_n, error = _policy_field_failures(rule, output)
                 return not error and not failures
 
-            if rule.type == "policy_inventory":
-                # 3.1 review worksheet: passes when the policy table was readable
-                # (incl. empty table); the value is in the per-policy evidence.
-                passed, _ = _policy_inventory_report(output)
-                return passed
+            # "policy_unused" (3.1) correlates TWO command outputs and is
+            # evaluated at the control level in _evaluate_control, not here.
 
             if rule.type == "isdb_deny_present":
                 # 3.3: at least one DENY policy referencing Tor/Malicious/Scanner/
@@ -1020,8 +1093,8 @@ class FortinetAuditService:
                              "policy_field_forbidden_token"):
                 lines.append(_policy_field_evidence(rule, out))
                 continue
-            if rule.type == "policy_inventory":
-                lines.append(_policy_inventory_report(out)[1])
+            if rule.type == "policy_unused":
+                lines.append(_policy_unused_report(rule, outputs)[1])
                 continue
             if rule.type == "isdb_deny_present":
                 lines.append(_isdb_deny_evidence(rule, out))
@@ -1093,9 +1166,12 @@ class FortinetAuditService:
         evidence = sep.join(x.strip() for x in lines if x and x.strip())
         if not evidence:
             evidence = "No matching configuration found"
-        # Detailed reports get a larger budget (many Policy IDs); the cap leaves
-        # headroom under the 4000-char column for a prepended review banner.
-        cap = 3600 if detailed else 500
+        # Detailed reports must NEVER drop entries: the hardening UI parses the
+        # failing Policy IDs out of this evidence, so truncating it silently
+        # hides policies from the fix multi-select (a device with 133 failing
+        # policies used to lose everything past ~70). The column is TEXT, so the
+        # cap is only a runaway guard, not a budget.
+        cap = 60_000 if detailed else 500
         return evidence[:cap - 3] + "..." if len(evidence) > cap else evidence
 
     @staticmethod
@@ -1130,8 +1206,16 @@ class FortinetAuditService:
         else:
             # "any" for controls whose setting has >1 build-specific spelling
             # (compliant if EITHER form is enabled); "all" (AND) otherwise.
+            # "policy_unused" correlates two command outputs (policy table +
+            # kernel byte counters), so it is evaluated here with the full
+            # outputs dict instead of inside the single-output _evaluate_rule.
+            def _rule_passed(r: FortiGateRule) -> bool:
+                if r.type == "policy_unused":
+                    return _policy_unused_report(r, outputs)[0]
+                return cls._evaluate_rule(r, outputs.get(r.cmd, ""))
+
             combiner = any if control.rule_combine == "any" else all
-            passed = combiner(cls._evaluate_rule(r, outputs.get(r.cmd, "")) for r in control.rules)
+            passed = combiner(_rule_passed(r) for r in control.rules)
             # Evidence formatting must never fail the whole audit: a single
             # control's edge case (unexpected real-device output shape) should
             # degrade to a placeholder, not raise a 500. The PASS/FAIL above is
@@ -1172,9 +1256,10 @@ class FortinetAuditService:
         seen, cmds = set(), []
         for c in controls:
             for r in c.rules:
-                if r.cmd not in seen:
-                    seen.add(r.cmd)
-                    cmds.append(r.cmd)
+                for cmd in (r.cmd, r.aux_cmd):
+                    if cmd and cmd not in seen:
+                        seen.add(cmd)
+                        cmds.append(cmd)
         return cmds
 
     @staticmethod
@@ -1362,9 +1447,11 @@ class FortinetAuditService:
                 level=f["level"],
                 vdom=f["vdom"],
                 status=status,
-                # Cap is generous so the FG-BL-050 NON-COMPLIANT report can carry
-                # the full multi-line SNMPv3 remediation guide. Column is TEXT.
-                evidence_snippet=(f["evidence"][:4000] if f["evidence"] else None),
+                # Column is TEXT; the slice is only a runaway guard. Must stay
+                # above the per-policy evidence cap (60k) — the hardening UI
+                # parses failing Policy IDs from this field, so truncation here
+                # silently hides policies from the fix multi-select.
+                evidence_snippet=(f["evidence"][:65_000] if f["evidence"] else None),
                 checked_at=datetime.now(timezone.utc),
             ))
             if len(results) >= cls.BATCH_SIZE:

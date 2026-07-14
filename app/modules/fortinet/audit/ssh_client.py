@@ -737,8 +737,17 @@ class FortiGateSSHClient:
             # handling: `config global` on VDOM-enabled devices, top level on
             # flat devices (see _run_operational). Config reads run inside the
             # requested scope as usual.
-            operational = [c for c in to_run if _is_operational_command(c)]
-            config_cmds = [c for c in to_run if not _is_operational_command(c)]
+            #
+            # EXCEPTION: for a VDOM scope on a VDOM-enabled device, operational
+            # commands run INSIDE the `config vdom / edit <name>` context with
+            # the config reads — diagnostics like `diagnose firewall iprope
+            # list` read per-VDOM kernel state, and FortiOS accepts diagnose at
+            # the VDOM prompt. Routing them through _run_operational's global
+            # context would silently return another VDOM's data.
+            vdom_scoped = self.is_vdom_enabled() and scope in (SCOPE_VDOM, SCOPE_VDOM_ROOT)
+            operational = [c for c in to_run
+                           if _is_operational_command(c) and not vdom_scoped]
+            config_cmds = [c for c in to_run if c not in operational]
 
             if operational:
                 # A prior command block may have left the session inside a config
