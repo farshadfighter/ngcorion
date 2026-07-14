@@ -3,7 +3,7 @@
    ===================================================== */
 
 .hardening-main-container {
-    padding: 20px;
+    padding: 16px;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -14,26 +14,26 @@
 .hardening-options-container {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 40px;
-    max-width: 1000px;
-    margin: 0px auto;
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
     padding: 0 20px;
+    width: 100%;
 }
 
 .hardening-option-box {
-    min-height: 280px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     background: white;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    padding: 32px 40px;
+    padding: 22px 28px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
-    margin-bottom: 20px;
 }
 
 .hardening-option-box:hover:not(.disabled) {
@@ -48,22 +48,22 @@
 }
 
 .hardening-option-icon {
-    font-size: 60px;
-    margin-bottom: 25px;
+    font-size: 40px;
+    margin-bottom: 12px;
 }
 
 .hardening-option-title {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
-    margin-bottom: 35px;
+    margin-bottom: 10px;
 }
 
 .hardening-option-description {
-    font-size: 14px;
+    font-size: 13px;
     color: #7f8c8d;
-    margin-bottom: 35px;
-    line-height: 1.6;
+    margin-bottom: 16px;
+    line-height: 1.5;
 }
 
 .hardening-option-button {
@@ -71,8 +71,8 @@
     color: white;
     border: none;
     border-radius: 8px;
-    padding: 12px 40px;
-    font-size: 15px;
+    padding: 10px 32px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;

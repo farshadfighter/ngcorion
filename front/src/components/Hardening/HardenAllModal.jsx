@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchRequiredParameters,
@@ -21,7 +21,7 @@ import {
 } from './hardeningCredentials';
 import '../../assets/hardening/Hardenallmodal.css';
 
-const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) => {
+const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuccess }) => {
     const dispatch = useDispatch();
     const {
         requiredParameters,
@@ -34,11 +34,19 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     const [vdomEnabled, setVdomEnabled] = useState(false);
     const [createBackup, setCreateBackup] = useState(false);
 
-    const [step, setStep] = useState(1); // 1: Parameters, 2: Credentials, 3: Executing, 4: Results
+    const [step, setStep] = useState(1); // 1: Checks preview, 2: Parameters, 3: Credentials, 4: Executing, 5: Results
     const [paramValues, setParamValues] = useState({});
     const [sshCredentials, setSshCredentials] = useState(defaultCredentialsState);
     const [credErrors, setCredErrors] = useState({});
     const [executionResult, setExecutionResult] = useState(null);
+
+    // Titles for Cisco/Fortinet checks (their categorized-check lists only carry
+    // check_number + result_id) — looked up from the already-fetched results list.
+    const checksByNumber = useMemo(() => {
+        const map = {};
+        (checks || []).forEach((c) => { map[c.check_number] = c; });
+        return map;
+    }, [checks]);
 
     useEffect(() => {
         if (sessionId && deviceType) {
@@ -105,8 +113,45 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
         return Object.keys(errs).length === 0;
     };
 
+    const hasRequiredParams = () =>
+        !!requiredParameters?.required_parameters && Object.keys(requiredParameters.required_parameters).length > 0;
+
+    // Step 1 (checks preview) -> step 2 (parameters, skipped when none needed).
+    const handleNextFromChecks = () => setStep(hasRequiredParams() ? 2 : 3);
+
+    // Step 2 (parameters) -> step 3 (credentials).
     const handleNextFromParams = () => {
-        if (validateParameters()) setStep(2);
+        if (validateParameters()) setStep(3);
+    };
+
+    // Normalizes the two backend response shapes into one preview list:
+    //   Cisco/Fortinet: { auto_fixable_checks, needs_params_checks, no_template_checks }
+    //     — each entry only carries check_number + result_id, so titles are looked
+    //     up from the `checks` prop (the results list already loaded by the parent).
+    //   Linux/Apache/MongoDB/MSSQL/Windows: { failed_checks: [{check_number, check_title, has_template, ...}] }
+    const buildChecksPreview = () => {
+        const rp = requiredParameters;
+        if (!rp) return { fixable: [], skipped: [] };
+
+        if (rp.auto_fixable_checks || rp.needs_params_checks || rp.no_template_checks) {
+            const titleFor = (cn) => checksByNumber[cn]?.check_title || cn;
+            return {
+                fixable: [
+                    ...(rp.auto_fixable_checks || []).map((c) => ({ id: c.check_number, title: titleFor(c.check_number), needsParams: false })),
+                    ...(rp.needs_params_checks || []).map((c) => ({ id: c.check_number, title: titleFor(c.check_number), needsParams: true })),
+                ],
+                skipped: (rp.no_template_checks || []).map((c) => ({ id: c.check_number, title: titleFor(c.check_number), reason: c.reason || 'No remediation template' })),
+            };
+        }
+
+        if (Array.isArray(rp.failed_checks)) {
+            return {
+                fixable: rp.failed_checks.filter((c) => c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, needsParams: false })),
+                skipped: rp.failed_checks.filter((c) => !c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, reason: 'No remediation template' })),
+            };
+        }
+
+        return { fixable: [], skipped: [] };
     };
 
     // Cisco/Fortinet harden via batch-execute (below); other families use the
@@ -142,7 +187,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                 alert('No fixable checks were found for this session.');
                 return;
             }
-            setStep(3);
+            setStep(4);
             try {
                 const result = await dispatch(batchExecuteChecks({
                     sessionId,
@@ -154,16 +199,16 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                     skipBackup: !createBackup,
                 })).unwrap();
                 setExecutionResult(result);
-                setStep(4);
+                setStep(5);
             } catch (error) {
                 console.error('Error executing hardening fixes:', error);
-                setStep(2);
+                setStep(3);
             }
             return;
         }
 
         // Linux / Apache / MongoDB / MSSQL / Windows: defaults-only auto-harden.
-        setStep(3);
+        setStep(4);
         try {
             const result = await dispatch(autoHardenWithDefaults({
                 sessionId,
@@ -174,10 +219,10 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
             })).unwrap();
 
             setExecutionResult(result);
-            setStep(4);
+            setStep(5);
         } catch (error) {
             console.error('Error executing hardening fixes:', error);
-            setStep(2);
+            setStep(3);
         }
     };
 
@@ -199,6 +244,58 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
     };
 
     // ─── Renders ──────────────────────────────────────────────────────────────
+
+    // Mirrors FixSingleModal's "Commands to Execute" preview — a numbered card
+    // per check — so Fix All shows the same at-a-glance view before executing.
+    const renderChecksPreview = () => {
+        if (isFetchingParams) {
+            return (
+                <div className="hardening-modal-loading">
+                    <div className="hardening-spinner"></div>
+                    <p>Loading checks...</p>
+                </div>
+            );
+        }
+        const { fixable, skipped } = buildChecksPreview();
+        if (fixable.length === 0 && skipped.length === 0) {
+            return (
+                <div className="hardening-no-params">
+                    <p>No fixable checks were found for this session.</p>
+                </div>
+            );
+        }
+        return (
+            <div className="hardening-preview-section">
+                <h3 style={{ fontSize: '18px', color: '#1e3a5f', margin: '0 0 20px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    📋 Checks to be Hardened ({fixable.length})
+                </h3>
+                {fixable.length > 0 && (
+                    <div style={{ background: 'linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e8edf5', maxHeight: '340px', overflowY: 'auto' }}>
+                        {fixable.map((c, index) => (
+                            <div key={`${c.id}-${index}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderLeft: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)' }}>
+                                <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#1f2937' }}>{c.id}</div>
+                                    <div style={{ fontSize: '13px', color: '#4b5563', marginTop: '2px' }}>{c.title}</div>
+                                </div>
+                                {c.needsParams && (
+                                    <span style={{ flexShrink: 0, display: 'inline-block', padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}>
+                                        Needs parameters
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {skipped.length > 0 && (
+                    <div className="hardening-warnings-box" style={{ marginTop: '16px' }}>
+                        <h4>⚠️ {skipped.length} check{skipped.length === 1 ? '' : 's'} will be skipped — no automated remediation:</h4>
+                        <ul>{skipped.map((s) => <li key={s.id}>{s.id} — {s.title}</li>)}</ul>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const renderParametersForm = () => {
         if (isFetchingParams) {
@@ -335,43 +432,54 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                     </div>
                 </div>
 
-                {/* Per-check results table */}
+                {/* Per-check results — same colored-card language as the single-fix
+                    result screen, one card per check instead of one big card. */}
                 {(fixedRows.length > 0 || skippedRows.length > 0) && (
-                    <div className="result-table-wrapper" style={{ marginTop: '24px', maxHeight: '340px', overflowY: 'auto' }}>
-                        <table className="result-table">
-                            <thead>
-                                <tr>
-                                    <th>Section</th>
-                                    <th>Description</th>
-                                    <th>Result</th>
-                                    <th>Details</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {fixedRows.map((r) => (
-                                    <tr key={r.id}>
-                                        <td style={{ color: r.success ? '#1e3a5f' : '#ef4444', fontWeight: '600' }}>{r.id}</td>
-                                        <td><div className="recommendation-text">{r.title}</div></td>
-                                        <td>
-                                            {r.success
-                                                ? <span className="result-badge result-success">Fixed</span>
-                                                : <span className="result-badge result-fail">Failed</span>}
-                                        </td>
-                                        <td style={{ fontSize: '12px', color: '#6b7280', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {r.detail}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {skippedRows.map((s) => (
-                                    <tr key={s.id}>
-                                        <td style={{ color: '#9ca3af', fontWeight: '600' }}>{s.id}</td>
-                                        <td>—</td>
-                                        <td><span className="result-badge result-unknown">Skipped</span></td>
-                                        <td style={{ fontSize: '12px', color: '#9ca3af' }}>{s.reason}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {fixedRows.map((r) => (
+                            <div key={r.id} style={{
+                                display: 'flex', alignItems: 'flex-start', gap: '14px',
+                                padding: '14px 18px', borderRadius: '10px',
+                                borderLeft: r.success ? '5px solid #1e3a5f' : '5px solid #ef4444',
+                                background: r.success ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)',
+                            }}>
+                                <span style={{
+                                    background: r.success ? '#1e3a5f' : '#ef4444', color: 'white',
+                                    minWidth: '26px', height: '26px', borderRadius: '50%',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '13px', fontWeight: '700', flexShrink: 0, marginTop: '2px',
+                                }}>{r.success ? '✓' : '✗'}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 700, color: r.success ? '#1e3a5f' : '#c0392b' }}>
+                                        {r.id} <span style={{ fontWeight: 400, color: '#374151' }}>— {r.title}</span>
+                                    </div>
+                                    {r.detail && r.detail !== '—' && (
+                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', wordBreak: 'break-word' }}>{r.detail}</div>
+                                    )}
+                                </div>
+                                <span className={`result-badge ${r.success ? 'result-success' : 'result-fail'}`} style={{ flexShrink: 0 }}>
+                                    {r.success ? 'Fixed' : 'Failed'}
+                                </span>
+                            </div>
+                        ))}
+                        {skippedRows.map((s) => (
+                            <div key={s.id} style={{
+                                display: 'flex', alignItems: 'flex-start', gap: '14px',
+                                padding: '14px 18px', borderRadius: '10px',
+                                borderLeft: '5px solid #d1d5db', background: '#f9fafb',
+                            }}>
+                                <span style={{
+                                    background: '#9ca3af', color: 'white', minWidth: '26px', height: '26px',
+                                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '13px', fontWeight: 700, flexShrink: 0, marginTop: '2px',
+                                }}>⊘</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{s.id}</div>
+                                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{s.reason}</div>
+                                </div>
+                                <span className="result-badge result-unknown" style={{ flexShrink: 0 }}>Skipped</span>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>
@@ -396,43 +504,50 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, onClose, onSuccess }) 
                     <button className="hardening-modal-close" onClick={onClose}>×</button>
                 </div>
 
-                {step <= 2 && (
+                {step <= 3 && (
                     <div className="hardening-modal-info">
                         <span className="hardening-info-icon">ℹ️</span>
                         <p>
-                            {step === 1
-                                ? 'Review and configure parameters for hardening all failed checks.'
-                                : credentialStepLabel}
+                            {step === 1 && 'Review the checks that will be hardened.'}
+                            {step === 2 && 'Configure required parameters for hardening all failed checks.'}
+                            {step === 3 && credentialStepLabel}
                         </p>
                     </div>
                 )}
 
                 <div className="hardening-modal-body">
-                    {step === 1 && renderParametersForm()}
-                    {step === 2 && <>{renderCredentialsForm()}{renderBackupOption()}</>}
-                    {step === 3 && renderExecuting()}
-                    {step === 4 && renderResults()}
+                    {step === 1 && renderChecksPreview()}
+                    {step === 2 && renderParametersForm()}
+                    {step === 3 && <>{renderCredentialsForm()}{renderBackupOption()}</>}
+                    {step === 4 && renderExecuting()}
+                    {step === 5 && renderResults()}
                 </div>
 
                 <div className="hardening-modal-footer">
                     {step === 1 && (
                         <>
                             <button className="hardening-btn-secondary" onClick={onClose}>Cancel</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromParams} disabled={isFetchingParams}>Next</button>
+                            <button className="hardening-btn-primary" onClick={handleNextFromChecks} disabled={isFetchingParams}>Next</button>
                         </>
                     )}
                     {step === 2 && (
                         <>
                             <button className="hardening-btn-secondary" onClick={() => setStep(1)}>Back</button>
+                            <button className="hardening-btn-primary" onClick={handleNextFromParams}>Next</button>
+                        </>
+                    )}
+                    {step === 3 && (
+                        <>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(hasRequiredParams() ? 2 : 1)}>Back</button>
                             <button className="hardening-btn-primary" onClick={handleExecute} disabled={isExecuting}>Execute Hardening</button>
                         </>
                     )}
-                    {step === 4 && (
+                    {step === 5 && (
                         <button className="hardening-btn-primary" onClick={handleFinish}>Finish</button>
                     )}
                 </div>
 
-                {error && step !== 4 && (
+                {error && step !== 5 && (
                     <div className="hardening-error-message" style={{ margin: '16px 24px' }}>
                         <span>⚠</span>
                         <p>{typeof error === 'string' ? error : (error?.message || 'Operation failed')}</p>

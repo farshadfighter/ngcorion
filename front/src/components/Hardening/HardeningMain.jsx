@@ -48,7 +48,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
                 {/* باکس 1: Fix All Section */}
                 <div className="hardening-option-box" onClick={handleFixAllClick}>
                     <div className="hardening-option-icon" >
-                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "120px", height: "120px" }} />
+                        <img src="/icons/haedenIcon.svg" alt="" style={{ width: "64px", height: "64px" }} />
                     </div>
                     <div className="hardening-option-title">Fix all section</div>
                     <div className="hardening-option-description">
@@ -59,7 +59,7 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
 
                 {/* باکس 2: Fix Unsuccessful */}
                 <div className="hardening-option-box" onClick={handleFixUnsuccessfulClick}>
-                    <div className="hardening-option-icon" >    <img src="/icons/haedenIcon.svg" alt="" style={{ width: "120px", height: "120px" }} /></div>
+                    <div className="hardening-option-icon" >    <img src="/icons/haedenIcon.svg" alt="" style={{ width: "64px", height: "64px" }} /></div>
                     <div className="hardening-option-title">Fix Unsuccessful section</div>
                     <div className="hardening-option-description">
                         Hardening Unsuccessful section by Auditing

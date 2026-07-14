@@ -196,8 +196,8 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 </div>
 
                 {/* Tabs and Table */}
-                <div style={{ padding: '0 40px 40px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <div style={{ padding: '0 24px 24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
                                 onClick={() => setActiveTab('audit')}
@@ -294,6 +294,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     sessionId={sessionData.session_id}
                     assetId={sessionData.asset_id}
                     deviceType={sessionData.device_type}
+                    checks={cisChecks}
                     onClose={() => setShowHardenAllModal(false)}
                     onSuccess={handleModalSuccess}
                 />

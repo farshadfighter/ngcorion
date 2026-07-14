@@ -84,19 +84,19 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                 </div>
 
                 {/* Warning Box */}
-                <div style={{ padding: '40px' }}>
+                <div style={{ padding: '24px' }}>
                     <div style={{
                         background: '#f9fafb',
                         border: '1px solid #e5e7eb',
                         borderRadius: '12px',
-                        padding: '32px',
+                        padding: '20px',
                         textAlign: 'center',
-                        marginBottom: '40px'
+                        marginBottom: '20px'
                     }}>
                         <div style={{
                             fontSize: '16px',
                             color: '#374151',
-                            marginBottom: '20px',
+                            marginBottom: '14px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -217,6 +217,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     sessionId={sessionData.session_id}
                     assetId={sessionData.asset_id}
                     deviceType={sessionData.device_type}
+                    checks={cisChecks}
                     onClose={() => setShowHardenAllModal(false)}
                     onSuccess={handleModalSuccess}
                 />
