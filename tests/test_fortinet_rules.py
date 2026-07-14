@@ -459,3 +459,80 @@ def test_operational_commands_run_inside_config_global_on_vdom():
     f = Fake(vdom_enabled=False)
     f.collect(["diagnose sys ntp status"], scope=SCOPE_GLOBAL)
     assert f.sent == ["diagnose sys ntp status"]
+
+
+# ---------------------------------------------------------------------------
+# FG-POL-001 (3.1): only deletion candidates appear in the evidence
+# ---------------------------------------------------------------------------
+_POL001_RULE = BY_ID["FG-POL-001"].rules[0]
+
+_POL001_TABLE = """config firewall policy
+    edit 1
+        set name "Allow-Web"
+        set status enable
+    next
+    edit 2
+        set name "Old-Rule"
+        set status disable
+    next
+    edit 3
+        set name "Never-Hit"
+        set status enable
+    next
+    edit 4
+        set name "Busy"
+    next
+end"""
+
+# Policy 2 is disabled (unloaded from the kernel, hence absent here).
+_POL001_STATS = """policy index=1
+  pol_stats: bytes=99999(all) packets=120(all)
+policy index=3
+  pol_stats: bytes=0(all) packets=0(all)
+policy index=4
+  pol_stats: bytes=5000(all) packets=9(all)
+"""
+
+
+def _pol001(table=_POL001_TABLE, stats=_POL001_STATS):
+    from app.modules.fortinet.audit.service import _policy_unused_report
+    return _policy_unused_report(
+        _POL001_RULE, {_POL001_RULE.cmd: table, _POL001_RULE.aux_cmd: stats})
+
+
+def test_fg_pol_001_lists_only_disabled_or_zero_byte_policies():
+    passed, evidence = _pol001()
+    assert passed is False
+    # Failing: 2 (disabled) and 3 (enabled but 0 bytes).
+    assert "Policy ID 2 (Old-Rule)" in evidence
+    assert "Policy ID 3 (Never-Hit)" in evidence
+    # Compliant (enabled + bytes > 0) must not appear ANYWHERE in the evidence —
+    # the hardening UI turns these lines into the delete multi-select.
+    assert "Allow-Web" not in evidence
+    assert "Busy" not in evidence
+
+
+def test_fg_pol_001_multiselect_offers_only_failing_policies():
+    from app.modules.fortinet.hardening.manual_remediation import parse_evidence_options
+    _, evidence = _pol001()
+    assert parse_evidence_options("FG-POL-001", evidence) == {
+        "POLICY_ID": ["2 (Old-Rule)", "3 (Never-Hit)"]
+    }
+
+
+def test_fg_pol_001_compliant_evidence_lists_no_policies():
+    table = 'config firewall policy\n    edit 1\n        set name "Allow-Web"\n    next\nend'
+    passed, evidence = _pol001(table=table)
+    assert passed is True
+    assert "Allow-Web" not in evidence
+    assert "Policy ID" not in evidence
+
+
+def test_fg_pol_001_unreadable_counters_flag_only_disabled_policies():
+    # bytes == 0 is not assertable without counters: enabled policies are left
+    # alone rather than recommended for deletion on a failed read.
+    passed, evidence = _pol001(stats="__error__ command rejected")
+    assert passed is False
+    assert "Policy ID 2 (Old-Rule)" in evidence
+    assert "Never-Hit" not in evidence
+    assert "byte counters could not be read" in evidence

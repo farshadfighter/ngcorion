@@ -764,15 +764,16 @@ def _policy_unused_report(rule, outputs: Dict[str, str]) -> Tuple[bool, str]:
     ``enabled, 0 bytes (unused)``. Disabled policies are unloaded from the kernel
     table, so a policy absent from the counters counts as 0 bytes.
 
+    ONLY policies meeting a delete criterion appear in the evidence. Compliant
+    policies (enabled AND bytes > 0) are counted in the header but never listed —
+    the evidence is the deletion candidate list that the hardening UI parses into
+    its multi-select, so listing a compliant policy would offer it for deletion.
+
     Byte data is required to assert ``bytes == 0`` for an ENABLED policy. If the
     counters can't be read (``counters is None``), enabled policies are NOT
     flagged as 0-byte — recommending deletion of a possibly-active policy on a
     failed read would be unsafe — but every ``disable`` policy still FAILS on the
     status condition alone. The limitation is noted in the evidence.
-
-    Only failing policies get the ``Policy ID <id> (<name>):`` line prefix —
-    that is what the hardening UI parses into the delete multi-select — the
-    review worksheet for the remaining policies uses a different shape.
 
     Returns ``(passed, evidence)``; fails closed when the policy table couldn't
     be read. An empty policy table is compliant (nothing to review).
@@ -793,7 +794,6 @@ def _policy_unused_report(rule, outputs: Dict[str, str]) -> Tuple[bool, str]:
                          "only disabled policies are flagged")
 
     unused: List[str] = []      # "Policy ID <label>: ..." lines (parseable)
-    worksheet: List[str] = []   # non-parseable review lines for the rest
     for e in entries:
         label = _policy_label(e)
         status = (_entry_field_value(e["body"], "status") or "enable").lower()
@@ -816,8 +816,6 @@ def _policy_unused_report(rule, outputs: Dict[str, str]) -> Tuple[bool, str]:
                 reason += " (unused)"
             unused.append(f"Policy ID {label}: {reason} "
                           f"(NON-COMPLIANT — unused, candidate for deletion)")
-        else:
-            worksheet.append(f"  #{label} - enabled, bytes={shown_bytes}")
 
     if unused:
         header = (f"{len(unused)}/{len(entries)} policies are unused (disabled OR 0 "
@@ -825,14 +823,11 @@ def _policy_unused_report(rule, outputs: Dict[str, str]) -> Tuple[bool, str]:
         parts = [header] + unused
         if counters_note:
             parts.append(f"NOTE: {counters_note}.")
-        parts.append(f"Remaining {len(entries) - len(unused)} policies "
-                     f"(review usage / hit counts in the GUI):")
-        parts.extend(worksheet)
         return False, "\n".join(parts)
 
     header = (f"{len(entries)} firewall policies; none is disabled or has 0 traffic bytes "
-              f"(COMPLIANT). Review usage and remove or disable unused ones:")
-    parts = [header] + worksheet
+              f"(COMPLIANT)")
+    parts = [header]
     if counters_note:
         parts.append(f"NOTE: {counters_note}.")
     return True, "\n".join(parts)
