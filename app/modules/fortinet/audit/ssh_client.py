@@ -596,6 +596,16 @@ class FortiGateSSHClient:
         if not self.is_vdom_enabled():
             return False  # flat device: single top-level context
 
+        # `config global` / `config vdom` are only valid from the top-level
+        # (inter-VDOM) prompt. A prior command block — e.g. an earlier control in
+        # a "harden all" run whose remediation opened a config sub-context and
+        # errored before fully backing out — can leave the session one or more
+        # levels deep; issuing `config global` from there fails silently and the
+        # block that follows (e.g. FG-BL-040's NTP config, which MUST run inside
+        # `config global` on VDOM devices) never applies. Back out to the top
+        # first, mirroring what `collect()` does before operational commands.
+        self._ensure_top_level()
+
         logger.info("FG timing: scope switch -> %s (vdom=%s) on %s",
                     scope, self.effective_vdom(scope, vdom), self.host)
         if scope == SCOPE_GLOBAL:

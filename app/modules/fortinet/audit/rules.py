@@ -427,14 +427,14 @@ def get_fortinet_controls() -> List[FortiGateControl]:
 
         # ===== 3 Policy and Objects =====
         # `show firewall policy` + `diagnose firewall iprope list 100004` →
-        # NON-COMPLIANT when any policy is DISABLED and has 0 traffic bytes
-        # (never used) — those are unused policies that must be deleted. Enabled
-        # policies still get a review worksheet in the evidence. An EMPTY policy
-        # table is compliant (nothing to review), not a finding.
+        # NON-COMPLIANT when any policy is DISABLED *or* has 0 traffic bytes
+        # (never used) — those are unused policies that must be deleted. Policies
+        # that are both enabled and carry traffic get a review worksheet in the
+        # evidence. An EMPTY policy table is compliant (nothing to review).
         _ctl("FG-POL-001", "Unused policies are reviewed regularly", "3.1", "Manual", SCOPE_VDOM, "Low", "L1",
              [FortiGateRule(type="policy_unused", cmd=POL, key="firewall policy",
                             aux_cmd=POLSTATS)],
-             "Per unused (disabled, 0-byte) policy:\nconfig firewall policy\n delete <policy ID>\nend",
+             "Per unused (disabled or 0-byte) policy:\nconfig firewall policy\n delete <policy ID>\nend",
              review_required=True),
         # `show firewall policy` → no policy's `set service` list may contain the
         # object "ALL" (exact token, ANY position — client confirmed: ALL policies
