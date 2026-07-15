@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import api from '../../config/api.js';
 import BackupViewModal from './BackupViewModal.jsx';
 import NewBackupModal from './NewBackupModal.jsx';
@@ -17,6 +17,7 @@ export const BackupPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sourceFilter, setSourceFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState('all');
     const [viewId, setViewId] = useState(null);
     const [showNew, setShowNew] = useState(false);
     const [deleteId, setDeleteId] = useState(null);
@@ -49,6 +50,31 @@ export const BackupPage = () => {
         fetchBackups();
     }, [sourceFilter]);
 
+    // Device-type groups derived from the loaded backups (fortinet, cisco, …)
+    const normalizeType = (b) => (b.device_type || 'unknown').toLowerCase();
+    const deviceTypes = useMemo(() => {
+        const counts = {};
+        backups.forEach((b) => {
+            const t = normalizeType(b);
+            counts[t] = (counts[t] || 0) + 1;
+        });
+        return Object.entries(counts).sort(([a], [b]) => a.localeCompare(b));
+    }, [backups]);
+
+    // If the selected type vanished after a reload/delete, fall back to All
+    useEffect(() => {
+        if (typeFilter !== 'all' && !deviceTypes.some(([t]) => t === typeFilter)) {
+            setTypeFilter('all');
+        }
+    }, [deviceTypes, typeFilter]);
+
+    const visibleBackups = useMemo(
+        () => (typeFilter === 'all' ? backups : backups.filter((b) => normalizeType(b) === typeFilter)),
+        [backups, typeFilter]
+    );
+
+    const typeLabel = (t) => (t === 'unknown' ? 'Unknown' : t.charAt(0).toUpperCase() + t.slice(1));
+
     const handleDelete = async (id) => {
         setDeleting(true);
         try {
@@ -75,7 +101,26 @@ export const BackupPage = () => {
                 </button>
             </div>
 
-            {/* Filter Tabs */}
+            {/* Device Type Tabs */}
+            <div className="backup-filters backup-type-tabs">
+                <button
+                    onClick={() => setTypeFilter('all')}
+                    className={`backup-filter-btn ${typeFilter === 'all' ? 'active' : ''}`}
+                >
+                    All Devices <span className="backup-tab-count">{backups.length}</span>
+                </button>
+                {deviceTypes.map(([t, count]) => (
+                    <button
+                        key={t}
+                        onClick={() => setTypeFilter(t)}
+                        className={`backup-filter-btn ${typeFilter === t ? 'active' : ''}`}
+                    >
+                        {typeLabel(t)} <span className="backup-tab-count">{count}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Source Filter */}
             <div className="backup-filters">
                 {['all', 'manual', 'hardening'].map((s) => (
                     <button
@@ -101,14 +146,14 @@ export const BackupPage = () => {
                     <div className="spinner-lg" />
                     <p>Loading backups…</p>
                 </div>
-            ) : backups.length === 0 ? (
+            ) : visibleBackups.length === 0 ? (
                 <div className="backup-empty">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
                         <polyline points="17 21 17 13 7 13 7 21" />
                         <polyline points="7 3 7 8 15 8" />
                     </svg>
-                    <p>No backups found.</p>
+                    <p>{typeFilter === 'all' ? 'No backups found.' : `No ${typeLabel(typeFilter)} backups found.`}</p>
                     <p>Run a hardening job or click <strong>New Backup</strong> to get started.</p>
                 </div>
             ) : (
@@ -126,7 +171,7 @@ export const BackupPage = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {backups.map((b) => (
+                        {visibleBackups.map((b) => (
                             <tr key={b.id}>
                                 <td>
                                         <span className="backup-asset-name">

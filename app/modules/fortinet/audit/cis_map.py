@@ -55,9 +55,11 @@ CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
     {"section": "2.5.3", "recommendation": "Ensure HA Reserved Management Interface is configured", "type": "Manual", "rule_id": "FG-HA-006"},
 
     # 3 Policy and Objects
-    {"section": "3.1", "recommendation": "Ensure that unused policies are reviewed regularly", "type": "Manual", "rule_id": "FG-POL-001"},
+    # FG-POL-001 disabled per client request — hidden from audit and UI.
+    # {"section": "3.1", "recommendation": "Ensure that unused policies are reviewed regularly", "type": "Manual", "rule_id": "FG-POL-001"},
     {"section": "3.2", "recommendation": "Ensure that policies do not use 'ALL' as Service", "type": "Automated", "rule_id": "FG-BL-080"},
-    {"section": "3.3", "recommendation": "Ensure firewall policy denying all traffic to/from Tor, malicious server, or scanner IP addresses using ISDB", "type": "Manual", "rule_id": "FG-POL-002"},
+    # FG-POL-002 disabled per client request — hidden from audit and UI.
+    # {"section": "3.3", "recommendation": "Ensure firewall policy denying all traffic to/from Tor, malicious server, or scanner IP addresses using ISDB", "type": "Manual", "rule_id": "FG-POL-002"},
     {"section": "3.4", "recommendation": "Ensure logging is enabled on all firewall policies", "type": "Manual", "rule_id": "FG-BL-082"},
 
     # 4.1 Intrusion Prevention System (IPS)

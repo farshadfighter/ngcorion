@@ -47,6 +47,30 @@
     font-weight: 600;
 }
 
+/* Device-type tab row sits above the source filter */
+.backup-type-tabs {
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.backup-tab-count {
+    display: inline-block;
+    min-width: 18px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    border-radius: 9px;
+    background: #eef2f7;
+    color: #1e3a5f;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.backup-filter-btn.active .backup-tab-count {
+    background: rgba(255, 255, 255, 0.22);
+    color: white;
+}
+
 /* Table Container */
 .backup-table-container {
     background: white;

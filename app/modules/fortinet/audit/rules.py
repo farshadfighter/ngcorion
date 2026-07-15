@@ -431,11 +431,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         # (never used) — those are unused policies that must be deleted. Policies
         # that are both enabled and carry traffic get a review worksheet in the
         # evidence. An EMPTY policy table is compliant (nothing to review).
-        _ctl("FG-POL-001", "Unused policies are reviewed regularly", "3.1", "Manual", SCOPE_VDOM, "Low", "L1",
-             [FortiGateRule(type="policy_unused", cmd=POL, key="firewall policy",
-                            aux_cmd=POLSTATS)],
-             "Per unused (disabled or 0-byte) policy:\nconfig firewall policy\n delete <policy ID>\nend",
-             review_required=True),
+        # FG-POL-001 disabled per client request — do not run in audit or show in UI.
+        # _ctl("FG-POL-001", "Unused policies are reviewed regularly", "3.1", "Manual", SCOPE_VDOM, "Low", "L1",
+        #      [FortiGateRule(type="policy_unused", cmd=POL, key="firewall policy",
+        #                     aux_cmd=POLSTATS)],
+        #      "Per unused (disabled or 0-byte) policy:\nconfig firewall policy\n delete <policy ID>\nend",
+        #      review_required=True),
         # `show firewall policy` → no policy's `set service` list may contain the
         # object "ALL" (exact token, ANY position — client confirmed: ALL policies
         # including deny, per the CIS text). Exact-token match so the specific
@@ -451,11 +452,12 @@ def get_fortinet_controls() -> List[FortiGateControl]:
         # (`set internet-service(-src)-name|-id ...`, 7.0.x spelling). A mere
         # `set internet-service enable` on an accept policy (SD-WAN steering,
         # ISDB allow rules) is NOT evidence of this control.
-        _ctl("FG-POL-002", "Deny traffic to/from Tor, malicious or scanner IPs (ISDB)", "3.3", "Manual", SCOPE_VDOM, "Medium", "L1",
-             [FortiGateRule(type="isdb_deny_present", cmd=POL, key="ISDB deny policy",
-                            pattern=r"tor|malicious|scanner|botnet")],
-             "Create deny policies using Internet Service DB objects (Tor/Botnet/Scanner).",
-             review_required=True),
+        # FG-POL-002 disabled per client request — do not run in audit or show in UI.
+        # _ctl("FG-POL-002", "Deny traffic to/from Tor, malicious or scanner IPs (ISDB)", "3.3", "Manual", SCOPE_VDOM, "Medium", "L1",
+        #      [FortiGateRule(type="isdb_deny_present", cmd=POL, key="ISDB deny policy",
+        #                     pattern=r"tor|malicious|scanner|botnet")],
+        #      "Create deny policies using Internet Service DB objects (Tor/Botnet/Scanner).",
+        #      review_required=True),
         # `show firewall policy` → EVERY policy must have logtraffic explicitly set
         # to "all". Anything else (disable, utm, or unset→default) is NON-COMPLIANT;
         # the report lists each failing Policy ID with its current value.
