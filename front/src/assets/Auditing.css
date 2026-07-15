@@ -745,12 +745,23 @@ order: 1;
     color: #1e3a5f;
 }
 
-/* Statistics Cards */
+/* Statistics Cards — info cards (asset/IP/date/…) live in the container,
+   the three summary cards (Conformity / Non-Conformity / Total) get their own
+   row below so the grid never wraps into a lopsided 6+2 layout. */
 .result-stats-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
-    padding: 24px;
+    padding: 24px 24px 0;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.result-stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    padding: 16px 24px 24px;
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -798,12 +809,23 @@ order: 1;
     font-size: 16px;
     font-weight: 700;
     color: #1f2937;
+    overflow-wrap: anywhere;
 }
 
 .card-percent {
     font-size: 28px;
     font-weight: 700;
     color: #1f2937;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* "41 of 76 checks" line under the big percentage */
+.card-sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 2px;
 }
 
 .result-card-success .card-percent {
@@ -904,6 +926,46 @@ order: 1;
     color: #6b7280;
 }
 
+/* Check could not be evaluated (device error) — amber, distinct from FAIL */
+.result-error {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Scope group header rows (Global vs per-VDOM) in the hardening tables */
+.result-table tbody tr.scope-group-row td {
+    background: #eef2f6;
+    color: #1e3a5f;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 8px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.result-table tbody tr.scope-group-row:hover {
+    background: transparent;
+}
+
+.scope-group-count {
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: none;
+    letter-spacing: normal;
+    margin-left: 8px;
+}
+
+.vdom-chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    background: #e0e7ff;
+    color: #3730a3;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 /* Loading Spinner */
 .loading-spinner {
     text-align: center;
@@ -964,7 +1026,12 @@ order: 1;
 
     .result-stats-container {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        padding: 20px;
+        padding: 20px 20px 0;
+        gap: 12px;
+    }
+
+    .result-stats-summary {
+        padding: 12px 20px 20px;
         gap: 12px;
     }
 

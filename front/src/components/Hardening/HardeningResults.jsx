@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults } from "../../store/hardeningSlice";
 import HardenAllModal from "./HardenAllModal";
 import FixSingleModal from "./FixSingleModal";
+import { groupChecksByScope } from "./vdomScope";
 
 export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
@@ -58,7 +59,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     };
 
     const getStatusBadge = () => {
-        return <span className="result-badge result-unknown">unknown</span>;
+        return <span className="result-badge result-unknown">Unknown</span>;
     };
 
     const getDeviceLabel = (dt) => {
@@ -72,6 +73,11 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     };
 
     const totalChecks = cisChecks?.length || 0;
+
+    // Split into Global vs per-VDOM groups (FortiGate multi-VDOM devices tag
+    // each row with its vdom; flat devices get a single unlabeled group).
+    const { hasVdom, groups } = groupChecksByScope(cisChecks);
+    const colCount = hasVdom ? 5 : 4;
 
     return (
         <div className="modal-overlay result-modal-overlay" onClick={!showFixSingleModal && !showHardenAllModal ? onClose : undefined}>
@@ -164,6 +170,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                 <thead>
                                 <tr>
                                     <th>Section</th>
+                                    {hasVdom && <th>VDOM</th>}
                                     <th>Recommendation</th>
                                     <th>Status</th>
                                     <th style={{ width: '120px' }}>Action</th>
@@ -171,35 +178,57 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                 </thead>
                                 <tbody>
                                 {cisChecks && cisChecks.length > 0 ? (
-                                    cisChecks.map((check) => (
-                                        <tr key={check.id}>
-                                            <td style={{ color: '#6b7280', fontWeight: '600' }}>{check.check_number}</td>
-                                            <td>
-                                                <div className="recommendation-text">{check.check_title}</div>
-                                            </td>
-                                            <td>{getStatusBadge(check.status)}</td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => handleHardenSingle(check)}
-                                                    style={{
-                                                        padding: '8px 18px',
-                                                        background: '#1e3a5f',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        fontSize: '13px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
-                                                </button>
-                                            </td>
-                                        </tr>
+                                    groups.map((group) => (
+                                        <Fragment key={group.key}>
+                                            {group.label && (
+                                                <tr className="scope-group-row">
+                                                    <td colSpan={colCount}>
+                                                        {group.label}
+                                                        <span className="scope-group-count">
+                                                            {group.checks.length} check{group.checks.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {group.checks.map((check) => (
+                                                <tr key={check.id}>
+                                                    <td style={{ color: '#6b7280', fontWeight: '600' }}>{check.check_number}</td>
+                                                    {hasVdom && (
+                                                        <td>
+                                                            {check.vdom && check.vdom !== 'global'
+                                                                ? <span className="vdom-chip">{check.vdom}</span>
+                                                                : <span style={{ color: '#9ca3af' }}>—</span>}
+                                                        </td>
+                                                    )}
+                                                    <td>
+                                                        <div className="recommendation-text">{check.check_title}</div>
+                                                    </td>
+                                                    <td>{getStatusBadge(check.status)}</td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <button
+                                                            onClick={() => handleHardenSingle(check)}
+                                                            style={{
+                                                                padding: '8px 18px',
+                                                                background: '#1e3a5f',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '6px',
+                                                                fontSize: '13px',
+                                                                fontWeight: '600',
+                                                                cursor: 'pointer',
+                                                                whiteSpace: 'nowrap'
+                                                            }}
+                                                        >
+                                                            <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </Fragment>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="4" style={{ textAlign: 'center', padding: '40px' }}>
+                                        <td colSpan={colCount} style={{ textAlign: 'center', padding: '40px' }}>
                                             No checks available
                                         </td>
                                     </tr>

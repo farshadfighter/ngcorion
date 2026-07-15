@@ -1,7 +1,10 @@
 import { useEffect, useState, Fragment } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchAuditSession } from "../../store/auditSlice";
+import { getDeviceName } from "../../store/hardeningSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
+
+const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-");
 
 export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     const dispatch = useDispatch();
@@ -79,8 +82,10 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
             return <span className="result-badge result-fail">Failed</span>;
         } else if (normalizedStatus === "RUNNING") {
             return <span className="result-badge result-running">Running</span>;
+        } else if (normalizedStatus === "ERROR") {
+            return <span className="result-badge result-error">Error</span>;
         } else {
-            return <span className="result-badge result-unknown">{status || "Unknown"}</span>;
+            return <span className="result-badge result-unknown">{titleCase(status) === "-" ? "Unknown" : titleCase(status)}</span>;
         }
     };
 
@@ -95,7 +100,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     </button>
                 </div>
 
-                {/* Statistics Cards */}
+                {/* Statistics Cards — device info row, then summary row */}
                 <div className="result-stats-container">
                     <div className="result-card result-card-info">
                         <div className="card-label">Asset</div>
@@ -118,60 +123,36 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
                     <div className="result-card result-card-info">
                         <div className="card-label">Device Type</div>
-                        <div className="card-value">{sessionDetails?.device_type || "cisco"}</div>
+                        <div className="card-value">
+                            {sessionDetails?.device_type
+                                ? getDeviceName(sessionDetails.sub_device_type || sessionDetails.device_type)
+                                : "-"}
+                        </div>
                     </div>
 
                     <div className="result-card result-card-info">
                         <div className="card-label">Status</div>
-                        <div className="card-value">{sessionDetails?.status || "-"}</div>
+                        <div className="card-value">{titleCase(sessionDetails?.status)}</div>
                     </div>
+                </div>
 
+                <div className="result-stats-summary">
                     <div className="result-card result-card-success">
-                        <div className="card-percent" style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            color: '#059669',
-                            marginBottom: '8px',
-                            display: 'block',
-                            lineHeight: '1.2'
-                        }}>
-                            {conformityPercent}% | {passedChecks} of {totalChecks}
-                        </div>
-                        <div className="card-label" style={{
-                            fontSize: '14px',
-                            color: '#6b7280',
-                            fontWeight: '500',
-                            display: 'block'
-                        }}>
-                            Conformity
-                        </div>
+                        <div className="card-percent">{conformityPercent}%</div>
+                        <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
+                        <div className="card-label">Conformity</div>
                     </div>
 
                     <div className="result-card result-card-danger">
-                        <div className="card-percent" style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            color: '#dc2626',
-                            marginBottom: '8px',
-                            display: 'block',
-                            lineHeight: '1.2'
-                        }}>
-                            {nonConformityPercent}% | {failedChecks} of {totalChecks}
-                        </div>
-                        <div className="card-label" style={{
-                            fontSize: '14px',
-                            color: '#6b7280',
-                            fontWeight: '500',
-                            display: 'block'
-                        }}>
-                            Non-Conformity
-                        </div>
+                        <div className="card-percent">{nonConformityPercent}%</div>
+                        <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
+                        <div className="card-label">Non-Conformity</div>
                     </div>
 
                     <div className="result-card result-card-total">
                         <div className="card-number">{totalChecks}</div>
                         <div className="card-label">
-                            Total Condition
+                            Total Conditions
                             {otherChecks > 0 && (
                                 <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
                                     ({otherChecks} other / running)
@@ -179,7 +160,6 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                             )}
                         </div>
                     </div>
-
                 </div>
                 {/* Results Table */}
                 <div className="result-table-wrapper">
@@ -205,7 +185,13 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                         <Fragment key={result.id}>
                                             <tr>
                                                 <td>{result.check_number}</td>
-                                                {hasVdom && <td>{result.vdom || "—"}</td>}
+                                                {hasVdom && (
+                                                    <td>
+                                                        {result.vdom && result.vdom !== "global"
+                                                            ? <span className="vdom-chip">{result.vdom}</span>
+                                                            : <span style={{ color: "#6b7280" }}>{result.vdom || "—"}</span>}
+                                                    </td>
+                                                )}
                                                 <td>
                                                     <div className="recommendation-text">
                                                         {result.check_title}

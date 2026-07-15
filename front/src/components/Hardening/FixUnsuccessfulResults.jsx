@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAuditResults, fetchFortinetTemplatedChecks } from "../../store/hardeningSlice";
+import { fetchAuditResults, fetchFortinetTemplatedChecks, getDeviceName } from "../../store/hardeningSlice";
 import HardenAllModal from './HardenAllModal';
 import FixSingleModal from './FixSingleModal';
 import ViewFixModal from './ViewFixModal';
+import { groupChecksByScope } from './vdomScope';
+
+const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : null);
 
 export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
@@ -70,20 +73,21 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
     const chipStyle = {
         display: 'inline-block',
-        marginTop: '4px',
+        maxWidth: '100%',
         padding: '2px 8px',
         borderRadius: '10px',
         fontSize: '11px',
         fontWeight: 600,
-        whiteSpace: 'nowrap',
+        lineHeight: 1.4,
+        textAlign: 'left',
     };
 
     const getStatusBadge = (check) => {
         const s = check.status?.toString().toUpperCase();
         const base =
-            s === 'PASS' ? <span className="result-badge result-success">successful</span>
+            s === 'PASS' ? <span className="result-badge result-success">Successful</span>
             : s === 'FAIL' ? <span className="result-badge result-fail">Unsuccessful</span>
-            : <span className="result-badge result-unknown">unknown</span>;
+            : <span className="result-badge result-unknown">Unknown</span>;
         // Live feedback from this session's hardening (set by markCheckHardened —
         // no reload / re-audit needed to see it).
         const vdomSuffix = check.hardenedVdom ? ` (VDOM: ${check.hardenedVdom})` : '';
@@ -91,16 +95,20 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
             <>
                 {base}
                 {check.justHardened && (
-                    <span style={{ ...chipStyle, display: 'block', background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}
-                          title={`Fixed and verified in this session${vdomSuffix}`}>
-                        ✓ Hardened{vdomSuffix}
-                    </span>
+                    <div style={{ marginTop: '4px' }}>
+                        <span style={{ ...chipStyle, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}
+                              title={`Fixed and verified in this session${vdomSuffix}`}>
+                            ✓ Hardened{vdomSuffix}
+                        </span>
+                    </div>
                 )}
                 {check.manualApplied && !check.justHardened && (
-                    <span style={{ ...chipStyle, display: 'block', background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}
-                          title={`Remediation pushed to the device${vdomSuffix}; manual checks are not auto-verified`}>
-                        🛠 Applied — re-audit to verify{vdomSuffix}
-                    </span>
+                    <div style={{ marginTop: '4px' }}>
+                        <span style={{ ...chipStyle, background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}
+                              title={`Remediation pushed to the device${vdomSuffix}; manual checks are not auto-verified`}>
+                            🛠 Applied — re-audit to verify{vdomSuffix}
+                        </span>
+                    </div>
                 )}
             </>
         );
@@ -126,6 +134,11 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         ? cisChecks?.filter(c => c.status?.toString().toUpperCase() === 'FAIL')
         : cisChecks;
 
+    // Split into Global vs per-VDOM groups (FortiGate multi-VDOM audits tag
+    // each row with its vdom; flat devices get a single unlabeled group).
+    const { hasVdom, groups } = groupChecksByScope(displayedChecks);
+    const colCount = hasVdom ? 5 : 4;
+
     return (
         <div className="modal-overlay result-modal-overlay" onClick={!showFixSingleModal && !showHardenAllModal ? onClose : undefined}>
             <div className="result-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -136,30 +149,11 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     </button>
                 </div>
 
-                {/* Statistics Cards */}
+                {/* Statistics Cards — device info row, then summary row */}
                 <div className="result-stats-container">
-                    <div className="result-card result-card-success" style={{ background: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)', border: '2px solid #6ee7b7' }}>
-                        <div className="card-percent" style={{ fontSize: '32px', fontWeight: '700', color: '#059669', marginBottom: '8px' }}>
-                            {compliancePercentage}% | {passedChecks}
-                        </div>
-                        <div className="card-label">Conformity</div>
-                    </div>
-
-                    <div className="result-card result-card-danger" style={{ background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', border: '2px solid #fca5a5' }}>
-                        <div className="card-percent" style={{ fontSize: '32px', fontWeight: '700', color: '#dc2626', marginBottom: '8px' }}>
-                            {nonCompliancePercentage}% | {failedChecks}
-                        </div>
-                        <div className="card-label">Non-Conformity</div>
-                    </div>
-
-                    <div className="result-card result-card-total">
-                        <div className="card-number">{totalChecks}</div>
-                        <div className="card-label">Total Condition</div>
-                    </div>
-
-                    {/* ← fix: همه 19 device type */}
-                    <div className="result-card result-card-benchmark">
-                        <div className="card-title">{getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}</div>
+                    <div className="result-card result-card-info">
+                        <div className="card-label">Benchmark</div>
+                        <div className="card-value">{getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)} CIS</div>
                     </div>
 
                     <div className="result-card result-card-info">
@@ -181,17 +175,40 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
                     <div className="result-card result-card-info">
                         <div className="card-label">Device Type</div>
-                        <div className="card-value">{sessionData?.device_type || 'N/A'}</div>
+                        <div className="card-value">
+                            {sessionData?.device_type
+                                ? getDeviceName(sessionData.sub_device_type || sessionData.device_type)
+                                : 'N/A'}
+                        </div>
                     </div>
 
                     <div className="result-card result-card-info">
                         <div className="card-label">Status</div>
-                        <div className="card-value">{sessionData?.status || 'completed'}</div>
+                        <div className="card-value">{titleCase(sessionData?.status) || 'Completed'}</div>
                     </div>
 
                     <div className="result-card result-card-info">
                         <div className="card-label">Job Number</div>
-                        <div className="card-value">Job Number {sessionData?.session_id || 1}</div>
+                        <div className="card-value">#{sessionData?.session_id || 1}</div>
+                    </div>
+                </div>
+
+                <div className="result-stats-summary">
+                    <div className="result-card result-card-success">
+                        <div className="card-percent">{compliancePercentage}%</div>
+                        <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
+                        <div className="card-label">Conformity</div>
+                    </div>
+
+                    <div className="result-card result-card-danger">
+                        <div className="card-percent">{nonCompliancePercentage}%</div>
+                        <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
+                        <div className="card-label">Non-Conformity</div>
+                    </div>
+
+                    <div className="result-card result-card-total">
+                        <div className="card-number">{totalChecks}</div>
+                        <div className="card-label">Total Conditions</div>
                     </div>
                 </div>
 
@@ -203,7 +220,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 onClick={() => setActiveTab('audit')}
                                 style={{ padding: '10px 24px', background: activeTab === 'audit' ? '#1e3a5f' : 'white', color: activeTab === 'audit' ? 'white' : '#6b7280', border: activeTab === 'audit' ? 'none' : '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                             >
-                                Audit result
+                                Audit Result
                             </button>
                             <button
                                 onClick={() => setActiveTab('unsuccessful')}
@@ -212,21 +229,23 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 Unsuccessful Section
                             </button>
                         </div>
-                        <button
-                            onClick={handleHardenAll}
-                            disabled={failedChecks === 0}
-                            style={{ padding: '10px 24px', background: failedChecks === 0 ? '#9ca3af' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: failedChecks === 0 ? 'not-allowed' : 'pointer' }}
-                        >
-                            🛡️ Harden All
-                        </button>
-                        {onNavigateToAuditing && (
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {onNavigateToAuditing && (
+                                <button
+                                    onClick={onNavigateToAuditing}
+                                    style={{ padding: '10px 24px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+                                >
+                                    🔍 Go to Auditing
+                                </button>
+                            )}
                             <button
-                                onClick={onNavigateToAuditing}
-                                style={{ padding: '10px 24px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+                                onClick={handleHardenAll}
+                                disabled={failedChecks === 0}
+                                style={{ padding: '10px 24px', background: failedChecks === 0 ? '#9ca3af' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: failedChecks === 0 ? 'not-allowed' : 'pointer' }}
                             >
-                                🔍 Go to Auditing
+                                🛡️ Harden All
                             </button>
-                        )}
+                        </div>
                     </div>
 
                     {/* Table */}
@@ -238,6 +257,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 <thead>
                                 <tr>
                                     <th>Section</th>
+                                    {hasVdom && <th>VDOM</th>}
                                     <th>Recommendation</th>
                                     <th>Result</th>
                                     <th style={{ width: '120px' }}>Action</th>
@@ -245,38 +265,62 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 </thead>
                                 <tbody>
                                 {displayedChecks && displayedChecks.length > 0 ? (
-                                    displayedChecks.map((check) => (
-                                        <tr key={check.id}>
-                                            <td style={{ color: '#ef4444', fontWeight: '600' }}>{check.check_number}</td>
-                                            <td>
-                                                <div className="recommendation-text">{check.check_title}</div>
-                                            </td>
-                                            <td>{getStatusBadge(check)}</td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                {check.status?.toString().toUpperCase() === 'FAIL' && (
-                                                    isAutoFixable(check) ? (
-                                                        <button
-                                                            onClick={() => handleHardenSingle(check)}
-                                                            style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-                                                        >
-                                                            🛡️ Harden
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => handleViewFix(check)}
-                                                            title="No automated fix — view the manual remediation commands"
-                                                            style={{ padding: '8px 16px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-                                                        >
-                                                            📋 View Fix
-                                                        </button>
-                                                    )
-                                                )}
-                                            </td>
-                                        </tr>
+                                    groups.map((group) => (
+                                        <Fragment key={group.key}>
+                                            {group.label && (
+                                                <tr className="scope-group-row">
+                                                    <td colSpan={colCount}>
+                                                        {group.label}
+                                                        <span className="scope-group-count">
+                                                            {group.checks.length} check{group.checks.length !== 1 ? 's' : ''}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {group.checks.map((check) => (
+                                                <tr key={check.id}>
+                                                    <td style={{
+                                                        color: check.status?.toString().toUpperCase() === 'FAIL' ? '#ef4444' : '#6b7280',
+                                                        fontWeight: '600',
+                                                    }}>{check.check_number}</td>
+                                                    {hasVdom && (
+                                                        <td>
+                                                            {check.vdom && check.vdom !== 'global'
+                                                                ? <span className="vdom-chip">{check.vdom}</span>
+                                                                : <span style={{ color: '#9ca3af' }}>—</span>}
+                                                        </td>
+                                                    )}
+                                                    <td>
+                                                        <div className="recommendation-text">{check.check_title}</div>
+                                                    </td>
+                                                    <td>{getStatusBadge(check)}</td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        {check.status?.toString().toUpperCase() === 'FAIL' && (
+                                                            isAutoFixable(check) ? (
+                                                                <button
+                                                                    onClick={() => handleHardenSingle(check)}
+                                                                    style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                                >
+                                                                    🛡️ Harden
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleViewFix(check)}
+                                                                    title="No automated fix — view the manual remediation commands"
+                                                                    style={{ padding: '8px 16px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                                >
+                                                                    📋 View Fix
+                                                                </button>
+                                                            )
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </Fragment>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="4" style={{ textAlign: 'center', padding: '40px' }}>
+                                        <td colSpan={colCount} style={{ textAlign: 'center', padding: '40px' }}>
                                             {activeTab === 'unsuccessful' ? 'No unsuccessful checks' : 'No results'}
                                         </td>
                                     </tr>
