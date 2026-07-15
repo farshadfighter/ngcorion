@@ -187,10 +187,6 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                         <div className="card-value">{titleCase(sessionData?.status) || 'Completed'}</div>
                     </div>
 
-                    <div className="result-card result-card-info">
-                        <div className="card-label">Job Number</div>
-                        <div className="card-value">#{sessionData?.session_id || 1}</div>
-                    </div>
                 </div>
 
                 <div className="result-stats-summary">
