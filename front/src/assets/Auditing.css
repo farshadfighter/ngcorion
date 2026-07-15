@@ -47,7 +47,9 @@
 .auditing-table-wrapper {
     background: white;
     border-radius: 12px;
-    padding: 20px;
+    /* No top padding — see .result-table-wrapper: keeps the sticky header
+       flush so scrolling rows vanish beneath it. */
+    padding: 0 20px 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     max-height: calc(100vh - 260px);
     overflow-y: auto;
@@ -70,7 +72,8 @@
     border-bottom: 2px solid #e5e7eb;
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
+    box-shadow: 0 8px 10px -8px rgba(0, 0, 0, 0.18);
 }
 
 .auditing-table thead th:first-child {
@@ -847,7 +850,9 @@ order: 1;
 .result-table-wrapper {
     background: white;
     border-radius: 12px;
-    padding: 20px;
+    /* No top padding: the sticky thead must sit flush with the scrollport top,
+       otherwise rows stay visible in the padding band above the stuck header. */
+    padding: 0 20px 20px;
     max-width: 1400px;
     margin: 0 auto 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -872,7 +877,10 @@ order: 1;
     border-bottom: 2px solid #e5e7eb;
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
+    /* Soft falloff under the stuck header so rows fade out as they slide
+       beneath it instead of colliding with a hard edge. */
+    box-shadow: 0 8px 10px -8px rgba(0, 0, 0, 0.18);
 }
 
 .result-table thead th:first-child {
@@ -1036,11 +1044,11 @@ order: 1;
     }
 
     .result-table-wrapper {
-        padding: 16px;
+        padding: 0 16px 16px;
     }
 
     .auditing-table-wrapper {
-        padding: 16px;
+        padding: 0 16px 16px;
         overflow-x: auto;
     }
 

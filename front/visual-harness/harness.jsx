@@ -67,6 +67,22 @@ const cisChecks = [
 // FG-BL-010 / FG-BL-080 templated (auto-fixable); others manual → View Fix
 const fortinetTemplatedChecks = ["FG-BL-010", "FG-BL-080", "FG-BL-002"];
 
+// Filler rows so the table wrapper actually scrolls at small viewports
+for (let i = 0; i < 25; i++) {
+    const filler = {
+        id: 100 + i,
+        check_number: `FG-SYS-${String(i + 1).padStart(3, "0")}`,
+        check_title: `Filler check ${i + 1} — makes the table tall enough to scroll`,
+        severity: "low", level: "L1",
+        vdom: i % 3 === 0 ? "global" : "root",
+        status: i % 4 === 0 ? "FAIL" : "PASS",
+        evidence_snippet: "example evidence",
+        checked_at: "2026-07-14T10:00:00Z",
+    };
+    auditResults.push(filler);
+    cisChecks.push({ ...filler });
+}
+
 // ── Static store (thunks fire and reject against the file server; ignored) ──
 
 const store = configureStore({
@@ -109,3 +125,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <View />
     </Provider>
 );
+
+// ?scroll=N scrolls the results table wrapper after mount (sticky-header check)
+const scrollTo = parseInt(params.get("scroll") || "0", 10);
+if (scrollTo > 0) {
+    setTimeout(() => {
+        const w = document.querySelector(".result-table-wrapper");
+        if (w) w.scrollTop = scrollTo;
+    }, 500);
+}
