@@ -1243,14 +1243,15 @@ _RHEL_DISTROS = ["rhel", "rocky", "centos", "fedora", "almalinux"]
 _register(LinuxHardeningTemplate(
     check_id="LNX-RHEL-L1-1.2.3",
     description="Ensure gpgcheck is globally activated",
+    # -E + [[:space:]] tolerance: "gpgcheck = 1" is valid dnf.conf syntax.
     commands=[
-        "sed -i 's/^gpgcheck=.*/gpgcheck=1/' /etc/dnf/dnf.conf",
+        "sed -i -E 's/^gpgcheck[[:space:]]*=.*/gpgcheck=1/' /etc/dnf/dnf.conf",
         "grep -q '^gpgcheck' /etc/dnf/dnf.conf || echo 'gpgcheck=1' >> /etc/dnf/dnf.conf",
-        "for f in /etc/yum.repos.d/*.repo; do sed -i 's/^gpgcheck=.*/gpgcheck=1/' \"$f\"; done"
+        "for f in /etc/yum.repos.d/*.repo; do sed -i -E 's/^gpgcheck[[:space:]]*=.*/gpgcheck=1/' \"$f\"; done"
     ],
     verify_commands=[
-        "grep -q '^gpgcheck=1' /etc/dnf/dnf.conf && echo 'PASS' || echo 'FAIL'",
-        "grep -rq 'gpgcheck=0' /etc/yum.repos.d/ && echo 'FAIL' || echo 'PASS'"
+        "grep -Eq '^gpgcheck[[:space:]]*=[[:space:]]*1' /etc/dnf/dnf.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -rEq 'gpgcheck[[:space:]]*=[[:space:]]*0' /etc/yum.repos.d/ && echo 'FAIL' || echo 'PASS'"
     ],
     distros=_RHEL_DISTROS
 ))
@@ -1320,6 +1321,65 @@ _register(LinuxHardeningTemplate(
     verify_commands=[
         "grep -rqE '^Defaults.*logfile=' /etc/sudoers /etc/sudoers.d/ && echo 'PASS' || echo 'FAIL'"
     ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.2.7 - Ensure dnf-automatic is installed and enabled
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.2.7",
+    description="Install and enable dnf-automatic security updates",
+    commands=[
+        "dnf install -y dnf-automatic",
+        "sed -i -E 's/^apply_updates[[:space:]]*=.*/apply_updates = yes/' /etc/dnf/automatic.conf 2>/dev/null || true",
+        "systemctl enable --now dnf-automatic.timer"
+    ],
+    verify_commands=[
+        "systemctl is-enabled dnf-automatic.timer 2>/dev/null | grep -q 'enabled' && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.6.2 - Ensure SELinux is not disabled in bootloader
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.6.2",
+    description="Remove selinux=0 / enforcing=0 from the bootloader configuration",
+    commands=[
+        "grubby --update-kernel ALL --remove-args 'selinux=0 enforcing=0' 2>/dev/null || true",
+        "sed -i -E 's/\\<(selinux|enforcing)=0\\>//g' /etc/default/grub 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "grubby --info=ALL 2>/dev/null | grep -Eq 'selinux=0|enforcing=0' && echo 'FAIL' || echo 'PASS'"
+    ],
+    requires_reboot=True,
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L2-4.1.1.2 - Enable auditing before auditd starts
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L2-4.1.1.2",
+    description="Add audit=1 to the kernel command line",
+    commands=[
+        "grubby --update-kernel ALL --args 'audit=1'"
+    ],
+    verify_commands=[
+        # /proc/cmdline only changes after reboot — verify the grub entry instead.
+        "grubby --info=ALL 2>/dev/null | grep -q 'audit=1' && echo 'PASS' || echo 'FAIL'"
+    ],
+    requires_reboot=True,
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L2-4.1.1.3 - Ensure audit_backlog_limit is sufficient
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L2-4.1.1.3",
+    description="Set audit_backlog_limit on the kernel command line",
+    commands=[
+        "grubby --update-kernel ALL --args 'audit_backlog_limit={AUDIT_BACKLOG_LIMIT}'"
+    ],
+    verify_commands=[
+        "grubby --info=ALL 2>/dev/null | grep -q 'audit_backlog_limit={AUDIT_BACKLOG_LIMIT}' && echo 'PASS' || echo 'FAIL'"
+    ],
+    requires_reboot=True,
     distros=_RHEL_DISTROS
 ))
 

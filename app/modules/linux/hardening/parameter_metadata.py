@@ -207,6 +207,17 @@ LINUX_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         default="email"
     ),
 
+    "AUDIT_BACKLOG_LIMIT": ParameterMetadata(
+        name="AUDIT_BACKLOG_LIMIT",
+        input_type="number",
+        label="Audit Backlog Limit",
+        description="Kernel audit backlog buffer size (audit_backlog_limit boot parameter)",
+        required=False,
+        default="8192",
+        min_value=8192,
+        max_value=65536
+    ),
+
     # ==================== FIREWALL CONFIGURATION ====================
     "FIREWALL_DEFAULT_POLICY": ParameterMetadata(
         name="FIREWALL_DEFAULT_POLICY",
@@ -609,6 +620,8 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-RHEL-L1-1.2.3": [],                        # gpgcheck - no params
     "LNX-RHEL-L1-1.2.4": ["CRYPTO_POLICY"],         # crypto policy not LEGACY
     "LNX-RHEL-L1-1.2.5": ["CRYPTO_POLICY"],         # crypto policy no SHA1
+    "LNX-RHEL-L1-1.2.6": [],                        # RHSM registration - manual
+    "LNX-RHEL-L1-1.2.7": [],                        # dnf-automatic - no params
 
     # 1.3.x - Sudo / AIDE (RHEL)
     "LNX-RHEL-L1-1.3.1": [],                        # sudo installed - no params
@@ -623,6 +636,10 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     # 3.4.x - Firewall (RHEL)
     "LNX-RHEL-L1-3.4.2": [],                        # firewalld enabled+running - no params
 
+    # 4.1.1.x - Boot-time auditing (RHEL)
+    "LNX-RHEL-L2-4.1.1.2": [],                      # audit=1 boot param - no params
+    "LNX-RHEL-L2-4.1.1.3": ["AUDIT_BACKLOG_LIMIT"], # audit backlog limit
+
     # 5.2.x - SSH (RHEL)
     "LNX-RHEL-L1-5.2.20": [],                       # sshd crypto override removed - no params
 
@@ -631,6 +648,7 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
 
     # 1.6.x - SELinux (RHEL)
     "LNX-RHEL-L1-1.6.1": [],                        # SELinux installed - no params
+    "LNX-RHEL-L1-1.6.2": [],                        # SELinux not disabled in grub - no params
     "LNX-RHEL-L1-1.6.3": ["SELINUX_POLICY_TYPE"],   # SELinux policy type
     "LNX-RHEL-L1-1.6.5": [],                        # SELinux enforcing - no params
     "LNX-RHEL-L1-1.6.6": [],                        # unconfined services - manual

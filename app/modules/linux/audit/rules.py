@@ -1837,9 +1837,11 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         level="L1",
         rationale="Enabling GPG key checking ensures that only trusted, signed packages are installed.",
         remediation="Set 'gpgcheck=1' in /etc/dnf/dnf.conf under the [main] section.",
-        check=lambda d, p: "gpgcheck=1" in _get_output(d, "dnf_gpgcheck"),
+        # "gpgcheck = 1" (spaces around =) is valid dnf.conf syntax too.
+        check=lambda d, p: bool(re.search(r'gpgcheck\s*=\s*1', _get_output(d, "dnf_gpgcheck"))),
         evidence=lambda d, p: _get_output(d, "dnf_gpgcheck"),
         distros=_RHEL_DISTROS,
+        expected_value="gpgcheck=1 in /etc/dnf/dnf.conf",
     ))
 
     # CIS RHEL 1.2.4 - Ensure crypto policies are not set to LEGACY
@@ -1929,6 +1931,88 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         check=lambda d, p: "logfile" in _get_output(d, "sudo_logfile").lower(),
         evidence=lambda d, p: _get_output(d, "sudo_logfile"),
         distros=_RHEL_DISTROS,
+    ))
+
+    # CIS RHEL 1.2.1 - Ensure subscription manager is registered (real RHEL only)
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.2.6",
+        cis_section="1.2.6",
+        title="Ensure Red Hat Subscription Manager is registered",
+        severity="medium",
+        level="L1",
+        rationale="An unregistered RHEL system receives no security updates from Red Hat.",
+        remediation="Register the system: subscription-manager register --username <user> (manual — requires RHSM credentials)",
+        check=lambda d, p: (
+            bool(_get_output(d, "rhsm_identity").strip()) and
+            "not registered" not in _get_output(d, "rhsm_identity").lower() and
+            "not yet registered" not in _get_output(d, "rhsm_identity").lower()
+        ),
+        evidence=lambda d, p: _get_output(d, "rhsm_identity"),
+        distros=["rhel"],
+        expected_value="System registered with Red Hat Subscription Manager",
+    ))
+
+    # CIS RHEL/Rocky - Ensure automatic security updates (dnf-automatic)
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.2.7",
+        cis_section="1.2.7",
+        title="Ensure dnf-automatic is installed and enabled",
+        severity="medium",
+        level="L1",
+        rationale="Automatic updates close known vulnerabilities without operator delay.",
+        remediation="Run: dnf install -y dnf-automatic && systemctl enable --now dnf-automatic.timer",
+        check=lambda d, p: (
+            "enabled" in _get_output(d, "dnf_automatic").lower() and
+            "not enabled" not in _get_output(d, "dnf_automatic").lower()
+        ),
+        evidence=lambda d, p: _get_output(d, "dnf_automatic"),
+        distros=_RHEL_DISTROS,
+        expected_value="dnf-automatic.timer enabled",
+    ))
+
+    # CIS RHEL 1.6.2 - Ensure SELinux is not disabled in bootloader configuration
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.6.2",
+        cis_section="1.6.2",
+        title="Ensure SELinux is not disabled in bootloader configuration",
+        severity="high",
+        level="L1",
+        rationale="selinux=0 or enforcing=0 on the kernel command line disables SELinux regardless of /etc/selinux/config.",
+        remediation="Run: grubby --update-kernel ALL --remove-args 'selinux=0 enforcing=0' and remove them from /etc/default/grub",
+        check=lambda d, p: "not disabled in bootloader" in _get_output(d, "selinux_bootloader").lower(),
+        evidence=lambda d, p: _get_output(d, "selinux_bootloader"),
+        distros=_RHEL_DISTROS,
+        expected_value="No selinux=0 / enforcing=0 kernel parameters",
+    ))
+
+    # CIS RHEL 4.1.1.2 - Ensure auditing is enabled for processes prior to auditd
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L2-4.1.1.2",
+        cis_section="4.1.1.2",
+        title="Ensure auditing for processes that start prior to auditd is enabled (audit=1)",
+        severity="medium",
+        level="L2",
+        rationale="Without audit=1 on the kernel command line, processes started before auditd escape auditing.",
+        remediation="Run: grubby --update-kernel ALL --args 'audit=1' and reboot",
+        check=lambda d, p: "audit=1" in _get_output(d, "kernel_cmdline"),
+        evidence=lambda d, p: _get_output(d, "kernel_cmdline")[:400],
+        distros=_RHEL_DISTROS,
+        expected_value="audit=1 on the kernel command line",
+    ))
+
+    # CIS RHEL 4.1.1.3 - Ensure audit_backlog_limit is sufficient
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L2-4.1.1.3",
+        cis_section="4.1.1.3",
+        title="Ensure audit_backlog_limit is sufficient",
+        severity="medium",
+        level="L2",
+        rationale="A small audit backlog can drop early-boot audit records.",
+        remediation="Run: grubby --update-kernel ALL --args 'audit_backlog_limit=8192' and reboot",
+        check=lambda d, p: bool(re.search(r'audit_backlog_limit=\d+', _get_output(d, "kernel_cmdline"))),
+        evidence=lambda d, p: _get_output(d, "kernel_cmdline")[:400],
+        distros=_RHEL_DISTROS,
+        expected_value="audit_backlog_limit=8192 (or higher) on the kernel command line",
     ))
 
     # CIS RHEL/Rocky - Ensure AIDE is installed (filesystem integrity tool)

@@ -141,9 +141,11 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
     else:
         grub_cfg = "/boot/grub2/grub.cfg"
 
+    # EFI RHEL installs keep grub.cfg under /boot/efi/EFI/redhat/ — include it
+    # in the fallback chain so 1.4.x doesn't false-FAIL on EFI systems.
     commands.extend([
-        {"cmd": f"cat {grub_cfg} 2>/dev/null | head -100 || cat /boot/grub/grub.cfg 2>/dev/null | head -100 || echo 'no grub config'", "sudo": True, "key": "grub_config", "section": "1.4"},
-        {"cmd": f"stat {grub_cfg} 2>/dev/null || stat /boot/grub/grub.cfg 2>/dev/null || echo 'no grub config'", "sudo": True, "key": "grub_permissions", "section": "1.4.1"},
+        {"cmd": f"cat {grub_cfg} 2>/dev/null | head -100 || cat /boot/grub/grub.cfg 2>/dev/null | head -100 || cat /boot/efi/EFI/redhat/grub.cfg 2>/dev/null | head -100 || echo 'no grub config'", "sudo": True, "key": "grub_config", "section": "1.4"},
+        {"cmd": f"stat {grub_cfg} 2>/dev/null || stat /boot/grub/grub.cfg 2>/dev/null || stat /boot/efi/EFI/redhat/grub.cfg 2>/dev/null || echo 'no grub config'", "sudo": True, "key": "grub_permissions", "section": "1.4.1"},
         {"cmd": f"grep -E '^\\s*password' {grub_cfg} 2>/dev/null || echo 'no grub password'", "sudo": True, "key": "grub_password", "section": "1.4.2"},
         {"cmd": f"grep -E 'single|emergency' {grub_cfg} 2>/dev/null || echo 'none'", "sudo": True, "key": "grub_single_mode", "section": "1.4.3"},
     ])
@@ -504,8 +506,13 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             {"cmd": "awk -F: '($3 < 1000) {print $1\": \"$7}' /etc/passwd 2>/dev/null | grep -v '/sbin/nologin\\|/bin/false\\|halt\\|sync\\|shutdown' | head -20 || echo 'all system accounts secured'", "sudo": False, "key": "system_accounts_shell", "section": "5.4.2"},
             # Check for any remaining pam_tally2 (should not be present in RHEL 10)
             {"cmd": "grep -rE 'pam_tally2' /etc/pam.d/ 2>/dev/null | head -5 || echo 'pam_tally2 not found'", "sudo": True, "key": "pam_tally2_check", "section": "5.3"},
-            # DNF automatic updates
-            {"cmd": "systemctl is-enabled dnf-automatic.timer 2>/dev/null || systemctl is-enabled dnf-makecache.timer 2>/dev/null || echo 'dnf-automatic not enabled'", "sudo": False, "key": "dnf_automatic", "section": "1.2"},
+            # DNF automatic updates. No dnf-makecache fallback: that timer is
+            # enabled by default and would mask a missing dnf-automatic.
+            {"cmd": "systemctl is-enabled dnf-automatic.timer 2>/dev/null || echo 'not enabled'", "sudo": False, "key": "dnf_automatic", "section": "1.2.7"},
+            # 1.6.2 - SELinux must not be disabled via kernel cmdline / grub
+            {"cmd": "grep -E 'selinux=0|enforcing=0' /proc/cmdline /etc/default/grub /boot/grub2/grubenv 2>/dev/null || echo 'not disabled in bootloader'", "sudo": True, "key": "selinux_bootloader", "section": "1.6.2"},
+            # 4.1.1.2/4.1.1.3 - auditing enabled at boot
+            {"cmd": "cat /proc/cmdline 2>/dev/null || echo 'unknown'", "sudo": False, "key": "kernel_cmdline", "section": "4.1.1"},
             # 1.3.4/1.3.5 - AIDE filesystem integrity
             {"cmd": "rpm -q aide 2>/dev/null || echo 'not installed'", "sudo": False, "key": "aide_installed", "section": "1.3.4"},
             {"cmd": "grep -rs aide /etc/crontab /etc/cron.d /etc/cron.daily /var/spool/cron 2>/dev/null | head -5 || systemctl is-enabled aidecheck.timer 2>/dev/null || echo 'not scheduled'", "sudo": True, "key": "aide_cron", "section": "1.3.5"},
@@ -514,6 +521,9 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             # 5.2.20 - sshd must not override system-wide crypto policy
             {"cmd": "grep -E '^\\s*CRYPTO_POLICY=' /etc/sysconfig/sshd 2>/dev/null || echo 'not overridden'", "sudo": True, "key": "sshd_crypto_override", "section": "5.2.20"},
         ])
+        # 1.2.6 - Subscription Manager (real RHEL only; Rocky/Alma have no RHSM)
+        if distro_id == "rhel":
+            commands.append({"cmd": "subscription-manager identity 2>&1 | head -5 || echo 'not registered'", "sudo": True, "key": "rhsm_identity", "section": "1.2.6"})
 
     return commands
 
