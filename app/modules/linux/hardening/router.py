@@ -43,6 +43,7 @@ class AutoHardenRequest(BaseModel):
     ssh_password: str = Field(..., min_length=1)
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
+    dry_run: bool = Field(False, description="Preview only: return the commands that would run, without connecting or changing anything")
 
     class Config:
         json_schema_extra = {
@@ -52,7 +53,8 @@ class AutoHardenRequest(BaseModel):
                 "ssh_username": "admin",
                 "ssh_password": "********",
                 "ssh_port": 22,
-                "sudo_password": "********"
+                "sudo_password": "********",
+                "dry_run": False
             }
         }
 
@@ -72,6 +74,7 @@ class BatchExecuteRequest(BaseModel):
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
     sudo_password: Optional[str] = None
     checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
+    dry_run: bool = Field(False, description="Preview only: return the commands that would run, without connecting or changing anything")
 
     class Config:
         json_schema_extra = {
@@ -104,6 +107,7 @@ class SingleFixRequest(BaseModel):
                     "provided, skips live distro detection to speed up the fix.",
     )
     parameters: Dict[str, str] = Field(default_factory=dict, description="Parameter values")
+    dry_run: bool = Field(False, description="Preview only: return the commands that would run, without connecting or changing anything")
 
     class Config:
         json_schema_extra = {
@@ -147,7 +151,8 @@ def preview_linux_hardening(
             detail=f"No hardening template found for check {request.check_id}",
         )
 
-    params = request.parameters if request.parameters is not None else get_linux_check_defaults(request.check_id)
+    defaults = get_linux_check_defaults(request.check_id)
+    params = request.parameters if request.parameters is not None else defaults
     commands = get_linux_template_commands(request.check_id, params)
     param_meta = get_linux_parameters_for_check(request.check_id)
     required = [p.name for p in param_meta if p.required and p.default is None]
@@ -165,6 +170,9 @@ def preview_linux_hardening(
         "commands": commands,
         "required_parameters": required,
         "optional_parameters": optional,
+        # Default values keyed by parameter name — the UI pre-fills optional
+        # params from this so empty strings are never submitted.
+        "parameter_defaults": defaults,
         "warnings": warnings,
         "auto_fixable": is_linux_check_auto_fixable(request.check_id),
     }
@@ -263,7 +271,12 @@ async def auto_harden_with_defaults(
             ssh_password=request.ssh_password,
             sudo_password=request.sudo_password,
             ssh_port=request.ssh_port,
+            dry_run=request.dry_run,
         )
+
+        if request.dry_run:
+            # Nothing executed: no quota consumed, no execute outcome logged.
+            return result
 
         consume_quota(http_request)
         log_session_execute_outcome(
@@ -334,7 +347,11 @@ async def batch_execute_selected(
             sudo_password=request.sudo_password,
             checks=checks,
             ssh_port=request.ssh_port,
+            dry_run=request.dry_run,
         )
+
+        if request.dry_run:
+            return result
 
         consume_quota(http_request)
         log_session_execute_outcome(
@@ -398,7 +415,10 @@ async def execute_single_fix(
             parameters=request.parameters,
             ssh_port=request.ssh_port,
             sub_device_type=request.sub_device_type,
+            dry_run=request.dry_run,
         )
+        if request.dry_run:
+            return result
         consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(

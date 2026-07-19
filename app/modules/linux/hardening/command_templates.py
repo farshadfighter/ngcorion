@@ -490,9 +490,13 @@ _register(LinuxHardeningTemplate(
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.2.15",
     description="Limit SSH access to specific users/groups",
+    # Delete-then-append keeps the (shlex-quoted, possibly multi-word) value
+    # outside any single-quoted sed program, so "admin deploy" style lists work.
     commands=[
-        "test -n '{ALLOWED_SSH_USERS}' && (grep -q '^AllowUsers' /etc/ssh/sshd_config && sed -i 's/^AllowUsers.*/AllowUsers {ALLOWED_SSH_USERS}/' /etc/ssh/sshd_config || echo 'AllowUsers {ALLOWED_SSH_USERS}' >> /etc/ssh/sshd_config) || true",
-        "test -n '{ALLOWED_SSH_GROUPS}' && (grep -q '^AllowGroups' /etc/ssh/sshd_config && sed -i 's/^AllowGroups.*/AllowGroups {ALLOWED_SSH_GROUPS}/' /etc/ssh/sshd_config || echo 'AllowGroups {ALLOWED_SSH_GROUPS}' >> /etc/ssh/sshd_config) || true"
+        "test -n {ALLOWED_SSH_USERS} && sed -i '/^AllowUsers/d' /etc/ssh/sshd_config || true",
+        "test -n {ALLOWED_SSH_USERS} && echo AllowUsers {ALLOWED_SSH_USERS} >> /etc/ssh/sshd_config || true",
+        "test -n {ALLOWED_SSH_GROUPS} && sed -i '/^AllowGroups/d' /etc/ssh/sshd_config || true",
+        "test -n {ALLOWED_SSH_GROUPS} && echo AllowGroups {ALLOWED_SSH_GROUPS} >> /etc/ssh/sshd_config || true"
     ],
     verify_commands=[
         "grep -qE '^Allow(Users|Groups)' /etc/ssh/sshd_config && echo 'PASS' || echo 'FAIL'"
@@ -521,7 +525,8 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.4.1.1",
     description="Set password expiration to {PASS_MAX_DAYS} days",
     commands=[
-        "sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\\t{PASS_MAX_DAYS}/' /etc/login.defs"
+        "sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS\\t{PASS_MAX_DAYS}/' /etc/login.defs",
+        "grep -q '^PASS_MAX_DAYS' /etc/login.defs || printf 'PASS_MAX_DAYS\\t%s\\n' {PASS_MAX_DAYS} >> /etc/login.defs"
     ],
     verify_commands=[
         "grep -q 'PASS_MAX_DAYS.*{PASS_MAX_DAYS}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"
@@ -533,7 +538,8 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.4.1.2",
     description="Set minimum days between password changes",
     commands=[
-        "sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS\\t{PASS_MIN_DAYS}/' /etc/login.defs"
+        "sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS\\t{PASS_MIN_DAYS}/' /etc/login.defs",
+        "grep -q '^PASS_MIN_DAYS' /etc/login.defs || printf 'PASS_MIN_DAYS\\t%s\\n' {PASS_MIN_DAYS} >> /etc/login.defs"
     ],
     verify_commands=[
         "grep -q 'PASS_MIN_DAYS.*{PASS_MIN_DAYS}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"
@@ -903,12 +909,130 @@ _register(LinuxHardeningTemplate(
     requires_service_restart="sshd"
 ))
 
+# 5.2.4/5.2.5/5.2.8/5.2.9 - Remaining SSH settings with audit rules
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.4",
+    description="Ensure SSH Protocol 2 (remove any Protocol 1 setting)",
+    commands=[
+        "sed -i '/^Protocol[[:space:]]/d' /etc/ssh/sshd_config"
+    ],
+    verify_commands=["grep -q '^Protocol[[:space:]]*1' /etc/ssh/sshd_config && echo 'FAIL' || echo 'PASS'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.5",
+    description="Set SSH LogLevel to INFO",
+    commands=[
+        "sed -i 's/^#*LogLevel.*/LogLevel {SSH_LOG_LEVEL}/' /etc/ssh/sshd_config",
+        "grep -q '^LogLevel' /etc/ssh/sshd_config || echo 'LogLevel {SSH_LOG_LEVEL}' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -qiE 'loglevel (INFO|VERBOSE)' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.8",
+    description="Enable SSH IgnoreRhosts",
+    commands=[
+        "sed -i 's/^#*IgnoreRhosts.*/IgnoreRhosts yes/' /etc/ssh/sshd_config",
+        "grep -q '^IgnoreRhosts' /etc/ssh/sshd_config || echo 'IgnoreRhosts yes' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'ignorerhosts yes' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.9",
+    description="Disable SSH HostbasedAuthentication",
+    commands=[
+        "sed -i 's/^#*HostbasedAuthentication.*/HostbasedAuthentication no/' /etc/ssh/sshd_config",
+        "grep -q '^HostbasedAuthentication' /etc/ssh/sshd_config || echo 'HostbasedAuthentication no' >> /etc/ssh/sshd_config"
+    ],
+    verify_commands=["sshd -T | grep -q 'hostbasedauthentication no' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="sshd"
+))
+
+# 4.1.1.4 - journald forwarding to rsyslog disabled
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-4.1.1.4",
+    description="Disable journald forwarding to rsyslog",
+    commands=[
+        "sed -i 's/^#*ForwardToSyslog=.*/ForwardToSyslog=no/' /etc/systemd/journald.conf",
+        "grep -q '^ForwardToSyslog=' /etc/systemd/journald.conf || echo 'ForwardToSyslog=no' >> /etc/systemd/journald.conf",
+        "systemctl restart systemd-journald"
+    ],
+    verify_commands=["grep -q '^ForwardToSyslog=no' /etc/systemd/journald.conf && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="systemd-journald"
+))
+
+# 4.2.3.8-12 - Remaining auditd rule sets
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.8",
+    description="Configure audit rules for unsuccessful file access attempts",
+    commands=[
+        "cat >> /etc/audit/rules.d/access.rules << 'EOF'\n-a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access\n-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access\n-a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access\n-a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'access' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.9",
+    description="Configure audit rules for filesystem mounts",
+    commands=[
+        "cat >> /etc/audit/rules.d/mounts.rules << 'EOF'\n-a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts\n-a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'mounts' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.10",
+    description="Configure audit rules for file deletion events",
+    commands=[
+        "cat >> /etc/audit/rules.d/delete.rules << 'EOF'\n-a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete\n-a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'delete' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L2-4.2.3.12",
+    description="Configure audit rules for administrator actions (sudo log)",
+    commands=[
+        "cat >> /etc/audit/rules.d/actions.rules << 'EOF'\n-w /var/log/sudo.log -p wa -k actions\nEOF",
+        "augenrules --load 2>/dev/null || service auditd reload"
+    ],
+    verify_commands=["auditctl -l | grep -q 'actions' && echo 'PASS' || echo 'FAIL'"],
+    requires_service_restart="auditd"
+))
+
+# 1.9 - Automatic security updates (Ubuntu/Debian)
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.9",
+    description="Install and enable unattended-upgrades",
+    commands=[
+        "apt-get install -y unattended-upgrades",
+        "printf 'APT::Periodic::Update-Package-Lists \"1\";\\nAPT::Periodic::Unattended-Upgrade \"1\";\\n' > /etc/apt/apt.conf.d/20auto-upgrades",
+        "systemctl enable --now unattended-upgrades 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "dpkg -s unattended-upgrades >/dev/null 2>&1 && grep -q 'Unattended-Upgrade \"1\"' /etc/apt/apt.conf.d/20auto-upgrades && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=["ubuntu", "debian"]
+))
+
 # 5.4.1.3-5.4.1.5 - Account Policy
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.4.1.3",
     description="Set password warning age",
     commands=[
-        "sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE\\t{PASS_WARN_AGE}/' /etc/login.defs"
+        "sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE\\t{PASS_WARN_AGE}/' /etc/login.defs",
+        "grep -q '^PASS_WARN_AGE' /etc/login.defs || printf 'PASS_WARN_AGE\\t%s\\n' {PASS_WARN_AGE} >> /etc/login.defs"
     ],
     verify_commands=["grep -q 'PASS_WARN_AGE.*{PASS_WARN_AGE}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"]
 ))
@@ -926,7 +1050,8 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.4.1.5",
     description="Set default UMASK",
     commands=[
-        "sed -i 's/^UMASK.*/UMASK\\t{UMASK_VALUE}/' /etc/login.defs"
+        "sed -i 's/^UMASK.*/UMASK\\t{UMASK_VALUE}/' /etc/login.defs",
+        "grep -q '^UMASK' /etc/login.defs || printf 'UMASK\\t%s\\n' {UMASK_VALUE} >> /etc/login.defs"
     ],
     verify_commands=["grep -q 'UMASK.*{UMASK_VALUE}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"]
 ))

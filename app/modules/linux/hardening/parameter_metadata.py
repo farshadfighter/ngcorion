@@ -411,6 +411,11 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-1.2.1": [],  # Repo configured - informational
     "LNX-L1-1.2.2": [],  # GPG keys - informational
 
+    # 1.9 - Automatic updates
+    "LNX-L1-1.9": [],       # unattended-upgrades - no params
+    "LNX-INFO-1.9.1": [],   # pending updates - informational
+    "LNX-INFO-2.5": [],     # listening ports - informational
+
     # 1.3.x - MAC
     "LNX-L1-1.3.1": [],  # MAC installed - no params
     "LNX-L1-1.3.2": [],  # MAC enforcing - no params
@@ -460,8 +465,8 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-2.3.4": [],   # telnet client
     "LNX-L1-2.3.5": [],   # ldap-utils
 
-    # 2.4.x - Time sync
-    "LNX-L1-2.4.1": ["NTP_SERVER"],
+    # 2.4.x - Time sync (template installs/enables chrony; no parameters used)
+    "LNX-L1-2.4.1": [],
 
     # ==================== SECTION 3: NETWORK ====================
 
@@ -523,7 +528,7 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-5.2.1": [],   # sshd_config permissions - no params
     "LNX-L1-5.2.2": [],   # SSH host key permissions - no params
     "LNX-L1-5.2.4": [],   # SSH Protocol - no params
-    "LNX-L1-5.2.5": [],   # SSH LogLevel - no params
+    "LNX-L1-5.2.5": ["SSH_LOG_LEVEL"],
     "LNX-L1-5.2.6": [],   # X11 forwarding - no params
     "LNX-L1-5.2.7": ["SSH_MAX_AUTH_TRIES"],
     "LNX-L1-5.2.8": [],   # IgnoreRhosts - no params
@@ -666,16 +671,28 @@ def get_linux_check_defaults(check_number: str) -> Dict[str, str]:
     }
 
 
+def _has_hardening_template(check_number: str) -> bool:
+    """True when a remediation template is registered for this check."""
+    # Imported lazily/locally to keep module import order flexible
+    # (command_templates does not import this module, so no cycle).
+    from .command_templates import LINUX_HARDENING_TEMPLATES
+    return check_number in LINUX_HARDENING_TEMPLATES
+
+
 def is_linux_check_auto_fixable(check_number: str) -> bool:
     """
     Determine if a check can be auto-fixed with defaults only.
 
     A check is auto-fixable if:
-    - It has no parameters, OR
-    - All its parameters have default values
+    - A hardening template exists for it, AND
+    - It has no parameters, or all its parameters have default values.
+
+    (Param-map membership alone is NOT enough: informational/manual checks are
+    listed there for UI metadata but have no remediation template.)
     """
-    # Check if it's in our map
     if check_number not in LINUX_CHECK_PARAMETER_MAP:
+        return False
+    if not _has_hardening_template(check_number):
         return False
 
     params = get_linux_parameters_for_check(check_number)
@@ -725,7 +742,8 @@ def categorize_linux_checks_by_fixability(check_numbers: List[str]) -> Dict[str,
     not_supported = []
 
     for check_number in check_numbers:
-        if check_number not in LINUX_CHECK_PARAMETER_MAP:
+        if (check_number not in LINUX_CHECK_PARAMETER_MAP
+                or not _has_hardening_template(check_number)):
             not_supported.append(check_number)
         elif is_linux_check_auto_fixable(check_number):
             auto_fixable.append(check_number)

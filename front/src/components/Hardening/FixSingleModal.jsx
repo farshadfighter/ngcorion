@@ -14,6 +14,7 @@ import { vdomBadgeLabel, scopeWrapper } from './vdomScope';
 import {
     isCisco,
     isFortinet,
+    isLinux,
     defaultCredentialsState,
     validateCredentials,
     buildCredentials,
@@ -39,6 +40,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
     const [credErrors, setCredErrors] = useState({});
     const [vdomEnabled, setVdomEnabled] = useState(false);
     const [createBackup, setCreateBackup] = useState(false);
+    const [dryRun, setDryRun] = useState(false); // Linux only: preview commands without executing
     const [formError, setFormError] = useState(null);
     const [executionResult, setExecutionResult] = useState(null);
 
@@ -151,11 +153,13 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 credentials,
                 parameters: paramValues,
                 skipBackup: !createBackup,
+                dryRun,
             })).unwrap();
 
             // Reflect the fix in the results list right away (no reload / re-audit):
             // a verified success flips the row to PASS with a "Hardened" badge.
-            const succeeded = result?.status === 'success' || result?.success === true;
+            // Never on a dry run — nothing was changed on the server.
+            const succeeded = !result?.dry_run && (result?.status === 'success' || result?.success === true);
             if (succeeded && result?.verification_passed !== false) {
                 dispatch(markCheckHardened({
                     resultId:   check.id,
@@ -338,6 +342,14 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             {isCiscoOrFortinet(deviceType) && (
                 <BackupOption checked={createBackup} onChange={setCreateBackup} />
             )}
+            {isLinux(deviceType) && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', padding: '12px 16px', background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', color: '#4c1d95' }}>
+                    <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+                    <span>
+                        <strong>Preview only (dry run)</strong> — show the exact commands without connecting to the server or changing anything.
+                    </span>
+                </label>
+            )}
         </>
     );
 
@@ -351,6 +363,31 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
 
     const renderResults = () => {
         if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
+
+        // Dry run: nothing was executed — show the command preview only.
+        if (executionResult.dry_run) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ padding: '16px 20px', borderRadius: '10px', borderLeft: '5px solid #7c3aed', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)' }}>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#4c1d95', fontWeight: 600 }}>
+                            🔍 Dry run — no commands were executed and nothing was changed on the server.
+                        </p>
+                        {executionResult.check_title && (
+                            <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{executionResult.check_title}</p>
+                        )}
+                    </div>
+                    {executionResult.error_message ? (
+                        <div className="hardening-error-message"><span>⚠</span><p>{executionResult.error_message}</p></div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {(executionResult.commands || []).map((cmd, i) => (
+                                <code key={i} style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '12px', color: '#1f2937', background: '#f8f9fb', padding: '6px 10px', borderRadius: '6px', wordBreak: 'break-word' }}>{cmd}</code>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
 
         // Cisco/Fortinet return { status: "success", verification_passed, verification_evidence, message }
         // Linux/MongoDB/MSSQL/Apache return { success: true, verification_result, check_title, error_message }

@@ -41,6 +41,7 @@ class LinuxCISRule:
     check: Callable[[Dict[str, str], str], bool]  # Function: returns True if compliant
     evidence: Callable[[Dict[str, str], str], str]  # Function: returns evidence text
     distros: List[str] = field(default_factory=lambda: ["all"])  # Supported distros
+    expected_value: Optional[str] = None  # Human-readable compliant value (for API contract)
 
 
 # ========================= SEVERITY WEIGHTS =========================
@@ -222,7 +223,9 @@ def _check_file_permissions(data: Dict[str, str], key: str, filename: str, max_m
 
     if owner_match and owner_match.group(1) != expected_owner:
         return False
-    if group_match and group_match.group(1) != expected_group:
+    # Accept root as an alternative group: RHEL ships shadow/gshadow as
+    # root:root (mode 0000) while Debian/Ubuntu uses root:shadow.
+    if group_match and group_match.group(1) not in (expected_group, "root"):
         return False
 
     return True
@@ -409,6 +412,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Add 'install {fs} /bin/true' to /etc/modprobe.d/{fs}.conf and run 'rmmod {fs}'",
             check=lambda d, p, m=fs: _check_module_disabled(d, m.replace("-", "_")),
             evidence=lambda d, p, m=fs: _get_module_evidence(d, m),
+            expected_value=f"{fs} module disabled (install {fs} /bin/true) and not loaded",
         ))
 
     # 1.1.1.8 - Disable USB Storage
@@ -445,6 +449,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Create a separate partition for {mount} and update /etc/fstab",
             check=lambda d, p, k=key: bool(_get_output(d, f"mount_{k}").strip()),
             evidence=lambda d, p, k=key: _get_output(d, f"mount_{k}") or "Not mounted as separate partition",
+            expected_value=f"Separate partition mounted at {mount}",
         ))
 
     # 1.3.1 - AppArmor/SELinux
@@ -546,8 +551,14 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         level="L1",
         rationale="xinetd provides legacy services that are generally not needed.",
         remediation="Run: systemctl disable xinetd && apt remove xinetd",
-        check=lambda d, p: _check_service_disabled(d, "xinetd"),
+        # The audit command stores this under "xinetd_enabled" (not the
+        # svc_<name>_enabled convention _check_service_disabled expects).
+        check=lambda d, p: any(
+            s in _get_output(d, "xinetd_enabled").lower()
+            for s in ("not installed", "disabled", "masked")
+        ),
         evidence=lambda d, p: _get_output(d, "xinetd_enabled"),
+        expected_value="xinetd disabled or not installed",
     ))
 
     # 2.2.x - Special Purpose Services
@@ -581,6 +592,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Run: systemctl disable {service}",
             check=lambda d, p, s=service: _check_service_disabled(d, _resolve_service_name(s, p)),
             evidence=lambda d, p, s=service: _get_output(d, f"svc_{_resolve_service_name(s, p)}_enabled"),
+            expected_value=f"{service} disabled, masked, or not installed",
         ))
 
     # 2.3.x - Service Clients
@@ -603,6 +615,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Run: apt remove {pkg} (or dnf remove {pkg})",
             check=lambda d, p, pk=pkg: _check_package_not_installed(d, pk),
             evidence=lambda d, p, pk=pkg: _get_output(d, f"client_{pk}_installed"),
+            expected_value=f"{pkg} not installed",
         ))
 
     # 2.4.1 - Time Synchronization
@@ -1097,11 +1110,16 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         level="L1",
         rationale="Empty passwords allow unauthorized access.",
         remediation="Set passwords for all accounts or lock unused accounts",
+        # Fail closed: an unreadable /etc/shadow ("check failed" or a transport
+        # error) must NOT count as compliant.
         check=lambda d, p: (
-            "check failed" in _get_output(d, "empty_password_accounts").lower() or
+            "empty_password_accounts" in d and
+            not str(d.get("empty_password_accounts", "")).startswith("<<ERROR") and
+            "check failed" not in d.get("empty_password_accounts", "").lower() and
             not _get_output(d, "empty_password_accounts").strip()
         ),
         evidence=lambda d, p: f"Empty password accounts: {_get_output(d, 'empty_password_accounts') or 'None'}",
+        expected_value="No accounts with empty passwords",
     ))
 
     # 6.2.3 - No legacy entries
@@ -1151,6 +1169,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Run: chmod {max_mode} {filename} && chown {owner}:{group} {filename}",
             check=lambda d, p, k=key, f=filename, m=max_mode, o=owner, g=group: _check_file_permissions(d, k, f, m, o, g),
             evidence=lambda d, p, k=key: _get_output(d, k),
+            expected_value=f"{filename} mode {max_mode} (or stricter), owned by {owner}:{group}",
         ))
 
     # 3.3.1-3.3.3 - IPv6 Hardening
@@ -1191,41 +1210,44 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     ))
 
     # 4.2.3.x - Audit Rules
+    # NOTE: alternations are parenthesized so the `|` binds inside the syscall/
+    # path group, not across the whole pattern (a bare top-level alternation made
+    # e.g. "settimeofday" anywhere in the output a PASS).
     audit_rules = [
-        ("4.2.3.1", "time-change", r"-a always,exit.*-S.*adjtimex|settimeofday|clock_settime|stime",
+        ("4.2.3.1", "time-change", r"-a always,exit.*-S.*(adjtimex|settimeofday|clock_settime|stime)",
          "Ensure events that modify date and time information are collected",
          "Changes to system time can be used to mask malicious activity."),
-        ("4.2.3.2", "identity", r"-w /etc/passwd.*-p wa|-w /etc/group.*-p wa|-w /etc/shadow.*-p wa|-w /etc/gshadow.*-p wa",
+        ("4.2.3.2", "identity", r"-w /etc/(passwd|group|shadow|gshadow).*-p wa",
          "Ensure events that modify user/group information are collected",
          "Changes to user/group files must be tracked for unauthorized modifications."),
-        ("4.2.3.3", "system-locale", r"-w /etc/issue.*-p wa|-w /etc/hostname.*-p wa|-w /etc/hosts.*-p wa",
+        ("4.2.3.3", "system-locale", r"-w /etc/(issue|hostname|hosts).*-p wa",
          "Ensure events that modify the system's network environment are collected",
          "Network configuration changes can indicate compromise."),
-        ("4.2.3.4", "MAC-policy", r"-w /etc/apparmor.*-p wa|-w /etc/selinux.*-p wa",
+        ("4.2.3.4", "MAC-policy", r"-w /etc/(apparmor|selinux).*-p wa",
          "Ensure events that modify MAC are collected",
          "MAC policy changes can weaken security."),
-        ("4.2.3.5", "logins", r"-w /var/log/faillog.*-p wa|-w /var/log/lastlog.*-p wa|-w /var/log/tallylog.*-p wa",
+        ("4.2.3.5", "logins", r"-w /var/log/(faillog|lastlog|tallylog).*-p wa",
          "Ensure login and logout events are collected",
          "Login events are critical for security monitoring."),
-        ("4.2.3.6", "session", r"-w /var/run/utmp.*-p wa|-w /var/log/wtmp.*-p wa|-w /var/log/btmp.*-p wa",
+        ("4.2.3.6", "session", r"-w /var/(run/utmp|log/wtmp|log/btmp).*-p wa",
          "Ensure session initiation information is collected",
          "Session information helps track user activity."),
-        ("4.2.3.7", "perm-mod", r"-a always,exit.*-S chmod|fchmod|fchmodat",
+        ("4.2.3.7", "perm-mod", r"-a always,exit.*-S.*(chmod|fchmod|fchmodat)",
          "Ensure discretionary access control permission modification events are collected",
          "Permission changes can indicate unauthorized access attempts."),
-        ("4.2.3.8", "access", r"-a always,exit.*-S creat|open|openat|truncate|ftruncate.*-F exit=-EACCES|-F exit=-EPERM",
+        ("4.2.3.8", "access", r"-a always,exit.*-S.*(creat|open|openat|truncate|ftruncate).*-F exit=-E(ACCES|PERM)",
          "Ensure unsuccessful unauthorized file access attempts are collected",
          "Failed access attempts may indicate attack activity."),
-        ("4.2.3.9", "mounts", r"-a always,exit.*-S mount",
+        ("4.2.3.9", "mounts", r"-a always,exit.*-S.*mount",
          "Ensure successful file system mounts are collected",
          "Mount activity should be monitored for unauthorized file systems."),
-        ("4.2.3.10", "delete", r"-a always,exit.*-S unlink|unlinkat|rename|renameat",
+        ("4.2.3.10", "delete", r"-a always,exit.*-S.*(unlink|unlinkat|rename|renameat)",
          "Ensure file deletion events by users are collected",
          "File deletions can be used to cover tracks."),
-        ("4.2.3.11", "scope", r"-w /etc/sudoers.*-p wa|-w /etc/sudoers.d.*-p wa",
+        ("4.2.3.11", "scope", r"-w /etc/sudoers(\.d)?.*-p wa",
          "Ensure changes to system administration scope are collected",
          "Changes to sudo configuration must be monitored."),
-        ("4.2.3.12", "actions", r"-w /var/log/sudo.log.*-p wa",
+        ("4.2.3.12", "actions", r"-w /var/log/sudo\.log.*-p wa",
          "Ensure system administrator actions are collected",
          "Admin actions should be logged for accountability."),
     ]
@@ -1241,6 +1263,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Add appropriate audit rules to /etc/audit/rules.d/audit.rules",
             check=lambda d, p, pat=pattern: _check_audit_rule_exists(d, pat),
             evidence=lambda d, p: _get_output(d, "audit_rules_loaded")[:500],
+            expected_value=f"auditd rule set for '{key}' events loaded",
         ))
 
     # 5.1.2-5.1.5 - Cron Access Control
@@ -1432,6 +1455,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Configure {setting} in /etc/ssh/sshd_config",
             check=check_func,
             evidence=lambda d, p, s=setting: f"{s}: {_parse_sshd_config(d).get(s.lower(), 'not set')}",
+            expected_value=f"sshd '{setting}' configured per CIS recommendation",
         ))
 
     rules.append(LinuxCISRule(
@@ -1506,6 +1530,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Add {option} to {mount} entry in /etc/fstab and remount",
             check=lambda d, p, mk=mount_key, opt=option: _check_mount_option(d, mk, opt) or opt in _get_output(d, mk),
             evidence=lambda d, p, mk=mount_key: _get_output(d, mk),
+            expected_value=f"{option} mount option set on {mount}",
         ))
 
     # ==================== EXPANDED RULES - PHASE 3: MEDIUM PRIORITY ====================
@@ -1565,6 +1590,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             remediation=f"Remove {filename} files from user home directories",
             check=lambda d, p, k=key: _check_no_files_found(d, k),
             evidence=lambda d, p, k=key: _get_output(d, k) or f"No {filename} files found",
+            expected_value=f"No {filename} files in user home directories",
         ))
 
     rules.append(LinuxCISRule(
@@ -1710,8 +1736,61 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         level="L1",
         rationale="inetd provides legacy services that are generally not needed.",
         remediation="Remove: apt remove openbsd-inetd",
-        check=lambda d, p: "not installed" in _get_output(d, "xinetd_status").lower() or not _get_output(d, "xinetd_status"),
-        evidence=lambda d, p: _get_output(d, "xinetd_status"),
+        check=lambda d, p: "not installed" in _get_output(d, "openbsd_inetd_installed").lower(),
+        evidence=lambda d, p: _get_output(d, "openbsd_inetd_installed"),
+        expected_value="openbsd-inetd not installed",
+    ))
+
+    # ==================== SERVICES / PORTS & PACKAGE UPDATES ====================
+
+    # 2.5 - Listening network services (informational inventory)
+    rules.append(LinuxCISRule(
+        id="LNX-INFO-2.5",
+        cis_section="2.5",
+        title="Audit listening network services and open ports",
+        severity="info",
+        level="INFO",
+        rationale="Every listening port is attack surface; review that only required services are exposed.",
+        remediation="Review the listening sockets and disable or firewall any service that is not required.",
+        check=lambda d, p: True,  # informational only
+        evidence=lambda d, p: f"Listening sockets:\n{_get_output(d, 'listening_ports')[:900]}",
+        expected_value="Only required services listening",
+    ))
+
+    # 1.9 - Automatic security updates (Ubuntu/Debian)
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.9",
+        cis_section="1.9",
+        title="Ensure unattended-upgrades is installed and enabled",
+        severity="medium",
+        level="L1",
+        rationale="Automatic security updates close known vulnerabilities without operator delay.",
+        remediation="Run: apt-get install -y unattended-upgrades && dpkg-reconfigure -plow unattended-upgrades",
+        check=lambda d, p: (
+            "installed" in _get_output(d, "unattended_upgrades_installed").lower() and
+            "not installed" not in _get_output(d, "unattended_upgrades_installed").lower() and
+            bool(re.search(r'Unattended-Upgrade\s+"1"', _get_output(d, "unattended_upgrades_config")))
+        ),
+        evidence=lambda d, p: (
+            f"package: {_get_output(d, 'unattended_upgrades_installed')}\n"
+            f"apt periodic config: {_get_output(d, 'unattended_upgrades_config')[:300]}"
+        ),
+        distros=["ubuntu", "debian"],
+        expected_value="unattended-upgrades installed with APT::Periodic::Unattended-Upgrade \"1\"",
+    ))
+
+    # 1.9.1 - Pending security updates (informational)
+    rules.append(LinuxCISRule(
+        id="LNX-INFO-1.9.1",
+        cis_section="1.9.1",
+        title="Audit pending package updates",
+        severity="info",
+        level="INFO",
+        rationale="A backlog of pending updates indicates unpatched known vulnerabilities.",
+        remediation="Apply pending updates: apt-get upgrade (Ubuntu) or dnf upgrade (RHEL/Rocky).",
+        check=lambda d, p: True,  # informational only
+        evidence=lambda d, p: f"Pending updates:\n{_get_output(d, 'pending_updates')[:900]}",
+        expected_value="No pending security updates",
     ))
 
     # ==================== RHEL / ROCKY-SPECIFIC CIS RULES ====================
@@ -2012,6 +2091,21 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     return rules
 
 
+_RULE_CATALOG: Dict[str, LinuxCISRule] = {}
+
+
+def get_linux_rule_catalog() -> Dict[str, LinuxCISRule]:
+    """
+    Rule lookup by ID, built once. Used at API-read time to enrich stored
+    AuditResult rows with expected_value / remediation / rationale without a
+    DB schema change.
+    """
+    global _RULE_CATALOG
+    if not _RULE_CATALOG:
+        _RULE_CATALOG = {r.id: r for r in build_linux_cis_rules()}
+    return _RULE_CATALOG
+
+
 def filter_rules_by_profile(rules: List[LinuxCISRule], profile: str) -> List[LinuxCISRule]:
     """
     Filter rules by CIS profile (L1 or FULL).
@@ -2072,20 +2166,34 @@ def evaluate_compliance(
     findings = []
     passed_scored = 0
     failed_scored = 0
+    error_count = 0
     total_weighted = 0
     passed_weighted = 0
 
     for rule in rules:
+        eval_error = None
         try:
             compliant = rule.check(audit_data, distro_profile)
-            evidence = rule.evidence(audit_data, distro_profile)
         except Exception as e:
             compliant = False
-            evidence = f"Error evaluating rule: {str(e)}"
+            eval_error = f"{type(e).__name__}: {e}"
+
+        try:
+            evidence = rule.evidence(audit_data, distro_profile)
+        except Exception as e:
+            evidence = f"Error extracting evidence: {e}"
+
+        if eval_error:
+            status = "error"
+            evidence = f"Error evaluating rule: {eval_error}\n{evidence or ''}".strip()
+        else:
+            status = "pass" if compliant else "fail"
 
         weight = SEVERITY_WEIGHT.get(rule.severity, 1)
 
-        if rule.level != "INFO":
+        if status == "error":
+            error_count += 1
+        elif rule.level != "INFO":
             total_weighted += weight
             if compliant:
                 passed_scored += 1
@@ -2100,7 +2208,9 @@ def evaluate_compliance(
             "severity": rule.severity,
             "level": rule.level,
             "compliant": compliant,
+            "status": status,
             "evidence": evidence[:1000] if evidence else "",
+            "expected_value": rule.expected_value,
             "rationale": rule.rationale,
             "remediation": rule.remediation
         })
@@ -2115,6 +2225,7 @@ def evaluate_compliance(
             "total_rules_scored": total_scored,
             "passed_scored": passed_scored,
             "failed_scored": failed_scored,
+            "error_count": error_count,
             "compliance_pct": compliance_pct,
             "weighted_compliance_pct": weighted_pct
         },

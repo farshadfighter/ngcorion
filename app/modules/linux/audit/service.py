@@ -122,14 +122,23 @@ class LinuxAuditService:
 
         logger.info(f"Bulk inserting {len(findings)} audit results")
 
+        _STATUS_MAP = {
+            "pass": CheckStatus.PASS,
+            "fail": CheckStatus.FAIL,
+            "error": CheckStatus.ERROR,
+        }
         for idx, finding in enumerate(findings, 1):
+            status = _STATUS_MAP.get(
+                finding.get("status"),
+                CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
+            )
             result = AuditResult(
                 session_id=session_id,
                 check_number=finding["id"],
                 check_title=finding["title"],
                 severity=finding["severity"],
                 level=finding.get("level", "L1"),
-                status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
+                status=status,
                 evidence_snippet=finding["evidence"]
             )
             results.append(result)
@@ -271,7 +280,7 @@ class LinuxAuditService:
             session.total_checks = report["summary"]["total_rules_scored"]
             session.passed_checks = report["summary"]["passed_scored"]
             session.failed_checks = report["summary"]["failed_scored"]
-            session.error_checks = 0
+            session.error_checks = report["summary"].get("error_count", 0)
             session.compliance_pct = report["summary"]["compliance_pct"]
             session.weighted_compliance_pct = report["summary"]["weighted_compliance_pct"]
             session.turbo_dump = redacted_dump[:100000]  # Limit size

@@ -23,7 +23,13 @@ from .parameter_metadata import (
     is_linux_check_auto_fixable,
     LINUX_CHECK_PARAMETER_MAP
 )
-from .command_templates import get_linux_hardening_template, get_all_supported_checks
+from .command_templates import (
+    get_linux_hardening_template,
+    get_linux_hardening_template_for_distro,
+    get_linux_template_commands_for_distro,
+    get_linux_verify_commands_for_distro,
+    get_all_supported_checks,
+)
 from .ssh_executor import LinuxHardeningBatchExecutor
 
 logger = logging.getLogger(__name__)
@@ -54,6 +60,68 @@ def _distro_id_from_sub_device(sub_device_type: Optional[str]) -> Optional[str]:
     if not sub_device_type:
         return None
     return _SUB_DEVICE_TO_DISTRO_ID.get(sub_device_type)
+
+
+def _merge_check_parameters(check_id: str, parameters: Optional[Dict[str, str]]) -> Dict[str, str]:
+    """Template defaults under caller values; empty strings don't override."""
+    merged = dict(get_linux_check_defaults(check_id))
+    for k, v in (parameters or {}).items():
+        if v is not None and str(v).strip() != "":
+            merged[k] = v
+    return merged
+
+
+def _dry_run_check_result(check_id: str, distro_id: str, parameters: Optional[Dict[str, str]]) -> Dict[str, Any]:
+    """
+    Build the dry-run entry for one check: the exact distro-aware commands that
+    WOULD be executed (parameters substituted), without touching the host.
+    """
+    template = get_linux_hardening_template_for_distro(check_id, distro_id)
+    if not template:
+        return {
+            "check_id": check_id,
+            "check_title": None,
+            "dry_run": True,
+            "success": False,
+            "commands": [],
+            "verify_commands": [],
+            "error_message": f"No hardening template found for {check_id}",
+        }
+    params = _merge_check_parameters(check_id, parameters)
+    return {
+        "check_id": check_id,
+        "check_title": template.description,
+        "dry_run": True,
+        "success": True,
+        "commands": get_linux_template_commands_for_distro(check_id, distro_id, params),
+        "verify_commands": get_linux_verify_commands_for_distro(check_id, distro_id, params),
+        "requires_reboot": template.requires_reboot,
+        "requires_service_restart": template.requires_service_restart,
+        "parameters_used": params,
+        "error_message": None,
+    }
+
+
+def _recompute_session_stats(db: Session, session_id: int) -> None:
+    """
+    Refresh AuditSession pass/fail counters and compliance_pct after hardening
+    flips AuditResult rows to PASS, so the sessions list stays consistent.
+    """
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    if not session:
+        return
+    results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+    # INFO-level rows are unscored (matches evaluate_compliance's counters).
+    scored_rows = [r for r in results if (r.level or "L1") != "INFO"]
+    passed = sum(1 for r in scored_rows if r.status == CheckStatus.PASS)
+    failed = sum(1 for r in scored_rows if r.status == CheckStatus.FAIL)
+    errors = sum(1 for r in scored_rows if r.status == CheckStatus.ERROR)
+    session.passed_checks = passed
+    session.failed_checks = failed
+    session.error_checks = errors
+    scored = passed + failed
+    if scored > 0:
+        session.compliance_pct = round(100.0 * passed / scored, 2)
 
 
 class LinuxHardeningService:
@@ -190,12 +258,15 @@ class LinuxHardeningService:
         ssh_username: str,
         ssh_password: str,
         sudo_password: Optional[str] = None,
-        ssh_port: int = 22
+        ssh_port: int = 22,
+        dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Execute automatic hardening using CIS default values only.
 
         Only fixes checks that don't require user input.
+        With dry_run=True, no SSH connection is made and no DB rows change:
+        the response lists the commands that WOULD run for each check.
 
         Args:
             db: Database session
@@ -232,6 +303,26 @@ class LinuxHardeningService:
 
         failed_check_ids = [r.check_number for r in failed_results]
 
+        if dry_run:
+            distro_id = _distro_id_from_sub_device(session.sub_device_type) or "ubuntu"
+            auto_fixable = [cid for cid in failed_check_ids if is_linux_check_auto_fixable(cid)]
+            skipped = [cid for cid in failed_check_ids if cid not in auto_fixable]
+            results = [_dry_run_check_result(cid, distro_id, None) for cid in auto_fixable]
+            return {
+                "dry_run": True,
+                "total_requested": len(failed_check_ids),
+                "auto_fixable": len(auto_fixable),
+                "skipped": skipped,
+                "successful": 0,
+                "failed": 0,
+                "distro_id": distro_id,
+                "results": results,
+                "session_id": session_id,
+                "asset_id": asset_id,
+                "target_ip": asset.ip_address,
+                "executed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
         logger.info(f"Auto-hardening {len(failed_check_ids)} failed checks on {asset.ip_address}")
 
         # Execute hardening
@@ -259,6 +350,7 @@ class LinuxHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         # Add metadata
@@ -282,7 +374,8 @@ class LinuxHardeningService:
         ssh_password: str,
         sudo_password: Optional[str],
         checks: List[Dict[str, Any]],
-        ssh_port: int = 22
+        ssh_port: int = 22,
+        dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -305,6 +398,28 @@ class LinuxHardeningService:
 
         if not asset.ip_address:
             raise ValueError(f"Asset '{asset.asset_name}' has no IP address")
+
+        if dry_run:
+            session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+            distro_id = (
+                _distro_id_from_sub_device(session.sub_device_type) if session else None
+            ) or "ubuntu"
+            results = [
+                _dry_run_check_result(c.get("check_id"), distro_id, c.get("parameters"))
+                for c in checks
+            ]
+            return {
+                "dry_run": True,
+                "total": len(checks),
+                "successful": 0,
+                "failed": 0,
+                "distro_id": distro_id,
+                "results": results,
+                "session_id": session_id,
+                "asset_id": asset_id,
+                "target_ip": asset.ip_address,
+                "executed_at": datetime.now(timezone.utc).isoformat(),
+            }
 
         logger.info(f"Batch hardening {len(checks)} checks on {asset.ip_address}")
 
@@ -332,6 +447,7 @@ class LinuxHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -356,7 +472,8 @@ class LinuxHardeningService:
         parameters: Dict[str, str] = None,
         ssh_port: int = 22,
         session_id: Optional[int] = None,
-        sub_device_type: Optional[str] = None
+        sub_device_type: Optional[str] = None,
+        dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Execute hardening for a single check.
@@ -394,6 +511,14 @@ class LinuxHardeningService:
             if session is not None:
                 distro_id = _distro_id_from_sub_device(session.sub_device_type)
 
+        if dry_run:
+            result = _dry_run_check_result(check_id, distro_id or "ubuntu", parameters)
+            result["asset_id"] = asset_id
+            result["target_ip"] = asset.ip_address
+            result["distro_id"] = distro_id or "ubuntu"
+            result["executed_at"] = datetime.now(timezone.utc).isoformat()
+            return result
+
         logger.info(
             f"Executing single fix {check_id} on {asset.ip_address} "
             f"(distro: {distro_id or 'auto-detect'})"
@@ -423,6 +548,7 @@ class LinuxHardeningService:
             if audit_row:
                 audit_row.status = CheckStatus.PASS
                 audit_row.evidence_snippet = result.get("verification_result") or ""
+                _recompute_session_stats(db, session_id)
                 db.commit()
 
         result["asset_id"] = asset_id

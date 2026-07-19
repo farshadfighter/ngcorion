@@ -15,6 +15,7 @@ import {
     isMssql,
     isCisco,
     isFortinet,
+    isLinux,
     defaultCredentialsState,
     validateCredentials,
     buildCredentials,
@@ -33,6 +34,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
 
     const [vdomEnabled, setVdomEnabled] = useState(false);
     const [createBackup, setCreateBackup] = useState(false);
+    const [dryRun, setDryRun] = useState(false); // Linux only: preview commands without executing
 
     const [step, setStep] = useState(1); // 1: Checks preview, 2: Parameters, 3: Credentials, 4: Executing, 5: Results
     const [paramValues, setParamValues] = useState({});
@@ -58,10 +60,17 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
         };
     }, [dispatch, sessionId, deviceType]);
 
+    // Two backend shapes: Cisco/Fortinet expose `required_parameters`,
+    // Linux/Apache/MongoDB/MSSQL/Windows expose aggregated `parameters`
+    // ({name: {label, description, default, required, options, checks[]}}).
+    const paramEntries = requiredParameters?.required_parameters
+        || requiredParameters?.parameters
+        || null;
+
     useEffect(() => {
-        if (requiredParameters?.required_parameters) {
+        if (paramEntries) {
             const initialValues = {};
-            Object.entries(requiredParameters.required_parameters).forEach(([key, param]) => {
+            Object.entries(paramEntries).forEach(([key, param]) => {
                 initialValues[key] = param.default || '';
             });
             // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -70,7 +79,8 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
                 return hasChanged ? initialValues : prev;
             });
         }
-    }, [requiredParameters?.required_parameters]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requiredParameters]);
 
     const handleParamChange = (key, value) => setParamValues(prev => ({ ...prev, [key]: value }));
 
@@ -92,9 +102,9 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
     };
 
     const validateParameters = () => {
-        if (!requiredParameters?.required_parameters) return true;
+        if (!paramEntries) return true;
         const errors = [];
-        Object.entries(requiredParameters.required_parameters).forEach(([key, param]) => {
+        Object.entries(paramEntries).forEach(([key, param]) => {
             // Backend marks user-input params with `required: true` (no `optional`
             // field). Reading `param.optional` was always undefined, so every
             // param was treated as required; key off `required` instead.
@@ -114,7 +124,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
     };
 
     const hasRequiredParams = () =>
-        !!requiredParameters?.required_parameters && Object.keys(requiredParameters.required_parameters).length > 0;
+        !!paramEntries && Object.keys(paramEntries).length > 0;
 
     // Step 1 (checks preview) -> step 2 (parameters, skipped when none needed).
     const handleNextFromChecks = () => setStep(hasRequiredParams() ? 2 : 3);
@@ -145,8 +155,9 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
         }
 
         if (Array.isArray(rp.failed_checks)) {
+            const needsParamsSet = new Set(rp.categorized_checks?.needs_params || []);
             return {
-                fixable: rp.failed_checks.filter((c) => c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, needsParams: false })),
+                fixable: rp.failed_checks.filter((c) => c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, needsParams: needsParamsSet.has(c.check_number) })),
                 skipped: rp.failed_checks.filter((c) => !c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, reason: 'No remediation template' })),
             };
         }
@@ -207,16 +218,47 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
             return;
         }
 
-        // Linux / Apache / MongoDB / MSSQL / Windows: defaults-only auto-harden.
+        // Linux / Apache / MongoDB / MSSQL / Windows.
         setStep(4);
         try {
-            const result = await dispatch(autoHardenWithDefaults({
-                sessionId,
-                assetId,
-                deviceType,
-                credentials,
-                skipBackup: !createBackup,
-            })).unwrap();
+            let result;
+            const aggregated = requiredParameters?.parameters;
+            const fixable = (requiredParameters?.failed_checks || []).filter((c) => c.has_template);
+
+            if (aggregated && Object.keys(aggregated).length > 0 && fixable.length > 0) {
+                // Param-aware path: batch-execute every templated failed check,
+                // attaching each entered parameter to the checks that use it
+                // (param metadata carries a `checks` list). Auto-fixable checks
+                // ride along with {} — the backend merges template defaults.
+                const checksPayload = fixable.map((c) => {
+                    const perCheck = {};
+                    Object.entries(aggregated).forEach(([name, meta]) => {
+                        const value = paramValues[name];
+                        if (value?.trim() && (meta.checks || []).includes(c.check_number)) {
+                            perCheck[name] = value.trim();
+                        }
+                    });
+                    return { check_id: c.check_number, parameters: perCheck };
+                });
+                result = await dispatch(batchExecuteChecks({
+                    sessionId,
+                    assetId,
+                    deviceType,
+                    credentials,
+                    checks: checksPayload,
+                    dryRun,
+                })).unwrap();
+            } else {
+                // No user parameters involved: defaults-only auto-harden.
+                result = await dispatch(autoHardenWithDefaults({
+                    sessionId,
+                    assetId,
+                    deviceType,
+                    credentials,
+                    skipBackup: !createBackup,
+                    dryRun,
+                })).unwrap();
+            }
 
             setExecutionResult(result);
             setStep(5);
@@ -306,7 +348,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
                 </div>
             );
         }
-        if (!requiredParameters?.required_parameters || Object.keys(requiredParameters.required_parameters).length === 0) {
+        if (!paramEntries || Object.keys(paramEntries).length === 0) {
             return (
                 <div className="hardening-no-params">
                     <p>No additional parameters required.</p>
@@ -316,16 +358,29 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
         }
         return (
             <div className="hardening-params-form">
-                {Object.entries(requiredParameters.required_parameters).map(([key, param]) => (
+                {Object.entries(paramEntries).map(([key, param]) => (
                     <div key={key} className="hardening-form-group">
                         <label>
-                            {param.description || key}
+                            {param.label || param.description || key}
                             {param.required && <span className="hardening-required">*</span>}
                         </label>
                         <div className="hardening-input-with-meta">
-                            <input type="text" value={paramValues[key] || ''} onChange={(e) => handleParamChange(key, e.target.value)} placeholder={param.default || `Enter ${key}`} style={inputStyle} />
+                            {Array.isArray(param.options) && param.options.length > 0 ? (
+                                <select value={paramValues[key] || ''} onChange={(e) => handleParamChange(key, e.target.value)} style={inputStyle}>
+                                    <option value="">{param.default ? `default: ${param.default}` : `Select ${key}`}</option>
+                                    {param.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            ) : (
+                                <input type="text" value={paramValues[key] || ''} onChange={(e) => handleParamChange(key, e.target.value)} placeholder={param.placeholder || param.default || `Enter ${key}`} style={inputStyle} />
+                            )}
                             {param.usage && <span className="hardening-param-usage">{param.usage}</span>}
                         </div>
+                        {param.label && param.description && (
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>{param.description}</span>
+                        )}
+                        {Array.isArray(param.checks) && param.checks.length > 0 && (
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Used by: {param.checks.join(', ')}</span>
+                        )}
                     </div>
                 ))}
             </div>
@@ -352,6 +407,18 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
         )
     );
 
+    // Linux only: the backend supports dry_run (command preview, no execution).
+    const renderDryRunOption = () => (
+        isLinux(deviceType) && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', padding: '12px 16px', background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', color: '#4c1d95' }}>
+                <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+                <span>
+                    <strong>Preview only (dry run)</strong> — show the exact commands without connecting to the server or changing anything.
+                </span>
+            </label>
+        )
+    );
+
     const renderExecuting = () => (
         <div className="hardening-modal-executing">
             <div className="hardening-spinner-large"></div>
@@ -363,6 +430,39 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
 
     const renderResults = () => {
         if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
+
+        // Dry run: nothing was executed — show the per-check command preview.
+        if (executionResult.dry_run) {
+            const rows = Array.isArray(executionResult.results) ? executionResult.results : [];
+            return (
+                <div>
+                    <div style={{ padding: '16px 20px', borderRadius: '10px', borderLeft: '5px solid #7c3aed', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', marginBottom: '18px' }}>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#4c1d95', fontWeight: 600 }}>
+                            🔍 Dry run — no commands were executed and nothing was changed on the server.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {rows.map((r) => (
+                            <div key={r.check_id} style={{ padding: '14px 18px', borderRadius: '10px', border: '1px solid #e8edf5', background: 'white' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e3a5f' }}>
+                                    {r.check_id}{r.check_title ? ` — ${r.check_title}` : ''}
+                                </div>
+                                {r.error_message ? (
+                                    <div style={{ fontSize: '12px', color: '#c0392b', marginTop: '6px' }}>{r.error_message}</div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                                        {(r.commands || []).map((cmd, i) => (
+                                            <code key={i} style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '12px', color: '#1f2937', background: '#f8f9fb', padding: '6px 10px', borderRadius: '6px', wordBreak: 'break-word' }}>{cmd}</code>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {rows.length === 0 && <p style={{ color: '#6b7280' }}>No auto-fixable checks to preview.</p>}
+                    </div>
+                </div>
+            );
+        }
 
         // Normalize across the device-family response shapes so the summary and
         // table render for every device type:
@@ -518,7 +618,7 @@ const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuc
                 <div className="hardening-modal-body">
                     {step === 1 && renderChecksPreview()}
                     {step === 2 && renderParametersForm()}
-                    {step === 3 && <>{renderCredentialsForm()}{renderBackupOption()}</>}
+                    {step === 3 && <>{renderCredentialsForm()}{renderBackupOption()}{renderDryRunOption()}</>}
                     {step === 4 && renderExecuting()}
                     {step === 5 && renderResults()}
                 </div>

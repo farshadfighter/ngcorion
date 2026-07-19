@@ -8,6 +8,7 @@ Includes pre/post verification and detailed logging.
 from typing import Dict, List, Optional, Any
 import logging
 import re
+import shlex
 import time
 
 from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
@@ -148,6 +149,12 @@ class LinuxSSHExecutor:
 
         stripped = command.lstrip()
         timeout = 120 if any(stripped.startswith(p) for p in self._SLOW_CMD_PREFIXES) else 30
+        if use_sudo:
+            # Wrap in `sh -c` so redirections/heredocs/pipes inside the template
+            # command run under sudo too. Bare `sudo -S cmd > file` performs the
+            # redirection as the unprivileged login user and fails with
+            # "Permission denied" for any /etc target.
+            command = f"sh -c {shlex.quote(command)}"
         return self.ssh_client.send_command(command, use_sudo=use_sudo, timeout=timeout)
 
     def execute_hardening(
@@ -166,7 +173,16 @@ class LinuxSSHExecutor:
             LinuxHardeningExecutionResult with execution details
         """
         result = LinuxHardeningExecutionResult(check_id)
-        parameters = parameters or {}
+
+        # Merge template defaults under the caller's values and drop empty
+        # strings: the UI may submit optional params as "" and substituting an
+        # empty value would write broken config lines (e.g. "MaxAuthTries ''").
+        from .parameter_metadata import get_linux_check_defaults
+        merged = dict(get_linux_check_defaults(check_id))
+        for k, v in (parameters or {}).items():
+            if v is not None and str(v).strip() != "":
+                merged[k] = v
+        parameters = merged
 
         # Use distro-aware template
         template = get_linux_hardening_template_for_distro(check_id, self.distro_id or "ubuntu")

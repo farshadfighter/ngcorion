@@ -371,7 +371,7 @@ export const previewHardenCheck = createAsyncThunk(
  */
 export const executeHardenCheck = createAsyncThunk(
     "hardening/executeCheck",
-    async ({ actionId, checkId, assetId, sessionId, deviceType, credentials, parameters, skipBackup = false }, { rejectWithValue }) => {
+    async ({ actionId, checkId, assetId, sessionId, deviceType, credentials, parameters, skipBackup = false, dryRun = false }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -400,6 +400,8 @@ export const executeHardenCheck = createAsyncThunk(
                 // Pass the known distro variant so the backend skips live distro
                 // detection (one fewer SSH round-trip). Only meaningful for Linux.
                 ...(apiPath === "linux" && deviceType?.startsWith("linux-") && { sub_device_type: deviceType }),
+                // Dry run (Linux only): backend returns the commands without executing.
+                ...(apiPath === "linux" && dryRun && { dry_run: true }),
             };
             const res = await api.post(endpoint, payload);
             return res.data;
@@ -438,7 +440,7 @@ export const fetchRequiredParameters = createAsyncThunk(
  */
 export const autoHardenWithDefaults = createAsyncThunk(
     "hardening/autoHardenDefaults",
-    async ({ sessionId, assetId, deviceType, credentials, skipBackup = false }, { rejectWithValue }) => {
+    async ({ sessionId, assetId, deviceType, credentials, skipBackup = false, dryRun = false }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -453,6 +455,8 @@ export const autoHardenWithDefaults = createAsyncThunk(
                     confirmed: true,
                     skip_backup: skipBackup,
                 }),
+                // Dry run (Linux only): backend returns the commands without executing.
+                ...(apiPath === "linux" && dryRun && { dry_run: true }),
             };
 
             const response = await api.post(
@@ -599,7 +603,7 @@ export const executeFortinetManualFix = createAsyncThunk(
 
 export const batchExecuteChecks = createAsyncThunk(
     "hardening/batchExecute",
-    async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false }, { rejectWithValue }) => {
+    async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false, dryRun = false }, { rejectWithValue }) => {
         try {
             const apiPath = getDeviceApiPath(deviceType);
             const credPayload = buildCredentialsPayload(deviceType, credentials);
@@ -625,6 +629,8 @@ export const batchExecuteChecks = createAsyncThunk(
                         check_id:   id,
                         parameters: (parameters && parameters[id]) || {},
                     })),
+                    // Dry run (Linux only): backend returns the commands without executing.
+                    ...(apiPath === "linux" && dryRun && { dry_run: true }),
                 };
             }
 

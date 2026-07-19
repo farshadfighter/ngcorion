@@ -72,7 +72,13 @@ class LinuxAuditSessionResponse(BaseModel):
 
 
 class LinuxAuditResultResponse(BaseModel):
-    """Individual audit result."""
+    """
+    Individual audit result.
+
+    Carries both the legacy shape (check_number/check_title/evidence_snippet,
+    consumed by the shared UI) and the required audit contract:
+    {check_id, title, status, current_value, expected_value, severity, remediation}.
+    """
 
     id: int
     check_number: str
@@ -81,7 +87,14 @@ class LinuxAuditResultResponse(BaseModel):
     level: str
     status: str
     evidence_snippet: Optional[str]
-    checked_at: str
+    checked_at: Optional[str]
+    # Contract fields (enriched from the in-memory CIS rule catalog)
+    check_id: str
+    title: str
+    current_value: Optional[str] = None
+    expected_value: Optional[str] = None
+    remediation: Optional[str] = None
+    rationale: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -281,8 +294,13 @@ def get_linux_results(
 
     results = LinuxAuditService.get_audit_results(db, session_id)
 
-    return [
-        {
+    from .rules import get_linux_rule_catalog
+    catalog = get_linux_rule_catalog()
+
+    enriched = []
+    for r in results:
+        rule = catalog.get(r.check_number)
+        enriched.append({
             "id": r.id,
             "check_number": r.check_number,
             "check_title": r.check_title,
@@ -290,10 +308,16 @@ def get_linux_results(
             "level": r.level or "L1",
             "status": r.status.value,
             "evidence_snippet": r.evidence_snippet,
-            "checked_at": r.checked_at.isoformat() if r.checked_at else None
-        }
-        for r in results
-    ]
+            "checked_at": r.checked_at.isoformat() if r.checked_at else None,
+            # Required contract fields
+            "check_id": r.check_number,
+            "title": r.check_title,
+            "current_value": r.evidence_snippet,
+            "expected_value": (rule.expected_value or rule.remediation) if rule else None,
+            "remediation": rule.remediation if rule else None,
+            "rationale": rule.rationale if rule else None,
+        })
+    return enriched
 
 
 @router.get("/sessions/{session_id}/failed", response_model=List[LinuxFailedCheckResponse])

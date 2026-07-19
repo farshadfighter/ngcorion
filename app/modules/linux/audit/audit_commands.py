@@ -84,6 +84,11 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             {"cmd": "apt-cache policy 2>/dev/null | head -50", "sudo": False, "key": "apt_sources", "section": "1.2"},
             {"cmd": "cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -v '^#' | grep -v '^$' || echo 'none'", "sudo": False, "key": "apt_sources_list", "section": "1.2.1"},
             {"cmd": "apt-key list 2>/dev/null | head -50 || echo 'no keys'", "sudo": False, "key": "apt_keys", "section": "1.2.2"},
+            # 1.9 - Automatic security updates
+            {"cmd": "dpkg -s unattended-upgrades 2>/dev/null | grep Status || echo 'not installed'", "sudo": False, "key": "unattended_upgrades_installed", "section": "1.9"},
+            {"cmd": "cat /etc/apt/apt.conf.d/20auto-upgrades /etc/apt/apt.conf.d/50unattended-upgrades 2>/dev/null | grep -E 'Unattended-Upgrade|Update-Package-Lists' | head -10 || echo 'not configured'", "sudo": False, "key": "unattended_upgrades_config", "section": "1.9"},
+            # 1.9.1 - Pending updates (inventory)
+            {"cmd": "apt list --upgradable 2>/dev/null | head -30 || echo 'apt not available'", "sudo": False, "key": "pending_updates", "section": "1.9.1"},
         ])
     else:
         commands.extend([
@@ -94,6 +99,8 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             # 1.2.4 - Crypto policies (RHEL 8+)
             {"cmd": "update-crypto-policies --show 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy", "section": "1.2.4"},
             {"cmd": "cat /etc/crypto-policies/state/current 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy_state", "section": "1.2.4"},
+            # 1.9.1 - Pending updates (inventory)
+            {"cmd": "dnf check-update 2>/dev/null | head -30 || yum check-update 2>/dev/null | head -30 || echo 'up to date or dnf unavailable'", "sudo": False, "key": "pending_updates", "section": "1.9.1"},
         ])
 
     # 1.3 - Mandatory Access Control
@@ -165,6 +172,13 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         {"cmd": "systemctl is-enabled xinetd 2>/dev/null || echo 'not installed'", "sudo": False, "key": "xinetd_enabled", "section": "2.1"},
         {"cmd": "systemctl status xinetd 2>/dev/null || echo 'not running'", "sudo": False, "key": "xinetd_status", "section": "2.1"},
     ])
+    if is_debian:
+        commands.append({"cmd": "dpkg -s openbsd-inetd 2>/dev/null | grep Status || echo 'not installed'", "sudo": False, "key": "openbsd_inetd_installed", "section": "2.1.2"})
+    else:
+        commands.append({"cmd": "rpm -q inetd openbsd-inetd 2>/dev/null | grep -v 'not installed' || echo 'not installed'", "sudo": False, "key": "openbsd_inetd_installed", "section": "2.1.2"})
+
+    # 2.5 - Listening services / open ports (inventory)
+    commands.append({"cmd": "ss -tulpn 2>/dev/null | head -60 || netstat -tulpn 2>/dev/null | head -60 || echo 'ss not available'", "sudo": True, "key": "listening_ports", "section": "2.5"})
 
     # 2.2 - Special Purpose Services
     services_to_check = [
