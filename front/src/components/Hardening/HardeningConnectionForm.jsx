@@ -193,7 +193,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             credentials = {
                 ssh_username: formData.ssh_username,
                 ssh_password: formData.ssh_password,
-                ...(isFortinet(dt) && { ssh_port: parseInt(formData.ssh_port) || 22 }),
+                // Every SSH-based family accepts ssh_port — sending it only for
+                // Fortinet made non-22 Linux/Cisco/Apache/Mongo hosts unreachable.
+                ssh_port: parseInt(formData.ssh_port) || 22,
                 ...(isCisco(dt)    && formData.ssh_secret    && { ssh_secret:    formData.ssh_secret }),
                 ...(isFortinet(dt) && formData.vdom          && { vdom:          formData.vdom }),
                 ...(needsSudo(dt)  && formData.sudo_password && { sudo_password: formData.sudo_password }),
@@ -370,21 +372,19 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                 </div>
                             )}
 
-                            {needsVdom(dt) && (
-                                <div className="form-group">
-                                    <label>SSH Port</label>
-                                    <input
-                                        type="number"
-                                        name="ssh_port"
-                                        value={formData.ssh_port}
-                                        onChange={handleChange}
-                                        placeholder="22"
-                                        min="1"
-                                        max="65535"
-                                        autoComplete="off"
-                                    />
-                                </div>
-                            )}
+                            <div className="form-group">
+                                <label>SSH Port</label>
+                                <input
+                                    type="number"
+                                    name="ssh_port"
+                                    value={formData.ssh_port}
+                                    onChange={handleChange}
+                                    placeholder="22"
+                                    min="1"
+                                    max="65535"
+                                    autoComplete="off"
+                                />
+                            </div>
 
                             {needsVdom(dt) && (
                                 <div className="form-group">

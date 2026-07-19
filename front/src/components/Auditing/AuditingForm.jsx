@@ -370,21 +370,19 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 </div>
                             )}
 
-                            {isFortinet(dt) && (
-                                <div className="form-group">
-                                    <label>SSH Port</label>
-                                    <input
-                                        type="number"
-                                        name="ssh_port"
-                                        value={formData.ssh_port}
-                                        onChange={handleChange}
-                                        placeholder="22"
-                                        min="1"
-                                        max="65535"
-                                        autoComplete="off"
-                                    />
-                                </div>
-                            )}
+                            <div className="form-group">
+                                <label>SSH Port</label>
+                                <input
+                                    type="number"
+                                    name="ssh_port"
+                                    value={formData.ssh_port}
+                                    onChange={handleChange}
+                                    placeholder="22"
+                                    min="1"
+                                    max="65535"
+                                    autoComplete="off"
+                                />
+                            </div>
 
                             {isFortinet(dt) && (
                                 <div className="form-group">

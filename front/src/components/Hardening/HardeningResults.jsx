@@ -58,9 +58,20 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
         setSelectedCheck(null);
     };
 
-    const getStatusBadge = () => {
+    // Real audit statuses (this flow runs an audit right before this screen).
+    // "Unknown" only when the row genuinely has no status.
+    const getStatusBadge = (status) => {
+        const s = status?.toString().toUpperCase();
+        if (s === 'PASS' || s === 'PASSED') return <span className="result-badge result-success">Successful</span>;
+        if (s === 'FAIL' || s === 'FAILED') return <span className="result-badge result-fail">Failed</span>;
+        if (s === 'ERROR')                  return <span className="result-badge result-error">Error</span>;
         return <span className="result-badge result-unknown">Unknown</span>;
     };
+
+    // Show the "audit your asset" hint only when no row carries a real status.
+    const hasKnownStatus = (cisChecks || []).some((c) =>
+        ['PASS', 'PASSED', 'FAIL', 'FAILED', 'ERROR'].includes(c.status?.toString().toUpperCase())
+    );
 
     const getDeviceLabel = (dt) => {
         if (dt === 'fortinet')         return 'FortiGate';
@@ -89,47 +100,49 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     </button>
                 </div>
 
-                {/* Warning Box */}
+                {/* Hint box — only when statuses are genuinely unknown */}
                 <div style={{ padding: '24px' }}>
-                    <div style={{
-                        background: '#f9fafb',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        padding: '20px',
-                        textAlign: 'center',
-                        marginBottom: '20px'
-                    }}>
+                    {!isLoading && !hasKnownStatus && (
                         <div style={{
-                            fontSize: '16px',
-                            color: '#374151',
-                            marginBottom: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px'
+                            background: '#f9fafb',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            textAlign: 'center',
+                            marginBottom: '20px'
                         }}>
-                            <span style={{ fontSize: '20px' }}>ℹ️</span>
-                            <span>Status of CIS Benchmark section is unknown, audit your asset to specify status</span>
-                        </div>
-                        <button
-                            onClick={handleAuditingClick}
-                            style={{
-                                padding: '12px 32px',
-                                background: '#1e3a5f',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
+                            <div style={{
+                                fontSize: '16px',
+                                color: '#374151',
+                                marginBottom: '14px',
+                                display: 'flex',
                                 alignItems: 'center',
+                                justifyContent: 'center',
                                 gap: '8px'
-                            }}
-                        >
-                            🔍 Auditing
-                        </button>
-                    </div>
+                            }}>
+                                <span style={{ fontSize: '20px' }}>ℹ️</span>
+                                <span>Status of CIS Benchmark section is unknown, audit your asset to specify status</span>
+                            </div>
+                            <button
+                                onClick={handleAuditingClick}
+                                style={{
+                                    padding: '12px 32px',
+                                    background: '#1e3a5f',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                🔍 Auditing
+                            </button>
+                        </div>
+                    )}
 
                     {/* Section Header with Harden All */}
                     <div style={{
@@ -205,22 +218,26 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                     </td>
                                                     <td>{getStatusBadge(check.status)}</td>
                                                     <td style={{ textAlign: 'center' }}>
-                                                        <button
-                                                            onClick={() => handleHardenSingle(check)}
-                                                            style={{
-                                                                padding: '8px 18px',
-                                                                background: '#1e3a5f',
-                                                                color: 'white',
-                                                                border: 'none',
-                                                                borderRadius: '6px',
-                                                                fontSize: '13px',
-                                                                fontWeight: '600',
-                                                                cursor: 'pointer',
-                                                                whiteSpace: 'nowrap'
-                                                            }}
-                                                        >
-                                                            <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
-                                                        </button>
+                                                        {check.status?.toString().toUpperCase() === 'PASS' ? (
+                                                            <span style={{ color: '#9ca3af' }}>—</span>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() => handleHardenSingle(check)}
+                                                                style={{
+                                                                    padding: '8px 18px',
+                                                                    background: '#1e3a5f',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '13px',
+                                                                    fontWeight: '600',
+                                                                    cursor: 'pointer',
+                                                                    whiteSpace: 'nowrap'
+                                                                }}
+                                                            >
+                                                                <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -256,6 +273,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                 <FixSingleModal
                     check={selectedCheck}
                     assetId={sessionData?.asset_id}
+                    sessionId={sessionData?.session_id}
                     deviceType={sessionData.device_type}
                     onClose={() => {
                         setShowFixSingleModal(false);

@@ -155,7 +155,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                             Total Conditions
                             {otherChecks > 0 && (
                                 <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                                    ({otherChecks} other / running)
+                                    ({otherChecks} error / other)
                                 </span>
                             )}
                         </div>

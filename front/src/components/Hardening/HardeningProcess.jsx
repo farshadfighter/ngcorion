@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { checkHardeningSessionStatus } from "../../store/hardeningSlice";
+import { checkHardeningSessionStatus, getDeviceName } from "../../store/hardeningSlice";
 
 // چند بار پشت سر هم خطا بیاد تا onError صدا زده بشه
 const MAX_CONSECUTIVE_ERRORS = 3;
@@ -114,7 +114,7 @@ export const HardeningProcess = ({ sessionData, onComplete, onError }) => {
             {/* Session Info */}
             <div className="process-info">
                 <p><strong>Asset:</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})</p>
-                <p><strong>Device Type:</strong> {sessionData.device_type || "N/A"}</p>
+                <p><strong>Device Type:</strong> {sessionData.device_type ? getDeviceName(sessionData.device_type) : "N/A"}</p>
                 <p><strong>Status:</strong> {currentSession?.status || sessionData.status || "Connecting..."}</p>
             </div>
 

@@ -87,6 +87,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         const base =
             s === 'PASS' ? <span className="result-badge result-success">Successful</span>
             : s === 'FAIL' ? <span className="result-badge result-fail">Unsuccessful</span>
+            : s === 'ERROR' ? <span className="result-badge result-error">Error</span>
             : <span className="result-badge result-unknown">Unknown</span>;
         // Live feedback from this session's hardening (set by markCheckHardened —
         // no reload / re-audit needed to see it).
