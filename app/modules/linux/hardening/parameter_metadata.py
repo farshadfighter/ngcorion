@@ -427,6 +427,7 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
 
     # 1.5.x - Process hardening
     "LNX-L1-1.5.1": [],  # ASLR - no params
+    "LNX-L1-1.5.2": [],  # ptrace_scope - no params
     "LNX-L1-1.5.4": [],  # Core dumps - no params
 
     # 1.6.x - Banners
@@ -556,6 +557,7 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-L1-5.4.1.3": ["PASS_WARN_AGE"],
     "LNX-L1-5.4.1.4": ["INACTIVE_DAYS"],
     "LNX-L1-5.4.1.5": ["UMASK_VALUE"],
+    "LNX-L1-5.4.1.6": [],  # ENCRYPT_METHOD SHA512 - no params
 
     # 5.5.x - Root login
     "LNX-L1-5.5.1": [],   # Restrict root login - no params
@@ -608,10 +610,21 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     "LNX-RHEL-L1-1.2.4": ["CRYPTO_POLICY"],         # crypto policy not LEGACY
     "LNX-RHEL-L1-1.2.5": ["CRYPTO_POLICY"],         # crypto policy no SHA1
 
-    # 1.3.x - Sudo (RHEL)
+    # 1.3.x - Sudo / AIDE (RHEL)
     "LNX-RHEL-L1-1.3.1": [],                        # sudo installed - no params
     "LNX-RHEL-L1-1.3.2": [],                        # sudo use_pty - no params
     "LNX-RHEL-L1-1.3.3": [],                        # sudo log file - no params
+    "LNX-RHEL-L1-1.3.4": [],                        # AIDE installed - no params
+    "LNX-RHEL-L1-1.3.5": [],                        # AIDE scheduled - no params
+
+    # 1.8.x - GUI login (RHEL)
+    "LNX-RHEL-L1-1.8.1": [],                        # GDM removed - manual
+
+    # 3.4.x - Firewall (RHEL)
+    "LNX-RHEL-L1-3.4.2": [],                        # firewalld enabled+running - no params
+
+    # 5.2.x - SSH (RHEL)
+    "LNX-RHEL-L1-5.2.20": [],                       # sshd crypto override removed - no params
 
     # 1.4.x - Bootloader (RHEL)
     "LNX-RHEL-L1-1.4.2": [],                        # bootloader password - manual

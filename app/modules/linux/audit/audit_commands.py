@@ -155,7 +155,11 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         {"cmd": "dmesg | grep -i 'NX.*protection' 2>/dev/null || echo 'check /proc/cpuinfo'", "sudo": True, "key": "nx_bit", "section": "1.5.2"},
         {"cmd": "cat /proc/sys/kernel/core_pattern 2>/dev/null || echo 'unknown'", "sudo": False, "key": "core_pattern", "section": "1.5.3"},
         {"cmd": "sysctl fs.suid_dumpable 2>/dev/null || echo 'unknown'", "sudo": False, "key": "suid_dumpable", "section": "1.5.4"},
+        {"cmd": "sysctl kernel.yama.ptrace_scope 2>/dev/null || echo 'unknown'", "sudo": False, "key": "ptrace_scope", "section": "1.5.2"},
     ])
+
+    # 5.4.1.6 - Password hashing algorithm
+    commands.append({"cmd": "grep -E '^\\s*ENCRYPT_METHOD' /etc/login.defs 2>/dev/null || echo 'not configured'", "sudo": False, "key": "encrypt_method", "section": "5.4.1.6"})
 
     # 1.6 - Banner/MOTD
     commands.extend([
@@ -502,6 +506,13 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             {"cmd": "grep -rE 'pam_tally2' /etc/pam.d/ 2>/dev/null | head -5 || echo 'pam_tally2 not found'", "sudo": True, "key": "pam_tally2_check", "section": "5.3"},
             # DNF automatic updates
             {"cmd": "systemctl is-enabled dnf-automatic.timer 2>/dev/null || systemctl is-enabled dnf-makecache.timer 2>/dev/null || echo 'dnf-automatic not enabled'", "sudo": False, "key": "dnf_automatic", "section": "1.2"},
+            # 1.3.4/1.3.5 - AIDE filesystem integrity
+            {"cmd": "rpm -q aide 2>/dev/null || echo 'not installed'", "sudo": False, "key": "aide_installed", "section": "1.3.4"},
+            {"cmd": "grep -rs aide /etc/crontab /etc/cron.d /etc/cron.daily /var/spool/cron 2>/dev/null | head -5 || systemctl is-enabled aidecheck.timer 2>/dev/null || echo 'not scheduled'", "sudo": True, "key": "aide_cron", "section": "1.3.5"},
+            # 1.8.1 - GDM (GUI login) not installed on servers
+            {"cmd": "rpm -q gdm 2>/dev/null || echo 'not installed'", "sudo": False, "key": "gdm_installed", "section": "1.8.1"},
+            # 5.2.20 - sshd must not override system-wide crypto policy
+            {"cmd": "grep -E '^\\s*CRYPTO_POLICY=' /etc/sysconfig/sshd 2>/dev/null || echo 'not overridden'", "sudo": True, "key": "sshd_crypto_override", "section": "5.2.20"},
         ])
 
     return commands

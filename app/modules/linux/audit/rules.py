@@ -501,6 +501,20 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         evidence=lambda d, p: _get_output(d, "aslr"),
     ))
 
+    # 1.5.2 - Restrict ptrace scope
+    rules.append(LinuxCISRule(
+        id="LNX-L1-1.5.2",
+        cis_section="1.5.2",
+        title="Ensure ptrace_scope is restricted",
+        severity="medium",
+        level="L1",
+        rationale="Restricting ptrace prevents processes from inspecting/modifying other processes' memory (credential theft, code injection).",
+        remediation="Set kernel.yama.ptrace_scope = 1 in /etc/sysctl.d/60-ptrace.conf and run sysctl -w kernel.yama.ptrace_scope=1",
+        check=lambda d, p: bool(re.search(r'=\s*[123]\s*$', _get_output(d, "ptrace_scope").strip())),
+        evidence=lambda d, p: _get_output(d, "ptrace_scope"),
+        expected_value="kernel.yama.ptrace_scope = 1 (or stricter)",
+    ))
+
     # 1.5.4 - Core dumps restricted
     rules.append(LinuxCISRule(
         id="LNX-L1-1.5.4",
@@ -1048,6 +1062,20 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             int(re.search(r'PASS_MIN_DAYS\s+(\d+)', _get_output(d, "pass_min_days")).group(1)) >= 1
         ),
         evidence=lambda d, p: _get_output(d, "pass_min_days"),
+    ))
+
+    # 5.4.1.6 - Password hashing algorithm
+    rules.append(LinuxCISRule(
+        id="LNX-L1-5.4.1.6",
+        cis_section="5.4.1.6",
+        title="Ensure password hashing algorithm is SHA-512 or yescrypt",
+        severity="medium",
+        level="L1",
+        rationale="Weak hashing algorithms (MD5, DES) make stored password hashes crackable.",
+        remediation="Set ENCRYPT_METHOD SHA512 in /etc/login.defs",
+        check=lambda d, p: bool(re.search(r'ENCRYPT_METHOD\s+(SHA512|YESCRYPT)', _get_output(d, "encrypt_method"), re.IGNORECASE)),
+        evidence=lambda d, p: _get_output(d, "encrypt_method"),
+        expected_value="ENCRYPT_METHOD SHA512 (or yescrypt)",
     ))
 
     # 5.5.1 - Restrict root login
@@ -1846,9 +1874,16 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         level="L1",
         rationale="SHA1 is cryptographically broken and should not be used for digital signatures.",
         remediation="Run: update-crypto-policies --set DEFAULT or FUTURE to disable SHA1",
+        # Require actual crypto-policy output: an empty/errored read must not
+        # pass (fail closed).
         check=lambda d, p: (
-            "SHA1" not in _get_output(d, "crypto_policy_current").upper() and
-            ":SHA1" not in _get_output(d, "crypto_policy_current").upper()
+            bool(
+                _get_output(d, "crypto_policy_current").strip() or
+                _get_output(d, "crypto_policy").strip()
+            ) and
+            "SHA1" not in (
+                _get_output(d, "crypto_policy_current") or _get_output(d, "crypto_policy")
+            ).upper()
         ),
         evidence=lambda d, p: _get_output(d, "crypto_policy_current") or _get_output(d, "crypto_policy"),
         distros=_RHEL_DISTROS,
@@ -1894,6 +1929,93 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         check=lambda d, p: "logfile" in _get_output(d, "sudo_logfile").lower(),
         evidence=lambda d, p: _get_output(d, "sudo_logfile"),
         distros=_RHEL_DISTROS,
+    ))
+
+    # CIS RHEL/Rocky - Ensure AIDE is installed (filesystem integrity tool)
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.3.4",
+        cis_section="1.3.4",
+        title="Ensure AIDE is installed",
+        severity="medium",
+        level="L1",
+        rationale="AIDE detects unauthorized changes to system binaries and configuration files.",
+        remediation="Run: dnf install -y aide && aide --init && mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz",
+        check=lambda d, p: (
+            bool(_get_output(d, "aide_installed").strip()) and
+            "not installed" not in _get_output(d, "aide_installed").lower()
+        ),
+        evidence=lambda d, p: _get_output(d, "aide_installed"),
+        distros=_RHEL_DISTROS,
+        expected_value="aide package installed",
+    ))
+
+    # CIS RHEL/Rocky - Ensure filesystem integrity is regularly checked
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.3.5",
+        cis_section="1.3.5",
+        title="Ensure filesystem integrity is regularly checked",
+        severity="medium",
+        level="L1",
+        rationale="Periodic AIDE checks turn the integrity database into actual detection of tampering.",
+        remediation="Schedule: echo '05 4 * * * root /usr/sbin/aide --check' >> /etc/crontab (or enable aidecheck.timer)",
+        check=lambda d, p: (
+            bool(_get_output(d, "aide_cron").strip()) and
+            "not scheduled" not in _get_output(d, "aide_cron").lower()
+        ),
+        evidence=lambda d, p: _get_output(d, "aide_cron"),
+        distros=_RHEL_DISTROS,
+        expected_value="aide --check scheduled via cron or aidecheck.timer",
+    ))
+
+    # CIS RHEL/Rocky - Ensure GDM is not installed on servers
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-1.8.1",
+        cis_section="1.8.1",
+        title="Ensure GDM (graphical login) is not installed",
+        severity="low",
+        level="L1",
+        rationale="A display manager adds attack surface; servers should not run a graphical login.",
+        remediation="Remove if not required: dnf remove -y gdm (manual — verify the host is not a workstation first)",
+        check=lambda d, p: "not installed" in _get_output(d, "gdm_installed").lower(),
+        evidence=lambda d, p: _get_output(d, "gdm_installed"),
+        distros=_RHEL_DISTROS,
+        expected_value="gdm not installed",
+    ))
+
+    # CIS RHEL/Rocky - Ensure firewalld is enabled and running
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-3.4.2",
+        cis_section="3.4.2",
+        title="Ensure firewalld service is enabled and running",
+        severity="high",
+        level="L1",
+        rationale="firewalld must be both enabled (persists reboots) and running to enforce the host firewall.",
+        remediation="Run: dnf install -y firewalld && systemctl unmask firewalld && systemctl enable --now firewalld",
+        check=lambda d, p: (
+            "enabled" in _get_output(d, "firewalld_enabled").lower() and
+            "running" in _get_output(d, "firewalld_state").lower()
+        ),
+        evidence=lambda d, p: (
+            f"is-enabled: {_get_output(d, 'firewalld_enabled')}\n"
+            f"state: {_get_output(d, 'firewalld_state')}"
+        ),
+        distros=_RHEL_DISTROS,
+        expected_value="firewalld enabled and running",
+    ))
+
+    # CIS RHEL/Rocky - Ensure sshd does not override the system-wide crypto policy
+    rules.append(LinuxCISRule(
+        id="LNX-RHEL-L1-5.2.20",
+        cis_section="5.2.20",
+        title="Ensure system-wide crypto policy is not over-ridden by sshd",
+        severity="medium",
+        level="L1",
+        rationale="A CRYPTO_POLICY= line in /etc/sysconfig/sshd makes sshd ignore the system crypto policy, potentially re-enabling weak algorithms.",
+        remediation="Comment out CRYPTO_POLICY= in /etc/sysconfig/sshd and restart sshd",
+        check=lambda d, p: "not overridden" in _get_output(d, "sshd_crypto_override").lower(),
+        evidence=lambda d, p: _get_output(d, "sshd_crypto_override"),
+        distros=_RHEL_DISTROS,
+        expected_value="No active CRYPTO_POLICY= line in /etc/sysconfig/sshd",
     ))
 
     # CIS RHEL 1.4.2 - Ensure GRUB2 bootloader password is set

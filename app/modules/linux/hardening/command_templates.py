@@ -100,6 +100,19 @@ _register(LinuxHardeningTemplate(
     ]
 ))
 
+# 1.5.2 - Restrict ptrace scope
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.5.2",
+    description="Restrict ptrace scope (kernel.yama.ptrace_scope)",
+    commands=[
+        "echo 'kernel.yama.ptrace_scope = 1' > /etc/sysctl.d/60-ptrace.conf",
+        "sysctl -w kernel.yama.ptrace_scope=1"
+    ],
+    verify_commands=[
+        "sysctl kernel.yama.ptrace_scope | grep -qE '= [123]' && echo 'PASS' || echo 'FAIL'"
+    ]
+))
+
 # 1.6.1 - Configure MOTD
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-1.6.1",
@@ -298,12 +311,16 @@ _register(LinuxHardeningTemplate(
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-3.4.1",
     description="Enable firewall (ufw for Ubuntu)",
+    # firewalld must be running BEFORE any firewall-cmd call, so the daemon is
+    # enabled first and configured after (the ufw path is order-insensitive).
     commands=[
         "apt-get install -y ufw 2>/dev/null || dnf install -y firewalld 2>/dev/null || true",
-        "ufw default {FIREWALL_DEFAULT_POLICY} incoming 2>/dev/null || firewall-cmd --set-default-zone=drop 2>/dev/null || true",
+        "ufw default {FIREWALL_DEFAULT_POLICY} incoming 2>/dev/null || true",
         "ufw default allow outgoing 2>/dev/null || true",
-        "ufw allow ssh 2>/dev/null || firewall-cmd --permanent --add-service=ssh 2>/dev/null || true",
-        "ufw --force enable 2>/dev/null || systemctl enable --now firewalld 2>/dev/null || true"
+        "ufw allow ssh 2>/dev/null || true",
+        "ufw --force enable 2>/dev/null || systemctl enable --now firewalld 2>/dev/null || true",
+        "firewall-cmd --permanent --add-service=ssh 2>/dev/null || true",
+        "firewall-cmd --reload 2>/dev/null || true"
     ],
     verify_commands=[
         "ufw status | grep -q 'Status: active' && echo 'PASS' || firewall-cmd --state | grep -q 'running' && echo 'PASS' || echo 'FAIL'"
@@ -509,7 +526,7 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.3.1",
     description="Configure password quality requirements",
     commands=[
-        "apt-get install -y libpam-pwquality 2>/dev/null || dnf install -y pam_pwquality 2>/dev/null || true",
+        "apt-get install -y libpam-pwquality 2>/dev/null || dnf install -y libpwquality 2>/dev/null || true",
         "sed -i 's/^#*minlen.*/minlen = {PASS_MIN_LEN}/' /etc/security/pwquality.conf",
         "grep -q '^minlen' /etc/security/pwquality.conf || echo 'minlen = {PASS_MIN_LEN}' >> /etc/security/pwquality.conf",
         "sed -i 's/^#*minclass.*/minclass = 4/' /etc/security/pwquality.conf",
@@ -1056,6 +1073,19 @@ _register(LinuxHardeningTemplate(
     verify_commands=["grep -q 'UMASK.*{UMASK_VALUE}' /etc/login.defs && echo 'PASS' || echo 'FAIL'"]
 ))
 
+# 5.4.1.6 - Password hashing algorithm
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.4.1.6",
+    description="Set password hashing algorithm to SHA-512",
+    commands=[
+        "sed -i 's/^#*\\s*ENCRYPT_METHOD.*/ENCRYPT_METHOD SHA512/' /etc/login.defs",
+        "grep -q '^ENCRYPT_METHOD' /etc/login.defs || echo 'ENCRYPT_METHOD SHA512' >> /etc/login.defs"
+    ],
+    verify_commands=[
+        "grep -qE '^ENCRYPT_METHOD\\s+(SHA512|YESCRYPT)' /etc/login.defs && echo 'PASS' || echo 'FAIL'"
+    ]
+))
+
 # 1.1.8.x - Mount Options
 _register(LinuxHardeningTemplate(
     check_id="LNX-L1-1.1.8.1",
@@ -1173,7 +1203,7 @@ _register(LinuxHardeningTemplate(
     check_id="LNX-L1-5.3.2",
     description="Configure password reuse limit",
     commands=[
-        "apt-get install -y libpam-pwquality 2>/dev/null || dnf install -y pam_pwquality 2>/dev/null || true",
+        "apt-get install -y libpam-pwquality 2>/dev/null || dnf install -y libpwquality 2>/dev/null || true",
         "grep -q 'pam_pwhistory' /etc/pam.d/common-password || sed -i '/pam_unix.so/a password required pam_pwhistory.so remember={PASS_REMEMBER} use_authtok' /etc/pam.d/common-password"
     ],
     verify_commands=["grep -qE 'pam_pwhistory|remember=' /etc/pam.d/common-password && echo 'PASS' || echo 'FAIL'"]
@@ -1290,6 +1320,66 @@ _register(LinuxHardeningTemplate(
     verify_commands=[
         "grep -rqE '^Defaults.*logfile=' /etc/sudoers /etc/sudoers.d/ && echo 'PASS' || echo 'FAIL'"
     ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.3.4 - Ensure AIDE is installed
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.3.4",
+    description="Install AIDE (database initialization left to the operator — aide --init can take several minutes)",
+    commands=[
+        "dnf install -y aide",
+        "echo 'NOTE: initialize the database with: aide --init && mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz'"
+    ],
+    verify_commands=[
+        "rpm -q aide >/dev/null 2>&1 && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-1.3.5 - Ensure filesystem integrity is regularly checked
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.3.5",
+    description="Schedule periodic AIDE integrity checks via cron",
+    commands=[
+        "dnf install -y aide",
+        "grep -qrs 'aide --check' /etc/crontab /etc/cron.d 2>/dev/null || echo '05 4 * * * root /usr/sbin/aide --check' >> /etc/crontab"
+    ],
+    verify_commands=[
+        "grep -qrs 'aide --check' /etc/crontab /etc/cron.d && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-3.4.2 - Ensure firewalld is enabled and running
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-3.4.2",
+    description="Enable and start firewalld (SSH service kept allowed)",
+    commands=[
+        "dnf install -y firewalld",
+        "systemctl unmask firewalld 2>/dev/null || true",
+        "systemctl enable --now firewalld",
+        "firewall-cmd --permanent --add-service=ssh 2>/dev/null || true",
+        "firewall-cmd --reload 2>/dev/null || true"
+    ],
+    verify_commands=[
+        "firewall-cmd --state 2>/dev/null | grep -q 'running' && echo 'PASS' || echo 'FAIL'",
+        "systemctl is-enabled firewalld 2>/dev/null | grep -q 'enabled' && echo 'PASS' || echo 'FAIL'"
+    ],
+    distros=_RHEL_DISTROS
+))
+
+# LNX-RHEL-L1-5.2.20 - Ensure sshd does not override system crypto policy
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-5.2.20",
+    description="Remove sshd override of the system-wide crypto policy",
+    commands=[
+        "sed -i 's/^\\s*CRYPTO_POLICY=/# CRYPTO_POLICY=/' /etc/sysconfig/sshd"
+    ],
+    verify_commands=[
+        "grep -qE '^\\s*CRYPTO_POLICY=' /etc/sysconfig/sshd 2>/dev/null && echo 'FAIL' || echo 'PASS'"
+    ],
+    requires_service_restart="sshd",
     distros=_RHEL_DISTROS
 ))
 
