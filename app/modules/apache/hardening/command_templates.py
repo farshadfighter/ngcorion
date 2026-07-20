@@ -87,6 +87,19 @@ def get_apache_hardening_template(check_id: str) -> Optional[ApacheHardeningTemp
     return APACHE_HARDENING_TEMPLATES.get(check_id)
 
 
+def _substitute_parameters(commands: List[str], parameters: Optional[Dict[str, str]]) -> List[str]:
+    """Substitute {PARAM} placeholders via plain replace — str.format() would
+    raise on any brace the shell command itself contains."""
+    if not parameters:
+        return commands
+    result = []
+    for cmd in commands:
+        for name, value in parameters.items():
+            cmd = cmd.replace(f"{{{name}}}", str(value))
+        result.append(cmd)
+    return result
+
+
 def get_apache_template_commands_for_distro(
     check_id: str,
     distro_id: str,
@@ -113,14 +126,7 @@ def get_apache_template_commands_for_distro(
     else:
         commands = copy.deepcopy(template.commands_rhel)
 
-    # Substitute parameters
-    if parameters:
-        commands = [
-            cmd.format(**parameters) if any(f"{{{k}}}" in cmd for k in parameters) else cmd
-            for cmd in commands
-        ]
-
-    return commands
+    return _substitute_parameters(commands, parameters)
 
 
 def get_apache_verify_commands_for_distro(
@@ -139,14 +145,7 @@ def get_apache_verify_commands_for_distro(
     else:
         commands = copy.deepcopy(template.verify_commands_rhel)
 
-    # Substitute parameters
-    if parameters:
-        commands = [
-            cmd.format(**parameters) if any(f"{{{k}}}" in cmd for k in parameters) else cmd
-            for cmd in commands
-        ]
-
-    return commands
+    return _substitute_parameters(commands, parameters)
 
 
 def get_all_supported_check_ids() -> List[str]:

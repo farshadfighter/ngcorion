@@ -37,6 +37,7 @@ class AutoHardenRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+    sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
 
     class Config:
         json_schema_extra = {
@@ -66,6 +67,7 @@ class BatchExecuteRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+    sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
     checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
 
     class Config:
@@ -91,6 +93,7 @@ class SingleFixRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1)
     ssh_password: str = Field(..., min_length=1)
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+    sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
     check_id: str = Field(..., description="CIS check ID to fix")
     parameters: Dict[str, str] = Field(default_factory=dict)
 
@@ -244,6 +247,7 @@ async def auto_harden_with_defaults(
             ssh_username=request.ssh_username,
             ssh_password=request.ssh_password,
             ssh_port=request.ssh_port,
+            sudo_password=request.sudo_password,
         )
         consume_quota(http_request)
         log_session_execute_outcome(
@@ -308,6 +312,7 @@ async def batch_execute_selected(
             ssh_password=request.ssh_password,
             checks=checks,
             ssh_port=request.ssh_port,
+            sudo_password=request.sudo_password,
         )
         consume_quota(http_request)
         log_session_execute_outcome(
@@ -367,6 +372,7 @@ async def execute_single_fix(
             parameters=request.parameters,
             ssh_port=request.ssh_port,
             session_id=request.session_id,
+            sudo_password=request.sudo_password,
         )
 
         consume_quota(http_request)

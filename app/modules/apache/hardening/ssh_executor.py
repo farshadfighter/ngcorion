@@ -7,6 +7,7 @@ Uses the paramiko exec_command HardeningSSHRunner since Apache runs on Linux.
 
 from typing import Dict, List, Any, Optional
 import logging
+import shlex
 import time
 
 from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
@@ -104,6 +105,11 @@ class ApacheSSHExecutor:
             self.ssh_client.disconnect()
         self._connected = False
 
+    _SLOW_CMD_PREFIXES = (
+        "apt-get install", "apt install",
+        "dnf install", "yum install",
+    )
+
     def execute_command(self, command: str, use_sudo: bool = True) -> str:
         """
         Execute a single command via SSH.
@@ -118,7 +124,15 @@ class ApacheSSHExecutor:
         if not self._connected:
             raise RuntimeError("Not connected to SSH")
 
-        return self.ssh_client.send_command(command, use_sudo=use_sudo)
+        stripped = command.lstrip()
+        timeout = 120 if any(stripped.startswith(p) for p in self._SLOW_CMD_PREFIXES) else 30
+        if use_sudo:
+            # Wrap in `sh -c` so redirections/pipes inside the template command
+            # run under sudo too. Bare `sudo -S cmd >> file` performs the
+            # redirection as the unprivileged login user and fails with
+            # "Permission denied" for any /etc target.
+            command = f"sh -c {shlex.quote(command)}"
+        return self.ssh_client.send_command(command, use_sudo=use_sudo, timeout=timeout)
 
     def restart_apache_service(self) -> bool:
         """
@@ -130,8 +144,17 @@ class ApacheSSHExecutor:
         service = get_apache_service_name(self.distro_id or "ubuntu")
         try:
             self.execute_command(f"systemctl restart {service}", use_sudo=True)
-            logger.info(f"Restarted Apache service: {service}")
-            return True
+            # `systemctl restart` output alone doesn't prove the service came
+            # back (a broken config leaves it dead while the command "runs").
+            # Confirm with is-active so a config-breaking fix fails closed.
+            state = self.execute_command(f"systemctl is-active {service}", use_sudo=True)
+            lines = [l.strip() for l in (state or "").splitlines() if l.strip()]
+            ok = "active" in lines
+            if ok:
+                logger.info(f"Restarted Apache service: {service}")
+            else:
+                logger.error(f"Apache service {service} is not active after restart: {state!r}")
+            return ok
         except Exception as e:
             logger.error(f"Failed to restart {service}: {e}")
             return False
@@ -160,7 +183,17 @@ class ApacheSSHExecutor:
             ApacheHardeningExecutionResult with success/failure details
         """
         result = ApacheHardeningExecutionResult(check_id)
-        parameters = parameters or {}
+
+        # Merge template defaults under the caller's values and drop empty
+        # strings: the UI may submit optional params as "" and a missing value
+        # would leave the {PLACEHOLDER} unsubstituted, writing broken config
+        # lines (e.g. "SSLProtocol {SSL_PROTOCOLS}") to the target.
+        from .parameter_metadata import get_apache_check_defaults
+        merged = dict(get_apache_check_defaults(check_id))
+        for k, v in (parameters or {}).items():
+            if v is not None and str(v).strip() != "":
+                merged[k] = v
+        parameters = merged
 
         try:
             # Get template
@@ -238,6 +271,17 @@ class ApacheSSHExecutor:
             else:
                 # No verification commands - assume success if commands ran
                 result.success = True
+
+            # A fix whose service restart left Apache dead is not a success,
+            # even if the config-grep verification passed: the host is now
+            # serving nothing. Fail closed so the audit row keeps its FAIL.
+            if template.requires_service_restart and not result.service_restarted:
+                result.success = False
+                if not result.error_message:
+                    result.error_message = (
+                        "Apache service failed to restart after the change — "
+                        "the configuration may be invalid; fix not confirmed"
+                    )
 
             logger.info(f"Hardening {check_id} {'succeeded' if result.success else 'failed'} on {self.ip}")
 

@@ -150,6 +150,7 @@ class MongoDBSHAuditService:
         user_id: int,
         ssh_username: str,
         ssh_password: str,
+        sudo_password: Optional[str] = None,
         mongo_username: Optional[str] = None,
         mongo_password: Optional[str] = None,
         mongo_port: int = 27017,
@@ -166,6 +167,7 @@ class MongoDBSHAuditService:
             user_id:        Authenticated user performing the audit
             ssh_username:   OS-level SSH credentials (not stored)
             ssh_password:   OS-level SSH credentials (not stored)
+            sudo_password:  Sudo password (defaults to the SSH password, not stored)
             mongo_username: MongoDB admin username (optional, not stored)
             mongo_password: MongoDB admin password (optional, not stored)
             mongo_port:     MongoDB listen port (default 27017)
@@ -211,6 +213,7 @@ class MongoDBSHAuditService:
                     ip=target_ip,
                     username=ssh_username,
                     password=ssh_password,
+                    sudo_password=sudo_password,
                     mongo_username=mongo_username,
                     mongo_password=mongo_password,
                     mongo_port=mongo_port,
@@ -241,7 +244,7 @@ class MongoDBSHAuditService:
             session.error_checks = 0
             session.compliance_pct = summary["compliance_pct"]
             session.weighted_compliance_pct = summary["weighted_compliance_pct"]
-            session.turbo_dump = clean_dump
+            session.turbo_dump = clean_dump[:100000]  # Limit size (matches Apache/Linux)
             db.commit()
 
             # 8. Persist individual check results

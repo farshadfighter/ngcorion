@@ -146,42 +146,42 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 2.3 - WebDAV modules
         {
-            "cmd": f"grep -rE 'mod_dav|LoadModule.*dav' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'mod_dav|LoadModule.*dav' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "mod_dav_config",
             "section": "2.3"
         },
         # 2.4 - Status module
         {
-            "cmd": f"grep -rE 'mod_status|server-status' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'mod_status|server-status' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "mod_status_config",
             "section": "2.4"
         },
         # 2.5 - Info module
         {
-            "cmd": f"grep -rE 'mod_info|server-info' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'mod_info|server-info' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "mod_info_config",
             "section": "2.5"
         },
         # 2.6 - UserDir module
         {
-            "cmd": f"grep -rE 'mod_userdir|UserDir' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'mod_userdir|UserDir' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "mod_userdir_config",
             "section": "2.6"
         },
         # 2.7 - Autoindex module
         {
-            "cmd": f"grep -rE 'mod_autoindex|Options.*Indexes' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'mod_autoindex|Options.*Indexes' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "mod_autoindex_config",
             "section": "2.7"
         },
         # 2.8 - Proxy modules
         {
-            "cmd": f"grep -rE 'mod_proxy' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'mod_proxy' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "mod_proxy_config",
             "section": "2.8"
@@ -258,7 +258,7 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 3.9-3.10 - Document root
         {
-            "cmd": f"grep -rE 'DocumentRoot' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' | head -20 || echo 'not found'",
+            "cmd": f"grep -rE 'DocumentRoot' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' | head -20 || echo 'not found'",
             "sudo": True,
             "key": "document_roots",
             "section": "3.9"
@@ -290,7 +290,7 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 4.3 - AllowOverrideList
         {
-            "cmd": f"grep -rE '^\\s*AllowOverrideList' {paths['config_dir']}/ 2>/dev/null || echo 'not found'",
+            "cmd": f"grep -rE '^\\s*AllowOverrideList' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "allow_override_list",
             "section": "4.3"
@@ -328,7 +328,7 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
             "section": "5.3"
         },
         {
-            "cmd": f"grep -rE 'ScriptAlias|AddHandler.*cgi|Options.*ExecCGI' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not found'",
+            "cmd": f"grep -rE 'ScriptAlias|AddHandler.*cgi|Options.*ExecCGI' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not found'",
             "sudo": True,
             "key": "cgi_config",
             "section": "5.4"
@@ -342,7 +342,7 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 5.8 - HTTP TRACE
         {
-            "cmd": f"grep -rE 'TraceEnable' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE 'TraceEnable' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "trace_enable",
             "section": "5.8"
@@ -361,7 +361,7 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 6.2 - Syslog for error log
         {
-            "cmd": f"grep -rE 'ErrorLog.*syslog' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'ErrorLog.*syslog' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "error_log_syslog",
             "section": "6.2"
@@ -389,7 +389,7 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 6.7 - Forensic logging
         {
-            "cmd": f"grep -rE 'mod_log_forensic|ForensicLog' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'mod_log_forensic|ForensicLog' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "forensic_log",
             "section": "6.7"
@@ -401,21 +401,21 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
     commands.extend([
         # 7.1 - Timeout
         {
-            "cmd": f"grep -rE '^\\s*Timeout' {paths['main_config']} {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*Timeout' {paths['main_config']} {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "timeout_config",
             "section": "7.1"
         },
         # 7.2 - KeepAlive
         {
-            "cmd": f"grep -rE '^\\s*KeepAlive|^\\s*MaxKeepAliveRequests|^\\s*KeepAliveTimeout' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*KeepAlive|^\\s*MaxKeepAliveRequests|^\\s*KeepAliveTimeout' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "keepalive_config",
             "section": "7.2"
         },
         # 7.3-7.6 - Request Limits
         {
-            "cmd": f"grep -rE 'LimitRequestLine|LimitRequestFields|LimitRequestFieldSize|LimitRequestBody' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE 'LimitRequestLine|LimitRequestFields|LimitRequestFieldSize|LimitRequestBody' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "request_limits",
             "section": "7.3"
@@ -434,56 +434,56 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
         },
         # 8.2 - SSL Configuration file
         {
-            "cmd": f"cat {paths['ssl_config']} 2>/dev/null | grep -v '^#' | grep -v '^$' | head -100 || echo 'no ssl config'",
+            "cmd": f"cat {paths['ssl_config']} 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' | grep -v '^$' | head -100 || echo 'no ssl config'",
             "sudo": True,
             "key": "ssl_config_content",
             "section": "8.2"
         },
         # 8.3 - SSL Protocols
         {
-            "cmd": f"grep -rE '^\\s*SSLProtocol' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*SSLProtocol' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "ssl_protocol",
             "section": "8.3"
         },
         # 8.4 - SSL Cipher Suites
         {
-            "cmd": f"grep -rE '^\\s*SSLCipherSuite' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*SSLCipherSuite' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "ssl_ciphers",
             "section": "8.4"
         },
         # 8.5 - SSL Honor Cipher Order
         {
-            "cmd": f"grep -rE '^\\s*SSLHonorCipherOrder' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*SSLHonorCipherOrder' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "ssl_honor_cipher_order",
             "section": "8.5"
         },
         # 8.6 - SSL Compression
         {
-            "cmd": f"grep -rE '^\\s*SSLCompression' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*SSLCompression' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "ssl_compression",
             "section": "8.6"
         },
         # 8.7 - SSL Certificates
         {
-            "cmd": f"grep -rE '^\\s*SSLCertificateFile|^\\s*SSLCertificateKeyFile' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*SSLCertificateFile|^\\s*SSLCertificateKeyFile' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "ssl_certificates",
             "section": "8.7"
         },
         # 8.8 - HSTS
         {
-            "cmd": f"grep -rE 'Strict-Transport-Security' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'Strict-Transport-Security' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "hsts_header",
             "section": "8.8"
         },
         # 8.9 - OCSP Stapling
         {
-            "cmd": f"grep -rE 'SSLUseStapling|SSLStaplingCache' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'SSLUseStapling|SSLStaplingCache' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "ocsp_stapling",
             "section": "8.9"
@@ -495,21 +495,21 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
     commands.extend([
         # 9.1 - ServerTokens
         {
-            "cmd": f"grep -rE '^\\s*ServerTokens' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*ServerTokens' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "server_tokens",
             "section": "9.1"
         },
         # 9.2 - ServerSignature
         {
-            "cmd": f"grep -rE '^\\s*ServerSignature' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*ServerSignature' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "server_signature",
             "section": "9.2"
         },
         # 9.3 - FileETag
         {
-            "cmd": f"grep -rE '^\\s*FileETag' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'",
+            "cmd": f"grep -rE '^\\s*FileETag' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "file_etag",
             "section": "9.3"
@@ -521,52 +521,52 @@ def get_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]
     commands.extend([
         # 10.1 - LimitExcept
         {
-            "cmd": f"grep -rE 'LimitExcept|<Limit' {paths['config_dir']}/ 2>/dev/null | grep -v '^#' | head -20 || echo 'not configured'",
+            "cmd": f"grep -rE 'LimitExcept|<Limit' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' | head -20 || echo 'not configured'",
             "sudo": True,
             "key": "limit_http_methods",
             "section": "10.1"
         },
         # 10.2 - HTTP Request Methods
         {
-            "cmd": f"grep -rE 'RewriteRule.*\\[F\\]|RewriteCond.*REQUEST_METHOD' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'RewriteRule.*\\[F\\]|RewriteCond.*REQUEST_METHOD' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "http_methods_rewrite",
             "section": "10.2"
         },
         # 10.3 - mod_reqtimeout
         {
-            "cmd": f"grep -rE 'RequestReadTimeout' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'RequestReadTimeout' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "request_read_timeout",
             "section": "10.3"
         },
         # Security Headers
         {
-            "cmd": f"grep -rE 'Content-Security-Policy' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'Content-Security-Policy' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "csp_header",
             "section": "10.4"
         },
         {
-            "cmd": f"grep -rE 'X-Content-Type-Options' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'X-Content-Type-Options' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "xcto_header",
             "section": "10.5"
         },
         {
-            "cmd": f"grep -rE 'X-Frame-Options' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'X-Frame-Options' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "xfo_header",
             "section": "10.6"
         },
         {
-            "cmd": f"grep -rE 'X-XSS-Protection' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'X-XSS-Protection' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "xxss_header",
             "section": "10.7"
         },
         {
-            "cmd": f"grep -rE 'Referrer-Policy' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'",
+            "cmd": f"grep -rE 'Referrer-Policy' {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'",
             "sudo": True,
             "key": "referrer_policy",
             "section": "10.8"
@@ -612,8 +612,8 @@ def get_quick_apache_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str,
         {"cmd": f"systemctl is-active {paths['service_name']} 2>/dev/null || echo 'not active'", "sudo": False, "key": "apache_active", "section": "1.2"},
 
         # Critical security settings
-        {"cmd": f"grep -E '^\\s*ServerTokens' {paths['main_config']} {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'", "sudo": True, "key": "server_tokens", "section": "9.1"},
-        {"cmd": f"grep -E '^\\s*ServerSignature' {paths['main_config']} {paths['config_dir']}/ 2>/dev/null | grep -v '^#' || echo 'not configured'", "sudo": True, "key": "server_signature", "section": "9.2"},
+        {"cmd": f"grep -E '^\\s*ServerTokens' {paths['main_config']} {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'", "sudo": True, "key": "server_tokens", "section": "9.1"},
+        {"cmd": f"grep -E '^\\s*ServerSignature' {paths['main_config']} {paths['config_dir']}/ 2>/dev/null | grep -vE '(^|:)[[:space:]]*#' || echo 'not configured'", "sudo": True, "key": "server_signature", "section": "9.2"},
         {"cmd": f"grep -E 'TraceEnable' {paths['config_dir']}/ 2>/dev/null || echo 'not configured'", "sudo": True, "key": "trace_enable", "section": "5.8"},
 
         # SSL/TLS

@@ -148,31 +148,35 @@ _register(MongoDBHardeningTemplate(
 ))
 
 # MONGO-L1-015: Set TLS mode to allowTLS
+# Guarded on certificateKeyFile: any TLS mode other than 'disabled' without a
+# certificate keeps mongod from starting, so a cert-less host FAILS the fix
+# (with guidance) instead of getting its database taken down. The mode sed is
+# scoped to the tls: block so operationProfiling.mode is never touched.
 _register(MongoDBHardeningTemplate(
     check_id="MONGO-L1-015",
     description="Configure TLS mode to allowTLS (accepts both TLS and non-TLS connections)",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+mode[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1allowTLS/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: allowTLS' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  tls:\\n    mode: allowTLS' /etc/mongod.conf; else printf '\\nnet:\\n  tls:\\n    mode: allowTLS\\n' >> /etc/mongod.conf; fi",
+        "if ! grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf; then echo 'NO_TLS_CERT_CONFIGURED - set net.tls.certificateKeyFile first (MONGO-L1-014)'; elif sed -n '/^[[:space:]]*tls:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+mode[[:space:]]*:'; then sed -i -E '/^[[:space:]]*tls:/,/^[^[:space:]]/ s/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1allowTLS/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: allowTLS' /etc/mongod.conf; fi",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*allowTLS' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf && grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*allowTLS' /etc/mongod.conf && echo 'PASS' || echo 'FAIL - TLS certificate not configured (run MONGO-L1-014 first)'",
     ],
     requires_service_restart=True,
 ))
 
-# MONGO-L2-016: Set TLS mode to requireTLS
+# MONGO-L2-016: Set TLS mode to requireTLS (same cert guard / scoping as L1-015)
 _register(MongoDBHardeningTemplate(
     check_id="MONGO-L2-016",
     description="Configure TLS mode to requireTLS (enforces TLS for all connections)",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+mode[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1requireTLS/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: requireTLS' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  tls:\\n    mode: requireTLS' /etc/mongod.conf; else printf '\\nnet:\\n  tls:\\n    mode: requireTLS\\n' >> /etc/mongod.conf; fi",
+        "if ! grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf; then echo 'NO_TLS_CERT_CONFIGURED - set net.tls.certificateKeyFile first (MONGO-L1-014)'; elif sed -n '/^[[:space:]]*tls:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+mode[[:space:]]*:'; then sed -i -E '/^[[:space:]]*tls:/,/^[^[:space:]]/ s/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1requireTLS/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: requireTLS' /etc/mongod.conf; fi",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*requireTLS' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf && grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*requireTLS' /etc/mongod.conf && echo 'PASS' || echo 'FAIL - TLS certificate not configured (run MONGO-L1-014 first)'",
     ],
     requires_service_restart=True,
 ))
@@ -183,7 +187,7 @@ _register(MongoDBHardeningTemplate(
     description="Configure MongoDB to log to a file (systemLog.destination: file)",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+destination[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+destination[[:space:]]*:[[:space:]]*).*/\\1file/' /etc/mongod.conf; elif grep -q '^systemLog:' /etc/mongod.conf; then sed -i '/^systemLog:/a\\  destination: file' /etc/mongod.conf; else printf '\\nsystemLog:\\n  destination: file\\n  path: /var/log/mongodb/mongod.log\\n' >> /etc/mongod.conf; fi",
+        "if sed -n '/^systemLog:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+destination[[:space:]]*:'; then sed -i -E '/^systemLog:/,/^[^[:space:]]/ s/^([[:space:]]+destination[[:space:]]*:[[:space:]]*).*/\\1file/' /etc/mongod.conf; elif grep -q '^systemLog:' /etc/mongod.conf; then sed -i '/^systemLog:/a\\  destination: file' /etc/mongod.conf; else printf '\\nsystemLog:\\n  destination: file\\n  path: /var/log/mongodb/mongod.log\\n' >> /etc/mongod.conf; fi",
         "if ! grep -qE '^[[:space:]]+path[[:space:]]*:.*log' /etc/mongod.conf && grep -q '^systemLog:' /etc/mongod.conf; then sed -i '/^systemLog:/a\\  path: /var/log/mongodb/mongod.log' /etc/mongod.conf; fi",
         "mkdir -p /var/log/mongodb && chown mongod:mongod /var/log/mongodb 2>/dev/null || true",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
@@ -297,8 +301,8 @@ _register(MongoDBHardeningTemplate(
     description="Configure TLS encryption with certificate and CA files",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        # Set TLS mode
-        "if grep -qE '^[[:space:]]+mode[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1{TLS_MODE}/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: {TLS_MODE}' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  tls:\\n    mode: {TLS_MODE}' /etc/mongod.conf; else printf '\\nnet:\\n  tls:\\n    mode: {TLS_MODE}\\n' >> /etc/mongod.conf; fi",
+        # Set TLS mode (sed scoped to the tls: block so operationProfiling.mode is never touched)
+        "if sed -n '/^[[:space:]]*tls:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+mode[[:space:]]*:'; then sed -i -E '/^[[:space:]]*tls:/,/^[^[:space:]]/ s/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1{TLS_MODE}/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: {TLS_MODE}' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  tls:\\n    mode: {TLS_MODE}' /etc/mongod.conf; else printf '\\nnet:\\n  tls:\\n    mode: {TLS_MODE}\\n' >> /etc/mongod.conf; fi",
         # Set certificateKeyFile
         "if grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's|^([[:space:]]+certificateKeyFile[[:space:]]*:[[:space:]]*).*|\\1{TLS_CERT_FILE}|' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    certificateKeyFile: {TLS_CERT_FILE}' /etc/mongod.conf; fi",
         # Set CAFile

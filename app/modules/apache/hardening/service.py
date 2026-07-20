@@ -30,6 +30,28 @@ from .ssh_executor import ApacheHardeningBatchExecutor
 logger = logging.getLogger(__name__)
 
 
+def _recompute_session_stats(db: Session, session_id: int) -> None:
+    """
+    Refresh AuditSession pass/fail counters and compliance_pct after hardening
+    flips AuditResult rows to PASS, so the sessions list stays consistent.
+    """
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    if not session:
+        return
+    results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+    # INFO-level rows are unscored (matches evaluate_compliance's counters).
+    scored_rows = [r for r in results if (r.level or "L1") != "INFO"]
+    passed = sum(1 for r in scored_rows if r.status == CheckStatus.PASS)
+    failed = sum(1 for r in scored_rows if r.status == CheckStatus.FAIL)
+    errors = sum(1 for r in scored_rows if r.status == CheckStatus.ERROR)
+    session.passed_checks = passed
+    session.failed_checks = failed
+    session.error_checks = errors
+    scored = passed + failed
+    if scored > 0:
+        session.compliance_pct = round(100.0 * passed / scored, 2)
+
+
 class ApacheHardeningService:
     """Service for Apache CIS hardening operations."""
 
@@ -232,6 +254,7 @@ class ApacheHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -303,6 +326,7 @@ class ApacheHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -374,6 +398,7 @@ class ApacheHardeningService:
             if audit_row:
                 audit_row.status = CheckStatus.PASS
                 audit_row.evidence_snippet = result.get("verification_result") or ""
+                _recompute_session_stats(db, session_id)
                 db.commit()
 
         result["asset_id"] = asset_id

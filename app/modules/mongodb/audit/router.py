@@ -32,6 +32,9 @@ class MongoDBSHAuditRequest(BaseModel):
     ssh_username: str = Field(..., min_length=1, description="SSH username (not stored)")
     ssh_password: str = Field(..., min_length=1, description="SSH password (not stored)")
     ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
+    sudo_password: Optional[str] = Field(
+        None, description="Sudo password (defaults to SSH password, not stored)"
+    )
     mongo_username: Optional[str] = Field(
         None, description="MongoDB admin username (not stored)"
     )
@@ -132,6 +135,7 @@ def execute_mongodb_audit(
             user_id=current_user.id,
             ssh_username=audit_request.ssh_username,
             ssh_password=audit_request.ssh_password,
+            sudo_password=audit_request.sudo_password,
             mongo_username=audit_request.mongo_username,
             mongo_password=audit_request.mongo_password,
             mongo_port=audit_request.mongo_port,

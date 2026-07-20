@@ -61,6 +61,7 @@ class MongoDBSSHClient:
         ip:              Target server IP
         username:        SSH username
         password:        SSH password
+        sudo_password:   Sudo password (defaults to the SSH password)
         mongo_username:  MongoDB admin username (optional)
         mongo_password:  MongoDB admin password (optional)
         mongo_port:      MongoDB listen port (default 27017)
@@ -75,6 +76,7 @@ class MongoDBSSHClient:
         ip: str,
         username: str,
         password: str,
+        sudo_password: Optional[str] = None,
         mongo_username: Optional[str] = None,
         mongo_password: Optional[str] = None,
         mongo_port: int = 27017,
@@ -84,6 +86,7 @@ class MongoDBSSHClient:
         self.ip = ip
         self.username = username
         self.password = password
+        self.sudo_password = sudo_password or password
         self.mongo_username = mongo_username
         self.mongo_password = mongo_password
         self.mongo_port = mongo_port
@@ -142,7 +145,7 @@ class MongoDBSSHClient:
         try:
             if use_sudo:
                 cmd = (
-                    f"echo {shlex.quote(self.password)}"
+                    f"echo {shlex.quote(self.sudo_password)}"
                     f" | sudo -S sh -c {shlex.quote(cmd)} 2>/dev/null"
                 )
             output = self._conn.send_command(

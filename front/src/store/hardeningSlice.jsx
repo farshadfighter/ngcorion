@@ -147,7 +147,7 @@ export const getDeviceName = (deviceType) => {
  *   { ssh_username, ssh_password, vdom? }
  *
  * MongoDB:
- *   { ssh_username, ssh_password, mongo_username?, mongo_password?, mongo_port? }
+ *   { ssh_username, ssh_password, sudo_password?, mongo_username?, mongo_password?, mongo_port? }
  *
  * MSSQL:
  *   { mssql_username, mssql_password, mssql_port? }
@@ -189,6 +189,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,
                 ssh_port:     credentials.ssh_port || 22,
+                ...(credentials.sudo_password && { sudo_password: credentials.sudo_password }),
                 ...(credentials.mongo_username && { mongo_username: credentials.mongo_username }),
                 ...(credentials.mongo_password && { mongo_password: credentials.mongo_password }),
                 ...(credentials.mongo_port     && { mongo_port:     credentials.mongo_port }),

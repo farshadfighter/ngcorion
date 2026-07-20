@@ -66,12 +66,14 @@ class MongoDBSSHExecutor:
         ip: str,
         username: str,
         password: str,
+        sudo_password: Optional[str] = None,
         ssh_port: int = 22,
         timeout: int = 30,
     ):
         self.ip = ip
         self.username = username
         self.password = password
+        self.sudo_password = sudo_password or password
         self.ssh_port = ssh_port
         self.timeout = timeout
         self._conn = None
@@ -138,7 +140,7 @@ class MongoDBSSHExecutor:
         try:
             if use_sudo:
                 cmd = (
-                    f"echo {shlex.quote(self.password)}"
+                    f"echo {shlex.quote(self.sudo_password)}"
                     f" | sudo -S sh -c {shlex.quote(cmd)} 2>/dev/null"
                 )
             # The command string is already fully formed (sudo wrapping included),
@@ -169,7 +171,17 @@ class MongoDBSSHExecutor:
             MongoDBHardeningExecutionResult with execution details
         """
         result = MongoDBHardeningExecutionResult(check_id)
-        parameters = parameters or {}
+
+        # Merge template defaults under the caller's values and drop empty
+        # strings: the UI may submit optional params as "" and a missing value
+        # would leave the {PLACEHOLDER} unsubstituted, writing broken YAML
+        # (e.g. "port: {MONGO_PORT}") into /etc/mongod.conf.
+        from .parameter_metadata import get_mongodb_check_defaults
+        merged = dict(get_mongodb_check_defaults(check_id))
+        for k, v in (parameters or {}).items():
+            if v is not None and str(v).strip() != "":
+                merged[k] = v
+        parameters = merged
 
         template = get_mongodb_hardening_template(check_id)
         if not template:
@@ -229,6 +241,24 @@ class MongoDBSSHExecutor:
             else:
                 result.success = True
 
+            # A config change that leaves mongod dead after its restart is not
+            # a success, even when the config-grep verification passed — the
+            # database is now down. Fail closed so the audit row keeps FAIL.
+            if result.success and template.requires_service_restart:
+                state = self._run(
+                    "systemctl is-active mongod 2>/dev/null"
+                    " || systemctl is-active mongodb 2>/dev/null"
+                    " || echo 'inactive'",
+                    use_sudo=True,
+                )
+                lines = [l.strip() for l in (state or "").splitlines() if l.strip()]
+                if "active" not in lines:
+                    result.success = False
+                    result.error_message = (
+                        "mongod is not running after the change — the "
+                        "configuration may be invalid; fix not confirmed"
+                    )
+
             logger.info(
                 f"Hardening {check_id}: {'SUCCESS' if result.success else 'FAIL'}"
             )
@@ -272,11 +302,13 @@ class MongoDBHardeningBatchExecutor:
         ip: str,
         username: str,
         password: str,
+        sudo_password: Optional[str] = None,
         ssh_port: int = 22,
     ):
         self.ip = ip
         self.username = username
         self.password = password
+        self.sudo_password = sudo_password or password
         self.ssh_port = ssh_port
 
     def _make_executor(self) -> MongoDBSSHExecutor:
@@ -284,6 +316,7 @@ class MongoDBHardeningBatchExecutor:
             ip=self.ip,
             username=self.username,
             password=self.password,
+            sudo_password=self.sudo_password,
             ssh_port=self.ssh_port,
         )
 

@@ -32,6 +32,27 @@ from .ssh_executor import MongoDBHardeningBatchExecutor
 logger = logging.getLogger(__name__)
 
 
+def _recompute_session_stats(db: Session, session_id: int) -> None:
+    """
+    Refresh AuditSession pass/fail counters and compliance_pct after hardening
+    flips AuditResult rows to PASS, so the sessions list stays consistent.
+    """
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    if not session:
+        return
+    results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+    scored_rows = [r for r in results if (r.level or "L1") != "INFO"]
+    passed = sum(1 for r in scored_rows if r.status == CheckStatus.PASS)
+    failed = sum(1 for r in scored_rows if r.status == CheckStatus.FAIL)
+    errors = sum(1 for r in scored_rows if r.status == CheckStatus.ERROR)
+    session.passed_checks = passed
+    session.failed_checks = failed
+    session.error_checks = errors
+    scored = passed + failed
+    if scored > 0:
+        session.compliance_pct = round(100.0 * passed / scored, 2)
+
+
 class MongoDBHardeningService:
     """Service for MongoDB CIS hardening operations."""
 
@@ -84,6 +105,10 @@ class MongoDBHardeningService:
         for r in failed_results:
             template = get_mongodb_hardening_template(r.check_number)
             failed_checks.append({
+                # check_number is the key the shared HardenAll UI reads
+                # (matches the Linux/Apache payload); check_id kept for
+                # backwards compatibility.
+                "check_number": r.check_number,
                 "check_id": r.check_number,
                 "check_title": r.check_title,
                 "severity": r.severity,
@@ -159,6 +184,7 @@ class MongoDBHardeningService:
         ssh_username: str,
         ssh_password: str,
         ssh_port: int = 22,
+        sudo_password: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Execute automatic hardening using CIS default values only.
@@ -196,6 +222,7 @@ class MongoDBHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
+            sudo_password=sudo_password,
             ssh_port=ssh_port,
         )
 
@@ -214,6 +241,7 @@ class MongoDBHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -236,6 +264,7 @@ class MongoDBHardeningService:
         ssh_password: str,
         checks: List[Dict[str, Any]],
         ssh_port: int = 22,
+        sudo_password: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -257,6 +286,7 @@ class MongoDBHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
+            sudo_password=sudo_password,
             ssh_port=ssh_port,
         )
 
@@ -275,6 +305,7 @@ class MongoDBHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -298,6 +329,7 @@ class MongoDBHardeningService:
         parameters: Dict[str, str] = None,
         ssh_port: int = 22,
         session_id: Optional[int] = None,
+        sudo_password: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Execute hardening for a single check with given parameters."""
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -312,6 +344,7 @@ class MongoDBHardeningService:
             ip=asset.ip_address,
             username=ssh_username,
             password=ssh_password,
+            sudo_password=sudo_password,
             ssh_port=ssh_port,
         )
 
@@ -329,6 +362,7 @@ class MongoDBHardeningService:
             if audit_row:
                 audit_row.status = CheckStatus.PASS
                 audit_row.evidence_snippet = result.get("verification_result") or ""
+                _recompute_session_stats(db, session_id)
                 db.commit()
 
         result["asset_id"] = asset_id

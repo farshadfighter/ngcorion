@@ -315,6 +315,10 @@ def get_mongodb_auto_fix_preview(check_ids: List[str]) -> List[Dict[str, Any]]:
             defaults = get_mongodb_check_defaults(check_id)
             preview.append({
                 "check_id": check_id,
+                # Same value under the key the Apache/Linux previews use, so
+                # the shared UI can read either shape.
+                "check_number": check_id,
                 "defaults": defaults,
+                "has_defaults": bool(defaults),
             })
     return preview

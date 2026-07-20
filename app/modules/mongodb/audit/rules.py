@@ -70,7 +70,8 @@ class _RE:
     auth_disabled = re.compile(r"authorization\s*:\s*disabled", re.I)
 
     # Config file – network binding
-    bind_all      = re.compile(r"bindIp\s*:\s*0\.0\.0\.0", re.I)
+    # bindIpAll: true is equivalent to binding 0.0.0.0 and must also fail
+    bind_all      = re.compile(r"bindIp\s*:\s*0\.0\.0\.0|bindIpAll\s*:\s*true", re.I)
     bind_specific = re.compile(r"bindIp\s*:", re.I)
 
     # Config file – port

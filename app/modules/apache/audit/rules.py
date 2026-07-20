@@ -201,6 +201,47 @@ def _check_indexes_disabled(data: Dict[str, str]) -> bool:
     return False
 
 
+def _check_honor_cipher_order(data: Dict[str, str]) -> bool:
+    """Check that SSLHonorCipherOrder is explicitly enabled.
+
+    Must not use a bare substring test: the collector emits 'not configured'
+    when the directive is absent, and that string contains "on".
+    """
+    output = _get_output(data, "ssl_honor_cipher_order")
+    if not output or "not configured" in output.lower():
+        return False
+    return bool(re.search(r'SSLHonorCipherOrder\s+on\b', output, re.IGNORECASE))
+
+
+def _check_mod_status_restricted(data: Dict[str, str]) -> bool:
+    """mod_status is acceptable when disabled OR restricted to the local host.
+
+    Debian/Ubuntu's default status.conf uses 'Require local' (not 'localhost'),
+    which must also count as restricted.
+    """
+    if _check_module_disabled(data, "status_module"):
+        return True
+    config = _get_output(data, "mod_status_config")
+    lower = config.lower()
+    return (
+        "localhost" in lower
+        or "127.0.0.1" in config
+        or "require local" in lower
+        or "require ip 127" in lower
+    )
+
+
+def _check_timeout_value(data: Dict[str, str], max_seconds: int = 60) -> bool:
+    """Check that Timeout is configured and not above max_seconds."""
+    output = _get_output(data, "timeout_config")
+    if not output or "not configured" in output.lower():
+        return False
+    m = re.search(r'Timeout\s+(\d+)', output, re.IGNORECASE)
+    if not m:
+        return False
+    return int(m.group(1)) <= max_seconds
+
+
 def _check_hsts_enabled(data: Dict[str, str]) -> bool:
     """Check that HSTS header is configured."""
     output = _get_output(data, "hsts_header")
@@ -252,7 +293,7 @@ def build_apache_cis_rules() -> List[ApacheCISRule]:
         level="L1",
         rationale="mod_status provides server status information that could help attackers understand server configuration. If enabled, it should be restricted to localhost only.",
         remediation="Disable mod_status (a2dismod status) or restrict access to localhost only",
-        check=lambda d, p: _check_module_disabled(d, "status_module") or "localhost" in _get_output(d, "mod_status_config").lower() or "127.0.0.1" in _get_output(d, "mod_status_config"),
+        check=lambda d, p: _check_mod_status_restricted(d),
         evidence=lambda d, p: f"Status Config: {_get_output(d, 'mod_status_config')[:500]}"
     ))
 
@@ -483,7 +524,7 @@ def build_apache_cis_rules() -> List[ApacheCISRule]:
         level="L1",
         rationale="A reasonable Timeout value helps prevent slow HTTP attacks. Recommended: 10-60 seconds.",
         remediation="Set 'Timeout 60' (or lower) in Apache configuration",
-        check=lambda d, p: _check_directive_configured(d, "timeout_config", "Timeout"),
+        check=lambda d, p: _check_timeout_value(d, 60),
         evidence=lambda d, p: f"Timeout: {_get_output(d, 'timeout_config')[:200]}"
     ))
 
@@ -537,7 +578,7 @@ def build_apache_cis_rules() -> List[ApacheCISRule]:
         level="L1",
         rationale="SSLHonorCipherOrder ensures the server's cipher preference is used, not the client's.",
         remediation="Add 'SSLHonorCipherOrder on' to SSL configuration",
-        check=lambda d, p: "on" in _get_output(d, "ssl_honor_cipher_order").lower(),
+        check=lambda d, p: _check_honor_cipher_order(d),
         evidence=lambda d, p: f"Honor Cipher Order: {_get_output(d, 'ssl_honor_cipher_order')[:200]}"
     ))
 
