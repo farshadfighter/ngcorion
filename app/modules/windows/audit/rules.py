@@ -183,12 +183,21 @@ def _audit_policy_setting(dump: str, subcategory: str) -> str:
     Returns the Inclusion Setting value or empty string.
     """
     section = _section(dump, "AUDIT_POLICY")
+    target = subcategory.lower()
+    fallback = ""
     for line in section.split("\n"):
-        if subcategory.lower() in line.lower():
-            parts = line.split(",")
-            if len(parts) >= 5:
-                return parts[4].strip()
-    return ""
+        parts = line.split(",")
+        if len(parts) < 5:
+            continue
+        row_subcat = parts[2].strip().lower()
+        # Exact match on the Subcategory column wins — substring matching
+        # confuses e.g. 'File Share' with 'Detailed File Share' and 'Logon'
+        # with 'Special Logon'.
+        if row_subcat == target:
+            return parts[4].strip()
+        if not fallback and target in row_subcat:
+            fallback = parts[4].strip()
+    return fallback
 
 
 def _audit_includes(dump: str, subcategory: str, expected: str) -> bool:
@@ -309,10 +318,11 @@ def _firewall_inbound_block(dump: str, profile_name: str) -> bool:
     if not p:
         return False
     action = p.get("DefaultInboundAction")
-    # 2 = Block, 4 = Block in some representations
+    # NetSecurity Action enum: 0 = NotConfigured, 2 = Allow, 4 = Block.
+    # Treating 2 as Block would false-PASS an Allow-by-default profile.
     if isinstance(action, int):
-        return action in (2, 4)
-    return str(action).lower() in ("block", "2", "4")
+        return action == 4
+    return str(action).lower() in ("block", "4")
 
 
 # ============================================================ #
@@ -1591,10 +1601,10 @@ def build_all_windows_cis_rules() -> List[WindowsCISRule]:
         level="L1",
         check_fn=lambda d: (
             _registry_value(d, "REGISTRY_SYSTEM",
-                           "Netlogon\\Parameters", "NodeType") == 2
+                           "NetBT\\Parameters", "NodeType") == 2
         ),
-        evidence_fn=lambda d: f"NodeType = {_registry_value(d, 'REGISTRY_SYSTEM', 'Netlogon', 'NodeType')}",
-        remediation="Set NodeType = 2 (P-node) in HKLM\\SYSTEM\\...\\Netlogon\\Parameters.",
+        evidence_fn=lambda d: f"NodeType = {_registry_value(d, 'REGISTRY_SYSTEM', 'NetBT', 'NodeType')}",
+        remediation="Set NodeType = 2 (P-node) in HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters.",
     ))
 
     rules.append(WindowsCISRule(
@@ -1690,7 +1700,9 @@ def build_all_windows_cis_rules() -> List[WindowsCISRule]:
         level="L2",
         check_fn=lambda d: (
             _json_section(d, "SMBV1_STATUS") is not None
-            and _json_section(d, "SMBV1_STATUS").get("SMB1FeatureState", "").lower() in ("disabled", "disabledwithpayloadremoved", "")
+            # SMB1FeatureState is null when the optional feature is absent —
+            # that counts as removed (the "" case), not an evaluation error.
+            and (_json_section(d, "SMBV1_STATUS").get("SMB1FeatureState") or "").lower() in ("disabled", "disabledwithpayloadremoved", "")
         ),
         evidence_fn=lambda d: _ev_section(d, "SMBV1_STATUS", 200),
         remediation="Remove-WindowsFeature FS-SMB1 or Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol.",

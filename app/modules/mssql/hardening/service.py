@@ -32,6 +32,27 @@ from .tsql_executor import MSSQLHardeningBatchExecutor
 logger = logging.getLogger(__name__)
 
 
+def _recompute_session_stats(db: Session, session_id: int) -> None:
+    """
+    Refresh AuditSession pass/fail counters and compliance_pct after hardening
+    flips AuditResult rows to PASS, so the sessions list stays consistent.
+    """
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    if not session:
+        return
+    results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+    scored_rows = [r for r in results if (r.level or "L1") != "INFO"]
+    passed = sum(1 for r in scored_rows if r.status == CheckStatus.PASS)
+    failed = sum(1 for r in scored_rows if r.status == CheckStatus.FAIL)
+    errors = sum(1 for r in scored_rows if r.status == CheckStatus.ERROR)
+    session.passed_checks = passed
+    session.failed_checks = failed
+    session.error_checks = errors
+    scored = passed + failed
+    if scored > 0:
+        session.compliance_pct = round(100.0 * passed / scored, 2)
+
+
 class MSSQLHardeningService:
     """Service for SQL Server CIS hardening operations."""
 
@@ -80,6 +101,10 @@ class MSSQLHardeningService:
         for r in failed_results:
             template = get_mssql_hardening_template(r.check_number)
             failed_checks.append({
+                # check_number is the key the shared HardenAll UI reads
+                # (matches the Linux/Apache payload); check_id kept for
+                # backwards compatibility.
+                "check_number": r.check_number,
                 "check_id": r.check_number,
                 "check_title": r.check_title,
                 "severity": r.severity,
@@ -170,6 +195,8 @@ class MSSQLHardeningService:
         session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
         if not session:
             raise ValueError(f"Session {session_id} not found")
+        if session.device_type != DeviceType.MSSQL:
+            raise ValueError(f"Session {session_id} is not an MSSQL audit session")
 
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
@@ -216,6 +243,7 @@ class MSSQLHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -280,6 +308,7 @@ class MSSQLHardeningService:
                 if audit_row:
                     audit_row.status = CheckStatus.PASS
                     audit_row.evidence_snippet = check_result.get("verification_result") or ""
+        _recompute_session_stats(db, session_id)
         db.commit()
 
         result["session_id"] = session_id
@@ -338,6 +367,7 @@ class MSSQLHardeningService:
             if audit_row:
                 audit_row.status = CheckStatus.PASS
                 audit_row.evidence_snippet = result.get("verification_result") or ""
+                _recompute_session_stats(db, session_id)
                 db.commit()
 
         result["asset_id"] = asset_id

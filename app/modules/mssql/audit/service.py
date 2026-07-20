@@ -233,7 +233,7 @@ class MSSQLAuditService:
             session.error_checks = 0
             session.compliance_pct = summary["compliance_pct"]
             session.weighted_compliance_pct = summary["weighted_compliance_pct"]
-            session.turbo_dump = clean_dump
+            session.turbo_dump = clean_dump[:100000]  # Limit size (matches Apache/Linux)
             db.commit()
 
             # 8. Persist individual check results

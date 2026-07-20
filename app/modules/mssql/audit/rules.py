@@ -106,6 +106,16 @@ def _ev_config_row(dump: str, option_name: str) -> str:
 #  Version detection helper                                    #
 # ============================================================ #
 
+def _has_weak_asymmetric_key(dump: str) -> bool:
+    """True when any asymmetric key row reports a key_length below 2048 bits."""
+    section = _section(dump, "ASYMMETRIC_KEYS")
+    # Rows: db_name | key_name | key_length | algorithm_desc
+    for m in re.finditer(r"\|\s*(\d{1,5})\s*\|", section):
+        if int(m.group(1)) < 2048:
+            return True
+    return False
+
+
 def _detect_version(dump: str) -> int:
     """
     Return the SQL Server major version number from the VERSION section.
@@ -371,10 +381,12 @@ def build_all_mssql_cis_rules() -> List[MSSQLCISRule]:
         ),
         severity="high",
         level="L1",
-        # PASS when no non-system database has is_trustworthy_on = True (1)
+        # PASS when no non-system database has is_trustworthy_on = True (1).
+        # The lookahead anchors on the full name (name then '|') so a user DB
+        # merely starting with a system name (e.g. "model_x") is still checked.
         check_fn=lambda d: not bool(
             re.search(
-                r"^(?!master|msdb|model|tempdb)\S+\s*\|\s*True",
+                r"^(?!(?:master|msdb|model|tempdb)\s*\|)\S+\s*\|\s*(?:True|1)\s*\|",
                 _section(d, "DATABASES"),
                 re.M | re.I,
             )
@@ -1314,10 +1326,7 @@ def build_all_mssql_cis_rules() -> List[MSSQLCISRule]:
             "QUERY_ERROR" not in _section(d, "ASYMMETRIC_KEYS")
             and (
                 "(no rows returned)" in _section(d, "ASYMMETRIC_KEYS")
-                or not bool(re.search(
-                    r"\|\s*(?:51[2]|102[4]|768)\s*\|",
-                    _section(d, "ASYMMETRIC_KEYS"),
-                ))
+                or not _has_weak_asymmetric_key(d)
             )
         ),
         evidence_fn=lambda d: _ev_section(d, "ASYMMETRIC_KEYS"),

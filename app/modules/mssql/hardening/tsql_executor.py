@@ -12,6 +12,7 @@ Architecture:
 """
 
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -24,6 +25,40 @@ from .command_templates import (
 logger = logging.getLogger(__name__)
 
 STATEMENT_TIMEOUT = 30
+
+# Characters that would break out of the [bracket] / 'quote' contexts the
+# templates substitute into. Values are sysadmin-supplied, so this guards
+# against accidental statement corruption, not a privilege boundary.
+_UNSAFE_TEXT_CHARS = ("'", "]", ";", "\n", "\r", "--")
+
+_PLACEHOLDER_RE = re.compile(r"\{[A-Z][A-Z0-9_]*\}")
+
+
+def _validate_mssql_parameters(parameters: Dict[str, str]) -> Optional[str]:
+    """Return an error string when a parameter value is unusable, else None."""
+    from .parameter_metadata import get_mssql_parameter_metadata
+
+    for name, value in parameters.items():
+        value = str(value)
+        meta = get_mssql_parameter_metadata(name)
+        if meta and meta.input_type in ("number", "select"):
+            allowed = meta.options if meta.options else None
+            if allowed is not None:
+                if value not in allowed:
+                    return f"Parameter {name}: value '{value}' not in {allowed}"
+                continue
+            try:
+                int(value)
+            except ValueError:
+                return f"Parameter {name}: '{value}' is not a number"
+        else:
+            for bad in _UNSAFE_TEXT_CHARS:
+                if bad in value:
+                    return (
+                        f"Parameter {name} contains unsupported character/sequence "
+                        f"{bad!r}"
+                    )
+    return None
 
 
 # ============================================================ #
@@ -273,7 +308,17 @@ class MSSQLTSQLExecutor:
             MSSQLHardeningExecutionResult with execution details
         """
         result = MSSQLHardeningExecutionResult(check_id)
-        parameters = parameters or {}
+
+        # Merge template defaults under the caller's values and drop empty
+        # strings: the UI may submit optional params as "" and a missing value
+        # would leave the {PLACEHOLDER} unsubstituted, sending broken T-SQL
+        # (e.g. "ALTER DATABASE [{DB_NAME}]") to the server.
+        from .parameter_metadata import get_mssql_check_defaults
+        merged = dict(get_mssql_check_defaults(check_id))
+        for k, v in (parameters or {}).items():
+            if v is not None and str(v).strip() != "":
+                merged[k] = v
+        parameters = merged
 
         template = get_mssql_hardening_template(check_id)
         if not template:
@@ -295,10 +340,31 @@ class MSSQLTSQLExecutor:
             result.error_message = "Not connected to SQL Server"
             return result
 
+        param_error = _validate_mssql_parameters(parameters)
+        if param_error:
+            result.error_message = param_error
+            logger.warning(f"[{check_id}] {param_error}")
+            return result
+
         logger.info(f"Executing hardening for {check_id}: {template.description}")
 
         try:
             statements = get_mssql_template_statements(check_id, parameters)
+            verify_stmts = get_mssql_verify_statements(check_id, parameters)
+
+            # A leftover {PLACEHOLDER} means a required parameter was not
+            # supplied — refuse to run rather than send broken T-SQL.
+            leftover = sorted({
+                m for stmt in statements + verify_stmts
+                for m in _PLACEHOLDER_RE.findall(stmt)
+            })
+            if leftover:
+                result.error_message = (
+                    f"Missing required parameter(s): {', '.join(leftover)}"
+                )
+                logger.warning(f"[{check_id}] {result.error_message}")
+                return result
+
             execution_errors = []
 
             for stmt in statements:
@@ -314,7 +380,6 @@ class MSSQLTSQLExecutor:
                     logger.error(f"  [{check_id}] failed: {stmt[:70]} — {exc}")
 
             # Run verification
-            verify_stmts = get_mssql_verify_statements(check_id, parameters)
             if verify_stmts:
                 verification_outputs = []
                 for vstmt in verify_stmts:
@@ -326,17 +391,30 @@ class MSSQLTSQLExecutor:
 
                 result.verification_result = "\n".join(verification_outputs)
 
-                # "FAIL" is checked first: if any verify statement returns FAIL
-                # the check fails, even if another statement returned PASS.
+                # Fail closed: "FAIL" wins over "PASS", and a verification that
+                # produced neither (errored, or the SELECT returned no rows) is
+                # not a success — the DB row must never be flipped to PASS on
+                # an unconfirmed fix.
                 if "FAIL" in result.verification_result:
                     result.success = False
                 elif "PASS" in result.verification_result:
                     result.success = True
                 else:
-                    # No PASS/FAIL signal — success if no errors during execution
-                    result.success = len(execution_errors) == 0
+                    result.success = False
+                    result.error_message = (
+                        "Verification produced no PASS/FAIL signal — fix not confirmed"
+                    )
             else:
                 result.success = len(execution_errors) == 0
+
+            # A USE [db] in the remediation or verification leaves the
+            # connection parked in that database; reset so later checks in
+            # the same batch run against master.
+            if any("USE [" in stmt.upper() for stmt in statements + verify_stmts):
+                try:
+                    self._execute("USE [master]")
+                except Exception:
+                    pass
 
             if execution_errors and not result.success:
                 result.error_message = "; ".join(execution_errors[:3])

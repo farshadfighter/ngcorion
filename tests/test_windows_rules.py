@@ -141,7 +141,7 @@ WIN2022SRV,System,System Integrity,{0cce9212-69ae-11d9-bed3-505054503030},Succes
 ===SECTION:SERVICES===
 [{"Name": "Spooler", "StartType": 4, "Status": 1}, {"Name": "SSDPSRV", "StartType": 4, "Status": 1}, {"Name": "upnphost", "StartType": 4, "Status": 1}, {"Name": "WinRM", "StartType": 2, "Status": 4}, {"Name": "XboxGipSvc", "StartType": 4, "Status": 1}, {"Name": "XblAuthManager", "StartType": 4, "Status": 1}, {"Name": "XblGameSave", "StartType": 4, "Status": 1}, {"Name": "XboxNetApiSvc", "StartType": 4, "Status": 1}]
 ===SECTION:FIREWALL_PROFILES===
-[{"Name": "Domain", "Enabled": true, "DefaultInboundAction": 2, "LogBlocked": true}, {"Name": "Private", "Enabled": true, "DefaultInboundAction": 2, "LogBlocked": true}, {"Name": "Public", "Enabled": true, "DefaultInboundAction": 2, "LogBlocked": true}]
+[{"Name": "Domain", "Enabled": true, "DefaultInboundAction": 4, "LogBlocked": true}, {"Name": "Private", "Enabled": true, "DefaultInboundAction": 4, "LogBlocked": true}, {"Name": "Public", "Enabled": true, "DefaultInboundAction": 4, "LogBlocked": true}]
 ===SECTION:WINDOWS_FEATURES===
 [{"Name": "FileAndStorage-Services"}, {"Name": "Windows-Defender"}]
 ===SECTION:LOCAL_USERS===
@@ -322,7 +322,7 @@ AllocateDASD = "0"
 ===SECTION:UAC_SETTINGS===
 {"FilterAdministratorToken": 1, "ConsentPromptBehaviorAdmin": 2, "ConsentPromptBehaviorUser": 0, "EnableInstallerDetection": 1, "EnableSecureUIAPaths": 1, "EnableLUA": 1, "PromptOnSecureDesktop": 1, "EnableVirtualization": 1, "DontDisplayLastUserName": 1, "InactivityTimeoutSecs": 900}
 ===SECTION:FIREWALL_PROFILES===
-[{"Name": "Domain", "Enabled": true, "DefaultInboundAction": 2, "LogBlocked": true}, {"Name": "Private", "Enabled": true, "DefaultInboundAction": 2, "LogBlocked": true}, {"Name": "Public", "Enabled": true, "DefaultInboundAction": 2, "LogBlocked": true}]
+[{"Name": "Domain", "Enabled": true, "DefaultInboundAction": 4, "LogBlocked": true}, {"Name": "Private", "Enabled": true, "DefaultInboundAction": 4, "LogBlocked": true}, {"Name": "Public", "Enabled": true, "DefaultInboundAction": 4, "LogBlocked": true}]
 ===SECTION:SMBV1_STATUS===
 {"EnableSMB1Protocol": false}
 ===SECTION:WDIGEST===

@@ -166,7 +166,13 @@ def preview_windows_hardening(
             detail=f"Check {request.check_id} requires manual remediation and cannot be automated",
         )
 
-    params = request.parameters if request.parameters is not None else get_windows_check_defaults(request.check_id)
+    # Merge defaults under the caller's values (dropping empty strings) so the
+    # preview shows the same statements execution would run — the UI sends {}
+    # when the user has not typed anything.
+    params = dict(get_windows_check_defaults(request.check_id))
+    for k, v in (request.parameters or {}).items():
+        if v is not None and str(v).strip() != "":
+            params[k] = v
     commands = get_windows_template_statements(request.check_id, params)
     param_meta = get_windows_parameters_for_check(request.check_id)
     required = [p.name for p in param_meta if p.required and p.default is None]

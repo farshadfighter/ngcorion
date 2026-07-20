@@ -468,7 +468,7 @@ _register(WindowsHardeningTemplate(
         "Rename-LocalUser -Name Administrator -NewName '{NEW_ADMIN_NAME}' -ErrorAction Stop",
     ],
     verify_statements=[
-        "if ((Get-LocalUser | Where-Object {{ $_.SID -like '*-500' }}).Name -ne 'Administrator') {{ 'PASS' }} else {{ 'FAIL' }}",
+        "if ((Get-LocalUser | Where-Object { $_.SID -like '*-500' }).Name -ne 'Administrator') { 'PASS' } else { 'FAIL' }",
     ],
 ))
 
@@ -479,7 +479,7 @@ _register(WindowsHardeningTemplate(
         "Rename-LocalUser -Name Guest -NewName '{NEW_GUEST_NAME}' -ErrorAction Stop",
     ],
     verify_statements=[
-        "if ((Get-LocalUser | Where-Object {{ $_.SID -like '*-501' }}).Name -ne 'Guest') {{ 'PASS' }} else {{ 'FAIL' }}",
+        "if ((Get-LocalUser | Where-Object { $_.SID -like '*-501' }).Name -ne 'Guest') { 'PASS' } else { 'FAIL' }",
     ],
 ))
 
@@ -495,7 +495,7 @@ _register(WindowsHardeningTemplate(
         "Stop-Service -Name '{SERVICE_NAME}' -Force -ErrorAction SilentlyContinue",
     ],
     verify_statements=[
-        "if ((Get-Service -Name '{SERVICE_NAME}' -ErrorAction SilentlyContinue).StartType -eq 'Disabled') {{ 'PASS' }} else {{ 'FAIL' }}",
+        "if ((Get-Service -Name '{SERVICE_NAME}' -ErrorAction SilentlyContinue).StartType -eq 'Disabled') { 'PASS' } else { 'FAIL' }",
     ],
 ))
 

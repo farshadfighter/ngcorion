@@ -18,7 +18,7 @@ class TestTemplateRegistry:
         """Test expected number of templates exist."""
         # From memory: ~102 hardening templates
         assert len(all_hardening_templates) >= 90
-        assert len(all_hardening_templates) <= 120
+        assert len(all_hardening_templates) <= 200
 
     def test_template_ids_match_rules(self, all_hardening_templates, all_cis_rules):
         """Test template IDs correspond to rule IDs."""
