@@ -454,7 +454,9 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 {executionResult.error_message && (
                     <div className="hardening-error-message">
                         <span>⚠</span>
-                        <p>{executionResult.error_message}</p>
+                        {/* pre-wrap: failure reasons carry the failing command and
+                            the tool's own error line on separate lines. */}
+                        <p style={{ whiteSpace: 'pre-wrap' }}>{executionResult.error_message}</p>
                     </div>
                 )}
             </div>

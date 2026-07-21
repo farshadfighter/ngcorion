@@ -40,9 +40,20 @@ from app.modules.cisco.audit.ssh_client import (  # noqa: E402
 #  Fake paramiko client                                                        #
 # --------------------------------------------------------------------------- #
 
+class _FakeChannel:
+    """Stands in for paramiko's stdout.channel (exit status source)."""
+
+    def __init__(self, exit_status: int = 0):
+        self._exit_status = exit_status
+
+    def recv_exit_status(self) -> int:
+        return self._exit_status
+
+
 class _FakeFile:
-    def __init__(self, data: bytes = b""):
+    def __init__(self, data: bytes = b"", exit_status: int = 0):
         self._data = data
+        self.channel = _FakeChannel(exit_status)
 
     def read(self) -> bytes:
         return self._data
@@ -59,10 +70,12 @@ class _FakeTransport:
 class _FakeClient:
     """Minimal paramiko.SSHClient stand-in that records exec_command calls."""
 
-    def __init__(self, stdout: bytes = b"", stderr: bytes = b"", raise_exc=None):
+    def __init__(self, stdout: bytes = b"", stderr: bytes = b"", raise_exc=None,
+                 exit_status: int = 0):
         self.stdout = stdout
         self.stderr = stderr
         self.raise_exc = raise_exc
+        self.exit_status = exit_status
         self.commands = []
 
     def get_transport(self):
@@ -72,7 +85,11 @@ class _FakeClient:
         self.commands.append(command)
         if self.raise_exc is not None:
             raise self.raise_exc
-        return _FakeFile(), _FakeFile(self.stdout), _FakeFile(self.stderr)
+        return (
+            _FakeFile(),
+            _FakeFile(self.stdout, exit_status=self.exit_status),
+            _FakeFile(self.stderr),
+        )
 
 
 def _runner_with(client) -> HardeningSSHRunner:
@@ -145,6 +162,21 @@ class TestRunnerExec:
         out = runner.send_command("id", use_sudo=False)
         assert client.commands == ["id"]
         assert out == "plain"
+
+    def test_run_with_status_reports_nonzero_exit(self):
+        client = _FakeClient(stdout=b"", stderr=b"Permission denied", exit_status=1)
+        runner = _runner_with(client)
+        out, exit_status = runner.run_with_status("cat /etc/shadow")
+        assert exit_status == 1
+        assert "Permission denied" in out
+
+    def test_send_command_with_status_propagates_sudo_failure(self):
+        client = _FakeClient(stdout=b"", stderr=b"sudo: a password is required",
+                             exit_status=1)
+        runner = _runner_with(client)
+        out, exit_status = runner.send_command_with_status("id", use_sudo=True)
+        assert exit_status == 1
+        assert "password is required" in out
 
     def test_run_timeout_raises_runtimeerror(self):
         client = _FakeClient(raise_exc=socket.timeout())

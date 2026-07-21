@@ -24,6 +24,27 @@ from .command_templates import (
 
 logger = logging.getLogger(__name__)
 
+# A {PARAM} that survived substitution means a required value was never supplied.
+_PLACEHOLDER_RE = re.compile(r"\{[A-Z][A-Z0-9_]*\}")
+
+
+def _first_error_line(output: str) -> str:
+    """
+    Pick the most useful line out of a failed command's output for the UI.
+
+    Prefers a line that looks like an error message, falling back to the last
+    non-empty line (many tools print the reason last).
+    """
+    lines = [ln.strip() for ln in (output or "").splitlines() if ln.strip()]
+    if not lines:
+        return ""
+    for line in lines:
+        low = line.lower()
+        if any(t in low for t in ("error", "denied", "not found", "failed",
+                                  "cannot", "no such", "unknown", "refus")):
+            return line[:200]
+    return lines[-1][:200]
+
 
 class LinuxHardeningExecutionResult:
     """Result of a single hardening execution."""
@@ -144,6 +165,16 @@ class LinuxSSHExecutor:
         Returns:
             Command output
         """
+        return self.execute_command_with_status(command, use_sudo)[0]
+
+    def execute_command_with_status(self, command: str, use_sudo: bool = True) -> tuple:
+        """
+        Execute a single command and return ``(output, exit_status)``.
+
+        Remediation commands must be checked against the exit status: a sudo
+        denial or a missing binary produces no exception and often no output,
+        so without it a fix that never ran looks identical to one that worked.
+        """
         if not self._connected:
             raise RuntimeError("Not connected. Call connect() first.")
 
@@ -155,7 +186,9 @@ class LinuxSSHExecutor:
             # redirection as the unprivileged login user and fails with
             # "Permission denied" for any /etc target.
             command = f"sh -c {shlex.quote(command)}"
-        return self.ssh_client.send_command(command, use_sudo=use_sudo, timeout=timeout)
+        return self.ssh_client.send_command_with_status(
+            command, use_sudo=use_sudo, timeout=timeout
+        )
 
     def execute_hardening(
         self,
@@ -192,6 +225,14 @@ class LinuxSSHExecutor:
             return result
         result.check_title = template.description
 
+        if template.manual_only:
+            result.error_message = (
+                f"Check {check_id} has no automated remediation and must be applied "
+                f"manually.\n\n{template.manual_guidance or ''}".rstrip()
+            )
+            logger.info(f"Skipping {check_id}: manual remediation only")
+            return result
+
         if not self._connected:
             result.error_message = "Not connected to server"
             return result
@@ -202,14 +243,34 @@ class LinuxSSHExecutor:
             # Get commands with distro-specific paths and parameter substitution
             commands = get_linux_template_commands_for_distro(check_id, self.distro_id or "ubuntu", parameters)
 
+            # A leftover {PLACEHOLDER} means a required parameter was never
+            # supplied — refuse to run rather than write a broken config line.
+            leftover = sorted({m for cmd in commands for m in _PLACEHOLDER_RE.findall(cmd)})
+            if leftover:
+                result.error_message = (
+                    "Missing required parameter(s): "
+                    + ", ".join(p.strip("{}") for p in leftover)
+                )
+                logger.warning(f"[{check_id}] {result.error_message}")
+                return result
+
             # Execute each command
             command_errors: List[str] = []
             for cmd in commands:
                 try:
-                    output = self.execute_command(cmd, use_sudo=True)
+                    output, exit_status = self.execute_command_with_status(cmd, use_sudo=True)
                     result.commands_executed.append(cmd)
                     result.command_outputs[cmd] = output
-                    logger.debug(f"Command executed: {cmd[:60]}...")
+                    if exit_status != 0:
+                        # Don't let a command that never ran (sudo denied, missing
+                        # binary, read-only /etc) look like a success. Record the
+                        # real reason so the UI can show it.
+                        detail = _first_error_line(output) or f"exit status {exit_status}"
+                        error_msg = f"`{cmd[:80]}` failed (exit {exit_status}): {detail}"
+                        logger.error(error_msg)
+                        command_errors.append(error_msg)
+                    else:
+                        logger.debug(f"Command executed: {cmd[:60]}...")
                 except Exception as e:
                     error_msg = f"Command failed: {cmd[:60]}... Error: {str(e)}"
                     logger.error(error_msg)
@@ -222,13 +283,20 @@ class LinuxSSHExecutor:
                 service = template.requires_service_restart
                 try:
                     restart_cmd = f"systemctl restart {service}"
-                    output = self.execute_command(restart_cmd, use_sudo=True)
+                    output, exit_status = self.execute_command_with_status(restart_cmd, use_sudo=True)
                     result.commands_executed.append(restart_cmd)
                     result.command_outputs[restart_cmd] = output
                     result.requires_service_restart = service
-                    logger.info(f"Restarted service: {service}")
+                    if exit_status != 0:
+                        detail = _first_error_line(output) or f"exit status {exit_status}"
+                        restart_error = f"Failed to restart {service}: {detail}"
+                        logger.error(restart_error)
+                        command_errors.append(restart_error)
+                    else:
+                        logger.info(f"Restarted service: {service}")
                 except Exception as e:
                     logger.warning(f"Failed to restart {service}: {str(e)}")
+                    command_errors.append(f"Failed to restart {service}: {e}")
 
             # Run verification commands with distro-specific paths
             verify_commands = get_linux_verify_commands_for_distro(check_id, self.distro_id or "ubuntu", parameters)
@@ -250,22 +318,38 @@ class LinuxSSHExecutor:
                 # do NOT claim success (otherwise the audit row gets flipped to
                 # PASS without the host actually being remediated).
                 verify_text = result.verification_result
+                verify_reason = None
                 if "FAIL" in verify_text or "ERROR:" in verify_text:
                     result.success = False
+                    verify_reason = "verification reported FAIL"
                 elif "PASS" in verify_text:
                     result.success = True
                 else:
                     result.success = False
-                    if not result.error_message:
-                        result.error_message = "Verification did not return an explicit PASS marker"
+                    verify_reason = (
+                        "verification produced no PASS/FAIL marker"
+                        + (f" (output: {_first_error_line(verify_text)})" if verify_text.strip() else " (no output)")
+                    )
+
+                if not result.success and not result.error_message:
+                    # A failed remediation command explains the failed verification —
+                    # lead with it, since "verification reported FAIL" alone tells the
+                    # operator nothing actionable.
+                    if command_errors:
+                        result.error_message = (
+                            f"{'; '.join(command_errors[:3])} — {verify_reason}"
+                        )
+                    else:
+                        result.error_message = (
+                            f"Fix commands ran, but {verify_reason}. "
+                            f"Verification output: {verify_text.strip()[:400] or '(empty)'}"
+                        )
             else:
                 # No verification commands defined — fall back to whether every
                 # fix command ran without error.
                 result.success = not command_errors
-
-            # Surface swallowed fix-command failures when the check did not succeed.
-            if not result.success and command_errors and not result.error_message:
-                result.error_message = "; ".join(command_errors[:3])
+                if not result.success and not result.error_message:
+                    result.error_message = "; ".join(command_errors[:3])
 
             result.requires_reboot = template.requires_reboot
 

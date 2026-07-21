@@ -151,8 +151,24 @@ def preview_linux_hardening(
             detail=f"No hardening template found for check {request.check_id}",
         )
 
+    if template.manual_only:
+        detail = (
+            f"Check {request.check_id} has no automated remediation and must be "
+            f"applied manually.\n\n{template.manual_guidance}"
+            if template.manual_guidance
+            else f"Check {request.check_id} has no automated remediation and must be applied manually."
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
+    # Merge defaults *under* the caller's values and drop empty strings, so the
+    # preview shows exactly what execution would run. The UI posts
+    # `parameters: {}` on the first preview, and without this merge every
+    # {PARAM} placeholder would be shown (and later substituted) unresolved.
     defaults = get_linux_check_defaults(request.check_id)
-    params = request.parameters if request.parameters is not None else defaults
+    params = dict(defaults)
+    for k, v in (request.parameters or {}).items():
+        if v is not None and str(v).strip() != "":
+            params[k] = v
     commands = get_linux_template_commands(request.check_id, params)
     param_meta = get_linux_parameters_for_check(request.check_id)
     required = [p.name for p in param_meta if p.required and p.default is None]
@@ -514,6 +530,8 @@ def get_check_template(
         "requires_service_restart": template.requires_service_restart,
         "distros": template.distros,
         "auto_fixable": is_linux_check_auto_fixable(check_id),
+        "manual_only": template.manual_only,
+        "manual_guidance": template.manual_guidance,
         "parameters": param_info,
         "defaults": get_linux_check_defaults(check_id)
     }

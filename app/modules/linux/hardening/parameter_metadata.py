@@ -703,11 +703,17 @@ def get_linux_check_defaults(check_number: str) -> Dict[str, str]:
 
 
 def _has_hardening_template(check_number: str) -> bool:
-    """True when a remediation template is registered for this check."""
+    """
+    True when an *executable* remediation template is registered for this check.
+
+    Manual-only entries are registered so the UI can show real remediation
+    guidance, but they run nothing — they must never be treated as fixable.
+    """
     # Imported lazily/locally to keep module import order flexible
     # (command_templates does not import this module, so no cycle).
     from .command_templates import LINUX_HARDENING_TEMPLATES
-    return check_number in LINUX_HARDENING_TEMPLATES
+    template = LINUX_HARDENING_TEMPLATES.get(check_number)
+    return template is not None and not template.manual_only
 
 
 def is_linux_check_auto_fixable(check_number: str) -> bool:

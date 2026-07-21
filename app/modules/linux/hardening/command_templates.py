@@ -28,6 +28,12 @@ class LinuxHardeningTemplate:
     verify_commands: List[str] = field(default_factory=list)
     distros: List[str] = field(default_factory=lambda: ["all"])  # Which distros this applies to
     requires_service_restart: Optional[str] = None  # Service to restart after applying
+    # Checks that cannot be remediated over SSH without operator judgement
+    # (repartitioning, bootloader passwords, deleting accounts, review-only
+    # audits). They are registered so the UI can show real guidance instead of
+    # a dead-end 404, but they are never executed.
+    manual_only: bool = False
+    manual_guidance: Optional[str] = None
 
 
 # Command templates registry
@@ -1611,6 +1617,414 @@ _register(LinuxHardeningTemplate(
 ))
 
 
+# ==================== PREVIOUSLY UNCOVERED CHECKS ====================
+# Every audited check now resolves to a template. Checks that genuinely cannot
+# be remediated over SSH are registered with manual_only=True so the UI shows
+# the operator the real steps instead of a 404.
+
+# --- 1.3.x - Mandatory Access Control ---------------------------------------
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.3.1",
+    description="Install and enable AppArmor / SELinux",
+    commands=[
+        "apt-get install -y apparmor apparmor-utils 2>/dev/null || dnf install -y libselinux policycoreutils 2>/dev/null || true",
+        "systemctl enable --now apparmor 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "aa-status 2>/dev/null | grep -qi 'profiles are loaded' && echo 'PASS' "
+        "|| (sestatus 2>/dev/null | grep -qi 'enforcing' && echo 'PASS' || echo 'FAIL')"
+    ],
+    distros=["ubuntu", "debian"],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.3.2",
+    description="Set AppArmor profiles to enforce mode",
+    commands=[
+        "apt-get install -y apparmor-utils 2>/dev/null || true",
+        "aa-enforce /etc/apparmor.d/* 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "aa-status 2>/dev/null | grep -qiE 'profiles are in (enforce|complain) mode' && echo 'PASS' "
+        "|| (sestatus 2>/dev/null | grep -qi 'enforcing' && echo 'PASS' || echo 'FAIL')"
+    ],
+    distros=["ubuntu", "debian"],
+))
+
+# --- 1.4.x - Bootloader -----------------------------------------------------
+
+# The audit reads `grub_permissions` and requires mode 0600 owned by root.
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.4.1",
+    description="Restrict permissions on the bootloader config to 0600 root:root",
+    commands=[
+        "for f in /boot/grub/grub.cfg /boot/grub2/grub.cfg /boot/efi/EFI/*/grub.cfg; "
+        "do [ -f \"$f\" ] && chown root:root \"$f\" && chmod 0600 \"$f\"; done; true",
+    ],
+    verify_commands=[
+        "f=$(ls /boot/grub/grub.cfg /boot/grub2/grub.cfg 2>/dev/null | head -1); "
+        "[ -n \"$f\" ] && [ \"$(stat -c '%a %U %G' \"$f\")\" = '600 root root' ] "
+        "&& echo 'PASS' || echo 'FAIL'"
+    ],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.4.2",
+    description="Set a bootloader password",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "A GRUB password cannot be set non-interactively: grub-mkpasswd-pbkdf2 "
+        "prompts for the password twice and the resulting hash must be reviewed "
+        "before it is written.\n\n"
+        "On the console run:\n"
+        "  1. grub-mkpasswd-pbkdf2\n"
+        "  2. Add to /etc/grub.d/40_custom:\n"
+        "       set superusers=\"root\"\n"
+        "       password_pbkdf2 root <hash from step 1>\n"
+        "  3. update-grub   (Debian/Ubuntu)  or  grub2-mkconfig -o /boot/grub2/grub.cfg  (RHEL)\n\n"
+        "Store the password in your password manager first — losing it makes the "
+        "boot menu unrecoverable without rescue media."
+    ),
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.4.3",
+    description="Require authentication for single-user mode",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "Single-user (rescue/emergency) mode must prompt for the root password.\n\n"
+        "Verify that root has a valid password hash in /etc/shadow (not '!' or '*'), "
+        "then confirm the rescue units use sulogin:\n"
+        "  grep -E '^ExecStart=.*sulogin' /usr/lib/systemd/system/rescue.service "
+        "/usr/lib/systemd/system/emergency.service\n\n"
+        "If they do not, add to each unit's [Service] section:\n"
+        "  ExecStart=-/lib/systemd/systemd-sulogin-shell rescue\n\n"
+        "This is left manual because locking rescue mode on a host whose root "
+        "account has no password locks you out of recovery entirely."
+    ),
+))
+
+# --- 1.1.2-1.1.7 - Separate partitions (all manual) -------------------------
+
+for _sec, _mount in [
+    ("1.1.2", "/tmp"),
+    ("1.1.3", "/var"),
+    ("1.1.4", "/var/tmp"),
+    ("1.1.5", "/var/log"),
+    ("1.1.6", "/var/log/audit"),
+    ("1.1.7", "/home"),
+]:
+    _register(LinuxHardeningTemplate(
+        check_id=f"LNX-L2-{_sec}",
+        description=f"Ensure a separate partition exists for {_mount}",
+        commands=[],
+        manual_only=True,
+        manual_guidance=(
+            f"{_mount} must live on its own filesystem. This requires "
+            "repartitioning, which destroys data if done wrong and cannot be "
+            "performed safely from a remote hardening run.\n\n"
+            "Options:\n"
+            f"  • Attach a new disk/LVM volume, mkfs it, copy {_mount} across in "
+            "single-user mode, and add an /etc/fstab entry.\n"
+            f"  • For {_mount} on systems with spare space, create an LVM logical "
+            "volume: lvcreate -L <size> -n <name> <vg> && mkfs.ext4 /dev/<vg>/<name>\n\n"
+            "Reinstall with a correct partition layout if the host cannot be "
+            "taken offline for the migration."
+        ),
+    ))
+
+# --- 1.2.x - Package manager repositories / GPG keys ------------------------
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.2.1",
+    description="Ensure package manager repositories are configured",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "Repository configuration is site-specific — the correct mirrors, proxy "
+        "and vendor channels differ per environment, so they must not be "
+        "rewritten automatically.\n\n"
+        "Review:\n"
+        "  Debian/Ubuntu: apt-cache policy  and /etc/apt/sources.list{,.d/}\n"
+        "  RHEL/Rocky:    dnf repolist  and /etc/yum.repos.d/\n\n"
+        "Remove unknown or unsigned repositories and confirm the remaining ones "
+        "are the approved vendor/internal mirrors."
+    ),
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-1.2.2",
+    description="Ensure GPG keys are configured",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "Package-signing keys must be verified against the vendor's published "
+        "fingerprints by a human — importing keys automatically would defeat the "
+        "control.\n\n"
+        "List the currently trusted keys:\n"
+        "  Debian/Ubuntu: apt-key list  (or ls /etc/apt/trusted.gpg.d/)\n"
+        "  RHEL/Rocky:    rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release} "
+        "--> %{summary}\\n'\n\n"
+        "Compare each fingerprint with the vendor's documentation and remove any "
+        "key you cannot account for."
+    ),
+))
+
+# --- 2.1.x / 2.3.x - Legacy services and clients ----------------------------
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-2.1.1",
+    description="Disable and remove xinetd",
+    commands=[
+        "systemctl --now disable xinetd 2>/dev/null || true",
+        "apt-get purge -y xinetd 2>/dev/null || dnf remove -y xinetd 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "systemctl is-enabled xinetd 2>/dev/null | grep -q '^enabled$' && echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-2.1.2",
+    description="Remove openbsd-inetd",
+    commands=[
+        "systemctl --now disable openbsd-inetd 2>/dev/null || true",
+        "apt-get purge -y openbsd-inetd 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "dpkg-query -W -f='${Status}' openbsd-inetd 2>/dev/null | grep -q 'install ok installed' "
+        "&& echo 'FAIL' || echo 'PASS'"
+    ],
+    distros=["ubuntu", "debian"],
+))
+
+# 2.3.x - insecure client packages. The audit reads `client_<pkg>_installed`
+# and requires "not installed", so purge is the matching remediation.
+for _sec, _pkg, _rhel_pkg in [
+    ("2.3.1", "nis", "ypbind"),
+    ("2.3.2", "rsh-client", "rsh"),
+    ("2.3.3", "talk", "talk"),
+    ("2.3.4", "telnet", "telnet"),
+    ("2.3.5", "ldap-utils", "openldap-clients"),
+]:
+    _register(LinuxHardeningTemplate(
+        check_id=f"LNX-L1-{_sec}",
+        description=f"Remove the {_pkg} client package",
+        commands=[
+            f"apt-get purge -y {_pkg} 2>/dev/null || dnf remove -y {_rhel_pkg} 2>/dev/null || true",
+        ],
+        verify_commands=[
+            f"(dpkg-query -W -f='${{Status}}' {_pkg} 2>/dev/null | grep -q 'install ok installed') "
+            f"|| (rpm -q {_rhel_pkg} >/dev/null 2>&1) && echo 'FAIL' || echo 'PASS'"
+        ],
+    ))
+
+# --- 5.2.2 - SSH private host key permissions -------------------------------
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-5.2.2",
+    description="Restrict permissions on SSH private host keys to 0600 root:root",
+    commands=[
+        "for k in /etc/ssh/ssh_host_*_key; do [ -f \"$k\" ] && chown root:root \"$k\" "
+        "&& chmod 0600 \"$k\"; done; true",
+    ],
+    verify_commands=[
+        "find /etc/ssh -xdev -name 'ssh_host_*_key' -type f "
+        "\\( ! -perm 600 -o ! -user root \\) | grep -q . && echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+# --- 6.2.x - User accounts and home directories -----------------------------
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.1",
+    description="Ensure root is the only UID 0 account",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "A second UID 0 account is either a deliberate break-glass account or a "
+        "compromise — deleting it automatically could remove the only working "
+        "administrative login.\n\n"
+        "List the offenders:\n"
+        "  awk -F: '($3 == 0) { print $1 }' /etc/passwd\n\n"
+        "For every name other than 'root', confirm with the system owner, then "
+        "either remove it (userdel -r <user>) or give it a normal UID "
+        "(usermod -u <new-uid> <user> and chown its files)."
+    ),
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.10",
+    description="Ensure root is the only UID 0 account (strict)",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "Same control as 6.2.1, evaluated strictly. Resolve the extra UID 0 "
+        "accounts listed by:\n"
+        "  awk -F: '($3 == 0) { print $1 }' /etc/passwd\n\n"
+        "Removing or renumbering a privileged account must be a deliberate, "
+        "reviewed action — it is never applied automatically."
+    ),
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.2",
+    description="Lock accounts that have an empty password",
+    commands=[
+        "for u in $(awk -F: '($2 == \"\") { print $1 }' /etc/shadow); do passwd -l \"$u\"; done; true",
+    ],
+    # Fail closed: an unreadable /etc/shadow must not be reported as compliant.
+    verify_commands=[
+        "[ -r /etc/shadow ] || { echo 'FAIL'; exit 0; }; "
+        "awk -F: '($2 == \"\") { print }' /etc/shadow | grep -q . && echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.3",
+    description="Remove legacy '+' entries from passwd/shadow/group",
+    commands=[
+        "sed -i '/^+/d' /etc/passwd /etc/shadow /etc/group",
+    ],
+    verify_commands=[
+        "[ -r /etc/shadow ] || { echo 'FAIL'; exit 0; }; "
+        "grep -q '^+' /etc/passwd /etc/shadow /etc/group && echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.4",
+    description="Create missing home directories for interactive users",
+    commands=[
+        "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\" && $7 !~ /(nologin|false)$/) "
+        "{ print $1\":\"$6 }' /etc/passwd | while IFS=: read -r u h; do "
+        "[ -n \"$h\" ] && [ ! -d \"$h\" ] && mkdir -p \"$h\" && chown \"$u\" \"$h\" "
+        "&& chmod 0750 \"$h\"; done; true",
+    ],
+    verify_commands=[
+        "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\" && $7 !~ /(nologin|false)$/) { print $6 }' "
+        "/etc/passwd | while read -r h; do [ -d \"$h\" ] || echo MISSING; done | grep -q MISSING "
+        "&& echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.5",
+    description="Restrict home directory permissions to 750 or tighter",
+    commands=[
+        "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\" && $7 !~ /(nologin|false)$/) { print $6 }' "
+        "/etc/passwd | while read -r h; do [ -d \"$h\" ] && chmod g-w,o-rwx \"$h\"; done; true",
+    ],
+    verify_commands=[
+        "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\" && $7 !~ /(nologin|false)$/) { print $6 }' "
+        "/etc/passwd | while read -r h; do [ -d \"$h\" ] && find \"$h\" -maxdepth 0 -perm /027 "
+        "-printf 'LOOSE\\n'; done | grep -q LOOSE && echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-L1-6.2.6",
+    description="Ensure users own their home directories",
+    commands=[
+        "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\" && $7 !~ /(nologin|false)$/) "
+        "{ print $1\":\"$6 }' /etc/passwd | while IFS=: read -r u h; do "
+        "[ -d \"$h\" ] && chown \"$u\" \"$h\"; done; true",
+    ],
+    verify_commands=[
+        "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\" && $7 !~ /(nologin|false)$/) "
+        "{ print $1\":\"$6 }' /etc/passwd | while IFS=: read -r u h; do "
+        "[ -d \"$h\" ] && [ \"$(stat -c '%U' \"$h\")\" != \"$u\" ] && echo WRONG; done "
+        "| grep -q WRONG && echo 'FAIL' || echo 'PASS'"
+    ],
+))
+
+# 6.2.7-6.2.9 - forbidden dot-files in home directories
+for _sec, _dotfile in [("6.2.7", ".forward"), ("6.2.8", ".netrc"), ("6.2.9", ".rhosts")]:
+    _register(LinuxHardeningTemplate(
+        check_id=f"LNX-L1-{_sec}",
+        description=f"Remove {_dotfile} files from user home directories",
+        commands=[
+            "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\") { print $6 }' /etc/passwd "
+            f"| while read -r h; do [ -f \"$h/{_dotfile}\" ] && rm -f \"$h/{_dotfile}\"; done; true",
+        ],
+        verify_commands=[
+            "awk -F: '($3 >= 1000 && $1 != \"nfsnobody\") { print $6 }' /etc/passwd "
+            f"| while read -r h; do [ -f \"$h/{_dotfile}\" ] && echo FOUND; done "
+            "| grep -q FOUND && echo 'FAIL' || echo 'PASS'"
+        ],
+    ))
+
+# --- Review-only (INFO) checks ----------------------------------------------
+
+for _cid, _desc, _cmd in [
+    ("LNX-INFO-1.9.1", "Audit pending package updates",
+     "apt list --upgradable  (Debian/Ubuntu)  or  dnf check-update  (RHEL/Rocky)"),
+    ("LNX-INFO-2.5", "Audit listening network services and open ports",
+     "ss -tulpn"),
+    ("LNX-INFO-6.1.10", "Audit SUID executables",
+     "df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -4000"),
+    ("LNX-INFO-6.1.11", "Audit world-writable files",
+     "df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev -type f -perm -0002"),
+    ("LNX-INFO-6.1.12", "Audit unowned files and directories",
+     "df --local -P | awk '{if (NR!=1) print $6}' | xargs -I '{}' find '{}' -xdev \\( -nouser -o -nogroup \\)"),
+]:
+    _register(LinuxHardeningTemplate(
+        check_id=_cid,
+        description=_desc,
+        commands=[],
+        manual_only=True,
+        manual_guidance=(
+            "This is a review control, not a setting: there is no value to write. "
+            "Each entry it reports has to be judged individually — removing SUID "
+            "bits, world-writable permissions or reassigning ownership blindly "
+            "breaks working software.\n\n"
+            f"Collect the current list with:\n  {_cmd}\n\n"
+            "Then confirm every entry is expected, and remediate only the ones "
+            "that are not."
+        ),
+    ))
+
+# --- RHEL-specific gaps -----------------------------------------------------
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.2.6",
+    description="Register the system with Red Hat Subscription Manager",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "Registration needs subscription credentials or an activation key, which "
+        "are never sent to a target host by the hardening engine.\n\n"
+        "On the host run:\n"
+        "  subscription-manager register --username <user> --password <pass>\n"
+        "or, with an activation key:\n"
+        "  subscription-manager register --org <org-id> --activationkey <key>\n\n"
+        "Then attach a subscription and confirm with: subscription-manager status"
+    ),
+    distros=_RHEL_DISTROS,
+))
+
+_register(LinuxHardeningTemplate(
+    check_id="LNX-RHEL-L1-1.8.1",
+    description="Remove the GDM graphical login",
+    commands=[],
+    manual_only=True,
+    manual_guidance=(
+        "Removing GDM takes the graphical desktop with it. On a workstation, or "
+        "on a server someone administers through a console session, that is a "
+        "service outage — so it is never done automatically.\n\n"
+        "Once you have confirmed the host has no GUI users:\n"
+        "  systemctl set-default multi-user.target\n"
+        "  dnf remove -y gdm\n\n"
+        "If the GUI must stay, configure GDM per CIS 1.8.2-1.8.10 instead "
+        "(disable user lists, enable the screen lock, disable automatic login)."
+    ),
+    distros=_RHEL_DISTROS,
+))
+
+
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
     """Get hardening template for a specific check."""
     return LINUX_HARDENING_TEMPLATES.get(check_id)
@@ -1753,7 +2167,9 @@ def get_linux_hardening_template_for_distro(
             requires_reboot=template.requires_reboot,
             verify_commands=template.verify_commands.copy(),
             distros=template.distros.copy(),
-            requires_service_restart=template.requires_service_restart
+            requires_service_restart=template.requires_service_restart,
+            manual_only=template.manual_only,
+            manual_guidance=template.manual_guidance,
         )
 
     # Transform commands based on distro
@@ -1791,7 +2207,9 @@ def get_linux_hardening_template_for_distro(
         requires_reboot=template.requires_reboot,
         verify_commands=transformed_verify,
         distros=template.distros.copy() if template.distros else ["all"],
-        requires_service_restart=restart_service
+        requires_service_restart=restart_service,
+        manual_only=template.manual_only,
+        manual_guidance=template.manual_guidance,
     )
 
 

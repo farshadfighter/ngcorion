@@ -38,7 +38,13 @@ class TestTemplateRegistry:
             assert hasattr(template, "verify_commands"), f"{template_id} missing verify_commands"
 
             assert isinstance(template.commands, list), f"{template_id} commands should be list"
-            assert len(template.commands) > 0, f"{template_id} should have at least one command"
+            if template.manual_only:
+                # Manual-only entries exist to carry remediation guidance to the
+                # UI; they must run nothing and must explain what to do instead.
+                assert not template.commands, f"{template_id} is manual_only but has commands"
+                assert template.manual_guidance, f"{template_id} is manual_only but has no guidance"
+            else:
+                assert len(template.commands) > 0, f"{template_id} should have at least one command"
 
 
 class TestTemplateCategories:

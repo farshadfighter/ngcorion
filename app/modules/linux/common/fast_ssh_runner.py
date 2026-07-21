@@ -158,6 +158,20 @@ class HardeningSSHRunner:
         Raises RuntimeError on transport failure or command timeout (matching
         ``LinuxSSHClient.send_command``'s failure contract).
         """
+        return self.run_with_status(command, timeout=timeout)[0]
+
+    def run_with_status(
+        self, command: str, timeout: int = DEFAULT_CMD_TIMEOUT
+    ) -> tuple:
+        """
+        Same as ``run``, but also returns the command's exit status.
+
+        Returns ``(output, exit_status)``. Callers that need to know whether a
+        remediation command actually worked must use this: an ``exec_command``
+        that fails (sudo denied, package missing, permission error) still
+        returns cleanly, so output alone cannot distinguish success from a
+        silent no-op.
+        """
         if not self.is_connected():
             raise RuntimeError("Not connected. Call connect() first.")
 
@@ -169,6 +183,7 @@ class HardeningSSHRunner:
                 pass
             out = stdout.read().decode("utf-8", errors="replace")
             err = stderr.read().decode("utf-8", errors="replace")
+            exit_status = stdout.channel.recv_exit_status()
         except socket.timeout:
             raise RuntimeError(f"Command timed out after {timeout}s: {command[:60]}...")
         except Exception as e:
@@ -180,7 +195,7 @@ class HardeningSSHRunner:
         # everything the command emitted.
         if err.strip():
             out = f"{out}\n{err}" if out else err
-        return out
+        return out, exit_status
 
     def send_command(
         self,
@@ -196,12 +211,21 @@ class HardeningSSHRunner:
         and the ``[sudo] password ...`` prompt is stripped from the output —
         identical to the netmiko client's behavior.
         """
+        return self.send_command_with_status(command, use_sudo, timeout)[0]
+
+    def send_command_with_status(
+        self,
+        command: str,
+        use_sudo: bool = False,
+        timeout: int = DEFAULT_CMD_TIMEOUT,
+    ) -> tuple:
+        """``send_command`` that also returns the exit status: ``(output, status)``."""
         if use_sudo:
             full_command = f"echo {shlex.quote(self.sudo_password)} | sudo -S {command}"
-            output = self.run(full_command, timeout=timeout)
+            output, exit_status = self.run_with_status(full_command, timeout=timeout)
             output = re.sub(r"^\[sudo\].*?:\s*", "", output, flags=re.M)
-            return output
-        return self.run(command, timeout=timeout)
+            return output, exit_status
+        return self.run_with_status(command, timeout=timeout)
 
     def detect_distro(self) -> Dict[str, str]:
         """
