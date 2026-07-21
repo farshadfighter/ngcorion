@@ -1,658 +1,443 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-    fetchRequiredParameters,
-    autoHardenWithDefaults,
-    batchExecuteChecks,
-    discoverFortinetVdoms,
-    clearRequiredParameters,
-    clearMessages
+    fetchHardenAllPlan,
+    executeHardenAll,
+    clearHardenAll,
 } from '../../store/hardeningSlice';
-import CredentialsForm from './CredentialsForm';
-import BackupOption from './BackupOption';
-import {
-    isWindows,
-    isMssql,
-    isCisco,
-    isFortinet,
-    isLinux,
-    defaultCredentialsState,
-    validateCredentials,
-    buildCredentials,
-} from './hardeningCredentials';
-import '../../assets/hardening/Hardenallmodal.css';
+import '../../assets/hardening/HardenAll.css';
 
-const HardenAllModal = ({ sessionId, assetId, deviceType, checks, onClose, onSuccess }) => {
+/**
+ * Harden All — remediate every failed check in an audit session.
+ *
+ * The whole wizard is driven by the backend plan
+ * (GET /api/hardening/harden-all/session/{id}/plan): which checks are fixable,
+ * which are not and why, the parameters to collect, the credential fields to
+ * render, and whether this device family supports a config backup or a dry run.
+ * There is deliberately no device-type branching in this file — adding a device
+ * family is a backend-only change.
+ *
+ * Props: sessionId (required), onClose, onSuccess.
+ */
+
+const STEPS = ['Review', 'Parameters', 'Credentials', 'Results'];
+
+const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
     const dispatch = useDispatch();
-    const {
-        requiredParameters,
-        isFetchingParams,
-        isExecuting,
-        error,
-        vdomDiscovery
-    } = useSelector((state) => state.hardening);
+    const { hardenAllPlan: plan, hardenAllResult: result, isLoadingPlan, isHardeningAll, hardenAllError } =
+        useSelector((state) => state.hardening);
 
-    const [vdomEnabled, setVdomEnabled] = useState(false);
+    const [step, setStep] = useState(0);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [createBackup, setCreateBackup] = useState(false);
-    const [dryRun, setDryRun] = useState(false); // Linux only: preview commands without executing
+    const [dryRun, setDryRun] = useState(false);
 
-    const [step, setStep] = useState(1); // 1: Checks preview, 2: Parameters, 3: Credentials, 4: Executing, 5: Results
-    const [paramValues, setParamValues] = useState({});
-    const [sshCredentials, setSshCredentials] = useState(defaultCredentialsState);
-    const [credErrors, setCredErrors] = useState({});
-    const [executionResult, setExecutionResult] = useState(null);
-
-    // Titles for Cisco/Fortinet checks (their categorized-check lists only carry
-    // check_number + result_id) — looked up from the already-fetched results list.
-    const checksByNumber = useMemo(() => {
-        const map = {};
-        (checks || []).forEach((c) => { map[c.check_number] = c; });
-        return map;
-    }, [checks]);
+    // Only the operator's own edits live in state; everything else is derived from
+    // the plan. Nothing has to be seeded when the plan arrives, so there is no
+    // copy of the plan that can drift out of sync with it.
+    const [deselectedIds, setDeselectedIds] = useState([]);
+    const [paramEdits, setParamEdits] = useState({});
+    const [credEdits, setCredEdits] = useState({});
 
     useEffect(() => {
-        if (sessionId && deviceType) {
-            dispatch(fetchRequiredParameters({ sessionId, deviceType }));
-        }
-        return () => {
-            dispatch(clearRequiredParameters());
-            dispatch(clearMessages());
-        };
-    }, [dispatch, sessionId, deviceType]);
+        if (sessionId) dispatch(fetchHardenAllPlan({ sessionId }));
+        return () => { dispatch(clearHardenAll()); };
+    }, [dispatch, sessionId]);
 
-    // Two backend shapes: Cisco/Fortinet expose `required_parameters`,
-    // Linux/Apache/MongoDB/MSSQL/Windows expose aggregated `parameters`
-    // ({name: {label, description, default, required, options, checks[]}}).
-    const paramEntries = requiredParameters?.required_parameters
-        || requiredParameters?.parameters
-        || null;
+    // ─── Derived ──────────────────────────────────────────────────────────────
 
-    useEffect(() => {
-        if (paramEntries) {
-            const initialValues = {};
-            Object.entries(paramEntries).forEach(([key, param]) => {
-                initialValues[key] = param.default || '';
-            });
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setParamValues(prev => {
-                const hasChanged = JSON.stringify(prev) !== JSON.stringify(initialValues);
-                return hasChanged ? initialValues : prev;
-            });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [requiredParameters]);
+    // Every fixable check starts selected; state tracks what the operator turned off.
+    const selectedSet = useMemo(() => {
+        const off = new Set(deselectedIds);
+        return new Set((plan?.fixable || []).map((c) => c.result_id).filter((id) => !off.has(id)));
+    }, [plan, deselectedIds]);
 
-    const handleParamChange = (key, value) => setParamValues(prev => ({ ...prev, [key]: value }));
+    const selectedIds = useMemo(() => Array.from(selectedSet), [selectedSet]);
 
-    const handleSSHChange = (e) => {
-        const { name, value } = e.target;
-        setSshCredentials(prev => ({ ...prev, [name]: value }));
-        setCredErrors(prev => (prev[name] ? { ...prev, [name]: undefined } : prev));
+    // A field's value is the operator's edit if they made one, otherwise its default.
+    const valueOf = (field, edits) => {
+        const edited = edits[field.name];
+        return edited !== undefined ? edited : (field.default ?? '');
     };
 
-    const handleDetectVdoms = () => {
-        if (!assetId || !sshCredentials.ssh_username || !sshCredentials.ssh_password) return;
-        dispatch(discoverFortinetVdoms({
-            mode:         'hardening',
-            asset_id:     parseInt(assetId),
-            ssh_username: sshCredentials.ssh_username,
-            ssh_password: sshCredentials.ssh_password,
-            ssh_port:     parseInt(sshCredentials.ssh_port) || 22,
-        }));
+    const selectedChecks = useMemo(
+        () => (plan?.fixable || []).filter((c) => selectedSet.has(c.result_id)),
+        [plan, selectedSet]
+    );
+
+    // Only ask for parameters that the currently selected checks actually consume —
+    // deselecting the one check that needs a syslog server should drop that field.
+    const activeParams = useMemo(() => {
+        if (!plan) return [];
+        const numbers = new Set(selectedChecks.map((c) => c.check_number));
+        return plan.parameters.filter((p) => p.checks.some((cn) => numbers.has(cn)));
+    }, [plan, selectedChecks]);
+
+    const toggleCheck = (resultId) => {
+        setDeselectedIds((prev) =>
+            prev.includes(resultId) ? prev.filter((id) => id !== resultId) : [...prev, resultId]
+        );
     };
 
-    const validateParameters = () => {
-        if (!paramEntries) return true;
-        const errors = [];
-        Object.entries(paramEntries).forEach(([key, param]) => {
-            // Backend marks user-input params with `required: true` (no `optional`
-            // field). Reading `param.optional` was always undefined, so every
-            // param was treated as required; key off `required` instead.
-            if (param.required && !paramValues[key]?.trim()) errors.push(param.description || key);
+    const setAllSelected = (all) =>
+        setDeselectedIds(all ? [] : (plan?.fixable || []).map((c) => c.result_id));
+
+    // ─── Validation ───────────────────────────────────────────────────────────
+
+    const validate = (fields, edits) => {
+        const errors = {};
+        fields.forEach((f) => {
+            if (f.required && !String(valueOf(f, edits)).trim()) {
+                errors[f.name] = `${f.label || f.name} is required`;
+            }
         });
-        if (errors.length > 0) {
-            alert(`Please fill in required fields:\n${errors.join('\n')}`);
-            return false;
-        }
-        return true;
+        return errors;
     };
 
-    const validateForm = () => {
-        const errs = validateCredentials(deviceType, sshCredentials);
-        setCredErrors(errs);
-        return Object.keys(errs).length === 0;
+    const goToParams = () => {
+        if (selectedIds.length === 0) return;
+        setFieldErrors({});
+        setStep(activeParams.length > 0 ? 1 : 2);
     };
 
-    const hasRequiredParams = () =>
-        !!paramEntries && Object.keys(paramEntries).length > 0;
-
-    // Step 1 (checks preview) -> step 2 (parameters, skipped when none needed).
-    const handleNextFromChecks = () => setStep(hasRequiredParams() ? 2 : 3);
-
-    // Step 2 (parameters) -> step 3 (credentials).
-    const handleNextFromParams = () => {
-        if (validateParameters()) setStep(3);
-    };
-
-    // Normalizes the two backend response shapes into one preview list:
-    //   Cisco/Fortinet: { auto_fixable_checks, needs_params_checks, no_template_checks }
-    //     — each entry only carries check_number + result_id, so titles are looked
-    //     up from the `checks` prop (the results list already loaded by the parent).
-    //   Linux/Apache/MongoDB/MSSQL/Windows: { failed_checks: [{check_number, check_title, has_template, ...}] }
-    const buildChecksPreview = () => {
-        const rp = requiredParameters;
-        if (!rp) return { fixable: [], skipped: [] };
-
-        if (rp.auto_fixable_checks || rp.needs_params_checks || rp.no_template_checks) {
-            const titleFor = (cn) => checksByNumber[cn]?.check_title || cn;
-            return {
-                fixable: [
-                    ...(rp.auto_fixable_checks || []).map((c) => ({ id: c.check_number, title: titleFor(c.check_number), needsParams: false })),
-                    ...(rp.needs_params_checks || []).map((c) => ({ id: c.check_number, title: titleFor(c.check_number), needsParams: true })),
-                ],
-                skipped: (rp.no_template_checks || []).map((c) => ({ id: c.check_number, title: titleFor(c.check_number), reason: c.reason || 'No remediation template' })),
-            };
-        }
-
-        if (Array.isArray(rp.failed_checks)) {
-            const needsParamsSet = new Set(rp.categorized_checks?.needs_params || []);
-            return {
-                fixable: rp.failed_checks.filter((c) => c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, needsParams: needsParamsSet.has(c.check_number) })),
-                skipped: rp.failed_checks.filter((c) => !c.has_template).map((c) => ({ id: c.check_number, title: c.check_title, reason: 'No remediation template' })),
-            };
-        }
-
-        return { fixable: [], skipped: [] };
-    };
-
-    // Cisco/Fortinet harden via batch-execute (below); other families use the
-    // defaults-only auto-harden endpoint.
-    const ciscoOrFortinet = isCisco(deviceType) || isFortinet(deviceType);
-
-    // AuditResult IDs of every fixable failed check (auto-fixable + needs-params).
-    // no_template checks are excluded — batch-execute can't remediate them.
-    const collectFixableCheckIds = () => {
-        if (!requiredParameters) return [];
-        return [
-            ...(requiredParameters.auto_fixable_checks || []),
-            ...(requiredParameters.needs_params_checks || []),
-        ]
-            .map((c) => c.result_id)
-            .filter((id) => id != null);
+    const goToCredentials = () => {
+        const errors = validate(
+            activeParams.map((p) => ({ ...p, label: p.label || p.name })),
+            paramEdits
+        );
+        setFieldErrors(errors);
+        if (Object.keys(errors).length === 0) setStep(2);
     };
 
     const handleExecute = async () => {
-        if (!validateForm()) return;
+        const errors = validate(plan.credential_fields, credEdits);
+        setFieldErrors(errors);
+        if (Object.keys(errors).length > 0) return;
 
-        const credentials = buildCredentials(deviceType, sshCredentials, { vdomEnabled });
+        // Send only the parameters the selected checks use, and drop blanks so the
+        // backend template default wins instead of an empty string.
+        const parameters = {};
+        activeParams.forEach((p) => {
+            const value = String(valueOf(p, paramEdits)).trim();
+            if (value) parameters[p.name] = value;
+        });
+        const credentials = {};
+        plan.credential_fields.forEach((f) => {
+            const value = String(valueOf(f, credEdits)).trim();
+            if (value) credentials[f.name] = value;
+        });
 
-        // Cisco/Fortinet: harden ALL fixable checks via batch-execute so the
-        // parameters entered above are actually applied. auto_harden_with_defaults
-        // ignores user params and skips every param-requiring check (e.g. "enable
-        // secret"), so it could never fix them. batch_execute_selected merges the
-        // submitted parameters with each check's template defaults, so both
-        // auto-fixable and param-requiring checks get remediated in one pass.
-        if (ciscoOrFortinet) {
-            const checkIds = collectFixableCheckIds();
-            if (checkIds.length === 0) {
-                alert('No fixable checks were found for this session.');
-                return;
-            }
-            setStep(4);
-            try {
-                const result = await dispatch(batchExecuteChecks({
-                    sessionId,
-                    assetId,
-                    deviceType,
-                    credentials,
-                    checkIds,
-                    parameters: paramValues,
-                    skipBackup: !createBackup,
-                })).unwrap();
-                setExecutionResult(result);
-                setStep(5);
-            } catch (error) {
-                console.error('Error executing hardening fixes:', error);
-                setStep(3);
-            }
-            return;
-        }
-
-        // Linux / Apache / MongoDB / MSSQL / Windows.
-        setStep(4);
+        setStep(3);
         try {
-            let result;
-            const aggregated = requiredParameters?.parameters;
-            const fixable = (requiredParameters?.failed_checks || []).filter((c) => c.has_template);
-
-            if (aggregated && Object.keys(aggregated).length > 0 && fixable.length > 0) {
-                // Param-aware path: batch-execute every templated failed check,
-                // attaching each entered parameter to the checks that use it
-                // (param metadata carries a `checks` list). Auto-fixable checks
-                // ride along with {} — the backend merges template defaults.
-                const checksPayload = fixable.map((c) => {
-                    const perCheck = {};
-                    Object.entries(aggregated).forEach(([name, meta]) => {
-                        const value = paramValues[name];
-                        if (value?.trim() && (meta.checks || []).includes(c.check_number)) {
-                            perCheck[name] = value.trim();
-                        }
-                    });
-                    return { check_id: c.check_number, parameters: perCheck };
-                });
-                result = await dispatch(batchExecuteChecks({
-                    sessionId,
-                    assetId,
-                    deviceType,
-                    credentials,
-                    checks: checksPayload,
-                    dryRun,
-                })).unwrap();
-            } else {
-                // No user parameters involved: defaults-only auto-harden.
-                result = await dispatch(autoHardenWithDefaults({
-                    sessionId,
-                    assetId,
-                    deviceType,
-                    credentials,
-                    skipBackup: !createBackup,
-                    dryRun,
-                })).unwrap();
-            }
-
-            setExecutionResult(result);
-            setStep(5);
-        } catch (error) {
-            console.error('Error executing hardening fixes:', error);
-            setStep(3);
+            await dispatch(executeHardenAll({
+                sessionId,
+                credentials,
+                parameters,
+                resultIds: selectedIds,
+                createBackup: createBackup && plan.capabilities.backup,
+                dryRun: dryRun && plan.capabilities.dry_run,
+            })).unwrap();
+        } catch {
+            // The error banner renders from hardenAllError; go back to credentials
+            // so the operator can correct them and retry.
+            setStep(2);
         }
     };
 
     const handleFinish = () => {
-        if (onSuccess) onSuccess();
+        // A dry run changed nothing, so it must not trigger the caller's refresh.
+        if (onSuccess && !result?.dry_run) onSuccess();
         onClose();
-    };
-
-    // ─── Input style helper ────────────────────────────────────────────────────
-    const inputStyle = {
-        width: '450px',
-        padding: '8px 12px',
-        border: '1px solid #d1d5db',
-        borderRadius: '6px',
-        fontSize: '13px',
-        color: '#111827',
-        transition: 'all 0.2s',
-        background: 'white'
     };
 
     // ─── Renders ──────────────────────────────────────────────────────────────
 
-    // Mirrors FixSingleModal's "Commands to Execute" preview — a numbered card
-    // per check — so Fix All shows the same at-a-glance view before executing.
-    const renderChecksPreview = () => {
-        if (isFetchingParams) {
+    const renderStepRail = () => (
+        <div className="ha-steps">
+            {STEPS.map((label, index) => (
+                <React.Fragment key={label}>
+                    {index > 0 && <span className="ha-step-sep" />}
+                    <span className={`ha-step ${index === step ? 'is-active' : index < step ? 'is-done' : ''}`}>
+                        <span className="ha-step-dot">{index < step ? '✓' : index + 1}</span>
+                        {label}
+                    </span>
+                </React.Fragment>
+            ))}
+        </div>
+    );
+
+    const renderReview = () => {
+        if (isLoadingPlan) {
             return (
-                <div className="hardening-modal-loading">
-                    <div className="hardening-spinner"></div>
-                    <p>Loading checks...</p>
+                <div className="ha-empty">
+                    <div className="ha-spinner-sm" />
+                    Loading the hardening plan…
                 </div>
             );
         }
-        const { fixable, skipped } = buildChecksPreview();
-        if (fixable.length === 0 && skipped.length === 0) {
+        if (!plan) {
+            return <div className="ha-empty">{hardenAllError || 'No plan available for this session.'}</div>;
+        }
+        if (plan.fixable.length === 0) {
             return (
-                <div className="hardening-no-params">
-                    <p>No fixable checks were found for this session.</p>
+                <div>
+                    <div className="ha-empty">
+                        {plan.total_failed === 0
+                            ? 'This session has no failed checks.'
+                            : 'None of the failed checks in this session can be remediated automatically.'}
+                    </div>
+                    {renderSkipped()}
                 </div>
             );
         }
         return (
-            <div className="hardening-preview-section">
-                <h3 style={{ fontSize: '18px', color: '#1e3a5f', margin: '0 0 20px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📋 Checks to be Hardened ({fixable.length})
+            <div>
+                <h3 className="ha-section-title">
+                    <span>Checks to harden</span>
+                    <span className="ha-hint">
+                        {selectedIds.length} of {plan.fixable.length} selected
+                        <button type="button" className="ha-link-btn" onClick={() => setAllSelected(true)}>All</button>
+                        <button type="button" className="ha-link-btn" onClick={() => setAllSelected(false)}>None</button>
+                    </span>
                 </h3>
-                {fixable.length > 0 && (
-                    <div style={{ background: 'linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e8edf5', maxHeight: '340px', overflowY: 'auto' }}>
-                        {fixable.map((c, index) => (
-                            <div key={`${c.id}-${index}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderLeft: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)' }}>
-                                <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#1f2937' }}>{c.id}</div>
-                                    <div style={{ fontSize: '13px', color: '#4b5563', marginTop: '2px' }}>{c.title}</div>
-                                </div>
-                                {c.needsParams && (
-                                    <span style={{ flexShrink: 0, display: 'inline-block', padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}>
-                                        Needs parameters
-                                    </span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-                {skipped.length > 0 && (
-                    <div className="hardening-warnings-box" style={{ marginTop: '16px' }}>
-                        <h4>⚠️ {skipped.length} check{skipped.length === 1 ? '' : 's'} will be skipped — no automated remediation:</h4>
-                        <ul>{skipped.map((s) => <li key={s.id}>{s.id} — {s.title}</li>)}</ul>
-                    </div>
-                )}
+                <div className="ha-list">
+                    {plan.fixable.map((check) => {
+                        const selected = selectedSet.has(check.result_id);
+                        return (
+                            <label key={check.result_id} className={`ha-check ${selected ? '' : 'is-unselected'}`}>
+                                <input type="checkbox" checked={selected} onChange={() => toggleCheck(check.result_id)} />
+                                <span className="ha-check-body">
+                                    <span className="ha-check-id">{check.check_number}</span>
+                                    <span className="ha-check-title">{check.check_title || '—'}</span>
+                                </span>
+                                {check.vdom && <span className="ha-badge ha-badge-vdom">VDOM: {check.vdom}</span>}
+                                {check.needs_params && <span className="ha-badge ha-badge-params">Needs parameters</span>}
+                            </label>
+                        );
+                    })}
+                </div>
+                {renderSkipped()}
             </div>
         );
     };
 
-    const renderParametersForm = () => {
-        if (isFetchingParams) {
-            return (
-                <div className="hardening-modal-loading">
-                    <div className="hardening-spinner"></div>
-                    <p>Loading parameters...</p>
-                </div>
-            );
-        }
-        if (!paramEntries || Object.keys(paramEntries).length === 0) {
-            return (
-                <div className="hardening-no-params">
-                    <p>No additional parameters required.</p>
-                    <p className="hardening-sub-text">Click Next to proceed with credentials.</p>
-                </div>
-            );
-        }
+    const renderSkipped = () => {
+        if (!plan?.skipped?.length) return null;
         return (
-            <div className="hardening-params-form">
-                {Object.entries(paramEntries).map(([key, param]) => (
-                    <div key={key} className="hardening-form-group">
-                        <label>
-                            {param.label || param.description || key}
-                            {param.required && <span className="hardening-required">*</span>}
-                        </label>
-                        <div className="hardening-input-with-meta">
-                            {Array.isArray(param.options) && param.options.length > 0 ? (
-                                <select value={paramValues[key] || ''} onChange={(e) => handleParamChange(key, e.target.value)} style={inputStyle}>
-                                    <option value="">{param.default ? `default: ${param.default}` : `Select ${key}`}</option>
-                                    {param.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                            ) : (
-                                <input type="text" value={paramValues[key] || ''} onChange={(e) => handleParamChange(key, e.target.value)} placeholder={param.placeholder || param.default || `Enter ${key}`} style={inputStyle} />
-                            )}
-                            {param.usage && <span className="hardening-param-usage">{param.usage}</span>}
-                        </div>
-                        {param.label && param.description && (
-                            <span style={{ fontSize: '12px', color: '#6b7280' }}>{param.description}</span>
-                        )}
-                        {Array.isArray(param.checks) && param.checks.length > 0 && (
-                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Used by: {param.checks.join(', ')}</span>
-                        )}
-                    </div>
-                ))}
+            <div className="ha-skipped">
+                <h4>
+                    {plan.skipped.length} failed check{plan.skipped.length === 1 ? '' : 's'} cannot be
+                    remediated automatically and will be left unchanged:
+                </h4>
+                <ul>
+                    {plan.skipped.map((s) => (
+                        <li key={s.result_id}>
+                            {s.check_number}
+                            {s.vdom ? ` (${s.vdom})` : ''} — {s.check_title || s.reason}
+                        </li>
+                    ))}
+                </ul>
             </div>
         );
     };
 
-    const renderCredentialsForm = () => (
-        <CredentialsForm
-            deviceType={deviceType}
-            value={sshCredentials}
-            onChange={handleSSHChange}
-            errors={credErrors}
-            vdomEnabled={vdomEnabled}
-            onVdomEnabledChange={setVdomEnabled}
-            vdomDiscovery={vdomDiscovery}
-            onDetectVdoms={handleDetectVdoms}
-            canDetectVdoms={!!assetId && !!sshCredentials.ssh_username && !!sshCredentials.ssh_password}
-        />
+    const renderField = (field, edits, setEdits) => {
+        const value = valueOf(field, edits);
+        const error = fieldErrors[field.name];
+        const onChange = (e) => {
+            const next = e.target.value;
+            setEdits((prev) => ({ ...prev, [field.name]: next }));
+            setFieldErrors((prev) => (prev[field.name] ? { ...prev, [field.name]: undefined } : prev));
+        };
+        return (
+            <div className="ha-field" key={field.name}>
+                <label htmlFor={`ha-${field.name}`}>
+                    {field.label || field.name}
+                    {field.required && <span className="ha-req">*</span>}
+                </label>
+                {field.options?.length ? (
+                    <select id={`ha-${field.name}`} value={value} onChange={onChange}>
+                        <option value="">{field.default ? `Default: ${field.default}` : 'Select…'}</option>
+                        {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                ) : (
+                    <input
+                        id={`ha-${field.name}`}
+                        type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
+                        className={error ? 'has-error' : ''}
+                        value={value}
+                        onChange={onChange}
+                        placeholder={field.placeholder || field.default || ''}
+                        autoComplete={field.type === 'password' ? 'new-password' : 'off'}
+                    />
+                )}
+                {(field.help || field.description) && (
+                    <span className="ha-field-help">{field.help || field.description}</span>
+                )}
+                {field.checks?.length > 0 && (
+                    <span className="ha-field-checks">Used by: {field.checks.join(', ')}</span>
+                )}
+                {error && <span className="ha-field-error">{error}</span>}
+            </div>
+        );
+    };
+
+    const renderParameters = () => (
+        <div className="ha-form">
+            <h3 className="ha-section-title">
+                <span>Remediation parameters</span>
+                <span className="ha-hint">Blank optional fields fall back to the CIS default</span>
+            </h3>
+            {activeParams.map((param) => renderField(param, paramEdits, setParamEdits))}
+        </div>
     );
 
-    const renderBackupOption = () => (
-        (isCisco(deviceType) || isFortinet(deviceType)) && (
-            <BackupOption checked={createBackup} onChange={setCreateBackup} />
-        )
-    );
+    const renderCredentials = () => (
+        <div className="ha-form">
+            <h3 className="ha-section-title">
+                <span>Connect to {plan.asset_name || plan.target_ip || 'the device'}</span>
+                <span className="ha-hint">Used for this run only — never stored</span>
+            </h3>
+            {plan.credential_fields.map((field) => renderField(field, credEdits, setCredEdits))}
 
-    // Linux only: the backend supports dry_run (command preview, no execution).
-    const renderDryRunOption = () => (
-        isLinux(deviceType) && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', padding: '12px 16px', background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', color: '#4c1d95' }}>
-                <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-                <span>
-                    <strong>Preview only (dry run)</strong> — show the exact commands without connecting to the server or changing anything.
-                </span>
-            </label>
-        )
+            {plan.capabilities.backup && (
+                <label className="ha-toggle">
+                    <input type="checkbox" checked={createBackup} onChange={(e) => setCreateBackup(e.target.checked)} />
+                    <span><strong>Back up the device configuration first</strong> — saved to Backups before any change is applied.</span>
+                </label>
+            )}
+            {plan.capabilities.dry_run && (
+                <label className="ha-toggle is-dry">
+                    <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
+                    <span><strong>Preview only (dry run)</strong> — show the exact commands without connecting or changing anything.</span>
+                </label>
+            )}
+        </div>
     );
 
     const renderExecuting = () => (
-        <div className="hardening-modal-executing">
-            <div className="hardening-spinner-large"></div>
-            <h3>Executing Hardening...</h3>
-            <p>Please wait while we apply the security hardening configurations.</p>
-            <p>This may take a few minutes.</p>
+        <div className="ha-executing">
+            <div className="ha-spinner" />
+            <h3>{dryRun && plan?.capabilities.dry_run ? 'Building the command preview…' : 'Applying hardening…'}</h3>
+            <p>{selectedIds.length} check{selectedIds.length === 1 ? '' : 's'} on {plan?.target_ip || 'the device'}. This can take a few minutes.</p>
         </div>
     );
 
     const renderResults = () => {
-        if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
+        if (isHardeningAll || !result) return renderExecuting();
 
-        // Dry run: nothing was executed — show the per-check command preview.
-        if (executionResult.dry_run) {
-            const rows = Array.isArray(executionResult.results) ? executionResult.results : [];
-            return (
-                <div>
-                    <div style={{ padding: '16px 20px', borderRadius: '10px', borderLeft: '5px solid #7c3aed', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', marginBottom: '18px' }}>
-                        <p style={{ margin: 0, fontSize: '14px', color: '#4c1d95', fontWeight: 600 }}>
-                            🔍 Dry run — no commands were executed and nothing was changed on the server.
-                        </p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
-                        {rows.map((r) => (
-                            <div key={r.check_id} style={{ padding: '14px 18px', borderRadius: '10px', border: '1px solid #e8edf5', background: 'white' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e3a5f' }}>
-                                    {r.check_id}{r.check_title ? ` — ${r.check_title}` : ''}
-                                </div>
-                                {r.error_message ? (
-                                    <div style={{ fontSize: '12px', color: '#c0392b', marginTop: '6px' }}>{r.error_message}</div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                                        {(r.commands || []).map((cmd, i) => (
-                                            <code key={i} style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '12px', color: '#1f2937', background: '#f8f9fb', padding: '6px 10px', borderRadius: '6px', wordBreak: 'break-word' }}>{cmd}</code>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        {rows.length === 0 && <p style={{ color: '#6b7280' }}>No auto-fixable checks to preview.</p>}
-                    </div>
-                </div>
-            );
-        }
-
-        // Normalize across the device-family response shapes so the summary and
-        // table render for every device type:
-        //   Linux/Apache/MongoDB/MSSQL/Windows:
-        //     { successful, failed, skipped[], results[{check_id, success, verification_result, error_message}] }
-        //   Cisco/Fortinet auto-harden-defaults:
-        //     { fixed_count, failed_count, skipped_count, fixed_checks[{check_number}], skipped_checks[{check_number, reason}] }
-        //   Cisco/Fortinet batch-execute:
-        //     { fixed_count, failed_count, skipped_count, results[{check_number, status, ...}] }
-        // The old code only read the Linux shape, so Cisco/Fortinet always showed 0/0/0.
-        const successCount = executionResult.successful ?? executionResult.fixed_count  ?? 0;
-        const failedCount  = executionResult.failed     ?? executionResult.failed_count ?? 0;
-
-        // Per-check rows. batch-execute (Cisco/Fortinet) returns skipped checks
-        // inside results[] with status:"skipped", so route those to the skipped
-        // list rather than mislabeling them as failed.
-        let fixedRows = [];
-        const skippedFromResults = [];
-        if (Array.isArray(executionResult.results) && executionResult.results.length > 0) {
-            executionResult.results.forEach((r) => {
-                const id = r.check_id || r.check_number;
-                const status = (r.status || '').toString().toLowerCase();
-                if (status === 'skipped') {
-                    skippedFromResults.push({ id, reason: r.reason || 'Skipped' });
-                    return;
-                }
-                fixedRows.push({
-                    id,
-                    title:   r.check_title || id,
-                    success: r.success ?? (status === 'success'),
-                    detail:  r.error_message || r.verification_result || r.verification_evidence || r.reason || '—',
-                });
-            });
-        } else if (Array.isArray(executionResult.fixed_checks)) {
-            fixedRows = executionResult.fixed_checks.map((c) => ({
-                id:      c.check_number,
-                title:   c.check_title || c.check_number,
-                success: true,
-                detail:  '—',
-            }));
-        }
-
-        const skippedRows = [
-            ...skippedFromResults,
-            ...(Array.isArray(executionResult.skipped_checks)
-                ? executionResult.skipped_checks.map((c) => ({ id: c.check_number || c, reason: c.reason || 'Requires user input' }))
-                : Array.isArray(executionResult.skipped)
-                    ? executionResult.skipped.map((id) => ({ id, reason: 'Not auto-fixable' }))
-                    : []),
-        ];
-        const skippedCount = executionResult.skipped_count ?? skippedRows.length;
-
+        const rows = result.results || [];
         return (
             <div>
-                <div className="hardening-results-summary">
-                    <div className="hardening-result-item success">
-                        <span className="hardening-result-icon">✓</span>
-                        <div><strong>{successCount}</strong><span>Successful</span></div>
-                    </div>
-                    <div className="hardening-result-item failed">
-                        <span className="hardening-result-icon">✗</span>
-                        <div><strong>{failedCount}</strong><span>Failed</span></div>
-                    </div>
-                    <div className="hardening-result-item skipped">
-                        <span className="hardening-result-icon">⊘</span>
-                        <div><strong>{skippedCount}</strong><span>Skipped</span></div>
-                    </div>
-                </div>
-
-                {/* Per-check results — same colored-card language as the single-fix
-                    result screen, one card per check instead of one big card. */}
-                {(fixedRows.length > 0 || skippedRows.length > 0) && (
-                    <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
-                        {fixedRows.map((r) => (
-                            <div key={r.id} style={{
-                                display: 'flex', alignItems: 'flex-start', gap: '14px',
-                                padding: '14px 18px', borderRadius: '10px',
-                                borderLeft: r.success ? '5px solid #1e3a5f' : '5px solid #ef4444',
-                                background: r.success ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)',
-                            }}>
-                                <span style={{
-                                    background: r.success ? '#1e3a5f' : '#ef4444', color: 'white',
-                                    minWidth: '26px', height: '26px', borderRadius: '50%',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '13px', fontWeight: '700', flexShrink: 0, marginTop: '2px',
-                                }}>{r.success ? '✓' : '✗'}</span>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: r.success ? '#1e3a5f' : '#c0392b' }}>
-                                        {r.id} <span style={{ fontWeight: 400, color: '#374151' }}>— {r.title}</span>
-                                    </div>
-                                    {r.detail && r.detail !== '—' && (
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', wordBreak: 'break-word' }}>{r.detail}</div>
-                                    )}
-                                </div>
-                                <span className={`result-badge ${r.success ? 'result-success' : 'result-fail'}`} style={{ flexShrink: 0 }}>
-                                    {r.success ? 'Fixed' : 'Failed'}
-                                </span>
-                            </div>
-                        ))}
-                        {skippedRows.map((s) => (
-                            <div key={s.id} style={{
-                                display: 'flex', alignItems: 'flex-start', gap: '14px',
-                                padding: '14px 18px', borderRadius: '10px',
-                                borderLeft: '5px solid #d1d5db', background: '#f9fafb',
-                            }}>
-                                <span style={{
-                                    background: '#9ca3af', color: 'white', minWidth: '26px', height: '26px',
-                                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: '13px', fontWeight: 700, flexShrink: 0, marginTop: '2px',
-                                }}>⊘</span>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>{s.id}</div>
-                                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{s.reason}</div>
-                                </div>
-                                <span className="result-badge result-unknown" style={{ flexShrink: 0 }}>Skipped</span>
-                            </div>
-                        ))}
+                {result.dry_run && (
+                    <div className="ha-notice">
+                        🔍 Dry run — nothing was executed and nothing changed on the device.
                     </div>
                 )}
+                {!result.dry_run && (
+                    <div className="ha-summary">
+                        <div className="ha-stat is-success"><strong>{result.successful}</strong><span>Fixed</span></div>
+                        <div className="ha-stat is-failed"><strong>{result.failed}</strong><span>Failed</span></div>
+                        <div className="ha-stat is-skipped"><strong>{result.skipped}</strong><span>Skipped</span></div>
+                    </div>
+                )}
+                <div className="ha-list" style={{ maxHeight: '380px' }}>
+                    {rows.map((row, index) => (
+                        <div key={`${row.result_id ?? row.check_number}-${index}`} className={`ha-result is-${row.status}`}>
+                            <span className="ha-check-body">
+                                <span className="ha-check-id">
+                                    {row.check_number}
+                                    {row.vdom ? ` (${row.vdom})` : ''}
+                                </span>
+                                {row.check_title && <span className="ha-check-title">{row.check_title}</span>}
+                                {row.detail && <span className="ha-result-detail">{row.detail}</span>}
+                                {row.commands?.length > 0 && (
+                                    <span className="ha-commands">
+                                        {row.commands.map((cmd, i) => <code key={i}>{cmd}</code>)}
+                                    </span>
+                                )}
+                            </span>
+                            <span className={`ha-badge ha-badge-${row.status === 'success' ? 'ok' : row.status === 'failed' ? 'fail' : 'skip'}`}>
+                                {result.dry_run && row.status === 'success'
+                                    ? 'Preview'
+                                    : row.status === 'success' ? 'Fixed' : row.status === 'failed' ? 'Failed' : 'Skipped'}
+                            </span>
+                        </div>
+                    ))}
+                    {rows.length === 0 && <div className="ha-empty">The device returned no per-check results.</div>}
+                </div>
             </div>
         );
     };
 
-    // ─── Credential form label by device type ─────────────────────────────────
-    const credentialStepLabel = isWindows(deviceType)
-        ? 'Enter Windows credentials to execute hardening fixes.'
-        : isMssql(deviceType)
-            ? 'Enter SQL Server credentials to execute hardening fixes.'
-            : 'Enter SSH credentials to execute hardening fixes.';
+    // ─── Footer ───────────────────────────────────────────────────────────────
+
+    const renderFooter = () => {
+        if (step === 3) {
+            if (isHardeningAll || !result) return null;
+            return <button className="ha-btn ha-btn-primary" onClick={handleFinish}>Finish</button>;
+        }
+
+        const canProceed = !!plan && plan.fixable.length > 0;
+        return (
+            <>
+                {step > 0 && selectedIds.length > 0 && (
+                    <span className="ha-footer-info">
+                        {selectedIds.length} check{selectedIds.length === 1 ? '' : 's'} selected
+                    </span>
+                )}
+                <button
+                    className="ha-btn ha-btn-secondary"
+                    onClick={step === 0 ? onClose : () => setStep(step === 2 && activeParams.length === 0 ? 0 : step - 1)}
+                >
+                    {step === 0 ? 'Cancel' : 'Back'}
+                </button>
+                {step === 0 && (
+                    <button className="ha-btn ha-btn-primary" onClick={goToParams} disabled={!canProceed || selectedIds.length === 0}>
+                        Next
+                    </button>
+                )}
+                {step === 1 && (
+                    <button className="ha-btn ha-btn-primary" onClick={goToCredentials}>Next</button>
+                )}
+                {step === 2 && (
+                    <button className="ha-btn ha-btn-primary" onClick={handleExecute} disabled={isHardeningAll}>
+                        {dryRun && plan?.capabilities.dry_run ? 'Preview Commands' : 'Apply Hardening'}
+                    </button>
+                )}
+            </>
+        );
+    };
 
     return (
-        <div className="hardening-modal-overlay" onClick={onClose}>
-            <div className="hardening-modal-content hardening-modal-large" onClick={(e) => e.stopPropagation()}>
-                <div className="hardening-modal-header">
-                    <div className="hardening-modal-title">
-                        <span className="hardening-modal-icon"><img src="/icons/audit.svg" alt="" className="btn-icon" /></span>
+        <div className="ha-overlay" onClick={onClose}>
+            <div className="ha-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="ha-header">
+                    <div>
                         <h2>Harden All Failed Checks</h2>
-                    </div>
-                    <button className="hardening-modal-close" onClick={onClose}>×</button>
-                </div>
-
-                {step <= 3 && (
-                    <div className="hardening-modal-info">
-                        <span className="hardening-info-icon">ℹ️</span>
-                        <p>
-                            {step === 1 && 'Review the checks that will be hardened.'}
-                            {step === 2 && 'Configure required parameters for hardening all failed checks.'}
-                            {step === 3 && credentialStepLabel}
+                        <p className="ha-subtitle">
+                            {plan
+                                ? `${plan.device_label}${plan.sub_device_type ? ` · ${plan.sub_device_type}` : ''} · ${plan.asset_name || plan.target_ip || `session ${sessionId}`}`
+                                : `Session ${sessionId}`}
                         </p>
                     </div>
-                )}
-
-                <div className="hardening-modal-body">
-                    {step === 1 && renderChecksPreview()}
-                    {step === 2 && renderParametersForm()}
-                    {step === 3 && <>{renderCredentialsForm()}{renderBackupOption()}{renderDryRunOption()}</>}
-                    {step === 4 && renderExecuting()}
-                    {step === 5 && renderResults()}
+                    <button className="ha-close" onClick={onClose} aria-label="Close">×</button>
                 </div>
 
-                <div className="hardening-modal-footer">
-                    {step === 1 && (
-                        <>
-                            <button className="hardening-btn-secondary" onClick={onClose}>Cancel</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromChecks} disabled={isFetchingParams}>Next</button>
-                        </>
-                    )}
-                    {step === 2 && (
-                        <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(1)}>Back</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromParams}>Next</button>
-                        </>
-                    )}
-                    {step === 3 && (
-                        <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(hasRequiredParams() ? 2 : 1)}>Back</button>
-                            <button className="hardening-btn-primary" onClick={handleExecute} disabled={isExecuting}>Execute Hardening</button>
-                        </>
-                    )}
-                    {step === 5 && (
-                        <button className="hardening-btn-primary" onClick={handleFinish}>Finish</button>
-                    )}
+                {renderStepRail()}
+
+                <div className="ha-body">
+                    {step === 0 && renderReview()}
+                    {step === 1 && renderParameters()}
+                    {step === 2 && renderCredentials()}
+                    {step === 3 && renderResults()}
                 </div>
 
-                {error && step !== 5 && (
-                    <div className="hardening-error-message" style={{ margin: '16px 24px' }}>
-                        <span>⚠</span>
-                        <p>{typeof error === 'string' ? error : (error?.message || 'Operation failed')}</p>
-                    </div>
+                {hardenAllError && step !== 3 && (
+                    <div className="ha-error">⚠ {hardenAllError}</div>
                 )}
+
+                <div className="ha-footer">{renderFooter()}</div>
             </div>
         </div>
     );

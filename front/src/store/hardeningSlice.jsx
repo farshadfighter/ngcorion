@@ -414,72 +414,6 @@ export const executeHardenCheck = createAsyncThunk(
     }
 );
 
-/**
- * Harden All - Get required parameters for a session
- * GET /api/hardening/{device}/session/{id}/parameters
- */
-export const fetchRequiredParameters = createAsyncThunk(
-    "hardening/fetchParameters",
-    async ({ sessionId, deviceType }, { rejectWithValue }) => {
-        try {
-            const apiPath = getDeviceApiPath(deviceType);
-            const response = await api.get(
-                `/api/hardening/${apiPath}/session/${sessionId}/parameters`
-            );
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(
-                getErrorMessage(error, "Failed to fetch parameters")
-            );
-        }
-    }
-);
-
-/**
- * Harden All - Auto harden with CIS defaults
- * POST /api/hardening/{device}/auto-harden-defaults
- */
-export const autoHardenWithDefaults = createAsyncThunk(
-    "hardening/autoHardenDefaults",
-    async ({ sessionId, assetId, deviceType, credentials, skipBackup = false, dryRun = false }, { rejectWithValue }) => {
-        try {
-            const apiPath = getDeviceApiPath(deviceType);
-            const credPayload = buildCredentialsPayload(deviceType, credentials);
-
-            const payload = {
-                session_id: sessionId,
-                asset_id:   assetId,
-                ...credPayload,
-                // Cisco/Fortinet expect confirmed flag
-                ...(["cisco", "fortinet"].includes(apiPath) && {
-                    audit_session_id: sessionId,
-                    confirmed: true,
-                    skip_backup: skipBackup,
-                }),
-                // Dry run (Linux only): backend returns the commands without executing.
-                ...(apiPath === "linux" && dryRun && { dry_run: true }),
-            };
-
-            const response = await api.post(
-                `/api/hardening/${apiPath}/auto-harden-defaults`,
-                payload
-            );
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(
-                getErrorMessage(error, "Failed to auto harden")
-            );
-        }
-    }
-);
-
-/**
- * Harden All - Batch execute selected checks
- * POST /api/hardening/{device}/batch-execute
- *
- * Cisco/Fortinet use check_ids[] + parameters{}
- * Linux/Apache/MongoDB/MSSQL/Windows use checks[{check_id, parameters}]
- */
 export const discoverFortinetVdoms = createAsyncThunk(
     "hardening/discoverFortinetVdoms",
     // mode: "audit" (default) hits the audit endpoint (AUDIT read) — used by the
@@ -602,48 +536,52 @@ export const executeFortinetManualFix = createAsyncThunk(
     }
 );
 
-export const batchExecuteChecks = createAsyncThunk(
-    "hardening/batchExecute",
-    async ({ sessionId, assetId, deviceType, credentials, checkIds, checks, parameters, skipBackup = false, dryRun = false }, { rejectWithValue }) => {
+// ===========================
+// HARDEN ALL (unified)
+// ===========================
+
+/**
+ * Harden All - fetch the execution plan for a session.
+ * GET /api/hardening/harden-all/session/{id}/plan
+ *
+ * One endpoint for every device family. The response describes the whole
+ * wizard — fixable checks, unfixable checks and why, the parameters to collect,
+ * the credential fields to render, and which options (backup / dry run) the
+ * family supports — so the UI never branches on device type.
+ */
+export const fetchHardenAllPlan = createAsyncThunk(
+    "hardening/fetchHardenAllPlan",
+    async ({ sessionId }, { rejectWithValue }) => {
         try {
-            const apiPath = getDeviceApiPath(deviceType);
-            const credPayload = buildCredentialsPayload(deviceType, credentials);
-
-            let payload;
-
-            if (apiPath === "cisco" || apiPath === "fortinet") {
-                // Cisco / Fortinet: flat check_ids + shared parameters object
-                payload = {
-                    audit_session_id: sessionId,
-                    check_ids: checkIds || [],
-                    parameters: parameters || {},
-                    ...credPayload,
-                    skip_backup: skipBackup,
-                };
-            } else {
-                // Linux / Apache / MongoDB / MSSQL / Windows: checks array with per-check params
-                payload = {
-                    session_id: sessionId,
-                    asset_id:   assetId,
-                    ...credPayload,
-                    checks: checks || (checkIds || []).map((id) => ({
-                        check_id:   id,
-                        parameters: (parameters && parameters[id]) || {},
-                    })),
-                    // Dry run (Linux only): backend returns the commands without executing.
-                    ...(apiPath === "linux" && dryRun && { dry_run: true }),
-                };
-            }
-
-            const response = await api.post(
-                `/api/hardening/${apiPath}/batch-execute`,
-                payload
-            );
-            return response.data;
+            const res = await api.get(`/api/hardening/harden-all/session/${sessionId}/plan`);
+            return res.data;
         } catch (error) {
-            return rejectWithValue(
-                getErrorMessage(error, "Failed to batch execute")
-            );
+            return rejectWithValue(getErrorMessage(error, "Failed to load the hardening plan"));
+        }
+    }
+);
+
+/**
+ * Harden All - remediate the selected checks.
+ * POST /api/hardening/harden-all/execute
+ *
+ * Returns one normalized outcome per check: { status: success|failed|skipped }.
+ */
+export const executeHardenAll = createAsyncThunk(
+    "hardening/executeHardenAll",
+    async ({ sessionId, credentials, parameters, resultIds, createBackup = false, dryRun = false }, { rejectWithValue }) => {
+        try {
+            const res = await api.post("/api/hardening/harden-all/execute", {
+                session_id:    sessionId,
+                credentials:   credentials || {},
+                parameters:    parameters || {},
+                result_ids:    resultIds && resultIds.length ? resultIds : null,
+                create_backup: createBackup,
+                dry_run:       dryRun,
+            });
+            return res.data;
+        } catch (error) {
+            return rejectWithValue(getErrorMessage(error, "Hardening failed"));
         }
     }
 );
@@ -672,8 +610,14 @@ const initialState = {
     failedChecks:       [],
     auditResults:       [],
     sessionStatus:      null,
-    requiredParameters: null,
     previewData:        null,
+
+    // Harden All (unified plan/execute contract)
+    hardenAllPlan:      null,
+    hardenAllResult:    null,
+    isLoadingPlan:      false,
+    isHardeningAll:     false,
+    hardenAllError:     null,
 
     // VDOM discovery (FortiGate)
     vdomDiscovery: { vdoms: null, isDiscovering: false, error: null },
@@ -686,7 +630,6 @@ const initialState = {
     // Loading states
     isLoading:       false,
     isExecuting:     false,
-    isFetchingParams: false,
 
     // Messages
     error:          null,
@@ -753,7 +696,6 @@ const hardeningSlice = createSlice({
             state.failedChecks      = [];
             state.auditResults      = [];
             state.sessionStatus     = null;
-            state.requiredParameters = null;
             state.previewData       = null;
             state.deviceType        = null;
             state.error             = null;
@@ -762,8 +704,12 @@ const hardeningSlice = createSlice({
             state.pollingActive     = false;
         },
 
-        clearRequiredParameters: (state) => {
-            state.requiredParameters = null;
+        clearHardenAll: (state) => {
+            state.hardenAllPlan   = null;
+            state.hardenAllResult = null;
+            state.hardenAllError  = null;
+            state.isLoadingPlan   = false;
+            state.isHardeningAll  = false;
         },
 
         clearPreviewData: (state) => {
@@ -932,52 +878,54 @@ const hardeningSlice = createSlice({
                 state.error       = action.payload;
             });
 
-        // ── fetchRequiredParameters ───────────────────────────
-        builder
-            .addCase(fetchRequiredParameters.pending, (state) => {
-                state.isFetchingParams  = true;
-                state.error             = null;
-                state.requiredParameters = null;
-            })
-            .addCase(fetchRequiredParameters.fulfilled, (state, action) => {
-                state.isFetchingParams  = false;
-                state.requiredParameters = action.payload;
-            })
-            .addCase(fetchRequiredParameters.rejected, (state, action) => {
-                state.isFetchingParams = false;
-                state.error            = action.payload;
-            });
 
-        // ── autoHardenWithDefaults ────────────────────────────
+        // ── fetchHardenAllPlan / executeHardenAll ─────────────
         builder
-            .addCase(autoHardenWithDefaults.pending, (state) => {
-                state.isExecuting = true;
-                state.error       = null;
-                state.successMessage = null;
+            .addCase(fetchHardenAllPlan.pending, (state) => {
+                state.isLoadingPlan  = true;
+                state.hardenAllPlan  = null;
+                state.hardenAllError = null;
             })
-            .addCase(autoHardenWithDefaults.fulfilled, (state, action) => {
-                state.isExecuting    = false;
-                state.successMessage = "Hardening applied successfully!";
+            .addCase(fetchHardenAllPlan.fulfilled, (state, action) => {
+                state.isLoadingPlan = false;
+                state.hardenAllPlan = action.payload;
             })
-            .addCase(autoHardenWithDefaults.rejected, (state, action) => {
-                state.isExecuting = false;
-                state.error       = action.payload;
-            });
+            .addCase(fetchHardenAllPlan.rejected, (state, action) => {
+                state.isLoadingPlan  = false;
+                state.hardenAllError = action.payload;
+            })
+            .addCase(executeHardenAll.pending, (state) => {
+                state.isHardeningAll = true;
+                state.hardenAllError = null;
+                state.hardenAllResult = null;
+            })
+            .addCase(executeHardenAll.fulfilled, (state, action) => {
+                state.isHardeningAll  = false;
+                state.hardenAllResult = action.payload;
 
-        // ── batchExecuteChecks ────────────────────────────────
-        builder
-            .addCase(batchExecuteChecks.pending, (state) => {
-                state.isExecuting = true;
-                state.error       = null;
-                state.successMessage = null;
+                // Reflect verified fixes in the already-loaded results table so the
+                // user sees green rows without re-running the audit. Dry runs change
+                // nothing on the device, so they must not touch the table.
+                if (!action.payload?.dry_run) {
+                    const fixed = new Set(
+                        (action.payload?.results || [])
+                            .filter((r) => r.status === "success" && r.result_id != null)
+                            .map((r) => r.result_id)
+                    );
+                    const apply = (check) => {
+                        if (check && fixed.has(check.id)) {
+                            check.status = "PASS";
+                            check.justHardened = true;
+                        }
+                    };
+                    (state.cisChecks || []).forEach(apply);
+                    (state.auditResults || []).forEach(apply);
+                    state.failedChecks = (state.failedChecks || []).filter((c) => !fixed.has(c.id));
+                }
             })
-            .addCase(batchExecuteChecks.fulfilled, (state, action) => {
-                state.isExecuting    = false;
-                state.successMessage = "Batch hardening completed!";
-            })
-            .addCase(batchExecuteChecks.rejected, (state, action) => {
-                state.isExecuting = false;
-                state.error       = action.payload;
+            .addCase(executeHardenAll.rejected, (state, action) => {
+                state.isHardeningAll = false;
+                state.hardenAllError = action.payload;
             });
 
         // ── discoverFortinetVdoms ──────────────────────────────
@@ -1030,7 +978,7 @@ export const {
     setWizardMode,
     setWizardStep,
     resetWizard,
-    clearRequiredParameters,
+    clearHardenAll,
     clearPreviewData,
     clearVdomDiscovery,
     markCheckHardened,

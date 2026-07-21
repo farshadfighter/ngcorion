@@ -135,37 +135,8 @@ def deprecated_hardening_auto_fix():
     )
 
 
-@deprecated_router.get("/api/hardening/session/{session_id}/parameters")
-def deprecated_hardening_session_parameters(session_id: int):
-    """Redirect to new Cisco hardening session parameters endpoint."""
-    return RedirectResponse(
-        url=f"/api/hardening/cisco/session/{session_id}/parameters",
-        status_code=307
-    )
-
-
-@deprecated_router.get("/api/hardening/session/{session_id}/auto-preview")
-def deprecated_hardening_session_auto_preview(session_id: int):
-    """Redirect to new Cisco hardening session auto-preview endpoint."""
-    return RedirectResponse(
-        url=f"/api/hardening/cisco/session/{session_id}/auto-preview",
-        status_code=307
-    )
-
-
-@deprecated_router.post("/api/hardening/auto-harden-defaults")
-def deprecated_hardening_auto_harden_defaults():
-    """Redirect to new Cisco hardening auto-harden-defaults endpoint."""
-    return RedirectResponse(
-        url="/api/hardening/cisco/auto-harden-defaults",
-        status_code=307
-    )
-
-
-@deprecated_router.post("/api/hardening/batch-execute")
-def deprecated_hardening_batch_execute():
-    """Redirect to new Cisco hardening batch-execute endpoint."""
-    return RedirectResponse(
-        url="/api/hardening/cisco/batch-execute",
-        status_code=307
-    )
+# Note: the /api/hardening/session/{id}/parameters, /auto-preview,
+# /auto-harden-defaults and /batch-execute redirects were removed along with the
+# per-family endpoints they pointed at. That whole flow is now served by the
+# device-agnostic /api/hardening/harden-all/* endpoints, which take a different
+# request shape — so a redirect would have broken any caller that followed it.

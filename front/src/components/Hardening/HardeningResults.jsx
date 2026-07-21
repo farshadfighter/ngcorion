@@ -261,9 +261,6 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
             {showHardenAllModal && (
                 <HardenAllModal
                     sessionId={sessionData.session_id}
-                    assetId={sessionData.asset_id}
-                    deviceType={sessionData.device_type}
-                    checks={cisChecks}
                     onClose={() => setShowHardenAllModal(false)}
                     onSuccess={handleModalSuccess}
                 />

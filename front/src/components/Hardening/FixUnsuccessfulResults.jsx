@@ -333,9 +333,6 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
             {showHardenAllModal && (
                 <HardenAllModal
                     sessionId={sessionData.session_id}
-                    assetId={sessionData.asset_id}
-                    deviceType={sessionData.device_type}
-                    checks={cisChecks}
                     onClose={() => setShowHardenAllModal(false)}
                     onSuccess={handleModalSuccess}
                 />

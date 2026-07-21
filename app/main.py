@@ -18,6 +18,7 @@ from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
 from app.modules.discovery.discovery_logs_router import router as discovery_logs_router
 from app.modules.hardening.hardening_logs_router import router as hardening_logs_router
+from app.modules.hardening.harden_all import router as harden_all_router
 
 # Cisco Audit and Hardening (new module structure)
 from app.modules.cisco.audit import router as cisco_audit_router
@@ -219,6 +220,9 @@ app.include_router(windows_hardening_router)
 
 # Schema-driven Hardening routes (unified)
 app.include_router(unified_hardening_router)
+
+# Harden All — one plan/execute contract across every device family
+app.include_router(harden_all_router)
 
 # Shared cross-family audit routes (get/delete session by ID for any device)
 app.include_router(shared_audit_router)
