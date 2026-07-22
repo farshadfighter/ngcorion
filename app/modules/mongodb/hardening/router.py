@@ -4,7 +4,7 @@ MongoDB Hardening API Router
 RESTful endpoints for MongoDB CIS hardening operations.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from pydantic import BaseModel, Field
@@ -28,62 +28,6 @@ from .parameter_metadata import (
     is_mongodb_check_auto_fixable,
     get_mongodb_check_defaults,
 )
-
-
-class AutoHardenRequest(BaseModel):
-    """Request for automatic hardening using CIS default values."""
-    session_id: int = Field(..., description="Audit session ID with failed checks")
-    asset_id: int = Field(..., description="Target asset ID")
-    ssh_username: str = Field(..., min_length=1)
-    ssh_password: str = Field(..., min_length=1)
-    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
-    sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": 10,
-                "asset_id": 5,
-                "ssh_username": "admin",
-                "ssh_password": "********",
-                "ssh_port": 22,
-            }
-        }
-
-
-class CheckWithParams(BaseModel):
-    """Single check with its parameter values."""
-    check_id: str = Field(..., description="CIS check ID (e.g. MONGO-L1-006)")
-    parameters: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Parameter values for template substitution",
-    )
-
-
-class BatchExecuteRequest(BaseModel):
-    """Request for batch hardening with user-supplied parameters."""
-    session_id: int = Field(..., description="Audit session ID")
-    asset_id: int = Field(..., description="Target asset ID")
-    ssh_username: str = Field(..., min_length=1)
-    ssh_password: str = Field(..., min_length=1)
-    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
-    sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
-    checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": 10,
-                "asset_id": 5,
-                "ssh_username": "admin",
-                "ssh_password": "********",
-                "ssh_port": 22,
-                "checks": [
-                    {"check_id": "MONGO-L1-006", "parameters": {}},
-                    {"check_id": "MONGO-L1-008", "parameters": {"MONGO_PORT": "27018"}},
-                ],
-            }
-        }
 
 
 class SingleFixRequest(BaseModel):

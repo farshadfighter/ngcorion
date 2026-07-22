@@ -2,7 +2,33 @@
 
 > Comprehensive reference for all audit and hardening endpoints across every supported device type.
 
+> ### ⚠️ Outdated: the per-family "Harden All" endpoints were removed
+>
+> The three-mode Harden All flow described below no longer exists. These
+> endpoints were removed from **all seven** device families (cisco, fortinet,
+> linux, apache, mongodb, mssql, windows):
+>
+> - `GET  /api/hardening/{family}/session/{id}/parameters`
+> - `GET  /api/hardening/{family}/session/{id}/auto-preview`
+> - `POST /api/hardening/{family}/auto-harden-defaults`
+> - `POST /api/hardening/{family}/batch-execute`
+>
+> They are replaced by two device-agnostic endpoints:
+>
+> - `GET  /api/hardening/harden-all/session/{id}/plan` — returns the fixable
+>   checks, the unfixable ones with reasons, the parameters to collect, the
+>   credential fields to render, and the supported options (`backup`, `dry_run`).
+> - `POST /api/hardening/harden-all/execute` — body:
+>   `{ session_id, credentials{}, parameters{}, result_ids[]?, create_backup?, dry_run? }`;
+>   returns `{ successful, failed, skipped, results[{result_id, check_number, vdom, status, detail, commands[]}] }`.
+>
+> The response shape is identical for every device family, so clients must not
+> branch on device type. Single-check remediation (`/preview`, `/execute`,
+> `/execute-single`) is unchanged. Sections below that describe the old flow are
+> retained only as history.
+
 ---
+
 
 ## Table of Contents
 

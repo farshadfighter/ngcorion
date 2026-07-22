@@ -6,7 +6,7 @@ RESTful endpoints for Apache HTTP Server CIS hardening operations.
 
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
@@ -25,67 +25,6 @@ from .parameter_metadata import (
     is_apache_check_auto_fixable,
     get_apache_check_defaults,
 )
-
-class SSHCredentials(BaseModel):
-    """SSH credentials for hardening operations."""
-    ssh_username: str = Field(..., min_length=1, description="SSH username")
-    ssh_password: str = Field(..., min_length=1, description="SSH password")
-    sudo_password: Optional[str] = Field(None, description="Sudo password (defaults to SSH password)")
-
-
-class AutoHardenRequest(BaseModel):
-    """Request for automatic hardening."""
-    session_id: int = Field(..., description="Audit session ID with failed checks")
-    asset_id: int = Field(..., description="Target asset ID")
-    ssh_username: str = Field(..., min_length=1)
-    ssh_password: str = Field(..., min_length=1)
-    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
-    sudo_password: Optional[str] = None
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": 15,
-                "asset_id": 30,
-                "ssh_username": "admin",
-                "ssh_password": "********",
-                "ssh_port": 22,
-                "sudo_password": "********"
-            }
-        }
-
-
-class CheckWithParams(BaseModel):
-    """Single check with its parameters."""
-    check_id: str = Field(..., description="CIS check ID (e.g., APACHE-L1-9.1)")
-    parameters: Dict[str, str] = Field(default_factory=dict, description="Parameter values")
-
-
-class BatchExecuteRequest(BaseModel):
-    """Request for batch hardening execution."""
-    session_id: int = Field(..., description="Audit session ID")
-    asset_id: int = Field(..., description="Target asset ID")
-    ssh_username: str = Field(..., min_length=1)
-    ssh_password: str = Field(..., min_length=1)
-    ssh_port: int = Field(22, ge=1, le=65535, description="SSH port (default 22)")
-    sudo_password: Optional[str] = None
-    checks: List[CheckWithParams] = Field(..., description="Checks to execute with parameters")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": 15,
-                "asset_id": 30,
-                "ssh_username": "admin",
-                "ssh_password": "********",
-                "ssh_port": 22,
-                "checks": [
-                    {"check_id": "APACHE-L1-9.1", "parameters": {}},
-                    {"check_id": "APACHE-L1-8.3", "parameters": {"SSL_PROTOCOLS": "all -SSLv3 -TLSv1 -TLSv1.1"}}
-                ]
-            }
-        }
-
 
 class SingleFixRequest(BaseModel):
     """Request for single check fix."""

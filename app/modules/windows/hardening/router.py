@@ -5,7 +5,7 @@ RESTful endpoints for Windows Server CIS hardening operations.
 Credentials connect directly to Windows Server via WinRM (not SSH).
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from pydantic import BaseModel, Field
@@ -29,79 +29,6 @@ from .parameter_metadata import (
     is_windows_check_auto_fixable,
     get_windows_check_defaults,
 )
-
-
-class AutoHardenRequest(BaseModel):
-    """Request for automatic hardening using CIS default values."""
-    session_id: int = Field(..., description="Audit session ID with failed checks")
-    asset_id: int = Field(..., description="Target asset ID")
-    windows_username: str = Field(
-        ..., min_length=1,
-        description="Windows admin account (not stored)"
-    )
-    windows_password: str = Field(
-        ..., min_length=1,
-        description="Windows password (not stored)"
-    )
-    winrm_port: int = Field(
-        5986, ge=1, le=65535,
-        description="WinRM HTTPS port (default 5986)"
-    )
-    transport: str = Field(
-        "ntlm",
-        pattern="^(ntlm|kerberos|credssp|basic)$",
-        description="WinRM transport"
-    )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": 10,
-                "asset_id": 5,
-                "windows_username": "Administrator",
-                "windows_password": "********",
-                "winrm_port": 5986,
-                "transport": "ntlm",
-            }
-        }
-
-
-class CheckWithParams(BaseModel):
-    """Single check with its parameter values."""
-    check_id: str = Field(..., description="CIS check ID (e.g. WIN-L1-048)")
-    parameters: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Parameter values for template substitution",
-    )
-
-
-class BatchExecuteRequest(BaseModel):
-    """Request for batch hardening with user-supplied parameters."""
-    session_id: int = Field(..., description="Audit session ID")
-    asset_id: int = Field(..., description="Target asset ID")
-    windows_username: str = Field(..., min_length=1)
-    windows_password: str = Field(..., min_length=1)
-    winrm_port: int = Field(5986, ge=1, le=65535)
-    transport: str = Field("ntlm", pattern="^(ntlm|kerberos|credssp|basic)$")
-    checks: List[CheckWithParams] = Field(
-        ..., description="Checks to execute with their parameter values"
-    )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "session_id": 10,
-                "asset_id": 5,
-                "windows_username": "Administrator",
-                "windows_password": "********",
-                "winrm_port": 5986,
-                "transport": "ntlm",
-                "checks": [
-                    {"check_id": "WIN-L1-048", "parameters": {}},
-                    {"check_id": "WIN-L1-027", "parameters": {"NEW_ADMIN_NAME": "WinAdmin"}},
-                ],
-            }
-        }
 
 
 class SingleFixRequest(BaseModel):
