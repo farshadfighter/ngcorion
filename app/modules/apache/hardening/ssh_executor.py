@@ -21,6 +21,19 @@ from .command_templates import (
 
 logger = logging.getLogger(__name__)
 
+# Apache config files/globs across Debian (apache2) and RHEL (httpd) layouts.
+# Snapshotted before hardening; non-existent paths are skipped by the bundle.
+APACHE_BACKUP_PATHS = [
+    # Debian / Ubuntu
+    "/etc/apache2/apache2.conf", "/etc/apache2/ports.conf", "/etc/apache2/envvars",
+    "/etc/apache2/conf-enabled/*.conf", "/etc/apache2/conf-available/*.conf",
+    "/etc/apache2/sites-enabled/*.conf", "/etc/apache2/mods-enabled/*.conf",
+    "/etc/apache2/mods-enabled/*.load",
+    # RHEL / CentOS / Rocky
+    "/etc/httpd/conf/httpd.conf", "/etc/httpd/conf.d/*.conf",
+    "/etc/httpd/conf.modules.d/*.conf",
+]
+
 
 class ApacheHardeningExecutionResult:
     """Result object for a single hardening operation."""
@@ -133,6 +146,24 @@ class ApacheSSHExecutor:
             # "Permission denied" for any /etc target.
             command = f"sh -c {shlex.quote(command)}"
         return self.ssh_client.send_command(command, use_sudo=use_sudo, timeout=timeout)
+
+    def backup_config(self) -> str:
+        """
+        Snapshot the Apache config tree (Debian and RHEL layouts) into one text
+        bundle for rollback. Reads under sudo; raises on an empty snapshot.
+        """
+        from app.modules.shared.hardening_backup import bundle_header, build_file_bundle_command
+
+        if not self._connected:
+            raise RuntimeError("Not connected to SSH")
+
+        logger.info(f"Backing up Apache config from {self.ip}")
+        body = self.execute_command(build_file_bundle_command(APACHE_BACKUP_PATHS), use_sudo=True)
+        if not body or not body.strip():
+            raise RuntimeError("Apache config backup returned no content")
+        backup = bundle_header("apache", self.ip) + body
+        logger.info(f"Apache config backup completed: {len(backup)} bytes from {self.ip}")
+        return backup
 
     def restart_apache_service(self) -> bool:
         """
@@ -455,13 +486,16 @@ class ApacheHardeningBatchExecutor:
 
     def execute_selected(
         self,
-        checks: List[Dict[str, Any]]
+        checks: List[Dict[str, Any]],
+        create_backup: bool = False
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
 
         Args:
             checks: List of dicts with check_id and parameters
+            create_backup: Snapshot the Apache config before applying changes.
+                Returned under ``backup_content`` / ``backup_error``.
 
         Returns:
             Summary of execution with results
@@ -469,6 +503,8 @@ class ApacheHardeningBatchExecutor:
         results = []
         successful = 0
         failed = 0
+        backup_content: Optional[str] = None
+        backup_error: Optional[str] = None
 
         with ApacheSSHExecutor(
             ip=self.ip,
@@ -479,6 +515,13 @@ class ApacheHardeningBatchExecutor:
             distro_id=self.distro_id
         ) as executor:
             detected_distro = executor.distro_id
+
+            if create_backup:
+                try:
+                    backup_content = executor.backup_config()
+                except Exception as exc:  # noqa: BLE001
+                    backup_error = str(exc)
+                    logger.error(f"Apache pre-hardening backup failed on {self.ip}: {exc}")
 
             for check in checks:
                 check_id = check.get("check_id")
@@ -497,7 +540,9 @@ class ApacheHardeningBatchExecutor:
             "successful": successful,
             "failed": failed,
             "distro_id": detected_distro,
-            "results": results
+            "results": results,
+            "backup_content": backup_content,
+            "backup_error": backup_error,
         }
 
     def execute_single(

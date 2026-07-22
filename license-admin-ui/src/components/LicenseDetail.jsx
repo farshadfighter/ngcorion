@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { revokeLicense } from "../api/client.js";
+import { revokeLicense, deleteLicense } from "../api/client.js";
 import { planLabel } from "../lib/plans.js";
 import { fmtDate, relativeTime, isExpired } from "../lib/format.js";
 import UsageBars from "./UsageBars.jsx";
@@ -10,8 +10,9 @@ import { CopyRow } from "./CredentialCard.jsx";
 // countdown, timestamps and the bound VM fingerprint. Revoke lives here too.
 // Reactivation is intentionally disabled — the admin API exposes no such
 // endpoint (DELETE only sets is_active=False).
-export default function LicenseDetail({ license, onClose, onRevoked }) {
+export default function LicenseDetail({ license, onClose, onRevoked, onDeleted }) {
   const [revoking, setRevoking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const expired = isExpired(license);
 
@@ -26,6 +27,25 @@ export default function LicenseDetail({ license, onClose, onRevoked }) {
       setError(err.message || "Failed to revoke");
     } finally {
       setRevoking(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (
+      !window.confirm(
+        `Permanently delete the license for ${license.organization_name}?\n\n` +
+          `This removes ${license.license_key} from the database and cannot be undone.`
+      )
+    )
+      return;
+    setDeleting(true);
+    setError("");
+    try {
+      await deleteLicense(license.license_key);
+      onDeleted?.(license.license_key);
+    } catch (err) {
+      setError(err.message || "Failed to delete");
+      setDeleting(false);
     }
   }
 
@@ -98,10 +118,18 @@ export default function LicenseDetail({ license, onClose, onRevoked }) {
           <button
             className="danger"
             onClick={handleRevoke}
-            disabled={!license.is_active || revoking}
+            disabled={!license.is_active || revoking || deleting}
             title={license.is_active ? "Revoke (deactivate)" : "Already revoked"}
           >
             {revoking ? "Revoking…" : license.is_active ? "Revoke" : "Revoked"}
+          </button>
+          <button
+            className="danger"
+            onClick={handleDelete}
+            disabled={revoking || deleting}
+            title="Delete permanently (removes from database)"
+          >
+            {deleting ? "Deleting…" : "Delete"}
           </button>
         </div>
       </div>

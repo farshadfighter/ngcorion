@@ -263,6 +263,47 @@ class WindowsWinRMExecutor:
                 logger.debug(f"Statement failed [{ps_script[:80]}]: {exc}")
                 raise
 
+    def backup_config(self) -> str:
+        """
+        Snapshot the Windows security configuration before hardening.
+
+        Windows has no single config file; the surface CIS hardening changes is
+        the local security policy (``secedit``) and the audit policy
+        (``auditpol``). We export both as text so the run can be reviewed and
+        rolled back (secedit exports import cleanly via ``secedit /configure``).
+        """
+        from app.modules.shared.hardening_backup import bundle_header
+
+        if not self._session:
+            raise RuntimeError("Not connected to Windows Server")
+
+        logger.info(f"Backing up Windows security configuration from {self.ip}")
+        secpol = self._execute(
+            "$tmp = Join-Path $env:TEMP ('secpol_' + [guid]::NewGuid().ToString() + '.cfg'); "
+            "secedit /export /cfg $tmp /quiet | Out-Null; "
+            "if (Test-Path $tmp) { Get-Content -Path $tmp -Raw; "
+            "Remove-Item -Path $tmp -Force -ErrorAction SilentlyContinue }"
+        )
+        auditpol = self._execute("auditpol /get /category:* 2>&1 | Out-String")
+
+        if (not secpol or secpol.strip() in ("", "(ok)")) and (
+            not auditpol or auditpol.strip() in ("", "(ok)")
+        ):
+            raise RuntimeError("Windows security configuration backup returned no content")
+
+        header = bundle_header("windows", self.ip, label="Security Configuration Snapshot")
+        backup = (
+            header
+            + "##### BEGIN SECTION: secedit /export (local security policy) #####\n"
+            + (secpol or "(no output)")
+            + "\n##### END SECTION: secedit #####\n\n"
+            + "##### BEGIN SECTION: auditpol /get /category:* #####\n"
+            + (auditpol or "(no output)")
+            + "\n##### END SECTION: auditpol #####\n"
+        )
+        logger.info(f"Windows security backup completed: {len(backup)} bytes from {self.ip}")
+        return backup
+
     # ---------------------------------------------------------------- #
     #  Hardening execution                                              #
     # ---------------------------------------------------------------- #
@@ -489,13 +530,27 @@ class WindowsHardeningBatchExecutor:
     def execute_selected(
         self,
         checks: List[Dict[str, Any]],
+        create_backup: bool = False,
     ) -> Dict[str, Any]:
-        """Execute hardening for selected checks with user-provided parameters."""
+        """Execute hardening for selected checks with user-provided parameters.
+
+        ``create_backup`` snapshots the security/audit policy before applying any
+        change; the snapshot is returned under ``backup_content`` / ``backup_error``.
+        """
         results = []
         successful = 0
         failed = 0
+        backup_content: Optional[str] = None
+        backup_error: Optional[str] = None
 
         with self._make_executor() as executor:
+            if create_backup:
+                try:
+                    backup_content = executor.backup_config()
+                except Exception as exc:  # noqa: BLE001
+                    backup_error = str(exc)
+                    logger.error(f"Windows pre-hardening backup failed on {self.ip}: {exc}")
+
             for check in checks:
                 check_id = check.get("check_id", "")
                 parameters = check.get("parameters", {})
@@ -512,6 +567,8 @@ class WindowsHardeningBatchExecutor:
             "successful": successful,
             "failed": failed,
             "results": results,
+            "backup_content": backup_content,
+            "backup_error": backup_error,
         }
 
     def execute_single(

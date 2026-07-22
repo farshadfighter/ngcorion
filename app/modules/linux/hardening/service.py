@@ -375,7 +375,9 @@ class LinuxHardeningService:
         sudo_password: Optional[str],
         checks: List[Dict[str, Any]],
         ssh_port: int = 22,
-        dry_run: bool = False
+        dry_run: bool = False,
+        create_backup: bool = False,
+        user_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -388,6 +390,8 @@ class LinuxHardeningService:
             ssh_password: SSH password
             sudo_password: Sudo password
             checks: List of dicts with check_id and parameters
+            create_backup: Snapshot the config files before applying changes and
+                record it on the Backups page.
 
         Returns:
             Execution summary with results
@@ -431,7 +435,28 @@ class LinuxHardeningService:
             port=ssh_port
         )
 
-        result = executor.execute_selected(checks)
+        result = executor.execute_selected(checks, create_backup=create_backup)
+
+        # Persist the pre-hardening snapshot so it shows up on the Backups page.
+        # Best-effort and separate from the hardening outcome: a saved backup with
+        # a failed fix is fine; a failed backup is surfaced but does not abort.
+        if create_backup:
+            backup_content = result.pop("backup_content", None)
+            backup_error = result.pop("backup_error", None)
+            if backup_content:
+                from app.modules.shared.hardening_backup import save_device_backup
+                save_device_backup(
+                    db,
+                    backup=backup_content,
+                    device_ip=asset.ip_address,
+                    device_type="linux",
+                    user_id=user_id,
+                    asset_id=asset_id,
+                )
+                result["backup_created"] = True
+            else:
+                result["backup_created"] = False
+                result["backup_error"] = backup_error or "No backup content captured"
 
         # Update AuditResult.status for every check that passed verification
         for check_result in result.get("results", []):

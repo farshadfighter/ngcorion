@@ -238,3 +238,17 @@ def deactivate_license(db: Session, license_key: str) -> bool:
         db.commit()
         return True
     return False
+
+def delete_license(db: Session, license_key: str) -> bool:
+    """Permanently remove a license row from the database.
+
+    Unlike deactivate_license (which only flips is_active to False), this
+    hard-deletes the record. Intended for cleaning up legacy/obsolete
+    licenses that no longer need to be retained.
+    """
+    license = get_license_by_key(db, license_key)
+    if license:
+        db.delete(license)
+        db.commit()
+        return True
+    return False

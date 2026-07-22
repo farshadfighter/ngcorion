@@ -208,7 +208,12 @@ def _take_backup(
     secret: Optional[str] = None,
     port: int = 22,
 ) -> str:
-    """Connect to device via SSH and retrieve its running configuration."""
+    """Connect to a device and snapshot its configuration.
+
+    Every family exposes the same ``backup_config()`` the pre-hardening flow uses,
+    so a manual backup captures exactly what a hardening run would roll back to.
+    The SSH families all take the same credentials this request carries.
+    """
     if device_type == "cisco":
         from app.modules.cisco.hardening.ssh_executor import CiscoHardeningExecutor
         with CiscoHardeningExecutor(ip=ip, username=username, password=password, secret=secret) as ex:
@@ -217,5 +222,17 @@ def _take_backup(
         from app.modules.fortinet.hardening.ssh_executor import FortiGateHardeningExecutor
         with FortiGateHardeningExecutor(ip=ip, username=username, password=password, port=port) as ex:
             return ex.backup_config()
+    elif device_type == "linux":
+        from app.modules.linux.hardening.ssh_executor import LinuxSSHExecutor
+        with LinuxSSHExecutor(ip=ip, username=username, password=password, port=port) as ex:
+            return ex.backup_config()
+    elif device_type == "apache":
+        from app.modules.apache.hardening.ssh_executor import ApacheSSHExecutor
+        with ApacheSSHExecutor(ip=ip, username=username, password=password, port=port) as ex:
+            return ex.backup_config()
+    elif device_type == "mongodb":
+        from app.modules.mongodb.hardening.ssh_executor import MongoDBSSHExecutor
+        with MongoDBSSHExecutor(ip=ip, username=username, password=password, ssh_port=port) as ex:
+            return ex.backup_config()
     else:
-        raise ValueError(f"Unsupported device type for backup: {device_type}")
+        raise ValueError(f"Unsupported device type for manual backup: {device_type}")

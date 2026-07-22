@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listLicenses, revokeLicense } from "../api/client.js";
+import { listLicenses, revokeLicense, deleteLicense } from "../api/client.js";
 import { planLabel } from "../lib/plans.js";
 import {
   fmtDateShort,
@@ -17,6 +17,7 @@ export default function LicenseList() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const [revoking, setRevoking] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -70,6 +71,26 @@ export default function LicenseList() {
       setError(err.message || "Failed to revoke");
     } finally {
       setRevoking(null);
+    }
+  }
+
+  async function handleDelete(license, ev) {
+    ev.stopPropagation();
+    if (
+      !window.confirm(
+        `Permanently delete the license for ${license.organization_name}?\n\n` +
+          `This removes ${license.license_key} from the database and cannot be undone.`
+      )
+    )
+      return;
+    setDeleting(license.license_key);
+    try {
+      await deleteLicense(license.license_key);
+      setLicenses((prev) => prev.filter((l) => l.license_key !== license.license_key));
+    } catch (err) {
+      setError(err.message || "Failed to delete");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -157,7 +178,7 @@ export default function LicenseList() {
                       <StatusBadge license={l} />
                     </td>
                     <td>{fmtDateShort(l.expires_at)}</td>
-                    <td style={{ textAlign: "right" }}>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                       <button
                         className="danger sm"
                         disabled={!l.is_active || revoking === l.license_key}
@@ -165,6 +186,15 @@ export default function LicenseList() {
                         onClick={(e) => handleRevoke(l, e)}
                       >
                         {revoking === l.license_key ? "…" : "Revoke"}
+                      </button>
+                      <button
+                        className="danger sm"
+                        style={{ marginLeft: 6 }}
+                        disabled={deleting === l.license_key}
+                        title="Delete permanently (removes from database)"
+                        onClick={(e) => handleDelete(l, e)}
+                      >
+                        {deleting === l.license_key ? "…" : "Delete"}
                       </button>
                     </td>
                   </tr>
@@ -184,6 +214,10 @@ export default function LicenseList() {
               prev.map((l) => (l.license_key === key ? { ...l, is_active: false } : l))
             );
             setSelected((s) => (s ? { ...s, is_active: false } : s));
+          }}
+          onDeleted={(key) => {
+            setLicenses((prev) => prev.filter((l) => l.license_key !== key));
+            setSelected(null);
           }}
         />
       )}

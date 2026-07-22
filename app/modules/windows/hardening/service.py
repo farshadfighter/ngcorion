@@ -252,8 +252,14 @@ class WindowsHardeningService:
         checks: List[Dict[str, Any]],
         winrm_port: int = 5986,
         transport: str = "ntlm",
+        create_backup: bool = False,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Execute hardening for selected checks with user-provided parameters."""
+        """Execute hardening for selected checks with user-provided parameters.
+
+        ``create_backup`` snapshots the security/audit policy first and records
+        it on the Backups page.
+        """
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
             raise ValueError(f"Asset {asset_id} not found")
@@ -273,7 +279,25 @@ class WindowsHardeningService:
             transport=transport,
         )
 
-        result = executor.execute_selected(checks)
+        result = executor.execute_selected(checks, create_backup=create_backup)
+
+        if create_backup:
+            backup_content = result.pop("backup_content", None)
+            backup_error = result.pop("backup_error", None)
+            if backup_content:
+                from app.modules.shared.hardening_backup import save_device_backup
+                save_device_backup(
+                    db,
+                    backup=backup_content,
+                    device_ip=asset.ip_address,
+                    device_type="windows",
+                    user_id=user_id,
+                    asset_id=asset_id,
+                )
+                result["backup_created"] = True
+            else:
+                result["backup_created"] = False
+                result["backup_error"] = backup_error or "No backup content captured"
 
         for check_result in result.get("results", []):
             if check_result.get("success"):

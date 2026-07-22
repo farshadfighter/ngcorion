@@ -288,6 +288,52 @@ class MSSQLTSQLExecutor:
                 logger.debug(f"Statement failed [{sql[:80]}]: {exc}")
                 raise
 
+    def backup_config(self) -> str:
+        """
+        Snapshot the server's ``sp_configure`` settings before hardening.
+
+        SQL Server has no single "running config" to dump; the settings CIS
+        hardening changes live in ``sys.configurations``. We render the current
+        values as replayable ``EXEC sp_configure`` statements so the snapshot
+        doubles as a rollback script. Read-only — it does not RECONFIGURE.
+        """
+        from app.modules.shared.hardening_backup import bundle_header
+
+        if not self._conn:
+            raise RuntimeError("Not connected to SQL Server")
+
+        logger.info(f"Backing up SQL Server configuration from {self.ip}")
+        props = self._execute(
+            "SELECT "
+            "CONVERT(varchar, SERVERPROPERTY('MachineName')) + ' | ' + "
+            "CONVERT(varchar, SERVERPROPERTY('ProductVersion')) + ' | ' + "
+            "CONVERT(varchar, SERVERPROPERTY('Edition')) + ' | ' + "
+            "CASE SERVERPROPERTY('IsIntegratedSecurityOnly') "
+            "WHEN 1 THEN 'Windows Authentication only' ELSE 'Mixed Mode (SQL + Windows)' END"
+        )
+        # One replayable statement per configuration option, at its current value.
+        replay = self._execute(
+            "SELECT 'EXEC sp_configure ''' + name + ''', ' "
+            "+ CONVERT(varchar(20), value_in_use) + '; ' "
+            "FROM sys.configurations ORDER BY name"
+        )
+        if not replay or not replay.strip():
+            raise RuntimeError("SQL Server configuration backup returned no content")
+
+        header = bundle_header("mssql", self.ip, label="sp_configure Snapshot")
+        body = (
+            f"# Server: {props}\n"
+            "#\n"
+            "# Rollback: enable advanced options first, then replay the statements below.\n"
+            "# EXEC sp_configure 'show advanced options', 1; RECONFIGURE;\n"
+            "#\n"
+            f"{replay}\n"
+            "# RECONFIGURE;\n"
+        )
+        backup = header + body
+        logger.info(f"SQL Server configuration backup completed: {len(backup)} bytes from {self.ip}")
+        return backup
+
     # ---------------------------------------------------------------- #
     #  Hardening execution                                              #
     # ---------------------------------------------------------------- #
@@ -530,18 +576,30 @@ class MSSQLHardeningBatchExecutor:
     def execute_selected(
         self,
         checks: List[Dict[str, Any]],
+        create_backup: bool = False,
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
 
         Args:
             checks: List of {"check_id": str, "parameters": dict} dicts
+            create_backup: Snapshot sp_configure before applying changes. Returned
+                under ``backup_content`` / ``backup_error``.
         """
         results = []
         successful = 0
         failed = 0
+        backup_content: Optional[str] = None
+        backup_error: Optional[str] = None
 
         with self._make_executor() as executor:
+            if create_backup:
+                try:
+                    backup_content = executor.backup_config()
+                except Exception as exc:  # noqa: BLE001
+                    backup_error = str(exc)
+                    logger.error(f"SQL Server pre-hardening backup failed on {self.ip}: {exc}")
+
             for check in checks:
                 check_id = check.get("check_id", "")
                 parameters = check.get("parameters", {})
@@ -558,6 +616,8 @@ class MSSQLHardeningBatchExecutor:
             "successful": successful,
             "failed": failed,
             "results": results,
+            "backup_content": backup_content,
+            "backup_error": backup_error,
         }
 
     def execute_single(

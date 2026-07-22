@@ -101,8 +101,14 @@ export const listLicenses = (skip = 0, limit = 1000) =>
 export const getLicense = (licenseKey) =>
   api.get(`/api/admin/licenses/${encodeURIComponent(licenseKey)}`, { auth: true });
 
+// Soft delete: flips is_active to false, the row stays in the database.
 export const revokeLicense = (licenseKey) =>
   api.del(`/api/admin/licenses/${encodeURIComponent(licenseKey)}`, { auth: true });
+
+// Hard delete: removes the record entirely. Irreversible — used to prune
+// legacy licenses that no longer need to be kept around.
+export const deleteLicense = (licenseKey) =>
+  api.del(`/api/admin/licenses/${encodeURIComponent(licenseKey)}/permanent`, { auth: true });
 
 // Public client endpoints (used by the Test panel) — no auth, no signature.
 export const testActivate = (license_key, vm_fingerprint) =>

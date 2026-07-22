@@ -68,3 +68,19 @@ def deactivate_license(
     if not success:
         raise HTTPException(status_code=404, detail="License not found")
     return {"message": "License deactivated successfully"}
+
+@router.delete("/licenses/{license_key}/permanent")
+def delete_license(
+    license_key: str,
+    db: Session = Depends(get_db),
+    admin: str = Depends(get_current_admin)
+):
+    """Permanently delete a license record.
+
+    This is irreversible and removes the row entirely (used for pruning
+    legacy licenses). Use the plain DELETE endpoint to only deactivate.
+    """
+    success = crud.delete_license(db, license_key)
+    if not success:
+        raise HTTPException(status_code=404, detail="License not found")
+    return {"message": "License deleted permanently"}

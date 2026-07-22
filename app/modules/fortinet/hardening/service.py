@@ -99,39 +99,19 @@ def _save_device_backup(
     Best-effort: a failure here must never fail the hardening run.
     ``device_backups.asset_id`` is NOT NULL, so runs without an inventory asset
     are logged and skipped (the backup still lives on the action row).
+
+    Delegates to the shared helper so the two-table invariant lives in one place.
     """
-    if not backup:
-        logger.warning("FG backup: empty backup content for %s — no device_backups row", device_ip)
-        return
-    if not asset_id:
-        logger.warning(
-            "FG backup: no asset linked to this session — backup (%d chars) kept on "
-            "hardening_actions.backup_config only, not visible in Backups page",
-            len(backup),
-        )
-        return
-    try:
-        from app.models.backup import DeviceBackup
-        asset = db.query(Asset).filter(Asset.id == asset_id).first()
-        row = DeviceBackup(
-            asset_id=asset_id,
-            asset_name=asset.asset_name if asset else None,
-            device_ip=device_ip,
-            device_type="fortinet",
-            config_content=backup,
-            source="hardening",
-            hardening_action_id=action_id,
-            created_by=user_id,
-        )
-        db.add(row)
-        db.commit()
-        logger.info(
-            "FG backup: saved device_backups row id=%s (%d chars, action=%s, asset=%s)",
-            row.id, len(backup), action_id, asset_id,
-        )
-    except Exception as _be:  # noqa: BLE001 - best-effort, never break hardening
-        logger.warning("FG backup: failed to save device_backups row: %s", _be)
-        db.rollback()
+    from app.modules.shared.hardening_backup import save_device_backup
+    save_device_backup(
+        db,
+        backup=backup,
+        device_ip=device_ip,
+        device_type="fortinet",
+        user_id=user_id,
+        asset_id=asset_id,
+        action_id=action_id,
+    )
 
 
 class FortiGateHardeningService:

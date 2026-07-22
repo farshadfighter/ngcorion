@@ -265,12 +265,16 @@ class MongoDBHardeningService:
         checks: List[Dict[str, Any]],
         ssh_port: int = 22,
         sudo_password: Optional[str] = None,
+        create_backup: bool = False,
+        user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
 
         Args:
             checks: List of {"check_id": str, "parameters": {name: value}} dicts
+            create_backup: Snapshot mongod.conf before applying changes and
+                record it on the Backups page.
         """
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
@@ -290,7 +294,25 @@ class MongoDBHardeningService:
             ssh_port=ssh_port,
         )
 
-        result = executor.execute_selected(checks)
+        result = executor.execute_selected(checks, create_backup=create_backup)
+
+        if create_backup:
+            backup_content = result.pop("backup_content", None)
+            backup_error = result.pop("backup_error", None)
+            if backup_content:
+                from app.modules.shared.hardening_backup import save_device_backup
+                save_device_backup(
+                    db,
+                    backup=backup_content,
+                    device_ip=asset.ip_address,
+                    device_type="mongodb",
+                    user_id=user_id,
+                    asset_id=asset_id,
+                )
+                result["backup_created"] = True
+            else:
+                result["backup_created"] = False
+                result["backup_error"] = backup_error or "No backup content captured"
 
         for check_result in result.get("results", []):
             if check_result.get("success"):

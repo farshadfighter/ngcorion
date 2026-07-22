@@ -27,6 +27,24 @@ logger = logging.getLogger(__name__)
 # A {PARAM} that survived substitution means a required value was never supplied.
 _PLACEHOLDER_RE = re.compile(r"\{[A-Z][A-Z0-9_]*\}")
 
+# Config files/globs a Linux CIS run may modify. Snapshotted before hardening so
+# a run can be rolled back. Non-existent paths are skipped by the bundle command.
+LINUX_BACKUP_PATHS = [
+    "/etc/ssh/sshd_config", "/etc/ssh/sshd_config.d/*.conf",
+    "/etc/sysctl.conf", "/etc/sysctl.d/*.conf",
+    "/etc/login.defs",
+    "/etc/security/pwquality.conf", "/etc/security/pwquality.conf.d/*.conf",
+    "/etc/security/faillock.conf", "/etc/security/limits.conf", "/etc/security/limits.d/*.conf",
+    "/etc/pam.d/common-password", "/etc/pam.d/common-auth", "/etc/pam.d/common-account",
+    "/etc/pam.d/password-auth", "/etc/pam.d/system-auth", "/etc/pam.d/su", "/etc/pam.d/sshd",
+    "/etc/audit/auditd.conf", "/etc/audit/rules.d/*.rules",
+    "/etc/issue", "/etc/issue.net", "/etc/motd",
+    "/etc/modprobe.d/*.conf",
+    "/etc/default/grub",
+    "/etc/crontab", "/etc/cron.allow", "/etc/cron.deny", "/etc/at.allow", "/etc/at.deny",
+    "/etc/profile", "/etc/bashrc", "/etc/bash.bashrc", "/etc/profile.d/*.sh",
+]
+
 
 def _first_error_line(output: str) -> str:
     """
@@ -189,6 +207,28 @@ class LinuxSSHExecutor:
         return self.ssh_client.send_command_with_status(
             command, use_sudo=use_sudo, timeout=timeout
         )
+
+    def backup_config(self) -> str:
+        """
+        Snapshot the CIS-relevant config files into one text bundle for rollback.
+
+        Reads under sudo so root-owned /etc files are captured. Raises if the
+        connection is gone or the snapshot comes back empty (no files readable),
+        so the caller can surface a backup failure rather than record a useless
+        empty row.
+        """
+        from app.modules.shared.hardening_backup import bundle_header, build_file_bundle_command
+
+        if not self._connected:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        logger.info(f"Backing up Linux config from {self.ip}")
+        body = self.execute_command(build_file_bundle_command(LINUX_BACKUP_PATHS), use_sudo=True)
+        if not body or not body.strip():
+            raise RuntimeError("Linux config backup returned no content")
+        backup = bundle_header("linux", self.ip) + body
+        logger.info(f"Linux config backup completed: {len(backup)} bytes from {self.ip}")
+        return backup
 
     def execute_hardening(
         self,
@@ -489,13 +529,17 @@ class LinuxHardeningBatchExecutor:
 
     def execute_selected(
         self,
-        checks: List[Dict[str, Any]]
+        checks: List[Dict[str, Any]],
+        create_backup: bool = False
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
 
         Args:
             checks: List of dicts with check_id and parameters
+            create_backup: Snapshot the config files before applying any change.
+                The snapshot text is returned under ``backup_content`` (or the
+                reason under ``backup_error``) for the service to persist.
 
         Returns:
             Summary of execution with results
@@ -503,6 +547,8 @@ class LinuxHardeningBatchExecutor:
         results = []
         successful = 0
         failed = 0
+        backup_content: Optional[str] = None
+        backup_error: Optional[str] = None
 
         with LinuxSSHExecutor(
             ip=self.ip,
@@ -513,6 +559,14 @@ class LinuxHardeningBatchExecutor:
             port=self.port
         ) as executor:
             detected_distro = executor.distro_id
+
+            # Take the backup on the same connection, before any change is applied.
+            if create_backup:
+                try:
+                    backup_content = executor.backup_config()
+                except Exception as exc:  # noqa: BLE001
+                    backup_error = str(exc)
+                    logger.error(f"Linux pre-hardening backup failed on {self.ip}: {exc}")
 
             for check in checks:
                 check_id = check.get("check_id")
@@ -531,7 +585,9 @@ class LinuxHardeningBatchExecutor:
             "successful": successful,
             "failed": failed,
             "distro_id": detected_distro,
-            "results": results
+            "results": results,
+            "backup_content": backup_content,
+            "backup_error": backup_error,
         }
 
     def execute_single(

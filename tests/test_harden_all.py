@@ -230,3 +230,85 @@ class TestSelection:
         request = HardenAllRequest(session_id=1, result_ids=[10, 999])
         with pytest.raises(ValueError, match="999"):
             _selected_checks(plan, request)
+
+
+# ============================================================
+# Pre-hardening backup
+# ============================================================
+
+from app.modules.shared.hardening_backup import (  # noqa: E402
+    build_file_bundle_command,
+    save_device_backup,
+)
+
+
+class TestBackupCapability:
+
+    @pytest.mark.parametrize("device_type", list(DeviceType))
+    def test_every_family_supports_backup(self, device_type):
+        """The wizard's backup toggle is gated on this flag — every family that
+        can be hardened must be able to snapshot first."""
+        assert get_family(device_type).capabilities.backup is True
+
+    @pytest.mark.parametrize("device_type", list(DeviceType))
+    def test_create_backup_reaches_the_family_service(self, device_type, monkeypatch):
+        """The family adapter must thread create_backup down to whichever service
+        it calls — a dropped flag means a silently skipped backup. Cisco/FortiGate
+        express it as the inverse ``skip_backup``; everyone else as ``create_backup``."""
+        from app.modules.hardening.harden_all.families import ExecutionContext, get_family
+        from app.modules.cisco.hardening.service import HardeningService as CiscoService
+        from app.modules.fortinet.hardening.service import FortiGateHardeningService
+        from app.modules.linux.hardening.service import LinuxHardeningService
+        from app.modules.apache.hardening.service import ApacheHardeningService
+        from app.modules.mongodb.hardening.service import MongoDBHardeningService
+        from app.modules.mssql.hardening.service import MSSQLHardeningService
+        from app.modules.windows.hardening.service import WindowsHardeningService
+
+        captured = {}
+
+        def _fake_service(**kwargs):
+            captured.update(kwargs)
+            return {"total": 0, "successful": 0, "failed": 0, "results": []}
+
+        for svc in (
+            CiscoService, FortiGateHardeningService, LinuxHardeningService,
+            ApacheHardeningService, MongoDBHardeningService,
+            MSSQLHardeningService, WindowsHardeningService,
+        ):
+            monkeypatch.setattr(svc, "batch_execute_selected", staticmethod(_fake_service))
+
+        class _Asset:
+            id = 7
+            ip_address = "10.0.0.9"
+            asset_name = "unit-test"
+
+        ctx = ExecutionContext(
+            db=None, session=type("S", (), {"id": 1})(), asset=_Asset(),
+            user_id=42, credentials={}, result_ids=[1], parameters={}, checks=[],
+            create_backup=True, dry_run=False,
+        )
+        get_family(device_type).execute(ctx)
+        assert captured.get("skip_backup") is False or captured.get("create_backup") is True
+
+
+class TestBackupHelper:
+
+    def test_bundle_command_skips_missing_files(self):
+        cmd = build_file_bundle_command(["/etc/ssh/sshd_config", "/etc/sysctl.d/*.conf"])
+        assert '[ -f "$f" ]' in cmd
+        assert "/etc/ssh/sshd_config" in cmd
+        assert "/etc/sysctl.d/*.conf" in cmd
+
+    def test_empty_backup_is_not_saved(self):
+        # No DB touched: an empty snapshot short-circuits before any query.
+        assert save_device_backup(
+            None, backup="", device_ip="1.2.3.4", device_type="linux",
+            user_id=1, asset_id=5,
+        ) is None
+
+    def test_backup_without_asset_is_not_saved(self):
+        # device_backups.asset_id is NOT NULL, so an asset-less run cannot record.
+        assert save_device_backup(
+            None, backup="some config", device_ip="1.2.3.4", device_type="linux",
+            user_id=1, asset_id=None,
+        ) is None

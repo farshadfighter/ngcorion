@@ -277,7 +277,9 @@ class ApacheHardeningService:
         ssh_password: str,
         ssh_port: int = 22,
         sudo_password: Optional[str] = None,
-        checks: List[Dict[str, Any]] = None
+        checks: List[Dict[str, Any]] = None,
+        create_backup: bool = False,
+        user_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Execute hardening for selected checks with user-provided parameters.
@@ -290,6 +292,8 @@ class ApacheHardeningService:
             ssh_password: SSH password
             sudo_password: Sudo password
             checks: List of dicts with check_id and parameters
+            create_backup: Snapshot the Apache config before applying changes and
+                record it on the Backups page.
 
         Returns:
             Execution summary with results
@@ -311,7 +315,25 @@ class ApacheHardeningService:
             port=ssh_port,
         )
 
-        result = executor.execute_selected(checks or [])
+        result = executor.execute_selected(checks or [], create_backup=create_backup)
+
+        if create_backup:
+            backup_content = result.pop("backup_content", None)
+            backup_error = result.pop("backup_error", None)
+            if backup_content:
+                from app.modules.shared.hardening_backup import save_device_backup
+                save_device_backup(
+                    db,
+                    backup=backup_content,
+                    device_ip=asset.ip_address,
+                    device_type="apache",
+                    user_id=user_id,
+                    asset_id=asset_id,
+                )
+                result["backup_created"] = True
+            else:
+                result["backup_created"] = False
+                result["backup_error"] = backup_error or "No backup content captured"
 
         for check_result in result.get("results", []):
             if check_result.get("success"):

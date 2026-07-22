@@ -258,6 +258,8 @@ def _build_registry() -> Dict[str, FamilySpec]:
             checks=ctx.checks,
             ssh_port=ctx.int_cred("ssh_port", 22),
             dry_run=ctx.dry_run,
+            create_backup=ctx.create_backup,
+            user_id=ctx.user_id,
         )
 
     def apache_execute(ctx: ExecutionContext) -> Dict[str, Any]:
@@ -270,6 +272,8 @@ def _build_registry() -> Dict[str, FamilySpec]:
             ssh_port=ctx.int_cred("ssh_port", 22),
             sudo_password=ctx.cred("sudo_password"),
             checks=ctx.checks,
+            create_backup=ctx.create_backup,
+            user_id=ctx.user_id,
         )
 
     def mongo_execute(ctx: ExecutionContext) -> Dict[str, Any]:
@@ -282,6 +286,8 @@ def _build_registry() -> Dict[str, FamilySpec]:
             checks=ctx.checks,
             ssh_port=ctx.int_cred("ssh_port", 22),
             sudo_password=ctx.cred("sudo_password"),
+            create_backup=ctx.create_backup,
+            user_id=ctx.user_id,
         )
 
     def mssql_execute(ctx: ExecutionContext) -> Dict[str, Any]:
@@ -293,6 +299,8 @@ def _build_registry() -> Dict[str, FamilySpec]:
             mssql_password=ctx.cred("mssql_password"),
             checks=ctx.checks,
             mssql_port=ctx.int_cred("mssql_port", 1433),
+            create_backup=ctx.create_backup,
+            user_id=ctx.user_id,
         )
 
     def windows_execute(ctx: ExecutionContext) -> Dict[str, Any]:
@@ -305,6 +313,8 @@ def _build_registry() -> Dict[str, FamilySpec]:
             checks=ctx.checks,
             winrm_port=ctx.int_cred("winrm_port", 5986),
             transport=ctx.cred("transport", "ntlm"),
+            create_backup=ctx.create_backup,
+            user_id=ctx.user_id,
         )
 
     return {
@@ -342,7 +352,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
             execute=linux_execute,
             normalize_rows=_normalize_success_rows,
             credential_fields=_ssh_fields(sudo=True),
-            capabilities=PlanCapabilities(backup=False, dry_run=True),
+            capabilities=PlanCapabilities(backup=True, dry_run=True),
         ),
         "apache": FamilySpec(
             key="apache",
@@ -354,7 +364,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
             execute=apache_execute,
             normalize_rows=_normalize_success_rows,
             credential_fields=_ssh_fields(sudo=True),
-            capabilities=PlanCapabilities(),
+            capabilities=PlanCapabilities(backup=True),
         ),
         "mongodb": FamilySpec(
             key="mongodb",
@@ -366,7 +376,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
             execute=mongo_execute,
             normalize_rows=_normalize_success_rows,
             credential_fields=_ssh_fields(sudo=True),
-            capabilities=PlanCapabilities(),
+            capabilities=PlanCapabilities(backup=True),
         ),
         "mssql": FamilySpec(
             key="mssql",
@@ -382,7 +392,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
                 CredentialField(name="mssql_password", label="SQL Server Password", type="password", required=True),
                 CredentialField(name="mssql_port", label="Port", type="number", default="1433"),
             ],
-            capabilities=PlanCapabilities(),
+            capabilities=PlanCapabilities(backup=True),
         ),
         "windows": FamilySpec(
             key="windows",
@@ -402,7 +412,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
                     options=["ntlm", "kerberos", "credssp", "basic"],
                 ),
             ],
-            capabilities=PlanCapabilities(),
+            capabilities=PlanCapabilities(backup=True),
         ),
     }
 
