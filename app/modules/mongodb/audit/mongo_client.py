@@ -297,7 +297,54 @@ class MongoDBSSHClient:
             "printjson(db.getProfilingStatus())"
         )
 
-        # ---- 5. Assemble structured dump ------------------------------ #
+        sections["ROLES_PRIVS"] = self._mongosh_eval(
+            "printjson(db.adminCommand({rolesInfo:1,showPrivileges:true,showBuiltinRoles:false}))"
+        )
+
+        # ---- 5. CIS v1.0.0 supplemental OS-level evidence -------------- #
+
+        # keyFile referenced by the config: existence + permissions (CIS 2.3 / 7.1)
+        sections["KEYFILE_INFO"] = self._run(
+            "KF=$(grep -E '^[[:space:]]*keyFile[[:space:]]*:' /etc/mongod.conf 2>/dev/null"
+            " | awk '{print $2}' | head -1);"
+            " if [ -z \"$KF\" ]; then echo 'KEYFILE_NOT_CONFIGURED';"
+            " elif [ -e \"$KF\" ]; then stat -c '%a %U %G %n' \"$KF\";"
+            " else echo 'KEYFILE_MISSING_ON_DISK'; fi",
+            use_sudo=True,
+        )
+
+        # storage.dbPath permissions (CIS 7.2)
+        sections["DBPATH_PERMS"] = self._run(
+            "DP=$(grep -E '^[[:space:]]*dbPath[[:space:]]*:' /etc/mongod.conf 2>/dev/null"
+            " | awk '{print $2}' | head -1);"
+            " DP=${DP:-/var/lib/mongodb};"
+            " stat -c '%a %U %G %n' \"$DP\" 2>/dev/null || echo 'DBPATH_NOT_FOUND'",
+            use_sudo=True,
+        )
+
+        # OS resource limits of the running mongod process (CIS 6.3)
+        sections["PROC_LIMITS"] = self._run(
+            "PID=$(pgrep -x mongod 2>/dev/null | head -1);"
+            " if [ -n \"$PID\" ]; then cat /proc/$PID/limits;"
+            " else echo 'NO_MONGOD_PROCESS'; fi",
+            use_sudo=True,
+        )
+
+        # Encrypted block devices — evidence for encryption at rest (CIS 4.2)
+        sections["DISK_ENCRYPTION"] = self._run(
+            "lsblk -o NAME,TYPE,FSTYPE 2>/dev/null | grep -i crypt"
+            " || echo 'NO_ENCRYPTED_VOLUME'",
+            use_sudo=True,
+        )
+
+        # FIPS 140-2 activation marker in the mongod log (CIS 4.3)
+        sections["FIPS_LOG"] = self._run(
+            "grep -i 'FIPS 140-2 mode activated' /var/log/mongodb/mongod.log 2>/dev/null"
+            " | tail -1 || echo 'NO_FIPS_ACTIVATION_LOG'",
+            use_sudo=True,
+        )
+
+        # ---- 6. Assemble structured dump ------------------------------ #
         parts = []
         for section_key, content in sections.items():
             parts.append(f"===SECTION:{section_key}===")

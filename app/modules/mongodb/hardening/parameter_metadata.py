@@ -54,9 +54,9 @@ MONGODB_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         name="MONGO_PORT",
         input_type="number",
         label="MongoDB Port",
-        description="TCP port MongoDB listens on (CIS recommends a non-default port)",
+        description="TCP port MongoDB listens on (CIS 6.2 recommends a non-default port)",
         required=True,
-        placeholder="27017",
+        placeholder="27018",
         min_value=1024,
         max_value=65535,
     ),
@@ -93,20 +93,10 @@ MONGODB_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         name="TLS_MODE",
         input_type="select",
         label="TLS Mode",
-        description="TLS enforcement mode for incoming connections",
+        description="TLS enforcement mode for incoming connections (CIS 4.1 requires requireTLS)",
         required=False,
         options=["requireTLS", "allowTLS", "preferTLS"],
         default="requireTLS",
-    ),
-
-    "DISABLED_PROTOCOLS": ParameterMetadata(
-        name="DISABLED_PROTOCOLS",
-        input_type="text",
-        label="Disabled TLS Protocols",
-        description="Comma-separated TLS protocol versions to disable (e.g. TLS1_0,TLS1_1)",
-        required=False,
-        default="TLS1_0,TLS1_1",
-        placeholder="TLS1_0,TLS1_1",
     ),
 
     "AUDIT_LOG_PATH": ParameterMetadata(
@@ -129,25 +119,21 @@ MONGODB_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         default="JSON",
     ),
 
-    "PROFILING_MODE": ParameterMetadata(
-        name="PROFILING_MODE",
-        input_type="select",
-        label="Profiling Mode",
-        description="MongoDB operation profiling level",
+    "AUDIT_FILTER": ParameterMetadata(
+        name="AUDIT_FILTER",
+        input_type="textarea",
+        label="Audit Filter Expression",
+        description=(
+            "auditLog.filter document scoping the audit trail to relevant "
+            "events (single quotes only — the value is wrapped in double "
+            "quotes inside mongod.conf)"
+        ),
         required=False,
-        options=["slowOp", "all", "off"],
-        default="slowOp",
-    ),
-
-    "SLOW_OP_MS": ParameterMetadata(
-        name="SLOW_OP_MS",
-        input_type="number",
-        label="Slow Op Threshold (ms)",
-        description="Operations slower than this threshold (ms) are logged when profiling is enabled",
-        required=False,
-        default="100",
-        min_value=1,
-        max_value=10000,
+        default=(
+            "{ atype: { $in: [ 'authenticate', 'createUser', 'dropUser', "
+            "'createRole', 'dropRole', 'createCollection', 'dropCollection', "
+            "'dropDatabase' ] } }"
+        ),
     ),
 
     "KEYFILE_PATH": ParameterMetadata(
@@ -158,16 +144,6 @@ MONGODB_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         required=True,
         placeholder="/etc/mongodb/keyfile",
     ),
-
-    "ENABLE_IPV6": ParameterMetadata(
-        name="ENABLE_IPV6",
-        input_type="select",
-        label="Enable IPv6",
-        description="Whether MongoDB should accept IPv6 connections",
-        required=False,
-        options=["true", "false"],
-        default="false",
-    ),
 }
 
 
@@ -176,39 +152,37 @@ MONGODB_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
 # ===================================================================
 # Every check that has (or could have) a hardening template must appear here.
 # Checks with [] are auto-fixable with no user input.
-# Checks with parameter names require at least one value before execution.
+# Checks whose parameters all carry defaults are also auto-fixable.
 
 MONGODB_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
     # Parameterized
-    "MONGO-L1-002": ["MONGO_SERVICE_USER"],
-    "MONGO-L1-008": ["MONGO_PORT"],
-    "MONGO-L1-010": ["MONGO_BIND_IP"],
-    "MONGO-L1-014": ["TLS_CERT_FILE", "TLS_CA_FILE", "TLS_MODE"],
-    "MONGO-L2-017": ["DISABLED_PROTOCOLS"],
-    "MONGO-L2-018": ["AUDIT_LOG_PATH", "AUDIT_FORMAT"],
-    "MONGO-L1-019": ["PROFILING_MODE", "SLOW_OP_MS"],
-    "MONGO-L1-021": ["KEYFILE_PATH"],
-    "MONGO-L1-024": ["ENABLE_IPV6"],
+    "MONGO-L1-004": ["KEYFILE_PATH"],                                 # 2.3 cluster auth keyfile
+    "MONGO-L1-007": ["MONGO_BIND_IP"],                                # 3.2 bind interfaces
+    "MONGO-L1-008": ["MONGO_SERVICE_USER"],                           # 3.3 service account
+    "MONGO-L1-012": ["TLS_CERT_FILE", "TLS_CA_FILE", "TLS_MODE"],     # 4.1 TLS in transit
+    "MONGO-L1-015": ["AUDIT_LOG_PATH", "AUDIT_FORMAT"],               # 5.1 audit logging
+    "MONGO-L2-016": ["AUDIT_FILTER"],                                 # 5.2 audit filter
+    "MONGO-L2-020": ["MONGO_PORT"],                                   # 6.2 non-default port
 
     # Auto-fixable (no required params)
-    "MONGO-L1-003": [],
-    "MONGO-L1-004": [],
-    "MONGO-L1-005": [],
-    "MONGO-L1-006": [],
-    "MONGO-L1-007": [],
-    "MONGO-L1-009": [],
-    "MONGO-L1-011": [],
-    "MONGO-L1-015": [],
-    "MONGO-L2-016": [],
-    "MONGO-L1-020": [],
-    "MONGO-L1-023": [],
-    "MONGO-L2-022": [],
-    "MONGO-L1-025": [],
+    "MONGO-L1-002": [],   # 2.1 authorization enabled
+    "MONGO-L1-003": [],   # 2.2 localhost bypass disabled
+    "MONGO-L1-005": [],   # 2.4 SCRAM-SHA-256
+    "MONGO-L1-017": [],   # 5.3 systemLog.quiet false
+    "MONGO-L1-018": [],   # 5.4 logAppend true
+    "MONGO-L1-019": [],   # 6.1 HTTP status interface off
+    "MONGO-L1-021": [],   # 6.3 OS resource limits
+    "MONGO-L2-022": [],   # 6.4 server-side JS disabled
+    "MONGO-L1-023": [],   # 6.5 HTTP interface off
+    "MONGO-L1-024": [],   # 6.6 JSONP off
+    "MONGO-L1-025": [],   # 6.7 REST API off
+    "MONGO-L1-026": [],   # 7.1 keyfile permissions
+    "MONGO-L1-027": [],   # 7.2 dbPath permissions
 
-    # Manual / not auto-fixable via SSH (mongosh or manual review required)
-    # MONGO-L1-001: running as root — OS-level, covered by MONGO-L1-002
-    # MONGO-L1-012: user root roles — requires mongosh + manual review
-    # MONGO-L2-013: any-database roles — requires mongosh + manual review
+    # Not auto-fixable via SSH (manual review / migration / mongosh work):
+    # MONGO-L1-001 (1.1 version upgrade), MONGO-L1-006 (3.1 RBAC users),
+    # MONGO-L2-009 (3.4), MONGO-L2-010 (3.5), MONGO-L2-011 (3.6),
+    # MONGO-L2-013 (4.2 encryption at rest), MONGO-L2-014 (4.3 FIPS)
 }
 
 

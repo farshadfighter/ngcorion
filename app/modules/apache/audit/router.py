@@ -21,6 +21,7 @@ from app.core.dependencies import (
 )
 from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, log_action
+from app.models.audit import CheckStatus
 from .service import ApacheAuditService, ApacheAuditNotInstalledError
 
 
@@ -335,7 +336,12 @@ def get_apache_results(
             "check_title": r.check_title,
             "severity": r.severity,
             "level": r.level or "L1",
-            "status": r.status.value,
+            # Manual CIS controls are stored as NOT_APPLICABLE; surface them
+            # as "skipped" so the UI shows what still needs human review.
+            "status": (
+                "skipped" if r.status == CheckStatus.NOT_APPLICABLE
+                else r.status.value
+            ),
             "evidence_snippet": r.evidence_snippet,
             "checked_at": r.checked_at.isoformat() if r.checked_at else None,
         }

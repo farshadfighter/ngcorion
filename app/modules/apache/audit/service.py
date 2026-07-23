@@ -116,13 +116,21 @@ class ApacheAuditService:
         logger.info(f"Bulk inserting {len(findings)} audit results")
 
         for idx, finding in enumerate(findings, 1):
+            # Manual controls are stored as NOT_APPLICABLE (the API surfaces
+            # them as "skipped"); they are never scored as pass/fail.
+            if finding.get("manual"):
+                status = CheckStatus.NOT_APPLICABLE
+            elif finding["compliant"]:
+                status = CheckStatus.PASS
+            else:
+                status = CheckStatus.FAIL
             result = AuditResult(
                 session_id=session_id,
                 check_number=finding["id"],
                 check_title=finding["title"],
                 severity=finding["severity"],
                 level=finding.get("level", "L1"),
-                status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
+                status=status,
                 evidence_snippet=finding["evidence"]
             )
             results.append(result)

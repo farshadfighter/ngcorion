@@ -1,26 +1,43 @@
 """
 MongoDB CIS Benchmark Rules
 
-~25 predefined security checks based on the CIS MongoDB Benchmark.
-Each rule evaluates a specific aspect of MongoDB security by searching
-the structured audit dump collected by MongoDBSSHClient.
+All 27 controls of the CIS MongoDB Benchmark v1.0.0, evaluated against the
+structured audit dump collected by MongoDBSSHClient.
 
 Rule IDs follow the pattern: MONGO-L{level}-{seq:03d}
   L1 = Level 1 (basic, broadly applicable)
   L2 = Level 2 (advanced, may affect functionality)
+The `section` field carries the CIS control number (e.g. "2.1").
 
 CIS sections covered:
-  1.x  OS Level Configuration
+  1.x  Installation and Patching
   2.x  Authentication
   3.x  Access Control
-  4.x  Transport Encryption
-  5.x  Auditing & Logging
-  6.x  Replication Security
+  4.x  Data Encryption
+  5.x  Auditing
+  6.x  Operating System Hardening
+  7.x  File Permissions
 """
 
 import re
 from dataclasses import dataclass
 from typing import Callable, List, Dict, Any
+
+
+# Oldest MongoDB release branch still supported upstream (CIS 1.1).
+OLDEST_SUPPORTED = (6, 0)
+
+# Roles that grant broad or administrative privilege (CIS 3.1 / 3.6).
+SUPERUSER_ROLES = {
+    "dbOwner",
+    "userAdmin",
+    "userAdminAnyDatabase",
+    "root",
+    "readWriteAnyDatabase",
+    "dbAdminAnyDatabase",
+    "clusterAdmin",
+    "hostManager",
+}
 
 
 # ============================================================ #
@@ -31,7 +48,7 @@ from typing import Callable, List, Dict, Any
 class MongoDBCISRule:
     """A single CIS MongoDB compliance check."""
     id: str                          # e.g. "MONGO-L1-001"
-    section: str                     # CIS section number e.g. "2.1"
+    section: str                     # CIS control number e.g. "2.1"
     title: str
     description: str
     severity: str                    # high / medium / low / info
@@ -60,68 +77,80 @@ def _section(dump: str, name: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+def _query_ok(section_text: str) -> bool:
+    """True when a mongosh-backed section holds a usable result.
+
+    Inability to query the database is never evidence of compliance —
+    checks that read these sections must fail closed.
+    """
+    return (
+        bool(section_text)
+        and "MONGOSH_UNAVAILABLE" not in section_text
+        and "QUERY_FAILED" not in section_text
+    )
+
+
 # ============================================================ #
 #  Pre-compiled patterns for efficiency                         #
 # ============================================================ #
 
 class _RE:
     # Config file – authentication
-    auth_enabled  = re.compile(r"authorization\s*:\s*enabled", re.I)
-    auth_disabled = re.compile(r"authorization\s*:\s*disabled", re.I)
+    auth_enabled   = re.compile(r"authorization\s*:\s*enabled", re.I)
+    localhost_off  = re.compile(r"enableLocalhostAuthBypass\s*:\s*false", re.I)
+
+    # Config file – auth mechanisms / cluster auth
+    keyfile        = re.compile(r"keyFile\s*:\s*\S+", re.I)
+    cluster_x509   = re.compile(r"clusterAuthMode\s*:\s*(x509|sendX509)", re.I)
+    strong_mech    = re.compile(r"SCRAM-SHA-256|GSSAPI", re.I)
 
     # Config file – network binding
     # bindIpAll: true is equivalent to binding 0.0.0.0 and must also fail
-    bind_all      = re.compile(r"bindIp\s*:\s*0\.0\.0\.0|bindIpAll\s*:\s*true", re.I)
-    bind_specific = re.compile(r"bindIp\s*:", re.I)
+    bind_all       = re.compile(r"bindIp\s*:\s*\S*0\.0\.0\.0|bindIpAll\s*:\s*true", re.I)
+    bind_specific  = re.compile(r"bindIp\s*:\s*\S+", re.I)
+    wildcard_listen = re.compile(r"(^|\s)(0\.0\.0\.0|\*|\[?::\]?):\d+", re.M)
 
     # Config file – port
-    default_port  = re.compile(r"port\s*:\s*27017\b", re.I)
+    default_port   = re.compile(r"port\s*:\s*27017\b", re.I)
+    any_port       = re.compile(r"port\s*:\s*(\d+)", re.I)
 
     # Config file – TLS
-    tls_mode      = re.compile(r"mode\s*:\s*(requireTLS|allowTLS|preferTLS|disabled)", re.I)
-    tls_disabled  = re.compile(r"mode\s*:\s*disabled", re.I)
-    tls_require   = re.compile(r"mode\s*:\s*requireTLS", re.I)
-    tls_block     = re.compile(r"^\s*(net\.)?tls\s*:", re.I | re.M)
-    tls_min_ver   = re.compile(r"disabledProtocols\s*:\s*\S+", re.I)
+    tls_require    = re.compile(r"mode\s*:\s*(requireTLS|requireSSL)", re.I)
+    tls_cert       = re.compile(r"(certificateKeyFile|PEMKeyFile)\s*:\s*\S+", re.I)
+    fips_mode      = re.compile(r"FIPSMode\s*:\s*true", re.I)
+
+    # Config file – encryption at rest
+    enc_at_rest    = re.compile(r"enableEncryption\s*:\s*true", re.I)
 
     # Config file – audit log
-    audit_dest    = re.compile(r"destination\s*:\s*(file|syslog)", re.I)
-    audit_section = re.compile(r"^\s*auditLog\s*:", re.I | re.M)
+    audit_dest     = re.compile(r"destination\s*:\s*(file|syslog|console)", re.I)
+    audit_section  = re.compile(r"^\s*auditLog\s*:", re.I | re.M)
+    audit_filter   = re.compile(r"filter\s*:\s*\S", re.I)
 
-    # Config file – profiling
-    slowms        = re.compile(r"slowOpThresholdMs\s*:\s*(\d+)", re.I)
-    profiling_lvl = re.compile(r"operationProfiling\s*:", re.I)
+    # Config file – system log
+    log_quiet      = re.compile(r"quiet\s*:\s*true", re.I)
+    log_append     = re.compile(r"logAppend\s*:\s*true", re.I)
 
-    # Config file – keyFile / clusterAuth
-    keyfile       = re.compile(r"keyFile\s*:\s*\S+", re.I)
-    cluster_auth  = re.compile(r"clusterAuthMode\s*:\s*(keyFile|x509|sendKeyFile|sendX509)", re.I)
+    # Config file – legacy HTTP interface
+    jsonp_on       = re.compile(r"JSONPEnabled\s*:\s*true", re.I)
+    rest_on        = re.compile(r"RESTInterfaceEnabled\s*:\s*true", re.I)
 
-    # Config file – JS
-    js_enabled    = re.compile(r"javascriptEnabled\s*:\s*true", re.I)
-    js_disabled   = re.compile(r"javascriptEnabled\s*:\s*false", re.I)
+    # Config file – server-side JavaScript
+    js_disabled    = re.compile(r"javascriptEnabled\s*:\s*false", re.I)
 
     # Process user
-    root_user     = re.compile(r"^\s*root\s*$", re.I | re.M)
+    root_user      = re.compile(r"^\s*root\s*$", re.I | re.M)
+    dedicated_user = re.compile(r"mongod|mongodb", re.I)
 
-    # Data/log directory permissions
-    perm_700      = re.compile(r"^700\s", re.M)
-    perm_750      = re.compile(r"^750\s", re.M)
-    perm_open     = re.compile(r"^7[5-7][5-7]\s|^[0-7][4-7][1-7]\s", re.M)
+    # Mongosh output – roles
+    role_name      = re.compile(r'"role"\s*:\s*"([^"]+)"')
+    broad_priv     = re.compile(r'"anyResource"\s*:\s*true|"cluster"\s*:\s*true', re.I)
 
-    # Config file permissions (should be 600 or 640)
-    conf_perm_ok  = re.compile(r"^6[04]0\s", re.M)
+    # Auth mechanisms output
+    sha256         = re.compile(r"SCRAM-SHA-256", re.I)
 
-    # Mongosh output – superuser roles
-    root_role     = re.compile(r'"role"\s*:\s*"root"', re.I)
-    dbadmin_all   = re.compile(r'"role"\s*:\s*"dbAdminAnyDatabase"', re.I)
-    readwrite_all = re.compile(r'"role"\s*:\s*"readWriteAnyDatabase"', re.I)
-
-    # Auth mechanisms
-    sha256        = re.compile(r"SCRAM-SHA-256", re.I)
-    sha1_only     = re.compile(r"SCRAM-SHA-1", re.I)
-
-    # Listening on localhost only
-    loopback      = re.compile(r"127\.0\.0\.1|::1|localhost", re.I)
+    # Version strings
+    version        = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?")
 
 
 # ============================================================ #
@@ -143,113 +172,183 @@ def _ev_section_content(dump: str, section: str, max_chars: int = 400) -> str:
 
 
 # ============================================================ #
+#  Check helpers                                                #
+# ============================================================ #
+
+def _version_supported(dump: str) -> bool:
+    """CIS 1.1 — running version belongs to a supported release branch."""
+    text = _section(dump, "BUILD_INFO")
+    if not _query_ok(text):
+        text = _section(dump, "MONGOD_VERSION")
+    if not text or "VERSION_NOT_FOUND" in text:
+        return False
+    m = _RE.version.search(text)
+    if not m:
+        return False
+    return (int(m.group(1)), int(m.group(2))) >= OLDEST_SUPPORTED
+
+
+def _http_block(conf: str) -> str:
+    """Extract the indented body of a net.http: block, if any."""
+    m = re.search(r"^\s*http\s*:\s*\n((?:[ \t]+\S.*\n?)*)", conf, re.M)
+    return m.group(1) if m else ""
+
+
+def _http_interface_disabled(dump: str) -> bool:
+    """CIS 6.1 / 6.5 — net.http.enabled must not be true (absent = disabled)."""
+    block = _http_block(_section(dump, "CONFIG_FILE"))
+    return not re.search(r"enabled\s*:\s*true", block, re.I)
+
+
+def _has_limited_user(dump: str) -> bool:
+    """CIS 3.1 — at least one user holds a role outside the superuser set."""
+    users = _section(dump, "USERS_LIST")
+    if not _query_ok(users):
+        return False
+    roles = _RE.role_name.findall(users)
+    return any(r not in SUPERUSER_ROLES for r in roles)
+
+
+def _no_superuser_roles(dump: str) -> bool:
+    """CIS 3.6 — no account holds a broad administrative role."""
+    users = _section(dump, "USERS_LIST")
+    if not _query_ok(users):
+        return False
+    roles = _RE.role_name.findall(users)
+    return not any(r in SUPERUSER_ROLES for r in roles)
+
+
+def _superuser_holders_evidence(dump: str) -> str:
+    users = _section(dump, "USERS_LIST")
+    if not _query_ok(users):
+        return _ev_section_content(dump, "USERS_LIST", 300)
+    held = sorted({r for r in _RE.role_name.findall(users) if r in SUPERUSER_ROLES})
+    return f"Superuser roles in use: {held or 'none'}"
+
+
+def _keyfile_ok(dump: str) -> bool:
+    """CIS 2.3 — keyFile configured AND present on disk, or x.509 cluster auth."""
+    conf = _section(dump, "CONFIG_FILE")
+    if _RE.cluster_x509.search(conf):
+        return True
+    info = _section(dump, "KEYFILE_INFO")
+    return bool(
+        _RE.keyfile.search(conf)
+        and info
+        and "KEYFILE_NOT_CONFIGURED" not in info
+        and "KEYFILE_MISSING_ON_DISK" not in info
+    )
+
+
+def _keyfile_perms_ok(dump: str) -> bool:
+    """CIS 7.1 — keyFile mode 600/400 owned by the mongod account.
+
+    When no keyFile is configured there is nothing to protect (2.3 flags
+    missing cluster auth separately), so the control passes.
+    """
+    info = _section(dump, "KEYFILE_INFO")
+    if not info or "KEYFILE_NOT_CONFIGURED" in info:
+        return True
+    if "KEYFILE_MISSING_ON_DISK" in info:
+        return False
+    m = re.match(r"(\d+)\s+(\S+)\s+(\S+)", info)
+    if not m:
+        return False
+    mode, owner = m.group(1), m.group(2).lower()
+    return mode in ("400", "600") and owner in ("mongod", "mongodb")
+
+
+def _dbpath_perms_ok(dump: str) -> bool:
+    """CIS 7.2 — dbPath owned by the mongod account with no 'other' access."""
+    info = _section(dump, "DBPATH_PERMS")
+    if not info or "DBPATH_NOT_FOUND" in info:
+        return False
+    m = re.match(r"(\d+)\s+(\S+)\s+(\S+)", info)
+    if not m:
+        return False
+    mode, owner = m.group(1), m.group(2).lower()
+    return mode[-1] == "0" and owner in ("mongod", "mongodb")
+
+
+def _limit_at_least(text: str, label: str, minimum: int) -> bool:
+    for line in text.splitlines():
+        if line.startswith(label):
+            # columns: <name...> <soft> <hard> <units>
+            tail = line[len(label):].split()
+            if tail:
+                value = tail[0]
+                if value.lower() == "unlimited":
+                    return True
+                if value.isdigit():
+                    return int(value) >= minimum
+    return False
+
+
+def _resource_limits_ok(dump: str) -> bool:
+    """CIS 6.3 — open files and processes >= 64000 for the mongod process."""
+    limits = _section(dump, "PROC_LIMITS")
+    if not limits or "NO_MONGOD_PROCESS" in limits:
+        return False
+    return (
+        _limit_at_least(limits, "Max open files", 64000)
+        and _limit_at_least(limits, "Max processes", 64000)
+    )
+
+
+def _bind_restricted(dump: str) -> bool:
+    """CIS 3.2 — explicit bindIp, no 0.0.0.0/bindIpAll, no wildcard listener."""
+    conf = _section(dump, "CONFIG_FILE")
+    if _RE.bind_all.search(conf) or not _RE.bind_specific.search(conf):
+        return False
+    listening = _section(dump, "LISTENING_PORTS")
+    if listening and "PORT_CHECK_FAILED" not in listening:
+        if _RE.wildcard_listen.search(listening):
+            return False
+    return True
+
+
+def _non_default_port(dump: str) -> bool:
+    """CIS 6.2 — explicit port that is not 27017 (missing = default 27017)."""
+    conf = _section(dump, "CONFIG_FILE")
+    return bool(
+        conf
+        and "CONFIG_FILE_NOT_FOUND" not in conf
+        and not _RE.default_port.search(conf)
+        and _RE.any_port.search(conf)
+    )
+
+
+# ============================================================ #
 #  Rule builder                                                 #
 # ============================================================ #
 
 def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
-    """Return the full list of MongoDB CIS rules."""
+    """Return all 27 CIS MongoDB Benchmark v1.0.0 controls."""
 
     rules: List[MongoDBCISRule] = []
 
     # ---------------------------------------------------------------- #
-    #  Section 1 – OS Level Configuration                               #
+    #  Section 1 – Installation and Patching                            #
     # ---------------------------------------------------------------- #
 
     rules.append(MongoDBCISRule(
         id="MONGO-L1-001",
         section="1.1",
-        title="Ensure MongoDB does not run as root",
+        title="Ensure the appropriate MongoDB software version/patches are installed",
         description=(
-            "MongoDB should run under a dedicated, unprivileged service account. "
-            "Running as root gives the process unrestricted OS access."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            not _RE.root_user.search(_section(d, "MONGOD_USER"))
-        ),
-        evidence_fn=lambda d: _ev_section_content(d, "MONGOD_USER"),
-        remediation=(
-            "Create a dedicated 'mongod' or 'mongodb' system user with no login shell. "
-            "Update the service unit file (User=mongod) and restart the service."
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L1-002",
-        section="1.2",
-        title="Ensure a dedicated MongoDB service account exists",
-        description=(
-            "MongoDB should run under a named, dedicated account (e.g. 'mongod') "
-            "rather than a shared or privileged account."
+            "MongoDB should run a release branch that still receives security "
+            "patches from the vendor (6.0 or newer)."
         ),
         severity="medium",
         level="L1",
-        check_fn=lambda d: bool(
-            re.search(r"mongod|mongodb", _section(d, "MONGOD_USER"), re.I)
+        check_fn=_version_supported,
+        evidence_fn=lambda d: (
+            _ev_section_content(d, "BUILD_INFO", 200)
+            or _ev_section_content(d, "MONGOD_VERSION", 200)
         ),
-        evidence_fn=lambda d: _ev_section_content(d, "MONGOD_USER"),
         remediation=(
-            "Create a system account named 'mongod' with no login shell and "
-            "configure the service to run under that account."
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L1-003",
-        section="1.3",
-        title="Ensure MongoDB data directory permissions are restrictive",
-        description=(
-            "The MongoDB data directory should be readable and writable only by the "
-            "mongod service account (permissions 700 or 750)."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: bool(
-            _RE.perm_700.search(_section(d, "DATA_DIR_PERMS"))
-            or _RE.perm_750.search(_section(d, "DATA_DIR_PERMS"))
-        ),
-        evidence_fn=lambda d: _ev_section_content(d, "DATA_DIR_PERMS"),
-        remediation=(
-            "Run: chmod 700 /var/lib/mongodb && chown -R mongod:mongod /var/lib/mongodb"
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L1-004",
-        section="1.4",
-        title="Ensure MongoDB log directory permissions are restrictive",
-        description=(
-            "The MongoDB log directory should not be world-readable or writable."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            "LOG_DIR_NOT_FOUND" not in _section(d, "LOG_DIR_PERMS")
-            and not _RE.perm_open.search(_section(d, "LOG_DIR_PERMS"))
-        ),
-        evidence_fn=lambda d: _ev_section_content(d, "LOG_DIR_PERMS"),
-        remediation=(
-            "Run: chmod 750 /var/log/mongodb && chown -R mongod:mongod /var/log/mongodb"
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L1-005",
-        section="1.5",
-        title="Ensure MongoDB configuration file permissions are restrictive",
-        description=(
-            "The mongod.conf file may contain sensitive settings. "
-            "It should only be readable by root/mongod (permissions 600 or 640)."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: bool(
-            _RE.conf_perm_ok.search(_section(d, "CONFIG_FILE_PERMS"))
-        ),
-        evidence_fn=lambda d: _ev_section_content(d, "CONFIG_FILE_PERMS"),
-        remediation=(
-            "Run: chmod 600 /etc/mongod.conf && chown root:mongod /etc/mongod.conf"
+            "Upgrade to a supported MongoDB release branch (6.0/7.0/8.0) "
+            "following the official upgrade path for your current version."
         ),
     ))
 
@@ -258,9 +357,9 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
     # ---------------------------------------------------------------- #
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-006",
+        id="MONGO-L1-002",
         section="2.1",
-        title="Ensure MongoDB authentication is enabled",
+        title="Ensure authentication is configured",
         description=(
             "Without authentication enabled any user with network access can "
             "read, modify, or delete all data."
@@ -280,73 +379,124 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-007",
+        id="MONGO-L1-003",
         section="2.2",
-        title="Ensure SCRAM-SHA-256 is the active authentication mechanism",
+        title="Ensure that MongoDB does not bypass authentication via the localhost exception",
         description=(
-            "SCRAM-SHA-256 is significantly stronger than the legacy SCRAM-SHA-1 "
-            "or MONGODB-CR mechanisms."
+            "The localhost exception allows unauthenticated access from the "
+            "local host until the first user is created. It defaults to on, "
+            "so it must be explicitly disabled."
+        ),
+        severity="medium",
+        level="L1",
+        # Default is true when unset, so an absent setting is non-compliant.
+        check_fn=lambda d: bool(
+            _RE.localhost_off.search(_section(d, "CONFIG_FILE"))
+            or _RE.localhost_off.search(_section(d, "CMDLINE_OPTS"))
+        ),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"enableLocalhostAuthBypass\s*:\s*\S+", re.I)),
+        remediation=(
+            "In /etc/mongod.conf:\n"
+            "setParameter:\n"
+            "  enableLocalhostAuthBypass: false"
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L1-004",
+        section="2.3",
+        title="Ensure authentication is enabled in the sharded cluster",
+        description=(
+            "Replica set and sharded cluster members must authenticate each "
+            "other with a keyFile or x.509 certificates so rogue nodes cannot "
+            "join the cluster. The configured keyFile must exist on disk."
         ),
         severity="high",
         level="L1",
+        check_fn=_keyfile_ok,
+        evidence_fn=lambda d: (
+            f"Config: {_ev_config(d, _RE.keyfile)}\n"
+            f"KeyFile on disk: {_ev_section_content(d, 'KEYFILE_INFO', 200)}"
+        ),
+        remediation=(
+            "Generate a key (openssl rand -base64 756 > /etc/mongodb/keyfile), "
+            "set mode 600 and owner mongod, then in /etc/mongod.conf:\n"
+            "security:\n"
+            "  keyFile: /etc/mongodb/keyfile\n"
+            "Or use x.509: clusterAuthMode: x509"
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L1-005",
+        section="2.4",
+        title="Ensure an industry standard authentication mechanism is used",
+        description=(
+            "Authentication should use SCRAM-SHA-256, GSSAPI (Kerberos) or "
+            "x.509 rather than legacy mechanisms such as SCRAM-SHA-1 or "
+            "MONGODB-CR."
+        ),
+        severity="medium",
+        level="L1",
         check_fn=lambda d: bool(
-            _RE.sha256.search(_section(d, "AUTH_MECHANISMS"))
-            or _RE.sha256.search(_section(d, "CONFIG_FILE"))
+            _RE.cluster_x509.search(_section(d, "CONFIG_FILE"))
+            or _RE.strong_mech.search(_section(d, "CONFIG_FILE"))
+            or _RE.sha256.search(_section(d, "AUTH_MECHANISMS"))
         ),
         evidence_fn=lambda d: (
             _ev_section_content(d, "AUTH_MECHANISMS", 300)
-            or _ev_config(d, _RE.sha256)
+            or _ev_config(d, _RE.strong_mech)
         ),
         remediation=(
             "In /etc/mongod.conf:\n"
-            "security:\n"
+            "setParameter:\n"
             "  authenticationMechanisms: SCRAM-SHA-256\n"
             "Existing passwords must be re-set after changing the mechanism."
         ),
     ))
 
+    # ---------------------------------------------------------------- #
+    #  Section 3 – Access Control                                       #
+    # ---------------------------------------------------------------- #
+
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-008",
-        section="2.3",
-        title="Ensure MongoDB does not use the default port 27017",
+        id="MONGO-L1-006",
+        section="3.1",
+        title="Ensure that role-based access control is enabled and configured",
         description=(
-            "Using the default MongoDB port makes it easier for attackers to "
-            "discover and target the service."
+            "Beyond enabling authorization, at least one application/operator "
+            "account must exist with limited (non-superuser) roles, proving "
+            "least-privilege RBAC is actually in use."
         ),
-        severity="low",
+        severity="high",
         level="L1",
-        # PASS only when the config file exists AND has an explicit port that
-        # is not 27017.  A missing port line means MongoDB is using 27017 by
-        # default, which must also be treated as a failure.
         check_fn=lambda d: bool(
-            _section(d, "CONFIG_FILE")
-            and "CONFIG_FILE_NOT_FOUND" not in _section(d, "CONFIG_FILE")
-            and not _RE.default_port.search(_section(d, "CONFIG_FILE"))
-            and re.search(r"port\s*:\s*\d+", _section(d, "CONFIG_FILE"), re.I)
+            _RE.auth_enabled.search(_section(d, "CONFIG_FILE"))
+            and _has_limited_user(d)
         ),
-        evidence_fn=lambda d: _ev_config(d, _RE.default_port),
+        evidence_fn=lambda d: _ev_section_content(d, "USERS_LIST", 500),
         remediation=(
-            "Change the port in /etc/mongod.conf:\n"
-            "net:\n"
-            "  port: <non-default-port>\n"
-            "Update firewall rules and client connection strings accordingly."
+            "Enable security.authorization and create users with narrowly "
+            "scoped roles via db.createUser() (e.g. readWrite on one database)."
         ),
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-009",
-        section="2.4",
-        title="Ensure MongoDB does not bind to all interfaces (0.0.0.0)",
+        id="MONGO-L1-007",
+        section="3.2",
+        title="Ensure that MongoDB only listens for network connections on authorized interfaces",
         description=(
-            "Binding to 0.0.0.0 exposes MongoDB on every network interface, "
-            "unnecessarily increasing the attack surface."
+            "MongoDB must be bound to explicit, trusted interfaces. Binding "
+            "to 0.0.0.0 (or bindIpAll) exposes the database on every network "
+            "interface."
         ),
         severity="high",
         level="L1",
-        check_fn=lambda d: not bool(
-            _RE.bind_all.search(_section(d, "CONFIG_FILE"))
+        check_fn=_bind_restricted,
+        evidence_fn=lambda d: (
+            f"Config: {_ev_config(d, _RE.bind_specific)}\n"
+            f"Listeners: {_ev_section_content(d, 'LISTENING_PORTS', 200)}"
         ),
-        evidence_fn=lambda d: _ev_config(d, _RE.bind_all),
         remediation=(
             "In /etc/mongod.conf:\n"
             "net:\n"
@@ -356,121 +506,112 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-010",
-        section="2.5",
-        title="Ensure MongoDB listens only on localhost or specified interfaces",
-        description=(
-            "MongoDB should be explicitly bound to specific IP addresses rather "
-            "than implicitly accepting connections from any source."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: bool(
-            _RE.bind_specific.search(_section(d, "CONFIG_FILE"))
-        ),
-        evidence_fn=lambda d: _ev_config(d, _RE.bind_specific),
-        remediation=(
-            "Explicitly configure net.bindIp in /etc/mongod.conf with only the "
-            "interfaces required for your deployment."
-        ),
-    ))
-
-    # ---------------------------------------------------------------- #
-    #  Section 3 – Access Control                                       #
-    # ---------------------------------------------------------------- #
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L1-011",
-        section="3.1",
-        title="Ensure role-based access control (RBAC) is enabled",
-        description=(
-            "RBAC ensures that users have only the minimum permissions required. "
-            "This requires authentication to be enabled."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: bool(
-            _RE.auth_enabled.search(_section(d, "CONFIG_FILE"))
-        ),
-        evidence_fn=lambda d: _ev_config(d, _RE.auth_enabled),
-        remediation=(
-            "Enable authentication (security.authorization: enabled) and "
-            "assign roles using db.createUser() with the principle of least privilege."
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L1-012",
-        section="3.2",
-        title="Ensure no users are assigned the unrestricted 'root' role",
-        description=(
-            "The 'root' role grants complete unrestricted access. "
-            "Administrative users should use more specific roles instead."
-        ),
-        severity="high",
-        level="L1",
-        # FAIL when the query could not run — inability to verify is NOT
-        # the same as verified compliance.  Only PASS when we got a valid
-        # users list AND confirmed no 'root' role assignment.
-        check_fn=lambda d: (
-            "QUERY_FAILED" not in _section(d, "USERS_LIST")
-            and "MONGOSH_UNAVAILABLE" not in _section(d, "USERS_LIST")
-            and bool(_section(d, "USERS_LIST"))
-            and not _RE.root_role.search(_section(d, "USERS_LIST"))
-        ),
-        evidence_fn=lambda d: _ev_section_content(d, "USERS_LIST", 500),
-        remediation=(
-            "Revoke the 'root' role and assign narrower roles such as "
-            "'dbAdmin', 'readWrite', or 'userAdminAnyDatabase' as appropriate."
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L2-013",
+        id="MONGO-L1-008",
         section="3.3",
-        title="Ensure no users are assigned 'readWriteAnyDatabase' or 'dbAdminAnyDatabase'",
+        title="Ensure that MongoDB is run using a non-privileged, dedicated service account",
         description=(
-            "These roles grant access across all databases and should be avoided "
-            "in favour of per-database permissions."
+            "MongoDB should run under a dedicated, unprivileged account "
+            "(mongod/mongodb). Running as root gives the process unrestricted "
+            "OS access."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=lambda d: bool(
+            not _RE.root_user.search(_section(d, "MONGOD_USER"))
+            and _RE.dedicated_user.search(_section(d, "MONGOD_USER"))
+        ),
+        evidence_fn=lambda d: _ev_section_content(d, "MONGOD_USER"),
+        remediation=(
+            "Create a dedicated 'mongod' system user with no login shell, set "
+            "User=mongod in the service unit, and restart the service."
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L2-009",
+        section="3.4",
+        title="Ensure that each role for each MongoDB database is needed and grants only the necessary privileges",
+        description=(
+            "User-defined roles must not carry cluster-wide or anyResource "
+            "privileges, which would bypass per-database least privilege."
         ),
         severity="medium",
         level="L2",
-        # Same rationale as MONGO-L1-012: a failed query is not evidence of
-        # compliance — only PASS when we have a valid list to inspect.
         check_fn=lambda d: (
-            "QUERY_FAILED" not in _section(d, "USERS_LIST")
-            and "MONGOSH_UNAVAILABLE" not in _section(d, "USERS_LIST")
-            and bool(_section(d, "USERS_LIST"))
-            and not _RE.dbadmin_all.search(_section(d, "USERS_LIST"))
-            and not _RE.readwrite_all.search(_section(d, "USERS_LIST"))
+            _query_ok(_section(d, "ROLES_PRIVS"))
+            and not _RE.broad_priv.search(_section(d, "ROLES_PRIVS"))
         ),
-        evidence_fn=lambda d: _ev_section_content(d, "USERS_LIST", 500),
+        evidence_fn=lambda d: _ev_section_content(d, "ROLES_PRIVS", 500),
         remediation=(
-            "Replace any-database roles with database-specific roles "
-            "(e.g. readWrite on the specific database only)."
+            "Review db.getRoles({showPrivileges: true}) and rebuild any "
+            "user-defined role that grants cluster or anyResource privileges "
+            "with database-scoped privileges instead."
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L2-010",
+        section="3.5",
+        title="Review user-defined roles",
+        description=(
+            "User-defined roles must be enumerable so they can be reviewed "
+            "periodically. This control verifies the role inventory can be "
+            "collected for review."
+        ),
+        severity="low",
+        level="L2",
+        check_fn=lambda d: _query_ok(_section(d, "ROLES_LIST")),
+        evidence_fn=lambda d: _ev_section_content(d, "ROLES_LIST", 500),
+        remediation=(
+            "Ensure administrative credentials are available so "
+            "db.getRoles({showBuiltinRoles: false}) can be executed, then "
+            "review each role against business need."
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L2-011",
+        section="3.6",
+        title="Review superuser/admin roles",
+        description=(
+            "Roles such as root, userAdminAnyDatabase, readWriteAnyDatabase or "
+            "clusterAdmin grant sweeping privileges and should not be assigned "
+            "to day-to-day accounts."
+        ),
+        severity="medium",
+        level="L2",
+        check_fn=_no_superuser_roles,
+        evidence_fn=_superuser_holders_evidence,
+        remediation=(
+            "Revoke broad roles (root, *AnyDatabase, clusterAdmin, dbOwner, "
+            "userAdmin, hostManager) and assign database-scoped roles instead."
         ),
     ))
 
     # ---------------------------------------------------------------- #
-    #  Section 4 – Transport Encryption                                 #
+    #  Section 4 – Data Encryption                                      #
     # ---------------------------------------------------------------- #
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-014",
+        id="MONGO-L1-012",
         section="4.1",
-        title="Ensure TLS/SSL is configured for client connections",
+        title="Ensure Encryption of Data in Transit — TLS/SSL is configured",
         description=(
-            "Data in transit between clients and MongoDB should be encrypted "
-            "to prevent eavesdropping or tampering."
+            "All network communication must be TLS-protected: net.tls.mode "
+            "requireTLS with a valid certificateKeyFile."
         ),
         severity="high",
         level="L1",
         check_fn=lambda d: bool(
-            _RE.tls_block.search(_section(d, "CONFIG_FILE"))
+            (
+                _RE.tls_require.search(_section(d, "CONFIG_FILE"))
+                or _RE.tls_require.search(_section(d, "TLS_PARAMS"))
+            )
+            and _RE.tls_cert.search(_section(d, "CONFIG_FILE"))
         ),
-        evidence_fn=lambda d: _ev_config(d, _RE.tls_block),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"tls\s*:|mode\s*:\s*\S+", re.I)),
         remediation=(
-            "Add a TLS block to /etc/mongod.conf:\n"
+            "In /etc/mongod.conf:\n"
             "net:\n"
             "  tls:\n"
             "    mode: requireTLS\n"
@@ -480,90 +621,86 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-015",
+        id="MONGO-L2-013",
         section="4.2",
-        title="Ensure TLS mode is not set to 'disabled'",
+        title="Ensure Encryption of Data at Rest",
         description=(
-            "Setting net.tls.mode to 'disabled' turns off all transport "
-            "encryption, exposing data to interception."
+            "Database files should be encrypted at rest, either via the "
+            "WiredTiger encrypted storage engine (security.enableEncryption) "
+            "or an encrypted volume (LUKS/dm-crypt)."
         ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: not bool(
-            _RE.tls_disabled.search(_section(d, "CONFIG_FILE"))
-            or _RE.tls_disabled.search(_section(d, "TLS_PARAMS"))
+        severity="medium",
+        level="L2",
+        check_fn=lambda d: bool(
+            _RE.enc_at_rest.search(_section(d, "CONFIG_FILE"))
+            or (
+                _section(d, "DISK_ENCRYPTION")
+                and "NO_ENCRYPTED_VOLUME" not in _section(d, "DISK_ENCRYPTION")
+            )
         ),
-        evidence_fn=lambda d: _ev_config(d, _RE.tls_disabled),
+        evidence_fn=lambda d: (
+            f"Config: {_ev_config(d, _RE.enc_at_rest)}\n"
+            f"Volumes: {_ev_section_content(d, 'DISK_ENCRYPTION', 200)}"
+        ),
         remediation=(
-            "Set net.tls.mode to 'requireTLS' or at minimum 'allowTLS' in "
-            "/etc/mongod.conf and provide valid certificates."
+            "Enable the encrypted storage engine (MongoDB Enterprise: "
+            "security.enableEncryption: true) or move dbPath onto a "
+            "LUKS-encrypted volume. Both require a data migration."
         ),
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L2-016",
+        id="MONGO-L2-014",
         section="4.3",
-        title="Ensure TLS mode is set to 'requireTLS'",
+        title="Ensure Federal Information Processing Standard (FIPS) is enabled",
         description=(
-            "'requireTLS' ensures that all incoming connections must use TLS. "
-            "Modes like 'allowTLS' still permit unencrypted connections."
+            "FIPS 140-2 mode constrains cryptography to validated modules. "
+            "Requires net.tls.FIPSMode plus a FIPS-capable OpenSSL, confirmed "
+            "by the activation message in the mongod log."
         ),
-        severity="medium",
+        severity="low",
         level="L2",
         check_fn=lambda d: bool(
-            _RE.tls_require.search(_section(d, "CONFIG_FILE"))
-            or _RE.tls_require.search(_section(d, "TLS_PARAMS"))
+            _RE.fips_mode.search(_section(d, "CONFIG_FILE"))
+            and "NO_FIPS_ACTIVATION_LOG" not in _section(d, "FIPS_LOG")
+            and _section(d, "FIPS_LOG")
         ),
-        evidence_fn=lambda d: _ev_config(d, _RE.tls_require),
+        evidence_fn=lambda d: (
+            f"Config: {_ev_config(d, _RE.fips_mode)}\n"
+            f"Log: {_ev_section_content(d, 'FIPS_LOG', 200)}"
+        ),
         remediation=(
-            "Set net.tls.mode: requireTLS in /etc/mongod.conf to enforce "
-            "encrypted connections for all clients."
-        ),
-    ))
-
-    rules.append(MongoDBCISRule(
-        id="MONGO-L2-017",
-        section="4.4",
-        title="Ensure legacy SSL protocols are disabled",
-        description=(
-            "Older SSL/TLS versions (SSLv2, SSLv3, TLS 1.0, TLS 1.1) have known "
-            "vulnerabilities and should be explicitly disabled."
-        ),
-        severity="medium",
-        level="L2",
-        check_fn=lambda d: bool(
-            _RE.tls_min_ver.search(_section(d, "CONFIG_FILE"))
-        ),
-        evidence_fn=lambda d: _ev_config(d, _RE.tls_min_ver),
-        remediation=(
-            "In /etc/mongod.conf set:\n"
+            "On a FIPS-enabled OS with FIPS-capable OpenSSL set in "
+            "/etc/mongod.conf:\n"
             "net:\n"
             "  tls:\n"
-            "    disabledProtocols: TLS1_0,TLS1_1"
+            "    FIPSMode: true\n"
+            "then restart and confirm 'FIPS 140-2 mode activated' in the log."
         ),
     ))
 
     # ---------------------------------------------------------------- #
-    #  Section 5 – Auditing & Logging                                   #
+    #  Section 5 – Auditing                                             #
     # ---------------------------------------------------------------- #
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L2-018",
+        id="MONGO-L1-015",
         section="5.1",
-        title="Ensure MongoDB audit logging is enabled",
+        title="Ensure that system activity is audited",
         description=(
-            "Audit logging records authentication attempts, CRUD operations, "
-            "and administrative actions for accountability and forensics."
+            "Audit logging records authentication attempts, DDL and "
+            "administrative actions for accountability and forensics "
+            "(requires MongoDB Enterprise)."
         ),
         severity="medium",
-        level="L2",
+        level="L1",
         check_fn=lambda d: bool(
             _RE.audit_section.search(_section(d, "CONFIG_FILE"))
             and _RE.audit_dest.search(_section(d, "CONFIG_FILE"))
         ),
         evidence_fn=lambda d: _ev_config(d, _RE.audit_section),
         remediation=(
-            "Add an auditLog section to /etc/mongod.conf (requires MongoDB Enterprise):\n"
+            "Add an auditLog section to /etc/mongod.conf:\n"
             "auditLog:\n"
             "  destination: file\n"
             "  format: JSON\n"
@@ -572,106 +709,144 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-019",
+        id="MONGO-L2-016",
         section="5.2",
-        title="Ensure slow operation profiling is configured",
+        title="Ensure that audit filters are configured properly",
         description=(
-            "Configuring operationProfiling.slowOpThresholdMs helps detect and "
-            "investigate unusually slow queries which may indicate abuse."
+            "An auditLog.filter should scope the audit trail to the "
+            "security-relevant events the organisation needs (authentication, "
+            "user/role changes, schema changes)."
         ),
         severity="low",
-        level="L1",
+        level="L2",
         check_fn=lambda d: bool(
-            _RE.profiling_lvl.search(_section(d, "CONFIG_FILE"))
-            or _RE.slowms.search(_section(d, "CONFIG_FILE"))
-            or (
-                "QUERY_FAILED" not in _section(d, "PROFILING")
-                and "MONGOSH_UNAVAILABLE" not in _section(d, "PROFILING")
-                and _section(d, "PROFILING").strip() != ""
-            )
+            _RE.audit_section.search(_section(d, "CONFIG_FILE"))
+            and _RE.audit_filter.search(_section(d, "CONFIG_FILE"))
         ),
-        evidence_fn=lambda d: (
-            _ev_config(d, _RE.profiling_lvl)
-            or _ev_section_content(d, "PROFILING", 300)
-        ),
+        evidence_fn=lambda d: _ev_config(d, _RE.audit_filter),
         remediation=(
-            "In /etc/mongod.conf:\n"
-            "operationProfiling:\n"
-            "  mode: slowOp\n"
-            "  slowOpThresholdMs: 100"
+            "In /etc/mongod.conf add a filter to the auditLog section, e.g.:\n"
+            "auditLog:\n"
+            "  filter: '{ atype: { $in: [ \"authenticate\", \"createUser\", "
+            "\"dropUser\", \"createRole\", \"dropRole\" ] } }'"
         ),
     ))
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-020",
+        id="MONGO-L1-017",
         section="5.3",
-        title="Ensure MongoDB is configured to log to a file",
+        title="Ensure that logging captures as much information as possible",
         description=(
-            "Logs written to a persistent file can be reviewed for security events, "
-            "unlike transient console-only logs."
+            "systemLog.quiet suppresses connection, command and replication "
+            "events, blinding security monitoring. It must not be enabled."
         ),
-        severity="medium",
+        severity="low",
         level="L1",
-        check_fn=lambda d: bool(
-            re.search(r"destination\s*:\s*file", _section(d, "CONFIG_FILE"), re.I)
-            or re.search(r"path\s*:\s*/", _section(d, "CONFIG_FILE"), re.I)
+        check_fn=lambda d: not _RE.log_quiet.search(_section(d, "CONFIG_FILE")),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"quiet\s*:\s*\S+", re.I)),
+        remediation=(
+            "In /etc/mongod.conf set:\n"
+            "systemLog:\n"
+            "  quiet: false\n"
+            "(or remove the quiet setting entirely)."
         ),
-        evidence_fn=lambda d: _ev_config(d, re.compile(r"destination\s*:\s*file", re.I)),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L1-018",
+        section="5.4",
+        title="Ensure that new entries are appended to the end of the log file",
+        description=(
+            "When logAppend is false, MongoDB overwrites the log file on "
+            "restart, destroying historical audit records."
+        ),
+        severity="low",
+        level="L1",
+        check_fn=lambda d: bool(_RE.log_append.search(_section(d, "CONFIG_FILE"))),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"logAppend\s*:\s*\S+", re.I)),
         remediation=(
             "In /etc/mongod.conf:\n"
             "systemLog:\n"
-            "  destination: file\n"
-            "  path: /var/log/mongodb/mongod.log\n"
             "  logAppend: true"
         ),
     ))
 
     # ---------------------------------------------------------------- #
-    #  Section 6 – Replication Security                                 #
+    #  Section 6 – Operating System Hardening                           #
     # ---------------------------------------------------------------- #
 
     rules.append(MongoDBCISRule(
-        id="MONGO-L1-021",
+        id="MONGO-L1-019",
         section="6.1",
-        title="Ensure keyFile or x.509 authentication is configured for replica sets",
+        title="Ensure that the HTTP status interface is disabled",
         description=(
-            "Internal replica set/sharding communication must be authenticated "
-            "to prevent rogue members from joining the cluster."
+            "The legacy HTTP status interface exposes server details over an "
+            "unauthenticated web page. It must not be enabled (absent on "
+            "modern releases counts as disabled)."
         ),
-        severity="high",
+        severity="medium",
         level="L1",
-        check_fn=lambda d: bool(
-            _RE.keyfile.search(_section(d, "CONFIG_FILE"))
-            or _RE.cluster_auth.search(_section(d, "CONFIG_FILE"))
-        ),
-        evidence_fn=lambda d: _ev_config(d, _RE.keyfile),
+        check_fn=_http_interface_disabled,
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"http\s*:", re.I)),
         remediation=(
-            "For replica sets, add to /etc/mongod.conf:\n"
-            "security:\n"
-            "  keyFile: /etc/mongodb/keyfile\n"
-            "Or use x.509 certificates:\n"
-            "  clusterAuthMode: x509"
+            "Remove net.http.enabled: true from /etc/mongod.conf (the option "
+            "was removed entirely in MongoDB 3.6+)."
         ),
     ))
 
-    # ---------------------------------------------------------------- #
-    #  Additional Hardening Checks                                      #
-    # ---------------------------------------------------------------- #
+    rules.append(MongoDBCISRule(
+        id="MONGO-L2-020",
+        section="6.2",
+        title="Ensure that MongoDB uses a non-default port",
+        description=(
+            "Using the default port 27017 makes the service trivially "
+            "discoverable by automated scanners."
+        ),
+        severity="low",
+        level="L2",
+        check_fn=_non_default_port,
+        evidence_fn=lambda d: _ev_config(d, _RE.any_port),
+        remediation=(
+            "Change the port in /etc/mongod.conf:\n"
+            "net:\n"
+            "  port: <non-default-port>\n"
+            "Update firewall rules and client connection strings accordingly."
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L1-021",
+        section="6.3",
+        title="Ensure that operating system resource limits are set for MongoDB",
+        description=(
+            "The mongod process needs raised ulimits (open files and "
+            "processes >= 64000) so it cannot be starved into a denial of "
+            "service under load."
+        ),
+        severity="low",
+        level="L1",
+        check_fn=_resource_limits_ok,
+        evidence_fn=lambda d: _ev_section_content(d, "PROC_LIMITS", 400),
+        remediation=(
+            "Create /etc/security/limits.d/99-mongodb.conf with:\n"
+            "mongod soft nofile 64000\nmongod hard nofile 64000\n"
+            "mongod soft nproc 64000\nmongod hard nproc 64000\n"
+            "then restart mongod."
+        ),
+    ))
 
     rules.append(MongoDBCISRule(
         id="MONGO-L2-022",
-        section="7.1",
-        title="Ensure server-side JavaScript execution is disabled",
+        section="6.4",
+        title="Ensure that server-side scripting is disabled if not needed",
         description=(
             "Server-side JavaScript ($where, mapReduce) introduces additional "
             "attack surface. Disable it unless explicitly required."
         ),
         severity="medium",
         level="L2",
-        check_fn=lambda d: bool(
-            _RE.js_disabled.search(_section(d, "CONFIG_FILE"))
-        ),
-        evidence_fn=lambda d: _ev_config(d, _RE.js_disabled),
+        check_fn=lambda d: bool(_RE.js_disabled.search(_section(d, "CONFIG_FILE"))),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"javascriptEnabled\s*:\s*\S+", re.I)),
         remediation=(
             "In /etc/mongod.conf:\n"
             "security:\n"
@@ -681,69 +856,98 @@ def build_all_mongodb_cis_rules() -> List[MongoDBCISRule]:
 
     rules.append(MongoDBCISRule(
         id="MONGO-L1-023",
-        section="7.2",
-        title="Ensure MongoDB systemLog.logAppend is enabled",
+        section="6.5",
+        title="Ensure that the HTTP interface is disabled",
         description=(
-            "When logAppend is false, MongoDB overwrites the log file on restart, "
-            "destroying historical audit records."
+            "The embedded HTTP interface (net.http.enabled) must be off; it "
+            "serves unauthenticated diagnostics on port+1000."
         ),
-        severity="low",
+        severity="medium",
         level="L1",
-        check_fn=lambda d: bool(
-            re.search(r"logAppend\s*:\s*true", _section(d, "CONFIG_FILE"), re.I)
-        ),
-        evidence_fn=lambda d: _ev_config(
-            d, re.compile(r"logAppend\s*:\s*\S+", re.I)
-        ),
+        check_fn=_http_interface_disabled,
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"http\s*:", re.I)),
         remediation=(
-            "In /etc/mongod.conf:\n"
-            "systemLog:\n"
-            "  logAppend: true"
+            "In /etc/mongod.conf ensure the net.http block is absent or:\n"
+            "net:\n"
+            "  http:\n"
+            "    enabled: false"
         ),
     ))
 
     rules.append(MongoDBCISRule(
         id="MONGO-L1-024",
-        section="7.3",
-        title="Ensure net.ipv6 is explicitly configured if not required",
+        section="6.6",
+        title="Ensure that JSONP access via an HTTP interface is disabled",
         description=(
-            "If IPv6 is not required, it should be disabled to reduce the "
-            "network attack surface."
+            "JSONP on the HTTP interface allows cross-site data reads without "
+            "authentication. It must not be enabled."
         ),
-        severity="low",
+        severity="medium",
         level="L1",
-        check_fn=lambda d: bool(
-            re.search(r"ipv6\s*:", _section(d, "CONFIG_FILE"), re.I)
-        ),
-        evidence_fn=lambda d: _ev_config(
-            d, re.compile(r"ipv6\s*:", re.I)
-        ),
+        check_fn=lambda d: not _RE.jsonp_on.search(_section(d, "CONFIG_FILE")),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"JSONPEnabled\s*:\s*\S+", re.I)),
         remediation=(
-            "In /etc/mongod.conf explicitly set:\n"
-            "net:\n"
-            "  ipv6: false   # or true if IPv6 is intentionally used"
+            "Remove net.http.JSONPEnabled: true from /etc/mongod.conf "
+            "(or set it to false)."
         ),
     ))
 
     rules.append(MongoDBCISRule(
         id="MONGO-L1-025",
-        section="7.4",
-        title="Ensure MongoDB process is running (service is active)",
+        section="6.7",
+        title="Ensure that the REST API is disabled",
         description=(
-            "Confirms that the MongoDB service is currently active. "
-            "A stopped service may indicate a misconfiguration or incident."
+            "The legacy REST interface performs no authorization checks and "
+            "exposes database contents over HTTP. It must not be enabled."
         ),
-        severity="info",
+        severity="medium",
         level="L1",
-        check_fn=lambda d: bool(
-            re.search(r"mongod", _section(d, "PROCESS_INFO"), re.I)
-            and "NO_MONGOD_PROCESS" not in _section(d, "PROCESS_INFO")
-        ),
-        evidence_fn=lambda d: _ev_section_content(d, "PROCESS_INFO", 300),
+        check_fn=lambda d: not _RE.rest_on.search(_section(d, "CONFIG_FILE")),
+        evidence_fn=lambda d: _ev_config(d, re.compile(r"RESTInterfaceEnabled\s*:\s*\S+", re.I)),
         remediation=(
-            "Start the MongoDB service:\n"
-            "  systemctl start mongod\n"
-            "  systemctl enable mongod"
+            "Remove net.http.RESTInterfaceEnabled: true from /etc/mongod.conf "
+            "(or set it to false)."
+        ),
+    ))
+
+    # ---------------------------------------------------------------- #
+    #  Section 7 – File Permissions                                     #
+    # ---------------------------------------------------------------- #
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L1-026",
+        section="7.1",
+        title="Ensure that key file permissions are set correctly",
+        description=(
+            "The cluster authentication keyFile is a shared secret and must "
+            "be readable only by the mongod service account (mode 600 or "
+            "400, owner mongod)."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=_keyfile_perms_ok,
+        evidence_fn=lambda d: _ev_section_content(d, "KEYFILE_INFO", 200),
+        remediation=(
+            "Run: chmod 600 <keyFile> && chown mongod:mongod <keyFile>"
+        ),
+    ))
+
+    rules.append(MongoDBCISRule(
+        id="MONGO-L1-027",
+        section="7.2",
+        title="Ensure that database file permissions are set correctly",
+        description=(
+            "The dbPath directory must be owned by the mongod service account "
+            "with no access for 'other' users, so database files cannot be "
+            "read or tampered with directly."
+        ),
+        severity="high",
+        level="L1",
+        check_fn=_dbpath_perms_ok,
+        evidence_fn=lambda d: _ev_section_content(d, "DBPATH_PERMS", 200),
+        remediation=(
+            "Run: chmod 750 /var/lib/mongodb && "
+            "chown -R mongod:mongod /var/lib/mongodb"
         ),
     ))
 

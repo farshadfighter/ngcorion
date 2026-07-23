@@ -1,8 +1,9 @@
 """
 MongoDB Hardening Command Templates
 
-Remediation commands for each CIS MongoDB check. Commands are shell one-liners
-that edit /etc/mongod.conf via sed/grep patterns or perform OS-level fixes.
+Remediation commands for each CIS MongoDB Benchmark v1.0.0 check. Commands are
+shell one-liners that edit /etc/mongod.conf via sed/grep patterns or perform
+OS-level fixes.
 
 Each template includes:
 - check_id: CIS check ID this template fixes
@@ -17,6 +18,10 @@ Config edit pattern used throughout:
   elif grep -q '^SECTION:' /etc/mongod.conf;
   then sed -i '/^SECTION:/a\\  KEY: VALUE' /etc/mongod.conf;
   else printf '\\nSECTION:\\n  KEY: VALUE\\n' >> /etc/mongod.conf; fi
+
+Checks with no template here (1.1 version upgrade, 3.1/3.4/3.5/3.6 role
+reviews, 4.2 encryption at rest, 4.3 FIPS) require mongosh work, data
+migration, or human review and are intentionally not auto-fixable.
 """
 
 from dataclasses import dataclass, field
@@ -45,51 +50,9 @@ def _register(t: MongoDBHardeningTemplate) -> None:
 # AUTO-FIXABLE TEMPLATES (no required parameters)
 # ===================================================================
 
-# MONGO-L1-003: Data directory permissions
+# MONGO-L1-002 (CIS 2.1): Enable authorization
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-003",
-    description="Set restrictive permissions on MongoDB data directory",
-    commands=[
-        "chmod 700 /var/lib/mongodb 2>/dev/null || chmod 700 /var/lib/mongo 2>/dev/null || true",
-        "chown -R mongod:mongod /var/lib/mongodb 2>/dev/null || chown -R mongodb:mongodb /var/lib/mongodb 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "stat -c '%a' /var/lib/mongodb 2>/dev/null | grep -q '700' && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=False,
-))
-
-# MONGO-L1-004: Log directory permissions
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-004",
-    description="Set restrictive permissions on MongoDB log directory",
-    commands=[
-        "chmod 750 /var/log/mongodb 2>/dev/null || chmod 750 /var/log/mongo 2>/dev/null || true",
-        "chown -R mongod:mongod /var/log/mongodb 2>/dev/null || chown -R mongodb:mongodb /var/log/mongodb 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "stat -c '%a' /var/log/mongodb 2>/dev/null | grep -q '750' && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=False,
-))
-
-# MONGO-L1-005: Config file permissions
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-005",
-    description="Set restrictive permissions on /etc/mongod.conf",
-    commands=[
-        "chmod 600 /etc/mongod.conf",
-        "chown root:mongod /etc/mongod.conf 2>/dev/null || chown root:mongodb /etc/mongod.conf 2>/dev/null || chown root:root /etc/mongod.conf",
-    ],
-    verify_commands=[
-        "stat -c '%a' /etc/mongod.conf | grep -q '600' && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=False,
-))
-
-# MONGO-L1-006: Enable authorization
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-006",
+    check_id="MONGO-L1-002",
     description="Enable MongoDB authorization (access control)",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
@@ -102,9 +65,24 @@ _register(MongoDBHardeningTemplate(
     requires_service_restart=True,
 ))
 
-# MONGO-L1-007: Enforce SCRAM-SHA-256 authentication
+# MONGO-L1-003 (CIS 2.2): Disable the localhost authentication bypass
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-007",
+    check_id="MONGO-L1-003",
+    description="Disable the localhost authentication bypass exception",
+    commands=[
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "if grep -qE '^[[:space:]]+enableLocalhostAuthBypass[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+enableLocalhostAuthBypass[[:space:]]*:[[:space:]]*).*/\\1false/' /etc/mongod.conf; elif grep -q '^setParameter:' /etc/mongod.conf; then sed -i '/^setParameter:/a\\  enableLocalhostAuthBypass: false' /etc/mongod.conf; else printf '\\nsetParameter:\\n  enableLocalhostAuthBypass: false\\n' >> /etc/mongod.conf; fi",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "grep -qE '^[[:space:]]+enableLocalhostAuthBypass[[:space:]]*:[[:space:]]*false' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-005 (CIS 2.4): Enforce SCRAM-SHA-256 authentication
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-005",
     description="Configure SCRAM-SHA-256 as the authentication mechanism",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
@@ -117,90 +95,24 @@ _register(MongoDBHardeningTemplate(
     requires_service_restart=True,
 ))
 
-# MONGO-L1-009: Restrict bindIp to localhost
+# MONGO-L1-017 (CIS 5.3): Do not suppress log detail
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-009",
-    description="Restrict MongoDB network binding to 127.0.0.1",
+    check_id="MONGO-L1-017",
+    description="Disable systemLog.quiet so logging captures full detail",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+bindIp[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+bindIp[[:space:]]*:[[:space:]]*).*/\\1127.0.0.1/' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  bindIp: 127.0.0.1' /etc/mongod.conf; else printf '\\nnet:\\n  bindIp: 127.0.0.1\\n' >> /etc/mongod.conf; fi",
+        "if grep -qE '^[[:space:]]+quiet[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+quiet[[:space:]]*:[[:space:]]*).*/\\1false/' /etc/mongod.conf; fi",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "grep -qE '^[[:space:]]+bindIp[[:space:]]*:[[:space:]]*127\\.0\\.0\\.1' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -qE '^[[:space:]]+quiet[[:space:]]*:[[:space:]]*true' /etc/mongod.conf && echo 'FAIL' || echo 'PASS'",
     ],
     requires_service_restart=True,
 ))
 
-# MONGO-L1-011: Enable RBAC (same fix as L1-006 — authorization: enabled)
+# MONGO-L1-018 (CIS 5.4): Enable log appending
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-011",
-    description="Enable Role-Based Access Control (RBAC) via authorization",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+authorization[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+authorization[[:space:]]*:[[:space:]]*).*/\\1enabled/' /etc/mongod.conf; elif grep -q '^security:' /etc/mongod.conf; then sed -i '/^security:/a\\  authorization: enabled' /etc/mongod.conf; else printf '\\nsecurity:\\n  authorization: enabled\\n' >> /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+authorization[[:space:]]*:[[:space:]]*enabled' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L1-015: Set TLS mode to allowTLS
-# Guarded on certificateKeyFile: any TLS mode other than 'disabled' without a
-# certificate keeps mongod from starting, so a cert-less host FAILS the fix
-# (with guidance) instead of getting its database taken down. The mode sed is
-# scoped to the tls: block so operationProfiling.mode is never touched.
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-015",
-    description="Configure TLS mode to allowTLS (accepts both TLS and non-TLS connections)",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if ! grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf; then echo 'NO_TLS_CERT_CONFIGURED - set net.tls.certificateKeyFile first (MONGO-L1-014)'; elif sed -n '/^[[:space:]]*tls:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+mode[[:space:]]*:'; then sed -i -E '/^[[:space:]]*tls:/,/^[^[:space:]]/ s/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1allowTLS/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: allowTLS' /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf && grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*allowTLS' /etc/mongod.conf && echo 'PASS' || echo 'FAIL - TLS certificate not configured (run MONGO-L1-014 first)'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L2-016: Set TLS mode to requireTLS (same cert guard / scoping as L1-015)
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L2-016",
-    description="Configure TLS mode to requireTLS (enforces TLS for all connections)",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if ! grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf; then echo 'NO_TLS_CERT_CONFIGURED - set net.tls.certificateKeyFile first (MONGO-L1-014)'; elif sed -n '/^[[:space:]]*tls:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+mode[[:space:]]*:'; then sed -i -E '/^[[:space:]]*tls:/,/^[^[:space:]]/ s/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1requireTLS/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: requireTLS' /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf && grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*requireTLS' /etc/mongod.conf && echo 'PASS' || echo 'FAIL - TLS certificate not configured (run MONGO-L1-014 first)'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L1-020: Enable file-based system logging
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-020",
-    description="Configure MongoDB to log to a file (systemLog.destination: file)",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if sed -n '/^systemLog:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+destination[[:space:]]*:'; then sed -i -E '/^systemLog:/,/^[^[:space:]]/ s/^([[:space:]]+destination[[:space:]]*:[[:space:]]*).*/\\1file/' /etc/mongod.conf; elif grep -q '^systemLog:' /etc/mongod.conf; then sed -i '/^systemLog:/a\\  destination: file' /etc/mongod.conf; else printf '\\nsystemLog:\\n  destination: file\\n  path: /var/log/mongodb/mongod.log\\n' >> /etc/mongod.conf; fi",
-        "if ! grep -qE '^[[:space:]]+path[[:space:]]*:.*log' /etc/mongod.conf && grep -q '^systemLog:' /etc/mongod.conf; then sed -i '/^systemLog:/a\\  path: /var/log/mongodb/mongod.log' /etc/mongod.conf; fi",
-        "mkdir -p /var/log/mongodb && chown mongod:mongod /var/log/mongodb 2>/dev/null || true",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+destination[[:space:]]*:[[:space:]]*file' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L1-023: Enable log appending
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-023",
+    check_id="MONGO-L1-018",
     description="Enable systemLog.logAppend to preserve log history across restarts",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
@@ -213,7 +125,40 @@ _register(MongoDBHardeningTemplate(
     requires_service_restart=True,
 ))
 
-# MONGO-L2-022: Disable server-side JavaScript execution
+# MONGO-L1-019 (CIS 6.1) — HTTP status interface must be off.
+# Only flip an explicit `enabled: true` inside the http: block; the audit
+# passes when the block is absent, so a failing host always has the line.
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-019",
+    description="Disable the legacy HTTP status interface (net.http.enabled)",
+    commands=[
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "sed -i -E '/^[[:space:]]*http:/,/^[^[:space:]]/ s/^([[:space:]]+enabled[[:space:]]*:[[:space:]]*)true/\\1false/' /etc/mongod.conf",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "sed -n '/^[[:space:]]*http:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE 'enabled[[:space:]]*:[[:space:]]*true' && echo 'FAIL' || echo 'PASS'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-021 (CIS 6.3): OS resource limits for mongod
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-021",
+    description="Raise OS resource limits (nofile/nproc 64000) for mongod",
+    commands=[
+        "printf 'mongod soft nofile 64000\\nmongod hard nofile 64000\\nmongod soft nproc 64000\\nmongod hard nproc 64000\\n' > /etc/security/limits.d/99-mongodb.conf",
+        "mkdir -p /etc/systemd/system/mongod.service.d && printf '[Service]\\nLimitNOFILE=64000\\nLimitNPROC=64000\\n' > /etc/systemd/system/mongod.service.d/limits.conf",
+        "systemctl daemon-reload 2>/dev/null || true",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "PID=$(pgrep -x mongod | head -1); [ -n \"$PID\" ] && grep -E 'Max open files' /proc/$PID/limits | awk '{exit ($4>=64000)?0:1}' && echo 'PASS' || echo 'FAIL'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L2-022 (CIS 6.4): Disable server-side JavaScript execution
 _register(MongoDBHardeningTemplate(
     check_id="MONGO-L2-022",
     description="Disable JavaScript execution (security.javascriptEnabled: false)",
@@ -228,28 +173,120 @@ _register(MongoDBHardeningTemplate(
     requires_service_restart=True,
 ))
 
-# MONGO-L1-025: Enable and start mongod service
+# MONGO-L1-023 (CIS 6.5): HTTP interface off (same edit as 6.1)
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-025",
-    description="Enable and start the mongod service at boot",
+    check_id="MONGO-L1-023",
+    description="Disable the embedded HTTP interface (net.http.enabled)",
     commands=[
-        "systemctl enable mongod 2>/dev/null || systemctl enable mongodb 2>/dev/null || true",
-        "systemctl start mongod 2>/dev/null || systemctl start mongodb 2>/dev/null || true",
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "sed -i -E '/^[[:space:]]*http:/,/^[^[:space:]]/ s/^([[:space:]]+enabled[[:space:]]*:[[:space:]]*)true/\\1false/' /etc/mongod.conf",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "(systemctl is-enabled mongod 2>/dev/null || systemctl is-enabled mongodb 2>/dev/null) | grep -q 'enabled' && echo 'PASS' || echo 'FAIL'",
+        "sed -n '/^[[:space:]]*http:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE 'enabled[[:space:]]*:[[:space:]]*true' && echo 'FAIL' || echo 'PASS'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-024 (CIS 6.6): Disable JSONP access
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-024",
+    description="Disable JSONP access via the HTTP interface",
+    commands=[
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "sed -i -E 's/^([[:space:]]+JSONPEnabled[[:space:]]*:[[:space:]]*)true/\\1false/' /etc/mongod.conf",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "grep -qE '^[[:space:]]+JSONPEnabled[[:space:]]*:[[:space:]]*true' /etc/mongod.conf && echo 'FAIL' || echo 'PASS'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-025 (CIS 6.7): Disable the REST API
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-025",
+    description="Disable the legacy REST API interface",
+    commands=[
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "sed -i -E 's/^([[:space:]]+RESTInterfaceEnabled[[:space:]]*:[[:space:]]*)true/\\1false/' /etc/mongod.conf",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "grep -qE '^[[:space:]]+RESTInterfaceEnabled[[:space:]]*:[[:space:]]*true' /etc/mongod.conf && echo 'FAIL' || echo 'PASS'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-026 (CIS 7.1): Key file permissions
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-026",
+    description="Restrict permissions on the cluster authentication keyFile",
+    commands=[
+        "KF=$(grep -E '^[[:space:]]*keyFile[[:space:]]*:' /etc/mongod.conf | awk '{print $2}' | head -1); if [ -n \"$KF\" ] && [ -e \"$KF\" ]; then chmod 600 \"$KF\"; chown mongod:mongod \"$KF\" 2>/dev/null || chown mongodb:mongodb \"$KF\" 2>/dev/null || true; fi",
+    ],
+    verify_commands=[
+        "KF=$(grep -E '^[[:space:]]*keyFile[[:space:]]*:' /etc/mongod.conf | awk '{print $2}' | head -1); if [ -z \"$KF\" ]; then echo 'FAIL - no keyFile configured (fix MONGO-L1-004 first)'; elif stat -c '%a' \"$KF\" 2>/dev/null | grep -qE '^(400|600)$'; then echo 'PASS'; else echo 'FAIL'; fi",
+    ],
+    requires_service_restart=False,
+))
+
+# MONGO-L1-027 (CIS 7.2): Database file permissions
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-027",
+    description="Restrict ownership and permissions on the dbPath directory",
+    commands=[
+        "DP=$(grep -E '^[[:space:]]*dbPath[[:space:]]*:' /etc/mongod.conf | awk '{print $2}' | head -1); DP=${DP:-/var/lib/mongodb}; chmod 750 \"$DP\"; chown -R mongod:mongod \"$DP\" 2>/dev/null || chown -R mongodb:mongodb \"$DP\" 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "DP=$(grep -E '^[[:space:]]*dbPath[[:space:]]*:' /etc/mongod.conf | awk '{print $2}' | head -1); DP=${DP:-/var/lib/mongodb}; stat -c '%a %U' \"$DP\" 2>/dev/null | grep -qE '^7[05]0 (mongod|mongodb)$' && echo 'PASS' || echo 'FAIL'",
     ],
     requires_service_restart=False,
 ))
 
 
 # ===================================================================
-# PARAMETERIZED TEMPLATES (require user-supplied values)
+# PARAMETERIZED TEMPLATES (require user-supplied values or defaults)
 # ===================================================================
 
-# MONGO-L1-002: Run mongod as a dedicated non-root service account
+# MONGO-L1-004 (CIS 2.3): Configure keyfile for internal authentication
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-002",
+    check_id="MONGO-L1-004",
+    description="Configure internal authentication keyfile ({KEYFILE_PATH})",
+    commands=[
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "mkdir -p $(dirname {KEYFILE_PATH}) 2>/dev/null || true",
+        "test -f {KEYFILE_PATH} || openssl rand -base64 756 > {KEYFILE_PATH}",
+        "chmod 400 {KEYFILE_PATH}",
+        "chown mongod:mongod {KEYFILE_PATH} 2>/dev/null || chown mongodb:mongodb {KEYFILE_PATH} 2>/dev/null || true",
+        "if grep -qE '^[[:space:]]+keyFile[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's|^([[:space:]]+keyFile[[:space:]]*:[[:space:]]*).*|\\1{KEYFILE_PATH}|' /etc/mongod.conf; elif grep -q '^security:' /etc/mongod.conf; then sed -i '/^security:/a\\  keyFile: {KEYFILE_PATH}' /etc/mongod.conf; else printf '\\nsecurity:\\n  keyFile: {KEYFILE_PATH}\\n' >> /etc/mongod.conf; fi",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "grep -qE '^[[:space:]]+keyFile[[:space:]]*:' /etc/mongod.conf && test -f {KEYFILE_PATH} && echo 'PASS' || echo 'FAIL'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-007 (CIS 3.2): Restrict network binding
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-007",
+    description="Restrict MongoDB network binding to authorized interfaces ({MONGO_BIND_IP})",
+    commands=[
+        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
+        "if grep -qE '^[[:space:]]+bindIpAll[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+bindIpAll[[:space:]]*:[[:space:]]*).*/\\1false/' /etc/mongod.conf; fi",
+        "if grep -qE '^[[:space:]]+bindIp[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+bindIp[[:space:]]*:[[:space:]]*).*/\\1{MONGO_BIND_IP}/' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  bindIp: {MONGO_BIND_IP}' /etc/mongod.conf; else printf '\\nnet:\\n  bindIp: {MONGO_BIND_IP}\\n' >> /etc/mongod.conf; fi",
+        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
+    ],
+    verify_commands=[
+        "grep -qE '^[[:space:]]+bindIp[[:space:]]*:[[:space:]]*{MONGO_BIND_IP}' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+    ],
+    requires_service_restart=True,
+))
+
+# MONGO-L1-008 (CIS 3.3): Run mongod as a dedicated non-root service account
+_register(MongoDBHardeningTemplate(
+    check_id="MONGO-L1-008",
     description="Ensure mongod runs as a dedicated non-root service user ({MONGO_SERVICE_USER})",
     commands=[
         "id {MONGO_SERVICE_USER} 2>/dev/null || useradd -r -s /bin/false -d /var/lib/mongodb {MONGO_SERVICE_USER}",
@@ -265,79 +302,34 @@ _register(MongoDBHardeningTemplate(
     requires_service_restart=True,
 ))
 
-# MONGO-L1-008: Set MongoDB listen port
+# MONGO-L1-012 (CIS 4.1): Configure TLS with certificate files.
+# Guarded on certificateKeyFile: requireTLS without a certificate keeps mongod
+# from starting, so the mode is only applied together with valid cert paths.
+# The mode sed is scoped to the tls: block so operationProfiling.mode is never
+# touched.
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-008",
-    description="Configure MongoDB to listen on a non-default port ({MONGO_PORT})",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+port[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+port[[:space:]]*:[[:space:]]*).*/\\1{MONGO_PORT}/' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  port: {MONGO_PORT}' /etc/mongod.conf; else printf '\\nnet:\\n  port: {MONGO_PORT}\\n' >> /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+port[[:space:]]*:[[:space:]]*{MONGO_PORT}' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L1-010: Set bindIp to specific address
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-010",
-    description="Restrict MongoDB network binding to a specific IP address ({MONGO_BIND_IP})",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+bindIp[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+bindIp[[:space:]]*:[[:space:]]*).*/\\1{MONGO_BIND_IP}/' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  bindIp: {MONGO_BIND_IP}' /etc/mongod.conf; else printf '\\nnet:\\n  bindIp: {MONGO_BIND_IP}\\n' >> /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+bindIp[[:space:]]*:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L1-014: Configure TLS with certificate files
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-014",
+    check_id="MONGO-L1-012",
     description="Configure TLS encryption with certificate and CA files",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        # Set TLS mode (sed scoped to the tls: block so operationProfiling.mode is never touched)
         "if sed -n '/^[[:space:]]*tls:/,/^[^[:space:]]/p' /etc/mongod.conf | grep -qE '^[[:space:]]+mode[[:space:]]*:'; then sed -i -E '/^[[:space:]]*tls:/,/^[^[:space:]]/ s/^([[:space:]]+mode[[:space:]]*:[[:space:]]*).*/\\1{TLS_MODE}/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    mode: {TLS_MODE}' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  tls:\\n    mode: {TLS_MODE}' /etc/mongod.conf; else printf '\\nnet:\\n  tls:\\n    mode: {TLS_MODE}\\n' >> /etc/mongod.conf; fi",
-        # Set certificateKeyFile
         "if grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's|^([[:space:]]+certificateKeyFile[[:space:]]*:[[:space:]]*).*|\\1{TLS_CERT_FILE}|' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    certificateKeyFile: {TLS_CERT_FILE}' /etc/mongod.conf; fi",
-        # Set CAFile
         "if grep -qE '^[[:space:]]+CAFile[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's|^([[:space:]]+CAFile[[:space:]]*:[[:space:]]*).*|\\1{TLS_CA_FILE}|' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    CAFile: {TLS_CA_FILE}' /etc/mongod.conf; fi",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*{TLS_MODE}' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -qE '^[[:space:]]+mode[[:space:]]*:[[:space:]]*{TLS_MODE}' /etc/mongod.conf && grep -qE '^[[:space:]]+certificateKeyFile[[:space:]]*:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
     ],
     requires_service_restart=True,
 ))
 
-# MONGO-L2-017: Disable weak TLS protocols
+# MONGO-L1-015 (CIS 5.1): Configure audit logging
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L2-017",
-    description="Disable weak TLS protocol versions ({DISABLED_PROTOCOLS})",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+disabledProtocols[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+disabledProtocols[[:space:]]*:[[:space:]]*).*/\\1{DISABLED_PROTOCOLS}/' /etc/mongod.conf; elif grep -q '^  tls:' /etc/mongod.conf; then sed -i '/^  tls:/a\\    disabledProtocols: {DISABLED_PROTOCOLS}' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  tls:\\n    disabledProtocols: {DISABLED_PROTOCOLS}' /etc/mongod.conf; else printf '\\nnet:\\n  tls:\\n    disabledProtocols: {DISABLED_PROTOCOLS}\\n' >> /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+disabledProtocols[[:space:]]*:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L2-018: Configure audit logging
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L2-018",
+    check_id="MONGO-L1-015",
     description="Configure audit logging to file ({AUDIT_LOG_PATH})",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
         "grep -q '^auditLog:' /etc/mongod.conf || printf '\\nauditLog:\\n  destination: file\\n  format: {AUDIT_FORMAT}\\n  path: {AUDIT_LOG_PATH}\\n' >> /etc/mongod.conf",
-        "if grep -qE '^[[:space:]]+format[[:space:]]*:' /etc/mongod.conf && grep -q '^auditLog:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+format[[:space:]]*:[[:space:]]*).*/\\1{AUDIT_FORMAT}/' /etc/mongod.conf; fi",
         "mkdir -p $(dirname {AUDIT_LOG_PATH}) 2>/dev/null || true",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
@@ -347,52 +339,33 @@ _register(MongoDBHardeningTemplate(
     requires_service_restart=True,
 ))
 
-# MONGO-L1-019: Configure operation profiling
+# MONGO-L2-016 (CIS 5.2): Configure an audit filter
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-019",
-    description="Configure operation profiling (mode={PROFILING_MODE}, slowOpMs={SLOW_OP_MS})",
+    check_id="MONGO-L2-016",
+    description="Configure an auditLog filter for security-relevant events",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "grep -q '^operationProfiling:' /etc/mongod.conf || printf '\\noperationProfiling:\\n  mode: {PROFILING_MODE}\\n  slowOpThresholdMs: {SLOW_OP_MS}\\n' >> /etc/mongod.conf",
-        "if grep -q '^operationProfiling:' /etc/mongod.conf && grep -qE '^[[:space:]]+slowOpThresholdMs[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+slowOpThresholdMs[[:space:]]*:[[:space:]]*).*/\\1{SLOW_OP_MS}/' /etc/mongod.conf; fi",
+        "grep -q '^auditLog:' /etc/mongod.conf || printf '\\nauditLog:\\n  destination: file\\n  format: JSON\\n  path: /var/log/mongodb/auditLog.json\\n' >> /etc/mongod.conf",
+        "grep -qE '^[[:space:]]+filter[[:space:]]*:' /etc/mongod.conf || sed -i '/^auditLog:/a\\  filter: \"{AUDIT_FILTER}\"' /etc/mongod.conf",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "grep -q '^operationProfiling:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -qE '^[[:space:]]+filter[[:space:]]*:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
     ],
     requires_service_restart=True,
 ))
 
-# MONGO-L1-021: Configure keyfile for internal authentication
+# MONGO-L2-020 (CIS 6.2): Set a non-default MongoDB listen port
 _register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-021",
-    description="Configure internal authentication keyfile ({KEYFILE_PATH})",
+    check_id="MONGO-L2-020",
+    description="Configure MongoDB to listen on a non-default port ({MONGO_PORT})",
     commands=[
         "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "mkdir -p $(dirname {KEYFILE_PATH}) 2>/dev/null || true",
-        "test -f {KEYFILE_PATH} || openssl rand -base64 756 > {KEYFILE_PATH}",
-        "chmod 400 {KEYFILE_PATH}",
-        "chown mongod:mongod {KEYFILE_PATH} 2>/dev/null || chown mongodb:mongodb {KEYFILE_PATH} 2>/dev/null || true",
-        "if grep -qE '^[[:space:]]+keyFile[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's|^([[:space:]]+keyFile[[:space:]]*:[[:space:]]*).*|\\1{KEYFILE_PATH}|' /etc/mongod.conf; elif grep -q '^security:' /etc/mongod.conf; then sed -i '/^security:/a\\  keyFile: {KEYFILE_PATH}' /etc/mongod.conf; else printf '\\nsecurity:\\n  keyFile: {KEYFILE_PATH}\\n' >> /etc/mongod.conf; fi",
+        "if grep -qE '^[[:space:]]+port[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+port[[:space:]]*:[[:space:]]*).*/\\1{MONGO_PORT}/' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  port: {MONGO_PORT}' /etc/mongod.conf; else printf '\\nnet:\\n  port: {MONGO_PORT}\\n' >> /etc/mongod.conf; fi",
         "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
     ],
     verify_commands=[
-        "grep -qE '^[[:space:]]+keyFile[[:space:]]*:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
-    ],
-    requires_service_restart=True,
-))
-
-# MONGO-L1-024: Configure IPv6 support
-_register(MongoDBHardeningTemplate(
-    check_id="MONGO-L1-024",
-    description="Configure IPv6 support (net.ipv6: {ENABLE_IPV6})",
-    commands=[
-        "cp -f /etc/mongod.conf /etc/mongod.conf.bak",
-        "if grep -qE '^[[:space:]]+ipv6[[:space:]]*:' /etc/mongod.conf; then sed -i -E 's/^([[:space:]]+ipv6[[:space:]]*:[[:space:]]*).*/\\1{ENABLE_IPV6}/' /etc/mongod.conf; elif grep -q '^net:' /etc/mongod.conf; then sed -i '/^net:/a\\  ipv6: {ENABLE_IPV6}' /etc/mongod.conf; else printf '\\nnet:\\n  ipv6: {ENABLE_IPV6}\\n' >> /etc/mongod.conf; fi",
-        "systemctl restart mongod 2>/dev/null || service mongod restart 2>/dev/null || true",
-    ],
-    verify_commands=[
-        "grep -qE '^[[:space:]]+ipv6[[:space:]]*:' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
+        "grep -qE '^[[:space:]]+port[[:space:]]*:[[:space:]]*{MONGO_PORT}' /etc/mongod.conf && echo 'PASS' || echo 'FAIL'",
     ],
     requires_service_restart=True,
 ))
