@@ -55,6 +55,9 @@ from app.modules.shared import hardening_router as unified_hardening_router
 # Shared cross-family audit endpoints (get/delete session by ID)
 from app.modules.audit.router import router as shared_audit_router
 
+# CIS benchmark API (app/cis services; MongoDB wired first)
+from app.routers.cis import router as cis_router
+
 # Deprecated routes for backward compatibility
 from app.modules.deprecated_routes import deprecated_router
 
@@ -226,6 +229,9 @@ app.include_router(harden_all_router)
 
 # Shared cross-family audit routes (get/delete session by ID for any device)
 app.include_router(shared_audit_router)
+
+# CIS benchmark routes (app/cis services; prefix /api/cis)
+app.include_router(cis_router)
 
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)

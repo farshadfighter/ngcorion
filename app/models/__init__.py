@@ -108,6 +108,9 @@ from app.models.hardening_log import (
 # Import backup model (depends on HardeningAction and Asset)
 from app.models.backup import DeviceBackup
 
+# Import CIS benchmark results (depends on Asset)
+from app.models.cis_result import CISAuditResult
+
 
 # Export all
 __all__ = [
@@ -164,6 +167,8 @@ __all__ = [
     "HardeningAction",
     "HardeningLog",
     "DeviceBackup",
+    # CIS benchmark results
+    "CISAuditResult",
     "log_hardening_preview",
     "log_hardening_execute",
     "log_batch_hardening",
