@@ -21,9 +21,11 @@ class TestAuditCommandGeneration:
 
     def test_rocky_command_count(self, rocky_audit_commands):
         """Test Rocky generates expected number of commands."""
-        # From memory: ~164 commands for Rocky
+        # Rocky/RHEL audits the shared core plus family-specific checks
+        # (SELinux, crypto-policies, subscription-manager, authselect, ...),
+        # so its command set is a superset of Ubuntu's.
         assert len(rocky_audit_commands) >= 150
-        assert len(rocky_audit_commands) <= 180
+        assert len(rocky_audit_commands) <= 230
 
     def test_command_structure(self, ubuntu_audit_commands):
         """Test all commands have required structure."""
@@ -179,13 +181,13 @@ class TestQuickAuditCommands:
 
     def test_quick_audit_exists(self):
         """Test quick audit command function exists."""
-        from app.modules.audit.linux_audit_commands import get_quick_audit_commands
+        from app.modules.linux.audit.audit_commands import get_quick_audit_commands
         commands = get_quick_audit_commands("ubuntu")
         assert len(commands) > 0
 
     def test_quick_audit_is_smaller(self, ubuntu_audit_commands):
         """Test quick audit has fewer commands than full audit."""
-        from app.modules.audit.linux_audit_commands import get_quick_audit_commands
+        from app.modules.linux.audit.audit_commands import get_quick_audit_commands
         quick_commands = get_quick_audit_commands("ubuntu")
         assert len(quick_commands) < len(ubuntu_audit_commands)
         # Quick audit should be significantly smaller
@@ -193,7 +195,7 @@ class TestQuickAuditCommands:
 
     def test_quick_audit_covers_essentials(self):
         """Test quick audit covers essential checks."""
-        from app.modules.audit.linux_audit_commands import get_quick_audit_commands
+        from app.modules.linux.audit.audit_commands import get_quick_audit_commands
         commands = get_quick_audit_commands("ubuntu")
         keys = [cmd["key"] for cmd in commands]
 
