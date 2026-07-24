@@ -99,8 +99,12 @@ def get_rhel_supported_checks(version: str = "9") -> List[str]:
 
 RHEL10_PROFILES = ("rhel_10", "rocky_10")
 
-# distros= gate for the RHEL-10 rules (exact-profile match, no family fallback)
-_R10 = list(RHEL10_PROFILES)
+# distros= gate for the RHEL-10 rules (exact-profile match, no family fallback).
+# RHEL-10 rules are gated to ``rhel_10`` ONLY: Rocky Linux 10 is covered by the
+# parallel ``LNX-ROCKY10-*`` set built in app.modules.linux.rocky (which reuses
+# these builders with the Rocky-specific overrides). Keeping the two families on
+# separate ids/gates means no control is scored twice on a Rocky 10 host.
+_R10 = ["rhel_10"]
 # hardening templates run on the already-detected distro, so they carry the
 # RHEL family list (same convention as the existing LNX-RHEL-* templates).
 _R10_FAMILY = ["rhel", "rocky", "centos", "fedora", "almalinux"]

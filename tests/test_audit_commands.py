@@ -22,10 +22,11 @@ class TestAuditCommandGeneration:
     def test_rocky_command_count(self, rocky_audit_commands):
         """Test Rocky generates expected number of commands."""
         # Rocky/RHEL audits the shared core plus family-specific checks
-        # (SELinux, crypto-policies, subscription-manager, authselect, ...),
-        # so its command set is a superset of Ubuntu's.
+        # (SELinux, crypto-policies, subscription-manager, authselect, the
+        # RHEL-10 r10_* collection and the Rocky yum.conf key), so its command
+        # set is a sizeable superset of Ubuntu's.
         assert len(rocky_audit_commands) >= 150
-        assert len(rocky_audit_commands) <= 230
+        assert len(rocky_audit_commands) <= 300
 
     def test_command_structure(self, ubuntu_audit_commands):
         """Test all commands have required structure."""

@@ -2302,6 +2302,14 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     from app.modules.linux.rhel import build_rhel10_cis_rules
     rules.extend(build_rhel10_cis_rules())
 
+    # ==================== CIS ROCKY LINUX 8 / 9 / 10 ====================
+    # Rocky-specific checks live in app.modules.linux.rocky and are gated to the
+    # exact rocky_8/rocky_9/rocky_10 profiles. They re-badge + trim the RHEL-10
+    # supplement above (which is gated to rhel_10 only), so no control is scored
+    # twice on a Rocky host. Imported lazily to avoid an import cycle.
+    from app.modules.linux.rocky import build_rocky_cis_rules
+    rules.extend(build_rocky_cis_rules())
+
     return rules
 
 

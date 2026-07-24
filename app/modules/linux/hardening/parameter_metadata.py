@@ -674,6 +674,13 @@ from app.modules.linux.rhel import RHEL10_CHECK_PARAMETER_MAP as _RHEL10_CHECK_P
 
 LINUX_CHECK_PARAMETER_MAP.update(_RHEL10_CHECK_PARAMETER_MAP)
 
+# CIS Rocky Linux 8/9/10 — merge the Rocky check -> parameter map (kept in
+# app.modules.linux.rocky) so the hardening UI can categorise the Rocky checks.
+# All Rocky params reuse entries already in LINUX_PARAMETER_REGISTRY (CRYPTO_POLICY).
+from app.modules.linux.rocky import ROCKY_CHECK_PARAMETER_MAP as _ROCKY_CHECK_PARAMETER_MAP
+
+LINUX_CHECK_PARAMETER_MAP.update(_ROCKY_CHECK_PARAMETER_MAP)
+
 
 def get_linux_parameter_metadata(param_name: str) -> Optional[ParameterMetadata]:
     """Get metadata for a parameter by name."""

@@ -2036,6 +2036,16 @@ for _rhel10_template in _build_rhel10_templates():
     _register(_rhel10_template)
 
 
+# CIS Rocky Linux 8/9/10 — remediation templates (kept in app.modules.linux.rocky).
+# They re-badge the RHEL-10 templates to the LNX-ROCKY{8,9,10}-* ids so the
+# shared registry stays the single source of truth. Imported lazily-at-end for
+# the same no-cycle reason as the RHEL-10 templates above.
+from app.modules.linux.rocky import build_rocky_hardening_templates as _build_rocky_templates
+
+for _rocky_template in _build_rocky_templates():
+    _register(_rocky_template)
+
+
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
     """Get hardening template for a specific check."""
     return LINUX_HARDENING_TEMPLATES.get(check_id)

@@ -36,10 +36,15 @@ class TestCompleteAuditFlow:
         audit_data = mock_ubuntu_ssh_client.collect_audit_data(commands)
         assert len(audit_data) > 0
 
-        # 5. Evaluate rules
+        # 5. Evaluate rules — scored only against the rules that apply to this
+        # distro, exactly as the engine does (filter_rules_by_distro in
+        # service.py). Scoring Ubuntu against the RHEL/Rocky family rules would
+        # understate compliance and is not meaningful (see test_rule_pass_rate_similar).
+        from app.modules.linux.audit.rules import filter_rules_by_distro
+        applicable = filter_rules_by_distro(all_cis_rules, distro["profile"])
         passing = 0
         failing = 0
-        for rule in all_cis_rules:
+        for rule in applicable:
             if rule.check(audit_data, distro["id"]):
                 passing += 1
             else:
@@ -74,10 +79,15 @@ class TestCompleteAuditFlow:
         audit_data = mock_rocky_ssh_client.collect_audit_data(commands)
         assert len(audit_data) > 0
 
-        # 5. Evaluate rules
+        # 5. Evaluate rules — scored only against the rules that apply to this
+        # distro/version (rocky_8), exactly as the engine does. The catalog now
+        # also carries rocky_9/rocky_10-gated rules, which must not be scored on
+        # a Rocky 8 host.
+        from app.modules.linux.audit.rules import filter_rules_by_distro
+        applicable = filter_rules_by_distro(all_cis_rules, distro["profile"])
         passing = 0
         failing = 0
-        for rule in all_cis_rules:
+        for rule in applicable:
             if rule.check(audit_data, distro["id"]):
                 passing += 1
             else:
@@ -100,12 +110,13 @@ class TestDistroComparison:
         ubuntu_count = len(ubuntu_audit_commands)
         rocky_count = len(rocky_audit_commands)
 
-        # Both distros audit a large shared core; Rocky/RHEL adds
-        # family-specific checks (SELinux, crypto-policies, subscription
-        # manager, ...), so its set is a superset, not an exact match.
+        # Both distros audit a large shared core; Rocky/RHEL adds a sizeable set
+        # of family-specific checks (SELinux, crypto-policies, subscription
+        # manager, the RHEL-10 r10_* collection, ...), so its set is a superset,
+        # not an exact match.
         assert ubuntu_count >= 150
         assert rocky_count >= 150
-        assert abs(ubuntu_count - rocky_count) <= 40
+        assert abs(ubuntu_count - rocky_count) <= 100
 
     def test_common_keys_present(self, ubuntu_audit_commands, rocky_audit_commands):
         """Test common audit keys present in both distros."""
@@ -254,12 +265,14 @@ class TestSeverityWeighting:
 
     def test_weighted_compliance_calculation(self, all_cis_rules, ubuntu_audit_data):
         """Test weighted compliance can be calculated."""
-        from app.modules.linux.audit.rules import SEVERITY_WEIGHT
+        from app.modules.linux.audit.rules import SEVERITY_WEIGHT, filter_rules_by_distro
 
         total_weight = 0
         passing_weight = 0
 
-        for rule in all_cis_rules:
+        # Weight only the Ubuntu-applicable rules against Ubuntu data (the engine
+        # never scores a host against another family's rules).
+        for rule in filter_rules_by_distro(all_cis_rules, "ubuntu_22"):
             weight = SEVERITY_WEIGHT.get(rule.severity, 1)
             total_weight += weight
 

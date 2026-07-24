@@ -532,6 +532,13 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         from app.modules.linux.rhel import build_rhel10_audit_commands
         commands.extend(build_rhel10_audit_commands())
 
+        # Rocky Linux 8/9/10 — additional data collection (repo_gpgcheck in
+        # /etc/yum.conf on Rocky 8). Harmless on RHEL: the extra output is only
+        # scored by rules gated to the rocky_* profiles. Imported lazily to
+        # avoid an import cycle at module load.
+        from app.modules.linux.rocky import build_rocky_audit_commands
+        commands.extend(build_rocky_audit_commands())
+
     return commands
 
 
