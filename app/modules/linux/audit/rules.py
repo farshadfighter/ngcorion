@@ -2294,6 +2294,14 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
         distros=_RHEL_DISTROS,
     ))
 
+    # ==================== CIS RHEL 10 BENCHMARK v1.0.1 ====================
+    # RHEL-10-specific checks live in app.modules.linux.rhel and are gated to the
+    # exact rhel_10/rocky_10 profiles (they cover only controls not already
+    # implemented above, so nothing is scored twice). Imported lazily to avoid an
+    # import cycle: rhel/__init__ imports helpers from this module.
+    from app.modules.linux.rhel import build_rhel10_cis_rules
+    rules.extend(build_rhel10_cis_rules())
+
     return rules
 
 

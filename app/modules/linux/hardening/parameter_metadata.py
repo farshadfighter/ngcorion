@@ -666,6 +666,15 @@ LINUX_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
 }
 
 
+# CIS Red Hat Enterprise Linux 10 Benchmark v1.0.1 — merge the RHEL-10 check ->
+# parameter map (kept in app.modules.linux.rhel) into the shared map so the
+# hardening UI can categorise the RHEL-10 checks. All RHEL-10 params reuse
+# entries already defined in LINUX_PARAMETER_REGISTRY (e.g. CRYPTO_POLICY).
+from app.modules.linux.rhel import RHEL10_CHECK_PARAMETER_MAP as _RHEL10_CHECK_PARAMETER_MAP
+
+LINUX_CHECK_PARAMETER_MAP.update(_RHEL10_CHECK_PARAMETER_MAP)
+
+
 def get_linux_parameter_metadata(param_name: str) -> Optional[ParameterMetadata]:
     """Get metadata for a parameter by name."""
     return LINUX_PARAMETER_REGISTRY.get(param_name)

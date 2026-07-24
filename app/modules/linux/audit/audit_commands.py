@@ -525,6 +525,13 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         if distro_id == "rhel":
             commands.append({"cmd": "subscription-manager identity 2>&1 | head -5 || echo 'not registered'", "sudo": True, "key": "rhsm_identity", "section": "1.2.6"})
 
+        # CIS Red Hat Enterprise Linux 10 Benchmark v1.0.1 — additional data
+        # collection (see app.modules.linux.rhel). Harmless on rhel_8/9: the
+        # extra output is only scored by rules gated to the rhel_10/rocky_10
+        # profiles. Imported lazily to avoid an import cycle at module load.
+        from app.modules.linux.rhel import build_rhel10_audit_commands
+        commands.extend(build_rhel10_audit_commands())
+
     return commands
 
 

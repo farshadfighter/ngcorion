@@ -2025,6 +2025,17 @@ _register(LinuxHardeningTemplate(
 ))
 
 
+# CIS Red Hat Enterprise Linux 10 Benchmark v1.0.1 — remediation templates for
+# the RHEL-10-specific checks (kept in app.modules.linux.rhel). Registered here
+# so the shared registry stays the single source of truth. The rhel module only
+# imports the LinuxHardeningTemplate class from this file (lazily, inside the
+# builder), so there is no import cycle.
+from app.modules.linux.rhel import build_rhel10_hardening_templates as _build_rhel10_templates
+
+for _rhel10_template in _build_rhel10_templates():
+    _register(_rhel10_template)
+
+
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
     """Get hardening template for a specific check."""
     return LINUX_HARDENING_TEMPLATES.get(check_id)
