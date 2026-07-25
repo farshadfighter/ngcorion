@@ -57,3 +57,5 @@ CLAUDE.md
 dist_build/
 *.zip
 *.pdf
+#docs
+documents/
