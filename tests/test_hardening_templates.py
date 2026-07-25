@@ -16,11 +16,12 @@ class TestTemplateRegistry:
 
     def test_template_count(self, all_hardening_templates):
         """Test expected number of templates exist."""
-        # Shared core templates plus the per-version RHEL-10 and Rocky 8/9/10
-        # remediation templates (each re-badged to its own id prefix). Keep a
-        # generous ceiling so this catches a registry collapse, not growth.
+        # Shared core templates plus the per-version RHEL-10, RHEL 8/9 and
+        # Rocky 8/9/10 remediation templates (each re-badged to its own id
+        # prefix). Keep a generous ceiling so this catches a registry collapse,
+        # not growth.
         assert len(all_hardening_templates) >= 90
-        assert len(all_hardening_templates) <= 480
+        assert len(all_hardening_templates) <= 640
 
     def test_template_ids_match_rules(self, all_hardening_templates, all_cis_rules):
         """Test template IDs correspond to rule IDs."""

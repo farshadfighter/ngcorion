@@ -2302,6 +2302,14 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     from app.modules.linux.rhel import build_rhel10_cis_rules
     rules.extend(build_rhel10_cis_rules())
 
+    # ==================== CIS RHEL 8 / 9 BENCHMARKS ====================
+    # RHEL 8/9-specific checks live in app.modules.linux.rhel and are gated to the
+    # exact rhel_8/rhel_9 profiles. They re-badge + trim the RHEL-10 supplement
+    # above (which is gated to rhel_10 only), so no control is scored twice across
+    # the three RHEL profiles. Imported lazily to avoid an import cycle.
+    from app.modules.linux.rhel import build_rhel89_cis_rules
+    rules.extend(build_rhel89_cis_rules())
+
     # ==================== CIS ROCKY LINUX 8 / 9 / 10 ====================
     # Rocky-specific checks live in app.modules.linux.rocky and are gated to the
     # exact rocky_8/rocky_9/rocky_10 profiles. They re-badge + trim the RHEL-10
@@ -2309,6 +2317,20 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
     # twice on a Rocky host. Imported lazily to avoid an import cycle.
     from app.modules.linux.rocky import build_rocky_cis_rules
     rules.extend(build_rocky_cis_rules())
+
+    # ==================== CIS UBUNTU 22.04 / 24.04 ====================
+    # Ubuntu version-specific checks live in app.modules.linux.ubuntu and are
+    # gated to the exact ubuntu_22 / ubuntu_24 profiles (the 22.04 set applies to
+    # both 22.04 and 24.04; the 24.04 set is 24.04-only). They extend the shared
+    # distros=["all"] baseline (the "20.04 base"), so ubuntu_20 keeps its existing
+    # count and no control is scored twice across the three Ubuntu profiles.
+    # Imported lazily to avoid an import cycle.
+    from app.modules.linux.ubuntu import (
+        build_ubuntu2204_cis_rules,
+        build_ubuntu2404_cis_rules,
+    )
+    rules.extend(build_ubuntu2204_cis_rules())
+    rules.extend(build_ubuntu2404_cis_rules())
 
     return rules
 

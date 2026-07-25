@@ -40,9 +40,24 @@ setroubleshoot/bootloader), sudo, crypto LEGACY/SHA1, firewalld enabled+running,
 dnf gpgcheck, AIDE, dnf-automatic, GRUB2 password, boot-time auditing, basic
 faillock/authselect, the universal SSH/sysctl/file-permission/service checks and
 the 4.2.3.x audit rule set.
+
+RHEL 8 / 9
+----------
+The RHEL 8/9 version-specific checks are NOT re-authored — exactly like
+``app.modules.linux.rocky``, ``build_rhel89_cis_rules`` /
+``build_rhel89_hardening_templates`` re-badge the RHEL-10 supplement above to the
+``LNX-RHEL{8,9}-*`` id prefix, gate each rule to the exact ``rhel_8``/``rhel_9``
+profile, drop the controls a given version does not ship (``_RHEL9_DROP`` /
+``_RHEL8_DROP``) and override only what genuinely differs (RHEL 8's
+``/etc/yum.conf`` repo_gpgcheck location). The RHEL-10 rules stay gated to
+``rhel_10`` only, so no control is scored twice across the three RHEL profiles.
+These are wired into the same four engine hooks as the RHEL-10 set
+(``rules.build_linux_cis_rules``, ``audit_commands.get_linux_audit_commands``,
+``command_templates`` and ``parameter_metadata``).
 """
 
 from typing import Dict, List, Any, Optional
+from dataclasses import replace
 import re
 
 from app.modules.linux.audit.rules import (
@@ -1141,6 +1156,183 @@ def _build_rhel10_parameter_map() -> Dict[str, List[str]]:
 RHEL10_CHECK_PARAMETER_MAP: Dict[str, List[str]] = _build_rhel10_parameter_map()
 
 
+# ============================================================================
+# CIS Red Hat Enterprise Linux 8 / 9 Benchmarks (extend the RHEL-10 builders)
+# ============================================================================
+# Same construction as app.modules.linux.rocky: the RHEL 8/9 version-specific
+# checks are NOT re-authored. ``build_rhel89_cis_rules`` re-badges each
+# ``LNX-RHEL10-*`` rule to the ``LNX-RHEL{8,9}-*`` id prefix, gates it to the
+# exact ``rhel_8``/``rhel_9`` profile, drops the controls a given RHEL version
+# does not ship, and overrides only what genuinely differs from RHEL 10 (the
+# RHEL-8 repo_gpgcheck location).
+#
+# The RHEL-10 rules themselves are gated to ``rhel_10`` ONLY (see ``_R10``), and
+# ``filter_rules_by_distro`` matches an exact profile (family fallback only fires
+# for rules gated to the bare ``"rhel"`` family). Because the RHEL 8/9 sets are
+# gated to ``rhel_8``/``rhel_9`` and the RHEL-10 set to ``rhel_10``, no control is
+# scored twice across the three RHEL profiles.
+#
+# Section numbers keep the RHEL-10 supplement numbering (as Rocky does) rather
+# than reproducing every CIS renumbering between benchmark versions — the gate,
+# not the section string, is what keeps the three versions distinct.
+
+# Hardening templates run on the already-detected distro id; the RHEL 8/9
+# templates carry the real-RHEL family only (Rocky/Alma are covered by the
+# parallel LNX-ROCKY* set in app.modules.linux.rocky).
+_RHEL89_FAMILY = ["rhel"]
+
+# Sections dropped going RHEL 10 -> RHEL 9 — controls added in the RHEL-10
+# benchmark that RHEL 9 does not ship (keyed by RHEL-10 supplement section):
+#   1.1.1.9   firewire-core module (RHEL-10 addition; RHEL 9 numbers usb-storage 1.1.1.9)
+#   1.5.5     kernel.dmesg_restrict (not in RHEL 9)
+#   1.5.6     kernel.kptr_restrict (not in RHEL 9)
+#   2.1.3     cockpit service (RHEL-10 addition)
+#   6.2.1.4   only one logging system in use (RHEL-10 addition)
+_RHEL9_DROP = {"1.1.1.9", "1.5.5", "1.5.6", "2.1.3", "6.2.1.4"}
+
+# Sections dropped going RHEL 9 -> RHEL 8 (in ADDITION to _RHEL9_DROP). RHEL 8
+# either lacks the granular latest-benchmark control or handles it elsewhere:
+#   1.2.1.5   dnf install_weak_deps (RHEL 8 commonly manages repos via yum)
+#   5.3.2.4.3 pam_unix strong hashing (covered by the generic ENCRYPT_METHOD check)
+#   5.4.3.2   default shell TMOUT (finer-grained user-env control added later)
+#   6.2.1.3   journald SystemMaxUse rotation (later journald granularity)
+#   6.3.2.2   auditd keep_logs (fewer 6.3.x rules on RHEL 8)
+#   6.3.2.3   disk_full_action halt (later auditd addition)
+#   6.3.4.5   audit configuration file mode (later auditd addition)
+#   7.1.10    /etc/security/opasswd permissions (later file-permission addition)
+_RHEL8_DROP = {"1.2.1.5", "5.3.2.4.3", "5.4.3.2", "6.2.1.3",
+               "6.3.2.2", "6.3.2.3", "6.3.4.5", "7.1.10"}
+
+
+def _rhel89_dropped_sections(version: str) -> set:
+    """Sections removed from the RHEL-10 supplement for a given RHEL version."""
+    if version == "8":
+        return _RHEL9_DROP | _RHEL8_DROP
+    if version == "9":
+        return set(_RHEL9_DROP)
+    return set()
+
+
+def _split_rhel10_id(check_id: str):
+    """``LNX-RHEL10-L1-2.3.2`` -> ("L1", "2.3.2")."""
+    body = check_id[len("LNX-RHEL10-"):]
+    level, _, section = body.partition("-")
+    return level, section
+
+
+def _rhel89_id(level: str, section: str, version: str) -> str:
+    """Build the ``LNX-RHEL{8,9}-*`` id for a given RHEL-10 (level, section)."""
+    return f"LNX-RHEL{version}-{level}-{section}"
+
+
+def _apply_rhel89_overrides(rule: LinuxCISRule, orig_section: str, version: str) -> LinuxCISRule:
+    """Override only the controls that genuinely differ from RHEL 10."""
+    if version == "8" and orig_section == "1.2.1.3":
+        # RHEL 8 may still keep the global package-signature policy in
+        # /etc/yum.conf rather than /etc/dnf/dnf.conf. ``rhel_repo_gpgcheck``
+        # (build_rhel_audit_commands) greps both so the check does not
+        # false-FAIL on a yum.conf-configured RHEL 8 host.
+        return replace(
+            rule,
+            remediation="Set 'repo_gpgcheck=1' in the [main] section of /etc/dnf/dnf.conf "
+                        "(RHEL 8 may use /etc/yum.conf).",
+            check=lambda d, p: bool(re.search(r'repo_gpgcheck\s*=\s*1', _get_output(d, "rhel_repo_gpgcheck"))),
+            evidence=lambda d, p: _get_output(d, "rhel_repo_gpgcheck"),
+            expected_value="repo_gpgcheck=1 in /etc/dnf/dnf.conf (or /etc/yum.conf on RHEL 8)",
+        )
+    return rule
+
+
+def _build_rhel89_version_rules(version: str) -> List[LinuxCISRule]:
+    """Re-badge + gate + trim the shared RHEL-10 rules for one RHEL version."""
+    dropped = _rhel89_dropped_sections(version)
+    out: List[LinuxCISRule] = []
+    for rule in build_rhel10_cis_rules():
+        level, section = _split_rhel10_id(rule.id)
+        if section in dropped:
+            continue
+        rebadged = replace(
+            rule,
+            id=_rhel89_id(level, section, version),
+            distros=[f"rhel_{version}"],
+        )
+        out.append(_apply_rhel89_overrides(rebadged, section, version))
+    return out
+
+
+def build_rhel89_cis_rules() -> List[LinuxCISRule]:
+    """
+    RHEL 8/9 version-specific checks (~50 / ~58 respectively). Gated to the exact
+    rhel_8/rhel_9 profiles; re-badges + trims the shared RHEL-10 supplement.
+    """
+    rules: List[LinuxCISRule] = []
+    for version in ("9", "8"):
+        rules.extend(_build_rhel89_version_rules(version))
+    return rules
+
+
+# ---- RHEL 8/9 audit commands -----------------------------------------------
+
+def build_rhel_audit_commands() -> List[Dict[str, Any]]:
+    """
+    RHEL 8/9-specific data collection. The RHEL-10 collection (r10_* keys)
+    already runs on every RHEL-family host, so this only adds the keys that
+    differ: RHEL 8 keeps repo_gpgcheck in /etc/yum.conf as well as
+    /etc/dnf/dnf.conf — grep both. Harmless on rhel_9/rhel_10 (only scored by the
+    rhel_8-gated 1.2.1.3 override).
+    """
+    return [
+        {"cmd": "grep -Es '^\\s*repo_gpgcheck' /etc/dnf/dnf.conf /etc/yum.conf 2>/dev/null || echo 'not configured'",
+         "sudo": False, "key": "rhel_repo_gpgcheck", "section": "1.2.1.3"},
+    ]
+
+
+# ---- RHEL 8/9 hardening templates ------------------------------------------
+
+def build_rhel89_hardening_templates() -> List[Any]:
+    """
+    Re-badge the RHEL-10 remediation templates to the LNX-RHEL{8,9}-* ids,
+    trimmed to the sections each RHEL version keeps. Registered into the shared
+    registry by command_templates.
+    """
+    templates = build_rhel10_hardening_templates()
+    out: List[Any] = []
+    for version in ("9", "8"):
+        dropped = _rhel89_dropped_sections(version)
+        for t in templates:
+            level, section = _split_rhel10_id(t.check_id)
+            if section in dropped:
+                continue
+            out.append(replace(
+                t,
+                check_id=_rhel89_id(level, section, version),
+                distros=list(_RHEL89_FAMILY),
+            ))
+    return out
+
+
+# ---- RHEL 8/9 parameter map ------------------------------------------------
+# Every RHEL 8/9 check id is listed (empty list = auto-fixable with no params) so
+# parameter_metadata's categorization treats templated checks as fixable and
+# manual/informational ones as unsupported. Merged into LINUX_CHECK_PARAMETER_MAP.
+
+def _build_rhel89_parameter_map() -> Dict[str, List[str]]:
+    pmap: Dict[str, List[str]] = {}
+    for r in build_rhel89_cis_rules():
+        pmap[r.id] = []
+    # crypto-policy checks (1.6.3 / 1.6.4) survive on both RHEL 8 and RHEL 9;
+    # their template takes the CRYPTO_POLICY parameter.
+    for version in ("8", "9"):
+        for section in ("1.6.3", "1.6.4"):
+            check_id = f"LNX-RHEL{version}-L1-{section}"
+            if check_id in pmap:
+                pmap[check_id] = ["CRYPTO_POLICY"]
+    return pmap
+
+
+RHEL89_CHECK_PARAMETER_MAP: Dict[str, List[str]] = _build_rhel89_parameter_map()
+
+
 __all__ = [
     "RHEL_VERSIONS",
     "RHEL_PROFILES",
@@ -1151,4 +1343,8 @@ __all__ = [
     "build_rhel10_cis_rules",
     "build_rhel10_hardening_templates",
     "RHEL10_CHECK_PARAMETER_MAP",
+    "build_rhel_audit_commands",
+    "build_rhel89_cis_rules",
+    "build_rhel89_hardening_templates",
+    "RHEL89_CHECK_PARAMETER_MAP",
 ]

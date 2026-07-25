@@ -674,12 +674,27 @@ from app.modules.linux.rhel import RHEL10_CHECK_PARAMETER_MAP as _RHEL10_CHECK_P
 
 LINUX_CHECK_PARAMETER_MAP.update(_RHEL10_CHECK_PARAMETER_MAP)
 
+# CIS RHEL 8 / 9 — merge the RHEL 8/9 check -> parameter map (kept in
+# app.modules.linux.rhel) so the hardening UI can categorise the RHEL 8/9 checks.
+# All RHEL 8/9 params reuse entries already in LINUX_PARAMETER_REGISTRY (CRYPTO_POLICY).
+from app.modules.linux.rhel import RHEL89_CHECK_PARAMETER_MAP as _RHEL89_CHECK_PARAMETER_MAP
+
+LINUX_CHECK_PARAMETER_MAP.update(_RHEL89_CHECK_PARAMETER_MAP)
+
 # CIS Rocky Linux 8/9/10 — merge the Rocky check -> parameter map (kept in
 # app.modules.linux.rocky) so the hardening UI can categorise the Rocky checks.
 # All Rocky params reuse entries already in LINUX_PARAMETER_REGISTRY (CRYPTO_POLICY).
 from app.modules.linux.rocky import ROCKY_CHECK_PARAMETER_MAP as _ROCKY_CHECK_PARAMETER_MAP
 
 LINUX_CHECK_PARAMETER_MAP.update(_ROCKY_CHECK_PARAMETER_MAP)
+
+# CIS Ubuntu 22.04 / 24.04 — merge the Ubuntu check -> parameter map (kept in
+# app.modules.linux.ubuntu) so the hardening UI can categorise the Ubuntu
+# version-specific checks. Only LNX-UBUNTU24-L1-1.6.1 takes a parameter
+# (CRYPTO_POLICY), already defined in LINUX_PARAMETER_REGISTRY.
+from app.modules.linux.ubuntu import UBUNTU_CHECK_PARAMETER_MAP as _UBUNTU_CHECK_PARAMETER_MAP
+
+LINUX_CHECK_PARAMETER_MAP.update(_UBUNTU_CHECK_PARAMETER_MAP)
 
 
 def get_linux_parameter_metadata(param_name: str) -> Optional[ParameterMetadata]:

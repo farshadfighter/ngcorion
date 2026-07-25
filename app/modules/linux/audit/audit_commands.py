@@ -532,12 +532,27 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         from app.modules.linux.rhel import build_rhel10_audit_commands
         commands.extend(build_rhel10_audit_commands())
 
+        # CIS RHEL 8 / 9 Benchmarks — additional data collection (repo_gpgcheck in
+        # /etc/yum.conf on RHEL 8). Harmless on rhel_9/rhel_10: the extra output is
+        # only scored by rules gated to the rhel_8 profile. Imported lazily to
+        # avoid an import cycle at module load.
+        from app.modules.linux.rhel import build_rhel_audit_commands
+        commands.extend(build_rhel_audit_commands())
+
         # Rocky Linux 8/9/10 — additional data collection (repo_gpgcheck in
         # /etc/yum.conf on Rocky 8). Harmless on RHEL: the extra output is only
         # scored by rules gated to the rocky_* profiles. Imported lazily to
         # avoid an import cycle at module load.
         from app.modules.linux.rocky import build_rocky_audit_commands
         commands.extend(build_rocky_audit_commands())
+
+    # CIS Ubuntu 22.04 / 24.04 Benchmarks — additional data collection (see
+    # app.modules.linux.ubuntu). Harmless on ubuntu_20: the extra output is only
+    # scored by rules gated to the ubuntu_22/ubuntu_24 profiles. Imported lazily
+    # to avoid an import cycle at module load.
+    if is_debian:
+        from app.modules.linux.ubuntu import build_ubuntu_audit_commands
+        commands.extend(build_ubuntu_audit_commands())
 
     return commands
 

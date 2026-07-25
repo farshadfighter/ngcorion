@@ -15,9 +15,11 @@ class TestAuditCommandGeneration:
 
     def test_ubuntu_command_count(self, ubuntu_audit_commands):
         """Test Ubuntu generates expected number of commands."""
-        # From memory: ~165 commands for Ubuntu
+        # Shared core (~170) plus the Ubuntu 22.04/24.04 version-specific
+        # collection (ub_* keys: systemd-journal-remote, the 6.3.x audit rule /
+        # permission sets, crypto policy, GDM, cockpit, chrony, firewire-core).
         assert len(ubuntu_audit_commands) >= 150
-        assert len(ubuntu_audit_commands) <= 180
+        assert len(ubuntu_audit_commands) <= 210
 
     def test_rocky_command_count(self, rocky_audit_commands):
         """Test Rocky generates expected number of commands."""

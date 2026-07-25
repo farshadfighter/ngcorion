@@ -2036,6 +2036,16 @@ for _rhel10_template in _build_rhel10_templates():
     _register(_rhel10_template)
 
 
+# CIS RHEL 8 / 9 — remediation templates (kept in app.modules.linux.rhel). They
+# re-badge the RHEL-10 templates to the LNX-RHEL{8,9}-* ids so the shared
+# registry stays the single source of truth. Imported lazily-at-end for the same
+# no-cycle reason as the RHEL-10 templates above.
+from app.modules.linux.rhel import build_rhel89_hardening_templates as _build_rhel89_templates
+
+for _rhel89_template in _build_rhel89_templates():
+    _register(_rhel89_template)
+
+
 # CIS Rocky Linux 8/9/10 — remediation templates (kept in app.modules.linux.rocky).
 # They re-badge the RHEL-10 templates to the LNX-ROCKY{8,9,10}-* ids so the
 # shared registry stays the single source of truth. Imported lazily-at-end for
@@ -2044,6 +2054,16 @@ from app.modules.linux.rocky import build_rocky_hardening_templates as _build_ro
 
 for _rocky_template in _build_rocky_templates():
     _register(_rocky_template)
+
+
+# CIS Ubuntu 22.04 / 24.04 — remediation templates (kept in app.modules.linux.ubuntu).
+# They carry the LNX-UBUNTU{22,24}-* ids matching the version-specific rules so the
+# shared registry stays the single source of truth. Imported lazily-at-end for the
+# same no-cycle reason as the RHEL-10 / Rocky templates above.
+from app.modules.linux.ubuntu import build_ubuntu_hardening_templates as _build_ubuntu_templates
+
+for _ubuntu_template in _build_ubuntu_templates():
+    _register(_ubuntu_template)
 
 
 def get_linux_hardening_template(check_id: str) -> Optional[LinuxHardeningTemplate]:
