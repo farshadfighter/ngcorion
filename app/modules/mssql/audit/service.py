@@ -25,7 +25,8 @@ from app.models.audit import CheckStatus, DeviceType
 from .mssql_client import MSSQLClient, redact_sensitive_mssql_data
 from .rules import (
     MSSQLCISRule,
-    build_all_mssql_cis_rules,
+    build_mssql_cis_rules_for_distro,
+    _detect_distro,
     evaluate_compliance,
     filter_rules_by_profile,
 )
@@ -80,22 +81,22 @@ class MSSQLAuditService:
             logger.info(f"Completed: {name} ({time.time() - start:.2f}s)")
 
     @staticmethod
-    def _get_cached_rules(profile: str) -> List[MSSQLCISRule]:
-        cache_key = f"mssql_{profile}"
+    def _get_cached_rules(profile: str, distro: str = "mssql_2022") -> List[MSSQLCISRule]:
+        cache_key = f"{distro}_{profile}"
         now = time.time()
 
         if cache_key in MSSQLAuditService._rules_cache:
             age = now - MSSQLAuditService._cache_timestamp.get(cache_key, 0)
             if age < MSSQLAuditService.CACHE_TTL:
-                logger.debug(f"Using cached MSSQL rules for {profile} (age {age:.0f}s)")
+                logger.debug(f"Using cached MSSQL rules for {cache_key} (age {age:.0f}s)")
                 return MSSQLAuditService._rules_cache[cache_key]
 
-        logger.info(f"Building SQL Server CIS rules for profile={profile}")
-        all_rules = build_all_mssql_cis_rules()
+        logger.info(f"Building SQL Server CIS rules for {distro} profile={profile}")
+        all_rules = build_mssql_cis_rules_for_distro(distro)
         filtered = filter_rules_by_profile(all_rules, profile)
         MSSQLAuditService._rules_cache[cache_key] = filtered
         MSSQLAuditService._cache_timestamp[cache_key] = now
-        logger.info(f"Cached {len(filtered)} MSSQL rules for {profile}")
+        logger.info(f"Cached {len(filtered)} MSSQL rules for {cache_key}")
         return filtered
 
     @staticmethod
@@ -109,13 +110,21 @@ class MSSQLAuditService:
         batch = []
 
         for finding in findings:
+            # Manual controls are stored as NOT_APPLICABLE (surfaced as
+            # "skipped" by the API); they are never scored as pass/fail.
+            if finding.get("manual"):
+                status = CheckStatus.NOT_APPLICABLE
+            elif finding["compliant"]:
+                status = CheckStatus.PASS
+            else:
+                status = CheckStatus.FAIL
             result = AuditResult(
                 session_id=session_id,
                 check_number=finding["id"],
                 check_title=finding["title"],
                 severity=finding["severity"],
                 level=finding.get("level", "L1"),
-                status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
+                status=status,
                 evidence_snippet=finding["evidence"],
                 checked_at=datetime.now(timezone.utc),
             )
@@ -213,8 +222,11 @@ class MSSQLAuditService:
             # 4. Redact sensitive values
             clean_dump = redact_sensitive_mssql_data(raw_dump)
 
-            # 5. Load rules
-            rules = MSSQLAuditService._get_cached_rules(profile)
+            # 5. Resolve the SQL Server version to a distro gate key and load
+            #    the matching (2016/2019/2022) rule set.
+            distro = _detect_distro(clean_dump)
+            logger.info(f"Resolved SQL Server dump to {distro} for asset {asset_id}")
+            rules = MSSQLAuditService._get_cached_rules(profile, distro)
 
             # 6. Evaluate compliance
             with MSSQLAuditService._timed_op(

@@ -184,65 +184,45 @@ MSSQL_PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
 
 MSSQL_CHECK_PARAMETER_MAP: Dict[str, List[str]] = {
 
-    # Auto-fixable — no required parameters
-    "MSSQL-L1-002": [],   # Ad Hoc Distributed Queries = 0
-    "MSSQL-L1-003": [],   # CLR enabled = 0
-    "MSSQL-L1-004": [],   # Cross DB ownership chaining = 0
-    "MSSQL-L1-005": [],   # Database Mail XPs = 0
-    "MSSQL-L1-006": [],   # Ole Automation Procedures = 0
-    "MSSQL-L1-007": [],   # Remote access = 0
-    "MSSQL-L2-008": [],   # Remote admin connections = 0
-    "MSSQL-L1-009": [],   # Scan for startup procs = 0
-    "MSSQL-L1-010": [],   # xp_cmdshell = 0
-    "MSSQL-L2-012": [],   # SQL Mail XPs = 0
-    "MSSQL-L1-014": [],   # SA login disabled
+    # Auto-fixable — no required parameters (sp_configure toggles + sa disable)
+    "MSSQL-AHDQ": [],        # Ad Hoc Distributed Queries = 0
+    "MSSQL-CLR": [],         # clr enabled = 0
+    "MSSQL-XDBOC": [],       # cross db ownership chaining = 0
+    "MSSQL-DBMAIL": [],      # Database Mail XPs = 0
+    "MSSQL-OLEAUTO": [],     # Ole Automation Procedures = 0
+    "MSSQL-REMACC": [],      # remote access = 0
+    "MSSQL-REMADMIN": [],    # remote admin connections = 0
+    "MSSQL-STARTPROC": [],   # scan for startup procs = 0
+    "MSSQL-XPCMDSHELL": [],  # xp_cmdshell = 0 (2016)
+    "MSSQL-CLRSTRICT": [],   # clr strict security = 1 (2019/2022)
+    "MSSQL-DEFTRACE": [],    # default trace enabled = 1
+    "MSSQL-SADISABLE": [],   # ALTER LOGIN [sa] DISABLE
+    "MSSQL-HIDEINST": [],    # Hide instance via registry (restart)
 
     # Auto-fixable — all parameters have defaults
-    "MSSQL-L1-019": ["NUM_ERROR_LOGS"],  # Error log count (default=12)
+    "MSSQL-ERRLOG": ["NUM_ERROR_LOGS"],   # error log retention (default=12)
+    "MSSQL-LOGINAUDIT": ["AUDIT_LEVEL"],  # login audit level (default=2)
 
     # Parameterized — require user-supplied values
-    "MSSQL-L1-011": ["DB_NAME"],
-    "MSSQL-L2-015": ["NEW_SA_NAME"],
-    "MSSQL-L1-016": ["SYSADMIN_LOGIN"],
-    "MSSQL-L1-017": ["CONTROL_LOGIN"],
-    "MSSQL-L1-020": ["AUDIT_NAME", "AUDIT_FILE_PATH"],
-    "MSSQL-L1-021": ["AUDIT_NAME"],
-    "MSSQL-L2-022": ["AUDIT_NAME", "SPEC_NAME"],
-    "MSSQL-L1-023": ["LOGIN_NAME"],
-    "MSSQL-L1-024": ["LOGIN_NAME"],
+    "MSSQL-SARENAME": ["NEW_SA_NAME"],
+    "MSSQL-TRUSTWORTHY": ["DB_NAME"],
+    "MSSQL-AUTOCLOSE": ["DB_NAME"],
+    "MSSQL-GUEST": ["DB_NAME"],
+    "MSSQL-CHECKPOL": ["LOGIN_NAME"],
+    "MSSQL-CHECKEXP": ["LOGIN_NAME"],
+    "MSSQL-PROXY": ["PROXY_NAME"],
+    "MSSQL-CLRSAFE": ["DB_NAME", "ASSEMBLY_NAME"],
 
-    # --- New checks (Section 2 additions) ---
-    "MSSQL-L1-028": [],                         # Hide instance (auto via registry)
-    "MSSQL-L1-029": ["DB_NAME"],                # AUTO_CLOSE OFF on contained DB
-    "MSSQL-L1-031": [],                         # CLR strict security = 1 (auto)
-
-    # --- New checks (Section 3 additions) ---
-    "MSSQL-L1-032": ["DB_NAME"],                # Revoke guest CONNECT per DB
-    "MSSQL-L1-036": ["BUILTIN_LOGIN"],          # Drop BUILTIN group login
-    "MSSQL-L1-037": ["LOCAL_GROUP_LOGIN"],       # Drop local group login
-    "MSSQL-L1-038": ["PROXY_NAME"],             # Revoke public proxy access
-
-    # --- New checks (Section 5 additions) ---
-    "MSSQL-L1-040": [],                         # Default trace enabled (auto)
-    "MSSQL-L1-041": ["AUDIT_LEVEL"],            # Login audit level (default=2)
-
-    # --- New checks (Section 6 addition) ---
-    "MSSQL-L1-042": ["DB_NAME", "ASSEMBLY_NAME"],  # CLR assembly SAFE
-
-    # Manual only — no automated remediation
-    # MSSQL-L1-001: patch level (Windows Update / manual)
-    # MSSQL-L1-013: auth mode (requires SSMS + restart)
-    # MSSQL-L2-018: public role permissions (manual review)
-    # MSSQL-L2-025: TDE (multi-step, multi-DB)
-    # MSSQL-L1-026: port change (Configuration Manager + restart)
-    # MSSQL-L1-027: unnecessary protocols (Configuration Manager)
-    # MSSQL-L1-030: SA rename (see MSSQL-L2-015)
-    # MSSQL-L1-033: orphaned users (per-DB manual review)
-    # MSSQL-L1-034: contained DB SQL auth (migration required)
-    # MSSQL-L1-035: public server role perms (manual review)
-    # MSSQL-L1-039: MUST_CHANGE (advisory, at password reset time)
-    # MSSQL-L1-043: symmetric key algorithms (key re-creation)
-    # MSSQL-L1-044: asymmetric key sizes (key re-creation)
+    # Manual only — no automated remediation. Present as templates with
+    # manual_only=True (see command_templates._MANUAL); intentionally NOT listed
+    # here so categorize_mssql_checks_by_fixability treats them as not_supported
+    # for the auto/needs-params UI while the template still supplies guidance:
+    #   MSSQL-PATCH, MSSQL-SINGLEFUNC, MSSQL-PROTOCOLS, MSSQL-PORT,
+    #   MSSQL-AUTHMODE, MSSQL-NOSA, MSSQL-ORPHAN, MSSQL-CONTAINEDAUTH,
+    #   MSSQL-SVCACCT-*, MSSQL-PUBLICSERVER, MSSQL-BUILTIN, MSSQL-LOCALGROUP,
+    #   MSSQL-SYSADMIN, MSSQL-MSDBADMIN, MSSQL-MUSTCHANGE, MSSQL-SRVAUDIT,
+    #   MSSQL-SANITIZE, MSSQL-SYMKEY, MSSQL-ASYMKEY, MSSQL-BACKUPENC,
+    #   MSSQL-NETENC, MSSQL-TDE, MSSQL-BROWSER
 }
 
 

@@ -46,7 +46,7 @@ class SingleFixRequest(BaseModel):
                 "mssql_username": "sa",
                 "mssql_password": "********",
                 "mssql_port": 1433,
-                "check_id": "MSSQL-L1-010",
+                "check_id": "MSSQL-XPCMDSHELL",
                 "parameters": {},
             }
         }
@@ -60,7 +60,7 @@ router = APIRouter(
 
 
 class MSSQLPreviewRequest(BaseModel):
-    check_id: str = Field(..., description="CIS check ID, e.g. MSSQL-L1-002")
+    check_id: str = Field(..., description="CIS check ID, e.g. MSSQL-AHDQ")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
 
 

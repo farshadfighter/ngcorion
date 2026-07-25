@@ -705,6 +705,64 @@ class MSSQLClient:
               AND perm.permission_name <> 'VIEW ANY DATABASE'
         """)
 
+        # ---- 30. Principal renamed from 'sa' (sid 0x01) ---------------- #
+        sections["SA_SID"] = self._query(
+            "SELECT name FROM sys.server_principals WHERE sid = 0x01"
+        )
+
+        # ---- 31. TCP port of the current connection -------------------- #
+        sections["TCP_PORT"] = self._query(
+            "SELECT local_tcp_port FROM sys.dm_exec_connections "
+            "WHERE session_id = @@SPID AND local_tcp_port IS NOT NULL"
+        )
+
+        # ---- 32. Force Network Encryption registry setting ------------- #
+        sections["NETWORK_ENCRYPTION"] = self._query("""
+            SELECT value_name, value_data
+            FROM sys.dm_server_registry
+            WHERE registry_key LIKE '%SuperSocketNetLib%'
+              AND value_name IN ('ForceEncryption', 'Encrypt')
+        """)
+
+        # ---- 33. TDE encryption state per user database ---------------- #
+        sections["TDE_DATABASES"] = self._query("""
+            SELECT name, is_encrypted
+            FROM sys.databases
+            WHERE database_id > 4
+            ORDER BY name
+        """)
+
+        # ---- 34. Recent unencrypted database backups ------------------- #
+        sections["BACKUP_ENCRYPTION"] = self._query("""
+            SELECT database_name, encryptor_type
+            FROM msdb.dbo.backupset
+            WHERE backup_finish_date > DATEADD(day, -30, GETDATE())
+              AND encryptor_type IS NULL
+        """)
+
+        # ---- 35. Non-default members of msdb admin roles --------------- #
+        sections["MSDB_ADMIN_ROLES"] = self._query("""
+            SELECT r.name AS role_name, m.name AS member_name
+            FROM msdb.sys.database_role_members rm
+            JOIN msdb.sys.database_principals r ON rm.role_principal_id = r.principal_id
+            JOIN msdb.sys.database_principals m ON rm.member_principal_id = m.principal_id
+            WHERE r.name IN ('db_owner', 'db_securityadmin', 'db_ddladmin',
+                             'db_ssisadmin', 'db_ssisoperator',
+                             'ServerGroupAdministratorRole',
+                             'PolicyAdministratorRole')
+              AND m.name NOT IN ('dbo')
+            ORDER BY r.name, m.name
+        """)
+
+        # ---- 36. Sysadmin SQL logins without CHECK_EXPIRATION ---------- #
+        sections["SYSADMIN_SQL_LOGINS"] = self._query("""
+            SELECT l.name, l.is_expiration_checked
+            FROM sys.sql_logins l
+            JOIN sys.server_role_members rm ON l.principal_id = rm.member_principal_id
+            JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id
+            WHERE r.name = 'sysadmin' AND l.is_expiration_checked = 0
+        """)
+
         # ---- Assemble structured dump ---------------------------------- #
         parts = []
         for section_key, content in sections.items():
