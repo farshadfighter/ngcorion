@@ -1,22 +1,43 @@
 """
-Windows Server CIS Benchmark Rules
+Windows Server CIS Benchmark Rules — version-aware (2016 / 2022 / 2025)
 
-~110 predefined security checks based on the CIS Microsoft Windows Server Benchmark
-(2016 v2.0, 2019 v2.0, 2022 v2.0, 2025 v1.0) with version-aware logic.
-Each rule evaluates a specific aspect of Windows Server security by searching
-the structured audit dump collected by WindowsWinRMClient.
+The rule set is built the same way the MSSQL / RHEL modules build theirs: a
+single base builder for the newest benchmark (Windows Server 2025 v1.0.0) and
+thin derived builders that *extend* it for the older versions.
 
-Rule IDs follow the pattern: WIN-L{level}-{seq:03d}
-  L1 = Level 1 (basic, broadly applicable)
-  L2 = Level 2 (advanced, may affect functionality)
+Version gate keys (the equivalent of the Linux ``rhel_10`` profile / MSSQL
+``mssql_2022``) select the rule set:
 
-CIS sections covered:
-  1.x  Account Policies (Password, Lockout)
-  2.x  Local Policies (User Rights, Security Options)
-  5.x  System Services
-  9.x  Windows Firewall with Advanced Security
-  17.x Advanced Audit Policy Configuration
-  18.x Administrative Templates (Registry)
+    win_2016  -> build_win2016_cis_rules()
+    win_2022  -> build_win2022_cis_rules()
+    win_2025  -> build_win2025_cis_rules()
+
+The gate key is resolved from the collected ``CurrentBuildNumber`` /
+``OS_VERSION`` (``_detect_version`` / ``_detect_gate``) so callers never have to
+know the build number.
+
+Check IDs are stable, section-based slugs (``WIN-2025-1.1.1``,
+``WIN-2025-2.3.11.7`` …) that are shared 1:1 with the hardening templates. A
+large share of Section 2.3 / Section 18 checks are pure registry DWORD
+comparisons, so those are declared once in ``REGISTRY_CHECKS`` and both the
+audit ``check_fn`` and the hardening ``Set-ItemProperty`` template are generated
+from that single table — eliminating audit↔hardening drift.
+
+All checks read the structured dump produced by
+``WindowsWinRMClient.collect_audit_data`` using regex/JSON over the
+``===SECTION:NAME===`` markers. Everything is read-only (WinRM PowerShell
+``Get-*`` / ``secedit /export`` / ``auditpol /get``); the audit path never
+writes. Manual controls (message text, GPO-only, HKU-scoped, patch level …) are
+reported NOT_APPLICABLE and never scored.
+
+CIS sections covered by the 2025 base:
+  1.x   Account Policies (Password, Lockout)          — secedit [System Access]
+  2.2   User Rights Assignment                        — secedit [Privilege Rights]
+  2.3   Security Options                               — registry / secedit / local users
+  9.x   Windows Defender Firewall                      — Get-NetFirewallProfile
+  17.x  Advanced Audit Policy                          — auditpol /get
+  18.x  Administrative Templates (Computer)            — registry
+  19.x  Administrative Templates (User)                — HKU (manual)
 """
 
 import json
@@ -26,26 +47,30 @@ from typing import Any, Callable, Dict, List, Optional
 
 
 # ============================================================ #
-#  Rule dataclass                                               #
+#  Rule dataclass                                              #
 # ============================================================ #
 
 @dataclass
 class WindowsCISRule:
     """A single CIS Windows Server compliance check."""
-    id: str                          # e.g. "WIN-L1-001"
-    section: str                     # CIS section number e.g. "1.1.1"
+    id: str                          # stable slug, e.g. "WIN-2025-2.3.11.7"
+    section: str                     # CIS section number, e.g. "2.3.11.7"
     title: str
-    description: str
     severity: str                    # high / medium / low / info
     level: str                       # L1 / L2
     check_fn: Callable[[str], bool]  # True = compliant
     evidence_fn: Callable[[str], str]
     remediation: str
-    versions: List[str] = field(default_factory=lambda: ["all"])
+    description: str = ""
+    manual: bool = False             # Manual controls: reported NA, never scored
+    scored: bool = True              # False for manual/info controls
+    scope: str = "all"               # all / MS (member server) / DC (domain controller)
+    audit_key: str = ""              # data key the check reads (debug/evidence aid)
+    versions: List[str] = field(default_factory=lambda: ["win_2025"])
 
 
 # ============================================================ #
-#  Helper – extract a named section from the dump              #
+#  Section extraction                                         #
 # ============================================================ #
 
 def _section(dump: str, name: str) -> str:
@@ -58,18 +83,15 @@ def _section(dump: str, name: str) -> str:
     return m.group(1).strip() if m else ""
 
 
-def _ev_section(dump: str, section: str, max_chars: int = 500) -> str:
+def _ev_section(dump: str, section: str, max_chars: int = 400) -> str:
     content = _section(dump, section)
     return content[:max_chars] + ("..." if len(content) > max_chars else "")
 
 
-# ============================================================ #
-#  JSON parsing helpers                                        #
-# ============================================================ #
-
 def _parse_json(text: str) -> Any:
-    """Safely parse JSON from a section, returning None on failure."""
-    if not text or text.startswith(("PS_ERROR", "COLLECTION_ERROR", "(no output)", "(empty)")):
+    """Safely parse JSON from a section, returning None on failure/error."""
+    if not text or text.startswith(("PS_ERROR", "CMD_ERROR", "COLLECTION_ERROR",
+                                    "(no output)", "(empty)", "SECEDIT_EXPORT_FAILED")):
         return None
     try:
         return json.loads(text)
@@ -78,40 +100,33 @@ def _parse_json(text: str) -> Any:
 
 
 def _json_section(dump: str, name: str) -> Any:
-    """Extract a section and parse it as JSON."""
     return _parse_json(_section(dump, name))
 
 
 # ============================================================ #
-#  Version detection                                           #
+#  Version / role detection                                   #
 # ============================================================ #
 
-# Build number → version year mapping
-_BUILD_TO_VERSION = {
-    "14393": "2016",
-    "17763": "2019",
-    "20348": "2022",
-    "26100": "2025",
+_BUILD_TO_GATE = {
+    "14393": "win_2016",
+    "17763": "win_2022",   # 2019 shares the 2022 control set (nearest gate)
+    "20348": "win_2022",
+    "26100": "win_2025",
 }
 
 
-def _detect_os_version(dump: str) -> str:
-    """
-    Detect Windows Server version from the OS_VERSION section.
-
-    Returns version string like "2016", "2019", "2022", "2025", or "unknown".
-    """
+def _detect_version(dump: str) -> str:
+    """Return the human version year ('2016'/'2019'/'2022'/'2025'/'unknown')."""
     data = _json_section(dump, "OS_VERSION")
     if isinstance(data, dict):
         build = str(data.get("BuildNumber", ""))
-        if build in _BUILD_TO_VERSION:
-            return _BUILD_TO_VERSION[build]
-        # Try caption match
+        gate = _BUILD_TO_GATE.get(build)
+        if gate:
+            return gate.replace("win_", "")
         caption = str(data.get("Caption", ""))
         for year in ("2025", "2022", "2019", "2016"):
             if year in caption:
                 return year
-    # Fallback: raw text search
     raw = _section(dump, "OS_VERSION")
     for year in ("2025", "2022", "2019", "2016"):
         if year in raw:
@@ -119,69 +134,118 @@ def _detect_os_version(dump: str) -> str:
     return "unknown"
 
 
+def _detect_gate(dump: str) -> str:
+    """
+    Resolve the collected OS dump to a version gate key. Unknown builds fall
+    back to the newest benchmark (superset) so nothing goes unscored.
+    """
+    data = _json_section(dump, "OS_VERSION")
+    if isinstance(data, dict):
+        gate = _BUILD_TO_GATE.get(str(data.get("BuildNumber", "")))
+        if gate:
+            return gate
+    year = _detect_version(dump)
+    return {"2016": "win_2016", "2019": "win_2022",
+            "2022": "win_2022", "2025": "win_2025"}.get(year, "win_2025")
+
+
+def is_domain_controller(dump: str) -> bool:
+    """
+    True when the host is a domain controller (Win32_ComputerSystem.DomainRole
+    >= 4). DomainRole: 0/1 standalone, 2/3 member server, 4/5 domain controller.
+    """
+    data = _json_section(dump, "DOMAIN_ROLE")
+    role = None
+    if isinstance(data, dict):
+        role = data.get("DomainRole")
+    elif isinstance(data, int):
+        role = data
+    try:
+        return int(role) >= 4
+    except (TypeError, ValueError):
+        return False  # default to member-server rule set when unknown
+
+
 # ============================================================ #
-#  Security policy (secedit) parsing helpers                   #
+#  secedit (INF) parsing — [System Access] & [Privilege Rights]#
 # ============================================================ #
 
 def _secpol_value(dump: str, key: str) -> Optional[str]:
-    """
-    Extract a value from the secedit INF-style export.
-
-    secedit format: key = value (or key = value1,value2)
-    """
     section = _section(dump, "SECURITY_POLICY")
     pattern = re.compile(rf"^\s*{re.escape(key)}\s*=[^\S\n]*(.+)$", re.M | re.I)
     m = pattern.search(section)
-    if m:
-        return m.group(1).strip()
-    return None
+    return m.group(1).strip() if m else None
 
 
 def _secpol_int(dump: str, key: str) -> Optional[int]:
-    """Extract an integer value from secedit output."""
     val = _secpol_value(dump, key)
     if val is None:
         return None
     try:
-        # Handle comma-separated: take first numeric part
-        parts = val.split(",")
-        return int(parts[0].strip())
+        return int(val.split(",")[0].strip())
     except (ValueError, IndexError):
         return None
 
 
-# ============================================================ #
-#  User Rights Assignment parsing                              #
-# ============================================================ #
-
 def _user_right_sids(dump: str, privilege: str) -> List[str]:
-    """
-    Extract the SID/account list for a user rights assignment.
-    Returns list of SID strings (e.g. ["*S-1-5-32-544"]).
-    """
+    """Extract the SID/account list for a [Privilege Rights] assignment."""
     section = _section(dump, "USER_RIGHTS")
-    if not section:
+    if not section or "SECEDIT_EXPORT_FAILED" in section:
         section = _section(dump, "SECURITY_POLICY")
     pattern = re.compile(rf"^\s*{re.escape(privilege)}\s*=[^\S\n]*(.*?)$", re.M | re.I)
     m = pattern.search(section)
     if m and m.group(1).strip():
-        return [s.strip() for s in m.group(1).split(",") if s.strip()]
+        return [s.strip().lstrip("*").upper() for s in m.group(1).split(",") if s.strip()]
     return []
 
 
+# Friendly principal name -> well-known SID (as they appear in secedit export)
+_SID = {
+    "No One": set(),
+    "Administrators": {"S-1-5-32-544"},
+    "Authenticated Users": {"S-1-5-11"},
+    "ENTERPRISE DOMAIN CONTROLLERS": {"S-1-5-9"},
+    "LOCAL SERVICE": {"S-1-5-19"},
+    "NETWORK SERVICE": {"S-1-5-20"},
+    "SERVICE": {"S-1-5-6"},
+    "Guests": {"S-1-5-32-546"},
+    "Local account": {"S-1-5-113"},
+    "Remote Desktop Users": {"S-1-5-32-555"},
+    "Window Manager\\Window Manager Group": {"S-1-5-90-0"},
+    "NT SERVICE\\WdiServiceHost":
+        {"S-1-5-80-3139157870-2983391045-3678747466-658725712-1809340420"},
+    "NT VIRTUAL MACHINE\\Virtual Machines": {"S-1-5-83-0"},
+}
+
+
+def _expected_sids(names: List[str]) -> set:
+    out = set()
+    for n in names:
+        out |= _SID.get(n, set())
+    return out
+
+
+def _rights_exact(dump: str, privilege: str, names: List[str]) -> bool:
+    """Compliant when the assigned SID set exactly equals the expected set."""
+    return set(_user_right_sids(dump, privilege)) == _expected_sids(names)
+
+
+def _rights_empty(dump: str, privilege: str) -> bool:
+    """Compliant when no principal holds the right ('No One')."""
+    return len(_user_right_sids(dump, privilege)) == 0
+
+
+def _rights_include(dump: str, privilege: str, names: List[str]) -> bool:
+    """Compliant when every expected principal is present (subset)."""
+    return _expected_sids(names).issubset(set(_user_right_sids(dump, privilege)))
+
+
 # ============================================================ #
-#  Audit policy (auditpol CSV) parsing                         #
+#  auditpol (CSV) parsing                                     #
 # ============================================================ #
 
 def _audit_policy_setting(dump: str, subcategory: str) -> str:
-    """
-    Extract the inclusion setting for an audit policy subcategory.
-
-    auditpol /get /category:* /r outputs CSV with columns:
-    Machine Name,Policy Target,Subcategory,Subcategory GUID,Inclusion Setting,Exclusion Setting
-
-    Returns the Inclusion Setting value or empty string.
-    """
+    """Return the 'Inclusion Setting' for an audit subcategory (exact match)."""
     section = _section(dump, "AUDIT_POLICY")
     target = subcategory.lower()
     fallback = ""
@@ -190,9 +254,6 @@ def _audit_policy_setting(dump: str, subcategory: str) -> str:
         if len(parts) < 5:
             continue
         row_subcat = parts[2].strip().lower()
-        # Exact match on the Subcategory column wins — substring matching
-        # confuses e.g. 'File Share' with 'Detailed File Share' and 'Logon'
-        # with 'Special Logon'.
         if row_subcat == target:
             return parts[4].strip()
         if not fallback and target in row_subcat:
@@ -200,237 +261,1114 @@ def _audit_policy_setting(dump: str, subcategory: str) -> str:
     return fallback
 
 
-def _audit_includes(dump: str, subcategory: str, expected: str) -> bool:
-    """Check if audit policy includes the expected setting (e.g. 'Success and Failure')."""
-    setting = _audit_policy_setting(dump, subcategory)
-    return expected.lower() in setting.lower()
+def _audit_matches(dump: str, subcategory: str, expected: str) -> bool:
+    """
+    Compliant when the inclusion setting matches exactly. 'Success and Failure'
+    must not be satisfied by a bare 'Success', so we compare normalised strings.
+    """
+    setting = _audit_policy_setting(dump, subcategory).strip().lower()
+    want = expected.strip().lower()
+    if not setting:
+        return False
+    if want == "success and failure":
+        return "success" in setting and "failure" in setting
+    if want == "success":
+        return "success" in setting
+    if want == "failure":
+        return "failure" in setting
+    return setting == want
 
 
 # ============================================================ #
-#  Registry value helpers                                      #
+#  Registry parsing                                           #
 # ============================================================ #
 
-def _registry_value(dump: str, section_name: str, reg_path: str, property_name: str) -> Any:
+def _reg(dump: str, path: str, prop: str) -> Any:
     """
-    Extract a registry value from a JSON registry section.
+    Return a registry value collected under the REGISTRY section.
 
-    The section contains a dict of {path: json_string_of_properties}.
+    The section is a dict of {full_path: {prop: value}}; values may be ints,
+    strings or lists. Returns None when the path or property is absent.
     """
-    data = _json_section(dump, section_name)
+    data = _json_section(dump, "REGISTRY")
     if not isinstance(data, dict):
         return None
-    for path_key, props_json in data.items():
-        if reg_path.lower() in path_key.lower():
-            if isinstance(props_json, str):
-                try:
-                    props = json.loads(props_json)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-            elif isinstance(props_json, dict):
-                props = props_json
-            else:
-                continue
-            if property_name in props:
-                return props[property_name]
-    return None
-
-
-def _lsa_value(dump: str, property_name: str) -> Any:
-    """Extract a value from the LSA_PROTECTION JSON section."""
-    data = _json_section(dump, "LSA_PROTECTION")
-    if isinstance(data, dict):
-        return data.get(property_name)
-    return None
-
-
-def _uac_value(dump: str, property_name: str) -> Any:
-    """Extract a value from the UAC_SETTINGS JSON section."""
-    data = _json_section(dump, "UAC_SETTINGS")
-    if isinstance(data, dict):
-        return data.get(property_name)
-    return None
-
-
-# ============================================================ #
-#  Service helpers                                             #
-# ============================================================ #
-
-def _service_startup(dump: str, service_name: str) -> Optional[str]:
-    """
-    Extract the StartType for a Windows service.
-
-    Returns "Disabled", "Manual", "Automatic", or None if not found.
-    """
-    data = _json_section(dump, "SERVICES")
-    if not data:
+    want = path.rstrip("\\").lower()
+    for path_key, props in data.items():
+        if path_key.rstrip("\\").lower() != want:
+            continue
+        if isinstance(props, str):
+            try:
+                props = json.loads(props)
+            except (json.JSONDecodeError, ValueError):
+                return None
+        if isinstance(props, dict) and prop in props:
+            return props[prop]
         return None
-    services = data if isinstance(data, list) else [data]
-    for svc in services:
-        if isinstance(svc, dict) and svc.get("Name", "").lower() == service_name.lower():
-            st = svc.get("StartType")
-            # StartType can be int (4=Disabled,3=Manual,2=Automatic) or string
-            if isinstance(st, int):
-                return {4: "Disabled", 3: "Manual", 2: "Automatic", 1: "System", 0: "Boot"}.get(st, str(st))
-            return str(st) if st is not None else None
     return None
 
 
-def _service_is_disabled(dump: str, service_name: str) -> bool:
-    """Return True if the service is disabled or not present."""
-    st = _service_startup(dump, service_name)
-    if st is None:
-        return True  # Not installed = compliant
-    return st.lower() == "disabled"
+def _to_int(value: Any) -> Optional[int]:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value).strip())
+    except (ValueError, TypeError):
+        return None
+
+
+def _pred(value: Any, op: str, target: Any) -> bool:
+    """Evaluate a registry predicate. Fails closed on a missing/unparseable value."""
+    if op == "absent":
+        return value is None
+    if op == "empty":
+        if value is None:
+            return True
+        if isinstance(value, (list, tuple)):
+            return len(value) == 0
+        return str(value).strip() == ""
+    if op == "eq_str":
+        return value is not None and str(value).strip() == str(target)
+    if value is None:
+        return False
+    iv = _to_int(value)
+    if iv is None:
+        return False
+    if op == "eq":
+        return iv == target
+    if op == "ne":
+        return iv != target
+    if op == "gte":
+        return iv >= target
+    if op == "lte":
+        return iv <= target
+    if op == "lte_nz":
+        return 0 < iv <= target
+    if op == "range":
+        return target[0] <= iv <= target[1]
+    return False
 
 
 # ============================================================ #
-#  Firewall helpers                                            #
+#  Firewall parsing                                           #
 # ============================================================ #
 
-def _firewall_profile(dump: str, profile_name: str) -> Optional[Dict]:
-    """Extract firewall profile data by name (Domain/Private/Public)."""
+def _firewall_profile(dump: str, name: str) -> Optional[Dict]:
     data = _json_section(dump, "FIREWALL_PROFILES")
     if not data:
         return None
     profiles = data if isinstance(data, list) else [data]
     for p in profiles:
-        if isinstance(p, dict) and p.get("Name", "").lower() == profile_name.lower():
+        if isinstance(p, dict) and str(p.get("Name", "")).lower() == name.lower():
             return p
     return None
 
 
-def _firewall_enabled(dump: str, profile_name: str) -> bool:
-    """Check if a firewall profile is enabled."""
-    p = _firewall_profile(dump, profile_name)
-    if not p:
+def _fw_bool(p: Optional[Dict], key: str, want: bool) -> bool:
+    if not p or key not in p:
         return False
-    enabled = p.get("Enabled")
-    if isinstance(enabled, bool):
-        return enabled
-    if isinstance(enabled, int):
-        return enabled != 0
-    return str(enabled).lower() in ("true", "1")
+    v = p.get(key)
+    if isinstance(v, bool):
+        return v == want
+    if isinstance(v, int):
+        return (v != 0) == want
+    return str(v).strip().lower() in (("true", "1") if want else ("false", "0"))
 
 
-def _firewall_inbound_block(dump: str, profile_name: str) -> bool:
-    """Check if default inbound action is Block (2) for a firewall profile."""
-    p = _firewall_profile(dump, profile_name)
+def _fw_enabled(dump: str, name: str) -> bool:
+    return _fw_bool(_firewall_profile(dump, name), "Enabled", True)
+
+
+def _fw_inbound_block(dump: str, name: str) -> bool:
+    p = _firewall_profile(dump, name)
     if not p:
         return False
     action = p.get("DefaultInboundAction")
-    # NetSecurity Action enum: 0 = NotConfigured, 2 = Allow, 4 = Block.
-    # Treating 2 as Block would false-PASS an Allow-by-default profile.
     if isinstance(action, int):
-        return action == 4
-    return str(action).lower() in ("block", "4")
+        return action == 4          # NetSecurity Action enum: 4 = Block
+    return str(action).strip().lower() == "block"
+
+
+def _fw_int_gte(dump: str, name: str, key: str, target: int) -> bool:
+    p = _firewall_profile(dump, name)
+    if not p:
+        return False
+    iv = _to_int(p.get(key))
+    return iv is not None and iv >= target
+
+
+def _fw_logname(dump: str, name: str, expected_file: str) -> bool:
+    p = _firewall_profile(dump, name)
+    if not p:
+        return False
+    return expected_file.lower() in str(p.get("LogFileName", "")).lower()
 
 
 # ============================================================ #
-#  Windows Feature helpers                                     #
+#  Local users (Guest account status)                         #
 # ============================================================ #
 
-def _feature_installed(dump: str, feature_name: str) -> bool:
-    """Check if a Windows Feature is installed."""
-    data = _json_section(dump, "WINDOWS_FEATURES")
+def _guest_disabled(dump: str) -> bool:
+    data = _json_section(dump, "LOCAL_USERS")
     if not data:
         return False
-    features = data if isinstance(data, list) else [data]
-    for f in features:
-        if isinstance(f, dict) and f.get("Name", "").lower() == feature_name.lower():
-            return True
-    return False
+    users = data if isinstance(data, list) else [data]
+    for u in users:
+        if isinstance(u, dict) and str(u.get("Name", "")).lower() == "guest":
+            enabled = u.get("Enabled")
+            if isinstance(enabled, bool):
+                return not enabled
+            return str(enabled).strip().lower() in ("false", "0")
+    return True  # no Guest account present -> nothing enabled
 
 
 # ============================================================ #
-#  Rule filtering and evaluation                               #
+#  REGISTRY_CHECKS — shared audit + hardening table            #
+# ============================================================ #
+#
+# Each entry drives BOTH the audit check_fn and (when fixable) the hardening
+# Set-ItemProperty template. This is the single source of truth for every
+# Section 2.3 / Section 18 registry DWORD/string control.
+
+def _R(section, title, path, prop, op, target, *, level="L1", scope="all",
+       set=None, rtype="dword", restart=False, fixable=True, severity="medium"):
+    return {
+        "section": section, "title": title, "path": path, "prop": prop,
+        "op": op, "target": target, "level": level, "scope": scope,
+        "set": (target if set is None else set), "rtype": rtype,
+        "restart": restart, "fixable": fixable, "severity": severity,
+    }
+
+
+_LSA = r"HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
+_MSV = r"HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0"
+_NETLOGON = r"HKLM:\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters"
+_WKSTA = r"HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters"
+_SRV = r"HKLM:\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters"
+_POLSYS = r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
+_WINLOGON = r"HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+_TS = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services"
+_DEFENDER = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender"
+_WINRM_C = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client"
+_WINRM_S = r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service"
+
+
+REGISTRY_CHECKS: List[Dict[str, Any]] = [
+    # ---- 1.1.6 Relax minimum password length (registry-backed) ----
+    _R("1.1.6", "Relax minimum password length limits = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\SAM", "RelaxMinimumPasswordLengthLimits",
+       "eq", 1, severity="low"),
+
+    # ---- 2.3.1 Accounts ----
+    _R("2.3.1.2", "Accounts: Limit local account use of blank passwords = Enabled",
+       _LSA, "LimitBlankPasswordUse", "eq", 1, severity="high"),
+
+    # ---- 2.3.2 Audit ----
+    _R("2.3.2.1", "Audit: Force audit policy subcategory settings = Enabled",
+       _LSA, "SCENoApplyLegacyAuditPolicy", "eq", 1),
+    _R("2.3.2.2", "Audit: Shut down system if unable to log security audits = Disabled",
+       _LSA, "CrashOnAuditFail", "eq", 0),
+
+    # ---- 2.3.4 Devices ----
+    _R("2.3.4.1", "Devices: Prevent users from installing printer drivers = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers",
+       "AddPrinterDrivers", "eq", 1),
+
+    # ---- 2.3.5 Domain controller (DC only) ----
+    _R("2.3.5.3", "DC: LDAP server channel binding = Always",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters",
+       "LdapEnforceChannelBinding", "eq", 2, scope="DC"),
+    _R("2.3.5.4", "DC: LDAP server signing requirements = Require signing",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters",
+       "ldapserverintegrity", "eq", 2, scope="DC"),
+    _R("2.3.5.6", "DC: Refuse machine account password changes = Disabled",
+       _NETLOGON, "RefusePasswordChange", "eq", 0, scope="DC"),
+
+    # ---- 2.3.6 Domain member ----
+    _R("2.3.6.1", "Domain member: Digitally encrypt or sign secure channel data (always) = Enabled",
+       _NETLOGON, "RequireSignOrSeal", "eq", 1, severity="high"),
+    _R("2.3.6.2", "Domain member: Digitally encrypt secure channel data (when possible) = Enabled",
+       _NETLOGON, "SealSecureChannel", "eq", 1),
+    _R("2.3.6.3", "Domain member: Digitally sign secure channel data (when possible) = Enabled",
+       _NETLOGON, "SignSecureChannel", "eq", 1),
+    _R("2.3.6.4", "Domain member: Disable machine account password changes = Disabled",
+       _NETLOGON, "DisablePasswordChange", "eq", 0),
+    _R("2.3.6.5", "Domain member: Maximum machine account password age <= 30 days",
+       _NETLOGON, "MaximumPasswordAge", "lte_nz", 30, set=30),
+    _R("2.3.6.6", "Domain member: Require strong (Windows 2000 or later) session key = Enabled",
+       _NETLOGON, "RequireStrongKey", "eq", 1),
+
+    # ---- 2.3.7 Interactive logon ----
+    _R("2.3.7.1", "Interactive logon: Do not require CTRL+ALT+DEL = Disabled",
+       _POLSYS, "DisableCAD", "eq", 0),
+    _R("2.3.7.2", "Interactive logon: Don't display last signed-in = Enabled",
+       _POLSYS, "DontDisplayLastUserName", "eq", 1),
+    _R("2.3.7.3", "Interactive logon: Machine inactivity limit <= 900s, not 0",
+       _POLSYS, "InactivityTimeoutSecs", "lte_nz", 900, set=900),
+    _R("2.3.7.6", "Interactive logon: Number of previous logons to cache <= 4",
+       _WINLOGON, "CachedLogonsCount", "lte", 4, set="4", rtype="string",
+       level="L2", scope="MS"),
+    _R("2.3.7.7", "Interactive logon: Prompt user to change password 5-14 days before expiration",
+       _WINLOGON, "PasswordExpiryWarning", "range", (5, 14), set=14),
+    _R("2.3.7.8", "Interactive logon: Require Domain Controller authentication to unlock = Enabled",
+       _WINLOGON, "ForceUnlockLogon", "eq", 1, scope="MS"),
+    _R("2.3.7.9", "Interactive logon: Smart card removal behavior = Lock Workstation",
+       _WINLOGON, "ScRemoveOption", "gte", 1, set="1", rtype="string"),
+
+    # ---- 2.3.8 MS network client ----
+    _R("2.3.8.1", "MS network client: Digitally sign communications (always) = Enabled",
+       _WKSTA, "RequireSecuritySignature", "eq", 1, severity="high"),
+    _R("2.3.8.2", "MS network client: Digitally sign communications (if server agrees) = Enabled",
+       _WKSTA, "EnableSecuritySignature", "eq", 1),
+    _R("2.3.8.3", "MS network client: Send unencrypted password to third-party SMB servers = Disabled",
+       _WKSTA, "EnablePlainTextPassword", "eq", 0, severity="high"),
+
+    # ---- 2.3.9 MS network server ----
+    _R("2.3.9.1", "MS network server: Idle time before suspending session <= 15 min",
+       _SRV, "AutoDisconnect", "lte", 15, set=15),
+    _R("2.3.9.2", "MS network server: Digitally sign communications (always) = Enabled",
+       _SRV, "RequireSecuritySignature", "eq", 1, severity="high"),
+    _R("2.3.9.3", "MS network server: Digitally sign communications (if client agrees) = Enabled",
+       _SRV, "EnableSecuritySignature", "eq", 1),
+    _R("2.3.9.4", "MS network server: Disconnect clients when logon hours expire = Enabled",
+       _SRV, "EnableForcedLogOff", "eq", 1),
+    _R("2.3.9.5", "MS network server: Server SPN target name validation level = Accept if provided",
+       _SRV, "SMBServerNameHardeningLevel", "gte", 1, set=1, scope="MS"),
+
+    # ---- 2.3.10 Network access ----
+    _R("2.3.10.1", "Network access: Allow anonymous SID/Name translation = Disabled",
+       _LSA, "TurnOffAnonymousBlock", "eq", 0),
+    _R("2.3.10.2", "Network access: Do not allow anonymous enumeration of SAM accounts = Enabled",
+       _LSA, "RestrictAnonymousSAM", "eq", 1, scope="MS", severity="high"),
+    _R("2.3.10.3", "Network access: Do not allow anonymous enumeration of SAM accounts and shares = Enabled",
+       _LSA, "RestrictAnonymous", "eq", 1, scope="MS", severity="high"),
+    _R("2.3.10.4", "Network access: Do not allow storage of passwords and credentials = Enabled",
+       _LSA, "DisableDomainCreds", "eq", 1, level="L2"),
+    _R("2.3.10.5", "Network access: Let Everyone permissions apply to anonymous users = Disabled",
+       _LSA, "EveryoneIncludesAnonymous", "eq", 0, severity="high"),
+    _R("2.3.10.7", "Network access: Named pipes accessible anonymously (MS) = None",
+       _SRV, "NullSessionPipes", "empty", None, scope="MS", fixable=False),
+    _R("2.3.10.10", "Network access: Restrict anonymous access to Named Pipes and Shares = Enabled",
+       _SRV, "RestrictNullSessAccess", "eq", 1),
+    _R("2.3.10.12", "Network access: Shares accessible anonymously = None",
+       _SRV, "NullSessionShares", "empty", None, fixable=False),
+    _R("2.3.10.13", "Network access: Sharing and security model for local accounts = Classic",
+       _LSA, "ForceGuest", "eq", 0),
+
+    # ---- 2.3.11 Network security ----
+    _R("2.3.11.1", "Network security: Allow Local System to use computer identity for NTLM = Enabled",
+       _LSA, "UseMachineId", "eq", 1),
+    _R("2.3.11.2", "Network security: Allow LocalSystem NULL session fallback = Disabled",
+       _MSV, "allownullsessionfallback", "eq", 0),
+    _R("2.3.11.3", "Network security: Allow PKU2U authentication requests = Disabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\pku2u", "AllowOnlineID", "eq", 0),
+    _R("2.3.11.4", "Network security: Configure encryption types allowed for Kerberos = AES128/AES256/Future",
+       r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters",
+       "SupportedEncryptionTypes", "eq", 2147483640, set=2147483640),
+    _R("2.3.11.5", "Network security: Do not store LAN Manager hash value on next password change = Enabled",
+       _LSA, "NoLMHash", "eq", 1, severity="high"),
+    _R("2.3.11.7", "Network security: LAN Manager authentication level = NTLMv2 only, refuse LM & NTLM",
+       _LSA, "LmCompatibilityLevel", "eq", 5, severity="high"),
+    _R("2.3.11.8", "Network security: LDAP client signing requirements = Negotiate signing or higher",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\ldap", "LDAPClientIntegrity", "gte", 1, set=1),
+    _R("2.3.11.10", "Network security: Minimum session security for NTLM SSP clients = NTLMv2 & 128-bit",
+       _MSV, "NTLMMinClientSec", "eq", 537395200, set=537395200),
+    _R("2.3.11.11", "Network security: Minimum session security for NTLM SSP servers = NTLMv2 & 128-bit",
+       _MSV, "NTLMMinServerSec", "eq", 537395200, set=537395200),
+    _R("2.3.11.12", "Network security: Restrict NTLM: Audit Incoming NTLM Traffic = Enable all",
+       _MSV, "AuditReceivingNTLMTraffic", "eq", 2),
+    _R("2.3.11.13", "Network security: Restrict NTLM: Audit NTLM authentication in this domain = Enable all",
+       _NETLOGON, "AuditNTLMInDomain", "eq", 7, scope="DC"),
+    _R("2.3.11.14", "Network security: Restrict NTLM: Outgoing NTLM traffic = Audit all or higher",
+       _MSV, "RestrictSendingNTLMTraffic", "gte", 1, set=1),
+
+    # ---- 2.3.13 / 2.3.15 System settings ----
+    _R("2.3.13.1", "Shutdown: Allow system to be shut down without having to log on = Disabled",
+       _POLSYS, "ShutdownWithoutLogon", "eq", 0),
+    _R("2.3.15.1", "System objects: Require case insensitivity for non-Windows subsystems = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Kernel",
+       "ObCaseInsensitive", "eq", 1),
+    _R("2.3.15.2", "System objects: Strengthen default permissions of internal system objects = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager", "ProtectionMode", "eq", 1),
+
+    # ---- 2.3.17 UAC ----
+    _R("2.3.17.1", "UAC: Admin Approval Mode for the Built-in Administrator account = Enabled",
+       _POLSYS, "FilterAdministratorToken", "eq", 1, severity="high"),
+    _R("2.3.17.2", "UAC: Behavior of elevation prompt for admins in Admin Approval Mode = Prompt for consent on secure desktop",
+       _POLSYS, "ConsentPromptBehaviorAdmin", "eq", 2),
+    _R("2.3.17.3", "UAC: Behavior of elevation prompt for standard users = Automatically deny",
+       _POLSYS, "ConsentPromptBehaviorUser", "eq", 0),
+    _R("2.3.17.4", "UAC: Detect application installations and prompt for elevation = Enabled",
+       _POLSYS, "EnableInstallerDetection", "eq", 1),
+    _R("2.3.17.5", "UAC: Only elevate UIAccess applications installed in secure locations",
+       _POLSYS, "ValidateAdminCodeSignatures", "eq", 0),
+    _R("2.3.17.7", "UAC: Switch to the secure desktop when prompting for elevation = Enabled",
+       _POLSYS, "PromptOnSecureDesktop", "eq", 1),
+    _R("2.3.17.8", "UAC: Virtualize file and registry write failures to per-user locations = Enabled",
+       _POLSYS, "EnableVirtualization", "eq", 1, severity="low"),
+
+    # ================= Section 18 — Administrative Templates =================
+    _R("18.1.1.1", "Prevent enabling lock screen camera = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization",
+       "NoLockScreenCamera", "eq", 1, severity="low"),
+    _R("18.1.1.2", "Prevent enabling lock screen slide show = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization",
+       "NoLockScreenSlideshow", "eq", 1, severity="low"),
+    _R("18.1.2.2", "Allow users to enable online speech recognition services = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization",
+       "AllowInputPersonalization", "eq", 0, severity="low"),
+
+    _R("18.4.1", "Apply UAC restrictions to local accounts on network logons = Enabled",
+       _POLSYS, "LocalAccountTokenFilterPolicy", "eq", 0, scope="MS"),
+    _R("18.4.2", "Configure SMB v1 client driver = Disable driver",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\mrxsmb10", "Start", "eq", 4,
+       severity="high", restart=True),
+    _R("18.4.3", "Configure SMB v1 server = Disabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters",
+       "SMB1", "eq", 0, severity="high", restart=True),
+    _R("18.4.5", "Enable Structured Exception Handling Overwrite Protection (SEHOP) = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\kernel",
+       "DisableExceptionChainValidation", "eq", 0),
+    _R("18.4.7", "WDigest Authentication = Disabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest",
+       "UseLogonCredential", "eq", 0, severity="high"),
+
+    _R("18.5.1", "MSS: (AutoAdminLogon) Enable Automatic Logon = Disabled",
+       _WINLOGON, "AutoAdminLogon", "eq", 0, set="0", rtype="string", severity="high"),
+    _R("18.5.2", "MSS: (DisableIPSourceRouting IPv6) = Highest protection",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters",
+       "DisableIPSourceRouting", "eq", 2),
+    _R("18.5.3", "MSS: (DisableIPSourceRouting) = Highest protection",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters",
+       "DisableIPSourceRouting", "eq", 2),
+    _R("18.5.6", "MSS: (NoNameReleaseOnDemand) = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters",
+       "NoNameReleaseOnDemand", "eq", 1),
+    _R("18.5.8", "MSS: (SafeDllSearchMode) = Enabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager",
+       "SafeDllSearchMode", "eq", 1),
+    _R("18.5.9", "MSS: (ScreenSaverGracePeriod) <= 5 seconds",
+       _WINLOGON, "ScreenSaverGracePeriod", "lte", 5, set="5", rtype="string",
+       severity="low"),
+    _R("18.5.12", "MSS: (WarningLevel) Percentage threshold for security event log <= 90",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\Eventlog\Security",
+       "WarningLevel", "lte", 90, set=90, severity="low"),
+
+    _R("18.6.4.1", "Configure DNS over HTTPS / mDNS: Turn off mDNS = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient",
+       "EnableMulticast", "eq", 0),
+    _R("18.6.4.4", "Turn off multicast name resolution (LLMNR) = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient",
+       "EnableMulticast", "eq", 0, severity="high"),
+    _R("18.6.7.4", "Enable insecure guest logons: remote mailslots (LanmanServer) = Disabled",
+       r"HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters",
+       "EnableMailslots", "eq", 0),
+    _R("18.6.8.5", "Enable insecure guest logons = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation",
+       "AllowInsecureGuestAuth", "eq", 0, severity="high"),
+    _R("18.6.11.2", "Prohibit installation and configuration of Network Bridge = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Network Connections",
+       "NC_AllowNetBridge_NLA", "eq", 0, severity="low"),
+    _R("18.6.11.3", "Prohibit use of Internet Connection Sharing = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Network Connections",
+       "NC_ShowSharedAccessUI", "eq", 0, severity="low"),
+
+    _R("18.7.1", "Allow Print Spooler to accept client connections = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers",
+       "RegisterSpoolerRemoteRpcEndPoint", "eq", 2, severity="high"),
+    _R("18.7.10", "Limits print driver installation to Administrators = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint",
+       "RestrictDriverInstallationToAdministrators", "eq", 1, severity="high"),
+
+    _R("18.9.4.1", "Encryption Oracle Remediation = Force Updated Clients",
+       r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters",
+       "AllowEncryptionOracle", "eq", 0),
+    _R("18.9.4.2", "Remote host allows delegation of non-exportable credentials = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation",
+       "AllowProtectedCreds", "eq", 1),
+    _R("18.9.13.1", "Boot-Start Driver Initialization Policy = Good, unknown and bad but critical",
+       r"HKLM:\SYSTEM\CurrentControlSet\Policies\EarlyLaunch",
+       "DriverLoadPolicy", "eq", 3),
+    _R("18.9.19.2", "Configure registry policy processing: Do not apply during periodic background = FALSE",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}",
+       "NoBackgroundPolicy", "eq", 0),
+    _R("18.9.19.3", "Configure registry policy processing: Process even if GPOs have not changed = TRUE",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}",
+       "NoGPOListChanges", "eq", 0),
+
+    _R("18.10.8.2", "Disallow Autoplay for non-volume devices / AutoRun default = Do not execute",
+       r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer",
+       "NoAutorun", "eq", 1),
+    _R("18.10.8.3", "Turn off Autoplay = Enabled: All drives",
+       r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer",
+       "NoDriveTypeAutoRun", "eq", 255, severity="high"),
+    _R("18.10.13.1", "Turn off cloud consumer account state content = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent",
+       "DisableConsumerAccountStateContent", "eq", 1, severity="low"),
+    _R("18.10.13.3", "Turn off Microsoft consumer experiences = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent",
+       "DisableWindowsConsumerFeatures", "eq", 1, severity="low"),
+    _R("18.10.15.1", "Do not display the password reveal button = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\CredUI",
+       "DisablePasswordReveal", "eq", 1),
+    _R("18.10.15.2", "Enumerate administrator accounts on elevation = Disabled",
+       r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI",
+       "EnumerateAdministrators", "eq", 0),
+    _R("18.10.16.1", "Allow Diagnostic Data = Diagnostic data off or Send required",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+       "AllowTelemetry", "lte", 1, set=1, severity="low"),
+
+    _R("18.10.26.1.1", "Application event log: Control Event Log behavior when full = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application",
+       "Retention", "eq_str", "0", set="0", rtype="string", severity="low"),
+    _R("18.10.26.1.2", "Application event log: Maximum log size >= 32768 KB",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application",
+       "MaxSize", "gte", 32768, set=32768, severity="low"),
+    _R("18.10.26.2.1", "Security event log: Control Event Log behavior when full = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security",
+       "Retention", "eq_str", "0", set="0", rtype="string"),
+    _R("18.10.26.2.2", "Security event log: Maximum log size >= 196608 KB",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security",
+       "MaxSize", "gte", 196608, set=196608),
+    _R("18.10.26.3.1", "Setup event log: Control Event Log behavior when full = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup",
+       "Retention", "eq_str", "0", set="0", rtype="string", severity="low"),
+    _R("18.10.26.3.2", "Setup event log: Maximum log size >= 32768 KB",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup",
+       "MaxSize", "gte", 32768, set=32768, severity="low"),
+    _R("18.10.26.4.1", "System event log: Control Event Log behavior when full = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\System",
+       "Retention", "eq_str", "0", set="0", rtype="string", severity="low"),
+    _R("18.10.26.4.2", "System event log: Maximum log size >= 32768 KB",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\EventLog\System",
+       "MaxSize", "gte", 32768, set=32768, severity="low"),
+
+    _R("18.10.29.2", "Configure Windows Defender SmartScreen / Do not apply Mark of the Web = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Attachment Manager",
+       "ScanWithAntiVirus", "ne", 1, set=3),
+    _R("18.10.29.3", "Turn off Data Execution Prevention for Explorer = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer",
+       "NoDataExecutionPrevention", "eq", 0),
+    _R("18.10.29.4", "Turn off heap termination on corruption = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer",
+       "NoHeapTerminationOnCorruption", "eq", 0),
+    _R("18.10.29.5", "Turn off shell protocol protected mode = Disabled",
+       r"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer",
+       "PreXPSP2ShellProtocolBehavior", "eq", 0),
+    _R("18.10.42.1", "Block all consumer Microsoft account user authentication = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\MicrosoftAccount", "DisableUserAuth", "eq", 1),
+
+    _R("18.10.43.5.1", "MAPS: Configure local setting override for reporting = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet",
+       "LocalSettingOverrideSpynetReporting", "eq", 0),
+    _R("18.10.43.6.1.1", "Configure Attack Surface Reduction rules = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR",
+       "ExploitGuard_ASR_Rules", "eq", 1),
+    _R("18.10.43.6.3.1", "Prevent users and apps from accessing dangerous websites = Block",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection",
+       "EnableNetworkProtection", "eq", 1),
+    _R("18.10.43.7.1", "Enable file hash computation feature = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\MpEngine",
+       "EnableFileHashComputation", "eq", 1, severity="low"),
+    _R("18.10.43.10.2", "Scan all downloaded files and attachments = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
+       "DisableIOAVProtection", "eq", 0),
+    _R("18.10.43.10.3", "Turn off real-time protection = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
+       "DisableRealtimeMonitoring", "eq", 0, severity="high"),
+    _R("18.10.43.10.4", "Turn on behavior monitoring = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection",
+       "DisableBehaviorMonitoring", "eq", 0),
+    _R("18.10.43.16", "Configure detection for potentially unwanted applications = Block",
+       _DEFENDER, "PUAProtection", "eq", 1),
+
+    _R("18.10.51.1", "Prevent the usage of OneDrive for file storage = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\OneDrive",
+       "DisableFileSyncNGSC", "eq", 1, severity="low"),
+
+    _R("18.10.57.2.2", "Do not allow passwords to be saved (RDS) = Enabled",
+       _TS, "DisablePasswordSaving", "eq", 1),
+    _R("18.10.57.3.3.3", "Do not allow drive redirection (RDS) = Enabled",
+       _TS, "fDisableCdm", "eq", 1),
+    _R("18.10.57.3.9.1", "Always prompt for password upon connection (RDS) = Enabled",
+       _TS, "fPromptForPassword", "eq", 1),
+    _R("18.10.57.3.9.2", "Require secure RPC communication (RDS) = Enabled",
+       _TS, "fEncryptRPCTraffic", "eq", 1),
+    _R("18.10.57.3.9.3", "Require use of specific security layer for RDP (RDS) = SSL",
+       _TS, "SecurityLayer", "eq", 2),
+    _R("18.10.57.3.9.4", "Require user authentication for remote connections (NLA) = Enabled",
+       _TS, "UserAuthentication", "eq", 1, severity="high"),
+    _R("18.10.57.3.9.5", "Set client connection encryption level = High Level",
+       _TS, "MinEncryptionLevel", "eq", 3),
+
+    _R("18.10.58.1", "Prevent downloading of enclosures (RSS feeds) = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds",
+       "DisableEnclosureDownload", "eq", 1, severity="low"),
+    _R("18.10.59.3", "Allow indexing of encrypted files = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Search",
+       "AllowIndexingEncryptedStoresOrItems", "eq", 0),
+    _R("18.10.76.2.1", "Configure Windows Defender SmartScreen = Warn and prevent bypass",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\System",
+       "EnableSmartScreen", "eq", 1),
+    _R("18.10.80.2", "Allow Windows Ink Workspace = Disabled or on above lock only",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace",
+       "AllowWindowsInkWorkspace", "lte", 1, set=1, severity="low"),
+    _R("18.10.81.1", "Allow user control over installs = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Installer",
+       "EnableUserControl", "eq", 0),
+    _R("18.10.81.2", "Always install with elevated privileges = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Installer",
+       "AlwaysInstallElevated", "eq", 0, severity="high"),
+    _R("18.10.82.1", "Allow Basic authentication for MPR notifications = Disabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\System",
+       "EnableMPRNotifications", "eq", 0),
+    _R("18.10.82.2", "Sign-in and lock last interactive user automatically after a restart = Disabled",
+       _POLSYS, "DisableAutomaticRestartSignOn", "eq", 1),
+
+    _R("18.10.89.1.1", "WinRM Client: Allow Basic authentication = Disabled",
+       _WINRM_C, "AllowBasic", "eq", 0, severity="high"),
+    _R("18.10.89.1.2", "WinRM Client: Allow unencrypted traffic = Disabled",
+       _WINRM_C, "AllowUnencryptedTraffic", "eq", 0, severity="high"),
+    _R("18.10.89.1.3", "WinRM Client: Disallow Digest authentication = Enabled",
+       _WINRM_C, "AllowDigest", "eq", 0),
+    _R("18.10.89.2.1", "WinRM Service: Allow Basic authentication = Disabled",
+       _WINRM_S, "AllowBasic", "eq", 0, severity="high"),
+    _R("18.10.89.2.3", "WinRM Service: Allow unencrypted traffic = Disabled",
+       _WINRM_S, "AllowUnencryptedTraffic", "eq", 0, severity="high"),
+    _R("18.10.89.2.4", "WinRM Service: Disallow WinRM from storing RunAs credentials = Enabled",
+       _WINRM_S, "DisableRunAs", "eq", 1),
+    _R("18.10.93.2.1", "Configure Automatic Updates = Enabled",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU",
+       "NoAutoUpdate", "eq", 0),
+    _R("18.10.93.2.2", "Configure Automatic Updates: Scheduled install day = Every day",
+       r"HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU",
+       "ScheduledInstallDay", "eq", 0, severity="low"),
+]
+
+
+def get_registry_paths() -> List[str]:
+    """Distinct registry paths referenced by REGISTRY_CHECKS (+ non-table reads)."""
+    paths = {c["path"] for c in REGISTRY_CHECKS}
+    # Paths read by non-table rules (absent/eq checks below).
+    paths.add(_NETLOGON)  # 2.3.5.2 VulnerableChannelAllowList
+    return sorted(paths)
+
+
+# ============================================================ #
+#  Rule builders                                              #
 # ============================================================ #
 
-def filter_rules_by_profile(
-    rules: List[WindowsCISRule],
-    profile: str,
-    os_version: str = "all",
-) -> List[WindowsCISRule]:
-    """
-    Filter rules by CIS profile level and OS version.
+def _add(rules, id, section, title, severity, level, check_fn, evidence_fn,
+         remediation, description="", manual=False, scope="all", audit_key="",
+         versions=None):
+    rules.append(WindowsCISRule(
+        id=id, section=section, title=title,
+        description=description or title,
+        severity=severity, level=level,
+        check_fn=check_fn, evidence_fn=evidence_fn,
+        remediation=remediation, manual=manual, scored=not manual,
+        scope=scope, audit_key=audit_key,
+        versions=versions or ["win_2025"],
+    ))
 
-    Args:
-        rules:      Full rule list
-        profile:    "L1" returns only L1 rules; "FULL" returns all rules
-        os_version: "2016", "2019", "2022", "2025", or "all"
+
+def _build_section1(rules):
+    """1.x Account Policies — secedit [System Access]."""
+    def secpol_rule(sec, title, key, ok, sev="high", remediation=None):
+        _add(rules, f"WIN-2025-{sec}", sec, title, sev, "L1",
+             check_fn=(lambda d, k=key, f=ok: f(_secpol_int(d, k))),
+             evidence_fn=(lambda d, k=key: f"{k} = {_secpol_value(d, k)}"),
+             remediation=remediation or f"Account Policies > set '{title}'.",
+             audit_key=key)
+
+    secpol_rule("1.1.1", "Enforce password history >= 24 passwords",
+                "PasswordHistorySize", lambda v: v is not None and v >= 24)
+    secpol_rule("1.1.2", "Maximum password age <= 365 days, not 0",
+                "MaximumPasswordAge", lambda v: v is not None and 0 < v <= 365)
+    secpol_rule("1.1.3", "Minimum password age >= 1 day",
+                "MinimumPasswordAge", lambda v: v is not None and v >= 1, sev="medium")
+    secpol_rule("1.1.4", "Minimum password length >= 14 characters",
+                "MinimumPasswordLength", lambda v: v is not None and v >= 14)
+    secpol_rule("1.1.5", "Password must meet complexity requirements = Enabled",
+                "PasswordComplexity", lambda v: v == 1)
+    # 1.1.6 relax min length -> REGISTRY_CHECKS
+    secpol_rule("1.1.7", "Store passwords using reversible encryption = Disabled",
+                "ClearTextPassword", lambda v: v == 0)
+
+    secpol_rule("1.2.1", "Account lockout duration >= 15 minutes",
+                "LockoutDuration", lambda v: v is not None and v >= 15)
+    secpol_rule("1.2.2", "Account lockout threshold <= 5, not 0",
+                "LockoutBadCount", lambda v: v is not None and 0 < v <= 5)
+    _add(rules, "WIN-2025-1.2.3",
+         "1.2.3", "Allow Administrator account lockout = Enabled", "medium", "L1",
+         check_fn=lambda d: False,
+         evidence_fn=lambda d: "Manual: verify AllowAdministratorLockout is Enabled (secpol.msc).",
+         remediation="Account Policies > Account Lockout > Allow Administrator account lockout: Enabled.",
+         manual=True, scope="MS")
+    secpol_rule("1.2.4", "Reset account lockout counter after >= 15 minutes",
+                "ResetLockoutCount", lambda v: v is not None and v >= 15, sev="medium")
+
+
+def _build_user_rights(rules):
+    """2.2 User Rights Assignment — secedit [Privilege Rights]."""
+    # (section, title, privilege, mode, [names], level, scope, severity)
+    URA = [
+        ("2.2.1", "Access Credential Manager as a trusted caller = No One",
+         "SeTrustedCredManAccessPrivilege", "empty", [], "L1", "all", "medium"),
+        ("2.2.2", "Access this computer from the network (DC)",
+         "SeNetworkLogonRight", "exact",
+         ["Administrators", "Authenticated Users", "ENTERPRISE DOMAIN CONTROLLERS"],
+         "L1", "DC", "medium"),
+        ("2.2.3", "Access this computer from the network (MS)",
+         "SeNetworkLogonRight", "exact", ["Administrators", "Authenticated Users"],
+         "L1", "MS", "medium"),
+        ("2.2.4", "Act as part of the operating system = No One",
+         "SeTcbPrivilege", "empty", [], "L1", "all", "high"),
+        ("2.2.6", "Adjust memory quotas for a process",
+         "SeIncreaseQuotaPrivilege", "exact",
+         ["Administrators", "LOCAL SERVICE", "NETWORK SERVICE"], "L1", "all", "low"),
+        ("2.2.7", "Allow log on locally (DC)", "SeInteractiveLogonRight", "exact",
+         ["Administrators", "ENTERPRISE DOMAIN CONTROLLERS"], "L1", "DC", "medium"),
+        ("2.2.8", "Allow log on locally (MS)", "SeInteractiveLogonRight", "exact",
+         ["Administrators"], "L1", "MS", "medium"),
+        ("2.2.9", "Allow log on through Remote Desktop Services (DC)",
+         "SeRemoteInteractiveLogonRight", "exact", ["Administrators"], "L1", "DC", "high"),
+        ("2.2.10", "Allow log on through Remote Desktop Services (MS)",
+         "SeRemoteInteractiveLogonRight", "exact",
+         ["Administrators", "Remote Desktop Users"], "L1", "MS", "high"),
+        ("2.2.11", "Back up files and directories", "SeBackupPrivilege", "exact",
+         ["Administrators"], "L1", "all", "medium"),
+        ("2.2.12", "Change the system time", "SeSystemtimePrivilege", "exact",
+         ["Administrators", "LOCAL SERVICE"], "L1", "all", "low"),
+        ("2.2.13", "Change the time zone", "SeTimeZonePrivilege", "exact",
+         ["Administrators", "LOCAL SERVICE"], "L1", "all", "low"),
+        ("2.2.14", "Create a pagefile", "SeCreatePagefilePrivilege", "exact",
+         ["Administrators"], "L1", "all", "low"),
+        ("2.2.15", "Create a token object = No One", "SeCreateTokenPrivilege",
+         "empty", [], "L1", "all", "high"),
+        ("2.2.16", "Create global objects", "SeCreateGlobalPrivilege", "exact",
+         ["Administrators", "LOCAL SERVICE", "NETWORK SERVICE", "SERVICE"],
+         "L1", "all", "medium"),
+        ("2.2.17", "Create permanent shared objects = No One",
+         "SeCreatePermanentPrivilege", "empty", [], "L1", "all", "medium"),
+        ("2.2.18", "Create symbolic links (DC)", "SeCreateSymbolicLinkPrivilege",
+         "exact", ["Administrators"], "L1", "DC", "low"),
+        ("2.2.19", "Create symbolic links (MS)", "SeCreateSymbolicLinkPrivilege",
+         "exact", ["Administrators", "NT VIRTUAL MACHINE\\Virtual Machines"],
+         "L1", "MS", "low"),
+        ("2.2.20", "Debug programs", "SeDebugPrivilege", "exact",
+         ["Administrators"], "L1", "all", "high"),
+        ("2.2.21", "Deny access to this computer from the network includes Guests (DC)",
+         "SeDenyNetworkLogonRight", "include", ["Guests"], "L1", "DC", "medium"),
+        ("2.2.22", "Deny access to this computer from the network includes Guests, Local account (MS)",
+         "SeDenyNetworkLogonRight", "include", ["Guests", "Local account"], "L1", "MS", "medium"),
+        ("2.2.23", "Deny log on as a batch job includes Guests",
+         "SeDenyBatchLogonRight", "include", ["Guests"], "L1", "all", "medium"),
+        ("2.2.24", "Deny log on as a service includes Guests",
+         "SeDenyServiceLogonRight", "include", ["Guests"], "L1", "all", "medium"),
+        ("2.2.25", "Deny log on locally includes Guests",
+         "SeDenyInteractiveLogonRight", "include", ["Guests"], "L1", "all", "medium"),
+        ("2.2.26", "Deny log on through Remote Desktop Services includes Guests (DC)",
+         "SeDenyRemoteInteractiveLogonRight", "include", ["Guests"], "L1", "DC", "high"),
+        ("2.2.27", "Deny log on through Remote Desktop Services includes Guests, Local account (MS)",
+         "SeDenyRemoteInteractiveLogonRight", "include", ["Guests", "Local account"],
+         "L1", "MS", "high"),
+        ("2.2.28", "Enable computer and user accounts to be trusted for delegation (DC)",
+         "SeEnableDelegationPrivilege", "exact", ["Administrators"], "L1", "DC", "medium"),
+        ("2.2.29", "Enable computer and user accounts to be trusted for delegation = No One (MS)",
+         "SeEnableDelegationPrivilege", "empty", [], "L1", "MS", "medium"),
+        ("2.2.30", "Force shutdown from a remote system", "SeRemoteShutdownPrivilege",
+         "exact", ["Administrators"], "L1", "all", "low"),
+        ("2.2.31", "Generate security audits", "SeAuditPrivilege", "exact",
+         ["LOCAL SERVICE", "NETWORK SERVICE"], "L1", "all", "medium"),
+        ("2.2.32", "Impersonate a client after authentication (DC)",
+         "SeImpersonatePrivilege", "exact",
+         ["Administrators", "LOCAL SERVICE", "NETWORK SERVICE", "SERVICE"],
+         "L1", "DC", "medium"),
+        ("2.2.34", "Increase scheduling priority", "SeIncreaseBasePriorityPrivilege",
+         "exact", ["Administrators", "Window Manager\\Window Manager Group"],
+         "L1", "all", "low"),
+        ("2.2.35", "Load and unload device drivers", "SeLoadDriverPrivilege",
+         "exact", ["Administrators"], "L1", "all", "medium"),
+        ("2.2.36", "Lock pages in memory = No One", "SeLockMemoryPrivilege",
+         "empty", [], "L1", "all", "low"),
+        ("2.2.37", "Log on as a batch job (DC)", "SeBatchLogonRight", "exact",
+         ["Administrators"], "L2", "DC", "low"),
+        ("2.2.38", "Manage auditing and security log (DC)", "SeSecurityPrivilege",
+         "exact", ["Administrators"], "L1", "DC", "medium"),
+        ("2.2.39", "Manage auditing and security log (MS)", "SeSecurityPrivilege",
+         "exact", ["Administrators"], "L1", "MS", "medium"),
+        ("2.2.40", "Modify an object label = No One", "SeRelabelPrivilege",
+         "empty", [], "L1", "all", "low"),
+        ("2.2.41", "Modify firmware environment values", "SeSystemEnvironmentPrivilege",
+         "exact", ["Administrators"], "L1", "all", "low"),
+        ("2.2.42", "Perform volume maintenance tasks", "SeManageVolumePrivilege",
+         "exact", ["Administrators"], "L1", "all", "low"),
+        ("2.2.43", "Profile single process", "SeProfileSingleProcessPrivilege",
+         "exact", ["Administrators"], "L1", "all", "low"),
+        ("2.2.44", "Profile system performance", "SeSystemProfilePrivilege",
+         "exact", ["Administrators", "NT SERVICE\\WdiServiceHost"], "L1", "all", "low"),
+        ("2.2.45", "Replace a process level token", "SeAssignPrimaryTokenPrivilege",
+         "exact", ["LOCAL SERVICE", "NETWORK SERVICE"], "L1", "all", "low"),
+        ("2.2.46", "Restore files and directories", "SeRestorePrivilege", "exact",
+         ["Administrators"], "L1", "all", "medium"),
+        ("2.2.47", "Shut down the system", "SeShutdownPrivilege", "exact",
+         ["Administrators"], "L1", "all", "low"),
+        ("2.2.48", "Synchronize directory service data = No One (DC)",
+         "SeSyncAgentPrivilege", "empty", [], "L1", "DC", "medium"),
+        ("2.2.49", "Take ownership of files or other objects", "SeTakeOwnershipPrivilege",
+         "exact", ["Administrators"], "L1", "all", "medium"),
+    ]
+    for sec, title, priv, mode, names, level, scope, sev in URA:
+        if mode == "empty":
+            fn = (lambda d, p=priv: _rights_empty(d, p))
+        elif mode == "include":
+            fn = (lambda d, p=priv, n=names: _rights_include(d, p, n))
+        else:
+            fn = (lambda d, p=priv, n=names: _rights_exact(d, p, n))
+        _add(rules, f"WIN-2025-{sec}", sec,
+             f"Ensure '{title}'", sev, level,
+             check_fn=fn,
+             evidence_fn=(lambda d, p=priv: f"{p} = {_user_right_sids(d, p)}"),
+             remediation=f"User Rights Assignment > set '{title}'.",
+             scope=scope, audit_key=priv)
+
+    # 2.2.33 Impersonate a client (MS) — set may include IIS_IUSRS when IIS present,
+    # so an exact match false-fails IIS hosts; verified manually.
+    _add(rules, "WIN-2025-2.2.33", "2.2.33",
+         "Ensure 'Impersonate a client after authentication' is set correctly (MS)",
+         "medium", "L1",
+         check_fn=lambda d: _rights_include(
+             d, "SeImpersonatePrivilege",
+             ["Administrators", "LOCAL SERVICE", "NETWORK SERVICE", "SERVICE"]),
+         evidence_fn=lambda d: f"SeImpersonatePrivilege = {_user_right_sids(d, 'SeImpersonatePrivilege')}",
+         remediation="Set to Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE (+ IIS_IUSRS when IIS is installed).",
+         scope="MS", audit_key="SeImpersonatePrivilege")
+
+
+def _build_security_options_misc(rules):
+    """2.3 Security Options that are not simple registry DWORDs."""
+    _add(rules, "WIN-2025-2.3.1.1", "2.3.1.1",
+         "Ensure 'Accounts: Guest account status' is set to 'Disabled'", "high", "L1",
+         check_fn=_guest_disabled,
+         evidence_fn=lambda d: _ev_section(d, "LOCAL_USERS", 300),
+         remediation="Disable-LocalUser -Name Guest.", scope="MS", audit_key="Guest")
+
+    for sec, title in [
+        ("2.3.1.3", "Accounts: Rename administrator account"),
+        ("2.3.1.4", "Accounts: Rename guest account"),
+        ("2.3.7.4", "Interactive logon: Message text for users attempting to log on"),
+        ("2.3.7.5", "Interactive logon: Message title for users attempting to log on"),
+        ("2.3.10.6", "Network access: Named Pipes that can be accessed anonymously (DC)"),
+        ("2.3.10.8", "Network access: Remotely accessible registry paths"),
+        ("2.3.10.9", "Network access: Remotely accessible registry paths and sub-paths"),
+        ("2.3.10.11", "Network access: Restrict clients allowed to make remote calls to SAM (MS)"),
+        ("2.3.11.6", "Network security: Force logoff when logon hours expire"),
+        ("2.3.5.1", "Domain controller: Allow server operators to schedule tasks (DC)"),
+    ]:
+        scope = "DC" if "(DC)" in title else ("MS" if "(MS)" in title else "all")
+        _add(rules, f"WIN-2025-{sec}", sec, f"Ensure '{title}' is configured",
+             "medium", "L1",
+             check_fn=lambda d: False,
+             evidence_fn=(lambda d, t=title: f"Manual verification required: {t}"),
+             remediation=f"Configure '{title}' per the CIS benchmark (manual / GPO).",
+             manual=True, scope=scope)
+
+    # 2.3.5.2 DC: Allow vulnerable Netlogon secure channel connections = Not Configured
+    _add(rules, "WIN-2025-2.3.5.2", "2.3.5.2",
+         "Ensure 'DC: Allow vulnerable Netlogon secure channel connections' is 'Not Configured'",
+         "high", "L1",
+         check_fn=lambda d: _reg(d, _NETLOGON, "VulnerableChannelAllowList") is None,
+         evidence_fn=lambda d: f"VulnerableChannelAllowList = {_reg(d, _NETLOGON, 'VulnerableChannelAllowList')}",
+         remediation="Remove any VulnerableChannelAllowList entry (leave Not Configured).",
+         scope="DC", audit_key="VulnerableChannelAllowList")
+
+
+def _build_registry_rules(rules, version="win_2025"):
+    """Section 2.3 (registry) + Section 18 — generated from REGISTRY_CHECKS."""
+    for c in REGISTRY_CHECKS:
+        sec = c["section"]
+        path, prop, op, target = c["path"], c["prop"], c["op"], c["target"]
+        _add(rules, f"WIN-{version.split('_')[1]}-{sec}", sec,
+             f"Ensure '{c['title']}'", c["severity"], c["level"],
+             check_fn=(lambda d, p=path, pr=prop, o=op, t=target: _pred(_reg(d, p, pr), o, t)),
+             evidence_fn=(lambda d, p=path, pr=prop: f"{pr} = {_reg(d, p, pr)}"),
+             remediation=f"Set-ItemProperty '{path}' -Name {prop} to the CIS value.",
+             scope=c["scope"], audit_key=f"{path}\\{prop}",
+             versions=[version])
+
+
+def _build_firewall(rules):
+    """9.x Windows Defender Firewall — Get-NetFirewallProfile."""
+    specs = {
+        "Domain": ("9.1", "domainfw.log", 5),
+        "Private": ("9.2", "privatefw.log", 5),
+        "Public": ("9.3", "publicfw.log", 5),
+    }
+    for prof, (base, logfile, _) in specs.items():
+        n = 1
+        def fwrule(sub, title, fn, sev="medium"):
+            _add(rules, f"WIN-2025-{base}.{sub}", f"{base}.{sub}",
+                 f"Ensure 'Windows Firewall: {prof}: {title}'", sev, "L1",
+                 check_fn=fn,
+                 evidence_fn=(lambda d, p=prof: _json_section(d, "FIREWALL_PROFILES") and
+                              f"{p}: {_firewall_profile(d, p)}" or "(no firewall data)"),
+                 remediation=f"Set-NetFirewallProfile -Profile {prof} accordingly.",
+                 audit_key=f"firewall/{prof}")
+
+        fwrule("1", "Firewall state = On", (lambda d, p=prof: _fw_enabled(d, p)), "high")
+        fwrule("2", "Inbound connections = Block", (lambda d, p=prof: _fw_inbound_block(d, p)), "high")
+        fwrule("3", "Display a notification = No",
+               (lambda d, p=prof: _fw_bool(_firewall_profile(d, p), "NotifyOnListen", False)))
+        if prof == "Public":
+            fwrule("4", "Apply local firewall rules = No",
+                   (lambda d, p=prof: _fw_bool(_firewall_profile(d, p), "AllowLocalFirewallRules", False)))
+            fwrule("5", "Apply local connection security rules = No",
+                   (lambda d, p=prof: _fw_bool(_firewall_profile(d, p), "AllowLocalIPsecRules", False)))
+            ln, sz, dr, sc = "6", "7", "8", "9"
+        else:
+            ln, sz, dr, sc = "4", "5", "6", "7"
+        fwrule(ln, f"Logging: Name = %SystemRoot%...{logfile}",
+               (lambda d, p=prof, lf=logfile: _fw_logname(d, p, lf)), "low")
+        fwrule(sz, "Logging: Size limit >= 16384 KB",
+               (lambda d, p=prof: _fw_int_gte(d, p, "LogMaxSizeKilobytes", 16384)), "low")
+        fwrule(dr, "Logging: Log dropped packets = Yes",
+               (lambda d, p=prof: _fw_bool(_firewall_profile(d, p), "LogBlocked", True)))
+        fwrule(sc, "Logging: Log successful connections = Yes",
+               (lambda d, p=prof: _fw_bool(_firewall_profile(d, p), "LogAllowed", True)))
+
+
+def _build_audit_policy(rules):
+    """17.x Advanced Audit Policy — auditpol /get."""
+    A = [
+        ("17.1.1", "Credential Validation", "Success and Failure", "high", "all"),
+        ("17.1.2", "Kerberos Authentication Service", "Success and Failure", "medium", "DC"),
+        ("17.1.3", "Kerberos Service Ticket Operations", "Success and Failure", "medium", "DC"),
+        ("17.2.1", "Application Group Management", "Success and Failure", "medium", "all"),
+        ("17.2.2", "Computer Account Management", "Success", "medium", "DC"),
+        ("17.2.3", "Distribution Group Management", "Success", "low", "DC"),
+        ("17.2.4", "Other Account Management Events", "Success", "medium", "DC"),
+        ("17.2.5", "Security Group Management", "Success", "medium", "all"),
+        ("17.2.6", "User Account Management", "Success and Failure", "medium", "all"),
+        ("17.3.1", "Plug and Play Events", "Success", "low", "all"),
+        ("17.3.2", "Process Creation", "Success", "medium", "all"),
+        ("17.4.1", "Directory Service Access", "Failure", "medium", "DC"),
+        ("17.4.2", "Directory Service Changes", "Success", "medium", "DC"),
+        ("17.5.1", "Account Lockout", "Failure", "high", "all"),
+        ("17.5.2", "Group Membership", "Success", "medium", "all"),
+        ("17.5.3", "Logoff", "Success", "low", "all"),
+        ("17.5.4", "Logon", "Success and Failure", "high", "all"),
+        ("17.5.5", "Other Logon/Logoff Events", "Success and Failure", "medium", "all"),
+        ("17.5.6", "Special Logon", "Success", "medium", "all"),
+        ("17.6.1", "Detailed File Share", "Failure", "medium", "all"),
+        ("17.6.2", "File Share", "Success and Failure", "medium", "all"),
+        ("17.6.3", "Other Object Access Events", "Success and Failure", "medium", "all"),
+        ("17.6.4", "Removable Storage", "Success and Failure", "medium", "all"),
+        ("17.7.1", "Audit Policy Change", "Success", "high", "all"),
+        ("17.7.2", "Authentication Policy Change", "Success", "medium", "all"),
+        ("17.7.3", "Authorization Policy Change", "Success", "medium", "all"),
+        ("17.7.4", "MPSSVC Rule-Level Policy Change", "Success and Failure", "medium", "all"),
+        ("17.7.5", "Other Policy Change Events", "Failure", "low", "all"),
+        ("17.8.1", "Sensitive Privilege Use", "Success and Failure", "high", "all"),
+        ("17.9.1", "IPsec Driver", "Success and Failure", "medium", "all"),
+        ("17.9.2", "Other System Events", "Success and Failure", "medium", "all"),
+        ("17.9.3", "Security State Change", "Success", "high", "all"),
+        ("17.9.4", "Security System Extension", "Success", "high", "all"),
+        ("17.9.5", "System Integrity", "Success and Failure", "high", "all"),
+    ]
+    for sec, subcat, expected, sev, scope in A:
+        _add(rules, f"WIN-2025-{sec}", sec,
+             f"Ensure 'Audit {subcat}' is set to '{expected}'", sev, "L1",
+             check_fn=(lambda d, s=subcat, e=expected: _audit_matches(d, s, e)),
+             evidence_fn=(lambda d, s=subcat: f"{s}: {_audit_policy_setting(d, s) or '(not found)'}"),
+             remediation=f"auditpol /set /subcategory:\"{subcat}\" for '{expected}'.",
+             scope=scope, audit_key=f"auditpol/{subcat}")
+
+
+def _build_user_templates(rules):
+    """19.x Administrative Templates (User) — HKU-scoped, all manual."""
+    U = [
+        ("19.5.1.1", "Turn off toast notifications on the lock screen = Enabled"),
+        ("19.7.5.1", "Do not preserve zone information in file attachments = Disabled"),
+        ("19.7.5.2", "Notify antivirus programs when opening attachments = Enabled"),
+        ("19.7.8.1", "Configure Windows spotlight on lock screen = Disabled"),
+        ("19.7.26.1", "Prevent users from sharing files within their profile = Enabled"),
+        ("19.7.44.1", "Always install with elevated privileges (user) = Disabled"),
+    ]
+    for sec, title in U:
+        _add(rules, f"WIN-2025-{sec}", sec, f"Ensure '{title}'", "low", "L1",
+             check_fn=lambda d: False,
+             evidence_fn=(lambda d, t=title: f"Manual: HKU per-user policy — {t}"),
+             remediation="Configure via User Configuration Group Policy (HKU write, per logged-in user).",
+             manual=True, audit_key="HKU")
+
+
+# ============================================================ #
+#  Version builders + dispatch                                #
+# ============================================================ #
+
+def build_win2025_cis_rules() -> List[WindowsCISRule]:
+    """Full CIS Microsoft Windows Server 2025 Benchmark v1.0.0 rule set."""
+    rules: List[WindowsCISRule] = []
+    _build_section1(rules)
+    _build_user_rights(rules)
+    _build_security_options_misc(rules)
+    _build_registry_rules(rules, "win_2025")
+    _build_firewall(rules)
+    _build_audit_policy(rules)
+    _build_user_templates(rules)
+    return rules
+
+
+def build_win2022_cis_rules() -> List[WindowsCISRule]:
     """
-    filtered = rules
+    CIS Windows Server 2022 Benchmark.
+
+    Win 2022 CIS data pending — will be populated when the CIS file is provided.
+    Until then this extends the win_2025 base (superset) so 2022 hosts are still
+    audited rather than left unscored.
+    """
+    rules = build_win2025_cis_rules()
+    for r in rules:
+        r.versions = ["win_2022"]
+    return rules
+
+
+def build_win2016_cis_rules() -> List[WindowsCISRule]:
+    """
+    CIS Windows Server 2016 Benchmark.
+
+    Win 2016 CIS data pending — will be populated when the CIS file is provided.
+    Extends the win_2025 base (superset) as a functional fallback.
+    """
+    rules = build_win2025_cis_rules()
+    for r in rules:
+        r.versions = ["win_2016"]
+    return rules
+
+
+_VERSION_BUILDERS = {
+    "win_2016": build_win2016_cis_rules,
+    "win_2022": build_win2022_cis_rules,
+    "win_2025": build_win2025_cis_rules,
+}
+
+
+def build_windows_cis_rules_for_version(gate: str) -> List[WindowsCISRule]:
+    """Return the rule set for a resolved version gate key (defaults to 2025)."""
+    return _VERSION_BUILDERS.get(gate, build_win2025_cis_rules)()
+
+
+# Public dispatcher name (parity with linux build_linux_cis_rules / mssql).
+def build_windows_cis_rules(gate: str = "win_2025") -> List[WindowsCISRule]:
+    """Dispatcher: build the CIS rule set for the given version gate key."""
+    return build_windows_cis_rules_for_version(gate)
+
+
+def build_all_windows_cis_rules() -> List[WindowsCISRule]:
+    """Backward-compatible entry point — the newest (superset) rule set."""
+    return build_win2025_cis_rules()
+
+
+# ============================================================ #
+#  Filtering                                                  #
+# ============================================================ #
+
+def filter_rules_by_profile(rules: List[WindowsCISRule], profile: str) -> List[WindowsCISRule]:
+    """L1 returns only L1 rules (manual controls are L1); FULL returns all."""
     if profile == "L1":
-        filtered = [r for r in filtered if r.level == "L1"]
-    if os_version != "all":
-        filtered = [
-            r for r in filtered
-            if "all" in r.versions or os_version in r.versions
-        ]
-    return filtered
+        return [r for r in rules if r.level == "L1"]
+    return rules
 
+
+def filter_rules_by_scope(rules: List[WindowsCISRule], is_dc: bool) -> List[WindowsCISRule]:
+    """
+    Drop rules that do not apply to this host's role. DC-only rules are skipped
+    on member servers and vice-versa; 'all' rules always apply.
+    """
+    want = "DC" if is_dc else "MS"
+    return [r for r in rules if r.scope in ("all", want)]
+
+
+# ============================================================ #
+#  Compliance evaluation                                      #
+# ============================================================ #
 
 def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any]:
     """
     Evaluate all rules against the collected audit dump.
 
-    Returns:
-        {
-            "summary": {
-                "total_rules_scored": int,
-                "passed_scored": int,
-                "failed_scored": int,
-                "compliance_pct": float,
-                "weighted_compliance_pct": float,
-            },
-            "findings": [...]
-        }
+    Manual controls are reported (status "skipped", surfaced NOT_APPLICABLE by
+    the service) but never scored. Returns a summary + per-finding list.
     """
     SEVERITY_WEIGHTS = {"high": 3, "medium": 2, "low": 1, "info": 0}
 
     findings = []
+    passed_scored = 0
+    failed_scored = 0
+    manual_checks = 0
     total_weight = 0
     passed_weight = 0
 
     for rule in rules:
+        if rule.manual:
+            manual_checks += 1
+            try:
+                evidence = rule.evidence_fn(dump)
+            except Exception:
+                evidence = "(evidence extraction failed)"
+            findings.append({
+                "id": rule.id, "title": rule.title, "description": rule.description,
+                "section": rule.section, "severity": rule.severity, "level": rule.level,
+                "compliant": False, "manual": True, "status": "skipped",
+                "evidence": (
+                    f"SKIPPED — manual verification required. {rule.remediation}\n\n"
+                    f"Collected evidence:\n{evidence}"
+                )[:1000],
+                "remediation": rule.remediation,
+            })
+            continue
+
         try:
             compliant = rule.check_fn(dump)
         except Exception:
             compliant = False
-
         try:
             evidence = rule.evidence_fn(dump)
         except Exception:
             evidence = "(evidence extraction failed)"
 
         weight = SEVERITY_WEIGHTS.get(rule.severity, 1)
-        total_weight += weight
-        if compliant:
-            passed_weight += weight
+        if rule.level != "INFO":
+            total_weight += weight
+            if compliant:
+                passed_scored += 1
+                passed_weight += weight
+            else:
+                failed_scored += 1
 
         findings.append({
-            "id": rule.id,
-            "title": rule.title,
-            "description": rule.description,
-            "section": rule.section,
-            "severity": rule.severity,
-            "level": rule.level,
-            "compliant": compliant,
-            "evidence": evidence,
-            "remediation": rule.remediation,
+            "id": rule.id, "title": rule.title, "description": rule.description,
+            "section": rule.section, "severity": rule.severity, "level": rule.level,
+            "compliant": compliant, "manual": False,
+            "status": "pass" if compliant else "fail",
+            "evidence": evidence, "remediation": rule.remediation,
         })
 
-    total = len(findings)
-    passed = sum(1 for f in findings if f["compliant"])
-    failed = total - passed
-
-    compliance_pct = round(100.0 * passed / total, 2) if total else 0.0
+    total_scored = passed_scored + failed_scored
+    compliance_pct = round(100.0 * passed_scored / total_scored, 2) if total_scored else 0.0
     weighted_pct = round(100.0 * passed_weight / total_weight, 2) if total_weight else 0.0
 
     return {
         "summary": {
-            "total_rules_scored": total,
-            "passed_scored": passed,
-            "failed_scored": failed,
+            "total_rules_scored": total_scored,
+            "manual_checks": manual_checks,
+            "passed_scored": passed_scored,
+            "failed_scored": failed_scored,
             "compliance_pct": compliance_pct,
             "weighted_compliance_pct": weighted_pct,
         },
@@ -438,1424 +1376,5 @@ def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any
     }
 
 
-# ============================================================ #
-#  Build all rules                                             #
-# ============================================================ #
-
-def build_all_windows_cis_rules() -> List[WindowsCISRule]:
-    """Return the full list of Windows Server CIS rules (~110 checks)."""
-
-    rules: List[WindowsCISRule] = []
-
-    # ================================================================ #
-    #  Section 1.1 – Account Policies: Password Policy                  #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-001",
-        section="1.1.1",
-        title="Ensure 'Enforce password history' is set to '24 or more password(s)'",
-        description=(
-            "This policy setting determines the number of renewed, unique passwords "
-            "that have to be associated with a user account before an old password can "
-            "be reused."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "PasswordHistorySize") is not None
-            and _secpol_int(d, "PasswordHistorySize") >= 24
-        ),
-        evidence_fn=lambda d: f"PasswordHistorySize = {_secpol_value(d, 'PasswordHistorySize')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Enforce password history: 24 or more."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-002",
-        section="1.1.2",
-        title="Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'",
-        description=(
-            "This policy setting defines how long a user can use their password before "
-            "it expires. A value of 0 means password never expires."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "MaximumPasswordAge") is not None
-            and 0 < _secpol_int(d, "MaximumPasswordAge") <= 365
-        ),
-        evidence_fn=lambda d: f"MaximumPasswordAge = {_secpol_value(d, 'MaximumPasswordAge')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Maximum password age: 365 or fewer, not 0."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-003",
-        section="1.1.3",
-        title="Ensure 'Minimum password age' is set to '1 or more day(s)'",
-        description=(
-            "This policy setting determines the minimum number of days that must elapse "
-            "before a password can be changed."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "MinimumPasswordAge") is not None
-            and _secpol_int(d, "MinimumPasswordAge") >= 1
-        ),
-        evidence_fn=lambda d: f"MinimumPasswordAge = {_secpol_value(d, 'MinimumPasswordAge')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Minimum password age: 1 or more day(s)."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-004",
-        section="1.1.4",
-        title="Ensure 'Minimum password length' is set to '14 or more character(s)'",
-        description=(
-            "This policy setting determines the least number of characters that make up "
-            "a password for a user account."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "MinimumPasswordLength") is not None
-            and _secpol_int(d, "MinimumPasswordLength") >= 14
-        ),
-        evidence_fn=lambda d: f"MinimumPasswordLength = {_secpol_value(d, 'MinimumPasswordLength')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Minimum password length: 14 or more."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-005",
-        section="1.1.5",
-        title="Ensure 'Password must meet complexity requirements' is set to 'Enabled'",
-        description=(
-            "This policy setting checks all new passwords to ensure that they meet "
-            "basic requirements for strong passwords."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _secpol_int(d, "PasswordComplexity") == 1,
-        evidence_fn=lambda d: f"PasswordComplexity = {_secpol_value(d, 'PasswordComplexity')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Password must meet complexity requirements: Enabled."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-006",
-        section="1.1.6",
-        title="Ensure 'Relax minimum password length limits' is set to 'Enabled'",
-        description=(
-            "This policy setting allows the minimum password length setting to exceed "
-            "the traditional limit of 14 characters."
-        ),
-        severity="low",
-        level="L1",
-        check_fn=lambda d: (
-            # This is a newer policy; if not present, check MinimumPasswordLength >= 14
-            _secpol_int(d, "MinimumPasswordLength") is not None
-            and _secpol_int(d, "MinimumPasswordLength") >= 14
-        ),
-        evidence_fn=lambda d: f"MinimumPasswordLength = {_secpol_value(d, 'MinimumPasswordLength')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Relax minimum password length limits: Enabled."
-        ),
-        versions=["2019", "2022", "2025"],
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-007",
-        section="1.1.7",
-        title="Ensure 'Store passwords using reversible encryption' is set to 'Disabled'",
-        description=(
-            "This policy setting determines whether the operating system stores "
-            "passwords using reversible encryption."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _secpol_int(d, "ClearTextPassword") == 0,
-        evidence_fn=lambda d: f"ClearTextPassword = {_secpol_value(d, 'ClearTextPassword')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Password Policy > Store passwords using reversible encryption: Disabled."
-        ),
-    ))
-
-    # ================================================================ #
-    #  Section 1.2 – Account Policies: Account Lockout Policy           #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-008",
-        section="1.2.1",
-        title="Ensure 'Account lockout duration' is set to '15 or more minute(s)'",
-        description=(
-            "This policy setting determines the length of time that must pass before "
-            "a locked account is unlocked and a user can try to log on again."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "LockoutDuration") is not None
-            and _secpol_int(d, "LockoutDuration") >= 15
-        ),
-        evidence_fn=lambda d: f"LockoutDuration = {_secpol_value(d, 'LockoutDuration')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Account Lockout Policy > Account lockout duration: 15+ minutes."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-009",
-        section="1.2.2",
-        title="Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'",
-        description=(
-            "This policy setting determines the number of failed logon attempts before "
-            "the account is locked."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "LockoutBadCount") is not None
-            and 0 < _secpol_int(d, "LockoutBadCount") <= 5
-        ),
-        evidence_fn=lambda d: f"LockoutBadCount = {_secpol_value(d, 'LockoutBadCount')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Account Lockout Policy > Account lockout threshold: 1-5 attempts."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-010",
-        section="1.2.3",
-        title="Ensure 'Allow Administrator account lockout' is set to 'Enabled'",
-        description=(
-            "This policy setting determines whether the built-in Administrator account "
-            "is subject to the account lockout policy."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            # AllowAdministratorLockout may appear in security policy
-            _secpol_int(d, "AllowAdministratorLockout") == 1
-        ),
-        evidence_fn=lambda d: f"AllowAdministratorLockout = {_secpol_value(d, 'AllowAdministratorLockout')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Account Lockout Policy > Allow Administrator account lockout: Enabled."
-        ),
-        versions=["2022", "2025"],
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-011",
-        section="1.2.4",
-        title="Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'",
-        description=(
-            "This policy setting determines the length of time before the Account Lockout "
-            "Threshold resets to zero."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "ResetLockoutCount") is not None
-            and _secpol_int(d, "ResetLockoutCount") >= 15
-        ),
-        evidence_fn=lambda d: f"ResetLockoutCount = {_secpol_value(d, 'ResetLockoutCount')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Account Policies > Account Lockout Policy > Reset account lockout counter after: 15+ minutes."
-        ),
-    ))
-
-    # ================================================================ #
-    #  Section 2.2 – User Rights Assignment                             #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-012",
-        section="2.2.1",
-        title="Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'",
-        description=(
-            "This user right is used by Credential Manager during Backup and Restore. "
-            "No accounts should have this user right."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: len(_user_right_sids(d, "SeTrustedCredManAccessPrivilege")) == 0,
-        evidence_fn=lambda d: f"SeTrustedCredManAccessPrivilege = {_user_right_sids(d, 'SeTrustedCredManAccessPrivilege')}",
-        remediation="Set 'Access Credential Manager as a trusted caller' to No One.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-013",
-        section="2.2.2",
-        title="Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users'",
-        description=(
-            "This user right determines which users can connect to the computer from the network."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            len(_user_right_sids(d, "SeNetworkLogonRight")) > 0
-        ),
-        evidence_fn=lambda d: f"SeNetworkLogonRight = {_user_right_sids(d, 'SeNetworkLogonRight')}",
-        remediation="Set 'Access this computer from the network' to Administrators, Authenticated Users.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-014",
-        section="2.2.6",
-        title="Ensure 'Allow log on locally' is set to 'Administrators'",
-        description=(
-            "This user right determines which users can log on to the computer."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: len(_user_right_sids(d, "SeInteractiveLogonRight")) > 0,
-        evidence_fn=lambda d: f"SeInteractiveLogonRight = {_user_right_sids(d, 'SeInteractiveLogonRight')}",
-        remediation="Set 'Allow log on locally' to Administrators only (member server).",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-015",
-        section="2.2.11",
-        title="Ensure 'Create symbolic links' is set to 'Administrators, NT VIRTUAL MACHINE\\Virtual Machines'",
-        description=(
-            "This user right determines if the user can create a symbolic link."
-        ),
-        severity="low",
-        level="L1",
-        check_fn=lambda d: len(_user_right_sids(d, "SeCreateSymbolicLinkPrivilege")) > 0,
-        evidence_fn=lambda d: f"SeCreateSymbolicLinkPrivilege = {_user_right_sids(d, 'SeCreateSymbolicLinkPrivilege')}",
-        remediation="Set 'Create symbolic links' to Administrators only.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-016",
-        section="2.2.14",
-        title="Ensure 'Deny access to this computer from the network' includes 'Guests'",
-        description=(
-            "This user right determines which users are prevented from accessing "
-            "a computer over the network."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            any("S-1-5-32-546" in s or "guest" in s.lower()
-                for s in _user_right_sids(d, "SeDenyNetworkLogonRight"))
-        ),
-        evidence_fn=lambda d: f"SeDenyNetworkLogonRight = {_user_right_sids(d, 'SeDenyNetworkLogonRight')}",
-        remediation="Add 'Guests' to 'Deny access to this computer from the network'.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-017",
-        section="2.2.17",
-        title="Ensure 'Deny log on as a batch job' includes 'Guests'",
-        description=(
-            "This policy setting determines which accounts will not be able to "
-            "log on to the computer as a batch job."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            any("S-1-5-32-546" in s or "guest" in s.lower()
-                for s in _user_right_sids(d, "SeDenyBatchLogonRight"))
-        ),
-        evidence_fn=lambda d: f"SeDenyBatchLogonRight = {_user_right_sids(d, 'SeDenyBatchLogonRight')}",
-        remediation="Add 'Guests' to 'Deny log on as a batch job'.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-018",
-        section="2.2.18",
-        title="Ensure 'Deny log on as a service' includes 'Guests'",
-        description=(
-            "This security setting determines which service accounts are prevented "
-            "from registering a process as a service."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            any("S-1-5-32-546" in s or "guest" in s.lower()
-                for s in _user_right_sids(d, "SeDenyServiceLogonRight"))
-        ),
-        evidence_fn=lambda d: f"SeDenyServiceLogonRight = {_user_right_sids(d, 'SeDenyServiceLogonRight')}",
-        remediation="Add 'Guests' to 'Deny log on as a service'.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-019",
-        section="2.2.19",
-        title="Ensure 'Deny log on locally' includes 'Guests'",
-        description=(
-            "This security setting determines which users are prevented from "
-            "logging on at the computer."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            any("S-1-5-32-546" in s or "guest" in s.lower()
-                for s in _user_right_sids(d, "SeDenyInteractiveLogonRight"))
-        ),
-        evidence_fn=lambda d: f"SeDenyInteractiveLogonRight = {_user_right_sids(d, 'SeDenyInteractiveLogonRight')}",
-        remediation="Add 'Guests' to 'Deny log on locally'.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-020",
-        section="2.2.20",
-        title="Ensure 'Deny log on through Remote Desktop Services' includes 'Guests, Local account'",
-        description=(
-            "This user right determines which users and groups are prohibited from "
-            "logging on through Remote Desktop Services."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            any("S-1-5-32-546" in s or "guest" in s.lower()
-                for s in _user_right_sids(d, "SeDenyRemoteInteractiveLogonRight"))
-        ),
-        evidence_fn=lambda d: f"SeDenyRemoteInteractiveLogonRight = {_user_right_sids(d, 'SeDenyRemoteInteractiveLogonRight')}",
-        remediation="Add 'Guests' and 'Local account' to 'Deny log on through Remote Desktop Services'.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-021",
-        section="2.2.28",
-        title="Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'",
-        description=(
-            "This policy setting determines which accounts or processes can generate "
-            "audit records in the security log."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: len(_user_right_sids(d, "SeAuditPrivilege")) > 0,
-        evidence_fn=lambda d: f"SeAuditPrivilege = {_user_right_sids(d, 'SeAuditPrivilege')}",
-        remediation="Set 'Generate security audits' to LOCAL SERVICE, NETWORK SERVICE.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-022",
-        section="2.2.13",
-        title="Ensure 'Debug programs' is set to 'Administrators'",
-        description=(
-            "This user right determines which users can attach a debugger to any "
-            "process or to the kernel. This is a powerful privilege."
-        ),
-        severity="high",
-        level="L2",
-        check_fn=lambda d: (
-            len(_user_right_sids(d, "SeDebugPrivilege")) <= 1
-            and all("S-1-5-32-544" in s or "administrator" in s.lower()
-                    for s in _user_right_sids(d, "SeDebugPrivilege"))
-        ),
-        evidence_fn=lambda d: f"SeDebugPrivilege = {_user_right_sids(d, 'SeDebugPrivilege')}",
-        remediation="Set 'Debug programs' to Administrators only.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-023",
-        section="2.2.38",
-        title="Ensure 'Shut down the system' is set to 'Administrators'",
-        description=(
-            "This user right determines which users can shut down the local computer."
-        ),
-        severity="low",
-        level="L1",
-        check_fn=lambda d: len(_user_right_sids(d, "SeShutdownPrivilege")) > 0,
-        evidence_fn=lambda d: f"SeShutdownPrivilege = {_user_right_sids(d, 'SeShutdownPrivilege')}",
-        remediation="Set 'Shut down the system' to Administrators.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-024",
-        section="2.2.39",
-        title="Ensure 'Take ownership of files or other objects' is set to 'Administrators'",
-        description=(
-            "This user right determines which users can take ownership of any "
-            "securable object in the system."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            len(_user_right_sids(d, "SeTakeOwnershipPrivilege")) > 0
-            and all("S-1-5-32-544" in s or "administrator" in s.lower()
-                    for s in _user_right_sids(d, "SeTakeOwnershipPrivilege"))
-        ),
-        evidence_fn=lambda d: f"SeTakeOwnershipPrivilege = {_user_right_sids(d, 'SeTakeOwnershipPrivilege')}",
-        remediation="Set 'Take ownership of files or other objects' to Administrators only.",
-    ))
-
-    # ================================================================ #
-    #  Section 2.3 – Security Options                                   #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-025",
-        section="2.3.1.1",
-        title="Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'",
-        description=(
-            "This policy setting prevents users from adding new Microsoft accounts "
-            "on this computer."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SOFTWARE",
-                           "Policies\\System", "NoConnectedUser") == 3
-            or _uac_value(d, "NoConnectedUser") == 3
-        ),
-        evidence_fn=lambda d: f"NoConnectedUser = {_uac_value(d, 'NoConnectedUser')}",
-        remediation=(
-            "Computer Configuration > Policies > Windows Settings > Security Settings > "
-            "Local Policies > Security Options > Accounts: Block Microsoft accounts: "
-            "Users can't add or log on with Microsoft accounts."
-        ),
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-026",
-        section="2.3.1.2",
-        title="Ensure 'Accounts: Guest account status' is set to 'Disabled'",
-        description=(
-            "This policy setting determines whether the Guest account is enabled or disabled."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "EnableGuestAccount") == 0
-        ),
-        evidence_fn=lambda d: f"EnableGuestAccount = {_secpol_value(d, 'EnableGuestAccount')}",
-        remediation="Disable the Guest account via Local Security Policy.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-027",
-        section="2.3.1.4",
-        title="Ensure 'Accounts: Rename administrator account' has been changed from default",
-        description=(
-            "Renaming the built-in Administrator account makes it slightly harder "
-            "for attackers to guess the admin account name."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_value(d, "NewAdministratorName") is not None
-            and _secpol_value(d, "NewAdministratorName").lower().replace('"', '').strip() != "administrator"
-        ),
-        evidence_fn=lambda d: f"NewAdministratorName = {_secpol_value(d, 'NewAdministratorName')}",
-        remediation="Rename the built-in Administrator account to a non-default name.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-028",
-        section="2.3.1.5",
-        title="Ensure 'Accounts: Rename guest account' has been changed from default",
-        description=(
-            "Renaming the built-in Guest account makes it slightly harder for "
-            "attackers to identify the account."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_value(d, "NewGuestName") is not None
-            and _secpol_value(d, "NewGuestName").lower().replace('"', '').strip() != "guest"
-        ),
-        evidence_fn=lambda d: f"NewGuestName = {_secpol_value(d, 'NewGuestName')}",
-        remediation="Rename the built-in Guest account to a non-default name.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-029",
-        section="2.3.2.1",
-        title="Ensure 'Audit: Force audit policy subcategory settings' is set to 'Enabled'",
-        description=(
-            "This policy setting determines whether audit policy subcategory settings "
-            "override audit policy category settings."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "SCENoApplyLegacyAuditPolicy") == 1,
-        evidence_fn=lambda d: f"SCENoApplyLegacyAuditPolicy = {_lsa_value(d, 'SCENoApplyLegacyAuditPolicy')}",
-        remediation="Set SCENoApplyLegacyAuditPolicy = 1 in HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-030",
-        section="2.3.7.1",
-        title="Ensure 'Interactive logon: Do not display last user name' is set to 'Enabled'",
-        description=(
-            "This policy setting determines whether the username of the last person "
-            "to log on to the computer is displayed on the logon screen."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "DontDisplayLastUserName") == 1,
-        evidence_fn=lambda d: f"DontDisplayLastUserName = {_uac_value(d, 'DontDisplayLastUserName')}",
-        remediation="Enable 'Interactive logon: Do not display last user name'.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-031",
-        section="2.3.7.4",
-        title="Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'",
-        description=(
-            "Windows notices inactivity of a logon session and locks the screen "
-            "after the configured time."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _uac_value(d, "InactivityTimeoutSecs") is not None
-            and isinstance(_uac_value(d, "InactivityTimeoutSecs"), int)
-            and 0 < _uac_value(d, "InactivityTimeoutSecs") <= 900
-        ),
-        evidence_fn=lambda d: f"InactivityTimeoutSecs = {_uac_value(d, 'InactivityTimeoutSecs')}",
-        remediation="Set 'Interactive logon: Machine inactivity limit' to 900 or fewer seconds, not 0.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-032",
-        section="2.3.8.1",
-        title="Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'",
-        description=(
-            "This policy setting determines if packet signing is required by the "
-            "SMB client component."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SYSTEM",
-                           "LanmanWorkstation\\Parameters", "RequireSecuritySignature") == 1
-        ),
-        evidence_fn=lambda d: f"LanmanWorkstation RequireSecuritySignature = {_registry_value(d, 'REGISTRY_SYSTEM', 'LanmanWorkstation', 'RequireSecuritySignature')}",
-        remediation="Set RequireSecuritySignature = 1 in LanmanWorkstation\\Parameters.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-033",
-        section="2.3.9.1",
-        title="Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'",
-        description=(
-            "This policy setting determines if packet signing is required by the "
-            "SMB server component."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SYSTEM",
-                           "LanManServer\\Parameters", "RequireSecuritySignature") == 1
-        ),
-        evidence_fn=lambda d: f"LanManServer RequireSecuritySignature = {_registry_value(d, 'REGISTRY_SYSTEM', 'LanManServer', 'RequireSecuritySignature')}",
-        remediation="Set RequireSecuritySignature = 1 in LanManServer\\Parameters.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-034",
-        section="2.3.10.2",
-        title="Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'",
-        description=(
-            "This policy setting controls the ability of anonymous users to enumerate "
-            "the accounts in the SAM database."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "RestrictAnonymousSAM") == 1,
-        evidence_fn=lambda d: f"RestrictAnonymousSAM = {_lsa_value(d, 'RestrictAnonymousSAM')}",
-        remediation="Set RestrictAnonymousSAM = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-035",
-        section="2.3.10.3",
-        title="Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'",
-        description=(
-            "This policy setting controls the ability of anonymous users to enumerate "
-            "SAM accounts as well as shares."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "RestrictAnonymous") == 1,
-        evidence_fn=lambda d: f"RestrictAnonymous = {_lsa_value(d, 'RestrictAnonymous')}",
-        remediation="Set RestrictAnonymous = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-036",
-        section="2.3.10.6",
-        title="Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'",
-        description=(
-            "This policy setting determines what additional permissions are granted "
-            "for anonymous connections to the computer."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "EveryoneIncludesAnonymous") == 0,
-        evidence_fn=lambda d: f"EveryoneIncludesAnonymous = {_lsa_value(d, 'EveryoneIncludesAnonymous')}",
-        remediation="Set EveryoneIncludesAnonymous = 0.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-037",
-        section="2.3.11.1",
-        title="Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'",
-        description=(
-            "This policy setting determines whether Local System services that use "
-            "Negotiate when reverting to NTLM authentication can use the computer identity."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SYSTEM",
-                           "Lsa", "UseMachineId") == 1
-        ),
-        evidence_fn=lambda d: f"UseMachineId = {_registry_value(d, 'REGISTRY_SYSTEM', 'Lsa', 'UseMachineId')}",
-        remediation="Set UseMachineId = 1 in HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-038",
-        section="2.3.11.4",
-        title="Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'",
-        description=(
-            "This policy setting determines which challenge/response authentication "
-            "protocol is used for network logons. Level 5 sends NTLMv2 only."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "LmCompatibilityLevel") == 5,
-        evidence_fn=lambda d: f"LmCompatibilityLevel = {_lsa_value(d, 'LmCompatibilityLevel')}",
-        remediation="Set LmCompatibilityLevel = 5 (Send NTLMv2 response only. Refuse LM & NTLM).",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-039",
-        section="2.3.11.7",
-        title="Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'",
-        description=(
-            "This policy setting determines whether the LM hash value for the new "
-            "password is stored when the password is changed."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "NoLMHash") == 1,
-        evidence_fn=lambda d: f"NoLMHash = {_lsa_value(d, 'NoLMHash')}",
-        remediation="Set NoLMHash = 1 in HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa.",
-    ))
-
-    # ================================================================ #
-    #  Section 2.3 – Security Options (UAC)                             #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-040",
-        section="2.3.17.1",
-        title="Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'",
-        description=(
-            "This policy setting controls the behavior of Admin Approval Mode for "
-            "the built-in Administrator account."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "FilterAdministratorToken") == 1,
-        evidence_fn=lambda d: f"FilterAdministratorToken = {_uac_value(d, 'FilterAdministratorToken')}",
-        remediation="Set FilterAdministratorToken = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-041",
-        section="2.3.17.2",
-        title="Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop'",
-        description=(
-            "This policy setting controls the behavior of the elevation prompt for administrators."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "ConsentPromptBehaviorAdmin") == 2,
-        evidence_fn=lambda d: f"ConsentPromptBehaviorAdmin = {_uac_value(d, 'ConsentPromptBehaviorAdmin')}",
-        remediation="Set ConsentPromptBehaviorAdmin = 2 (Prompt for consent on the secure desktop).",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-042",
-        section="2.3.17.3",
-        title="Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'",
-        description=(
-            "This policy setting controls the behavior of the elevation prompt for standard users."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "ConsentPromptBehaviorUser") == 0,
-        evidence_fn=lambda d: f"ConsentPromptBehaviorUser = {_uac_value(d, 'ConsentPromptBehaviorUser')}",
-        remediation="Set ConsentPromptBehaviorUser = 0 (Automatically deny).",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-043",
-        section="2.3.17.4",
-        title="Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'",
-        description=(
-            "This policy setting controls the behavior of application installation "
-            "detection for the computer."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "EnableInstallerDetection") == 1,
-        evidence_fn=lambda d: f"EnableInstallerDetection = {_uac_value(d, 'EnableInstallerDetection')}",
-        remediation="Set EnableInstallerDetection = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-044",
-        section="2.3.17.5",
-        title="Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'",
-        description=(
-            "This policy setting controls whether applications that request to run "
-            "with a UIAccess integrity level must reside in a secure location."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "EnableSecureUIAPaths") == 1,
-        evidence_fn=lambda d: f"EnableSecureUIAPaths = {_uac_value(d, 'EnableSecureUIAPaths')}",
-        remediation="Set EnableSecureUIAPaths = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-045",
-        section="2.3.17.6",
-        title="Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'",
-        description=(
-            "This policy setting controls the behavior of all User Account Control (UAC) "
-            "policy settings for the computer."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "EnableLUA") == 1,
-        evidence_fn=lambda d: f"EnableLUA = {_uac_value(d, 'EnableLUA')}",
-        remediation="Set EnableLUA = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-046",
-        section="2.3.17.7",
-        title="Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'",
-        description=(
-            "This policy setting controls whether the elevation request prompt is "
-            "displayed on the interactive user's desktop or the secure desktop."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "PromptOnSecureDesktop") == 1,
-        evidence_fn=lambda d: f"PromptOnSecureDesktop = {_uac_value(d, 'PromptOnSecureDesktop')}",
-        remediation="Set PromptOnSecureDesktop = 1.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-047",
-        section="2.3.17.8",
-        title="Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'",
-        description=(
-            "This policy setting controls whether application write failures are "
-            "redirected to defined registry and file system locations."
-        ),
-        severity="low",
-        level="L1",
-        check_fn=lambda d: _uac_value(d, "EnableVirtualization") == 1,
-        evidence_fn=lambda d: f"EnableVirtualization = {_uac_value(d, 'EnableVirtualization')}",
-        remediation="Set EnableVirtualization = 1.",
-    ))
-
-    # ================================================================ #
-    #  Section 5 – System Services                                      #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-048",
-        section="5.4",
-        title="Ensure 'Print Spooler (Spooler)' is set to 'Disabled'",
-        description=(
-            "This service spools print jobs and handles interaction with printers. "
-            "On servers that do not serve as print servers, this service should be disabled."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _service_is_disabled(d, "Spooler"),
-        evidence_fn=lambda d: f"Spooler StartType = {_service_startup(d, 'Spooler')}",
-        remediation="Set the Print Spooler service (Spooler) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-049",
-        section="5.2",
-        title="Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or not installed",
-        description=(
-            "The FTP service enables FTP access to a server. It should not be "
-            "running on servers that don't require it."
-        ),
-        severity="medium",
-        level="L2",
-        check_fn=lambda d: _service_is_disabled(d, "FTPSVC"),
-        evidence_fn=lambda d: f"FTPSVC StartType = {_service_startup(d, 'FTPSVC')}",
-        remediation="Set the FTP Service (FTPSVC) to Disabled or remove IIS FTP.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-050",
-        section="5.11",
-        title="Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or not installed",
-        description=(
-            "The IIS Admin Service allows management of IIS components. "
-            "It should be disabled on servers that do not host web services."
-        ),
-        severity="medium",
-        level="L2",
-        check_fn=lambda d: _service_is_disabled(d, "IISADMIN"),
-        evidence_fn=lambda d: f"IISADMIN StartType = {_service_startup(d, 'IISADMIN')}",
-        remediation="Set the IIS Admin Service (IISADMIN) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-051",
-        section="5.30",
-        title="Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'",
-        description=(
-            "This service discovers networked devices and services that use the "
-            "SSDP discovery protocol, such as UPnP devices."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _service_is_disabled(d, "SSDPSRV"),
-        evidence_fn=lambda d: f"SSDPSRV StartType = {_service_startup(d, 'SSDPSRV')}",
-        remediation="Set the SSDP Discovery service (SSDPSRV) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-052",
-        section="5.31",
-        title="Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'",
-        description=(
-            "This service allows UPnP devices to be hosted on this computer."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _service_is_disabled(d, "upnphost"),
-        evidence_fn=lambda d: f"upnphost StartType = {_service_startup(d, 'upnphost')}",
-        remediation="Set the UPnP Device Host service (upnphost) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-053",
-        section="5.33",
-        title="Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Automatic' (required for WinRM audit)",
-        description=(
-            "WinRM is needed for remote management. Since we are auditing via WinRM, "
-            "we check that this service is running."
-        ),
-        severity="info",
-        level="L1",
-        check_fn=lambda d: not _service_is_disabled(d, "WinRM"),
-        evidence_fn=lambda d: f"WinRM StartType = {_service_startup(d, 'WinRM')}",
-        remediation="This is informational. WinRM should be running for remote audit.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-054",
-        section="5.36",
-        title="Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'",
-        description="This service manages connected Xbox accessories.",
-        severity="low",
-        level="L2",
-        check_fn=lambda d: _service_is_disabled(d, "XboxGipSvc"),
-        evidence_fn=lambda d: f"XboxGipSvc StartType = {_service_startup(d, 'XboxGipSvc')}",
-        remediation="Set the Xbox Accessory Management Service (XboxGipSvc) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-055",
-        section="5.37",
-        title="Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'",
-        description="This service provides authentication and authorization to Xbox Live.",
-        severity="low",
-        level="L2",
-        check_fn=lambda d: _service_is_disabled(d, "XblAuthManager"),
-        evidence_fn=lambda d: f"XblAuthManager StartType = {_service_startup(d, 'XblAuthManager')}",
-        remediation="Set the Xbox Live Auth Manager (XblAuthManager) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-056",
-        section="5.38",
-        title="Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'",
-        description="This service saves and syncs data for Xbox Live enabled games.",
-        severity="low",
-        level="L2",
-        check_fn=lambda d: _service_is_disabled(d, "XblGameSave"),
-        evidence_fn=lambda d: f"XblGameSave StartType = {_service_startup(d, 'XblGameSave')}",
-        remediation="Set the Xbox Live Game Save (XblGameSave) to Disabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-057",
-        section="5.39",
-        title="Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'",
-        description="This service supports the Xbox Live networking platform.",
-        severity="low",
-        level="L2",
-        check_fn=lambda d: _service_is_disabled(d, "XboxNetApiSvc"),
-        evidence_fn=lambda d: f"XboxNetApiSvc StartType = {_service_startup(d, 'XboxNetApiSvc')}",
-        remediation="Set the Xbox Live Networking Service (XboxNetApiSvc) to Disabled.",
-    ))
-
-    # ================================================================ #
-    #  Section 9 – Windows Firewall with Advanced Security              #
-    # ================================================================ #
-
-    for profile_name, rule_offset in [("Domain", 0), ("Private", 3), ("Public", 6)]:
-        rules.append(WindowsCISRule(
-            id=f"WIN-L1-{58 + rule_offset:03d}",
-            section=f"9.{1 + rule_offset // 3}.1",
-            title=f"Ensure 'Windows Firewall: {profile_name}: Firewall state' is set to 'On (recommended)'",
-            description=f"This setting controls whether Windows Firewall is on for the {profile_name} profile.",
-            severity="high",
-            level="L1",
-            check_fn=(lambda d, p=profile_name: _firewall_enabled(d, p)),
-            evidence_fn=(lambda d, p=profile_name: f"{p} Firewall Enabled = {_firewall_enabled(d, p)}"),
-            remediation=f"Enable Windows Firewall for the {profile_name} profile.",
-        ))
-
-        rules.append(WindowsCISRule(
-            id=f"WIN-L1-{59 + rule_offset:03d}",
-            section=f"9.{1 + rule_offset // 3}.2",
-            title=f"Ensure 'Windows Firewall: {profile_name}: Inbound connections' is set to 'Block (default)'",
-            description=f"This setting determines the behavior for inbound connections on the {profile_name} profile.",
-            severity="high",
-            level="L1",
-            check_fn=(lambda d, p=profile_name: _firewall_inbound_block(d, p)),
-            evidence_fn=(lambda d, p=profile_name: f"{p} Inbound = {_firewall_profile(d, p)}"),
-            remediation=f"Set default inbound action to Block for the {profile_name} firewall profile.",
-        ))
-
-        rules.append(WindowsCISRule(
-            id=f"WIN-L1-{60 + rule_offset:03d}",
-            section=f"9.{1 + rule_offset // 3}.4",
-            title=f"Ensure 'Windows Firewall: {profile_name}: Logging: Log dropped packets' is set to 'Yes'",
-            description=f"Enable logging of dropped packets for the {profile_name} firewall profile.",
-            severity="medium",
-            level="L1",
-            check_fn=(lambda d, p=profile_name: (
-                _firewall_profile(d, p) is not None
-                and _firewall_profile(d, p).get("LogBlocked") in (True, 1, "True")
-            )),
-            evidence_fn=(lambda d, p=profile_name: f"{p} LogBlocked = {_firewall_profile(d, p).get('LogBlocked') if _firewall_profile(d, p) else 'N/A'}"),
-            remediation=f"Enable dropped packet logging for the {profile_name} firewall profile.",
-        ))
-
-    # ================================================================ #
-    #  Section 17 – Advanced Audit Policy Configuration                 #
-    # ================================================================ #
-
-    _audit_rules = [
-        ("WIN-L1-067", "17.1.1", "Credential Validation", "Success and Failure", "high"),
-        ("WIN-L1-068", "17.2.1", "Application Group Management", "Success and Failure", "medium"),
-        ("WIN-L1-069", "17.2.2", "Computer Account Management", "Success", "medium"),
-        ("WIN-L1-070", "17.2.4", "Other Account Management Events", "Success", "medium"),
-        ("WIN-L1-071", "17.2.5", "Security Group Management", "Success", "medium"),
-        ("WIN-L1-072", "17.2.6", "User Account Management", "Success and Failure", "medium"),
-        ("WIN-L1-073", "17.3.1", "PNP Activity", "Success", "low"),
-        ("WIN-L1-074", "17.3.2", "Process Creation", "Success", "medium"),
-        ("WIN-L1-075", "17.5.1", "Account Lockout", "Failure", "high"),
-        ("WIN-L1-076", "17.5.2", "Group Membership", "Success", "medium"),
-        ("WIN-L1-077", "17.5.3", "Logoff", "Success", "low"),
-        ("WIN-L1-078", "17.5.4", "Logon", "Success and Failure", "high"),
-        ("WIN-L1-079", "17.5.5", "Other Logon/Logoff Events", "Success and Failure", "medium"),
-        ("WIN-L1-080", "17.5.6", "Special Logon", "Success", "medium"),
-        ("WIN-L1-081", "17.6.1", "Detailed File Share", "Failure", "medium"),
-        ("WIN-L1-082", "17.6.2", "File Share", "Success and Failure", "medium"),
-        ("WIN-L1-083", "17.6.3", "Other Object Access Events", "Success and Failure", "medium"),
-        ("WIN-L1-084", "17.6.4", "Removable Storage", "Success and Failure", "medium"),
-        ("WIN-L1-085", "17.7.1", "Audit Policy Change", "Success", "high"),
-        ("WIN-L1-086", "17.7.2", "Authentication Policy Change", "Success", "medium"),
-        ("WIN-L1-087", "17.7.3", "Authorization Policy Change", "Success", "medium"),
-        ("WIN-L1-088", "17.7.4", "MPSSVC Rule-Level Policy Change", "Success and Failure", "medium"),
-        ("WIN-L1-089", "17.8.1", "Sensitive Privilege Use", "Success and Failure", "high"),
-        ("WIN-L1-090", "17.9.1", "IPsec Driver", "Success and Failure", "medium"),
-        ("WIN-L1-091", "17.9.2", "Other System Events", "Success and Failure", "medium"),
-        ("WIN-L1-092", "17.9.3", "Security State Change", "Success", "high"),
-        ("WIN-L1-093", "17.9.4", "Security System Extension", "Success", "high"),
-        ("WIN-L1-094", "17.9.5", "System Integrity", "Success and Failure", "high"),
-    ]
-
-    for rule_id, section, subcategory, expected, severity in _audit_rules:
-        rules.append(WindowsCISRule(
-            id=rule_id,
-            section=section,
-            title=f"Ensure '{subcategory}' is set to include '{expected}'",
-            description=f"This setting determines whether the OS generates audit events for {subcategory}.",
-            severity=severity,
-            level="L1",
-            check_fn=(lambda d, s=subcategory, e=expected: _audit_includes(d, s, e)),
-            evidence_fn=(lambda d, s=subcategory: f"{s}: {_audit_policy_setting(d, s)}"),
-            remediation=f"Set '{subcategory}' audit policy to '{expected}' via auditpol or GPO.",
-        ))
-
-    # ================================================================ #
-    #  Section 18 – Administrative Templates (Registry-based)           #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-095",
-        section="18.3.1",
-        title="Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended)'",
-        description=(
-            "SMBv1 is a legacy protocol with known vulnerabilities. "
-            "It should be disabled on all Windows servers."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "SMBV1_STATUS") is not None
-            and not _json_section(d, "SMBV1_STATUS").get("EnableSMB1Protocol", True)
-        ),
-        evidence_fn=lambda d: _ev_section(d, "SMBV1_STATUS", 300),
-        remediation="Disable SMBv1 via Set-SmbServerConfiguration -EnableSMB1Protocol $false.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-096",
-        section="18.3.2",
-        title="Ensure 'Configure SMB v1 server' is set to 'Disabled'",
-        description=(
-            "This setting configures the SMBv1 server (LanmanServer) to not process "
-            "SMBv1 requests."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "SMBV1_STATUS") is not None
-            and not _json_section(d, "SMBV1_STATUS").get("EnableSMB1Protocol", True)
-        ),
-        evidence_fn=lambda d: _ev_section(d, "SMBV1_STATUS", 300),
-        remediation="Disable SMBv1 server via Set-SmbServerConfiguration -EnableSMB1Protocol $false.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-097",
-        section="18.4.1",
-        title="Ensure 'LSA Protection' is enabled (RunAsPPL)",
-        description=(
-            "Configuring LSA to run as a Protected Process Light prevents non-protected "
-            "processes from accessing LSA memory and credentials."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: _lsa_value(d, "RunAsPPL") == 1,
-        evidence_fn=lambda d: f"RunAsPPL = {_lsa_value(d, 'RunAsPPL')}",
-        remediation="Set RunAsPPL = 1 in HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-098",
-        section="18.4.4",
-        title="Ensure 'WDigest Authentication' is set to 'Disabled'",
-        description=(
-            "When WDigest authentication is enabled, Lsass.exe retains a copy of "
-            "the user's plaintext password in memory."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "WDIGEST") is not None
-            and _json_section(d, "WDIGEST").get("UseLogonCredential") == 0
-        ),
-        evidence_fn=lambda d: _ev_section(d, "WDIGEST", 200),
-        remediation="Set UseLogonCredential = 0 in HKLM\\...\\WDigest.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-099",
-        section="18.5.1",
-        title="Ensure 'NetBIOS node type' is configured as 'P-node' (no broadcast)",
-        description=(
-            "This setting determines which method NetBT uses to register and resolve names. "
-            "P-node (value 2) uses WINS only, avoiding broadcast-based name resolution attacks."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SYSTEM",
-                           "NetBT\\Parameters", "NodeType") == 2
-        ),
-        evidence_fn=lambda d: f"NodeType = {_registry_value(d, 'REGISTRY_SYSTEM', 'NetBT', 'NodeType')}",
-        remediation="Set NodeType = 2 (P-node) in HKLM\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-100",
-        section="18.6.1",
-        title="Ensure 'Turn off multicast name resolution' is set to 'Enabled'",
-        description=(
-            "LLMNR is a secondary name resolution protocol. Disabling it prevents "
-            "LLMNR spoofing/poisoning attacks."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SOFTWARE",
-                           "Policies\\Microsoft\\Windows NT\\DNSClient", "EnableMulticast") == 0
-            or _registry_value(d, "REGISTRY_SOFTWARE",
-                              "Policies\\Microsoft\\Windows", "EnableMulticast") == 0
-        ),
-        evidence_fn=lambda d: f"EnableMulticast = {_registry_value(d, 'REGISTRY_SOFTWARE', 'DNSClient', 'EnableMulticast')}",
-        remediation="Set EnableMulticast = 0 via Group Policy or registry.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-101",
-        section="18.9.4",
-        title="Ensure 'Remote Desktop: NLA (Network Level Authentication)' is set to 'Enabled'",
-        description=(
-            "NLA requires user authentication before a full Remote Desktop connection "
-            "is established, reducing the attack surface."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "REMOTE_DESKTOP") is not None
-            and _json_section(d, "REMOTE_DESKTOP").get("UserAuthentication") == 1
-        ),
-        evidence_fn=lambda d: _ev_section(d, "REMOTE_DESKTOP", 300),
-        remediation="Enable Network Level Authentication for Remote Desktop.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-102",
-        section="18.9.5",
-        title="Ensure 'Remote Desktop: Encryption level' is set to 'High Level'",
-        description=(
-            "This setting specifies the level of encryption used for Remote Desktop "
-            "Protocol connections. High level (3) uses 128-bit encryption."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "REMOTE_DESKTOP") is not None
-            and _json_section(d, "REMOTE_DESKTOP").get("MinEncryptionLevel") == 3
-        ),
-        evidence_fn=lambda d: f"MinEncryptionLevel = {_json_section(d, 'REMOTE_DESKTOP').get('MinEncryptionLevel') if _json_section(d, 'REMOTE_DESKTOP') else 'N/A'}",
-        remediation="Set MinEncryptionLevel = 3 (High) for Remote Desktop.",
-    ))
-
-    # ================================================================ #
-    #  Section 18 – Windows Features                                    #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-103",
-        section="18.10.1",
-        title="Ensure 'PowerShell v2' is disabled or not installed",
-        description=(
-            "PowerShell v2 can be used to bypass script block logging and AMSI. "
-            "It should be removed or disabled on all servers."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "POWERSHELL_V2") is not None
-            and (
-                _json_section(d, "POWERSHELL_V2").get("State", "").lower() in ("disabled", "disabledwithpayloadremoved")
-                or _json_section(d, "POWERSHELL_V2").get("Installed") is False
-                or not _json_section(d, "POWERSHELL_V2").get("FeatureName")
-            )
-        ),
-        evidence_fn=lambda d: _ev_section(d, "POWERSHELL_V2", 200),
-        remediation="Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-104",
-        section="18.10.2",
-        title="Ensure 'SMB 1.0/CIFS File Sharing Support' feature is removed",
-        description=(
-            "SMBv1 feature should be completely removed from the server."
-        ),
-        severity="high",
-        level="L2",
-        check_fn=lambda d: (
-            _json_section(d, "SMBV1_STATUS") is not None
-            # SMB1FeatureState is null when the optional feature is absent —
-            # that counts as removed (the "" case), not an evaluation error.
-            and (_json_section(d, "SMBV1_STATUS").get("SMB1FeatureState") or "").lower() in ("disabled", "disabledwithpayloadremoved", "")
-        ),
-        evidence_fn=lambda d: _ev_section(d, "SMBV1_STATUS", 200),
-        remediation="Remove-WindowsFeature FS-SMB1 or Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol.",
-    ))
-
-    # ================================================================ #
-    #  Section 18 – Windows Defender / Anti-malware                     #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-105",
-        section="18.11.1",
-        title="Ensure Windows Defender Real-Time Protection is enabled",
-        description=(
-            "Real-time protection in Windows Defender provides continuous scanning "
-            "of files and processes for malware."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "DEFENDER_STATUS") is not None
-            and _json_section(d, "DEFENDER_STATUS").get("RealTimeProtectionEnabled") is True
-        ),
-        evidence_fn=lambda d: _ev_section(d, "DEFENDER_STATUS", 300),
-        remediation="Enable Windows Defender Real-Time Protection via Group Policy or Set-MpPreference.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-106",
-        section="18.11.2",
-        title="Ensure Windows Defender Antivirus is enabled",
-        description=(
-            "Windows Defender Antivirus should be enabled unless a third-party "
-            "solution is in use."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "DEFENDER_STATUS") is not None
-            and _json_section(d, "DEFENDER_STATUS").get("AntivirusEnabled") is True
-        ),
-        evidence_fn=lambda d: _ev_section(d, "DEFENDER_STATUS", 300),
-        remediation="Enable Windows Defender Antivirus.",
-    ))
-
-    # ================================================================ #
-    #  Additional L1/L2 checks                                          #
-    # ================================================================ #
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-107",
-        section="1.0.1",
-        title="Ensure latest Windows Server patches/updates are applied",
-        description=(
-            "The server should be running the latest Windows updates to protect "
-            "against known vulnerabilities."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _json_section(d, "HOTFIXES") is not None
-            and isinstance(_json_section(d, "HOTFIXES"), list)
-            and len(_json_section(d, "HOTFIXES")) > 0
-        ),
-        evidence_fn=lambda d: _ev_section(d, "HOTFIXES", 300),
-        remediation="Apply the latest Windows Updates via WSUS or Windows Update.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L2-108",
-        section="18.12.1",
-        title="Ensure 'Credential Guard' is enabled (HVCI)",
-        description=(
-            "Windows Defender Credential Guard uses virtualization-based security to "
-            "isolate secrets so that only privileged system software can access them."
-        ),
-        severity="high",
-        level="L2",
-        check_fn=lambda d: (
-            _json_section(d, "CREDENTIAL_GUARD") is not None
-            and isinstance(_json_section(d, "CREDENTIAL_GUARD"), dict)
-            and 1 in (_json_section(d, "CREDENTIAL_GUARD").get("SecurityServicesRunning") or [])
-        ),
-        evidence_fn=lambda d: _ev_section(d, "CREDENTIAL_GUARD", 300),
-        remediation="Enable Credential Guard via Group Policy or DISM.",
-        versions=["2016", "2019", "2022", "2025"],
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-109",
-        section="2.3.10.9",
-        title="Ensure 'Network security: Restrict NTLM: Audit Incoming NTLM Traffic' is set to 'Enable auditing for all accounts'",
-        description=(
-            "This policy setting allows you to audit incoming NTLM traffic."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: (
-            _registry_value(d, "REGISTRY_SYSTEM",
-                           "Lsa\\MSV1_0", "AuditReceivingNTLMTraffic") == 2
-        ),
-        evidence_fn=lambda d: f"AuditReceivingNTLMTraffic = {_registry_value(d, 'REGISTRY_SYSTEM', 'MSV1_0', 'AuditReceivingNTLMTraffic')}",
-        remediation="Set AuditReceivingNTLMTraffic = 2 in HKLM\\...\\Lsa\\MSV1_0.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-110",
-        section="2.3.4.1",
-        title="Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'",
-        description=(
-            "This policy setting determines who is allowed to format and eject "
-            "removable media."
-        ),
-        severity="low",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_value(d, "AllocateDASD") is not None
-            and _secpol_value(d, "AllocateDASD").strip('"') == "0"
-        ),
-        evidence_fn=lambda d: f"AllocateDASD = {_secpol_value(d, 'AllocateDASD')}",
-        remediation="Set 'Devices: Allowed to format and eject removable media' to Administrators.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-111",
-        section="2.3.6.1",
-        title="Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'",
-        description=(
-            "This policy setting determines whether all secure channel traffic "
-            "initiated by the domain member must be signed or encrypted."
-        ),
-        severity="high",
-        level="L1",
-        check_fn=lambda d: (
-            _secpol_int(d, "RequireSignOrSeal") == 1
-        ),
-        evidence_fn=lambda d: f"RequireSignOrSeal = {_secpol_value(d, 'RequireSignOrSeal')}",
-        remediation="Set 'Domain member: Digitally encrypt or sign secure channel data (always)' to Enabled.",
-    ))
-
-    rules.append(WindowsCISRule(
-        id="WIN-L1-112",
-        section="2.3.6.4",
-        title="Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'",
-        description=(
-            "This policy setting determines whether a domain member periodically "
-            "changes its computer account password."
-        ),
-        severity="medium",
-        level="L1",
-        check_fn=lambda d: _secpol_int(d, "DisablePasswordChange") == 0,
-        evidence_fn=lambda d: f"DisablePasswordChange = {_secpol_value(d, 'DisablePasswordChange')}",
-        remediation="Set 'Domain member: Disable machine account password changes' to Disabled (value = 0).",
-    ))
-
-    return rules
+# Backward-compatible alias (older callers imported the private name).
+_detect_os_version = _detect_version

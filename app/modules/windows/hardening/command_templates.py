@@ -1,19 +1,27 @@
 """
 Windows Server Hardening Command Templates (PowerShell)
 
-Remediation PowerShell commands for each CIS Windows Server check. Unlike
-SSH-based modules, Windows hardening executes PowerShell directly against the
-server via WinRM.
+Remediation PowerShell for each CIS Windows Server 2025 check. Unlike the
+SSH-based modules, Windows hardening runs PowerShell directly on the server via
+WinRM.
 
-Each template contains:
-- statements:        PowerShell commands executed in order (placeholders substituted)
-- verify_statements: PowerShell returning 'PASS' or 'FAIL' as output
-- requires_restart:  True when the server must restart for the change
-- manual_only:       True when automated remediation is not feasible
+Check IDs match the audit rule IDs 1:1 (``WIN-2025-<section>``). The large
+Section 2.3 / Section 18 registry set is *generated* from the same
+``REGISTRY_CHECKS`` table the audit engine uses, so a fix always writes exactly
+the value the audit later verifies — no audit↔hardening drift. Account-policy,
+firewall, audit-policy and account-rename fixes are declared explicitly.
+
+Each template:
+- statements:        PowerShell run in order ({PARAM} placeholders substituted)
+- verify_statements: PowerShell that prints 'PASS' or 'FAIL'
+- requires_restart:  True when a reboot is needed for the change to take effect
+- manual_only:       True when automated remediation is not feasible (GPO/HKU)
 """
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
+
+from ..audit.rules import REGISTRY_CHECKS
 
 
 @dataclass
@@ -27,7 +35,6 @@ class WindowsHardeningTemplate:
     manual_only: bool = False
 
 
-# Registry: check_id → WindowsHardeningTemplate
 WINDOWS_HARDENING_TEMPLATES: Dict[str, WindowsHardeningTemplate] = {}
 
 
@@ -36,27 +43,67 @@ def _register(t: WindowsHardeningTemplate) -> None:
 
 
 # ===================================================================
-# AUTO-FIXABLE: Security Policy (secedit-based — uses registry directly)
+# GENERATED: Registry checks (Section 2.3 / 18) from REGISTRY_CHECKS
+# ===================================================================
+
+def _reg_set_statement(path: str, prop: str, set_value, rtype: str) -> str:
+    if rtype == "string":
+        value_expr = "'" + str(set_value).replace("'", "''") + "'"
+        type_expr = "String"
+    else:
+        value_expr = str(int(set_value))
+        type_expr = "DWord"
+    return (
+        f"if (-not (Test-Path -LiteralPath '{path}')) "
+        f"{{ New-Item -Path '{path}' -Force | Out-Null }}; "
+        f"Set-ItemProperty -LiteralPath '{path}' -Name '{prop}' "
+        f"-Value {value_expr} -Type {type_expr} -Force"
+    )
+
+
+def _reg_verify_statement(path: str, prop: str, set_value, rtype: str) -> str:
+    if rtype == "string":
+        cmp_expr = f"-eq '{str(set_value)}'"
+    else:
+        cmp_expr = f"-eq {int(set_value)}"
+    return (
+        f"if ((Get-ItemProperty -LiteralPath '{path}' -Name '{prop}' "
+        f"-ErrorAction SilentlyContinue).'{prop}' {cmp_expr}) "
+        f"{{ 'PASS' }} else {{ 'FAIL' }}"
+    )
+
+
+for _c in REGISTRY_CHECKS:
+    if not _c.get("fixable"):
+        continue
+    _cid = f"WIN-2025-{_c['section']}"
+    _register(WindowsHardeningTemplate(
+        check_id=_cid,
+        description=f"Set {_c['title']}",
+        statements=[_reg_set_statement(_c["path"], _c["prop"], _c["set"], _c["rtype"])],
+        verify_statements=[_reg_verify_statement(_c["path"], _c["prop"], _c["set"], _c["rtype"])],
+        requires_restart=_c.get("restart", False),
+    ))
+
+
+# ===================================================================
+# Account Policy (net accounts) — Section 1
 # ===================================================================
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-001",
+    check_id="WIN-2025-1.1.1",
     description="Set 'Enforce password history' to 24 passwords",
-    statements=[
-        "net accounts /uniquepw:24",
-    ],
+    statements=["net accounts /uniquepw:24"],
     verify_statements=[
-        "net accounts | Select-String 'Length of password history' | "
+        "net accounts | Select-String 'password history' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -ge 24) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
     ],
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-002",
-    description="Set 'Maximum password age' to 365 days",
-    statements=[
-        "net accounts /maxpwage:{MAX_PASSWORD_AGE}",
-    ],
+    check_id="WIN-2025-1.1.2",
+    description="Set 'Maximum password age' to {MAX_PASSWORD_AGE} days",
+    statements=["net accounts /maxpwage:{MAX_PASSWORD_AGE}"],
     verify_statements=[
         "net accounts | Select-String 'Maximum password age' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -le 365 -and [int]$Matches[1] -gt 0) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
@@ -64,11 +111,9 @@ _register(WindowsHardeningTemplate(
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-003",
+    check_id="WIN-2025-1.1.3",
     description="Set 'Minimum password age' to 1 day",
-    statements=[
-        "net accounts /minpwage:1",
-    ],
+    statements=["net accounts /minpwage:1"],
     verify_statements=[
         "net accounts | Select-String 'Minimum password age' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -ge 1) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
@@ -76,27 +121,19 @@ _register(WindowsHardeningTemplate(
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-004",
+    check_id="WIN-2025-1.1.4",
     description="Set 'Minimum password length' to 14 characters",
-    statements=[
-        "net accounts /minpwlen:14",
-    ],
+    statements=["net accounts /minpwlen:14"],
     verify_statements=[
         "net accounts | Select-String 'Minimum password length' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -ge 14) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
     ],
 ))
 
-# ===================================================================
-# AUTO-FIXABLE: Account Lockout Policy
-# ===================================================================
-
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-008",
-    description="Set 'Account lockout duration' to 15 minutes",
-    statements=[
-        "net accounts /lockoutduration:{LOCKOUT_DURATION}",
-    ],
+    check_id="WIN-2025-1.2.1",
+    description="Set 'Account lockout duration' to {LOCKOUT_DURATION} minutes",
+    statements=["net accounts /lockoutduration:{LOCKOUT_DURATION}"],
     verify_statements=[
         "net accounts | Select-String 'Lockout duration' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -ge 15) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
@@ -104,11 +141,9 @@ _register(WindowsHardeningTemplate(
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-009",
-    description="Set 'Account lockout threshold' to 5 attempts",
-    statements=[
-        "net accounts /lockoutthreshold:{LOCKOUT_THRESHOLD}",
-    ],
+    check_id="WIN-2025-1.2.2",
+    description="Set 'Account lockout threshold' to {LOCKOUT_THRESHOLD} attempts",
+    statements=["net accounts /lockoutthreshold:{LOCKOUT_THRESHOLD}"],
     verify_statements=[
         "net accounts | Select-String 'Lockout threshold' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -le 5 -and [int]$Matches[1] -gt 0) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
@@ -116,11 +151,9 @@ _register(WindowsHardeningTemplate(
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-011",
-    description="Set 'Reset account lockout counter after' to 15 minutes",
-    statements=[
-        "net accounts /lockoutwindow:{LOCKOUT_WINDOW}",
-    ],
+    check_id="WIN-2025-1.2.4",
+    description="Set 'Reset account lockout counter after' to {LOCKOUT_WINDOW} minutes",
+    statements=["net accounts /lockoutwindow:{LOCKOUT_WINDOW}"],
     verify_statements=[
         "net accounts | Select-String 'Lockout observation' | "
         "ForEach-Object { if ($_ -match '(\\d+)') { if ([int]$Matches[1] -ge 15) { 'PASS' } else { 'FAIL' } } else { 'FAIL' } }",
@@ -128,344 +161,24 @@ _register(WindowsHardeningTemplate(
 ))
 
 # ===================================================================
-# AUTO-FIXABLE: Firewall Profiles
-# ===================================================================
-
-for _profile in ["Domain", "Private", "Public"]:
-    _offset = {"Domain": 58, "Private": 61, "Public": 64}[_profile]
-
-    _register(WindowsHardeningTemplate(
-        check_id=f"WIN-L1-{_offset:03d}",
-        description=f"Enable Windows Firewall for {_profile} profile",
-        statements=[
-            f"Set-NetFirewallProfile -Profile {_profile} -Enabled True",
-        ],
-        verify_statements=[
-            f"if ((Get-NetFirewallProfile -Profile {_profile}).Enabled) {{ 'PASS' }} else {{ 'FAIL' }}",
-        ],
-    ))
-
-    _register(WindowsHardeningTemplate(
-        check_id=f"WIN-L1-{_offset + 1:03d}",
-        description=f"Set default inbound action to Block for {_profile} profile",
-        statements=[
-            f"Set-NetFirewallProfile -Profile {_profile} -DefaultInboundAction Block",
-        ],
-        verify_statements=[
-            f"if ((Get-NetFirewallProfile -Profile {_profile}).DefaultInboundAction -eq 'Block') {{ 'PASS' }} else {{ 'FAIL' }}",
-        ],
-    ))
-
-    _register(WindowsHardeningTemplate(
-        check_id=f"WIN-L1-{_offset + 2:03d}",
-        description=f"Enable dropped packet logging for {_profile} profile",
-        statements=[
-            f"Set-NetFirewallProfile -Profile {_profile} -LogBlocked True",
-        ],
-        verify_statements=[
-            f"if ((Get-NetFirewallProfile -Profile {_profile}).LogBlocked) {{ 'PASS' }} else {{ 'FAIL' }}",
-        ],
-    ))
-
-# ===================================================================
-# AUTO-FIXABLE: Registry-based Security Options
+# Accounts (2.3.1) — disable Guest + rename admin/guest
 # ===================================================================
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-026",
-    description="Disable the Guest account",
-    statements=[
-        "Disable-LocalUser -Name Guest -ErrorAction SilentlyContinue",
-    ],
+    check_id="WIN-2025-2.3.1.1",
+    description="Disable the built-in Guest account",
+    statements=["Disable-LocalUser -Name Guest -ErrorAction SilentlyContinue"],
     verify_statements=[
         "if ((Get-LocalUser -Name Guest -ErrorAction SilentlyContinue).Enabled -eq $false) { 'PASS' } else { 'FAIL' }",
     ],
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-029",
-    description="Enable 'Audit: Force audit policy subcategory settings' (SCENoApplyLegacyAuditPolicy)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'SCENoApplyLegacyAuditPolicy' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'SCENoApplyLegacyAuditPolicy' -ErrorAction SilentlyContinue).SCENoApplyLegacyAuditPolicy -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-030",
-    description="Enable 'Do not display last user name'",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'DontDisplayLastUserName' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'DontDisplayLastUserName' -ErrorAction SilentlyContinue).DontDisplayLastUserName -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-031",
-    description="Set 'Machine inactivity limit' to {INACTIVITY_TIMEOUT} seconds",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'InactivityTimeoutSecs' -Value {INACTIVITY_TIMEOUT} -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'InactivityTimeoutSecs' -ErrorAction SilentlyContinue).InactivityTimeoutSecs -le 900 -and "
-        "(Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'InactivityTimeoutSecs' -ErrorAction SilentlyContinue).InactivityTimeoutSecs -gt 0) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-034",
-    description="Enable 'Do not allow anonymous enumeration of SAM accounts' (RestrictAnonymousSAM = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'RestrictAnonymousSAM' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'RestrictAnonymousSAM' -ErrorAction SilentlyContinue).RestrictAnonymousSAM -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-035",
-    description="Enable 'Do not allow anonymous enumeration of SAM accounts and shares' (RestrictAnonymous = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'RestrictAnonymous' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'RestrictAnonymous' -ErrorAction SilentlyContinue).RestrictAnonymous -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-036",
-    description="Disable 'Let Everyone permissions apply to anonymous users'",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'EveryoneIncludesAnonymous' -Value 0 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'EveryoneIncludesAnonymous' -ErrorAction SilentlyContinue).EveryoneIncludesAnonymous -eq 0) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-038",
-    description="Set LAN Manager authentication level to NTLMv2 only (LmCompatibilityLevel = 5)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'LmCompatibilityLevel' -Value 5 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'LmCompatibilityLevel' -ErrorAction SilentlyContinue).LmCompatibilityLevel -eq 5) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-039",
-    description="Disable LAN Manager hash storage (NoLMHash = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'NoLMHash' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'NoLMHash' -ErrorAction SilentlyContinue).NoLMHash -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-# ===================================================================
-# AUTO-FIXABLE: UAC Settings
-# ===================================================================
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-040",
-    description="Enable UAC Admin Approval Mode for Built-in Administrator (FilterAdministratorToken = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'FilterAdministratorToken' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'FilterAdministratorToken' -ErrorAction SilentlyContinue).FilterAdministratorToken -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-045",
-    description="Enable UAC (EnableLUA = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'EnableLUA' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'EnableLUA' -ErrorAction SilentlyContinue).EnableLUA -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-    requires_restart=True,
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-046",
-    description="Enable UAC secure desktop (PromptOnSecureDesktop = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'PromptOnSecureDesktop' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "-Name 'PromptOnSecureDesktop' -ErrorAction SilentlyContinue).PromptOnSecureDesktop -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-# ===================================================================
-# AUTO-FIXABLE: Services
-# ===================================================================
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-048",
-    description="Disable Print Spooler service",
-    statements=[
-        "Set-Service -Name Spooler -StartupType Disabled -ErrorAction SilentlyContinue",
-        "Stop-Service -Name Spooler -Force -ErrorAction SilentlyContinue",
-    ],
-    verify_statements=[
-        "if ((Get-Service -Name Spooler -ErrorAction SilentlyContinue).StartType -eq 'Disabled') { 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-051",
-    description="Disable SSDP Discovery service",
-    statements=[
-        "Set-Service -Name SSDPSRV -StartupType Disabled -ErrorAction SilentlyContinue",
-        "Stop-Service -Name SSDPSRV -Force -ErrorAction SilentlyContinue",
-    ],
-    verify_statements=[
-        "if ((Get-Service -Name SSDPSRV -ErrorAction SilentlyContinue).StartType -eq 'Disabled') { 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-052",
-    description="Disable UPnP Device Host service",
-    statements=[
-        "Set-Service -Name upnphost -StartupType Disabled -ErrorAction SilentlyContinue",
-        "Stop-Service -Name upnphost -Force -ErrorAction SilentlyContinue",
-    ],
-    verify_statements=[
-        "if ((Get-Service -Name upnphost -ErrorAction SilentlyContinue).StartType -eq 'Disabled') { 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-# ===================================================================
-# AUTO-FIXABLE: SMBv1 and critical registry
-# ===================================================================
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-095",
-    description="Disable SMBv1 protocol",
-    statements=[
-        "Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force",
-    ],
-    verify_statements=[
-        "if ((Get-SmbServerConfiguration).EnableSMB1Protocol -eq $false) { 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-097",
-    description="Enable LSA Protection (RunAsPPL = 1)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'RunAsPPL' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "-Name 'RunAsPPL' -ErrorAction SilentlyContinue).RunAsPPL -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-    requires_restart=True,
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-098",
-    description="Disable WDigest authentication (UseLogonCredential = 0)",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest' "
-        "-Name 'UseLogonCredential' -Value 0 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest' "
-        "-Name 'UseLogonCredential' -ErrorAction SilentlyContinue).UseLogonCredential -eq 0) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-101",
-    description="Enable Network Level Authentication for Remote Desktop",
-    statements=[
-        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' "
-        "-Name 'UserAuthentication' -Value 1 -Type DWord -Force",
-    ],
-    verify_statements=[
-        "if ((Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' "
-        "-Name 'UserAuthentication' -ErrorAction SilentlyContinue).UserAuthentication -eq 1) "
-        "{ 'PASS' } else { 'FAIL' }",
-    ],
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-103",
-    description="Disable PowerShell v2",
-    statements=[
-        "try { Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2 -NoRestart -ErrorAction Stop } "
-        "catch { try { Uninstall-WindowsFeature PowerShell-V2 -ErrorAction Stop } catch { Write-Output 'FEATURE_REMOVE_FAILED' } }",
-    ],
-    verify_statements=[
-        "try { $s = (Get-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2 -ErrorAction Stop).State; "
-        "if ($s -eq 'Disabled' -or $s -eq 'DisabledWithPayloadRemoved') { 'PASS' } else { 'FAIL' } } "
-        "catch { try { if ((Get-WindowsFeature PowerShell-V2 -ErrorAction Stop).Installed -eq $false) { 'PASS' } else { 'FAIL' } } "
-        "catch { 'PASS' } }",
-    ],
-    requires_restart=True,
-))
-
-# ===================================================================
-# PARAMETERIZED: Account renames
-# ===================================================================
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-027",
+    check_id="WIN-2025-2.3.1.3",
     description="Rename built-in Administrator account to {NEW_ADMIN_NAME}",
     statements=[
-        "Rename-LocalUser -Name Administrator -NewName '{NEW_ADMIN_NAME}' -ErrorAction Stop",
+        "Rename-LocalUser -Name (Get-LocalUser | Where-Object { $_.SID -like '*-500' }).Name "
+        "-NewName '{NEW_ADMIN_NAME}' -ErrorAction Stop",
     ],
     verify_statements=[
         "if ((Get-LocalUser | Where-Object { $_.SID -like '*-500' }).Name -ne 'Administrator') { 'PASS' } else { 'FAIL' }",
@@ -473,10 +186,11 @@ _register(WindowsHardeningTemplate(
 ))
 
 _register(WindowsHardeningTemplate(
-    check_id="WIN-L1-028",
+    check_id="WIN-2025-2.3.1.4",
     description="Rename built-in Guest account to {NEW_GUEST_NAME}",
     statements=[
-        "Rename-LocalUser -Name Guest -NewName '{NEW_GUEST_NAME}' -ErrorAction Stop",
+        "Rename-LocalUser -Name (Get-LocalUser | Where-Object { $_.SID -like '*-501' }).Name "
+        "-NewName '{NEW_GUEST_NAME}' -ErrorAction Stop",
     ],
     verify_statements=[
         "if ((Get-LocalUser | Where-Object { $_.SID -like '*-501' }).Name -ne 'Guest') { 'PASS' } else { 'FAIL' }",
@@ -484,96 +198,143 @@ _register(WindowsHardeningTemplate(
 ))
 
 # ===================================================================
-# PARAMETERIZED: Disable custom service
+# GENERATED: Windows Defender Firewall — Section 9
 # ===================================================================
 
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-048-CUSTOM",
-    description="Disable service {SERVICE_NAME}",
-    statements=[
-        "Set-Service -Name '{SERVICE_NAME}' -StartupType Disabled -ErrorAction SilentlyContinue",
-        "Stop-Service -Name '{SERVICE_NAME}' -Force -ErrorAction SilentlyContinue",
-    ],
-    verify_statements=[
-        "if ((Get-Service -Name '{SERVICE_NAME}' -ErrorAction SilentlyContinue).StartType -eq 'Disabled') { 'PASS' } else { 'FAIL' }",
-    ],
-))
+_FW_PROFILES = {"Domain": ("9.1", "domainfw.log"),
+                "Private": ("9.2", "privatefw.log"),
+                "Public": ("9.3", "publicfw.log")}
+
+
+def _fw(section, profile, description, set_stmt, verify_expr):
+    _register(WindowsHardeningTemplate(
+        check_id=f"WIN-2025-{section}",
+        description=description,
+        statements=[f"Set-NetFirewallProfile -Profile {profile} {set_stmt}"],
+        verify_statements=[
+            f"if ({verify_expr}) {{ 'PASS' }} else {{ 'FAIL' }}"
+        ],
+    ))
+
+
+for _prof, (_base, _logfile) in _FW_PROFILES.items():
+    _fw(f"{_base}.1", _prof, f"Turn Windows Firewall On for {_prof} profile",
+        "-Enabled True", f"(Get-NetFirewallProfile -Profile {_prof}).Enabled")
+    _fw(f"{_base}.2", _prof, f"Block inbound connections by default ({_prof})",
+        "-DefaultInboundAction Block",
+        f"(Get-NetFirewallProfile -Profile {_prof}).DefaultInboundAction -eq 'Block'")
+    _fw(f"{_base}.3", _prof, f"Disable notifications ({_prof})",
+        "-NotifyOnListen False",
+        f"(Get-NetFirewallProfile -Profile {_prof}).NotifyOnListen -eq $false")
+    if _prof == "Public":
+        _fw("9.3.4", _prof, "Do not apply local firewall rules (Public)",
+            "-AllowLocalFirewallRules False",
+            "(Get-NetFirewallProfile -Profile Public).AllowLocalFirewallRules -eq $false")
+        _fw("9.3.5", _prof, "Do not apply local connection security rules (Public)",
+            "-AllowLocalIPsecRules False",
+            "(Get-NetFirewallProfile -Profile Public).AllowLocalIPsecRules -eq $false")
+        _ln, _sz, _dr, _sc = "9.3.6", "9.3.7", "9.3.8", "9.3.9"
+    else:
+        _ln, _sz, _dr, _sc = f"{_base}.4", f"{_base}.5", f"{_base}.6", f"{_base}.7"
+    _fw(_ln, _prof, f"Set firewall log file name ({_prof})",
+        f"-LogFileName '%systemroot%\\system32\\logfiles\\firewall\\{_logfile}'",
+        f"(Get-NetFirewallProfile -Profile {_prof}).LogFileName -like '*{_logfile}'")
+    _fw(_sz, _prof, f"Set firewall log size limit to 16384 KB ({_prof})",
+        "-LogMaxSizeKilobytes 16384",
+        f"(Get-NetFirewallProfile -Profile {_prof}).LogMaxSizeKilobytes -ge 16384")
+    _fw(_dr, _prof, f"Log dropped packets ({_prof})",
+        "-LogBlocked True",
+        f"(Get-NetFirewallProfile -Profile {_prof}).LogBlocked -eq $true")
+    _fw(_sc, _prof, f"Log successful connections ({_prof})",
+        "-LogAllowed True",
+        f"(Get-NetFirewallProfile -Profile {_prof}).LogAllowed -eq $true")
 
 # ===================================================================
-# AUTO-FIXABLE: Audit Policy (auditpol)
+# GENERATED: Advanced Audit Policy — Section 17 (auditpol)
 # ===================================================================
 
-_audit_policy_fixes = [
-    ("WIN-L1-067", "Credential Validation", "Success and Failure", "success,failure"),
-    ("WIN-L1-068", "Application Group Management", "Success and Failure", "success,failure"),
-    ("WIN-L1-069", "Computer Account Management", "Success", "success"),
-    ("WIN-L1-071", "Security Group Management", "Success", "success"),
-    ("WIN-L1-072", "User Account Management", "Success and Failure", "success,failure"),
-    ("WIN-L1-075", "Account Lockout", "Failure", "failure"),
-    ("WIN-L1-078", "Logon", "Success and Failure", "success,failure"),
-    ("WIN-L1-085", "Audit Policy Change", "Success", "success"),
-    ("WIN-L1-089", "Sensitive Privilege Use", "Success and Failure", "success,failure"),
-    ("WIN-L1-092", "Security State Change", "Success", "success"),
-    ("WIN-L1-093", "Security System Extension", "Success", "success"),
-    ("WIN-L1-094", "System Integrity", "Success and Failure", "success,failure"),
+# (section, subcategory, flag) — flag in {'both','success','failure'}
+_AUDIT_FIXES = [
+    ("17.1.1", "Credential Validation", "both"),
+    ("17.1.2", "Kerberos Authentication Service", "both"),
+    ("17.1.3", "Kerberos Service Ticket Operations", "both"),
+    ("17.2.1", "Application Group Management", "both"),
+    ("17.2.2", "Computer Account Management", "success"),
+    ("17.2.3", "Distribution Group Management", "success"),
+    ("17.2.4", "Other Account Management Events", "success"),
+    ("17.2.5", "Security Group Management", "success"),
+    ("17.2.6", "User Account Management", "both"),
+    ("17.3.1", "Plug and Play Events", "success"),
+    ("17.3.2", "Process Creation", "success"),
+    ("17.4.1", "Directory Service Access", "failure"),
+    ("17.4.2", "Directory Service Changes", "success"),
+    ("17.5.1", "Account Lockout", "failure"),
+    ("17.5.2", "Group Membership", "success"),
+    ("17.5.3", "Logoff", "success"),
+    ("17.5.4", "Logon", "both"),
+    ("17.5.5", "Other Logon/Logoff Events", "both"),
+    ("17.5.6", "Special Logon", "success"),
+    ("17.6.1", "Detailed File Share", "failure"),
+    ("17.6.2", "File Share", "both"),
+    ("17.6.3", "Other Object Access Events", "both"),
+    ("17.6.4", "Removable Storage", "both"),
+    ("17.7.1", "Audit Policy Change", "success"),
+    ("17.7.2", "Authentication Policy Change", "success"),
+    ("17.7.3", "Authorization Policy Change", "success"),
+    ("17.7.4", "MPSSVC Rule-Level Policy Change", "both"),
+    ("17.7.5", "Other Policy Change Events", "failure"),
+    ("17.8.1", "Sensitive Privilege Use", "both"),
+    ("17.9.1", "IPsec Driver", "both"),
+    ("17.9.2", "Other System Events", "both"),
+    ("17.9.3", "Security State Change", "success"),
+    ("17.9.4", "Security System Extension", "success"),
+    ("17.9.5", "System Integrity", "both"),
 ]
 
-for _cid, _subcat, _desc_val, _auditpol_val in _audit_policy_fixes:
+for _sec, _subcat, _flag in _AUDIT_FIXES:
+    if _flag == "both":
+        _set = f"auditpol /set /subcategory:\"{_subcat}\" /success:enable /failure:enable"
+        _need_s, _need_f = True, True
+    elif _flag == "success":
+        _set = f"auditpol /set /subcategory:\"{_subcat}\" /success:enable /failure:disable"
+        _need_s, _need_f = True, False
+    else:
+        _set = f"auditpol /set /subcategory:\"{_subcat}\" /success:disable /failure:enable"
+        _need_s, _need_f = False, True
+    if _need_s and _need_f:
+        _vcond = "$s -match 'Success' -and $s -match 'Failure'"
+    elif _need_s:
+        _vcond = "$s -match 'Success'"
+    else:
+        _vcond = "$s -match 'Failure'"
     _register(WindowsHardeningTemplate(
-        check_id=_cid,
-        description=f"Set audit policy '{_subcat}' to '{_desc_val}'",
-        statements=[
-            f"auditpol /set /subcategory:\"{_subcat}\" /success:enable /failure:enable"
-            if _auditpol_val == "success,failure" else
-            f"auditpol /set /subcategory:\"{_subcat}\" /success:enable"
-            if _auditpol_val == "success" else
-            f"auditpol /set /subcategory:\"{_subcat}\" /failure:enable"
-        ],
+        check_id=f"WIN-2025-{_sec}",
+        description=f"Set audit policy '{_subcat}' ({_flag})",
+        statements=[_set],
         verify_statements=[
             f"$r = auditpol /get /subcategory:\"{_subcat}\" /r | ConvertFrom-Csv; "
-            f"if ($r.'Inclusion Setting' -like '*{_desc_val}*') {{ 'PASS' }} else {{ 'FAIL' }}"
+            f"$s = $r.'Inclusion Setting'; if ({_vcond}) {{ 'PASS' }} else {{ 'FAIL' }}"
         ],
     ))
 
 # ===================================================================
-# MANUAL ONLY: Require GUI / restart / domain changes
+# MANUAL ONLY — GPO / secedit-template / patch / HKU controls
 # ===================================================================
 
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-107",
-    description="Apply latest Windows Server patches – manual via WSUS / Windows Update",
-    statements=[],
-    manual_only=True,
-))
+_MANUAL_CHECKS = [
+    ("WIN-2025-1.1.5", "Password must meet complexity requirements — requires secedit template / GPO"),
+    ("WIN-2025-1.1.7", "Disable reversible encryption — requires secedit template / GPO"),
+    ("WIN-2025-1.2.3", "Allow Administrator account lockout — requires secpol / GPO"),
+    ("WIN-2025-2.3.7.4", "Interactive logon message text — configure via GPO"),
+    ("WIN-2025-2.3.7.5", "Interactive logon message title — configure via GPO"),
+    ("WIN-2025-2.3.10.7", "Named pipes accessible anonymously — clear multi-string value manually"),
+    ("WIN-2025-2.3.10.12", "Anonymous shares — clear multi-string value manually"),
+]
 
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L2-108",
-    description="Enable Credential Guard – requires UEFI/Hyper-V; manual configuration",
-    statements=[],
-    manual_only=True,
-    requires_restart=True,
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-005",
-    description="Password complexity – requires secedit template or GPO; manual configuration",
-    statements=[],
-    manual_only=True,
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-007",
-    description="Disable reversible encryption – requires secedit template or GPO; manual configuration",
-    statements=[],
-    manual_only=True,
-))
-
-_register(WindowsHardeningTemplate(
-    check_id="WIN-L1-025",
-    description="Block Microsoft accounts – requires Group Policy; manual configuration",
-    statements=[],
-    manual_only=True,
-))
+for _mid, _desc in _MANUAL_CHECKS:
+    _register(WindowsHardeningTemplate(
+        check_id=_mid, description=_desc, statements=[], manual_only=True,
+    ))
 
 
 # ===================================================================
@@ -591,8 +352,7 @@ def get_all_supported_checks() -> Set[str]:
 
 
 def get_windows_template_statements(
-    check_id: str,
-    parameters: Dict[str, str] = None,
+    check_id: str, parameters: Dict[str, str] = None
 ) -> List[str]:
     """Return PowerShell statements with {PARAM} placeholders substituted."""
     template = get_windows_hardening_template(check_id)
@@ -608,10 +368,9 @@ def get_windows_template_statements(
 
 
 def get_windows_verify_statements(
-    check_id: str,
-    parameters: Dict[str, str] = None,
+    check_id: str, parameters: Dict[str, str] = None
 ) -> List[str]:
-    """Return verification PowerShell statements with {PARAM} placeholders substituted."""
+    """Return verification PowerShell statements with placeholders substituted."""
     template = get_windows_hardening_template(check_id)
     if not template:
         return []

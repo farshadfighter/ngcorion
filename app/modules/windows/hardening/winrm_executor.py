@@ -102,7 +102,7 @@ class WindowsWinRMExecutor:
     Use as a context manager:
 
         with WindowsWinRMExecutor(ip, username, password) as executor:
-            result = executor.execute_hardening("WIN-L1-048")
+            result = executor.execute_hardening("WIN-2025-2.3.11.7")
     """
 
     MAX_RETRIES = 3
@@ -317,7 +317,7 @@ class WindowsWinRMExecutor:
         Execute remediation PowerShell for a single CIS check.
 
         Args:
-            check_id:   Windows CIS check ID (e.g. "WIN-L1-048")
+            check_id:   Windows CIS check ID (e.g. "WIN-2025-2.3.11.7")
             parameters: {PARAM} placeholder values for template substitution
 
         Returns:

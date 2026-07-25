@@ -1,50 +1,86 @@
 """
 Windows Server Audit Commands (PowerShell)
 
-PowerShell scripts for collecting CIS Benchmark compliance data from
-Windows Server instances via WinRM. Each command produces parseable
-output (JSON, CSV, or structured text).
+Read-only PowerShell scripts for collecting CIS Windows Server 2025 Benchmark
+compliance data via WinRM. Every command is a ``Get-*`` / ``secedit /export`` /
+``auditpol /get`` — the audit path never writes to the target.
 
-Commands are grouped by CIS section and wrapped in try/catch blocks
-so one failure does not block the entire collection.
+Each command produces parseable output (JSON / CSV / secedit INF text) and is
+wrapped so a single failure does not block the whole collection. The section
+names line up 1:1 with the parsers in ``rules.py``:
+
+    OS_VERSION        -> _detect_version / _detect_gate
+    DOMAIN_ROLE       -> is_domain_controller (MS vs DC scope)
+    SECURITY_POLICY   -> [System Access]  (Section 1)
+    USER_RIGHTS       -> [Privilege Rights] (Section 2.2)
+    AUDIT_POLICY      -> auditpol CSV       (Section 17)
+    REGISTRY          -> {path: {props}}    (Section 2.3 / 18)
+    FIREWALL_PROFILES -> Get-NetFirewallProfile (Section 9)
+    LOCAL_USERS       -> Guest account status (2.3.1.1)
 """
 
 from typing import Dict
 
+from .rules import get_registry_paths
+
+
+def _registry_collection_script() -> str:
+    """
+    Build the REGISTRY collection PowerShell from the single list of paths the
+    rule engine reads (rules.get_registry_paths). Emits a hashtable of
+    {full_path: <json string of properties>} so rules._reg can look up any
+    (path, property) pair. -LiteralPath avoids wildcard/bracket surprises.
+    """
+    paths = get_registry_paths()
+    # Single-quote each path; none contain a single quote.
+    ps_array = ", ".join("'" + p.replace("'", "''") + "'" for p in paths)
+    return (
+        f"$paths = @({ps_array}); "
+        "$result = @{}; "
+        "foreach ($p in $paths) { "
+        "    try { "
+        "        if (Test-Path -LiteralPath $p) { "
+        "            $props = Get-ItemProperty -LiteralPath $p -ErrorAction SilentlyContinue; "
+        "            if ($props) { "
+        "                $result[$p] = ($props | Select-Object * -ExcludeProperty PS* | "
+        "                    ConvertTo-Json -Compress -Depth 3) "
+        "            } "
+        "        } "
+        "    } catch {} "
+        "} "
+        "$result | ConvertTo-Json -Depth 4"
+    )
+
 
 def get_windows_audit_commands() -> Dict[str, str]:
-    """
-    Return a dict of section_name -> PowerShell script for audit data collection.
-
-    Each script is designed to produce parseable output. JSON is preferred
-    where possible; CSV for tools like auditpol that natively support it.
-    """
+    """Return a dict of section_name -> read-only PowerShell collection script."""
     commands: Dict[str, str] = {}
 
-    # ---- OS Version / Build ----------------------------------------- #
+    # ---- OS Version / Build (version gate) -------------------------- #
     commands["OS_VERSION"] = (
         "Get-CimInstance Win32_OperatingSystem | "
         "Select-Object Caption, Version, BuildNumber, OSArchitecture | "
         "ConvertTo-Json -Compress"
     )
 
-    # ---- Security Policy (secedit export) --------------------------- #
-    # secedit exports to a file; we read it back and delete it
+    # ---- Domain role (MS vs DC scope) ------------------------------- #
+    commands["DOMAIN_ROLE"] = (
+        "Get-CimInstance Win32_ComputerSystem | "
+        "Select-Object DomainRole, Domain, PartOfDomain | "
+        "ConvertTo-Json -Compress"
+    )
+
+    # ---- Security Policy (secedit [System Access]) ------------------ #
     commands["SECURITY_POLICY"] = (
         "$secpolPath = \"$env:TEMP\\secpol_audit_$([guid]::NewGuid().ToString('N')).cfg\"; "
         "secedit /export /cfg $secpolPath /quiet 2>$null; "
         "if (Test-Path $secpolPath) { "
         "    Get-Content $secpolPath -Raw; "
         "    Remove-Item $secpolPath -Force "
-        "} else { "
-        "    Write-Output 'SECEDIT_EXPORT_FAILED' "
-        "}"
+        "} else { Write-Output 'SECEDIT_EXPORT_FAILED' }"
     )
 
-    # ---- Advanced Audit Policy (auditpol CSV) ----------------------- #
-    commands["AUDIT_POLICY"] = "auditpol /get /category:* /r"
-
-    # ---- User Rights Assignment ------------------------------------- #
+    # ---- User Rights Assignment ([Privilege Rights]) ---------------- #
     commands["USER_RIGHTS"] = (
         "$secpolPath = \"$env:TEMP\\secpol_rights_$([guid]::NewGuid().ToString('N')).cfg\"; "
         "secedit /export /cfg $secpolPath /quiet 2>$null; "
@@ -58,236 +94,27 @@ def get_windows_audit_commands() -> Dict[str, str]:
         "    } "
         "    $lines -join \"`n\"; "
         "    Remove-Item $secpolPath -Force "
-        "} else { "
-        "    Write-Output 'SECEDIT_EXPORT_FAILED' "
-        "}"
+        "} else { Write-Output 'SECEDIT_EXPORT_FAILED' }"
     )
 
-    # ---- Registry: SYSTEM hive (LSA, network, session security) ----- #
-    commands["REGISTRY_SYSTEM"] = (
-        "$paths = @("
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\pku2u', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanManServer\\Parameters', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Netlogon\\Parameters', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LDAP', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Parameters', "
-        "    'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NetBT\\Parameters' "
-        "); "
-        "$result = @{}; "
-        "foreach ($p in $paths) { "
-        "    try { "
-        "        if (Test-Path $p) { "
-        "            $props = Get-ItemProperty -Path $p -ErrorAction SilentlyContinue; "
-        "            $result[$p] = $props | Select-Object * -ExcludeProperty PS* | "
-        "                ConvertTo-Json -Compress -Depth 2 "
-        "        } "
-        "    } catch {} "
-        "} "
-        "$result | ConvertTo-Json -Depth 3"
-    )
+    # ---- Advanced Audit Policy (auditpol CSV) ----------------------- #
+    commands["AUDIT_POLICY"] = "auditpol /get /category:* /r"
 
-    # ---- Registry: SOFTWARE hive (Admin Templates / Policies) ------- #
-    commands["REGISTRY_SOFTWARE"] = (
-        "$paths = @("
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Network Connections', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\LanmanWorkstation', "
-        "    'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System', "
-        "    'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System\\Audit', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\DomainProfile', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PrivateProfile', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\PublicProfile', "
-        "    'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\DNSClient' "
-        "); "
-        "$result = @{}; "
-        "foreach ($p in $paths) { "
-        "    try { "
-        "        if (Test-Path $p) { "
-        "            $props = Get-ItemProperty -Path $p -ErrorAction SilentlyContinue; "
-        "            $result[$p] = $props | Select-Object * -ExcludeProperty PS* | "
-        "                ConvertTo-Json -Compress -Depth 2 "
-        "        } "
-        "    } catch {} "
-        "} "
-        "$result | ConvertTo-Json -Depth 3"
-    )
+    # ---- Registry (Section 2.3 / 18) -------------------------------- #
+    commands["REGISTRY"] = _registry_collection_script()
 
-    # ---- Services --------------------------------------------------- #
-    commands["SERVICES"] = (
-        "Get-Service | Select-Object Name, DisplayName, Status, StartType | "
-        "ConvertTo-Json -Compress"
-    )
-
-    # ---- Firewall Profiles ------------------------------------------ #
+    # ---- Firewall Profiles (Section 9) ------------------------------ #
     commands["FIREWALL_PROFILES"] = (
-        "Get-NetFirewallProfile | "
+        "Get-NetFirewallProfile -All | "
         "Select-Object Name, Enabled, DefaultInboundAction, DefaultOutboundAction, "
+        "NotifyOnListen, AllowLocalFirewallRules, AllowLocalIPsecRules, "
         "LogAllowed, LogBlocked, LogFileName, LogMaxSizeKilobytes | "
         "ConvertTo-Json -Compress"
     )
 
-    # ---- Windows Features (Server only) ----------------------------- #
-    commands["WINDOWS_FEATURES"] = (
-        "try { "
-        "    Get-WindowsFeature | Where-Object { $_.Installed -eq $true } | "
-        "    Select-Object Name, DisplayName | ConvertTo-Json -Compress "
-        "} catch { "
-        "    Write-Output 'GET_WINDOWSFEATURE_NOT_AVAILABLE' "
-        "}"
-    )
-
-    # ---- Local Users ------------------------------------------------ #
+    # ---- Local Users (Guest account status, 2.3.1.1) --------------- #
     commands["LOCAL_USERS"] = (
-        "Get-LocalUser | Select-Object Name, Enabled, "
-        "PasswordRequired, PasswordLastSet, LastLogon, "
-        "AccountExpires, SID | ConvertTo-Json -Compress"
-    )
-
-    # ---- LSA Protection --------------------------------------------- #
-    commands["LSA_PROTECTION"] = (
-        "try { "
-        "    $lsa = Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa' "
-        "        -ErrorAction SilentlyContinue; "
-        "    $lsa | Select-Object RunAsPPL, LimitBlankPasswordUse, "
-        "        NoLMHash, RestrictAnonymous, RestrictAnonymousSAM, "
-        "        EveryoneIncludesAnonymous, ForceGuest, SCENoApplyLegacyAuditPolicy, "
-        "        DisableDomainCreds, LmCompatibilityLevel, "
-        "        RestrictRemoteSAM | ConvertTo-Json -Compress "
-        "} catch { Write-Output '{}' }"
-    )
-
-    # ---- Remote Desktop Settings ------------------------------------ #
-    commands["REMOTE_DESKTOP"] = (
-        "$rdp = @{}; "
-        "try { "
-        "    $ts = Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server' "
-        "        -ErrorAction SilentlyContinue; "
-        "    $rdp['fDenyTSConnections'] = $ts.fDenyTSConnections; "
-        "    $rdp['fSingleSessionPerUser'] = $ts.fSingleSessionPerUser; "
-        "    $sec = Get-ItemProperty -Path "
-        "        'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp' "
-        "        -ErrorAction SilentlyContinue; "
-        "    $rdp['UserAuthentication'] = $sec.UserAuthentication; "
-        "    $rdp['SecurityLayer'] = $sec.SecurityLayer; "
-        "    $rdp['MinEncryptionLevel'] = $sec.MinEncryptionLevel "
-        "} catch {} "
-        "$rdp | ConvertTo-Json -Compress"
-    )
-
-    # ---- WDigest Authentication ------------------------------------- #
-    commands["WDIGEST"] = (
-        "try { "
-        "    $wd = Get-ItemProperty -Path "
-        "        'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest' "
-        "        -ErrorAction SilentlyContinue; "
-        "    $wd | Select-Object UseLogonCredential | ConvertTo-Json -Compress "
-        "} catch { Write-Output '{\"UseLogonCredential\": null}' }"
-    )
-
-    # ---- Installed Hotfixes ----------------------------------------- #
-    commands["HOTFIXES"] = (
-        "Get-HotFix | Sort-Object InstalledOn -Descending -ErrorAction SilentlyContinue | "
-        "Select-Object -First 20 HotFixID, Description, InstalledOn | "
-        "ConvertTo-Json -Compress"
-    )
-
-    # ---- Windows Defender Status ------------------------------------ #
-    commands["DEFENDER_STATUS"] = (
-        "try { "
-        "    Get-MpComputerStatus | Select-Object AMServiceEnabled, "
-        "        AntispywareEnabled, AntivirusEnabled, BehaviorMonitorEnabled, "
-        "        IoavProtectionEnabled, NISEnabled, OnAccessProtectionEnabled, "
-        "        RealTimeProtectionEnabled, AntivirusSignatureLastUpdated | "
-        "    ConvertTo-Json -Compress "
-        "} catch { Write-Output 'DEFENDER_NOT_AVAILABLE' }"
-    )
-
-    # ---- BitLocker Volumes ------------------------------------------ #
-    commands["BITLOCKER"] = (
-        "try { "
-        "    Get-BitLockerVolume | Select-Object MountPoint, VolumeStatus, "
-        "        ProtectionStatus, EncryptionMethod, EncryptionPercentage | "
-        "    ConvertTo-Json -Compress "
-        "} catch { Write-Output 'BITLOCKER_NOT_AVAILABLE' }"
-    )
-
-    # ---- SMBv1 Status ----------------------------------------------- #
-    commands["SMBV1_STATUS"] = (
-        "try { "
-        "    $smb = Get-SmbServerConfiguration | "
-        "        Select-Object EnableSMB1Protocol, EnableSMB2Protocol; "
-        "    $feature = $null; "
-        "    try { $feature = (Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol "
-        "        -ErrorAction SilentlyContinue).State } catch {} "
-        "    @{ 'EnableSMB1Protocol' = $smb.EnableSMB1Protocol; "
-        "       'EnableSMB2Protocol' = $smb.EnableSMB2Protocol; "
-        "       'SMB1FeatureState' = $feature } | ConvertTo-Json -Compress "
-        "} catch { Write-Output '{}' }"
-    )
-
-    # ---- PowerShell v2 Feature State -------------------------------- #
-    commands["POWERSHELL_V2"] = (
-        "try { "
-        "    $ps2 = Get-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2 "
-        "        -ErrorAction SilentlyContinue; "
-        "    @{ 'FeatureName' = $ps2.FeatureName; 'State' = [string]$ps2.State } | "
-        "        ConvertTo-Json -Compress "
-        "} catch { "
-        "    try { "
-        "        $ps2 = Get-WindowsFeature PowerShell-V2 -ErrorAction SilentlyContinue; "
-        "        @{ 'FeatureName' = 'PowerShell-V2'; 'Installed' = $ps2.Installed } | "
-        "            ConvertTo-Json -Compress "
-        "    } catch { Write-Output '{}' } "
-        "}"
-    )
-
-    # ---- Credential Guard ------------------------------------------- #
-    commands["CREDENTIAL_GUARD"] = (
-        "try { "
-        "    $dg = Get-CimInstance -ClassName Win32_DeviceGuard "
-        "        -Namespace root\\Microsoft\\Windows\\DeviceGuard "
-        "        -ErrorAction SilentlyContinue; "
-        "    $dg | Select-Object SecurityServicesConfigured, SecurityServicesRunning, "
-        "        VirtualizationBasedSecurityStatus | ConvertTo-Json -Compress "
-        "} catch { Write-Output '{}' }"
-    )
-
-    # ---- Network Profile Settings ----------------------------------- #
-    commands["NETWORK_PROFILES"] = (
-        "Get-NetConnectionProfile | Select-Object Name, NetworkCategory, "
-        "InterfaceAlias | ConvertTo-Json -Compress"
-    )
-
-    # ---- Scheduled Tasks (non-Microsoft) ---------------------------- #
-    commands["SCHEDULED_TASKS"] = (
-        "Get-ScheduledTask | Where-Object { $_.Author -notlike 'Microsoft*' -and "
-        "$_.Author -ne $null -and $_.State -eq 'Ready' } | "
-        "Select-Object TaskName, Author, State -First 50 | ConvertTo-Json -Compress"
-    )
-
-    # ---- UAC Settings ----------------------------------------------- #
-    commands["UAC_SETTINGS"] = (
-        "try { "
-        "    $uac = Get-ItemProperty -Path "
-        "        'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' "
-        "        -ErrorAction SilentlyContinue; "
-        "    $uac | Select-Object EnableLUA, ConsentPromptBehaviorAdmin, "
-        "        ConsentPromptBehaviorUser, EnableInstallerDetection, NoConnectedUser, "
-        "        EnableSecureUIAPaths, EnableVirtualization, "
-        "        PromptOnSecureDesktop, FilterAdministratorToken, "
-        "        ValidateAdminCodeSignatures, EnableUIADesktopToggle, "
-        "        LegalNoticeCaption, LegalNoticeText, "
-        "        DontDisplayLastUserName, InactivityTimeoutSecs | "
-        "    ConvertTo-Json -Compress "
-        "} catch { Write-Output '{}' }"
+        "Get-LocalUser | Select-Object Name, Enabled, SID | ConvertTo-Json -Compress"
     )
 
     return commands

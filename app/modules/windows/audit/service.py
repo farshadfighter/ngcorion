@@ -26,10 +26,13 @@ from app.models.audit import CheckStatus, DeviceType
 from .winrm_client import WindowsWinRMClient, redact_sensitive_windows_data
 from .rules import (
     WindowsCISRule,
-    build_all_windows_cis_rules,
+    build_windows_cis_rules_for_version,
     evaluate_compliance,
     filter_rules_by_profile,
-    _detect_os_version,
+    filter_rules_by_scope,
+    is_domain_controller,
+    _detect_gate,
+    _detect_version,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,23 +85,27 @@ class WindowsAuditService:
             logger.info(f"Completed: {name} ({time.time() - start:.2f}s)")
 
     @staticmethod
-    def _get_cached_rules(profile: str, os_version: str = "all") -> List[WindowsCISRule]:
-        cache_key = f"windows_{profile}_{os_version}"
+    def _get_cached_rules(
+        profile: str, gate: str = "win_2025", is_dc: bool = False
+    ) -> List[WindowsCISRule]:
+        role = "DC" if is_dc else "MS"
+        cache_key = f"{gate}_{profile}_{role}"
         now = time.time()
 
         if cache_key in WindowsAuditService._rules_cache:
             age = now - WindowsAuditService._cache_timestamp.get(cache_key, 0)
             if age < WindowsAuditService.CACHE_TTL:
-                logger.debug(f"Using cached Windows rules for {profile}/{os_version} (age {age:.0f}s)")
+                logger.debug(f"Using cached Windows rules for {cache_key} (age {age:.0f}s)")
                 return WindowsAuditService._rules_cache[cache_key]
 
-        logger.info(f"Building Windows CIS rules for profile={profile}, os={os_version}")
-        all_rules = build_all_windows_cis_rules()
-        filtered = filter_rules_by_profile(all_rules, profile, os_version)
-        WindowsAuditService._rules_cache[cache_key] = filtered
+        logger.info(f"Building Windows CIS rules for {gate} profile={profile} role={role}")
+        rules = build_windows_cis_rules_for_version(gate)
+        rules = filter_rules_by_profile(rules, profile)
+        rules = filter_rules_by_scope(rules, is_dc)
+        WindowsAuditService._rules_cache[cache_key] = rules
         WindowsAuditService._cache_timestamp[cache_key] = now
-        logger.info(f"Cached {len(filtered)} Windows rules for {profile}/{os_version}")
-        return filtered
+        logger.info(f"Cached {len(rules)} Windows rules for {cache_key}")
+        return rules
 
     @staticmethod
     def _bulk_insert_results(
@@ -111,13 +118,21 @@ class WindowsAuditService:
         batch = []
 
         for finding in findings:
+            # Manual controls are stored as NOT_APPLICABLE (surfaced as
+            # "skipped" by the API); they are never scored as pass/fail.
+            if finding.get("manual"):
+                status = CheckStatus.NOT_APPLICABLE
+            elif finding["compliant"]:
+                status = CheckStatus.PASS
+            else:
+                status = CheckStatus.FAIL
             result = AuditResult(
                 session_id=session_id,
                 check_number=finding["id"],
                 check_title=finding["title"],
                 severity=finding["severity"],
                 level=finding.get("level", "L1"),
-                status=CheckStatus.PASS if finding["compliant"] else CheckStatus.FAIL,
+                status=status,
                 evidence_snippet=finding["evidence"],
                 checked_at=datetime.now(timezone.utc),
             )
@@ -214,10 +229,16 @@ class WindowsAuditService:
             # 4. Redact sensitive values
             clean_dump = redact_sensitive_windows_data(raw_dump)
 
-            # 5. Detect OS version and load rules
-            os_version = _detect_os_version(clean_dump)
-            logger.info(f"Detected Windows Server version: {os_version}")
-            rules = WindowsAuditService._get_cached_rules(profile, os_version)
+            # 5. Resolve the OS build to a version gate key + detect the host
+            #    role (member server vs domain controller) and load the matching
+            #    rule set.
+            gate = _detect_gate(clean_dump)
+            is_dc = is_domain_controller(clean_dump)
+            logger.info(
+                f"Resolved Windows dump to {gate} "
+                f"(v{_detect_version(clean_dump)}, {'DC' if is_dc else 'member server'})"
+            )
+            rules = WindowsAuditService._get_cached_rules(profile, gate, is_dc)
 
             # 6. Evaluate compliance
             with WindowsAuditService._timed_op(

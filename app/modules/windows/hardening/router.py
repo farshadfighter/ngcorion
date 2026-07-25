@@ -50,7 +50,7 @@ class SingleFixRequest(BaseModel):
                 "windows_password": "********",
                 "winrm_port": 5986,
                 "transport": "ntlm",
-                "check_id": "WIN-L1-048",
+                "check_id": "WIN-2025-2.3.11.7",
                 "parameters": {},
             }
         }
@@ -64,7 +64,7 @@ router = APIRouter(
 
 
 class WindowsPreviewRequest(BaseModel):
-    check_id: str = Field(..., description="CIS check ID, e.g. WIN-L1-038")
+    check_id: str = Field(..., description="CIS check ID, e.g. WIN-2025-2.3.11.7")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
 
 
