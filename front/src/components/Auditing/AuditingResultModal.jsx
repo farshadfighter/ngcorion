@@ -6,6 +6,67 @@ import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-");
 
+// ── Windows CIS scope map (static benchmark data) ─────────────────────────────
+// Sections that only apply to Domain Controllers vs Member Servers. Audits are
+// already role-filtered server-side; these drive the per-row DC / MS badges.
+const WIN_DC_SECTIONS = new Set([
+    "2.2.2", "2.2.7", "2.2.9", "2.2.18", "2.2.21", "2.2.26", "2.2.28", "2.2.32",
+    "2.2.37", "2.2.38", "2.2.48",
+    "2.3.5.1", "2.3.5.2", "2.3.5.3", "2.3.5.4", "2.3.5.6", "2.3.10.6", "2.3.11.13",
+    "17.1.2", "17.1.3", "17.2.2", "17.2.3", "17.2.4", "17.4.1", "17.4.2",
+]);
+const WIN_MS_SECTIONS = new Set([
+    "1.2.3",
+    "2.2.3", "2.2.8", "2.2.10", "2.2.19", "2.2.22", "2.2.27", "2.2.29", "2.2.33", "2.2.39",
+    "2.3.1.1", "2.3.7.6", "2.3.7.8", "2.3.9.5", "2.3.10.2", "2.3.10.3", "2.3.10.7", "2.3.10.11",
+    "18.4.1",
+]);
+
+const isWindowsDevice = (dt) => (dt || "").toLowerCase().startsWith("windows");
+
+// Returns "DC" | "MS" | null for a Windows check number (e.g. "WIN-2025-2.2.2").
+const winScope = (checkNumber) => {
+    if (!checkNumber || !checkNumber.startsWith("WIN-")) return null;
+    const section = checkNumber.replace(/^WIN-\d+-/, "");
+    if (WIN_DC_SECTIONS.has(section)) return "DC";
+    if (WIN_MS_SECTIONS.has(section)) return "MS";
+    return null;
+};
+
+// A check is "manual" (no automated fix) when it is NOT_APPLICABLE/SKIPPED, or a
+// Windows Section 19 (per-user / HKU) control.
+const isManualCheck = (result) => {
+    const status = result?.status?.toString().toUpperCase();
+    if (status === "NOT_APPLICABLE" || status === "SKIPPED") return true;
+    return /^WIN-\d+-19\./.test(result?.check_number || "");
+};
+
+const scopeBadgeStyle = (scope) => ({
+    display: "inline-block",
+    marginLeft: "6px",
+    padding: "1px 7px",
+    borderRadius: "10px",
+    fontSize: "10px",
+    fontWeight: 700,
+    verticalAlign: "middle",
+    background: scope === "DC" ? "#e0e7ff" : "#dcfce7",
+    color: scope === "DC" ? "#3730a3" : "#166534",
+    border: `1px solid ${scope === "DC" ? "#c7d2fe" : "#bbf7d0"}`,
+});
+
+const manualBadgeStyle = {
+    display: "inline-block",
+    marginLeft: "6px",
+    padding: "1px 7px",
+    borderRadius: "10px",
+    fontSize: "10px",
+    fontWeight: 700,
+    verticalAlign: "middle",
+    background: "#f3f4f6",
+    color: "#6b7280",
+    border: "1px solid #e5e7eb",
+};
+
 export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     const dispatch = useDispatch();
     const { results, isLoadingResults } = useSelector((state) => state.audit);
@@ -73,6 +134,16 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     // Columns: Section [+ VDOM] + Recommendation + Result + Details.
     const colCount = hasVdom ? 5 : 4;
 
+    // Windows: show a Server Role indicator + per-row DC/MS badges. Role is
+    // inferred from which scoped checks the (already role-filtered) audit ran.
+    const isWindowsSession = isWindowsDevice(sessionDetails?.device_type);
+    let serverRole = null;
+    if (isWindowsSession && Array.isArray(results)) {
+        const scopes = new Set(results.map((r) => winScope(r.check_number)).filter(Boolean));
+        if (scopes.has("DC")) serverRole = "Domain Controller";
+        else if (scopes.has("MS")) serverRole = "Member Server";
+    }
+
     const getResultBadge = (status) => {
         const normalizedStatus = status?.toString().toUpperCase();
 
@@ -134,6 +205,27 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         <div className="card-label">Status</div>
                         <div className="card-value">{titleCase(sessionDetails?.status)}</div>
                     </div>
+
+                    {isWindowsSession && serverRole && (
+                        <div className="result-card result-card-info">
+                            <div className="card-label">Server Role</div>
+                            <div className="card-value">
+                                <span
+                                    style={{
+                                        display: "inline-block",
+                                        padding: "2px 10px",
+                                        borderRadius: "10px",
+                                        fontSize: "12px",
+                                        fontWeight: 700,
+                                        background: serverRole === "Domain Controller" ? "#e0e7ff" : "#dcfce7",
+                                        color: serverRole === "Domain Controller" ? "#3730a3" : "#166534",
+                                    }}
+                                >
+                                    {serverRole}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="result-stats-summary">
@@ -184,7 +276,19 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                     return (
                                         <Fragment key={result.id}>
                                             <tr>
-                                                <td>{result.check_number}</td>
+                                                <td>
+                                                    {result.check_number}
+                                                    {isWindowsSession && winScope(result.check_number) && (
+                                                        <span style={scopeBadgeStyle(winScope(result.check_number))}>
+                                                            {winScope(result.check_number)}
+                                                        </span>
+                                                    )}
+                                                    {isWindowsSession && isManualCheck(result) && (
+                                                        <span style={manualBadgeStyle} title="Manual control — no automated fix (per-user / GPO-only).">
+                                                            Manual
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 {hasVdom && (
                                                     <td>
                                                         {result.vdom && result.vdom !== "global"
