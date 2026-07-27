@@ -43,6 +43,7 @@ class ModuleEnum(str, enum.Enum):
     USER_MANAGEMENT = "user_management"
     AUDITING = "auditing"
     HARDENING = "hardening"
+    RISK = "risk"
     LOGS = "logs"
 
 
