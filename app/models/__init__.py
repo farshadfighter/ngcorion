@@ -108,6 +108,17 @@ from app.models.hardening_log import (
 # Import backup model (depends on HardeningAction and Asset)
 from app.models.backup import DeviceBackup
 
+# Import risk models (depend on User and Asset)
+from app.models.risk import (
+    RiskSetting,
+    RiskZone,
+    AssetRiskProfile,
+    AssetOpenPort,
+    AssetRiskScore,
+    AssetRiskHistory,
+    RiskCalculationLog
+)
+
 # Export all
 __all__ = [
     "Base",
@@ -163,6 +174,14 @@ __all__ = [
     "HardeningAction",
     "HardeningLog",
     "DeviceBackup",
+    # Risk models
+    "RiskSetting",
+    "RiskZone",
+    "AssetRiskProfile",
+    "AssetOpenPort",
+    "AssetRiskScore",
+    "AssetRiskHistory",
+    "RiskCalculationLog",
     # CIS benchmark results
     "log_hardening_preview",
     "log_hardening_execute",
