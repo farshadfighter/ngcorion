@@ -124,28 +124,50 @@
     justify-content: center;
 }
 
-.nav-item:hover {
-    background: rgba(255, 255, 255, 0.92);
-    color: #1e3a5f;
-    border-radius: 8px;
-}
-.nav-item:hover .nav-icon-img {
-    filter: invert(16%) sepia(60%) saturate(600%) hue-rotate(195deg) brightness(90%);
-}
+/* Hover/active highlight, per the Figma sidebar spec: a solid 6px white bar on
+   the left edge, then a body that fades from white to the sidebar background.
+   Square on the left, slightly rounded on the right, full bleed to the edge.
+   The gradient mirrors the Figma fill (white → #14213D at 50% opacity). */
+.nav-item:hover,
 .nav-item.active {
-    background: rgba(255, 255, 255, 0.92);
-    color: #1e3a5f;
-    border-left: 3px solid #4A90E2;
-    border-radius: 8px;
-    font-weight: 700;
-}
-.nav-item.active .nav-icon-img {
-    filter: invert(16%) sepia(60%) saturate(600%) hue-rotate(195deg) brightness(90%);
+    color: #ffffff;
+    border-left: 6px solid #ffffff;
+    border-radius: 0 4px 4px 0;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.16) 45%,
+        rgba(20, 33, 61, 0) 100%
+    );
 }
 
+.nav-item.active {
+    font-weight: 700;
+}
+
+/* The left bar replaces part of the item's padding, so pull it back to keep
+   the label from shifting on hover. */
+.nav-item:hover,
+.nav-item.active {
+    padding-left: 18px;
+}
+
+.nav-item.sub-item:hover,
+.nav-item.sub-item.active {
+    padding-left: 38px;
+}
+
+.nav-item:hover .nav-icon-img,
+.nav-item.active .nav-icon-img {
+    opacity: 1;
+}
+
+.sidebar.collapsed .nav-item:hover,
 .sidebar.collapsed .nav-item.active {
     border-left: none;
-    border-right: 3px solid #4A90E2;
+    border-right: 6px solid #ffffff;
+    border-radius: 4px 0 0 4px;
+    padding: 12px;
 }
 
 .nav-item.sub-item {
@@ -217,10 +239,14 @@
 }
 
 /* NEW HEADER BOX */
+/* Figma (up.svg): 112px tall, white, drop shadow 0 4px 4px rgba(0,0,0,0.25),
+   title inset ~57px from the left. */
 .dashboard-header {
     background: #ffffff;
-    padding: 25px 35px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    min-height: 112px;
+    box-sizing: border-box;
+    padding: 16px 40px;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -230,18 +256,18 @@
 .page-title {
     font-size: 28px;
     font-weight: 600;
-    color: #1A1A1A;
+    color: #000000;
 }
 
 .current-date {
     font-size: 15px;
     font-weight: 600;
-    color: #1A1A1A;
+    color: #000000;
 }
 
 .current-time {
     margin-top: 6px;
-    color: #5C5C5C;
+    color: #000000;
 }
 
 /* CARDS */
@@ -436,25 +462,31 @@
     transition: background 0.2s;
 }
 
-.nav-section-clickable:hover {
-    background: rgba(255, 255, 255, 0.92);
-    border-radius: 8px;
-}
-.nav-section-clickable:hover .nav-section-title {
-    color: #1e3a5f;
-}
+.nav-section-clickable:hover,
 .nav-section-active {
-    background: linear-gradient(to right, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.05));
-    border-left: 3px solid #4A90E2;
+    border-left: 6px solid #ffffff;
+    border-radius: 0 4px 4px 0;
+    padding-left: 14px;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.16) 45%,
+        rgba(20, 33, 61, 0) 100%
+    );
 }
-.nav-section-clickable:hover .section-icon {
-    filter: invert(16%) sepia(60%) saturate(600%) hue-rotate(195deg) brightness(90%);
+.nav-section-clickable:hover .nav-section-title,
+.nav-section-active .nav-section-title {
+    color: #ffffff;
 }
+.nav-section-clickable:hover .section-icon,
+.nav-section-active .section-icon {
+    opacity: 1;
+}
+/* Icons stay white on hover/active — the highlight is a light gradient over the
+   dark sidebar, not a solid white fill, so the old dark-blue tint is dropped. */
 .nav-item:hover .nav-icon-license,
-.nav-item.active .nav-icon-license {
-    filter: invert(16%) sepia(60%) saturate(600%) hue-rotate(195deg) brightness(90%);
-}
+.nav-item.active .nav-icon-license,
 .nav-item:hover .nav-icon-img,
 .nav-item.active .nav-icon-img {
-    filter: brightness(0) saturate(100%) invert(18%) sepia(89%) saturate(500%) hue-rotate(196deg) brightness(85%);
+    filter: brightness(0) invert(1);
 }

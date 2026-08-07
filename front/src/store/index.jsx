@@ -8,6 +8,8 @@ import auditReducer from "./auditSlice";
 import hardeningReducer from "./hardeningSlice";
 import licenseReducer from "./licenseSlice";
 import logsReducer from "./logsSlice.js";
+import riskReducer from "./riskSlice.js";
+import riskDetailReducer from "./riskDetailSlice.js";
 
 
 export const store = configureStore({
@@ -21,5 +23,7 @@ export const store = configureStore({
         hardening: hardeningReducer,
         license: licenseReducer,
         logs: logsReducer,
+        risk: riskReducer,
+        riskDetail: riskDetailReducer,
     },
 });
