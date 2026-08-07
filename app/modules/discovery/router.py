@@ -962,6 +962,89 @@ async def apply_discovery_bulk(
 # Port Management Endpoints
 # ====================================
 
+import logging
+
+_ports_sync_logger = logging.getLogger(__name__)
+
+# Default severity per well-known risky port; anything else is "medium".
+_PORT_SEVERITY_MAP = {
+    23: "critical",                                    # Telnet
+    21: "high", 3389: "high", 1433: "high",            # FTP, RDP, MSSQL
+    3306: "high", 5432: "high",                        # MySQL, PostgreSQL
+    22: "medium", 161: "medium", 80: "medium",         # SSH, SNMP, HTTP
+    443: "low", 53: "low",                             # HTTPS, DNS
+}
+_SEVERITY_SCORE_MAP = {"low": 1, "medium": 3, "high": 7, "critical": 10}
+
+
+def _sync_asset_open_ports(db: Session, asset_id: int, ports_data: list, overwrite: bool = False):
+    """
+    Mirror saved discovery ports into asset_open_ports so the risk engine
+    (which reads only asset_open_ports) sees them.
+
+    Does not commit: the risk-recalculation trigger that always runs right
+    after this commits internally, persisting the sync and the new score
+    in the same transaction.
+
+    With overwrite=True, previously-open rows missing from the new scan are
+    marked closed (the scan becomes the single source of truth for ports).
+    """
+    from app.models.risk import AssetOpenPort
+
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    ip_address = (asset.ip_address if asset else None) or ""
+    now = datetime.utcnow()
+
+    seen_keys = set()
+    for port_data in ports_data:
+        port_number = port_data.get("port_number")
+        if port_number is None:
+            continue
+        protocol = (port_data.get("protocol") or "tcp").lower()
+        state = (port_data.get("state") or "open").lower()
+        status = "open" if state == "open" else "closed"
+        severity = _PORT_SEVERITY_MAP.get(port_number, "medium")
+        seen_keys.add((port_number, protocol))
+
+        existing = db.query(AssetOpenPort).filter_by(
+            asset_id=asset_id,
+            ip_address=ip_address,
+            port=port_number,
+            protocol=protocol,
+        ).first()
+        if existing:
+            existing.status = status
+            existing.service_name = port_data.get("service_name") or existing.service_name
+            existing.severity = severity
+            existing.severity_score = _SEVERITY_SCORE_MAP[severity]
+            existing.last_seen_at = now
+        else:
+            db.add(AssetOpenPort(
+                asset_id=asset_id,
+                ip_address=ip_address,
+                port=port_number,
+                protocol=protocol,
+                service_name=port_data.get("service_name"),
+                severity=severity,
+                severity_score=_SEVERITY_SCORE_MAP[severity],
+                status=status,
+                source="discovery",
+                first_seen_at=now,
+                last_seen_at=now,
+                is_approved=False,
+                is_included_in_risk=True,
+            ))
+
+    if overwrite:
+        old_open = db.query(AssetOpenPort).filter_by(
+            asset_id=asset_id, status="open"
+        ).all()
+        for old in old_open:
+            if (old.port, old.protocol) not in seen_keys:
+                old.status = "closed"
+                old.last_seen_at = now
+
+
 @router.post("/ports/add", response_model=PortManagementResponse)
 async def add_ports_to_asset(
     request: AddPortsRequest,
@@ -1005,6 +1088,27 @@ async def add_ports_to_asset(
 
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result.get("error", "Failed to add ports"))
+
+    # Sync into asset_open_ports so the risk engine sees these ports
+    try:
+        _sync_asset_open_ports(db, request.asset_id, ports_data, overwrite=False)
+    except Exception:
+        _ports_sync_logger.warning(
+            "asset_open_ports sync failed for asset %s", request.asset_id, exc_info=True
+        )
+
+    # Risk recalculation trigger
+    try:
+        from app.modules.risk.service import risk_calculation_service
+        if request.asset_id:
+            risk_calculation_service.calculate(
+                asset_id=request.asset_id,
+                db=db,
+                trigger_type="port_scan_updated",
+                trigger_reference_id=None,  # scan_id is a string; column is Integer
+            )
+    except Exception:
+        pass  # never block the port-management flow
 
     return result
 
@@ -1052,6 +1156,27 @@ async def overwrite_asset_ports(
 
     if not result["success"]:
         raise HTTPException(status_code=404, detail=result.get("error", "Failed to overwrite ports"))
+
+    # Sync into asset_open_ports so the risk engine sees these ports
+    try:
+        _sync_asset_open_ports(db, request.asset_id, ports_data, overwrite=True)
+    except Exception:
+        _ports_sync_logger.warning(
+            "asset_open_ports sync failed for asset %s", request.asset_id, exc_info=True
+        )
+
+    # Risk recalculation trigger
+    try:
+        from app.modules.risk.service import risk_calculation_service
+        if request.asset_id:
+            risk_calculation_service.calculate(
+                asset_id=request.asset_id,
+                db=db,
+                trigger_type="port_scan_updated",
+                trigger_reference_id=None,  # scan_id is a string; column is Integer
+            )
+    except Exception:
+        pass  # never block the port-management flow
 
     return result
 

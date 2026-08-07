@@ -143,6 +143,19 @@ def log_execute_outcome(
             status=status_value,
             error=error,
         )
+
+        # Risk recalculation trigger
+        try:
+            from app.modules.risk.service import risk_calculation_service
+            if verification_passed is not None and asset is not None:
+                risk_calculation_service.calculate(
+                    asset_id=asset.id,
+                    db=db,
+                    trigger_type="hardening_verified",
+                    trigger_reference_id=action_id,
+                )
+        except Exception:
+            pass  # never block the hardening flow
     except Exception:
         pass
 
@@ -195,5 +208,18 @@ def log_session_execute_outcome(
             log_auto_hardening(**kwargs)
         else:
             log_batch_hardening(**kwargs)
+
+        # Risk recalculation trigger
+        try:
+            from app.modules.risk.service import risk_calculation_service
+            if asset_id:
+                risk_calculation_service.calculate(
+                    asset_id=asset_id,
+                    db=db,
+                    trigger_type="hardening_verified",
+                    trigger_reference_id=session_id,
+                )
+        except Exception:
+            pass  # never block the hardening flow
     except Exception:
         pass

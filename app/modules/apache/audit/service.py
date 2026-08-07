@@ -285,6 +285,20 @@ class ApacheAuditService:
                 f"Apache audit completed for asset {asset_id} ({target_ip}): "
                 f"{report['summary']['compliance_pct']}% compliance"
             )
+
+            # Risk recalculation trigger
+            try:
+                from app.modules.risk.service import risk_calculation_service
+                if asset_id:
+                    risk_calculation_service.calculate(
+                        asset_id=asset_id,
+                        db=db,
+                        trigger_type="audit_completed",
+                        trigger_reference_id=session.id,
+                    )
+            except Exception:
+                pass  # never block the audit flow
+
             return session
 
         except Exception as e:

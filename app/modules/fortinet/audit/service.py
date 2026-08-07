@@ -1420,6 +1420,20 @@ class FortinetAuditService:
                 "Audit done for asset %s (%s): %s%% (%s/%s) across %s vdom target(s)",
                 asset_id, target_ip, compliance_pct, passed, total, len(target_vdoms),
             )
+
+            # Risk recalculation trigger
+            try:
+                from app.modules.risk.service import risk_calculation_service
+                if asset_id:
+                    risk_calculation_service.calculate(
+                        asset_id=asset_id,
+                        db=db,
+                        trigger_type="audit_completed",
+                        trigger_reference_id=session.id,
+                    )
+            except Exception:
+                pass  # never block the audit flow
+
             return session
 
         except Exception as e:

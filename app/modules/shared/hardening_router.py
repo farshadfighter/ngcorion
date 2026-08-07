@@ -667,6 +667,20 @@ async def execute_hardening_controls(
             detail=f"Failed to connect to device: {str(e)}"
         )
 
+    # Risk recalculation trigger
+    try:
+        from app.modules.risk.service import risk_calculation_service
+        _asset_id = asset.id if asset else (audit_session.asset_id if audit_session else None)
+        if _asset_id:
+            risk_calculation_service.calculate(
+                asset_id=_asset_id,
+                db=db,
+                trigger_type="hardening_verified",
+                trigger_reference_id=request.session_id,
+            )
+    except Exception:
+        pass  # never block the hardening flow
+
     return ExecuteControlsResponse(
         total_controls=len(request.control_states),
         applied_count=applied_count,
