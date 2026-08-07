@@ -17,14 +17,15 @@ from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, text
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import SessionLocal, get_db
 from app.core.dependencies import require_permission
 from app.models import User, log_action, log_asset_updated
 from app.models.asset import Asset
 from app.models.audit import AuditResult, CheckStatus
+from app.models.enums import ConfidentialityLevelEnum
 from app.models.risk import (
     AssetOpenPort,
     AssetRiskHistory,
@@ -246,6 +247,8 @@ def _build_scores_query(
     query = (
         db.query(AssetRiskScore, Asset, rank)
         .join(Asset, Asset.id == AssetRiskScore.asset_id)
+        # Eager-load asset_type so the list/export don't fire an N+1 per row.
+        .options(joinedload(Asset.asset_type))
     )
     if search:
         pattern = f"%{search}%"
@@ -282,6 +285,11 @@ def _list_item(score: AssetRiskScore, asset: Asset, rank: int) -> dict:
         "product": asset.os_name,
         "model": asset.model,
         "os_version": asset.os_version,
+        "asset_type": asset.asset_type.type_name if asset.asset_type else None,
+        "confidentiality_level": (
+            asset.confidentiality_level.value
+            if asset.confidentiality_level else None
+        ),
         "criticality_level": score.criticality_level,
         "criticality_score": _num(score.criticality_score),
         "zone_name": score.zone_name,
@@ -320,13 +328,148 @@ def _recalculate_zone_assets_background(zone_id: int):
         db.close()
 
 
-async def _recalculate_all_background():
+async def _recalculate_all_background(trigger_type: str = "bulk_recalculation"):
     """Bulk recalculation with its own session (request session is closed)."""
     db = SessionLocal()
     try:
-        await recalculate_all(db)
+        await recalculate_all(db, trigger_type=trigger_type)
     finally:
         db.close()
+
+
+# ======================================================================
+# Dashboard summary / trend
+# ======================================================================
+
+# Canonical high-to-low ordering for the risk-level breakdown, so the
+# frontend always receives every level in a stable order (zero-filled).
+_RISK_LEVEL_ORDER = ("critical", "very_high", "high", "medium", "low")
+
+# Map stored enum member name (e.g. 'PUBLIC') back to its lowercase API value.
+_CONFIDENTIALITY_BY_NAME = {e.name: e.value for e in ConfidentialityLevelEnum}
+
+
+@router.get("/summary")
+def risk_summary(
+    _current_user: User = Depends(require_permission("RISK", "read")),
+    db: Session = Depends(get_db),
+):
+    """Aggregate risk metrics for the dashboard (SQL-side aggregation)."""
+    totals_row = db.execute(text("""
+        SELECT
+            COUNT(*) AS total_assets,
+            ROUND(AVG(final_risk_score), 2) AS risk_score_average,
+            SUM(CASE WHEN incomplete_data = true THEN 1 ELSE 0 END) AS incomplete_assets,
+            SUM(open_ports_count) AS open_ports_total,
+            SUM(CASE WHEN active_audit_findings_count > 0 THEN 1 ELSE 0 END) AS non_conformity_assets,
+            SUM(resolved_by_hardening_count) AS fixed_by_hardening_total
+        FROM asset_risk_scores
+    """)).mappings().first()
+
+    totals = {
+        "total_assets": int(totals_row["total_assets"] or 0),
+        "risk_score_average": (
+            float(totals_row["risk_score_average"])
+            if totals_row["risk_score_average"] is not None else 0.0
+        ),
+        "incomplete_assets": int(totals_row["incomplete_assets"] or 0),
+        "open_ports_total": int(totals_row["open_ports_total"] or 0),
+        "non_conformity_assets": int(totals_row["non_conformity_assets"] or 0),
+        "fixed_by_hardening_total": int(totals_row["fixed_by_hardening_total"] or 0),
+    }
+
+    level_counts = {
+        row["risk_level"]: int(row["count"])
+        for row in db.execute(text("""
+            SELECT risk_level, COUNT(*) AS count
+            FROM asset_risk_scores
+            GROUP BY risk_level
+            ORDER BY count DESC
+        """)).mappings()
+    }
+    by_risk_level = [
+        {"level": level, "count": level_counts.get(level, 0)}
+        for level in _RISK_LEVEL_ORDER
+    ]
+
+    by_zone = [
+        {
+            "zone_id": row["zone_id"],
+            "zone_name": row["zone_name"],
+            "count": int(row["count"]),
+        }
+        for row in db.execute(text("""
+            SELECT z.id AS zone_id, z.name AS zone_name, COUNT(*) AS count
+            FROM asset_risk_scores ars
+            LEFT JOIN asset_risk_profiles arp ON arp.asset_id = ars.asset_id
+            LEFT JOIN risk_zones z ON z.id = arp.zone_id
+            GROUP BY z.id, z.name
+            ORDER BY count DESC
+        """)).mappings()
+    ]
+
+    by_confidentiality = [
+        {
+            "level": _CONFIDENTIALITY_BY_NAME.get(
+                row["confidentiality_level"], row["confidentiality_level"]
+            ),
+            "count": int(row["count"]),
+        }
+        for row in db.execute(text("""
+            SELECT a.confidentiality_level, COUNT(*) AS count
+            FROM asset_risk_scores ars
+            JOIN asset_inventory a ON a.id = ars.asset_id
+            WHERE a.confidentiality_level IS NOT NULL
+            GROUP BY a.confidentiality_level
+            ORDER BY count DESC
+        """)).mappings()
+    ]
+
+    return {
+        "totals": totals,
+        "by_risk_level": by_risk_level,
+        "by_zone": by_zone,
+        "by_confidentiality": by_confidentiality,
+    }
+
+
+@router.get("/trend")
+def risk_trend(
+    months: int = Query(12, ge=1, le=36),
+    _current_user: User = Depends(require_permission("RISK", "read")),
+    db: Session = Depends(get_db),
+):
+    """Monthly average risk score and asset coverage over the last N months."""
+    rows = db.execute(text("""
+        SELECT
+            TO_CHAR(DATE_TRUNC('month', calculated_at), 'YYYY-MM') AS period,
+            ROUND(AVG(risk_score)::numeric, 2) AS average_score,
+            COUNT(DISTINCT asset_id) AS asset_count
+        FROM asset_risk_history
+        WHERE calculated_at >= NOW() - make_interval(months => :months)
+        GROUP BY DATE_TRUNC('month', calculated_at)
+        ORDER BY DATE_TRUNC('month', calculated_at) ASC
+    """), {"months": months}).mappings()
+
+    points = [
+        {
+            "period": row["period"],
+            "average_score": (
+                float(row["average_score"])
+                if row["average_score"] is not None else 0.0
+            ),
+            "asset_count": int(row["asset_count"]),
+        }
+        for row in rows
+    ]
+
+    if not points:
+        return {
+            "points": [],
+            "message": "No historical data yet. Run recalculate-all first.",
+        }
+
+    return {"points": points}
 
 
 # ======================================================================
@@ -456,26 +599,51 @@ def get_asset_risk_detail(
 @router.post("/assets/{asset_id}/calculate")
 def calculate_asset_risk(
     asset_id: int,
-    _current_user: User = Depends(require_permission("RISK", "write")),
+    current_user: User = Depends(require_permission("RISK", "write")),
     db: Session = Depends(get_db),
 ):
     """Recalculate one asset's risk score now."""
+    prev = (
+        db.query(AssetRiskScore.risk_level)
+        .filter(AssetRiskScore.asset_id == asset_id)
+        .first()
+    )
+    old_level = prev[0] if prev else None
     try:
         score = risk_calculation_service.calculate(
-            asset_id, db, trigger_type="manual"
+            asset_id, db, trigger_type="manual", triggered_by=current_user.id
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
+    log_action(
+        db, user_id=current_user.id, username=current_user.username,
+        action="risk.manual_calculate", module="risk", target_id=asset_id,
+        detail=(
+            f"old_value={old_level or 'none'}; "
+            f"new_value={score.risk_level}; "
+            f"score={_num(score.final_risk_score)}"
+        ),
+    )
     return _score_to_dict(score)
 
 
 @router.post("/recalculate-all")
 def recalculate_all_assets(
     background_tasks: BackgroundTasks,
-    _current_user: User = Depends(require_permission("RISK", "write")),
+    current_user: User = Depends(require_permission("RISK", "write")),
+    db: Session = Depends(get_db),
 ):
     """Kick off a background recalculation for all active assets."""
     background_tasks.add_task(_recalculate_all_background)
+    log_action(
+        db, user_id=current_user.id, username=current_user.username,
+        action="risk.recalculate_all", module="risk", target_id=None,
+        detail=(
+            f"new_value=started; triggered_by={current_user.username}; "
+            f"timestamp={datetime.utcnow().isoformat()}"
+        ),
+    )
     return {
         "status": "started",
         "message": "Recalculation started for all active assets",
@@ -801,6 +969,7 @@ def get_settings(
 @router.put("/settings")
 def update_settings(
     updates: Dict[str, Any],
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_permission("RISK", "write")),
     db: Session = Depends(get_db),
 ):
@@ -862,6 +1031,12 @@ def update_settings(
         action="risk.settings.update", module="risk",
         detail=f"Updated risk settings: {sorted(updates.keys())}",
     )
+
+    # A change to any weight or normalization setting alters every asset's
+    # score, so recalculate all assets in the background.
+    if any(("weight" in key or "normalization" in key) for key in updates):
+        background_tasks.add_task(_recalculate_all_background, "settings_changed")
+
     return _settings_dict(db)
 
 
@@ -892,7 +1067,8 @@ def get_asset_history(
 # ======================================================================
 
 CSV_COLUMNS = [
-    "Rank", "Asset Name", "IP Address", "Vendor", "Product", "Model", "Version",
+    "Rank", "Asset Name", "IP Address", "Asset Type", "Confidentiality Level",
+    "Vendor", "Product", "Model", "Version",
     "Criticality", "Criticality Score", "Zone", "Zone Score", "Open Ports Count",
     "Open Port Score", "Critical Findings", "High Findings", "Medium Findings",
     "Low Findings", "Audit Risk Score", "Risk Score", "Risk Level",
@@ -909,7 +1085,7 @@ def export_csv(
     min_score: Optional[float] = Query(None, ge=0, le=100),
     max_score: Optional[float] = Query(None, ge=0, le=100),
     incomplete_data: Optional[bool] = Query(None),
-    _current_user: User = Depends(require_permission("RISK", "read")),
+    current_user: User = Depends(require_permission("RISK", "read")),
     db: Session = Depends(get_db),
 ):
     """CSV of the (filtered) full risk ranking."""
@@ -922,6 +1098,16 @@ def export_csv(
         .all()
     )
 
+    log_action(
+        db, user_id=current_user.id, username=current_user.username,
+        action="risk.export_csv", module="risk", target_id=None,
+        detail=(
+            f"rows={len(rows)}; filters=search={search},risk_level={risk_level},"
+            f"criticality={criticality},zone_id={zone_id},min_score={min_score},"
+            f"max_score={max_score},incomplete_data={incomplete_data}"
+        ),
+    )
+
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow(CSV_COLUMNS)
@@ -930,6 +1116,8 @@ def export_csv(
             rank,
             asset.asset_name,
             asset.ip_address,
+            asset.asset_type.type_name if asset.asset_type else None,
+            asset.confidentiality_level.value if asset.confidentiality_level else None,
             asset.manufacturer,
             asset.os_name,
             asset.model,
@@ -964,7 +1152,7 @@ def export_csv(
 @router.get("/assets/{asset_id}/export/json")
 def export_asset_json(
     asset_id: int,
-    _current_user: User = Depends(require_permission("RISK", "read")),
+    current_user: User = Depends(require_permission("RISK", "read")),
     db: Session = Depends(get_db),
 ):
     """Single-asset risk export (spec section 27 structure)."""
@@ -978,6 +1166,12 @@ def export_asset_json(
         raise HTTPException(
             status_code=404, detail="Risk score not calculated for this asset"
         )
+
+    log_action(
+        db, user_id=current_user.id, username=current_user.username,
+        action="risk.export_json", module="risk", target_id=asset_id,
+        detail=f"Exported risk JSON for asset {asset_id} ('{asset.asset_name}')",
+    )
 
     return {
         "asset": {

@@ -30,6 +30,8 @@ from app.models.asset import Asset
 from app.models.audit import AuditResult, AuditSession, CheckStatus
 from app.models.enums import StatusEnum
 from app.models.hardening import HardeningAction
+from app.models.security_audit_log import log_action
+from app.models.user import User
 from app.models.risk import (
     AssetOpenPort,
     AssetRiskHistory,
@@ -247,6 +249,7 @@ class AssetRiskCalculationService:
         db: Session,
         trigger_type: str,
         trigger_reference_id: int = None,
+        triggered_by: int = None,
     ) -> AssetRiskScore:
         """Compute and persist the risk score for one asset.
 
@@ -345,6 +348,8 @@ class AssetRiskCalculationService:
                 .filter(AssetRiskScore.asset_id == asset_id)
                 .first()
             )
+            # Remember the previous level so we can audit-log transitions
+            old_risk_level = score_row.risk_level if score_row is not None else None
             if score_row is None:
                 score_row = AssetRiskScore(asset_id=asset_id)
                 db.add(score_row)
@@ -430,6 +435,38 @@ class AssetRiskCalculationService:
             )
             db.commit()
             db.refresh(score_row)
+
+            # Audit-log a risk-level transition. Wrapped so a logging failure
+            # never disrupts an otherwise-successful calculation.
+            if old_risk_level != risk_level:
+                try:
+                    log_username = None
+                    if triggered_by is not None:
+                        user = (
+                            db.query(User)
+                            .filter(User.id == triggered_by)
+                            .first()
+                        )
+                        log_username = user.username if user else None
+                    log_action(
+                        db,
+                        user_id=triggered_by,
+                        username=log_username,
+                        action="risk.level_changed",
+                        module="risk",
+                        target_id=asset_id,
+                        detail=(
+                            f"old_value={old_risk_level or 'none'}; "
+                            f"new_value={risk_level}; "
+                            f"score={final_risk_score}; trigger={trigger_type}"
+                        ),
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to write risk_level_changed log for asset %s",
+                        asset_id, exc_info=True,
+                    )
+
             return score_row
 
         except Exception as exc:
@@ -468,7 +505,11 @@ class AssetRiskCalculationService:
 risk_calculation_service = AssetRiskCalculationService()
 
 
-async def recalculate_all(db: Session, background: bool = True) -> dict:
+async def recalculate_all(
+    db: Session,
+    background: bool = True,
+    trigger_type: str = "bulk_recalculation",
+) -> dict:
     """Recalculate risk for every active asset. One asset failing never stops the loop.
 
     With background=True, yields to the event loop between assets so long
@@ -488,7 +529,7 @@ async def recalculate_all(db: Session, background: bool = True) -> dict:
     for asset_id in asset_ids:
         try:
             risk_calculation_service.calculate(
-                asset_id, db, trigger_type="bulk_recalculation"
+                asset_id, db, trigger_type=trigger_type
             )
             succeeded += 1
         except Exception as exc:

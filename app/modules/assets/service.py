@@ -134,6 +134,17 @@ class AssetService:
             db.add(security_status)
             db.commit()
 
+        # Risk recalculation trigger (give the new asset an initial risk score)
+        try:
+            from app.modules.risk.service import risk_calculation_service
+            risk_calculation_service.calculate(
+                asset_id=asset.id,
+                db=db,
+                trigger_type="asset_created",
+            )
+        except Exception:
+            pass  # never block asset creation
+
         return asset
     
     @staticmethod

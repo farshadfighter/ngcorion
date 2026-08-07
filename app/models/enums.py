@@ -16,6 +16,7 @@ class RiskLevelEnum(str, enum.Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+    VERY_HIGH = "very_high"
     CRITICAL = "critical"
 
 class RelationTypeEnum(str, enum.Enum):

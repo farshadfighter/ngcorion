@@ -3,13 +3,14 @@ Ngicorn - Main Application
 
 FastAPI application entry point with CORS middleware and route registration.
 """
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from app.core.database import Base, engine
+from app.core.database import Base, engine, SessionLocal
 from app.core.config import settings
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
@@ -93,6 +94,8 @@ from app.core.heartbeat import start_heartbeat, stop_heartbeat
 from app.middleware.license_middleware import LicenseMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
+logger = logging.getLogger(__name__)
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -107,6 +110,17 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass  # App starts even if license server is unreachable
     start_heartbeat(client)
+
+    # Seed default risk settings/zones (idempotent). Uses its own session so a
+    # failure here never blocks startup.
+    from app.modules.risk.seed import seed_risk_defaults
+    db = SessionLocal()
+    try:
+        seed_risk_defaults(db)
+    except Exception as e:
+        logger.warning(f"Risk seed skipped: {e}")
+    finally:
+        db.close()
     yield
     # Shutdown
     stop_heartbeat()
