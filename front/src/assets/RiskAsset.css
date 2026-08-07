@@ -1,0 +1,423 @@
+/* Risk Asset dashboard — measurements taken from the Figma SVG exports:
+   KPI cards 260x120 rx=5 on a 1328x660 rx=20 container, chart cards 571x529
+   rx=10, donut r=100 with a 45 hole, trend bars 18px wide rx=2 #29354E. */
+
+.risk-page {
+    padding: 24px;
+    background: #f5f5f5;
+    min-height: 100%;
+}
+
+/* ── Shared card ─────────────────────────────────────────────────────────── */
+
+.risk-card {
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+}
+
+.risk-card-title {
+    margin: 0;
+    padding: 24px 28px 8px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #14213D;
+    text-align: center;
+}
+
+/* ── KPI band ────────────────────────────────────────────────────────────── */
+
+.risk-kpi-panel {
+    border-radius: 20px;
+    padding: 28px 24px;
+    margin-bottom: 24px;
+}
+
+/* Figma lays the KPI tiles out four per row. */
+.risk-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+}
+
+@media (max-width: 1200px) {
+    .risk-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+    .risk-kpi-grid { grid-template-columns: 1fr; }
+}
+
+.risk-kpi {
+    /* Figma: 260x120, rx 5 */
+    min-height: 120px;
+    border: 1px solid #E3E6ED;
+    border-radius: 5px;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    background: #ffffff;
+}
+
+.risk-kpi-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4A5568;
+    line-height: 1.35;
+}
+
+.risk-kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #14213D;
+    line-height: 1;
+}
+
+/* Values the backend cannot supply yet render muted rather than as a fake 0. */
+.risk-kpi-value.is-unavailable {
+    font-size: 15px;
+    font-weight: 600;
+    color: #9AA5B5;
+}
+
+.risk-kpi-note {
+    font-size: 11px;
+    color: #9AA5B5;
+}
+
+/* ── Chart grid ──────────────────────────────────────────────────────────── */
+
+/* Figma: the 9th KPI sits alone and centred on its own row. */
+.risk-kpi:last-child:nth-child(4n + 1) {
+    grid-column: 2 / span 2;
+}
+
+@media (max-width: 1200px) {
+    .risk-kpi:last-child:nth-child(4n + 1) { grid-column: auto; }
+}
+
+/* Figma pairs the charts two per row. */
+.risk-chart-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1000px) {
+    .risk-chart-grid { grid-template-columns: 1fr; }
+}
+
+.risk-chart-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 420px;
+}
+
+.risk-chart-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 20px 12px;
+    min-height: 260px;
+}
+
+/* Keep placeholder text vertically centred in a card the same height as its
+   siblings, so a pending chart does not collapse the row. */
+.risk-chart-card .risk-chart-empty {
+    white-space: pre-line;
+}
+
+/* ── Donut legend ────────────────────────────────────────────────────────── */
+
+.risk-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 24px;
+    padding: 8px 40px 28px;
+}
+
+.risk-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #14213D;
+}
+
+.risk-legend-swatch {
+    /* Figma: 20x20, rx 5 */
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+.risk-legend-count {
+    font-weight: 700;
+}
+
+/* ── Notice bar ──────────────────────────────────────────────────────────── */
+
+/* Figma: 1426x93, rx 30, #14213D text on white. */
+.risk-notice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 72px;
+    padding: 16px 32px;
+    margin-bottom: 24px;
+    background: #ffffff;
+    border: 1px solid #BBD4F0;
+    border-radius: 30px;
+    color: #14213D;
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+/* Figma: a 0.3-opacity rule with a 2px #14213D marker under the active tab. */
+.risk-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid rgba(20, 33, 61, 0.3);
+    margin-bottom: 18px;
+    max-width: 480px;
+}
+
+.risk-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: 10px 18px;
+    font: inherit;
+    font-size: 14px;
+    color: #6C7A93;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.risk-tab:hover {
+    color: #14213D;
+}
+
+.risk-tab.is-active {
+    color: #14213D;
+    font-weight: 700;
+    border-bottom-color: #14213D;
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+
+/* Figma: 285x35, rx 5. */
+.risk-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 285px;
+    max-width: 100%;
+    height: 35px;
+    padding: 0 12px;
+    margin-bottom: 16px;
+    border: 1px solid #E3E6ED;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #9AA5B5;
+}
+
+.risk-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    color: #14213D;
+}
+
+.risk-search input::placeholder {
+    color: #9AA5B5;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+.risk-asset-table {
+    margin-top: 8px;
+}
+
+.risk-table-wrapper {
+    background: #ffffff;
+    border-radius: 10px;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+}
+
+/* Top 10 table sits inside a card, so it drops the shadow and gains the
+   1px #CCCCCC frame from the Figma export. */
+.risk-table-wrapper--inset {
+    margin: 8px 24px 24px;
+    border: 1px solid #CCCCCC;
+    box-shadow: none;
+}
+
+.risk-table-card {
+    padding-bottom: 8px;
+}
+
+/* Denser rows than the standalone Risk Asset table — this is a summary. */
+.risk-table-wrapper--inset .risk-table td {
+    height: auto;
+    padding: 14px 18px;
+    border-bottom: 1px solid #EEF0F4;
+}
+
+.risk-level-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Figma (tabel1.svg): header band is #14213D at 8% opacity — a light tint with
+   dark text, not a solid dark bar. 50px tall, rounded top corners. */
+.risk-table thead th {
+    background: rgba(20, 33, 61, 0.08);
+    color: #14213D;
+    font-weight: 600;
+    text-align: left;
+    padding: 16px 18px;
+    height: 50px;
+}
+
+.risk-table thead th:first-child {
+    border-top-left-radius: 10px;
+}
+
+.risk-table thead th:last-child {
+    border-top-right-radius: 10px;
+}
+
+/* Figma: 70px rows separated by a 2px #14213D rule at 50% opacity. */
+.risk-table td {
+    height: 70px;
+    box-sizing: border-box;
+    padding: 8px 18px;
+    color: #14213D;
+    border-bottom: 2px solid rgba(20, 33, 61, 0.5);
+}
+
+.risk-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.risk-table tbody tr:hover {
+    background: #FAFBFC;
+}
+
+.risk-table tbody tr.is-clickable {
+    cursor: pointer;
+}
+
+.risk-table-empty {
+    padding: 40px 18px;
+    text-align: center;
+    color: #9AA5B5;
+}
+
+/* Values the backend does not return yet — muted so a "-" reads as "pending"
+   rather than as a real zero. */
+.risk-cell-pending {
+    color: #B4BCC8;
+}
+
+/* ── Score cell ──────────────────────────────────────────────────────────── */
+
+.risk-score-cell {
+    padding: 8px 0 8px 12px !important;
+    width: 1%;
+}
+
+/* Figma: dark #14213D box opening each row. */
+.risk-score-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    height: 46px;
+    padding: 0 10px;
+    background: #14213D;
+    border-left: 4px solid transparent;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* ── Row actions ─────────────────────────────────────────────────────────── */
+
+.risk-actions-cell {
+    white-space: nowrap;
+}
+
+/* Figma: 30x30, rx 5. */
+.risk-action-btn {
+    width: 30px;
+    height: 30px;
+    margin-right: 6px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: #14213D;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.risk-action-btn:hover:not(:disabled) {
+    background: #EEF1F6;
+}
+
+/* Inert until the design defines what these buttons do. */
+.risk-action-btn:disabled {
+    color: #14213D;
+    opacity: 0.75;
+    cursor: default;
+}
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+
+.risk-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: #6C6C6C;
+    font-size: 14px;
+}
+
+.risk-state-error {
+    color: #C0392B;
+}
+
+.risk-chart-empty {
+    color: #9AA5B5;
+    font-size: 13px;
+    text-align: center;
+    line-height: 1.6;
+}

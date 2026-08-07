@@ -21,6 +21,9 @@ import { UserManagement } from "./components/UserManagement/UserManagement";
 import { LogsPage } from "./components/Logs/LogsPage";
 import BackupPage from "./components/Backup/BackupPage";
 import { License } from "./components/License/License";
+import { RiskAsset } from "./components/Risk/RiskAsset";
+import { RiskIntelDashboard } from "./components/Risk/RiskIntelDashboard";
+import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
 import {
     RequirePermission,
     ComingSoon,
@@ -187,8 +190,26 @@ function AppContent() {
                         <Route path="/settings/ntp" element={<ComingSoon name="NTP Configuration" />} />
                         <Route path="/settings/snmp" element={<ComingSoon name="SNMP Configuration" />} />
 
-                        {/* Risk Intelligence (placeholders) */}
-                        <Route path="/risk/exposure" element={<ComingSoon name="Risk & Exposure" />} />
+                        {/* Risk Intelligence */}
+                        <Route path="/risk/assets" element={
+                            <RequirePermission module="risk" name="Risk Asset">
+                                <RiskAsset />
+                            </RequirePermission>
+                        } />
+                        <Route path="/risk/assets/:assetId" element={
+                            <RequirePermission module="risk" name="Risk Asset">
+                                <AssetRiskDetail />
+                            </RequirePermission>
+                        } />
+                        {/* KPI + charts overview. Not in the sidebar yet — its
+                            placement in the menu is still pending in Figma. */}
+                        <Route path="/risk/overview" element={
+                            <RequirePermission module="risk" name="Risk Intelligence">
+                                <RiskIntelDashboard />
+                            </RequirePermission>
+                        } />
+                        {/* Legacy path kept as an alias of the Risk Asset page */}
+                        <Route path="/risk/exposure" element={<Navigate to="/risk/assets" replace />} />
                         <Route path="/risk/attack-surface" element={<ComingSoon name="Attack Surface" />} />
                     </Route>
 

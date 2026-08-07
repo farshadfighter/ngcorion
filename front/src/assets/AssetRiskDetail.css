@@ -1,0 +1,363 @@
+/* Asset risk detail page. Measurements from the Figma export (risk asset.svg):
+   1520-wide cards at rx=20 on an #F5F5F5 page, 240x144 rx=5 summary tiles,
+   72px-tall summary rows, and 12px rx=6 progress bars (#DBDBDB track,
+   #14213D at 90% fill). */
+
+.ard-page {
+    padding: 24px;
+    background: #F5F5F5;
+    min-height: 100%;
+}
+
+.ard-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+}
+
+.ard-card-title {
+    margin: 0 0 20px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #14213D;
+    text-align: center;
+}
+
+/* ── Back link ───────────────────────────────────────────────────────────── */
+
+.ard-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #14213D;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ard-back:hover {
+    background: #EEF1F6;
+}
+
+/* ── Summary tiles ───────────────────────────────────────────────────────── */
+
+.ard-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+/* Figma: 240x144, rx 5. */
+.ard-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 144px;
+    padding: 16px;
+    border-radius: 5px;
+    background: #F5F5F5;
+    text-align: center;
+}
+
+.ard-tile.is-dark {
+    background: #14213D;
+    color: #ffffff;
+}
+
+.ard-tile-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: #14213D;
+    line-height: 1.1;
+}
+
+.ard-tile.is-dark .ard-tile-value {
+    color: #ffffff;
+}
+
+.ard-tile-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4A5568;
+}
+
+.ard-tile.is-dark .ard-tile-label {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ard-tile-caption {
+    font-size: 11px;
+    color: #9AA5B5;
+}
+
+/* ── Asset facts ─────────────────────────────────────────────────────────── */
+
+.ard-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px 24px;
+    margin: 24px 0 0;
+}
+
+.ard-facts dt {
+    font-size: 12px;
+    color: #9AA5B5;
+    margin-bottom: 4px;
+}
+
+.ard-facts dd {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #14213D;
+}
+
+/* ── Confidentiality & Zone ──────────────────────────────────────────────── */
+
+.ard-cz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.ard-cz-head,
+.ard-cz-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 16px;
+    align-items: center;
+}
+
+.ard-cz-head {
+    padding: 12px 16px;
+    background: rgba(20, 33, 61, 0.08);
+    border-radius: 8px 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #14213D;
+}
+
+.ard-cz-row {
+    padding: 12px 16px;
+    border: 1px solid #E3E6ED;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    font-size: 14px;
+    color: #14213D;
+}
+
+.ard-score-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 40px;
+    padding: 0 12px;
+    background: #14213D;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+
+.ard-table-wrapper {
+    border: 1px solid #CCCCCC;
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+.ard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.ard-table th {
+    background: rgba(20, 33, 61, 0.08);
+    color: #14213D;
+    font-weight: 600;
+    text-align: left;
+    padding: 14px 16px;
+}
+
+.ard-table td {
+    padding: 14px 16px;
+    color: #14213D;
+    border-top: 1px solid #EEF0F4;
+}
+
+.ard-table tbody tr:hover {
+    background: #FAFBFC;
+}
+
+/* Evidence and long titles wrap instead of stretching the table. */
+.ard-cell-wide {
+    max-width: 320px;
+    white-space: normal;
+}
+
+.ard-table-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9AA5B5;
+}
+
+/* ── Audit summary rows ──────────────────────────────────────────────────── */
+
+/* Figma: 614x72 rows, two per line. */
+.ard-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 12px 24px;
+}
+
+.ard-summary-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 56px;
+    padding: 12px 20px;
+    background: #F7F8FA;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.ard-summary-label {
+    color: #4A5568;
+}
+
+.ard-summary-value {
+    font-weight: 700;
+    color: #14213D;
+}
+
+/* ── Hardening impact ────────────────────────────────────────────────────── */
+
+.ard-impact-row {
+    margin-bottom: 28px;
+}
+
+.ard-impact-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ard-impact-box,
+.ard-impact-prior {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 20px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.ard-impact-box {
+    background: #14213D;
+    color: #ffffff;
+}
+
+.ard-impact-box .ard-impact-label {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.ard-impact-box .ard-impact-value {
+    color: #ffffff;
+}
+
+.ard-impact-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4A5568;
+}
+
+.ard-impact-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+/* Figma: 12px track, rx 6. */
+.ard-progress {
+    height: 12px;
+    border-radius: 6px;
+    background: #DBDBDB;
+    overflow: hidden;
+}
+
+.ard-progress-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: rgba(20, 33, 61, 0.9);
+    transition: width 0.3s ease;
+}
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+
+.ard-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: #6C6C6C;
+    font-size: 14px;
+}
+
+.ard-state-error {
+    color: #C0392B;
+}
+
+/* Values no endpoint supplies yet. */
+.ard-cell-pending {
+    color: #B4BCC8;
+}
+
+.ard-notice {
+    padding: 24px;
+    text-align: center;
+    color: #9AA5B5;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.ard-notice-inline {
+    padding: 8px 0 0;
+    text-align: left;
+}
+
+/* ── Row action buttons ──────────────────────────────────────────────────── */
+
+.ard-icon-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: #14213D;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.ard-icon-btn:hover:not(:disabled) {
+    background: #EEF1F6;
+}
+
+.ard-icon-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}

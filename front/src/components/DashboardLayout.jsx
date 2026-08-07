@@ -27,8 +27,10 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/settings/license"))     return "licence";
     if (pathname.startsWith("/settings/ntp"))         return "ntp-configuration";
     if (pathname.startsWith("/settings/snmp"))        return "snmp-configuration";
-    if (pathname.startsWith("/risk/exposure"))        return "risk-exposure";
+    if (pathname.startsWith("/risk/assets"))          return "risk-asset";
+    if (pathname.startsWith("/risk/exposure"))        return "risk-asset";
     if (pathname.startsWith("/risk/attack-surface"))  return "attack-surface";
+    if (pathname.startsWith("/risk/overview"))        return "risk-intelligence";
     return "dashboard";
 };
 
@@ -105,7 +107,7 @@ export const DashboardLayout = () => {
         "hardening":           "Hardening",
         "hardening-operation": "Operation and Device",
         "risk-intelligence":   "Risk Intelligence",
-        "risk-exposure":       "Risk & Exposure",
+        "risk-asset":          "Risk Asset",
         "attack-surface":      "Attack Surface",
         "backup":              "Configuration Backup",
         "user-management":     "User Management",
@@ -207,43 +209,45 @@ export const DashboardLayout = () => {
 
                     {/* ── RISK INTELLIGENCE ── */}
                     {!isSidebarCollapsed && (
-                        <div className="nav-section">
-                            <img src="/icons/asset-management.svg" alt="" className="section-icon" style={{ opacity: 0.4 }} />
-                            <span className="nav-section-title" style={{ opacity: 0.4 }}>Risk Intelligence</span>
+                        <div className={`nav-section nav-section-clickable ${activeMenu === "risk-intelligence" ? "nav-section-active" : ""}`}
+                             onClick={() => navigate("/risk/overview")}>
+                            <img src="/icons/risk.svg" alt="" className="section-icon" />
+                            <span className="nav-section-title">Risk Intelligence</span>
                         </div>
                     )}
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "risk-exposure" ? "active" : ""} nav-item-disabled`}
-                         onClick={() => navigate("/risk/exposure")} title="Risk & Exposure">
-                        {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
-                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>Risk & Exposure</span>}
+                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "risk-asset" ? "active" : ""}`}
+                         onClick={() => navigate("/risk/assets")} title="Risk Asset">
+                        {isSidebarCollapsed && <img src="/icons/risk.svg" alt="" className="nav-icon-img" />}
+                        {!isSidebarCollapsed && <span>Risk Asset</span>}
                     </div>
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "attack-surface" ? "active" : ""} nav-item-disabled`}
                          onClick={() => navigate("/risk/attack-surface")} title="Attack Surface">
-                        {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
+                        {isSidebarCollapsed && <img src="/icons/risk.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
                         {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>Attack Surface</span>}
                     </div>
 
-                    {/* ── CONFIGURATION BACKUP ── */}
-                    {canReadBackup && (
-                        <div className={`nav-item ${activeMenu === "backup" ? "active" : ""}`}
-                             onClick={() => navigate("/backup")} title="Configuration Backup">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                 className="nav-icon-img" style={{ flexShrink: 0 }}>
-                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                                <polyline points="17 21 17 13 7 13 7 21" />
-                                <polyline points="7 3 7 8 15 8" />
-                            </svg>
-                            {!isSidebarCollapsed && <span>Configuration Backup</span>}
-                        </div>
-                    )}
-
-                    {/* ── SYSTEM SETTINGS ── */}
-                    {!isSidebarCollapsed && (canReadUserMgmt || canReadLogs) && (
+                    {/* ── SYSTEM ── */}
+                    {!isSidebarCollapsed && (
                         <div className="nav-section">
                             <img src="/icons/administration.svg" alt="" className="section-icon" />
-                            <span className="nav-section-title">System Settings</span>
+                            <span className="nav-section-title">System</span>
                         </div>
                     )}
+                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "snmp-configuration" ? "active" : ""} nav-item-disabled`}
+                         onClick={() => navigate("/settings/snmp")} title="SNMP Configuration">
+                        {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
+                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>SNMP configuration</span>}
+                    </div>
+                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "ntp-configuration" ? "active" : ""} nav-item-disabled`}
+                         onClick={() => navigate("/settings/ntp")} title="ntp Configuration">
+                        {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
+                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>ntp Configuration</span>}
+                    </div>
+                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}
+                         onClick={() => navigate("/settings/license")} title="License management">
+                        {isSidebarCollapsed && <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />}
+                        {!isSidebarCollapsed && <span>License management</span>}
+                    </div>
                     {canReadUserMgmt && (
                         <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "user-management" ? "active" : ""}`}
                              onClick={() => navigate("/settings/users")} title="User Management">
@@ -253,26 +257,25 @@ export const DashboardLayout = () => {
                     )}
                     {canReadLogs && (
                         <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "system-logs" ? "active" : ""}`}
-                             onClick={() => navigate("/settings/logs")} title="System Logs">
+                             onClick={() => navigate("/settings/logs")} title="Logs">
                             {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
-                            {!isSidebarCollapsed && <span>System Logs</span>}
+                            {!isSidebarCollapsed && <span>Logs</span>}
                         </div>
                     )}
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "ntp-configuration" ? "active" : ""} nav-item-disabled`}
-                         onClick={() => navigate("/settings/ntp")} title="NTP Configuration">
-                        {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
-                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>NTP Configuration</span>}
-                    </div>
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "snmp-configuration" ? "active" : ""} nav-item-disabled`}
-                         onClick={() => navigate("/settings/snmp")} title="SNMP Configuration">
-                        {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
-                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>SNMP Configuration</span>}
-                    </div>
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}
-                         onClick={() => navigate("/settings/license")} title="License Management">
-                        <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />
-                        {!isSidebarCollapsed && <span>License Management</span>}
-                    </div>
+                    {canReadBackup && (
+                        <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup" ? "active" : ""}`}
+                             onClick={() => navigate("/backup")} title="Configuration Backup">
+                            {isSidebarCollapsed && (
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                     className="nav-icon-img" style={{ flexShrink: 0 }}>
+                                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                                    <polyline points="17 21 17 13 7 13 7 21" />
+                                    <polyline points="7 3 7 8 15 8" />
+                                </svg>
+                            )}
+                            {!isSidebarCollapsed && <span>Configuration Backup</span>}
+                        </div>
+                    )}
 
                 </nav>
 
