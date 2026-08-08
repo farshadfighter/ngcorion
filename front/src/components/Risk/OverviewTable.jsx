@@ -1,7 +1,7 @@
 import React from "react";
 import { RiskScoreCell } from "./RiskScoreCell";
 import { RiskRowActions } from "./RiskRowActions";
-import { orDash, formatDate } from "./riskConstants";
+import { orDash, titleCase, formatDate } from "./riskConstants";
 
 const COLUMNS = [
     "Risk level",
@@ -52,9 +52,10 @@ export const OverviewTable = ({ rows, onRowClick }) => (
                         <td>{orDash(row.vendor)}</td>
                         <td>{orDash(row.open_ports_count)}</td>
                         <td>{orDash(row.zone_name)}</td>
-                        {/* Not returned by the risk API yet — requirements doc, issue 4. */}
-                        <td className="risk-cell-pending">
-                            {orDash(row.confidentiality_level)}
+                        <td>
+                            {row.confidentiality_level
+                                ? titleCase(row.confidentiality_level)
+                                : "-"}
                         </td>
                         <td>{formatDate(row.calculated_at)}</td>
                         <RiskRowActions />

@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchRiskDashboard, RISK_LEVEL_LABELS } from "../../store/riskSlice";
 import { KpiCard } from "./KpiCard";
 import { DonutCard } from "./DonutCard";
+import { TrendCard } from "./TrendCard";
 import { TopRiskyAssetsTable } from "./TopRiskyAssetsTable";
 import { RISK_LEVEL_COLORS, CATEGORY_COLORS, titleCase } from "./riskConstants";
 import "../../assets/RiskAsset.css";
@@ -16,7 +17,9 @@ import "../../assets/RiskAsset.css";
  */
 export const RiskIntelDashboard = () => {
     const dispatch = useDispatch();
-    const { items, summary, isLoading, error } = useSelector((state) => state.risk);
+    const { items, summary, trend, trendMessage, isLoading, error } = useSelector(
+        (state) => state.risk
+    );
 
     useEffect(() => {
         dispatch(fetchRiskDashboard());
@@ -99,7 +102,6 @@ export const RiskIntelDashboard = () => {
                     <KpiCard
                         label="Number of fixed section by hardening"
                         value={totals.fixed_by_hardening_total}
-                        note="needs /api/risk/summary"
                     />
                 </div>
             </section>
@@ -124,22 +126,10 @@ export const RiskIntelDashboard = () => {
                     title="Asset by confidentiality level"
                     data={confidentialityData}
                     colorFor={byIndex}
-                    emptyMessage={
-                        "Confidentiality is not returned by the risk API yet.\n" +
-                        "Waiting on confidentiality_level in GET /api/risk/assets."
-                    }
+                    emptyMessage="No assets carry a confidentiality level yet."
                 />
 
-                <section className="risk-card risk-chart-card">
-                    <h3 className="risk-card-title">Average Risk Score Trend</h3>
-                    <div className="risk-chart-body">
-                        {/* No aggregate history endpoint exists — requirements doc, issue 5. */}
-                        <p className="risk-chart-empty">
-                            {"Organisation-wide trend needs an aggregate endpoint.\n" +
-                                "Waiting on GET /api/risk/trend."}
-                        </p>
-                    </div>
-                </section>
+                <TrendCard points={trend} message={trendMessage} />
             </div>
 
             <TopRiskyAssetsTable rows={topAssets} />

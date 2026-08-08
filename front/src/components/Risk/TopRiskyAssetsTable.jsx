@@ -40,8 +40,7 @@ export const TopRiskyAssetsTable = ({ rows }) => (
                             <td>{row.rank ?? index + 1}</td>
                             <td>{orDash(row.asset_name)}</td>
                             <td>{orDash(row.hostname)}</td>
-                            {/* asset_type is not in the payload yet — requirements doc, issue 4b. */}
-                            <td className="risk-cell-pending">{orDash(row.asset_type)}</td>
+                            <td>{orDash(row.asset_type)}</td>
                             <td>{orDash(row.zone_name)}</td>
                             <td>{orDash(row.vendor)}</td>
                             <td>{orDash(row.model)}</td>

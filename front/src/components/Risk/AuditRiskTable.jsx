@@ -18,9 +18,10 @@ const COLUMNS = [
 /**
  * "Audit Risk" tab table.
  *
- * The four *_findings_count fields exist on AssetRiskScore but are NOT part of
- * the list payload today (only _score_to_dict returns them), so they render as
- * pending — see front/RISK_FRONTEND_BACKEND_REQUIREMENTS.md, issue 4c.
+ * The four *_findings_count fields exist on AssetRiskScore and are returned by
+ * _score_to_dict (the per-asset detail), but _list_item still omits them, so
+ * they render as pending here — see front/RISK_FRONTEND_BACKEND_REQUIREMENTS.md,
+ * issue 4c. This was the one part of issue 4 the backend has not picked up yet.
  */
 export const AuditRiskTable = ({ rows, onRowClick }) => (
     <div className="risk-table-wrapper">

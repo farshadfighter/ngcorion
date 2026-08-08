@@ -1,10 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 
-// Risk levels the backend can emit. NOTE: service.py::_risk_level returns five
-// levels (including "very_high") while RiskLevelEnum only declares four — see
-// front/RISK_FRONTEND_BACKEND_REQUIREMENTS.md. We render all five until the
-// backend team decides; an unknown level still falls through to "unclassified".
+// The backend emits five levels (router.py::_RISK_LEVEL_ORDER); "very_high"
+// was confirmed as an official level, so it is rendered as its own slice.
 export const RISK_LEVELS = ["low", "medium", "high", "very_high", "critical"];
 
 export const RISK_LEVEL_LABELS = {
@@ -15,89 +13,56 @@ export const RISK_LEVEL_LABELS = {
     critical: "Critical",
 };
 
-export const CONFIDENTIALITY_LEVELS = ["public", "internal", "confidential", "critical"];
-
-// Backend caps page_size at 100. Until GET /api/risk/summary exists we page
-// through the list to build the dashboard aggregates client-side.
+// Backend caps page_size at 100; the table shows the highest-risk assets first.
 const PAGE_SIZE = 100;
-const MAX_PAGES = 20;
 
-/** Fetch every risk row by paging. Temporary — replace with /api/risk/summary. */
-const fetchAllRiskAssets = async () => {
-    const first = await api.get("/api/risk/assets", {
-        params: { page: 1, page_size: PAGE_SIZE, sort_by: "final_risk_score", sort_order: "desc" },
-    });
-    const { total = 0, items = [] } = first.data || {};
-    const all = [...items];
+/**
+ * Normalise the aggregate buckets from GET /api/risk/summary into the
+ * { key, count } shape the charts render. The backend names the bucket
+ * differently per group (level / zone_name), hence the explicit pick.
+ */
+const toBuckets = (rows, pick) =>
+    (rows || []).map((row) => ({
+        key: pick(row) || "unclassified",
+        count: Number(row.count) || 0,
+    }));
 
-    const pageCount = Math.min(Math.ceil(total / PAGE_SIZE), MAX_PAGES);
-    if (pageCount > 1) {
-        const rest = await Promise.all(
-            Array.from({ length: pageCount - 1 }, (_, i) =>
-                api.get("/api/risk/assets", {
-                    params: {
-                        page: i + 2,
-                        page_size: PAGE_SIZE,
-                        sort_by: "final_risk_score",
-                        sort_order: "desc",
-                    },
-                })
-            )
-        );
-        rest.forEach((res) => all.push(...(res.data?.items || [])));
-    }
-    return { items: all, total };
-};
+const normaliseSummary = (data) => ({
+    totals: data?.totals || {},
+    by_risk_level: toBuckets(data?.by_risk_level, (r) => r.level),
+    by_zone: toBuckets(data?.by_zone, (r) => r.zone_name),
+    by_confidentiality: toBuckets(data?.by_confidentiality, (r) => r.level),
+});
 
-/** Group rows by a key, keeping the declared order first and extras after. */
-const groupBy = (rows, pick, order) => {
-    const counts = new Map();
-    rows.forEach((row) => {
-        const key = pick(row) || "unclassified";
-        counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    const known = order
-        .filter((key) => counts.has(key))
-        .map((key) => ({ key, count: counts.get(key) }));
-    const extra = [...counts.entries()]
-        .filter(([key]) => !order.includes(key))
-        .map(([key, count]) => ({ key, count }));
-    return [...known, ...extra];
-};
-
-/** Build the KPI/chart aggregates the Figma dashboard needs. */
-const buildSummary = (rows, total) => {
-    const scored = rows.filter((r) => typeof r.final_risk_score === "number");
-    const scoreAverage = scored.length
-        ? scored.reduce((sum, r) => sum + r.final_risk_score, 0) / scored.length
-        : null;
-
-    return {
-        totals: {
-            total_assets: total || rows.length,
-            risk_score_average: scoreAverage === null ? null : Math.round(scoreAverage * 10) / 10,
-            incomplete_assets: rows.filter((r) => r.incomplete_data).length,
-            open_ports_total: rows.reduce((sum, r) => sum + (r.open_ports_count || 0), 0),
-            // "Non-conformity" is not defined by the backend yet; we approximate
-            // it as assets carrying at least one active audit finding.
-            non_conformity_assets: rows.filter((r) => (r.active_audit_findings_count || 0) > 0).length,
-            // No aggregate endpoint exposes this; per-asset counts are not in
-            // the list payload, so it stays null until /summary lands.
-            fixed_by_hardening_total: null,
-        },
-        by_risk_level: groupBy(rows, (r) => r.risk_level, RISK_LEVELS),
-        by_zone: groupBy(rows, (r) => r.zone_name, []),
-        // confidentiality_level is not returned by the risk endpoints yet.
-        by_confidentiality: groupBy(rows, (r) => r.confidentiality_level, CONFIDENTIALITY_LEVELS),
-    };
-};
-
+/**
+ * Dashboard data: the aggregates come from /summary (SQL-side, covers every
+ * asset), the table rows from the first page of /assets, and the chart series
+ * from /trend. They are fetched together so one failure does not blank the page.
+ */
 export const fetchRiskDashboard = createAsyncThunk(
     "risk/fetchDashboard",
     async (_, { rejectWithValue }) => {
         try {
-            const { items, total } = await fetchAllRiskAssets();
-            return { items, total, summary: buildSummary(items, total) };
+            const [summaryRes, listRes, trendRes] = await Promise.all([
+                api.get("/api/risk/summary"),
+                api.get("/api/risk/assets", {
+                    params: {
+                        page: 1,
+                        page_size: PAGE_SIZE,
+                        sort_by: "final_risk_score",
+                        sort_order: "desc",
+                    },
+                }),
+                api.get("/api/risk/trend", { params: { months: 12 } }),
+            ]);
+
+            return {
+                summary: normaliseSummary(summaryRes.data),
+                items: listRes.data?.items || [],
+                total: listRes.data?.total || 0,
+                trend: trendRes.data?.points || [],
+                trendMessage: trendRes.data?.message || null,
+            };
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || err.message);
         }
@@ -122,6 +87,8 @@ const riskSlice = createSlice({
         items: [],
         total: 0,
         summary: null,
+        trend: [],
+        trendMessage: null,
         zones: [],
         isLoading: false,
         error: null,
@@ -138,6 +105,8 @@ const riskSlice = createSlice({
                 state.items = action.payload.items;
                 state.total = action.payload.total;
                 state.summary = action.payload.summary;
+                state.trend = action.payload.trend;
+                state.trendMessage = action.payload.trendMessage;
             })
             .addCase(fetchRiskDashboard.rejected, (state, action) => {
                 state.isLoading = false;
