@@ -587,6 +587,12 @@ def get_asset_risk_detail(
             "model": asset.model,
             "os_version": asset.os_version,
             "status": asset.status.value if asset.status else None,
+            # Shown in the detail page's Confidentiality & Zone block; the list
+            # endpoint already returns it, so both views agree.
+            "confidentiality_level": (
+                asset.confidentiality_level.value
+                if asset.confidentiality_level else None
+            ),
         },
         "risk_score": _score_to_dict(score) if score else None,
         "open_ports": [_port_to_dict(p) for p in ports],

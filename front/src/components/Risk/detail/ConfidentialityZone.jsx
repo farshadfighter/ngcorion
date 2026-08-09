@@ -1,5 +1,5 @@
 import React from "react";
-import { orDash } from "../riskConstants";
+import { orDash, titleCase } from "../riskConstants";
 
 /**
  * "Confidentiality & Zone" block: two score boxes with their labels.
@@ -7,7 +7,7 @@ import { orDash } from "../riskConstants";
  * define the edit flow yet, and PUT /api/risk/assets/{id}/profile takes
  * criticality + zone, not confidentiality.
  */
-export const ConfidentialityZone = ({ score }) => (
+export const ConfidentialityZone = ({ asset, score }) => (
     <section className="ard-card">
         <h3 className="ard-card-title">Confidentiality &amp; Zone</h3>
         <div className="ard-cz-grid">
@@ -21,10 +21,10 @@ export const ConfidentialityZone = ({ score }) => (
                     <span className="ard-score-box">
                         {score?.criticality_score ?? "-"}
                     </span>
-                    {/* confidentiality_level is not returned by the risk API —
-                        see RISK_FRONTEND_BACKEND_REQUIREMENTS.md, issue 4a. */}
-                    <span className="ard-cell-pending">
-                        {orDash(score?.confidentiality_level)}
+                    <span>
+                        {asset?.confidentiality_level
+                            ? titleCase(asset.confidentiality_level)
+                            : "-"}
                     </span>
                     <button
                         type="button"

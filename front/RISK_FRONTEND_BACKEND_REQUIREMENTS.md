@@ -34,11 +34,14 @@
 | ۷ | `hardening_status` / `verification_status` | جدول «Audit Findings» — ۲ ستون از ۹ |
 | ۸ | تصمیم دسترسی findings | کاربر بدون `AUDITING` جدول findings را نمی‌بیند |
 
-### 🔧 تغییری که تیم فرانت روی بک‌اند اعمال کرد
+### 🔧 دو تغییری که تیم فرانت روی بک‌اند اعمال کرد
 
-**فایل:** `app/modules/risk/router.py` → تابع `_list_item` (حدود خط ۳۰۰)
+هر دو در فایل `app/modules/risk/router.py`. مجموعاً **۱۲ خط اضافه، صفر خط حذف
+یا تغییر**. بدون migration، بدون تغییر مدل، بدون تغییر منطق محاسبه.
 
-چهار فیلد زیر اضافه شد:
+**تغییر ۱ — تابع `_list_item` (حدود خط ۳۰۰)**
+
+چهار فیلد شمارش finding به تفکیک severity اضافه شد:
 
 ```python
 "critical_findings_count": score.critical_findings_count,
@@ -47,14 +50,30 @@
 "low_findings_count": score.low_findings_count,
 ```
 
-- فقط **۶ خط اضافه** (شامل دو خط کامنت)، هیچ خطی حذف یا تغییر نکرد
 - مقادیر از `score` می‌آیند که کوئری همین حالا هم لود می‌کند → **بدون کوئری اضافه**
 - ستون‌ها روی مدل `nullable=False, default=0` هستند → همیشه عدد، هرگز `None`
-- `_list_item` فقط در یک نقطه استفاده می‌شود (endpoint لیست) → دامنه‌ی تغییر محدود
-- بدون migration، بدون تغییر مدل، بدون تغییر منطق محاسبه
+- `_list_item` فقط در یک نقطه استفاده می‌شود → دامنه‌ی محدود
 
-**دلیل:** تب «Audit Risk» در فیگما چهار ستون به تفکیک severity دارد. بدون این
-فیلدها فرانت باید برای هر ردیف یک درخواست جدا به `/assets/{id}` می‌زد.
+**دلیل:** تب «Audit Risk» چهار ستون به تفکیک severity دارد. بدون این فیلدها
+فرانت باید برای هر ردیف یک درخواست جدا به `/assets/{id}` می‌زد.
+
+**تغییر ۲ — بلوک `asset` در `get_asset_risk_detail` (حدود خط ۵۸۷)**
+
+```python
+"confidentiality_level": (
+    asset.confidentiality_level.value
+    if asset.confidentiality_level else None
+),
+```
+
+**دلیل:** `confidentiality_level` در endpoint لیست برگردانده می‌شد ولی در
+پاسخ جزئیات نبود — نه در `asset` و نه در `risk_score`. نتیجه این بود که ستون
+Confidentiality در جدول Overview کار می‌کرد ولی در بخش «Confidentiality & Zone»
+صفحه‌ی جزئیات همیشه خط تیره بود. حالا هر دو نما یک داده را نشان می‌دهند.
+
+**نکته:** بلوک `asset` در `export_asset_json` (خط ~۱۱۸۳) عمداً دست نخورد، چون
+UI از آن استفاده نمی‌کند. اگر می‌خواهید خروجی export هم این فیلد را داشته
+باشد، بفرمایید.
 
 ---
 
