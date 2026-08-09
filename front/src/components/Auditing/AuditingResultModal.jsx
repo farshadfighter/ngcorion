@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchAuditSession } from "../../store/auditSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
+import { ResultHardeningBar } from "./ResultHardeningBar";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-");
 
@@ -100,6 +101,17 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
         }
     }, [isOpen, session, dispatch]);
 
+    // The modal covers the whole viewport, so the page behind it must not
+    // scroll — otherwise its scrollbar shows up alongside the modal's own.
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previous;
+        };
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     let totalChecks = 0;
@@ -171,7 +183,9 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     </button>
                 </div>
 
-                {/* Statistics Cards — device info row, then summary row */}
+                {/* Statistics — one white panel holding the coloured summary row
+                    (ordered first via CSS) above the device info row. */}
+                <div className="result-stats-panel">
                 <div className="result-stats-container">
                     <div className="result-card result-card-info">
                         <div className="card-label">Asset</div>
@@ -253,6 +267,13 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                         </div>
                     </div>
                 </div>
+                </div>
+
+                <ResultHardeningBar
+                    onHarden={() => setShowHardeningWizard(true)}
+                    disabled={failedChecks === 0}
+                />
+
                 {/* Results Table */}
                 <div className="result-table-wrapper">
                     {isLoadingResults ? (

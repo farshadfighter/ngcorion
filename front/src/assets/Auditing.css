@@ -707,8 +707,13 @@ order: 1;
 .result-modal-overlay {
     background: rgba(0, 0, 0, 0.6);
     z-index: 2000;
+    /* Pinned to the viewport so the overlay itself can never scroll. */
+    overflow: hidden;
 }
 
+/* Fills the viewport exactly, so the modal itself must not scroll — the results
+   table has its own scroller (.result-table-wrapper). Leaving overflow-y:auto
+   here produced a second, redundant scrollbar next to the table's own. */
 .result-modal-content {
     background: #f5f5f5;
     border-radius: 0;
@@ -716,7 +721,9 @@ order: 1;
     height: 100vh;
     max-width: none;
     max-height: none;
-    overflow-y: auto;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     box-shadow: none;
     padding: 0;
 }
@@ -751,22 +758,122 @@ order: 1;
 /* Statistics Cards — info cards (asset/IP/date/…) live in the container,
    the three summary cards (Conformity / Non-Conformity / Total) get their own
    row below so the grid never wraps into a lopsided 6+2 layout. */
-.result-stats-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    padding: 24px 24px 0;
-    max-width: 1400px;
-    margin: 0 auto;
+/* Figma: both rows live in one white panel (1520x432, rx 20), with the coloured
+   summary on top. The summary markup comes second in the DOM, so flex `order`
+   lifts it above the info row without moving any JSX. */
+.result-stats-panel {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-radius: 20px;
+    /* width:100% (minus the page gutter) so the panel actually fills the
+       viewport; max-width alone left it collapsed to its content. */
+    width: calc(100% - 48px);
+    max-width: 1520px;
+    margin: 24px auto 0;
+    padding: 8px 0 24px;
+    box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+/* Info row: one line for all cards, wrapping only when the panel is too narrow
+   to hold them. flex (not grid auto-fit) keeps the last row centred instead of
+   left-aligned under the first two. */
+.result-stats-container {
+    order: 2;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px 32px;
+    padding: 8px 32px 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.result-stats-container > .result-card {
+    flex: 0 1 150px;
+}
+
+/* Summary row: centred, and box-sizing keeps the padding inside the panel so
+   the last card cannot overflow its right edge. */
 .result-stats-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    padding: 16px 24px 24px;
-    max-width: 1400px;
-    margin: 0 auto;
+    order: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px 32px 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.result-stats-summary > .result-card {
+    flex: 0 1 200px;
+    min-height: 139px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+/* ── Hardening bar (Figma: 1229x180 card rx=30, 338x67 button rx=5) ───────── */
+
+.result-harden-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    background: #ffffff;
+    border-radius: 30px;
+    padding: 28px 32px;
+    margin: 24px auto 0;
+    max-width: 1229px;
+    /* Sized like the panel and table: gutter subtracted, padding inside the
+       box, so it never sticks out on narrow viewports. */
+    width: calc(100% - 48px);
+    box-sizing: border-box;
+    align-self: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.result-harden-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #14213D;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.result-harden-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: min(338px, 100%);
+    height: 67px;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 5px;
+    background: #14213D;
+    color: #ffffff;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.result-harden-btn:hover:not(:disabled) {
+    background: #1e3a5f;
+}
+
+/* Nothing failed — there is nothing to harden. */
+.result-harden-btn:disabled {
+    background: #B2B6BF;
+    cursor: not-allowed;
 }
 
 .result-card {
@@ -783,16 +890,44 @@ order: 1;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
+/* Figma fills these solid (#48BB78 / #E53E3E) with white text; Total Condition
+   stays neutral on the panel background. */
 .result-card-success {
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    background: #48BB78;
+    color: #ffffff;
 }
 
 .result-card-danger {
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    background: #E53E3E;
+    color: #ffffff;
 }
 
 .result-card-total {
-    background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    background: #F5F5F5;
+    color: #14213D;
+}
+
+/* Solid white on the coloured cards — a translucent white washed out against
+   #48BB78 and left the sub-labels hard to read. */
+.result-card-success .card-label,
+.result-card-success .card-sub,
+.result-card-success .card-percent,
+.result-card-danger .card-label,
+.result-card-danger .card-sub,
+.result-card-danger .card-percent {
+    color: #ffffff;
+}
+
+/* Info cards sit inside the white panel, so they drop their own card chrome. */
+.result-stats-container .result-card-info {
+    background: transparent;
+    box-shadow: none;
+    padding: 8px;
+}
+
+.result-stats-container .result-card-info:hover {
+    transform: none;
+    box-shadow: none;
 }
 
 .card-label {
@@ -853,12 +988,28 @@ order: 1;
     /* No top padding: the sticky thead must sit flush with the scrollport top,
        otherwise rows stay visible in the padding band above the stuck header. */
     padding: 0 20px 20px;
-    max-width: 1400px;
-    margin: 0 auto 24px;
+    max-width: 1520px;
+    margin: 24px auto;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    max-height: calc(100vh - 340px);
-    min-height: 200px;
+    /* The modal is a flex column, so take the leftover height instead of
+       guessing it with a viewport calc. min-height:0 lets a flex item shrink
+       below its content and actually scroll. */
+    flex: 1;
+    min-height: 0;
+    /* Match the panel/bar gutter, and keep the padding inside the width so the
+       table cannot spill past the viewport edge. */
+    width: calc(100% - 48px);
+    box-sizing: border-box;
     overflow-y: auto;
+
+    /* Scroll stays available; only the bar is hidden (Firefox / legacy IE). */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* Chromium / WebKit half of the hidden-scrollbar rule above. */
+.result-table-wrapper::-webkit-scrollbar {
+    display: none;
 }
 
 .result-table {

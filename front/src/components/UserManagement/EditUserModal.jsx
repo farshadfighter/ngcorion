@@ -1,16 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUser } from "../../store/userSlice";
-
-const MODULES = [
-    { name: "dashboard",            label: "Dashboard",         icon: "⊞" },
-    { name: "asset_requirement",    label: "Asset Requirement", icon: "◈" },
-    { name: "asset_list",           label: "Asset List",        icon: "≡" },
-    { name: "asset_auto_discovery", label: "Auto Discovery",    icon: "⟳" },
-    { name: "user_management",      label: "User Management",   icon: "◎" },
-    { name: "hardening",            label: "Hardening",         icon: "🛡" },
-    { name: "auditing",             label: "Auditing",          icon: "📋" },
-];
+import { PERMISSION_MODULES as MODULES } from "./permissionModules";
 
 const styles = {
     overlay: {

@@ -137,12 +137,17 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                 </div>
             </div>
 
-            {/* Result Modal */}
+            {/* Result Modal — closing it ends the wizard and returns to the job
+                table. Without this the wizard is still mounted behind the modal
+                and the success step reappears instead of the list. */}
             {showResultModal && sessionData && (
                 <AuditingResultModal
                     session={sessionData}
                     isOpen={showResultModal}
-                    onClose={() => setShowResultModal(false)}
+                    onClose={() => {
+                        setShowResultModal(false);
+                        handleSuccess();
+                    }}
                 />
             )}
         </div>

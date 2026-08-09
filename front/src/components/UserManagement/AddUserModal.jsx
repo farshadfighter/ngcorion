@@ -1,16 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createUser, fetchUsers } from "../../store/userSlice";
-
-const MODULES = [
-    { name: "dashboard",            label: "Dashboard" },
-    { name: "asset_requirement",    label: "Asset Requirement" },
-    { name: "asset_list",           label: "Asset List" },
-    { name: "asset_auto_discovery", label: "Auto Discovery" },
-    { name: "user_management",      label: "User Management" },
-    { name: "hardening",            label: "Hardening" },
-    { name: "auditing",             label: "Auditing" },
-];
+import { PERMISSION_MODULES as MODULES } from "./permissionModules";
 
 const validatePassword = (password) => {
     if (password.length < 8) return "At least 8 characters required";
