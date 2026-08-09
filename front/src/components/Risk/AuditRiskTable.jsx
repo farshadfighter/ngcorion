@@ -15,14 +15,7 @@ const COLUMNS = [
     "Actions",
 ];
 
-/**
- * "Audit Risk" tab table.
- *
- * The four *_findings_count fields exist on AssetRiskScore and are returned by
- * _score_to_dict (the per-asset detail), but _list_item still omits them, so
- * they render as pending here — see front/RISK_FRONTEND_BACKEND_REQUIREMENTS.md,
- * issue 4c. This was the one part of issue 4 the backend has not picked up yet.
- */
+/** "Audit Risk" tab: per-asset breakdown of active findings by severity. */
 export const AuditRiskTable = ({ rows, onRowClick }) => (
     <div className="risk-table-wrapper">
         <table className="risk-table">
@@ -51,18 +44,10 @@ export const AuditRiskTable = ({ rows, onRowClick }) => (
                         <td>{orDash(row.rank)}</td>
                         <td>{orDash(row.asset_name)}</td>
                         <td>{row.risk_level ? titleCase(row.risk_level) : "-"}</td>
-                        <td className="risk-cell-pending">
-                            {orDash(row.critical_findings_count)}
-                        </td>
-                        <td className="risk-cell-pending">
-                            {orDash(row.high_findings_count)}
-                        </td>
-                        <td className="risk-cell-pending">
-                            {orDash(row.medium_findings_count)}
-                        </td>
-                        <td className="risk-cell-pending">
-                            {orDash(row.low_findings_count)}
-                        </td>
+                        <td>{orDash(row.critical_findings_count)}</td>
+                        <td>{orDash(row.high_findings_count)}</td>
+                        <td>{orDash(row.medium_findings_count)}</td>
+                        <td>{orDash(row.low_findings_count)}</td>
                         <RiskRowActions />
                     </tr>
                 ))}

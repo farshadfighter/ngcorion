@@ -298,6 +298,12 @@ def _list_item(score: AssetRiskScore, asset: Asset, rank: int) -> dict:
         "open_port_score": _num(score.open_port_score),
         "audit_risk_score": _num(score.audit_risk_score),
         "active_audit_findings_count": score.active_audit_findings_count,
+        # Severity breakdown of the active findings; the UI's "Audit Risk" tab
+        # lists them per asset. Already loaded on `score`, so no extra query.
+        "critical_findings_count": score.critical_findings_count,
+        "high_findings_count": score.high_findings_count,
+        "medium_findings_count": score.medium_findings_count,
+        "low_findings_count": score.low_findings_count,
         "final_risk_score": _num(score.final_risk_score),
         "risk_level": score.risk_level,
         "incomplete_data": score.incomplete_data,
