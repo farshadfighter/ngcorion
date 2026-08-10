@@ -170,5 +170,6 @@ def get_available_modules() -> List[ModuleInfo]:
         ModuleInfo(name="user_management", description="User Management"),
         ModuleInfo(name="auditing", description="Auditing Module"),
         ModuleInfo(name="hardening", description="Hardening Module"),
+        ModuleInfo(name="risk", description="Risk Module"),
         ModuleInfo(name="logs", description="System Logs"),
     ]
