@@ -53,18 +53,12 @@ def activate_license(data: schemas.LicenseActivate, db: Session = Depends(get_db
         is_pilot_mode=license.is_pilot_mode,
         organization_token=license.organization_token,
         limits={
-            "max_assets": license.max_assets,
-            "max_discoveries": license.max_discoveries,
             "max_audits": license.max_audits,
-            "max_hardens": license.max_hardens,
-            "max_monitors": license.max_monitors
+            "max_hardens": license.max_hardens
         },
         usage={
-            "used_assets": license.used_assets,
-            "used_discoveries": license.used_discoveries,
             "used_audits": license.used_audits,
-            "used_hardens": license.used_hardens,
-            "used_monitors": license.used_monitors
+            "used_hardens": license.used_hardens
         }
     )
 
@@ -113,18 +107,12 @@ def validate_license(
         plan_type=license.plan_type,
         is_pilot_mode=license.is_pilot_mode,
         limits={
-            "max_assets": license.max_assets,
-            "max_discoveries": license.max_discoveries,
             "max_audits": license.max_audits,
-            "max_hardens": license.max_hardens,
-            "max_monitors": license.max_monitors
+            "max_hardens": license.max_hardens
         },
         usage={
-            "used_assets": license.used_assets,
-            "used_discoveries": license.used_discoveries,
             "used_audits": license.used_audits,
-            "used_hardens": license.used_hardens,
-            "used_monitors": license.used_monitors
+            "used_hardens": license.used_hardens
         }
     )
 
@@ -155,7 +143,7 @@ def consume_operation(
     x_timestamp: Optional[str] = Header(None),
     x_signature: Optional[str] = Header(None)
 ):
-    """Consume operation quota (asset, discovery, audit, harden, monitor)
+    """Consume operation quota (audit, harden)
     
     This endpoint requires HMAC signature authentication for security.
     Only the main app backend should call this endpoint.
@@ -177,17 +165,11 @@ def consume_operation(
         plan_type=license.plan_type,
         is_pilot_mode=license.is_pilot_mode,
         limits={
-            "max_assets": license.max_assets,
-            "max_discoveries": license.max_discoveries,
             "max_audits": license.max_audits,
-            "max_hardens": license.max_hardens,
-            "max_monitors": license.max_monitors
+            "max_hardens": license.max_hardens
         },
         usage={
-            "used_assets": license.used_assets,
-            "used_discoveries": license.used_discoveries,
             "used_audits": license.used_audits,
-            "used_hardens": license.used_hardens,
-            "used_monitors": license.used_monitors
+            "used_hardens": license.used_hardens
         }
     )

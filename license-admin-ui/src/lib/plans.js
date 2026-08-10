@@ -5,6 +5,9 @@
 // is a hand-copied mirror so the Generate form can preview limits/duration
 // without a round trip. It is NOT shared code — if the backend plans change,
 // update this list to match. Limits of `null` mean unlimited.
+//
+// Asset Management has no license entitlement — only audits and hardens are
+// quota dimensions.
 
 export const PLANS = [
   {
@@ -12,35 +15,35 @@ export const PLANS = [
     label: "Pilot",
     blurb: "30-day trial",
     durationDays: 30,
-    limits: { assets: 5, discoveries: 2, audits: 2, hardens: 2, monitors: 2 },
+    limits: { audits: 2, hardens: 2 },
   },
   {
-    value: "basic1",
-    label: "Basic 1 — Small network",
-    blurb: "Up to 15 devices",
+    value: "plan_100",
+    label: "100 Audit / 100 Hardening",
+    blurb: "Up to 100 audits and 100 hardenings",
     durationDays: 365,
-    limits: { assets: 15, discoveries: 15, audits: 15, hardens: 15, monitors: 15 },
+    limits: { audits: 100, hardens: 100 },
   },
   {
-    value: "basic2",
-    label: "Basic 2 — Medium network",
-    blurb: "Up to 50 devices",
+    value: "plan_250",
+    label: "250 Audit / 250 Hardening",
+    blurb: "Up to 250 audits and 250 hardenings",
     durationDays: 365,
-    limits: { assets: 50, discoveries: 50, audits: 50, hardens: 50, monitors: 50 },
+    limits: { audits: 250, hardens: 250 },
   },
   {
-    value: "basic3",
-    label: "Basic 3 — Large network",
-    blurb: "Up to 150 devices",
+    value: "plan_500",
+    label: "500 Audit / 500 Hardening",
+    blurb: "Up to 500 audits and 500 hardenings",
     durationDays: 365,
-    limits: { assets: 150, discoveries: 150, audits: 150, hardens: 150, monitors: 150 },
+    limits: { audits: 500, hardens: 500 },
   },
   {
-    value: "enterprise",
-    label: "Enterprise",
-    blurb: "Unlimited",
+    value: "unlimited",
+    label: "Unlimited",
+    blurb: "Unlimited audits and hardenings",
     durationDays: 365,
-    limits: { assets: null, discoveries: null, audits: null, hardens: null, monitors: null },
+    limits: { audits: null, hardens: null },
   },
 ];
 
@@ -50,6 +53,6 @@ export function planLabel(value) {
   return PLAN_BY_VALUE[value]?.label || value;
 }
 
-// The five quota dimensions, in display order. Field names match the API
+// The two quota dimensions, in display order. Field names match the API
 // LicenseResponse (max_<x> / used_<x>).
-export const OPERATIONS = ["assets", "discoveries", "audits", "hardens", "monitors"];
+export const OPERATIONS = ["audits", "hardens"];

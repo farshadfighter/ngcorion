@@ -22,7 +22,7 @@ class OperationConsume(BaseModel):
     license_key: str
     organization_token: str
     vm_fingerprint: str
-    operation_type: str  # "asset", "discovery", "audit", "harden", "monitor"
+    operation_type: str  # "audit" or "harden" — Asset Management is not license-gated
     count: int = 1
 
 class LicenseResponse(BaseModel):
@@ -33,19 +33,13 @@ class LicenseResponse(BaseModel):
     customer_email: str
     organization_name: str
     plan_type: PlanType
-    
-    max_assets: Optional[int]
-    max_discoveries: Optional[int]
+
     max_audits: Optional[int]
     max_hardens: Optional[int]
-    max_monitors: Optional[int]
-    
-    used_assets: int
-    used_discoveries: int
+
     used_audits: int
     used_hardens: int
-    used_monitors: int
-    
+
     vm_fingerprint: Optional[str]
     is_active: bool
     is_pilot_mode: bool

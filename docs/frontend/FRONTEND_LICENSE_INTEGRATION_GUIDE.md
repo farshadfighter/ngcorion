@@ -47,22 +47,16 @@ Content-Type: application/json
   "success": true,
   "message": "License activated successfully",
   "license_info": {
-    "plan_type": "basic2",
+    "plan_type": "plan_250",
     "is_pilot_mode": false,
     "expires_at": "2026-05-12T10:30:00Z",
     "limits": {
-      "max_assets": 50,
-      "max_discoveries": 50,
-      "max_audits": 50,
-      "max_hardens": 50,
-      "max_monitors": 50
+      "max_audits": 250,
+      "max_hardens": 250
     },
     "usage": {
-      "used_assets": 0,
-      "used_discoveries": 0,
       "used_audits": 0,
-      "used_hardens": 0,
-      "used_monitors": 0
+      "used_hardens": 0
     }
   }
 }
@@ -100,29 +94,20 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "valid": true,
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "expires_at": "2026-05-12T10:30:00Z",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 50,
-    "max_audits": 50,
-    "max_hardens": 50,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 12,
-    "used_discoveries": 8,
     "used_audits": 15,
-    "used_hardens": 5,
-    "used_monitors": 3
+    "used_hardens": 5
   },
   "remaining": {
-    "assets": 38,
-    "discoveries": 42,
-    "audits": 35,
-    "hardens": 45,
-    "monitors": 47
+    "audits": 235,
+    "hardens": 245
   },
   "message": "License is valid"
 }
@@ -152,13 +137,15 @@ When making any API call to `/api/*` endpoints, you may receive:
 **Response (403 - Quota Exhausted):**
 ```json
 {
-  "detail": "Asset limit reached (50/50). Upgrade your plan or delete unused assets."
+  "detail": "Audit quota exhausted (250/250). Upgrade your plan."
 }
 // OR
 {
-  "detail": "Discovery quota exhausted (50/50)"
+  "detail": "Hardening quota exhausted (250/250). Upgrade your plan."
 }
 ```
+
+Note: Asset Management (asset creation and Auto Discovery) is not license-gated, so these endpoints never return quota-exhausted errors — only audit and hardening operations can.
 
 ---
 
@@ -381,11 +368,11 @@ const LicenseStatus = () => {
 
   const getPlanName = (planType) => {
     const plans = {
-      pilot: 'Pilot (Testing)',
-      basic1: 'Base License 1 (Small Networks)',
-      basic2: 'Base License 2 (Medium Networks)',
-      basic3: 'Base License 3 (Large Networks)',
-      enterprise: 'Enterprise (Unlimited)'
+      pilot: 'Pilot',
+      plan_100: '100 Audit / 100 Hardening',
+      plan_250: '250 Audit / 250 Hardening',
+      plan_500: '500 Audit / 500 Hardening',
+      unlimited: 'Unlimited'
     };
     return plans[planType] || planType;
   };
@@ -425,48 +412,10 @@ const LicenseStatus = () => {
 
       <div className="quota-section">
         <h3>Quota Usage</h3>
-        
-        {/* Assets */}
-        <div className="quota-item">
-          <div className="quota-header">
-            <span>Assets</span>
-            <span>
-              {license.usage.used_assets} / {license.limits.max_assets || '∞'}
-            </span>
-          </div>
-          {license.limits.max_assets && (
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{
-                  width: `${getUsagePercentage(license.usage.used_assets, license.limits.max_assets)}%`,
-                  backgroundColor: getUsageColor(getUsagePercentage(license.usage.used_assets, license.limits.max_assets))
-                }}
-              />
-            </div>
-          )}
-        </div>
 
-        {/* Discoveries */}
-        <div className="quota-item">
-          <div className="quota-header">
-            <span>Discoveries</span>
-            <span>
-              {license.usage.used_discoveries} / {license.limits.max_discoveries || '∞'}
-            </span>
-          </div>
-          {license.limits.max_discoveries && (
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{
-                  width: `${getUsagePercentage(license.usage.used_discoveries, license.limits.max_discoveries)}%`,
-                  backgroundColor: getUsageColor(getUsagePercentage(license.usage.used_discoveries, license.limits.max_discoveries))
-                }}
-              />
-            </div>
-          )}
-        </div>
+        {/* Note: Asset Management (asset creation and Auto Discovery) is not
+            license-gated, so there is no quota to display for it. Only
+            audits and hardens are tracked. */}
 
         {/* Audits */}
         <div className="quota-item">
@@ -504,27 +453,6 @@ const LicenseStatus = () => {
                 style={{
                   width: `${getUsagePercentage(license.usage.used_hardens, license.limits.max_hardens)}%`,
                   backgroundColor: getUsageColor(getUsagePercentage(license.usage.used_hardens, license.limits.max_hardens))
-                }}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Monitors */}
-        <div className="quota-item">
-          <div className="quota-header">
-            <span>Monitors</span>
-            <span>
-              {license.usage.used_monitors} / {license.limits.max_monitors || '∞'}
-            </span>
-          </div>
-          {license.limits.max_monitors && (
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{
-                  width: `${getUsagePercentage(license.usage.used_monitors, license.limits.max_monitors)}%`,
-                  backgroundColor: getUsageColor(getUsagePercentage(license.usage.used_monitors, license.limits.max_monitors))
                 }}
               />
             </div>
@@ -813,11 +741,8 @@ const QuotaWarning = ({ license }) => {
       }
     };
 
-    checkQuota('Assets', license.usage.used_assets, license.limits.max_assets);
-    checkQuota('Discoveries', license.usage.used_discoveries, license.limits.max_discoveries);
     checkQuota('Audits', license.usage.used_audits, license.limits.max_audits);
     checkQuota('Hardens', license.usage.used_hardens, license.limits.max_hardens);
-    checkQuota('Monitors', license.usage.used_monitors, license.limits.max_monitors);
 
     return warnings;
   };
@@ -852,7 +777,7 @@ export default QuotaWarning;
 |-------|--------|----------|--------|
 | No license | 403 | `{"detail": "No valid license...", "license_required": true}` | Redirect to activation page |
 | License expired | 403 | `{"detail": "License has expired"}` | Show renewal message |
-| Quota exhausted | 403 | `{"detail": "Asset limit reached (50/50)..."}` | Show upgrade prompt |
+| Quota exhausted | 403 | `{"detail": "Audit quota exhausted (250/250)..."}` | Show upgrade prompt |
 | Invalid license key | 400 | `{"detail": "License key not found"}` | Show error in activation form |
 | Already activated | 400 | `{"detail": "...already activated on another VM"}` | Contact support message |
 

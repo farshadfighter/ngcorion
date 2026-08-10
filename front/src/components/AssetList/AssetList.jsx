@@ -12,13 +12,14 @@ import { EditLocationModal } from "./EditLocationModal";
 import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
-import { LicenseLimitModal } from "../License/LicenseLimitModal";
 
 import "../../assets/AssetList.css"
 
 const PRIMARY = "#1e3a5f";
 
-export const AssetList = ({ onNavigateToLicence }) => {
+// Asset Management has no license entitlement, so this list is not
+// license-gated (no LicenseLimitModal here).
+export const AssetList = () => {
     const dispatch = useDispatch();
     const { assets, isLoading, error, successMessage } = useSelector((state) => state.assets);
     const { assetTypes, locations, owners } = useAssetFormOptions();
@@ -42,7 +43,6 @@ export const AssetList = ({ onNavigateToLicence }) => {
     const [showEditLocationModal,  setShowEditLocationModal]  = useState(false);
     const [showEditSecurityModal,  setShowEditSecurityModal]  = useState(false);
     const [showAddModal,           setShowAddModal]           = useState(false);
-    const [showLicenseModal,       setShowLicenseModal]       = useState(false);
 
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
@@ -340,9 +340,6 @@ export const AssetList = ({ onNavigateToLicence }) => {
             <AddAssetModal isOpen={showAddModal} onClose={() => {
                 setShowAddModal(false);
             }} />
-
-            <LicenseLimitModal isOpen={showLicenseModal} onClose={() => setShowLicenseModal(false)}
-                               module="assetList" onGoToLicence={onNavigateToLicence} />
         </div>
     );
 };

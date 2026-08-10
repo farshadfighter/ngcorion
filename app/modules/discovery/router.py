@@ -5,18 +5,13 @@ app/modules/discovery/router.py
 API endpoints for network scanning and asset discovery
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks , Request
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.core.dependencies import (
-    get_current_user, 
-    require_quota ,
-    check_quota_available ,
-    consume_quota_on_success
-    )
+from app.core.dependencies import get_current_user
 
 from app.models.user import User, UserRole
 from app.models.asset import Asset
@@ -78,14 +73,12 @@ def check_discovery_permission(current_user: User, action: str, db: Session):
     return True
 
 
-@router.post("/scan", response_model=ScanResponse, dependencies=[Depends(check_quota_available("discovery"))])
+@router.post("/scan", response_model=ScanResponse)
 def start_scan(
-    http_request : Request,
     request: ScanRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    
 ):
     """
     Start a new network scan
@@ -112,7 +105,6 @@ def start_scan(
 
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
-    consume_quota = consume_quota_on_success("discovery")
     check_discovery_permission(current_user, "write", db)
 
     try:
@@ -121,8 +113,6 @@ def start_scan(
 
         # Run the actual nmap scan in the background so the HTTP response returns immediately
         background_tasks.add_task(DiscoveryService.execute_scan, db, scan_id)
-
-        consume_quota(http_request)
 
         return scan_response
 

@@ -26,7 +26,7 @@ The license system has been fully integrated into the main application (`/home/s
 - `app/core/dependencies.py` — Added quota enforcement dependencies
 - `app/main.py` — Added lifespan management, middleware, and license router
 - `requirements.txt` — Added `cryptography` and `requests`
-- All operation routers (discovery, audit, harden) — Added quota consumption
+- Audit and hardening operation routers — Added quota consumption (asset creation and Auto Discovery are intentionally not quota-gated)
 
 ### 2. Documentation Created ✅
 
@@ -75,7 +75,7 @@ The license system has been fully integrated into the main application (`/home/s
    - Returns `403` with `license_required: true`
 
 4. **Quota Enforcement** (per operation)
-   - Before discovery/audit/harden operations
+   - Before audit/harden operations only (asset creation and Auto Discovery are never quota-checked)
    - Calls license server to consume quota
    - Returns `403` if quota exhausted
 
@@ -200,13 +200,15 @@ The license system has been fully integrated into the main application (`/home/s
 
 ## Plan Types & Limits
 
-| Plan | Assets | Discoveries | Audits | Hardens | Monitors | Duration |
-|------|--------|-------------|--------|---------|----------|----------|
-| **Pilot** | 5 | 10 | 20 | 10 | 5 | 30 days |
-| **Basic1** | 15 | 50 | 100 | 50 | 15 | 365 days |
-| **Basic2** | 50 | 200 | 500 | 200 | 50 | 365 days |
-| **Basic3** | 150 | 600 | 1500 | 600 | 150 | 365 days |
-| **Enterprise** | ∞ | ∞ | ∞ | ∞ | ∞ | 365 days |
+| Plan | Audits | Hardens | Duration |
+|------|--------|---------|----------|
+| **Pilot** | 2 | 2 | 30 days |
+| **100 Audit / 100 Hardening** (`plan_100`) | 100 | 100 | 365 days |
+| **250 Audit / 250 Hardening** (`plan_250`) | 250 | 250 | 365 days |
+| **500 Audit / 500 Hardening** (`plan_500`) | 500 | 500 | 365 days |
+| **Unlimited** (`unlimited`) | ∞ | ∞ | 365 days |
+
+Asset Management (asset creation and Auto Discovery) has no license entitlement on any plan — it is not quota-limited.
 
 ---
 
@@ -224,7 +226,7 @@ TOKEN=$(curl -s -X POST http://localhost:8001/api/admin/login \
 LICENSE_KEY=$(curl -s -X POST http://localhost:8001/api/admin/licenses \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"plan_type": "basic2", "duration_days": 365, "organization_name": "Test"}' \
+  -d '{"plan_type": "plan_250", "duration_days": 365, "organization_name": "Test"}' \
   | jq -r '.license_key')
 
 echo "License Key: $LICENSE_KEY"
@@ -259,15 +261,17 @@ curl -H "Authorization: Bearer $JWT" http://localhost:8000/api/assets/
 # Check usage before
 curl http://localhost:8000/api/license/status | jq '.usage'
 
-# Perform operation
-curl -X POST http://localhost:8000/api/discovery/scan \
+# Perform an audit (audits and hardens are the only quota-consuming operations)
+curl -X POST http://localhost:8000/api/audit/{device_type}/execute \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
-  -d '{"network": "192.168.1.0/24", "scan_type": "quick"}'
+  -d '{"asset_id": 1}'
 
-# Check usage after (should increment)
+# Check usage after (should increment used_audits)
 curl http://localhost:8000/api/license/status | jq '.usage'
 ```
+
+Note: `POST /api/discovery/scan` never touches `usage` — Auto Discovery is not license-gated.
 
 ---
 
@@ -280,8 +284,8 @@ curl http://localhost:8000/api/license/status | jq '.usage'
 - `POST /api/license/activate` — Activate a license key
 
 **Protected Endpoints (Require Valid License + JWT):**
-- `GET /api/assets/` — List assets
-- `POST /api/discovery/scan` — Run discovery (consumes quota)
+- `GET /api/assets/` — List assets (not quota-gated)
+- `POST /api/discovery/scan` — Run discovery (not quota-gated)
 - `POST /api/audit/{device_type}/execute` — Run audit (consumes quota)
 - `POST /api/harden/{device_type}/execute` — Run hardening (consumes quota)
 - All other `/api/*` endpoints
@@ -321,8 +325,8 @@ curl http://localhost:8000/api/license/status | jq '.usage'
    - Show quota exhausted modals
 
 4. **Display license status in UI**
-   - Plan badge (Pilot, Basic1, Basic2, etc.)
-   - Quota bars (used/max for each operation type)
+   - Plan badge (Pilot, 100/250/500 Audit / Hardening, Unlimited)
+   - Quota bars for audits and hardens (Asset Management has no quota to show)
    - Warning when quota is low
 
 5. **Disable buttons when quota exhausted**
@@ -375,8 +379,8 @@ curl http://localhost:8000/api/license/status | jq '.usage'
 
 1. **License activation** — Works correctly
 2. **License blocking** — All `/api/*` blocked without license
-3. **Quota consumption** — Operations consume quota correctly
-4. **Asset limit** — Cannot exceed max_assets
+3. **Quota consumption** — Audit/harden operations consume quota correctly
+4. **Asset Management unrestricted** — Asset creation and Auto Discovery never check or consume quota
 5. **License persistence** — Survives app restart
 6. **Invalid license key** — Rejected with proper error
 7. **Middleware passthrough** — Login, health, license endpoints accessible
@@ -505,8 +509,8 @@ The license system is **fully implemented and tested**.
 **Key Points:**
 
 1. ✅ License enforcement is working on the main app
-2. ✅ All plans (Pilot, Basic1-3, Enterprise) are supported
-3. ✅ Quota consumption is automatic and accurate
+2. ✅ All plans (Pilot, 100/250/500 Audit / Hardening, Unlimited) are supported
+3. ✅ Quota consumption for audits and hardens is automatic and accurate; Asset Management is intentionally unrestricted
 4. ✅ License is machine-locked and secure
 5. ✅ Comprehensive documentation is provided
 6. ✅ Frontend integration guide is complete

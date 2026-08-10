@@ -64,9 +64,10 @@ def main():
     except Exception as e:
         print(f"✗ Heartbeat failed: {e}")
     
-    # Consume operations
+    # Consume operations (Asset Management has no license entitlement, so only
+    # audit/harden are valid operation types)
     print(f"\n[4/5] Testing operation consumption...")
-    operations = ["discovery", "audit", "harden"]
+    operations = ["audit", "harden"]
     
     for op in operations:
         try:

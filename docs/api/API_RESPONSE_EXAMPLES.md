@@ -16,135 +16,105 @@ Here are the **exact** response formats from `/api/licenses/validate` for differ
   "is_pilot_mode": true,
   "organization_token": "org_abc123def456",
   "limits": {
-    "max_assets": 5,
-    "max_discoveries": 10,
-    "max_audits": 20,
-    "max_hardens": 10,
-    "max_monitors": 5
+    "max_audits": 2,
+    "max_hardens": 2
   },
   "usage": {
-    "used_assets": 2,
-    "used_discoveries": 5,
-    "used_audits": 8,
-    "used_hardens": 3,
-    "used_monitors": 1
+    "used_audits": 1,
+    "used_hardens": 0
   }
 }
 ```
 
 ---
 
-## 2. BASIC1 Plan (Small Network - 15 devices)
+## 2. PLAN_100 Plan (100 Audit / 100 Hardening)
 
 ```json
 {
   "valid": true,
   "message": "License is valid",
-  "plan_type": "basic1",
+  "plan_type": "plan_100",
   "is_pilot_mode": false,
   "organization_token": "org_xyz789ghi012",
   "limits": {
-    "max_assets": 15,
-    "max_discoveries": 50,
     "max_audits": 100,
-    "max_hardens": 50,
-    "max_monitors": 15
+    "max_hardens": 100
   },
   "usage": {
-    "used_assets": 8,
-    "used_discoveries": 25,
     "used_audits": 42,
-    "used_hardens": 18,
-    "used_monitors": 7
+    "used_hardens": 18
   }
 }
 ```
 
 ---
 
-## 3. BASIC2 Plan (Medium Network - 50 devices)
+## 3. PLAN_250 Plan (250 Audit / 250 Hardening)
 
 ```json
 {
   "valid": true,
   "message": "License is valid",
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "organization_token": "org_mno345pqr678",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 200,
-    "max_audits": 500,
-    "max_hardens": 200,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 32,
-    "used_discoveries": 145,
-    "used_audits": 287,
-    "used_hardens": 156,
-    "used_monitors": 28
+    "used_audits": 187,
+    "used_hardens": 96
   }
 }
 ```
 
 ---
 
-## 4. BASIC3 Plan (Large Network - 150 devices)
+## 4. PLAN_500 Plan (500 Audit / 500 Hardening)
 
 ```json
 {
   "valid": true,
   "message": "License is valid",
-  "plan_type": "basic3",
+  "plan_type": "plan_500",
   "is_pilot_mode": false,
   "organization_token": "org_stu901vwx234",
   "limits": {
-    "max_assets": 150,
-    "max_discoveries": 600,
-    "max_audits": 1500,
-    "max_hardens": 600,
-    "max_monitors": 150
+    "max_audits": 500,
+    "max_hardens": 500
   },
   "usage": {
-    "used_assets": 98,
-    "used_discoveries": 412,
-    "used_audits": 876,
-    "used_hardens": 445,
-    "used_monitors": 89
+    "used_audits": 289,
+    "used_hardens": 156
   }
 }
 ```
 
 ---
 
-## 5. ENTERPRISE Plan (Unlimited)
+## 5. UNLIMITED Plan
 
 ```json
 {
   "valid": true,
   "message": "License is valid",
-  "plan_type": "enterprise",
+  "plan_type": "unlimited",
   "is_pilot_mode": false,
   "organization_token": "org_ent567abc890",
   "limits": {
-    "max_assets": null,
-    "max_discoveries": null,
     "max_audits": null,
-    "max_hardens": null,
-    "max_monitors": null
+    "max_hardens": null
   },
   "usage": {
-    "used_assets": 523,
-    "used_discoveries": 1847,
     "used_audits": 4521,
-    "used_hardens": 2103,
-    "used_monitors": 487
+    "used_hardens": 2103
   }
 }
 ```
 
-**Note:** `null` in limits means **unlimited** for Enterprise plan.
+**Note:** `null` in limits means **unlimited** for the Unlimited plan.
 
 ---
 
@@ -172,7 +142,7 @@ Here are the **exact** response formats from `/api/licenses/validate` for differ
 |-------|------|-------------|
 | `valid` | boolean | Whether the license is valid |
 | `message` | string | Human-readable status message |
-| `plan_type` | string | Plan type: `"pilot"`, `"basic1"`, `"basic2"`, `"basic3"`, `"enterprise"` |
+| `plan_type` | string | Plan type: `"pilot"`, `"plan_100"`, `"plan_250"`, `"plan_500"`, `"unlimited"` |
 | `is_pilot_mode` | boolean | `true` only for pilot plan |
 | `organization_token` | string | Secret token for future API calls (only on success) |
 | `limits` | object | Maximum allowed operations (null if invalid) |
@@ -182,33 +152,29 @@ Here are the **exact** response formats from `/api/licenses/validate` for differ
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `max_assets` | integer or null | Maximum devices that can be added (`null` = unlimited) |
-| `max_discoveries` | integer or null | Maximum discovery operations (`null` = unlimited) |
 | `max_audits` | integer or null | Maximum audit operations (`null` = unlimited) |
 | `max_hardens` | integer or null | Maximum hardening operations (`null` = unlimited) |
-| `max_monitors` | integer or null | Maximum monitoring operations (`null` = unlimited) |
+
+Asset Management (asset creation and Auto Discovery) has no corresponding entry here — it is not license-gated and has no quota dimension.
 
 ### Usage Object
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `used_assets` | integer | Number of devices currently added |
-| `used_discoveries` | integer | Number of discoveries performed |
 | `used_audits` | integer | Number of audits performed |
 | `used_hardens` | integer | Number of hardenings performed |
-| `used_monitors` | integer | Number of monitors active |
 
 ---
 
 ## Plan Comparison Table
 
-| Plan | Assets | Discoveries | Audits | Hardens | Monitors |
-|------|--------|-------------|--------|---------|----------|
-| **PILOT** | 5 | 10 | 20 | 10 | 5 |
-| **BASIC1** | 15 | 50 | 100 | 50 | 15 |
-| **BASIC2** | 50 | 200 | 500 | 200 | 50 |
-| **BASIC3** | 150 | 600 | 1500 | 600 | 150 |
-| **ENTERPRISE** | ∞ | ∞ | ∞ | ∞ | ∞ |
+| Plan | Audits | Hardens |
+|------|--------|---------|
+| **PILOT** | 2 | 2 |
+| **PLAN_100** | 100 | 100 |
+| **PLAN_250** | 250 | 250 |
+| **PLAN_500** | 500 | 500 |
+| **UNLIMITED** | ∞ | ∞ |
 
 ---
 
@@ -237,18 +203,16 @@ if (data.valid) {
   console.log('Is Pilot:', data.is_pilot_mode);
   
   // Check limits (null means unlimited)
-  if (data.limits.max_assets === null) {
-    console.log('Unlimited assets!');
+  if (data.limits.max_audits === null) {
+    console.log('Unlimited audits!');
   } else {
-    const remaining = data.limits.max_assets - data.usage.used_assets;
-    console.log(`Assets: ${data.usage.used_assets}/${data.limits.max_assets} (${remaining} remaining)`);
+    const remaining = data.limits.max_audits - data.usage.used_audits;
+    console.log(`Audits: ${data.usage.used_audits}/${data.limits.max_audits} (${remaining} remaining)`);
   }
   
   // Display usage
-  console.log('Discoveries:', data.usage.used_discoveries);
   console.log('Audits:', data.usage.used_audits);
   console.log('Hardens:', data.usage.used_hardens);
-  console.log('Monitors:', data.usage.used_monitors);
 } else {
   console.error('License invalid:', data.message);
 }
@@ -258,11 +222,12 @@ if (data.valid) {
 
 ## Important Notes
 
-1. **`null` vs `0`**: In limits, `null` means unlimited (Enterprise plan), while `0` would mean not allowed
+1. **`null` vs `0`**: In limits, `null` means unlimited (Unlimited plan), while `0` would mean not allowed
 2. **Usage counters**: Always integers, never null, start at 0
 3. **organization_token**: Only returned when `valid: true`, save it securely
 4. **Signature required**: `/validate` endpoint requires HMAC signature in headers
 5. **All fields present**: Even when `valid: false`, all fields exist (but some are null)
+6. **Asset Management is unrestricted**: Asset creation and Auto Discovery scans are never quota-checked and never appear in `limits`/`usage`
 
 ---
 
@@ -285,16 +250,13 @@ The `/api/licenses/activate` endpoint returns the **same format** as validate:
 {
   "valid": true,
   "message": "License activated successfully",
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "organization_token": "org_new_token_here",
   "limits": { ... },
   "usage": {
-    "used_assets": 0,
-    "used_discoveries": 0,
     "used_audits": 0,
-    "used_hardens": 0,
-    "used_monitors": 0
+    "used_hardens": 0
   }
 }
 ```

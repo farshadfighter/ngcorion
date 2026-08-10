@@ -61,13 +61,11 @@ export const OverviewHome = () => (
 // ── Thin route wrappers that translate the old onNavigate* callbacks into ──────
 //    router navigation, so the child components stay unchanged.
 export const AssetListRoute = () => {
-    const navigate = useNavigate();
-    return <AssetList onNavigateToLicence={() => navigate("/settings/license")} />;
+    return <AssetList />;
 };
 
 export const AutoDiscoveryRoute = () => {
-    const navigate = useNavigate();
-    return <AutoDiscovery onNavigateToLicence={() => navigate("/settings/license")} />;
+    return <AutoDiscovery />;
 };
 
 export const HardeningRoute = () => {

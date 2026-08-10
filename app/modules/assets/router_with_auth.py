@@ -21,7 +21,7 @@ from .schemas import (
     PaginatedResponse
 )
 from .service import AssetService
-from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission, require_asset_quota
+from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission
 from app.models import User
 from app.models import (
     log_requirement_create, log_requirement_update, log_requirement_delete, log_requirement_import,
@@ -167,9 +167,9 @@ def create_asset(
     data: AssetCreate,
     current_user: User = Depends(require_permission("ASSET_LIST", "write")),
     db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_asset_quota())
 ):
-    """Create asset (requires write permission)"""
+    """Create asset (requires write permission). Not license-gated — Asset
+    Management has no quota/entitlement of its own."""
     asset_data = data.model_dump()
     # If user_id not provided, use current user
     if not asset_data.get('user_id'):

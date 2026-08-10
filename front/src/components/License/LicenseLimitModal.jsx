@@ -6,10 +6,9 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
     const license = LICENSE_TYPES[planType];
 
     if (!isOpen) return null;
+    // Asset Management is not license-gated, so it has no entry here.
     const MODULE_LABELS = {
         auditing: "Auditing",
-        autoDiscovery: "Auto Discovery",
-        assetList: "Asset",
         hardening: "Hardening",
     };
 

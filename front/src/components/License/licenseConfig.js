@@ -1,3 +1,7 @@
+// Asset Management has no license entitlement — plans only track Auditing
+// and Hardening. Keep this in sync with the backend catalog:
+// license_server/app/crud.py (get_plan_limits) / license_server/app/models.py
+// (PlanType enum).
 export const LICENSE_TYPES = {
     pilot: {
         name: 'pilot licence',
@@ -7,51 +11,43 @@ export const LICENSE_TYPES = {
         limits: {
             hardening: 2,
             auditing: 2,
-            assetList: 5,
-            autoDiscovery: 2,
         },
         duration: '1month',
     },
-    basic1: {
-        name: 'base licence',
+    plan_100: {
+        name: '100 audit / 100 hardening',
         color: '#3B82F6',
         borderColor: '#3B82F6',
         bgColor: '#EFF6FF',
         limits: {
-            hardening: 15,
-            auditing: 15,
-            assetList: 15,
-            autoDiscovery: 15,
+            hardening: 100,
+            auditing: 100,
         },
         duration: '1year',
     },
-    basic2: {
-        name: 'pro licence',
+    plan_250: {
+        name: '250 audit / 250 hardening',
         color: '#10B981',
         borderColor: '#10B981',
         bgColor: '#ECFDF5',
         limits: {
-            hardening: 50,
-            auditing: 50,
-            assetList: 50,
-            autoDiscovery: 50,
+            hardening: 250,
+            auditing: 250,
         },
         duration: '1year',
     },
-    basic3: {
-        name: 'pro plus licence',
+    plan_500: {
+        name: '500 audit / 500 hardening',
         color: '#F59E0B',
         borderColor: '#F59E0B',
         bgColor: '#FFFBEB',
         limits: {
-            hardening: 150,
-            auditing: 150,
-            assetList: 150,
-            autoDiscovery: 150,
+            hardening: 500,
+            auditing: 500,
         },
         duration: '1year',
     },
-    enterprise: {
+    unlimited: {
         name: 'unlimited licence',
         color: '#8B5CF6',
         borderColor: '#8B5CF6',
@@ -59,8 +55,6 @@ export const LICENSE_TYPES = {
         limits: {
             hardening: Infinity,
             auditing: Infinity,
-            assetList: Infinity,
-            autoDiscovery: Infinity,
         },
         duration: '1year',
     },
@@ -69,27 +63,14 @@ export const LICENSE_TYPES = {
 export const MODULE_LABELS = {
     hardening: 'Hardening',
     auditing: 'Auditing',
-    assetList: 'Asset list',
-    autoDiscovery: 'Asset Auto Discovery',
 };
 
 export const MODULE_ICONS = {
     hardening: 'fa-shield-halved',
     auditing: 'fa-clipboard-list',
-    assetList: 'fa-box-archive',
-    autoDiscovery: 'fa-magnifying-glass',
 };
 
 export const API_FIELD_MAP = {
     hardening: { used: 'used_hardens', max: 'max_hardens' },
     auditing: { used: 'used_audits', max: 'max_audits' },
-    assetList: { used: 'used_assets', max: 'max_assets' },
-    autoDiscovery: { used: 'used_discoveries', max: 'max_discoveries' },
-};
-
-export const OPERATION_TYPES = {
-    hardening: 'harden',
-    auditing: 'audit',
-    assetList: 'asset',
-    autoDiscovery: 'discovery',
 };

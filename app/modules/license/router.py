@@ -4,15 +4,13 @@ License Router
 Endpoints for license activation and status checking.
 Frontend talks to these endpoints instead of directly to the license server.
 """
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import logging
 import requests
-from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.core.license_state import get_license_state, refresh_license_state, set_license_state
 from app.core.heartbeat import start_heartbeat
 
@@ -44,7 +42,7 @@ class LicenseStatusResponse(BaseModel):
 
 
 @router.get("/status", response_model=LicenseStatusResponse)
-def get_license_status(request: Request, db: Session = Depends(get_db)):
+def get_license_status(request: Request):
     """
     Get current license status.
 
@@ -56,9 +54,8 @@ def get_license_status(request: Request, db: Session = Depends(get_db)):
     license server on every status read, falling back to the cached state only
     when the server is unreachable.
 
-    `used_assets` is reported as the live count of assets in this app's own
-    database, since assets are an inventory that can grow and shrink (deleting an
-    asset frees a slot), unlike the monotonic audit/harden/discovery counters.
+    Asset Management is not license-gated — `limits`/`usage` only ever contain
+    the audit/hardening dimensions.
     """
     state = get_license_state()
     client = getattr(request.app.state, "license_client", None)
@@ -81,9 +78,6 @@ def get_license_status(request: Request, db: Session = Depends(get_db)):
             logger.warning(f"License status refresh failed, using cached state: {e}")
 
     usage = dict(state.usage) if state.usage else None
-    if usage is not None:
-        # Assets are a live inventory owned by this app, not a cumulative quota.
-        usage["used_assets"] = _count_assets(db)
 
     return LicenseStatusResponse(
         valid=state.valid,
@@ -93,12 +87,6 @@ def get_license_status(request: Request, db: Session = Depends(get_db)):
         limits=state.limits,
         usage=usage
     )
-
-
-def _count_assets(db: Session) -> int:
-    """Return the current number of assets in this app's database."""
-    from app.models import Asset
-    return db.query(Asset).count()
 
 
 @router.post("/activate", response_model=LicenseStatusResponse)

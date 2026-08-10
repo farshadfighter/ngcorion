@@ -67,7 +67,7 @@ LICENSE_KEY=$(curl -s -X POST http://localhost:8001/api/admin/licenses \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "plan_type": "basic2",
+    "plan_type": "plan_250",
     "duration_days": 365,
     "organization_name": "Test Org"
   }' | jq -r '.license_key')
@@ -126,8 +126,8 @@ echo "Your License Key: $LICENSE_KEY"
 3. Check "Active licence" tab
 
 ### ✅ Pass Criteria
-- Shows plan type (e.g., "Basic 50")
-- Shows usage bars (Assets, Discoveries, Audits, etc.)
+- Shows plan type (e.g., "250 Audit / 250 Hardening")
+- Shows usage bars (Audits, Hardens)
 - Shows current usage vs limits
 - All numbers are correct
 
@@ -137,14 +137,15 @@ echo "Your License Key: $LICENSE_KEY"
 
 ### Steps
 1. Check current usage in License page
-2. Perform a discovery scan
-3. Wait for scan to complete
+2. Perform an audit
+3. Wait for the audit to complete
 4. Refresh License page or wait 5 minutes
 
 ### ✅ Pass Criteria
-- Usage counter increments (e.g., used_discoveries: 0 → 1)
+- Usage counter increments (e.g., used_audits: 0 → 1)
 - Limits remain the same
 - Progress bars update
+- Creating assets or running Auto Discovery does NOT change any usage counter (not license-gated)
 
 ---
 
@@ -174,8 +175,8 @@ echo "Pilot License Key: $PILOT_KEY"
 
 ### Step 3: Exhaust Quota
 
-1. Perform 10 discovery scans (pilot limit)
-2. Try to perform 11th scan
+1. Perform 2 audits (pilot limit)
+2. Try to perform a 3rd audit
 
 ### ✅ Pass Criteria
 - Modal appears: "Quota Limit Reached"
@@ -280,22 +281,16 @@ curl http://localhost:8000/api/license/status
 ```json
 {
   "valid": true,
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "message": "License is valid",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 200,
-    "max_audits": 500,
-    "max_hardens": 200,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 0,
-    "used_discoveries": 1,
-    "used_audits": 0,
-    "used_hardens": 0,
-    "used_monitors": 0
+    "used_audits": 1,
+    "used_hardens": 0
   }
 }
 ```
