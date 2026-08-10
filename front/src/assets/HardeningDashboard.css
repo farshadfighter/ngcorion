@@ -243,6 +243,8 @@
 .hd-status-failed    { background: #fee2e2; color: #991b1b; }
 .hd-status-pending,
 .hd-status-executing { background: #fef3c7; color: #92400e; }
+/* hardening_actions.status also allows "blocked" (app/models/hardening.py). */
+.hd-status-blocked   { background: #fee2e2; color: #991b1b; }
 .hd-status-skipped,
 .hd-status-audited   { background: #e5e7eb; color: #374151; }
 
@@ -311,6 +313,13 @@
 .hd-impact-subtitle {
     margin: 0;
     font-size: 15px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.hd-impact-total {
+    margin: 0;
+    font-size: 20px;
     font-weight: 700;
     color: #14213D;
 }

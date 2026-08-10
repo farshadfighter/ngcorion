@@ -5,9 +5,10 @@ Read-only aggregate endpoints backing the Hardening KPI dashboard. Everything
 here is derived from data the hardening flow already writes (hardening_actions,
 joined to audit_results / asset_inventory) — no new tables, no writes.
 
-One panel from the design is still absent because it needs a product decision
-rather than a query: "Hardening Impact" (before/after findings) has nothing
-recording the pre-hardening baseline, the same gap the risk module has.
+"Hardening Impact" (before/after findings) has no stored baseline either, but
+it does not need one: the findings hardening was applied to are recoverable
+from hardening_actions.audit_result_id, so the before/after pair is derived
+from them rather than from a snapshot. See /impact.
 """
 import logging
 from typing import Any, Dict, List
@@ -314,6 +315,71 @@ def top_missing_controls(
             for r in rows
         ]
     }
+
+
+@router.get("/impact")
+def hardening_impact(
+    _current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db),
+):
+    """
+    "Hardening Impact": critical/high findings before vs after hardening.
+
+    There is no stored pre-hardening baseline, but one is derivable from data
+    already written: every hardening_actions row points at the audit_results
+    row it was created from, and that row was FAIL at the time. So the
+    "before" set is the distinct findings hardening was attempted on, and
+    "after" is that same set minus the ones an action actually fixed.
+
+    Scoped to findings hardening touched — it is the impact *of hardening*,
+    not of the whole estate. A finding nobody tried to fix would otherwise sit
+    unchanged on both sides and flatten the comparison.
+    """
+    row = db.execute(text("""
+        WITH targeted AS (
+            -- One row per audit finding a hardening action was created for.
+            SELECT
+                r.id,
+                LOWER(COALESCE(r.severity, '')) AS severity,
+                BOOL_OR(h.status = 'success')   AS fixed
+            FROM audit_results r
+            JOIN hardening_actions h ON h.audit_result_id = r.id
+            WHERE r.status = :fail_status
+            GROUP BY r.id, LOWER(COALESCE(r.severity, ''))
+        )
+        SELECT
+            COUNT(*) FILTER (WHERE severity = 'critical')                  AS before_critical,
+            COUNT(*) FILTER (WHERE severity = 'high')                      AS before_high,
+            COUNT(*) FILTER (WHERE severity = 'critical' AND NOT fixed)    AS after_critical,
+            COUNT(*) FILTER (WHERE severity = 'high'     AND NOT fixed)    AS after_high
+        FROM targeted
+    """), {"fail_status": CheckStatus.FAIL.name}).mappings().first()
+
+    before_critical = int(row["before_critical"] or 0)
+    before_high = int(row["before_high"] or 0)
+    after_critical = int(row["after_critical"] or 0)
+    after_high = int(row["after_high"] or 0)
+    before_total = before_critical + before_high
+
+    result = {
+        "before": [
+            {"label": "Critical", "value": before_critical},
+            {"label": "High", "value": before_high},
+        ],
+        "after": [
+            {"label": "Critical", "value": after_critical},
+            {"label": "High", "value": after_high},
+        ],
+        "resolved": before_total - (after_critical + after_high),
+        "reduction_percent": _pct(
+            before_total - (after_critical + after_high), before_total
+        ),
+    }
+    if before_total == 0:
+        result["message"] = (
+            "No critical or high findings have been targeted by hardening yet."
+        )
+    return result
 
 
 @router.get("/assets-requiring-hardening")

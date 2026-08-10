@@ -142,6 +142,13 @@ const hdActivities = { items: Array.from({length:8},(_,i)=>({
     created_at:new Date(Date.now()-i*3600_000).toISOString(), completed_at:null,
 }))};
 
+const hdImpact = {
+    before: [{ label:"Critical", value:48 }, { label:"High", value:126 }],
+    after:  [{ label:"Critical", value:9 },  { label:"High", value:31  }],
+    resolved: 134,
+    reduction_percent: 77,
+};
+
 // ── Static store (thunks fire and reject against the file server; ignored) ──
 
 const store = configureStore({
@@ -160,6 +167,7 @@ const store = configureStore({
         hardeningDashboard: (state = {
             overview: hdOverview, progress: hdProgress, coverage: hdCoverage,
             vendors: hdVendors, compliance: hdCompliance, activities: hdActivities,
+            impact: hdImpact,
             failedPanels: [], isLoading: false, error: null,
         }) => state,
     },

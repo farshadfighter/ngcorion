@@ -4,14 +4,12 @@ import api from "../config/api";
 /**
  * Hardening KPI dashboard data.
  *
- * Six aggregate endpoints are fetched together; each is allowed to fail on its
+ * Every aggregate endpoint is fetched together; each is allowed to fail on its
  * own so one broken panel does not blank the page.
  *
- * Two panels from the Figma design have no endpoint yet because they need a
- * backend decision, not a query — see the notes in
- * app/modules/hardening/dashboard_router.py:
- *   - "Hardening Impact" (before/after) needs a pre-hardening baseline.
- *   - "Assets Requiring Hardening" pulls its Risk column from the risk module.
+ * "Hardening Impact" has no stored pre-hardening baseline, but the backend
+ * derives one from the findings hardening was applied to — see /impact in
+ * app/modules/hardening/dashboard_router.py.
  */
 const ENDPOINTS = {
     overview: "/api/hardening/dashboard/overview",
@@ -22,6 +20,7 @@ const ENDPOINTS = {
     activities: "/api/hardening/dashboard/recent-activities",
     requiring: "/api/hardening/dashboard/assets-requiring-hardening",
     missing: "/api/hardening/dashboard/top-missing-controls",
+    impact: "/api/hardening/dashboard/impact",
 };
 
 export const fetchHardeningDashboard = createAsyncThunk(
@@ -81,6 +80,7 @@ const hardeningDashboardSlice = createSlice({
         activities: null,
         requiring: null,
         missing: null,
+        impact: null,
         failedPanels: [],
         isLoading: false,
         error: null,
