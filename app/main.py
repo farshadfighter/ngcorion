@@ -19,6 +19,7 @@ from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
 from app.modules.discovery.discovery_logs_router import router as discovery_logs_router
 from app.modules.hardening.hardening_logs_router import router as hardening_logs_router
+from app.modules.hardening.dashboard_router import router as hardening_dashboard_router
 from app.modules.hardening.harden_all import router as harden_all_router
 from app.modules.hardening.dashboard_router import router as hardening_dashboard_router
 
@@ -193,6 +194,9 @@ app.include_router(discovery_logs_router)
 
 # Hardening Logs routes
 app.include_router(hardening_logs_router)
+
+# Hardening Dashboard routes (risk-aware)
+app.include_router(hardening_dashboard_router)
 
 # Cisco CIS Audit routes
 app.include_router(cisco_audit_router)

@@ -1,0 +1,26 @@
+[project]
+name = "netease"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.12.0",
+    "bcrypt>=4.0.1,<4.1.0",
+    "cryptography>=43.0.0",
+    "fastapi>=0.100.0",
+    "netmiko>=4.2.0",
+    "openpyxl>=3.1.0",
+    "paramiko>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.0.0",
+    "pydantic[email]>=2.13.4",
+    "pymssql>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "python-multipart>=0.0.32",
+    "pywinrm>=0.4.3",
+    "requests>=2.31.0",
+    "sqlalchemy>=2.0.0",
+    "uvicorn[standard]>=0.23.0",
+]

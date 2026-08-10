@@ -24,7 +24,8 @@ from app.core.database import SessionLocal, get_db
 from app.core.dependencies import require_permission
 from app.models import User, log_action, log_asset_updated
 from app.models.asset import Asset
-from app.models.audit import AuditResult, CheckStatus
+from app.models.audit import AuditCheck, AuditResult, AuditSession, CheckStatus
+from app.models.hardening import HardeningAction
 from app.models.enums import ConfidentialityLevelEnum
 from app.models.risk import (
     AssetOpenPort,
@@ -187,6 +188,73 @@ def _get_asset_or_404(db: Session, asset_id: int) -> Asset:
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
     return asset
+
+
+def _hardening_impact(
+    db: Session, asset_id: int, score: Optional[AssetRiskScore]
+) -> dict:
+    """Baseline-vs-current risk comparison around this asset's first hardening.
+
+    Baseline = the last risk history snapshot recorded *before* the earliest
+    hardening execution. Lets the UI show how much hardening reduced risk.
+    All fields are null when the asset has never been hardened, and only the
+    baseline fields are null when no history predates the first hardening.
+    """
+    empty = {
+        "baseline_score": None,
+        "baseline_level": None,
+        "baseline_date": None,
+        "current_score": None,
+        "current_level": None,
+        "reduction": None,
+        "reduction_percent": None,
+    }
+
+    # Earliest hardening execution for this asset. min() ignores NULL
+    # executed_at values (preview rows), so this is the first real change.
+    first_hardening_date = (
+        db.query(func.min(HardeningAction.executed_at))
+        .filter(HardeningAction.asset_id == asset_id)
+        .scalar()
+    )
+    if first_hardening_date is None:
+        return empty
+
+    current_score = _num(score.final_risk_score) if score else None
+    current_level = score.risk_level if score else None
+
+    baseline_row = (
+        db.query(AssetRiskHistory)
+        .filter(
+            AssetRiskHistory.asset_id == asset_id,
+            AssetRiskHistory.calculated_at < first_hardening_date,
+        )
+        .order_by(AssetRiskHistory.calculated_at.desc())
+        .first()
+    )
+
+    baseline_score = _num(baseline_row.risk_score) if baseline_row else None
+    baseline_level = baseline_row.risk_level if baseline_row else None
+    baseline_date = _dt(baseline_row.calculated_at) if baseline_row else None
+
+    reduction = None
+    reduction_percent = None
+    if baseline_score is not None and current_score is not None:
+        reduction = round(baseline_score - current_score, 2)
+        if baseline_score != 0:
+            reduction_percent = round(
+                100.0 * (baseline_score - current_score) / baseline_score, 2
+            )
+
+    return {
+        "baseline_score": baseline_score,
+        "baseline_level": baseline_level,
+        "baseline_date": baseline_date,
+        "current_score": current_score,
+        "current_level": current_level,
+        "reduction": reduction,
+        "reduction_percent": reduction_percent,
+    }
 
 
 def _settings_dict(db: Session) -> Dict[str, Any]:
@@ -597,11 +665,98 @@ def get_asset_risk_detail(
         "risk_score": _score_to_dict(score) if score else None,
         "open_ports": [_port_to_dict(p) for p in ports],
         "audit_summary": audit_summary,
+        "hardening_impact": _hardening_impact(db, asset_id, score),
         "history": [_history_to_dict(h) for h in history],
         "incomplete_data": score.incomplete_data if score else True,
         "incomplete_reasons": (score.incomplete_reasons_json or []) if score
                               else ["not_calculated"],
     }
+
+
+# ======================================================================
+# Per-finding hardening status
+# ======================================================================
+
+@router.get("/assets/{asset_id}/findings")
+def get_asset_findings(
+    asset_id: int,
+    _current_user: User = Depends(require_permission("RISK", "read")),
+    db: Session = Depends(get_db),
+):
+    """Failed audit findings for the asset's latest valid audit session, each
+    annotated with its hardening/remediation status.
+
+    A finding is `is_resolved` only when a non-preview hardening action ran
+    successfully *and* its post-fix verification passed — the same rule the
+    risk engine uses to drop a failure from the active count (service.py).
+    """
+    _get_asset_or_404(db, asset_id)
+
+    # Latest non-running audit session (matches the risk engine's selection).
+    session = (
+        db.query(AuditSession)
+        .filter(AuditSession.asset_id == asset_id,
+                AuditSession.status != "running")
+        .order_by(AuditSession.started_at.desc())
+        .first()
+    )
+    if session is None:
+        return {"audit_session_id": None, "findings": []}
+
+    # LEFT JOIN so failed findings with no hardening action are still returned.
+    # AuditCheck is joined for the remediation text (runtime CIS results may
+    # have no check_id, so it's an outer join too).
+    rows = (
+        db.query(AuditResult, HardeningAction, AuditCheck)
+        .outerjoin(
+            HardeningAction, HardeningAction.audit_result_id == AuditResult.id
+        )
+        .outerjoin(AuditCheck, AuditCheck.id == AuditResult.check_id)
+        .filter(AuditResult.session_id == session.id,
+                AuditResult.status == CheckStatus.FAIL)
+        .order_by(AuditResult.id, HardeningAction.created_at.desc())
+        .all()
+    )
+
+    # Collapse the join to one entry per finding. Keep the most recent
+    # hardening action for the displayed status, but derive is_resolved from
+    # *any* qualifying action for that finding.
+    findings: Dict[int, dict] = {}
+    for result, action, check in rows:
+        entry = findings.get(result.id)
+        if entry is None:
+            entry = {
+                "control_id": result.check_number,
+                "control_name": result.check_title
+                or (check.title if check else None),
+                "severity": result.severity,
+                "audit_status": result.status.value if result.status else None,
+                "hardening_status": None,
+                "verification_passed": None,
+                "is_resolved": False,
+                "remediation": check.remediation if check else None,
+                "_seen_action": False,
+            }
+            findings[result.id] = entry
+
+        if action is not None:
+            # Rows are ordered newest-first per finding, so the first action
+            # we see is the latest one — use it for the displayed status.
+            if not entry["_seen_action"]:
+                entry["hardening_status"] = action.status
+                entry["verification_passed"] = action.verification_passed
+                entry["_seen_action"] = True
+            if (action.action_type != "preview"
+                    and action.status == "success"
+                    and action.verification_passed is True):
+                entry["is_resolved"] = True
+
+    items = []
+    for entry in findings.values():
+        entry.pop("_seen_action", None)
+        items.append(entry)
+
+    return {"audit_session_id": session.id, "findings": items}
 
 
 # ======================================================================

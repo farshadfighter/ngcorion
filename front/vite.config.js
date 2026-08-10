@@ -9,11 +9,11 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/auth": {
-        target: "http://172.16.200.90:8000",
+        target: "http://backend", // TODO: ofc its only for dev. 
         changeOrigin: true,
       },
       "/api": {
-        target: "http://172.16.200.90:8000",
+        target: "http://backend",
         changeOrigin: true,
       },
     },

@@ -5,25 +5,24 @@ Read-only aggregate endpoints backing the Hardening KPI dashboard. Everything
 here is derived from data the hardening flow already writes (hardening_actions,
 joined to audit_results / asset_inventory) — no new tables, no writes.
 
-Two panels from the design are deliberately absent because they need a product
-decision rather than a query:
-
-  * "Hardening Impact" (before/after findings) — nothing records the
-    pre-hardening baseline, the same gap the risk module has.
-  * "Assets Requiring Hardening" — the Risk column comes from the risk module,
-    so its owner/permission needs deciding first.
+One panel from the design is still absent because it needs a product decision
+rather than a query: "Hardening Impact" (before/after findings) has nothing
+recording the pre-hardening baseline, the same gap the risk module has.
 """
 import logging
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import text
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.models import User
 from app.models.audit import CheckStatus
+from app.models.asset import Asset
+from app.models.hardening import HardeningAction
+from app.models.risk import AssetRiskScore
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +32,24 @@ router = APIRouter(prefix="/api/hardening/dashboard", tags=["Hardening Dashboard
 SUCCESS_STATUSES = ("success",)
 FAILED_STATUSES = ("failed",)
 PENDING_STATUSES = ("pending", "executing")
+
+
+# Columns the caller may sort by -> the SQLAlchemy expression backing each.
+_SORTABLE_COLUMNS = {
+    "final_risk_score": AssetRiskScore.final_risk_score,
+    "risk_level": AssetRiskScore.risk_level,
+    "active_findings_count": AssetRiskScore.active_audit_findings_count,
+    "resolved_by_hardening": AssetRiskScore.resolved_by_hardening_count,
+    "asset_name": Asset.asset_name,
+}
+
+
+def _dt(value):
+    return value.isoformat() if value is not None else None
+
+
+def _num(value):
+    return float(value) if value is not None else None
 
 
 def _rows(db: Session, sql: str, params: Dict[str, Any] | None = None) -> List[Dict]:
@@ -257,51 +274,6 @@ def recent_activities(
     }
 
 
-@router.get("/assets-requiring-hardening")
-def assets_requiring_hardening(
-    limit: int = Query(10, ge=1, le=50),
-    _current_user: User = Depends(require_permission("HARDENING", "read")),
-    db: Session = Depends(get_db),
-):
-    """
-    Assets with the most unresolved failed checks, worst first.
-
-    The design labels the second column "Risk". The risk module owns the real
-    risk level, so it is read from asset_risk_scores when a score exists; the
-    outer query stays in the hardening module and only needs HARDENING read.
-    """
-    rows = _rows(db, """
-        SELECT
-            a.id                        AS asset_id,
-            a.asset_name,
-            s.risk_level,
-            COUNT(DISTINCT r.id)        AS open_findings
-        FROM audit_results r
-        JOIN audit_sessions ses ON ses.id = r.session_id
-        JOIN asset_inventory a  ON a.id = ses.asset_id
-        LEFT JOIN asset_risk_scores s ON s.asset_id = a.id
-        WHERE r.status = :fail_status
-          AND NOT EXISTS (
-              SELECT 1 FROM hardening_actions h
-              WHERE h.audit_result_id = r.id AND h.status = 'success'
-          )
-        GROUP BY a.id, a.asset_name, s.risk_level
-        ORDER BY COUNT(DISTINCT r.id) DESC, a.asset_name ASC
-        LIMIT :limit
-    """, {"limit": limit, "fail_status": CheckStatus.FAIL.name})
-    return {
-        "items": [
-            {
-                "asset_id": int(r["asset_id"]),
-                "asset_name": r["asset_name"],
-                "risk_level": r["risk_level"],
-                "open_findings": int(r["open_findings"]),
-            }
-            for r in rows
-        ]
-    }
-
-
 @router.get("/top-missing-controls")
 def top_missing_controls(
     limit: int = Query(10, ge=1, le=50),
@@ -341,4 +313,76 @@ def top_missing_controls(
             }
             for r in rows
         ]
+    }
+
+
+@router.get("/assets-requiring-hardening")
+def assets_requiring_hardening(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    risk_level: str = Query(None),
+    sort_by: str = Query("final_risk_score"),
+    sort_order: str = Query("desc"),
+    _current_user: User = Depends(require_permission("HARDENING", "read")),
+    db: Session = Depends(get_db),
+):
+    """Paginated list of assets that still have active audit findings, ranked
+    by their current risk score. Each row carries how many findings have
+    already been resolved by hardening and when the asset was last hardened."""
+    if sort_by not in _SORTABLE_COLUMNS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid sort_by; allowed: {', '.join(sorted(_SORTABLE_COLUMNS))}",
+        )
+
+    # Latest hardening execution per asset (NULL executed_at previews ignored).
+    last_hardening = (
+        db.query(
+            HardeningAction.asset_id.label("asset_id"),
+            func.max(HardeningAction.executed_at).label("last_date"),
+        )
+        .group_by(HardeningAction.asset_id)
+        .subquery()
+    )
+
+    query = (
+        db.query(AssetRiskScore, Asset, last_hardening.c.last_date)
+        .join(Asset, Asset.id == AssetRiskScore.asset_id)
+        .outerjoin(last_hardening, last_hardening.c.asset_id == AssetRiskScore.asset_id)
+        .filter(AssetRiskScore.active_audit_findings_count > 0)
+    )
+    if risk_level:
+        query = query.filter(AssetRiskScore.risk_level == risk_level)
+
+    total = query.count()
+
+    column = _SORTABLE_COLUMNS[sort_by]
+    order = column.desc() if sort_order.lower() == "desc" else column.asc()
+    rows = (
+        query.order_by(order, AssetRiskScore.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    items = [
+        {
+            "asset_id": asset.id,
+            "asset_name": asset.asset_name,
+            "ip_address": asset.ip_address,
+            "vendor": asset.manufacturer,
+            "risk_score": _num(score.final_risk_score),
+            "risk_level": score.risk_level,
+            "active_findings_count": score.active_audit_findings_count,
+            "resolved_by_hardening": score.resolved_by_hardening_count,
+            "last_hardening_date": _dt(last_date),
+        }
+        for score, asset, last_date in rows
+    ]
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "items": items,
     }
