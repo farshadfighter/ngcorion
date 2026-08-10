@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAllLogs, clearLogs } from "../../store/logsSlice.js";
+import { Pagination } from "./Pagination.jsx";
 import "../../assets/LogsPage.css";
 
 export const LogsPage = () => {
@@ -8,6 +9,8 @@ export const LogsPage = () => {
     const { items, isLoading, isCleared } = useSelector((state) => state.logs);
 
     const [sortDirection, setSortDirection] = useState("desc");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
 
     useEffect(() => {
         if (!isCleared) {
@@ -25,12 +28,22 @@ export const LogsPage = () => {
 
     const handleSort = () => {
         setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
+        setPage(1);
     };
 
     const sortedItems = [...items].sort((a, b) => {
         const diff = new Date(b.timestamp) - new Date(a.timestamp);
         return sortDirection === "desc" ? diff : -diff;
     });
+
+    // Logs are merged from six endpoints and sorted here, so paging is
+    // client-side; a server page would only cover one source.
+    const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const pageItems = sortedItems.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
 
     const formatTimestamp = (ts) => {
         if (!ts) return "-";
@@ -113,9 +126,10 @@ export const LogsPage = () => {
                             </td>
                         </tr>
                     ) : (
-                        sortedItems.map((item, index) => (
+                        pageItems.map((item, index) => (
                             <tr key={item.id}>
-                                <td>{index + 1}</td>
+                                {/* Keep numbering continuous across pages. */}
+                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                 <td>{item.username || "-"}</td>
                                 <td>{item.action || "-"}</td>
                                 <td>{item.asset_name || "-"}</td>
@@ -133,6 +147,17 @@ export const LogsPage = () => {
                     )}
                     </tbody>
                 </table>
+
+                <Pagination
+                    page={currentPage}
+                    pageSize={pageSize}
+                    totalItems={sortedItems.length}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                    }}
+                />
             </div>
         </div>
     );

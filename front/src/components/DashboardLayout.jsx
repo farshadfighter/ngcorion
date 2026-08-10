@@ -20,6 +20,9 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/assets"))               return "asset-management";
     if (pathname.startsWith("/audit/sessions"))       return "operation-device";
     if (pathname.startsWith("/audit"))                return "auditing";
+    // More specific first: /hardening/overview must not fall through to the
+    // Operation & Device sub-item.
+    if (pathname.startsWith("/hardening/overview"))   return "hardening-overview";
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/backup"))               return "backup";
     if (pathname.startsWith("/settings/users"))       return "user-management";
@@ -105,6 +108,7 @@ export const DashboardLayout = () => {
         "auditing":            "Auditing",
         "operation-device":    "Operation and Device",
         "hardening":           "Hardening",
+        "hardening-overview":  "Hardening",
         "hardening-operation": "Operation and Device",
         "risk-intelligence":   "Risk Intelligence",
         "risk-asset":          "Risk Asset",
@@ -194,7 +198,8 @@ export const DashboardLayout = () => {
                     {canReadHardening && (
                         <>
                             {!isSidebarCollapsed && (
-                                <div className="nav-section">
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "hardening-overview" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/hardening/overview")}>
                                     <img src="/icons/hardening.svg" alt="" className="section-icon" />
                                     <span className="nav-section-title">Hardening</span>
                                 </div>

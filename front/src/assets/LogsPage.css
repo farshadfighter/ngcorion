@@ -161,3 +161,83 @@
     font-weight: 600;
     color: #1e3a5f;
 }
+/* ── Pagination bar ──────────────────────────────────────────────────────── */
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 14px 4px 4px;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Matches .logs-page-btn so both controls read as one family. */
+.pagination-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #1e3a5f;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled):not(.is-active) {
+    background: #1e3a5f;
+    color: white;
+    border-color: #1e3a5f;
+}
+
+.pagination-btn.is-active {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+    cursor: default;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-gap {
+    padding: 0 4px;
+    color: #9ca3af;
+}
+
+.pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.pagination-size select {
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font: inherit;
+    font-size: 13px;
+    color: #1e3a5f;
+    cursor: pointer;
+}

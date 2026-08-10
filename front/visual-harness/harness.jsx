@@ -8,10 +8,17 @@ import { configureStore } from "@reduxjs/toolkit";
 import "../src/index.css";
 import "../src/assets/Dashboard.css";
 import "../src/assets/Auditing.css";
+// LogsPage reuses .requirement-table / .table-container from AssetRequirement.css,
+// which App.jsx loads globally.
+import "../src/assets/AssetRequirement.css";
+import "../src/assets/LogsPage.css";
+import "../src/assets/HardeningDashboard.css";
 
 import { AuditingResultModal } from "../src/components/Auditing/AuditingResultModal";
 import { FixUnsuccessfulResults } from "../src/components/Hardening/FixUnsuccessfulResults";
 import { HardeningResults } from "../src/components/Hardening/HardeningResults";
+import { LogsPage } from "../src/components/Logs/LogsPage";
+import { HardeningDashboard } from "../src/components/Hardening/dashboard/HardeningDashboard";
 
 // ── Mock data ────────────────────────────────────────────────────────────────
 
@@ -83,6 +90,58 @@ for (let i = 0; i < 25; i++) {
     cisChecks.push({ ...filler });
 }
 
+
+// ── Logs mock (pagination check) ────────────────────────────────────────────
+const SECTIONS = ["Login", "Auditing", "Hardening", "Asset Management", "Auto Discovery"];
+const logItems = Array.from({ length: 137 }, (_, i) => ({
+    id: `log-${i + 1}`,
+    username: "admin",
+    action: ["Login", "execute", "preview", "audit_executed"][i % 4],
+    asset_name: i % 3 === 0 ? "Cisco" : "-",
+    section: SECTIONS[i % SECTIONS.length],
+    status: i % 5 === 0 ? "failed" : "success",
+    timestamp: new Date(Date.now() - i * 3600_000).toISOString(),
+}));
+
+
+// ── Hardening dashboard mock ────────────────────────────────────────────────
+const hdOverview = {
+    hardening_score: 87, hardened_assets: 1920, non_hardened_assets: 280,
+    applied_policies: 18540, failed_actions: 84, pending_actions: 212,
+    distinct_controls: 340,
+    automation: { executed_tasks: 5400, success_rate: 80, success: 2145, failed: 255 },
+};
+const hdProgress = { points: [71,77,52,62,80,84,88,94,71,77,52,62].map((r,i)=>(
+    { period: `2026-${String(i+1).padStart(2,'0')}`, success_rate: r, total: 100+i*7, successful: r }
+))};
+const hdCoverage = { items: [
+    { name:"Firewall", total_assets:120, hardened_assets:110, percent:92 },
+    { name:"Switch",   total_assets:200, hardened_assets:164, percent:82 },
+    { name:"Windows",  total_assets:310, hardened_assets:220, percent:71 },
+    { name:"Linux",    total_assets:180, hardened_assets:140, percent:78 },
+    { name:"F5",       total_assets:60,  hardened_assets:54,  percent:90 },
+]};
+const hdVendors = { items: [
+    { name:"Cisco",     total:400, successful:368, percent:92 },
+    { name:"Fortinet",  total:300, successful:246, percent:82 },
+    { name:"Microsoft", total:500, successful:355, percent:71 },
+    { name:"VMware",    total:150, successful:117, percent:78 },
+    { name:"F5",        total:90,  successful:81,  percent:90 },
+]};
+const hdCompliance = { items: [
+    { level:"L1", total:800, successful:736, percent:92 },
+    { level:"L2", total:400, successful:328, percent:82 },
+    { level:"INFO", total:120, successful:85, percent:71 },
+]};
+const hdActivities = { items: Array.from({length:8},(_,i)=>({
+    id:i+1, check_number:`FG-BL-0${10+i}`,
+    check_title:["SSH Hardened","TLS Updated","Banner set","NTP configured"][i%4],
+    asset_name:["DC01","Linux02","FG-200","SW-Core"][i%4],
+    status:["success","success","failed","pending"][i%4],
+    action_type:"execute",
+    created_at:new Date(Date.now()-i*3600_000).toISOString(), completed_at:null,
+}))};
+
 // ── Static store (thunks fire and reject against the file server; ignored) ──
 
 const store = configureStore({
@@ -96,6 +155,12 @@ const store = configureStore({
             cisChecks,
             fortinetTemplatedChecks,
             isLoading: false,
+        }) => state,
+        logs: (state = { items: logItems, isLoading: false, isCleared: false }) => state,
+        hardeningDashboard: (state = {
+            overview: hdOverview, progress: hdProgress, coverage: hdCoverage,
+            vendors: hdVendors, compliance: hdCompliance, activities: hdActivities,
+            failedPanels: [], isLoading: false, error: null,
         }) => state,
     },
 });
@@ -115,6 +180,10 @@ const noop = () => {};
 const View = () => {
     if (view === "fixres")
         return <FixUnsuccessfulResults sessionData={auditSession} onClose={noop} onNavigateToAuditing={noop} />;
+    if (view === "hdash")
+        return <HardeningDashboard />;
+    if (view === "logs")
+        return <LogsPage />;
     if (view === "hardres")
         return <HardeningResults sessionData={auditSession} onClose={noop} onNavigateToAuditing={noop} />;
     return <AuditingResultModal session={auditSession} isOpen={true} onClose={noop} />;

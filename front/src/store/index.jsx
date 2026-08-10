@@ -10,6 +10,7 @@ import licenseReducer from "./licenseSlice";
 import logsReducer from "./logsSlice.js";
 import riskReducer from "./riskSlice.js";
 import riskDetailReducer from "./riskDetailSlice.js";
+import hardeningDashboardReducer from "./hardeningDashboardSlice.js";
 
 
 export const store = configureStore({
@@ -25,5 +26,6 @@ export const store = configureStore({
         logs: logsReducer,
         risk: riskReducer,
         riskDetail: riskDetailReducer,
+        hardeningDashboard: hardeningDashboardReducer,
     },
 });

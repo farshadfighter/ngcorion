@@ -144,7 +144,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     // Only show the VDOM column when at least one result carries it.
     const hasVdom = Array.isArray(results) && results.some((r) => r.vdom);
     // Columns: Section [+ VDOM] + Recommendation + Result + Details.
-    const colCount = hasVdom ? 5 : 4;
+    // Section, [VDOM], Recommendation, Risk Level, Result, Details
+    const colCount = hasVdom ? 6 : 5;
 
     // Windows: show a Server Role indicator + per-row DC/MS badges. Role is
     // inferred from which scoped checks the (already role-filtered) audit ran.
@@ -155,6 +156,18 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
         if (scopes.has("DC")) serverRole = "Domain Controller";
         else if (scopes.has("MS")) serverRole = "Member Server";
     }
+
+    /* Per-control risk level. The backend already sends `severity` on every
+       result (audit/router.py) — it just was not surfaced in this table. */
+    const getSeverityBadge = (severity) => {
+        const level = severity?.toString().toLowerCase();
+        if (!level) return <span style={{ color: "#9ca3af" }}>—</span>;
+        return (
+            <span className={`severity-badge severity-${level}`}>
+                {titleCase(level)}
+            </span>
+        );
+    };
 
     const getResultBadge = (status) => {
         const normalizedStatus = status?.toString().toUpperCase();
@@ -285,6 +298,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                 <th>Section</th>
                                 {hasVdom && <th>VDOM</th>}
                                 <th>Recommendation</th>
+                                <th>Risk Level</th>
                                 <th>Result</th>
                                 <th>Details</th>
                             </tr>
@@ -322,6 +336,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                         {result.check_title}
                                                     </div>
                                                 </td>
+                                                <td>{getSeverityBadge(result.severity)}</td>
                                                 <td>
                                                     {getResultBadge(result.status)}
                                                     {result.needs_review && (

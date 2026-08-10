@@ -817,6 +817,25 @@ order: 1;
     gap: 4px;
 }
 
+/* ── Per-control risk level ──────────────────────────────────────────────── */
+
+/* Same palette as .aud-severity in AuditingDashboard.css, so a control's risk
+   level reads the same wherever it appears. */
+.severity-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.severity-badge.severity-critical { background: #fee2e2; color: #991b1b; }
+.severity-badge.severity-high     { background: #fed7aa; color: #9a3412; }
+.severity-badge.severity-medium   { background: #fef3c7; color: #92400e; }
+.severity-badge.severity-low      { background: #d1fae5; color: #065f46; }
+.severity-badge.severity-info     { background: #e0e7ff; color: #3730a3; }
+
 /* ── Hardening bar (Figma: 1229x180 card rx=30, 338x67 button rx=5) ───────── */
 
 .result-harden-bar {

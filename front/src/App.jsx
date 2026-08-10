@@ -24,6 +24,7 @@ import { License } from "./components/License/License";
 import { RiskAsset } from "./components/Risk/RiskAsset";
 import { RiskIntelDashboard } from "./components/Risk/RiskIntelDashboard";
 import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
+import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDashboard";
 import {
     RequirePermission,
     ComingSoon,
@@ -165,6 +166,11 @@ function AppContent() {
                         <Route path="/hardening" element={
                             <RequirePermission module="hardening" name="Hardening">
                                 <HardeningRoute />
+                            </RequirePermission>
+                        } />
+                        <Route path="/hardening/overview" element={
+                            <RequirePermission module="hardening" name="Hardening">
+                                <HardeningDashboard />
                             </RequirePermission>
                         } />
 
