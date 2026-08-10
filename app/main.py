@@ -21,6 +21,7 @@ from app.modules.discovery.discovery_logs_router import router as discovery_logs
 from app.modules.hardening.hardening_logs_router import router as hardening_logs_router
 from app.modules.hardening.dashboard_router import router as hardening_dashboard_router
 from app.modules.hardening.harden_all import router as harden_all_router
+from app.modules.hardening.dashboard_router import router as hardening_dashboard_router
 
 # Cisco Audit and Hardening (new module structure)
 from app.modules.cisco.audit import router as cisco_audit_router
@@ -56,6 +57,7 @@ from app.modules.shared import hardening_router as unified_hardening_router
 
 # Shared cross-family audit endpoints (get/delete session by ID)
 from app.modules.audit.router import router as shared_audit_router
+from app.modules.audit.dashboard_router import router as audit_dashboard_router
 
 # Deprecated routes for backward compatibility
 from app.modules.deprecated_routes import deprecated_router
@@ -245,8 +247,14 @@ app.include_router(unified_hardening_router)
 # Harden All — one plan/execute contract across every device family
 app.include_router(harden_all_router)
 
+# Hardening dashboard — read-only aggregates for the KPI screen
+app.include_router(hardening_dashboard_router)
+
 # Shared cross-family audit routes (get/delete session by ID for any device)
 app.include_router(shared_audit_router)
+
+# Auditing dashboard — read-only aggregates for the KPI screen
+app.include_router(audit_dashboard_router)
 
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)

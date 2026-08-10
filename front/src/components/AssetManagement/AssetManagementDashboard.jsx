@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";
+import api from "../../config/api.js";
 import { useAssetFormOptions } from "../AssetList/useAssetFormOptions";
 import {
     PieChart, Pie, Cell, Tooltip,
@@ -26,10 +27,30 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
 export const AssetManagementDashboard = () => {
     const dispatch = useDispatch();
     const { assets, isLoading } = useSelector((state) => state.assets);
+    // asset_inventory.risk_level is never written — the risk engine stores its
+    // result in asset_risk_scores instead — so the critical count comes from the
+    // risk module's own aggregate. null means "not available" (e.g. the user
+    // lacks RISK read), which renders as a dash rather than a misleading 0.
+    const [criticalCount, setCriticalCount] = useState(null);
     const { assetTypes } = useAssetFormOptions();
 
     useEffect(() => {
         dispatch(fetchAssets());
+        // Critical count comes from the risk module's aggregate; best-effort, a
+        // failure (or no RISK permission) leaves it null rather than showing 0.
+        api.get("/api/risk/summary")
+            .then((res) => {
+                // A dev server answering an unproxied path returns index.html with
+                // a 200, so check the shape rather than trusting the status code —
+                // otherwise a missing endpoint silently reads as zero criticals.
+                const rows = res.data?.by_risk_level;
+                if (!Array.isArray(rows)) {
+                    setCriticalCount(null);
+                    return;
+                }
+                setCriticalCount(rows.find((r) => r.level === "critical")?.count ?? 0);
+            })
+            .catch(() => setCriticalCount(null));
     }, [dispatch]);
 
     const stats = useMemo(() => {
@@ -98,7 +119,7 @@ export const AssetManagementDashboard = () => {
         { label: "Active Assets",        value: stats?.active    ?? 0, color: "#27ae60" },
         { label: "Inactive Assets",      value: stats?.inactive  ?? 0, color: "#e74c3c" },
         { label: "New Assets (30 Days)", value: stats?.newAssets ?? 0, color: "#f39c12" },
-        { label: "Critical Assets",      value: stats?.critical  ?? 0, color: "#8e44ad" },
+        { label: "Critical Assets",      value: criticalCount ?? "—", color: "#8e44ad" },
     ];
 
     return (

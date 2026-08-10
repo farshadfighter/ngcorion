@@ -39,7 +39,7 @@ const Row = ({ label, value, priorLabel, priorValue }) => {
     );
 };
 
-export const HardeningImpact = ({ score, auditSummary }) => (
+export const HardeningImpact = ({ score, auditSummary, impact }) => (
     <section className="ard-card">
         <h3 className="ard-card-title">Hardening Impact</h3>
 
@@ -61,14 +61,16 @@ export const HardeningImpact = ({ score, auditSummary }) => (
         />
         <Row
             label="Current Risk Score"
-            value={score?.final_risk_score ?? null}
+            value={impact?.current_score ?? score?.final_risk_score ?? null}
             priorLabel="Risk Score Before Hardening"
-            priorValue={null}
+            priorValue={impact?.baseline_score ?? null}
         />
 
+        {/* GET /api/risk/assets/{id} baselines the risk score only; findings
+            and audit-risk have no pre-hardening snapshot yet. */}
         <p className="ard-notice ard-notice-inline">
-            Before/after comparison needs a backend field marking the pre-hardening
-            baseline — see the requirements doc.
+            Findings and audit-risk comparisons still need a pre-hardening
+            baseline from the backend.
         </p>
     </section>
 );

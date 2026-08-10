@@ -67,7 +67,11 @@ export const AssetRiskDetail = () => {
             <OpenPortsTable ports={detail.open_ports || []} />
             <AuditSummary score={score} auditSummary={detail.audit_summary} />
             <AuditFindingsTable findings={findings} error={findingsError} />
-            <HardeningImpact score={score} auditSummary={detail.audit_summary} />
+            <HardeningImpact
+                score={score}
+                auditSummary={detail.audit_summary}
+                impact={detail.hardening_impact}
+            />
         </div>
     );
 };

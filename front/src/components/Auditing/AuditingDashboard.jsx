@@ -7,6 +7,10 @@ import {
 import api from "../../config/api.js";
 import { fetchAuditSessions } from "../../store/auditSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
+import { fetchAuditDashboard } from "../../store/auditDashboardSlice";
+import { FindingsBySeverity } from "./dashboard/FindingsBySeverity";
+import { TopFailedControls } from "./dashboard/TopFailedControls";
+import { ComplianceTrend } from "./dashboard/ComplianceTrend";
 import "../../assets/AuditingDashboard.css";
 
 // ── Compliance badge colours: green >= 80, yellow 50-79, red < 50 ──────────────
@@ -60,10 +64,16 @@ const fmtDate = (d) => {
 export const AuditingDashboard = () => {
     const dispatch = useDispatch();
     const { sessions, isLoading } = useSelector((state) => state.audit);
+    // Aggregates the sessions list cannot answer on its own (per-severity
+    // findings, per-control failures, month-by-month trend).
+    const { severity, topFailed, trend, overview, remediation, critical } = useSelector(
+        (state) => state.auditDashboard
+    );
     const [assets, setAssets] = useState([]);
 
     useEffect(() => {
         dispatch(fetchAuditSessions({ limit: 200, offset: 0 }));
+        dispatch(fetchAuditDashboard());
         // Total-asset coverage: best-effort, tolerate failure.
         api.get("/api/assets/")
             .then((res) => setAssets(Array.isArray(res.data) ? res.data : []))
@@ -155,15 +165,28 @@ export const AuditingDashboard = () => {
     return (
         <div className="aud-container">
 
-            {/* ── Summary cards ── */}
+            {/* ── Findings breakdown (aggregate endpoints) ── */}
+            <div className="aud-row aud-row-2">
+                <FindingsBySeverity items={severity?.items} />
+                <TopFailedControls items={topFailed?.items} />
+            </div>
+
+            <ComplianceTrend points={trend?.points} message={trend?.message} />
+
+            {/* ── Remediation progress ── */}
             <div className="aud-card">
-                <div className="aud-card-title">Compliance Overview</div>
+                <div className="aud-card-title">Remediation Progress</div>
                 <div className="aud-summary-cards">
-                    <StatCard label="Average Compliance" value={`${summary.avg}%`} />
-                    <StatCard label="Audited Assets" value={summary.audited} />
-                    <StatCard label="Assets Out Of Compliance (<80%)" value={summary.outOfCompliance} />
-                    <StatCard label="Failed Controls" value={summary.failedControls} />
-                    <StatCard label="Total Known Assets" value={totalAssets} />
+                    <StatCard label="Open Findings" value={remediation?.open_findings ?? "—"} />
+                    <StatCard label="Fixed This Month" value={remediation?.fixed_this_month ?? "—"} />
+                    <StatCard
+                        label="Resolved"
+                        value={
+                            remediation?.resolved_percent === undefined
+                                ? "—"
+                                : `${remediation.resolved_percent}%`
+                        }
+                    />
                 </div>
             </div>
 
@@ -224,6 +247,77 @@ export const AuditingDashboard = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* ── Executive summary + critical findings ── */}
+            <div className="aud-row aud-row-2">
+                <div className="aud-card">
+                    <div className="aud-card-title">Executive Summary</div>
+                    <div className="aud-summary-cards">
+                        <StatCard
+                            label="Compliance Score"
+                            value={
+                                overview?.average_compliance === undefined
+                                    ? "—"
+                                    : `${overview.average_compliance}%`
+                            }
+                        />
+                        <StatCard label="Audited Assets" value={overview?.audited_assets ?? "—"} />
+                        <StatCard label="Failed Controls" value={overview?.failed_checks ?? "—"} />
+                        <StatCard
+                            label="Critical Findings"
+                            value={critical?.items?.length ?? "—"}
+                        />
+                        <StatCard
+                            label="Assets Out Of Compliance"
+                            value={summary.outOfCompliance}
+                        />
+                    </div>
+                </div>
+
+                <div className="aud-card">
+                    <div className="aud-card-title">Critical Findings Table</div>
+                    {(critical?.items || []).length === 0 ? (
+                        <div className="aud-empty">No unresolved critical findings.</div>
+                    ) : (
+                        <div className="aud-table-wrapper">
+                            <table className="aud-table">
+                                <thead>
+                                    <tr>
+                                        <th>Asset</th>
+                                        <th>Finding</th>
+                                        <th>Severity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {critical.items.map((f) => (
+                                        <tr key={f.id}>
+                                            <td>{f.asset_name || "-"}</td>
+                                            <td title={f.check_title || ""}>{f.check_number}</td>
+                                            <td>
+                                                <span className={`aud-severity ${String(f.severity || "").toLowerCase()}`}>
+                                                    {f.severity || "-"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Summary cards ── */}
+            <div className="aud-card">
+                <div className="aud-card-title">Compliance Overview</div>
+                <div className="aud-summary-cards">
+                    <StatCard label="Average Compliance" value={`${summary.avg}%`} />
+                    <StatCard label="Audited Assets" value={summary.audited} />
+                    <StatCard label="Assets Out Of Compliance (<80%)" value={summary.outOfCompliance} />
+                    <StatCard label="Failed Controls" value={summary.failedControls} />
+                    <StatCard label="Total Known Assets" value={totalAssets} />
                 </div>
             </div>
 

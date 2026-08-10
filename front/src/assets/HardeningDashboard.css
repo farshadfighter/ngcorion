@@ -1,0 +1,341 @@
+/* Hardening KPI dashboard. Measurements from the Figma export (dashboard.svg):
+   #F5F5F5 page, white cards at rx=10, #29354E bars, #14213D progress fills. */
+
+.hd-page {
+    padding: 24px;
+    background: #F5F5F5;
+    min-height: 100%;
+}
+
+/* Figma lays this out as a centred column of rows, not a uniform grid:
+     row 1  Overview 540 + Progress 600   (side by side, unequal)
+     row 2  Coverage 540                  (alone, centred)
+     row 3  Compliance 540 + Vendor 540
+     row 4  Recent Activities 543         (alone, centred)
+     row 5  Automation 745                (alone, centred)
+   A 12-column grid reproduces that while still collapsing on narrow screens. */
+.hd-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 24px;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.hd-card {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 24px 28px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+    box-sizing: border-box;
+    grid-column: span 6;
+}
+
+/* Overview 540 : Progress 600 — roughly 5:6 of the twelve columns. */
+.hd-card-overview { grid-column: span 5; }
+.hd-card-progress { grid-column: span 7; }
+
+/* Rows the design centres on their own. */
+.hd-card-centered {
+    grid-column: 3 / span 8;
+}
+
+.hd-card-wide {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+    .hd-card,
+    .hd-card-overview,
+    .hd-card-progress,
+    .hd-card-centered,
+    .hd-card-wide {
+        grid-column: 1 / -1;
+    }
+}
+
+.hd-card-title {
+    margin: 0 0 20px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #14213D;
+    text-align: center;
+}
+
+/* ── Stat tiles ──────────────────────────────────────────────────────────── */
+
+.hd-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.hd-stat-grid-2 {
+    max-width: 520px;
+    margin: 0 auto 20px;
+}
+
+.hd-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 78px;
+    padding: 14px 12px;
+    border: 1px solid #E3E6ED;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.hd-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4A5568;
+    line-height: 1.35;
+}
+
+.hd-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #14213D;
+    line-height: 1;
+}
+
+/* ── Progress bars ───────────────────────────────────────────────────────── */
+
+.hd-progress-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.hd-progress-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hd-progress-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #14213D;
+}
+
+.hd-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hd-progress-track {
+    flex: 1;
+    height: 10px;
+    border-radius: 5px;
+    background: #E6E6E6;
+    overflow: hidden;
+}
+
+.hd-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: 5px;
+    background: #14213D;
+    transition: width 0.3s ease;
+}
+
+.hd-progress-value {
+    min-width: 44px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+/* ── Split bar (automation success) ──────────────────────────────────────── */
+
+.hd-split-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #E6E6E6;
+    margin-bottom: 12px;
+}
+
+.hd-split-success { background: #48BB78; }
+.hd-split-failed  { background: #E53E3E; }
+
+.hd-split-legend {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    color: #14213D;
+}
+
+.hd-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 6px;
+}
+
+.hd-dot-success { background: #48BB78; }
+.hd-dot-failed  { background: #E53E3E; }
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+.hd-table-wrapper {
+    border: 1px solid #E3E6ED;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.hd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.hd-table th {
+    background: #F7F8FA;
+    color: #4A5568;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+}
+
+.hd-table td {
+    padding: 12px 16px;
+    color: #14213D;
+    border-top: 1px solid #EEF0F4;
+}
+
+.hd-cell-wide {
+    max-width: 420px;
+    white-space: normal;
+}
+
+.hd-table-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9AA5B5;
+}
+
+.hd-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.hd-status-success   { background: #d1fae5; color: #065f46; }
+.hd-status-failed    { background: #fee2e2; color: #991b1b; }
+.hd-status-pending,
+.hd-status-executing { background: #fef3c7; color: #92400e; }
+.hd-status-skipped,
+.hd-status-audited   { background: #e5e7eb; color: #374151; }
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+
+.hd-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: #6C6C6C;
+    font-size: 14px;
+}
+
+.hd-state-error {
+    color: #C0392B;
+}
+
+.hd-empty {
+    padding: 28px 12px;
+    text-align: center;
+    color: #9AA5B5;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* ── Risk chips (Assets Requiring Hardening) ─────────────────────────────── */
+
+.hd-risk {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.hd-risk-critical  { background: #fee2e2; color: #991b1b; }
+.hd-risk-very_high { background: #fed7aa; color: #9a3412; }
+.hd-risk-high      { background: #fef3c7; color: #92400e; }
+.hd-risk-medium    { background: #e0e7ff; color: #3730a3; }
+.hd-risk-low       { background: #d1fae5; color: #065f46; }
+
+.hd-muted { color: #B4BCC8; }
+
+/* ── Hardening impact (before / after donuts) ────────────────────────────── */
+
+/* Figma splits the card in two with a vertical rule between the donuts. */
+.hd-impact {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    position: relative;
+}
+
+.hd-impact-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+}
+
+.hd-impact-side + .hd-impact-side {
+    border-left: 1px solid #E3E6ED;
+}
+
+.hd-impact-subtitle {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.hd-impact-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    font-size: 13px;
+    color: #14213D;
+}
+
+.hd-impact-note {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-top: 8px;
+    text-align: center;
+    font-size: 13px;
+    color: #9AA5B5;
+}
+
+@media (max-width: 640px) {
+    .hd-impact-side + .hd-impact-side {
+        border-left: none;
+        border-top: 1px solid #E3E6ED;
+    }
+}
