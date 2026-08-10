@@ -34,7 +34,7 @@ export const HardeningDashboard = () => {
     const dispatch = useDispatch();
     const {
         overview, progress, coverage, vendors, compliance, activities,
-        requiring, missing, isLoading, error,
+        requiring, missing, impact, isLoading, error,
     } = useSelector((state) => state.hardeningDashboard);
 
     useEffect(() => {
@@ -274,12 +274,11 @@ export const HardeningDashboard = () => {
                 {/* ── Hardening impact ── */}
                 <HardeningCard title="Hardening Impact" className="hd-card-wide">
                     <HardeningImpact
-                        before={null}
-                        after={null}
-                        message={
-                            "Before/after comparison needs a pre-hardening baseline, " +
-                            "which nothing records yet."
-                        }
+                        before={impact?.before}
+                        after={impact?.after}
+                        resolved={impact?.resolved}
+                        reductionPercent={impact?.reduction_percent}
+                        message={impact?.message}
                     />
                 </HardeningCard>
             </div>
