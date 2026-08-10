@@ -7,6 +7,7 @@ Provides:
 - Test utilities
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -15,6 +16,16 @@ TESTS_DIR = Path(__file__).parent
 PROJECT_ROOT = TESTS_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+# app.core.database (and license_server.app.database) create a SQLAlchemy
+# engine at import time from settings.DATABASE_URL. The bare "postgresql://"
+# default in app/core/config.py resolves to the psycopg2 dialect, which this
+# project doesn't depend on/install (it uses psycopg v3 — see pyproject.toml)
+# — so importing any app module fails at collection time unless DATABASE_URL
+# is already set to a "+psycopg" URL. This never overrides a real deployment
+# or CI's own DATABASE_URL/SECRET_KEY.
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://netease:1234@localhost/netease_db")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-license-tests-only-not-real")
 
 import pytest
 import json

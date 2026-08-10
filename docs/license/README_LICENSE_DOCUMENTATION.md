@@ -6,7 +6,7 @@ This document provides an index of all license-related documentation created for
 
 ## Overview
 
-Your application has a **fully functional license system** with 5 plans (Pilot, Basic1-3, Enterprise). The system enforces quotas on assets, discoveries, audits, hardens, and monitors.
+Your application has a **fully functional license system** with 5 plans (Pilot, 100/250/500 Audit / Hardening, Unlimited). The system enforces quotas on audits and hardens only — Asset Management (asset creation and Auto Discovery) is not license-gated.
 
 ---
 
@@ -18,7 +18,7 @@ Your application has a **fully functional license system** with 5 plans (Pilot, 
 **Purpose:** Complete overview of all license plans and how the system works  
 **Audience:** Backend developers, project managers  
 **Contents:**
-- All 5 license plans with exact limits
+- All 5 license plans with exact limits (audits/hardens only)
 - How license enforcement works
 - License validation flow
 - Security features
@@ -132,17 +132,13 @@ Start here:
    - Heartbeat keeps license alive
    - VM fingerprint prevents license sharing
 
-2. **Asset Licensing is Applied**
-   - Contrary to your note, asset creation IS protected
-   - `require_asset_quota()` dependency is active
-   - Users cannot create more assets than their plan allows
+2. **Asset Management is Not License-Gated**
+   - Asset creation and Auto Discovery scans have no quota dependency
+   - Users can create assets and run discovery scans regardless of plan
 
-3. **All Operations are Quota-Enforced**
-   - Assets: Counted (limit checked before creation)
-   - Discoveries: Consumed per operation
+3. **Audit and Hardening Operations are Quota-Enforced**
    - Audits: Consumed per operation
    - Hardens: Consumed per operation
-   - Monitors: Consumed per operation
 
 ### ⚠️ Issue Found and Fixed
 
@@ -164,13 +160,15 @@ Start here:
 
 ## License Plans Reference
 
-| Plan | Duration | Assets | Operations | Use Case |
-|------|----------|--------|------------|----------|
-| **Pilot** | 30 days | 5 | 2 | Testing |
-| **Basic1** | 1 year | 15 | 15 | Small networks |
-| **Basic2** | 1 year | 50 | 50 | Medium networks |
-| **Basic3** | 1 year | 150 | 150 | Large networks |
-| **Enterprise** | 1 year | ∞ | ∞ | Unlimited |
+| Plan | Duration | Audits / Hardens | Use Case |
+|------|----------|-------------------|----------|
+| **Pilot** | 30 days | 2 | Testing |
+| **100 Audit / 100 Hardening** | 1 year | 100 | Small networks |
+| **250 Audit / 250 Hardening** | 1 year | 250 | Medium networks |
+| **500 Audit / 500 Hardening** | 1 year | 500 | Large networks |
+| **Unlimited** | 1 year | ∞ | Unlimited |
+
+Asset Management (asset creation and Auto Discovery) is not license-gated on any plan.
 
 ---
 
@@ -200,8 +198,8 @@ Start here:
 - [x] License server implementation
 - [x] Main app integration
 - [x] License middleware
-- [x] Quota enforcement for all operations
-- [x] Asset quota checking
+- [x] Quota enforcement for audit and harden operations
+- [x] Asset Management confirmed not license-gated
 - [x] Heartbeat mechanism
 - [x] VM fingerprint locking
 - [x] HMAC signature security
@@ -221,9 +219,10 @@ Start here:
 ## Testing Checklist
 
 ### Backend Testing
-- [ ] Create pilot license (5 assets, 2 operations)
+- [ ] Create pilot license (2 audits, 2 hardens)
 - [ ] Activate license in main app
-- [ ] Try to create 6 assets (should fail at 6th)
+- [ ] Confirm asset creation is unrestricted (no quota check)
+- [ ] Confirm Auto Discovery scans are unrestricted (no quota check)
 - [ ] Run 2 successful audits
 - [ ] Try 3rd audit (should fail - quota exhausted)
 - [ ] Run audit with wrong credentials (should fail, quota NOT consumed)

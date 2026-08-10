@@ -38,16 +38,17 @@ The license is checked at **three different times**:
 - **Critical:** If heartbeat is missed for 48+ hours, license downgrades to PILOT mode
 
 #### d) **Operation Consumption (Before Each Action)**
-- Before performing operations (discovery, audit, harden, etc.)
+- Before performing a license-gated operation (audit or harden)
 - Endpoint: `POST /api/licenses/consume`
 - Checks quota and increments usage counter
 - Prevents exceeding plan limits
+- Note: Asset creation and Auto Discovery scans are NOT license-gated and never call this endpoint
 
 **Summary:**
 - ✅ Once: Activation
 - ✅ Every app start: Validation
 - ✅ Every hour: Heartbeat (background)
-- ✅ Before each operation: Consume
+- ✅ Before each audit/harden operation: Consume
 
 ---
 
@@ -63,8 +64,8 @@ The license is checked at **three different times**:
   - License key
   - Organization token
   - Customer info
-  - Plan limits
-  - Usage counters
+  - Plan limits (max_audits, max_hardens)
+  - Usage counters (used_audits, used_hardens)
   - VM fingerprint
   - Expiration date
   - Last heartbeat timestamp
@@ -125,7 +126,7 @@ curl -X POST http://localhost:8000/api/admin/licenses \
     "customer_name": "John Doe",
     "customer_email": "john@company.com",
     "organization_name": "ACME Corp",
-    "plan_type": "basic2"
+    "plan_type": "plan_250"
   }'
 
 # Response: Full license details including license_key
@@ -288,7 +289,7 @@ curl -X POST http://localhost:8000/api/admin/licenses \
     "customer_name": "Test Customer",
     "customer_email": "test@example.com",
     "organization_name": "Test Company",
-    "plan_type": "basic2"
+    "plan_type": "plan_250"
   }'
 ```
 
@@ -299,9 +300,9 @@ curl -X POST http://localhost:8000/api/admin/licenses \
   "license_key": "A1B2-C3D4-E5F6-G7H8",
   "organization_token": "org_abc123...",
   "customer_name": "Test Customer",
-  "plan_type": "basic2",
-  "max_assets": 50,
-  "max_discoveries": 50,
+  "plan_type": "plan_250",
+  "max_audits": 250,
+  "max_hardens": 250,
   ...
 }
 ```
@@ -340,7 +341,7 @@ curl -X POST http://localhost:8000/api/licenses/activate \
   "valid": true,
   "message": "License activated successfully",
   "organization_token": "org_secret_token_here",
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "limits": { ... },
   "usage": { ... }
 }
@@ -414,7 +415,7 @@ data = {
     "license_key": license_key,
     "organization_token": org_token,
     "vm_fingerprint": fingerprint,
-    "operation_type": "discovery",  # or "asset", "audit", "harden", "monitor"
+    "operation_type": "audit",  # or "harden" — these are the only valid operation types
     "count": 1
 }
 
@@ -464,13 +465,15 @@ curl -X DELETE http://localhost:8000/api/admin/licenses/A1B2-C3D4-E5F6-G7H8 \
 
 ## Plan Types and Limits
 
-| Plan | Duration | Assets | Discoveries | Audits | Hardens | Monitors |
-|------|----------|--------|-------------|--------|---------|----------|
-| **PILOT** | 30 days | 5 | 2 | 2 | 2 | 2 |
-| **BASIC1** | 365 days | 15 | 15 | 15 | 15 | 15 |
-| **BASIC2** | 365 days | 50 | 50 | 50 | 50 | 50 |
-| **BASIC3** | 365 days | 150 | 150 | 150 | 150 | 150 |
-| **ENTERPRISE** | 365 days | ∞ | ∞ | ∞ | ∞ | ∞ |
+| Plan | Duration | Audits | Hardens |
+|------|----------|--------|---------|
+| **PILOT** | 30 days | 2 | 2 |
+| **PLAN_100** | 365 days | 100 | 100 |
+| **PLAN_250** | 365 days | 250 | 250 |
+| **PLAN_500** | 365 days | 500 | 500 |
+| **UNLIMITED** | 365 days | ∞ | ∞ |
+
+Asset Management (asset creation and Auto Discovery) has no license entitlement in any plan — it is not quota-limited.
 
 ---
 
@@ -492,7 +495,7 @@ curl -X DELETE http://localhost:8000/api/admin/licenses/A1B2-C3D4-E5F6-G7H8 \
 Your main app (`app/`) currently has **NO license validation**. You need to:
 
 - ✅ Add license validation on startup
-- ✅ Add license checks before operations
+- ✅ Add license checks before audit/harden operations
 - ✅ Implement heartbeat background task
 - ✅ Handle license errors gracefully
 - ✅ Show license status in UI
@@ -523,7 +526,7 @@ Your main app (`app/`) currently has **NO license validation**. You need to:
 3. Customer stores `license_key` + `organization_token` + `vm_fingerprint`
 4. App validates on startup (with signature)
 5. App sends heartbeat every hour
-6. App consumes operations before actions (with signature)
+6. App consumes audit/harden operations before those actions (with signature)
 
 **Key Endpoints:**
 - `GET /api/fingerprint` - Get VM fingerprint (no auth)

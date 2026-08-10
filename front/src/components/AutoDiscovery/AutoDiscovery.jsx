@@ -18,14 +18,14 @@ import ScanResultsModal from "./ScanResultsModal.jsx";
 import ApplyDiscoveryModal from "./ApplyDiscoveryModal.jsx";
 import AutoDiscoveryAssetListModal from "./AutoDiscoveryAssetListModal";
 import ScanLogPanel from "./ScanLogPanel.jsx";
-import { LicenseLimitModal } from "../License/LicenseLimitModal";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/autoDiscoveryStyle/AutoDiscovery.css";
 
-const AutoDiscovery = ({ onNavigateToLicence }) => {
+// Asset Management (including Auto Discovery) has no license entitlement, so
+// this view is not license-gated (no LicenseLimitModal here).
+const AutoDiscovery = () => {
     const dispatch = useDispatch();
-    const [showLicenseModal, setShowLicenseModal] = useState(false);
 
     const { currentScan, scanHistory, loading, error, scanLogs } =
         useSelector((state) => state.discovery);
@@ -170,10 +170,6 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
         if (currentScan?.status === "running" || currentScan?.status === "pending") return true;
         return allScans.some((scan) => scan.status === "running" || scan.status === "pending");
     }, [allScans, currentScan?.status]);
-
-    const handleLicenseLimitReached = useCallback(() => {
-        setShowLicenseModal(true);
-    }, []);
 
     return (
         <>
@@ -417,14 +413,6 @@ const AutoDiscovery = ({ onNavigateToLicence }) => {
                     />
                 )}
 
-                {showLicenseModal && (
-                    <LicenseLimitModal
-                        isOpen={showLicenseModal}
-                        onClose={() => setShowLicenseModal(false)}
-                        module="autoDiscovery"
-                        onGoToLicence={onNavigateToLicence}
-                    />
-                )}
             </div>
 
             <AutoDiscoveryDeleteModal

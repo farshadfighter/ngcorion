@@ -35,7 +35,7 @@ curl -X POST http://localhost:8000/api/admin/licenses \
     "customer_name": "شرکت نمونه",
     "customer_email": "customer@example.com",
     "organization_name": "سازمان مشتری",
-    "plan_type": "basic2"
+    "plan_type": "plan_250"
   }'
 ```
 
@@ -48,17 +48,11 @@ Response:
   "customer_name": "شرکت نمونه",
   "customer_email": "customer@example.com",
   "organization_name": "سازمان مشتری",
-  "plan_type": "basic2",
-  "max_assets": 50,
-  "max_discoveries": 50,
-  "max_audits": 50,
-  "max_hardens": 50,
-  "max_monitors": 50,
-  "used_assets": 0,
-  "used_discoveries": 0,
+  "plan_type": "plan_250",
+  "max_audits": 250,
+  "max_hardens": 250,
   "used_audits": 0,
   "used_hardens": 0,
-  "used_monitors": 0,
   "vm_fingerprint": null,
   "is_active": true,
   "is_pilot_mode": false,
@@ -114,7 +108,7 @@ def main():
         "customer_name": input("Customer Name: "),
         "customer_email": input("Customer Email: "),
         "organization_name": input("Organization Name: "),
-        "plan_type": input("Plan Type (pilot/basic1/basic2/basic3/enterprise): ")
+        "plan_type": input("Plan Type (pilot/plan_100/plan_250/plan_500/unlimited): ")
     }
     
     # Create license
@@ -130,7 +124,8 @@ def main():
     print(f"Email: {license_data['customer_email']}")
     print(f"Plan: {license_data['plan_type']}")
     print(f"Expires: {license_data['expires_at']}")
-    print(f"Max Assets: {license_data['max_assets']}")
+    print(f"Max Audits: {license_data['max_audits']}")
+    print(f"Max Hardens: {license_data['max_hardens']}")
     print("="*60)
     print("\nSend the License Key to the customer.")
     print("They will use it to activate their software.")
@@ -158,7 +153,7 @@ license_data = schemas.LicenseCreate(
     customer_name="Test Customer",
     customer_email="test@example.com",
     organization_name="Test Org",
-    plan_type=models.PlanType.BASIC2
+    plan_type=models.PlanType.PLAN_250
 )
 
 license = crud.create_license(db, license_data)
@@ -168,13 +163,15 @@ db.close()
 
 ### Plan Types Reference
 
-| Plan Type | Duration | Max Assets | Max Operations | Use Case |
-|-----------|----------|------------|----------------|----------|
-| `pilot` | 30 days | 5 | 2 each | Trial/Testing |
-| `basic1` | 365 days | 15 | 15 each | Small network |
-| `basic2` | 365 days | 50 | 50 each | Medium network |
-| `basic3` | 365 days | 150 | 150 each | Large network |
-| `enterprise` | 365 days | Unlimited | Unlimited | Enterprise |
+| Plan Type | Duration | Max Audits / Hardens | Use Case |
+|-----------|----------|-----------------------|----------|
+| `pilot` | 30 days | 2 each | Trial/Testing |
+| `plan_100` | 365 days | 100 each | Small network |
+| `plan_250` | 365 days | 250 each | Medium network |
+| `plan_500` | 365 days | 500 each | Large network |
+| `unlimited` | 365 days | Unlimited | Enterprise |
+
+Asset Management (asset creation and Auto Discovery) has no license entitlement in any plan.
 
 ---
 
@@ -293,7 +290,7 @@ class LicenseStatusWidget:
             usage = result['usage']
             
             usage_percent = {}
-            for key in ['assets', 'discoveries', 'audits', 'hardens', 'monitors']:
+            for key in ['audits', 'hardens']:
                 max_key = f"max_{key}"
                 used_key = f"used_{key}"
                 
@@ -324,16 +321,13 @@ class LicenseStatusWidget:
 ┌─────────────────────────────────────┐
 │ License Status                      │
 ├─────────────────────────────────────┤
-│ Plan: Basic 2 (Medium Network)      │
+│ Plan: 250 Audit / 250 Hardening     │
 │ Status: Active                      │
 │ Expires: 2026-04-23                 │
 ├─────────────────────────────────────┤
 │ Usage:                              │
-│ Assets:      [████████░░] 40/50     │
-│ Discoveries: [██████░░░░] 30/50     │
-│ Audits:      [████░░░░░░] 20/50     │
-│ Hardens:     [██░░░░░░░░] 10/50     │
-│ Monitors:    [████████░░] 40/50     │
+│ Audits:      [████░░░░░░] 100/250   │
+│ Hardens:     [██░░░░░░░░] 50/250    │
 └─────────────────────────────────────┘
 ```
 
@@ -353,9 +347,13 @@ class OperationManager:
     def perform_operation(self, operation_type, count=1):
         """
         Consume operation quota before performing action
-        
+
+        Note: Asset creation and Auto Discovery are NOT license-gated and
+        should never be passed here — only "audit" and "harden" consume
+        quota.
+
         Args:
-            operation_type: One of "asset", "discovery", "audit", "harden", "monitor"
+            operation_type: One of "audit", "harden"
             count: Number of operations to consume
         
         Returns:
@@ -388,7 +386,7 @@ class OperationManager:
         usage = result['usage']
         
         remaining = {}
-        for key in ['assets', 'discoveries', 'audits', 'hardens', 'monitors']:
+        for key in ['audits', 'hardens']:
             max_key = f"max_{key}"
             used_key = f"used_{key}"
             
@@ -403,19 +401,21 @@ class OperationManager:
 **Usage in Application:**
 
 ```python
-# Before performing a discovery scan
+# Before performing an audit
 op_manager = OperationManager(server_url="http://localhost:8000")
 
-result = op_manager.perform_operation("discovery", count=1)
+result = op_manager.perform_operation("audit", count=1)
 
 if result['success']:
-    # Proceed with discovery scan
-    perform_network_discovery()
-    print(f"Remaining discoveries: {result['remaining']['discoveries']}")
+    # Proceed with the audit
+    perform_audit()
+    print(f"Remaining audits: {result['remaining']['audits']}")
 else:
     # Show error to user
     show_error(result['message'])
 ```
+
+Note: Asset creation and Auto Discovery scans never call `perform_operation()` — they run unconditionally with no quota check.
 
 #### 4. Background Heartbeat Service
 
@@ -557,12 +557,11 @@ class NetworkAssetManagerApp:
         print(f"Plan: {self.license_status['plan_type']}")
         print(f"Status: Active")
         print("\nOperations:")
-        print("1. Add Asset")
-        print("2. Run Discovery")
+        print("1. Add Asset (not license-gated)")
+        print("2. Run Discovery (not license-gated)")
         print("3. Run Audit")
         print("4. Run Hardening")
-        print("5. Monitor Network")
-        print("6. View License Status")
+        print("5. View License Status")
         print("0. Exit")
         
         choice = input("\nSelect operation: ")
@@ -570,15 +569,19 @@ class NetworkAssetManagerApp:
     
     def handle_operation(self, choice):
         """Handle user operation selection"""
-        operations = {
+        # Only "audit" and "harden" are license-gated operation types.
+        # Asset creation and Auto Discovery run unconditionally and never
+        # call self.client.consume().
+        unrestricted_operations = {
             "1": "asset",
             "2": "discovery",
+        }
+        quota_operations = {
             "3": "audit",
             "4": "harden",
-            "5": "monitor"
         }
         
-        if choice == "6":
+        if choice == "5":
             self.show_license_status()
             return
         
@@ -586,8 +589,13 @@ class NetworkAssetManagerApp:
             self.shutdown()
             return
         
-        if choice in operations:
-            op_type = operations[choice]
+        if choice in unrestricted_operations:
+            op_type = unrestricted_operations[choice]
+            print(f"✓ {op_type.capitalize()} operation started (no quota check)")
+            self.perform_actual_operation(op_type)
+        
+        elif choice in quota_operations:
+            op_type = quota_operations[choice]
             
             try:
                 result = self.client.consume(operation_type=op_type, count=1)
@@ -674,7 +682,7 @@ def test_validation():
 
 def test_consumption():
     client = LicenseClient(server_url="http://localhost:8000")
-    result = client.consume(operation_type="discovery", count=1)
+    result = client.consume(operation_type="audit", count=1)
     assert result['valid'] == True
     print("✓ Consumption test passed")
 

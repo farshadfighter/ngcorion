@@ -53,22 +53,16 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "valid": true,
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "message": "License is valid",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 50,
-    "max_audits": 50,
-    "max_hardens": 50,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 0,
-    "used_discoveries": 0,
     "used_audits": 0,
-    "used_hardens": 0,
-    "used_monitors": 0
+    "used_hardens": 0
   }
 }
 ```
@@ -84,22 +78,16 @@ Authorization: Bearer <jwt_token>
 ```json
 {
   "valid": true,
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "message": "License is valid",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 50,
-    "max_audits": 50,
-    "max_hardens": 50,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 12,
-    "used_discoveries": 8,
     "used_audits": 15,
-    "used_hardens": 5,
-    "used_monitors": 3
+    "used_hardens": 5
   }
 }
 ```
@@ -116,24 +104,28 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-### Quota Exhausted Error (from any API)
+### Quota Exhausted Error (from audit/harden APIs)
 ```json
 {
-  "detail": "Asset limit reached (50/50). Upgrade your plan or delete unused assets."
+  "detail": "Audit quota exhausted (250/250). Upgrade your plan."
 }
 ```
+
+Note: Asset Management (asset creation and Auto Discovery) is not license-gated, so it never returns a quota-exhausted error.
 
 ---
 
 ## Plan Types Reference
 
-| Plan Type | Display Name | Max Assets | Max Operations | Duration |
-|-----------|--------------|------------|----------------|----------|
-| `pilot` | Pilot (Testing) | 5 | 2 | 30 days |
-| `basic1` | Base License 1 | 15 | 15 | 1 year |
-| `basic2` | Base License 2 | 50 | 50 | 1 year |
-| `basic3` | Base License 3 | 150 | 150 | 1 year |
-| `enterprise` | Enterprise | ∞ | ∞ | 1 year |
+| Plan Type | Display Name | Max Audits / Hardens | Duration |
+|-----------|--------------|-----------------------|----------|
+| `pilot` | Pilot | 2 | 30 days |
+| `plan_100` | 100 Audit / 100 Hardening | 100 | 1 year |
+| `plan_250` | 250 Audit / 250 Hardening | 250 | 1 year |
+| `plan_500` | 500 Audit / 500 Hardening | 500 | 1 year |
+| `unlimited` | Unlimited | ∞ | 1 year |
+
+Asset Management (asset creation and Auto Discovery) is not license-gated on any plan.
 
 ---
 
@@ -194,17 +186,18 @@ axios.interceptors.response.use(
 
 ## Testing
 
-### Test with Pilot License (5 assets max)
+### Test with Pilot License (2 audits / 2 hardens max)
 1. Get a pilot license key from admin
 2. Activate it in your frontend
-3. Try to create 6 assets
-4. The 6th should fail with: "Asset limit reached (5/5)"
+3. Try to run 3 audits
+4. The 3rd should fail with: "Audit quota exhausted (2/2)"
 
 ### Test License Status Display
 1. Activate a license
-2. Create some assets, run some discoveries
+2. Run some audits and hardening operations
 3. Check `/api/license/status` - usage should update
 4. Display this in your UI
+5. Confirm creating assets and running Auto Discovery never affects usage (they are not license-gated)
 
 ---
 

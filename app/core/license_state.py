@@ -81,11 +81,8 @@ def update_usage(operation_type: str, delta: int):
             return
         
         usage_key_map = {
-            "asset": "used_assets",
-            "discovery": "used_discoveries",
             "audit": "used_audits",
             "harden": "used_hardens",
-            "monitor": "used_monitors"
         }
         
         usage_key = usage_key_map.get(operation_type)

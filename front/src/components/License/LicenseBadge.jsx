@@ -1,18 +1,15 @@
 import React from "react";
 import { useSelector } from "react-redux";
 
+// Asset Management is not license-gated, so it has no badge entry here.
 const moduleIcons = {
-    hardening:      "fa-shield-halved",
-    auditing:       "fa-clipboard-list",
-    auto_discovery: "fa-magnifying-glass",
-    asset:          "fa-box-archive",
+    hardening: "fa-shield-halved",
+    auditing:  "fa-clipboard-list",
 };
 
 const moduleNames = {
-    hardening:      "Hardening",
-    auditing:       "Auditing",
-    auto_discovery: "Auto Discovery",
-    asset:          "Asset List",
+    hardening: "Hardening",
+    auditing:  "Auditing",
 };
 
 const LicenseBadge = ({ module }) => {
@@ -23,10 +20,8 @@ const LicenseBadge = ({ module }) => {
     const isUnlimited = license?.isUnlimited;
 
     const limitMap = {
-        hardening:      { max: limits.max_hardens,    used: usage.used_hardens     },
-        auditing:       { max: limits.max_audits,      used: usage.used_audits      },
-        auto_discovery: { max: limits.max_discoveries, used: usage.used_discoveries },
-        asset:          { max: limits.max_assets,      used: usage.used_assets      },
+        hardening: { max: limits.max_hardens, used: usage.used_hardens },
+        auditing:  { max: limits.max_audits,  used: usage.used_audits  },
     };
 
     const moduleData  = limitMap[module] || { max: 0, used: 0 };

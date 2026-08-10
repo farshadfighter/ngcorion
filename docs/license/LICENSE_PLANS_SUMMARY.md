@@ -2,7 +2,7 @@
 
 ## Overview
 
-Your application has a **fully implemented and integrated** license system with the following plans. The license system is already working and enforcing quotas across all operations.
+Your application has a **fully implemented and integrated** license system with the following plans. The license system is already working and enforcing quotas across audit and hardening operations.
 
 ---
 
@@ -14,75 +14,60 @@ Your application has a **fully implemented and integrated** license system with 
 **Purpose:** Customer testing/evaluation
 
 **Limits:**
-- ✅ Max Assets: 5
-- ✅ Max Discoveries: 2
 - ✅ Max Audits: 2
 - ✅ Max Hardens: 2
-- ✅ Max Monitors: 2
 
 **Status:** ✅ Implemented and Active
 
 ---
 
-### 2. Base License 1 (Small Networks)
-**Plan Type:** `basic1`  
+### 2. 100 Audit / 100 Hardening
+**Plan Type:** `plan_100`  
 **Duration:** 1 year (365 days)  
 **Target:** Small networks
 
 **Limits:**
-- ✅ Max Assets: 15
-- ✅ Max Discoveries: 15
-- ✅ Max Audits: 15
-- ✅ Max Hardens: 15
-- ✅ Max Monitors: 15
+- ✅ Max Audits: 100
+- ✅ Max Hardens: 100
 
 **Status:** ✅ Implemented and Active
 
 ---
 
-### 3. Base License 2 (Medium Networks)
-**Plan Type:** `basic2`  
+### 3. 250 Audit / 250 Hardening
+**Plan Type:** `plan_250`  
 **Duration:** 1 year (365 days)  
 **Target:** Medium networks
 
 **Limits:**
-- ✅ Max Assets: 50
-- ✅ Max Discoveries: 50
-- ✅ Max Audits: 50
-- ✅ Max Hardens: 50
-- ✅ Max Monitors: 50
+- ✅ Max Audits: 250
+- ✅ Max Hardens: 250
 
 **Status:** ✅ Implemented and Active
 
 ---
 
-### 4. Base License 3 (Large Networks)
-**Plan Type:** `basic3`  
+### 4. 500 Audit / 500 Hardening
+**Plan Type:** `plan_500`  
 **Duration:** 1 year (365 days)  
 **Target:** Large networks
 
 **Limits:**
-- ✅ Max Assets: 150
-- ✅ Max Discoveries: 150
-- ✅ Max Audits: 150
-- ✅ Max Hardens: 150
-- ✅ Max Monitors: 150
+- ✅ Max Audits: 500
+- ✅ Max Hardens: 500
 
 **Status:** ✅ Implemented and Active
 
 ---
 
-### 5. Base License 4 (Unlimited/Enterprise)
-**Plan Type:** `enterprise`  
+### 5. Unlimited
+**Plan Type:** `unlimited`  
 **Duration:** 1 year (365 days)  
 **Target:** Enterprise/unlimited usage
 
 **Limits:**
-- ✅ Max Assets: ∞ (Unlimited)
-- ✅ Max Discoveries: ∞ (Unlimited)
 - ✅ Max Audits: ∞ (Unlimited)
 - ✅ Max Hardens: ∞ (Unlimited)
-- ✅ Max Monitors: ∞ (Unlimited)
 
 **Status:** ✅ Implemented and Active
 
@@ -90,39 +75,17 @@ Your application has a **fully implemented and integrated** license system with 
 
 ## How License Enforcement Works
 
-### 1. Asset Creation
-**File:** `app/modules/assets/router_with_auth.py`  
-**Endpoint:** `POST /api/assets/`  
-**Enforcement:** `require_asset_quota()` dependency
-
-```python
-@assets_router.post("/", response_model=AssetResponse)
-def create_asset(
-    data: AssetCreate,
-    current_user: User = Depends(require_admin_or_manager),
-    _quota_check: None = Depends(require_asset_quota()),  # ✅ License check here
-    db: Session = Depends(get_db)
-):
-```
+### 1. Asset Management (Asset Creation & Auto Discovery)
+**Enforcement:** None — Asset Management (including asset creation and Auto Discovery scans) is **not license-gated**.
 
 **Behavior:**
-- Checks if `used_assets >= max_assets` before allowing creation
-- Returns HTTP 403 if limit reached
-- Does NOT consume quota (assets are counted, not consumed)
+- Creating assets never checks or consumes any license quota
+- Running Auto Discovery scans never checks or consumes any license quota
+- There is no quota dimension for assets or discoveries anywhere in the system
 
 ---
 
-### 2. Discovery Operations
-**Enforcement:** `require_quota("discovery")` dependency
-
-**Behavior:**
-- Consumes 1 discovery quota per operation
-- Increments `used_discoveries` counter
-- Returns HTTP 403 if quota exhausted
-
----
-
-### 3. Audit Operations
+### 2. Audit Operations
 **Enforcement:** `require_quota("audit")` dependency
 
 **Behavior:**
@@ -132,22 +95,12 @@ def create_asset(
 
 ---
 
-### 4. Hardening Operations
+### 3. Hardening Operations
 **Enforcement:** `require_quota("harden")` dependency
 
 **Behavior:**
 - Consumes 1 harden quota per operation
 - Increments `used_hardens` counter
-- Returns HTTP 403 if quota exhausted
-
----
-
-### 5. Monitoring Operations
-**Enforcement:** `require_quota("monitor")` dependency
-
-**Behavior:**
-- Consumes 1 monitor quota per operation
-- Increments `used_monitors` counter
 - Returns HTTP 403 if quota exhausted
 
 ---
@@ -161,7 +114,7 @@ def create_asset(
 4. License middleware blocks all `/api/*` requests if invalid
 
 ### During Operations
-1. User attempts operation (create asset, run discovery, etc.)
+1. User attempts a license-gated operation (audit or harden)
 2. Dependency checks quota with license server
 3. If quota available: operation proceeds, counter increments
 4. If quota exhausted: HTTP 403 returned with error message
@@ -175,19 +128,16 @@ def create_asset(
 
 ## Important Notes
 
-### Asset Licensing Clarification
-**Your statement:** "Asset licensing is not applied to asset creation"
+### Asset Management Licensing Clarification
 
 **Current Implementation:**
-- ✅ Asset licensing **IS** applied to asset creation
-- ✅ The `require_asset_quota()` dependency is active on `POST /api/assets/`
-- ✅ Users cannot create more assets than their plan allows
+- ✅ Asset Management (asset creation and Auto Discovery) is **NOT** license-gated
+- ✅ There is no quota dependency on `POST /api/assets/` or on discovery scan endpoints
+- ✅ Users can create as many assets and run as many discovery scans as they like, regardless of plan
 
 **How it works:**
-- Assets are **counted**, not **consumed**
-- The system checks: `if used_assets >= max_assets: raise 403`
-- Unlike discoveries/audits/hardens (which are consumed operations), assets are persistent resources
-- Deleting an asset would free up a slot for creating a new one
+- Only audits and hardens are consumed operations tracked against plan quotas
+- Assets and discovery scans are unrestricted persistent/operational resources with no entitlement dimension
 
 ---
 
@@ -230,7 +180,7 @@ curl -X POST http://localhost:8000/api/admin/licenses \
     "customer_name": "John Doe",
     "customer_email": "john@company.com",
     "organization_name": "ACME Corp",
-    "plan_type": "basic2"
+    "plan_type": "plan_250"
   }'
 
 # Response includes:
@@ -241,11 +191,11 @@ curl -X POST http://localhost:8000/api/admin/licenses \
 ```
 
 ### Available Plan Types
-- `pilot` - Testing license (30 days, 5 assets, 2 operations)
-- `basic1` - Small networks (1 year, 15 assets, 15 operations)
-- `basic2` - Medium networks (1 year, 50 assets, 50 operations)
-- `basic3` - Large networks (1 year, 150 assets, 150 operations)
-- `enterprise` - Unlimited (1 year, unlimited everything)
+- `pilot` - Testing license (30 days, 2 audits, 2 hardens)
+- `plan_100` - 100 Audit / 100 Hardening (1 year, 100 audits, 100 hardens)
+- `plan_250` - 250 Audit / 250 Hardening (1 year, 250 audits, 250 hardens)
+- `plan_500` - 500 Audit / 500 Hardening (1 year, 500 audits, 500 hardens)
+- `unlimited` - Unlimited (1 year, unlimited audits and hardens)
 
 ---
 
@@ -341,24 +291,21 @@ curl -X POST http://localhost:8000/api/admin/licenses \
   }'
 ```
 
-### 4. Test Asset Creation Limit
+### 4. Test Audit Quota Limit
 ```bash
-# Try to create 6 assets (pilot allows only 5)
-# The 6th creation should fail with HTTP 403
+# Try to run 3 audits (pilot allows only 2)
+# The 3rd audit should fail with HTTP 403
 ```
 
 ---
 
 ## Comparison Table
 
-| Feature | Pilot | Basic1 | Basic2 | Basic3 | Enterprise |
-|---------|-------|--------|--------|--------|------------|
+| Feature | Pilot | 100 Audit / 100 Hardening | 250 Audit / 250 Hardening | 500 Audit / 500 Hardening | Unlimited |
+|---------|-------|---------------------------|----------------------------|----------------------------|-----------|
 | **Duration** | 30 days | 365 days | 365 days | 365 days | 365 days |
-| **Max Assets** | 5 | 15 | 50 | 150 | ∞ |
-| **Max Discoveries** | 2 | 15 | 50 | 150 | ∞ |
-| **Max Audits** | 2 | 15 | 50 | 150 | ∞ |
-| **Max Hardens** | 2 | 15 | 50 | 150 | ∞ |
-| **Max Monitors** | 2 | 15 | 50 | 150 | ∞ |
+| **Max Audits** | 2 | 100 | 250 | 500 | ∞ |
+| **Max Hardens** | 2 | 100 | 250 | 500 | ∞ |
 | **VM Lock** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Heartbeat Required** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Auto-downgrade** | N/A | → Pilot | → Pilot | → Pilot | → Pilot |
@@ -369,8 +316,8 @@ curl -X POST http://localhost:8000/api/admin/licenses \
 
 ✅ **Your license system is fully implemented and working**  
 ✅ **All 5 plans match your requirements exactly**  
-✅ **Asset creation IS protected by license quotas**  
-✅ **All operations (discovery, audit, harden, monitor) are quota-enforced**  
+✅ **Asset Management (asset creation and Auto Discovery) is NOT gated by license quotas**  
+✅ **Audit and hardening operations are quota-enforced**  
 ✅ **Security features (VM lock, HMAC, encryption) are active**  
 ✅ **Heartbeat and auto-downgrade mechanisms are functional**
 
@@ -395,8 +342,8 @@ curl -X POST http://localhost:8000/api/admin/licenses \
 - `GET /api/license/status` - Get license status (frontend)
 
 **Files to Review:**
-- License plans: `license_server/app/crud.py` (line 23-67)
-- Asset quota check: `app/core/dependencies.py` (line 186-206)
-- Asset creation: `app/modules/assets/router_with_auth.py` (line 141-150)
+- License plans: `license_server/app/crud.py` (`get_plan_limits()`)
+- License model: `license_server/app/models.py` (`License`)
+- Asset creation (no quota dependency): `app/modules/assets/router_with_auth.py`
 - License middleware: `app/middleware/license_middleware.py`
 - License state: `app/core/license_state.py`

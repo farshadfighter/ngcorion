@@ -2,7 +2,9 @@
 
 ## Problem
 
-Currently, the license quota is consumed **before** the operation runs (audit/hardening/discovery). If the operation fails (SSH connection error, device unreachable, etc.), the quota is already consumed and not refunded.
+Currently, the license quota is consumed **before** the operation runs (audit/hardening). If the operation fails (SSH connection error, device unreachable, etc.), the quota is already consumed and not refunded.
+
+> **Note:** Asset Management (including Auto Discovery scans and asset creation) is no longer license-gated at all — it has no quota dimension, so the "Discovery Endpoints" and "Asset Creation" sections below are historical only.
 
 **Current Flow (WRONG):**
 ```
@@ -330,18 +332,15 @@ All these consume quota but might fail:
 7. `/home/sina/netease/app/modules/windows/hardening/router.py`
    - `execute_windows_hardening()` - Line ~215
 
-### Discovery Endpoints (Priority: HIGH)
+### Discovery Endpoints — no longer applicable
 
-1. `/home/sina/netease/app/modules/discovery/router.py`
-   - `execute_discovery()` - Line ~89
+Auto Discovery scans (`app/modules/discovery/router.py`) are not license-gated any more — the "discovery" quota dimension was removed along with the rest of Asset Management licensing, so `start_scan()` has no quota dependency to migrate.
 
 ---
 
-## Asset Creation (Priority: LOW)
+## Asset Creation — no longer applicable
 
-Asset creation uses `require_asset_quota()` which is different - it only **checks** the limit, doesn't consume. Assets are counted, not consumed, so this is OK to keep as-is.
-
-**No changes needed for asset creation.**
+Asset creation previously used `require_asset_quota()` to check (not consume) `max_assets`. That function has been removed entirely: Asset Management has no license entitlement of its own, so `POST /api/assets/` has no quota check at all now.
 
 ---
 
@@ -402,7 +401,6 @@ Asset creation uses `require_asset_quota()` which is different - it only **check
 - [ ] Update `app/modules/mssql/hardening/router.py`
 - [ ] Update `app/modules/windows/audit/router.py`
 - [ ] Update `app/modules/windows/hardening/router.py`
-- [ ] Update `app/modules/discovery/router.py`
 - [ ] Test each endpoint with failing operation
 - [ ] Test each endpoint with successful operation
 - [ ] Test quota exhaustion behavior

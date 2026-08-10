@@ -18,18 +18,12 @@ interface LicenseStatusResponse {
   is_pilot_mode: boolean;
   message: string;
   limits: {
-    max_assets: number;
-    max_discoveries: number;
     max_audits: number;
     max_hardens: number;
-    max_monitors: number;
   } | null;
   usage: {
-    used_assets: number;
-    used_discoveries: number;
     used_audits: number;
     used_hardens: number;
-    used_monitors: number;
   } | null;
 }
 ```
@@ -43,22 +37,16 @@ interface LicenseStatusResponse {
 ```json
 {
   "valid": true,
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "message": "License is valid",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 200,
-    "max_audits": 500,
-    "max_hardens": 200,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 5,
-    "used_discoveries": 12,
     "used_audits": 45,
-    "used_hardens": 8,
-    "used_monitors": 3
+    "used_hardens": 8
   }
 }
 ```
@@ -72,18 +60,12 @@ interface LicenseStatusResponse {
   "is_pilot_mode": true,
   "message": "License is valid",
   "limits": {
-    "max_assets": 5,
-    "max_discoveries": 10,
-    "max_audits": 20,
-    "max_hardens": 10,
-    "max_monitors": 5
+    "max_audits": 2,
+    "max_hardens": 2
   },
   "usage": {
-    "used_assets": 2,
-    "used_discoveries": 8,
-    "used_audits": 15,
-    "used_hardens": 5,
-    "used_monitors": 2
+    "used_audits": 1,
+    "used_hardens": 0
   }
 }
 ```
@@ -119,22 +101,16 @@ interface LicenseStatusResponse {
 ```json
 {
   "valid": false,
-  "plan_type": "basic2",
+  "plan_type": "plan_250",
   "is_pilot_mode": false,
   "message": "License has expired",
   "limits": {
-    "max_assets": 50,
-    "max_discoveries": 200,
-    "max_audits": 500,
-    "max_hardens": 200,
-    "max_monitors": 50
+    "max_audits": 250,
+    "max_hardens": 250
   },
   "usage": {
-    "used_assets": 45,
-    "used_discoveries": 180,
-    "used_audits": 450,
-    "used_hardens": 150,
-    "used_monitors": 40
+    "used_audits": 245,
+    "used_hardens": 150
   }
 }
 ```
@@ -154,18 +130,12 @@ interface LicenseStatusResponse {
   is_pilot_mode: boolean;
   message: string;
   limits: {
-    max_assets: number;
-    max_discoveries: number;
     max_audits: number;
     max_hardens: number;
-    max_monitors: number;
   } | null;
   usage: {
-    used_assets: number;
-    used_discoveries: number;
     used_audits: number;
     used_hardens: number;
-    used_monitors: number;
   } | null;
 }
 
@@ -241,8 +211,8 @@ function LicenseInfo() {
     <div>
       <h3>License Status</h3>
       <p>Plan: {status.plan_type}</p>
-      <p>Assets: {status.usage?.used_assets} / {status.limits?.max_assets}</p>
-      <p>Discoveries: {status.usage?.used_discoveries} / {status.limits?.max_discoveries}</p>
+      <p>Audits: {status.usage?.used_audits} / {status.limits?.max_audits}</p>
+      <p>Hardens: {status.usage?.used_hardens} / {status.limits?.max_hardens}</p>
     </div>
   );
 }
@@ -271,15 +241,18 @@ function LicenseInfo() {
 
 ### 4. Plan Types
 - `"pilot"` - Trial/demo license (limited features, 30 days)
-- `"basic1"` - Basic plan tier 1
-- `"basic2"` - Basic plan tier 2
+- `"plan_100"` - 100 Audit / 100 Hardening
+- `"plan_250"` - 250 Audit / 250 Hardening
+- `"plan_500"` - 500 Audit / 500 Hardening
+- `"unlimited"` - Unlimited audits and hardens
 - `null` - No license activated
 
 ### 5. Usage Updates
-- Usage counters update automatically when operations are performed
+- Usage counters update automatically when audit/harden operations are performed
 - Backend calls license server to consume quota
 - Frontend just reads the current state
 - No need to manually track usage
+- Asset creation and Auto Discovery never touch these counters — they are not license-gated
 
 ---
 

@@ -17,46 +17,35 @@ def generate_organization_token(org_name: str, customer_email: str) -> str:
     return hashlib.sha256(unique_string.encode()).hexdigest()
 
 def get_plan_limits(plan_type: models.PlanType) -> dict:
-    """each plan limit"""
+    """each plan limit
+
+    Asset Management has no license entitlement — only audit and hardening
+    operations are quota-gated.
+    """
     limits = {
         models.PlanType.PILOT: {
-            "max_assets": 5,
-            "max_discoveries": 2,
             "max_audits": 2,
             "max_hardens": 2,
-            "max_monitors": 2,
             "duration_days": 30
         },
-        models.PlanType.BASIC1: {
-            "max_assets": 15,
-            "max_discoveries": 15,
-            "max_audits": 15,
-            "max_hardens": 15,
-            "max_monitors": 15,
+        models.PlanType.PLAN_100: {
+            "max_audits": 100,
+            "max_hardens": 100,
             "duration_days": 365
         },
-        models.PlanType.BASIC2: {
-            "max_assets": 50,
-            "max_discoveries": 50,
-            "max_audits": 50,
-            "max_hardens": 50,
-            "max_monitors": 50,
+        models.PlanType.PLAN_250: {
+            "max_audits": 250,
+            "max_hardens": 250,
             "duration_days": 365
         },
-        models.PlanType.BASIC3: {
-            "max_assets": 150,
-            "max_discoveries": 150,
-            "max_audits": 150,
-            "max_hardens": 150,
-            "max_monitors": 150,
+        models.PlanType.PLAN_500: {
+            "max_audits": 500,
+            "max_hardens": 500,
             "duration_days": 365
         },
-        models.PlanType.ENTERPRISE: {
-            "max_assets": None,
-            "max_discoveries": None,
+        models.PlanType.UNLIMITED: {
             "max_audits": None,
             "max_hardens": None,
-            "max_monitors": None,
             "duration_days": 365
         }
     }
@@ -76,11 +65,8 @@ def create_license(db: Session, license_data: schemas.LicenseCreate) -> models.L
         customer_email=license_data.customer_email,
         organization_name=license_data.organization_name,
         plan_type=license_data.plan_type,
-        max_assets=limits["max_assets"],
-        max_discoveries=limits["max_discoveries"],
         max_audits=limits["max_audits"],
         max_hardens=limits["max_hardens"],
-        max_monitors=limits["max_monitors"],
         expires_at=expires_at,
         is_pilot_mode=(license_data.plan_type == models.PlanType.PILOT)
     )
@@ -183,29 +169,23 @@ def downgrade_to_pilot(db: Session, license: models.License):
     
     license.is_pilot_mode = True
     license.plan_type = models.PlanType.PILOT
-    license.max_assets = pilot_limits["max_assets"]
-    license.max_discoveries = pilot_limits["max_discoveries"]
     license.max_audits = pilot_limits["max_audits"]
     license.max_hardens = pilot_limits["max_hardens"]
-    license.max_monitors = pilot_limits["max_monitors"]
-    
+
     db.commit()
 
-def consume_operation(db: Session, license_key: str, org_token: str, vm_fingerprint: str, 
+def consume_operation(db: Session, license_key: str, org_token: str, vm_fingerprint: str,
                      operation_type: str, count: int) -> tuple[bool, str, models.License]:
-    """مصرف عملیات (asset, discovery, audit, harden, monitor)"""
-    
+    """مصرف عملیات (audit, harden)"""
+
     valid, message, license = validate_license(db, license_key, org_token, vm_fingerprint)
-    
+
     if not valid:
         return False, message, None
-    
+
     operation_map = {
-        "asset": ("max_assets", "used_assets"),
-        "discovery": ("max_discoveries", "used_discoveries"),
         "audit": ("max_audits", "used_audits"),
         "harden": ("max_hardens", "used_hardens"),
-        "monitor": ("max_monitors", "used_monitors")
     }
     
     if operation_type not in operation_map:
@@ -217,8 +197,8 @@ def consume_operation(db: Session, license_key: str, org_token: str, vm_fingerpr
 
     # چک محدودیت (None = نامحدود)
     # Only enforce the ceiling for capped plans. The usage counter is always
-    # incremented — including unlimited (Enterprise) plans where max_value is
-    # None — so the frontend can report real usage instead of a frozen 0.
+    # incremented — including the Unlimited plan, where max_value is None —
+    # so the frontend can report real usage instead of a frozen 0.
     if max_value is not None and used_value + count > max_value:
         return False, f"limit {operation_type} has expierd", license
 

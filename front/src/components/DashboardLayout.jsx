@@ -86,11 +86,11 @@ export const DashboardLayout = () => {
         hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
 
+    // Asset Management (asset-list, auto-discovery) is not license-gated, so
+    // those pages don't show a license usage badge.
     const menuToModule = {
         "hardening":        "hardening",
         "operation-device": "auditing",
-        "auto-discovery":   "auto_discovery",
-        "asset-list":       "asset",
     };
     const currentModule = menuToModule[activeMenu] || "";
 

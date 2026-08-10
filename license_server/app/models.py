@@ -4,11 +4,11 @@ from .database import Base
 import enum
 
 class PlanType(str, enum.Enum):
-    PILOT = "pilot"           # تست 1 ماهه
-    BASIC1 = "basic1"         # شبکه کوچک - 15 دستگاه
-    BASIC2 = "basic2"         # شبکه متوسط - 50 دستگاه
-    BASIC3 = "basic3"         # شبکه بزرگ - 150 دستگاه
-    ENTERPRISE = "enterprise" # نامحدود
+    PILOT = "pilot"         # تست 1 ماهه
+    PLAN_100 = "plan_100"   # 100 Audit / 100 Hardening
+    PLAN_250 = "plan_250"   # 250 Audit / 250 Hardening
+    PLAN_500 = "plan_500"   # 500 Audit / 500 Hardening
+    UNLIMITED = "unlimited" # نامحدود
 
 class License(Base):
     __tablename__ = "licenses"
@@ -29,20 +29,15 @@ class License(Base):
     organization_name = Column(String, nullable=False)
     
     plan_type = Column(SQLEnum(PlanType), nullable=False)
-    
-    # محدودیت‌های عملیاتی
-    max_assets = Column(Integer, nullable=True)  # null = unlimited
-    max_discoveries = Column(Integer, nullable=True)
-    max_audits = Column(Integer, nullable=True)
+
+    # محدودیت‌های عملیاتی (Asset Management is not license-gated: no asset/
+    # discovery/monitor entitlement dimensions here — only audit and harden)
+    max_audits = Column(Integer, nullable=True)  # null = unlimited
     max_hardens = Column(Integer, nullable=True)
-    max_monitors = Column(Integer, nullable=True)
-    
+
     # مصرف فعلی
-    used_assets = Column(Integer, default=0)
-    used_discoveries = Column(Integer, default=0)
     used_audits = Column(Integer, default=0)
     used_hardens = Column(Integer, default=0)
-    used_monitors = Column(Integer, default=0)
     
     # VM fingerprint برای قفل شدن روی یک ماشین
     vm_fingerprint = Column(String, nullable=True)

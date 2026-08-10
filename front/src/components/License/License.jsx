@@ -48,12 +48,8 @@ export const License = () => {
         return {
             used_hardens: usage?.used_hardens ?? 0,
             used_audits: usage?.used_audits ?? 0,
-            used_assets: usage?.used_assets ?? 0,
-            used_discoveries: usage?.used_discoveries ?? 0,
             max_hardens: limits?.max_hardens ?? null,
             max_audits: limits?.max_audits ?? null,
-            max_assets: limits?.max_assets ?? null,
-            max_discoveries: limits?.max_discoveries ?? null,
         };
     };
 
