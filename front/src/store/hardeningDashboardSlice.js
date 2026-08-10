@@ -35,7 +35,11 @@ export const fetchHardeningDashboard = createAsyncThunk(
                         params:
                             key === "progress"
                                 ? { months: 12 }
-                                : ["activities", "requiring", "missing"].includes(key)
+                                : // This one is paginated by the backend, so it
+                                  // takes page_size rather than a plain limit.
+                                key === "requiring"
+                                ? { page: 1, page_size: 10 }
+                                : ["activities", "missing"].includes(key)
                                 ? { limit: 10 }
                                 : undefined,
                     })

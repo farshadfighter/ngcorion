@@ -181,13 +181,14 @@ export const HardeningDashboard = () => {
                                 <tr>
                                     <th>Asset</th>
                                     <th>Risk</th>
-                                    <th>Open Findings</th>
+                                    <th>Active Findings</th>
+                                    <th>Fixed</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {(requiring?.items || []).length === 0 && (
                                     <tr>
-                                        <td colSpan={3} className="hd-table-empty">
+                                        <td colSpan={4} className="hd-table-empty">
                                             No assets with unresolved findings.
                                         </td>
                                     </tr>
@@ -204,7 +205,8 @@ export const HardeningDashboard = () => {
                                                 <span className="hd-muted">—</span>
                                             )}
                                         </td>
-                                        <td>{a.open_findings}</td>
+                                        <td>{a.active_findings_count ?? "-"}</td>
+                                        <td>{a.resolved_by_hardening ?? "-"}</td>
                                     </tr>
                                 ))}
                             </tbody>

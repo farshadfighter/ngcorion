@@ -29,9 +29,9 @@ const activities = mk(Array.from({length:5},(_,i)=>({ id:i+1,
   asset_name:["DC01","Linux02"][i%2], status:["success","failed"][i%2],
   action_type:"execute", created_at:new Date(Date.now()-i*3600e3).toISOString(), completed_at:null })));
 
-const requiring = mk([["DC01","critical",18],["Linux02","critical",14],["Linux03","high",9],
-  ["SW-Core","high",7],["FG-200","medium",4]].map(([asset_name,risk_level,open_findings],i)=>(
-  {asset_id:i+1,asset_name,risk_level,open_findings})));
+const requiring = mk([["DC01","critical",18,4],["Linux02","critical",14,2],["Linux03","high",9,6],
+  ["SW-Core","high",7,1],["FG-200","medium",4,3]].map(([asset_name,risk_level,active,fixed],i)=>(
+  {asset_id:i+1,asset_name,risk_level,active_findings_count:active,resolved_by_hardening:fixed})));
 const missing = mk([["FG-BL-002","Disable SMBv1",12],["FG-BL-010","Enable banner",9],
   ["LNX-5.3.1","Enable auditd",7],["WIN-2.3.1","Disable guest",5],["FG-SYS-005","Disable USB",3]]
   .map(([check_number,check_title,affected_assets])=>({check_number,check_title,affected_assets,severity:"high"})));
