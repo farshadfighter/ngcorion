@@ -60,3 +60,7 @@ dist_build/
 #docs
 documents/
 documents
+
+# TLS (self-signed, generated per-deployment — see docs/DEPLOYMENT_GUIDE.md)
+traefik/certs/*.key
+traefik/certs/*.crt
