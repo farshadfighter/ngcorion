@@ -6,6 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.core.database import Base
+from app.core.config import settings
 from app.models import *
 
 # this is the Alembic Config object, which provides
@@ -22,6 +23,21 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+
+
+def get_url() -> str:
+    """Resolve the DB URL the same way the app does — from the DATABASE_URL
+    environment variable (via app settings), NOT the static sqlalchemy.url in
+    alembic.ini. This keeps migrations pointed at the same database the running
+    app uses in every environment (in Docker: postgres:5432; on a host: whatever
+    DATABASE_URL is set to). A bare ``postgresql://`` scheme is normalized to the
+    psycopg (v3) driver this project depends on — psycopg[binary], not psycopg2.
+    """
+    url = settings.DATABASE_URL
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -41,7 +57,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -60,8 +76,10 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
