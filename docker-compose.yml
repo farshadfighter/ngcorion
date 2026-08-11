@@ -21,35 +21,11 @@ services:
     networks:
       - app
 
-  # Production static frontend (built React bundle from front/dist).
-  # Replaces the old vite dev-server container; served over HTTPS via
-  # Traefik at https://ngcorion.com/ (see traefik labels below).
-  frontend:
-    image: docker.arvancloud.ir/nginx:alpine
-    container_name: frontend
-    restart: always
-    volumes:
-      - ./front/dist:/usr/share/nginx/html:ro
-      - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - backend
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`ngcorion.com`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
-      # Redirect plain-HTTP requests for ngcorion.com to HTTPS. Scoped to
-      # this Host only so other dev routers on entrypoint "web" (e.g.
-      # netease.localhost, license.*.localhost) are unaffected.
-      - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.routers.frontend-http.rule=Host(`ngcorion.com`)"
-      - "traefik.http.routers.frontend-http.entrypoints=web"
-      - "traefik.http.routers.frontend-http.middlewares=ngcorion-https-redirect"
-      - "traefik.http.routers.frontend-http.service=frontend"
-    networks:
-      - app
-
+  # Application backend (FastAPI). Also serves the built React SPA from
+  # front/dist directly (no nginx) — see app/main.py's SPA catch-all. Traefik
+  # terminates TLS and forwards ALL Host(`ngcorion.local`) traffic here; the
+  # backend routes /api, /auth, /docs, /static itself and returns the SPA
+  # shell for everything else. Never publishes a host port.
   backend:
     build:
       context: .
@@ -58,6 +34,7 @@ services:
     container_name: backend
     volumes:
       - ./app:/app/app
+      - ./front/dist:/app/front/dist:ro
       - ./pyproject.toml:/app/pyproject.toml
       - ./uv.lock:/app/uv.lock
     environment:
@@ -72,15 +49,20 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      # /api and /auth are FastAPI route prefixes; /docs, /openapi.json and
-      # /static are the Swagger UI + its assets (all served by the backend,
-      # outside /api). Everything else on this host falls through to the
-      # frontend router (lower default priority — shorter rule).
-      - "traefik.http.routers.backend.rule=Host(`ngcorion.com`) && (PathPrefix(`/api`) || PathPrefix(`/auth`) || PathPrefix(`/docs`) || PathPrefix(`/openapi.json`) || PathPrefix(`/static`))"
+      # HTTPS: the backend serves both the API and the React SPA, so a single
+      # Host rule covers every path on this domain.
+      - "traefik.http.routers.backend.rule=Host(`ngcorion.local`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls=true"
-      - "traefik.http.routers.backend.priority=100"
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      # Redirect plain-HTTP requests for ngcorion.local to HTTPS. Scoped to
+      # this Host only so other dev routers on entrypoint "web" (e.g.
+      # license.netease.localhost) are unaffected.
+      - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.backend-http.rule=Host(`ngcorion.local`)"
+      - "traefik.http.routers.backend-http.entrypoints=web"
+      - "traefik.http.routers.backend-http.middlewares=ngcorion-https-redirect"
+      - "traefik.http.routers.backend-http.service=backend"
     networks:
       - app
 

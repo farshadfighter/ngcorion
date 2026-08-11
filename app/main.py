@@ -4,10 +4,12 @@ Ngicorn - Main Application
 FastAPI application entry point with CORS middleware and route registration.
 """
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.core.database import Base, engine, SessionLocal
@@ -138,8 +140,22 @@ app = FastAPI(
     redoc_url=None
 )
 
-# Mount static files
+# Mount static files (Swagger UI assets, etc.)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# --- Frontend (React SPA) ---------------------------------------------------
+# The built bundle in front/dist is served directly by this backend (no nginx).
+# Hashed build assets under /assets are mounted for aggressive caching; the SPA
+# shell + deep-link fallback is handled by the catch-all route at the very end
+# of this file (registered after all API routers so it never shadows them).
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "front" / "dist"
+FRONTEND_INDEX = FRONTEND_DIST / "index.html"
+if (FRONTEND_DIST / "assets").is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=FRONTEND_DIST / "assets"),
+        name="frontend-assets",
+    )
 
 # Configure CORS middleware
 # WARNING: Default allows all origins - configure BACKEND_CORS_ORIGINS in .env for production
@@ -270,9 +286,9 @@ app.include_router(backup_router)
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])
 
 
-@app.get("/")
-def root():
-    """Application root endpoint with basic info."""
+@app.get("/api/info", tags=["Meta"])
+def app_info():
+    """Application info endpoint (project name, version, feature list)."""
     return {
         "project": settings.PROJECT_NAME,
         "version": settings.VERSION,
@@ -290,6 +306,37 @@ def health_check():
     database connectivity check.
     """
     return {"status": "ok", "version": settings.VERSION}
+
+
+# --- SPA catch-all ----------------------------------------------------------
+# Serves the React build (front/dist) for the root and any client-side route.
+# Registered LAST so every API/auth/docs router above takes precedence; only
+# unmatched paths fall through here. A matching static file (e.g. logo2.png)
+# is returned directly, otherwise index.html is returned so BrowserRouter can
+# resolve deep links / refreshes (e.g. /audit/sessions/42). When no build is
+# present (dev without `npm run build`, tests) this reports the info payload
+# at "/" and 404s elsewhere, so the API still runs without a frontend bundle.
+@app.get("/", include_in_schema=False)
+@app.get("/{full_path:path}", include_in_schema=False)
+def serve_spa(full_path: str = ""):
+    # Reserved backend prefixes must 404 honestly rather than be masked by the
+    # SPA shell — reaching here with one means no router above matched it.
+    if full_path.startswith(("api/", "auth/", "docs", "openapi.json", "static/", "assets/")):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    if not FRONTEND_INDEX.is_file():
+        if full_path == "":
+            return app_info()
+        raise HTTPException(status_code=404, detail="Frontend build not found")
+
+    # Serve a real file from the build if it exists (and stays inside dist),
+    # otherwise fall back to the SPA shell for client-side routing.
+    if full_path:
+        candidate = (FRONTEND_DIST / full_path).resolve()
+        if candidate.is_file() and FRONTEND_DIST.resolve() in candidate.parents:
+            return FileResponse(candidate)
+
+    return FileResponse(FRONTEND_INDEX)
 
 
 if __name__ == "__main__":

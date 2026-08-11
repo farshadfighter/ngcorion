@@ -1,13 +1,13 @@
 # Dynamic (file provider) TLS config for Traefik.
 # Loaded via the `--providers.file.directory=/etc/traefik/dynamic` command
-# flag in docker-compose.yml. Supplies the self-signed cert for ngcorion.com
+# flag in docker-compose.yml. Supplies the self-signed cert for ngcorion.local
 # (generated into traefik/certs/, see docs/DEPLOYMENT_GUIDE.md).
 tls:
   certificates:
-    - certFile: /etc/traefik/certs/ngcorion.crt
-      keyFile: /etc/traefik/certs/ngcorion.key
+    - certFile: /etc/traefik/certs/ngcorion.local.crt
+      keyFile: /etc/traefik/certs/ngcorion.local.key
   stores:
     default:
       defaultCertificate:
-        certFile: /etc/traefik/certs/ngcorion.crt
-        keyFile: /etc/traefik/certs/ngcorion.key
+        certFile: /etc/traefik/certs/ngcorion.local.crt
+        keyFile: /etc/traefik/certs/ngcorion.local.key
