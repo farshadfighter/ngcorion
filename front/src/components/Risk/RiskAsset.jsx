@@ -39,6 +39,20 @@ export const RiskAsset = () => {
         );
     }
 
+    // An empty table here almost always means no risk scores have been
+    // calculated yet (asset_risk_scores is empty), not that a filter excluded
+    // everything — so say that rather than leaving a blank page.
+    if (!isLoading && items.length === 0) {
+        return (
+            <div className="risk-page">
+                <p className="risk-state">
+                    No risk scores have been calculated yet. Once assets are
+                    scored they appear here, ranked by risk.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="risk-page">
             <RiskAssetTable

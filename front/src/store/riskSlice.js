@@ -42,30 +42,37 @@ const normaliseSummary = (data) => ({
 export const fetchRiskDashboard = createAsyncThunk(
     "risk/fetchDashboard",
     async (_, { rejectWithValue }) => {
-        try {
-            const [summaryRes, listRes, trendRes] = await Promise.all([
-                api.get("/api/risk/summary"),
-                api.get("/api/risk/assets", {
-                    params: {
-                        page: 1,
-                        page_size: PAGE_SIZE,
-                        sort_by: "final_risk_score",
-                        sort_order: "desc",
-                    },
-                }),
-                api.get("/api/risk/trend", { params: { months: 12 } }),
-            ]);
+        // allSettled, not all: a failing /summary or /trend must not blank the
+        // asset table, which is the whole point of the Risk Asset screen.
+        const [summaryRes, listRes, trendRes] = await Promise.allSettled([
+            api.get("/api/risk/summary"),
+            api.get("/api/risk/assets", {
+                params: {
+                    page: 1,
+                    page_size: PAGE_SIZE,
+                    sort_by: "final_risk_score",
+                    sort_order: "desc",
+                },
+            }),
+            api.get("/api/risk/trend", { params: { months: 12 } }),
+        ]);
 
-            return {
-                summary: normaliseSummary(summaryRes.data),
-                items: listRes.data?.items || [],
-                total: listRes.data?.total || 0,
-                trend: trendRes.data?.points || [],
-                trendMessage: trendRes.data?.message || null,
-            };
-        } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || err.message);
+        // Only the asset list failing is a real error for this screen.
+        if (listRes.status === "rejected") {
+            const err = listRes.reason;
+            return rejectWithValue(
+                err?.response?.data?.detail || err?.message || "Risk data unavailable"
+            );
         }
+
+        const ok = (res) => (res.status === "fulfilled" ? res.value.data : null);
+        return {
+            summary: normaliseSummary(ok(summaryRes)),
+            items: listRes.value.data?.items || [],
+            total: listRes.value.data?.total || 0,
+            trend: ok(trendRes)?.points || [],
+            trendMessage: ok(trendRes)?.message || null,
+        };
     }
 );
 
