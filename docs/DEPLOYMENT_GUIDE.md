@@ -31,16 +31,21 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
    این خط رو روی هر کامپیوتری که می‌خواد به سایت وصل بشه باید اجرا کنی (هم روی خود
    سرور اگه از طریق دامنه تستش می‌کنی، هم روی کلاینت‌ها).
 
-2. **گواهی SSL**: از قبل تو `traefik/certs/ngcorion.local.crt` و
-   `traefik/certs/ngcorion.local.key` ساخته شده (self-signed، معتبر برای دامنه‌ی
-   `ngcorion.local` و IP `172.16.200.90`، اعتبار ۱ ساله). اگه لازم شد از نو بسازیش:
+2. **گواهی SSL**: گواهی‌ها تو گیت نیستن (`traefik/certs/*.crt` و `*.key` تو `.gitignore`
+   هستن)، پس با `git pull` به سرور نمیان و **باید روی خودِ سرور ساخته بشن**. اول
+   گواهی‌های قدیمی `ngcorion.com` (اگه مونده) رو پاک کن، بعد گواهی جدید `ngcorion.local`
+   رو بساز (self-signed، معتبر برای دامنه‌ی `ngcorion.local` و IP `172.16.200.90`، اعتبار
+   ۱ ساله):
    ```bash
+   rm -f traefik/certs/ngcorion.crt traefik/certs/ngcorion.key
    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
      -keyout traefik/certs/ngcorion.local.key \
      -out traefik/certs/ngcorion.local.crt \
      -subj "/C=IR/ST=Tehran/L=Tehran/O=NGCorion/CN=ngcorion.local" \
      -addext "subjectAltName=IP:172.16.200.90,DNS:ngcorion.local"
    ```
+   > اگه `tls.yml` به گواهی‌ای اشاره کنه که رو دیسک نیست، Traefik هیچ گواهی معتبری برای
+   > پورت ۴۴۳ نداره و هند‌شیک TLS می‌شکنه (`curl` خطای `SSL_ERROR_SYSCALL` می‌ده).
 
 3. **Build فرانت**:
    ```bash
@@ -51,6 +56,13 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
    (`./front/dist:/app/front/dist:ro`) و توسط FastAPI سرو می‌شه. بعد از هر تغییر تو کد
    فرانت، این مرحله باید دوباره اجرا بشه — دایرکتوری `dist/` تو gitignore هست و در ری‌است
    تازه ساخته نمی‌شه.
+   > اگه build با خطای `EACCES: permission denied, mkdir '.../front/dist/...'` خورد،
+   > یعنی `front/dist` از یه اجرای قبلی مالکش root شده. چون این پوشه gitignore هست و هر
+   > بار از نو ساخته می‌شه، امن‌ترین کار پاک‌کردنشه و بعد build دوباره (بدون sudo، با
+   > همون کاربری که داکر رو اجرا می‌کنه):
+   > ```bash
+   > sudo rm -rf front/dist && npm run build
+   > ```
 
 4. **اجرای داکر**:
    ```bash
@@ -89,19 +101,38 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
 
 کارهایی که خودت باید روی سرور اجرا کنی تا مطمئن بشی سایت بالا میاد:
 
-1. دامنه‌ی محلی رو به hosts اضافه کن:
+1. **آخرین تغییرات کد رو بگیر** (compose جدید، `app/main.py`، `tls.yml`):
+   ```bash
+   cd ~/netease && git pull
+   ```
+2. دامنه‌ی محلی رو به hosts اضافه کن و خط قدیمی `ngcorion.com` رو حذف کن:
    ```bash
    echo "172.16.200.90 ngcorion.local" | sudo tee -a /etc/hosts
+   sudo sed -i '/ngcorion\.com/d' /etc/hosts
    ```
-   (اگه از یه کلاینت دیگه تست می‌کنی، همین خط رو روی اون کلاینت هم اضافه کن.)
-2. اگه خط قدیمی `ngcorion.com` تو `/etc/hosts` مونده، حذفش کن تا تداخل نشه.
-3. فرانت رو build کن: `cd front && npm install && npm run build && cd ..`
-4. کانتینرها رو بالا بیار: `docker compose up -d`
-5. سلامت سرویس‌ها رو چک کن: `docker compose ps` (همه باید `Up`/healthy باشن؛ دیگه
-   کانتینری به اسم `frontend` وجود نداره).
-6. تست بک‌اند: `curl -k https://ngcorion.local/health` → باید `{"status":"ok",...}` بده.
-7. تست فرانت: `curl -k https://ngcorion.local/` → باید HTML صفحه‌ی React (`index.html`)
+   (اگه از یه کلاینت دیگه تست می‌کنی، همین دو کار رو روی اون کلاینت هم انجام بده.)
+3. **گواهی جدید رو روی سرور بساز** (گواهی‌ها تو گیت نیستن — بخش «گواهی SSL» بالا):
+   ```bash
+   rm -f traefik/certs/ngcorion.crt traefik/certs/ngcorion.key
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+     -keyout traefik/certs/ngcorion.local.key \
+     -out traefik/certs/ngcorion.local.crt \
+     -subj "/C=IR/ST=Tehran/L=Tehran/O=NGCorion/CN=ngcorion.local" \
+     -addext "subjectAltName=IP:172.16.200.90,DNS:ngcorion.local"
+   ```
+4. **فرانت رو build کن** (اگه build با خطای permission خورد، اول `sudo rm -rf front/dist`):
+   ```bash
+   cd front && npm install && npm run build && cd ..
+   ```
+5. کانتینرها رو بالا بیار — `--remove-orphans` کانتینر قدیمی `frontend` (nginx) رو حذف می‌کنه:
+   ```bash
+   docker compose up -d --remove-orphans
+   ```
+6. سلامت سرویس‌ها رو چک کن: `docker compose ps` (باید `Up`/healthy باشن؛ دیگه **نباید**
+   کانتینری به اسم `frontend` باشه).
+7. تست بک‌اند: `curl -k https://ngcorion.local/health` → باید `{"status":"ok",...}` بده.
+8. تست فرانت: `curl -k https://ngcorion.local/` → باید HTML صفحه‌ی React (`index.html`)
    برگرده.
-8. تست ریدایرکت HTTP→HTTPS: `curl -kI http://ngcorion.local/` → باید `308` و
+9. تست ریدایرکت HTTP→HTTPS: `curl -kI http://ngcorion.local/` → باید `308` و
    `Location: https://ngcorion.local/` بده.
-9. تو مرورگر برو `https://ngcorion.local` و هشدار گواهی self-signed رو Accept کن.
+10. تو مرورگر برو `https://ngcorion.local` و هشدار گواهی self-signed رو Accept کن.
