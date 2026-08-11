@@ -322,9 +322,15 @@ export const DashboardLayout = () => {
             {/* ── MAIN CONTENT ── */}
             <main className="main-content">
                 <header className="dashboard-header">
-                    <h1 className="page-title">
-                        {pageTitles[activeMenu] || "Dashboard"}
-                    </h1>
+                    <div className="header-left">
+                        {/* Decorative brand mark; sits with the page title on every page. */}
+                        <span className="header-eye" aria-hidden="true">
+                            <img src="/icons/eye.png" alt="" />
+                        </span>
+                        <h1 className="page-title">
+                            {pageTitles[activeMenu] || "Dashboard"}
+                        </h1>
+                    </div>
                     <div className="header-center" style={{ flex: 1, display: "flex", justifyContent: "center" }}>
                         {currentModule && <LicenseBadge module={currentModule} />}
                     </div>

@@ -21,7 +21,8 @@
 }
 
 .sidebar-header {
-    padding: 18px 20px;
+    padding: clamp(10px, 1.9vh, 18px) 20px;
+    flex-shrink: 0;
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
@@ -71,21 +72,37 @@
 /* NAVIGATION */
 .sidebar-nav {
     flex: 1;
-    padding: 10px 0;
+    min-height: 0;
+    padding: clamp(2px, 0.8vh, 12px) 0;
     overflow-y: auto;
     overflow-x: hidden;
+    /* Slim, dark scrollbar for the rare viewport too short to fit everything. */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 3px;
 }
 
 .sidebar.collapsed .sidebar-nav {
     padding: 20px 0;
 }
 
-/* Tightened so the full menu fits a 768px-tall viewport without scrolling —
-   otherwise reaching the lower items scrolls Dashboard out of sight. */
+/* The menu must fit without scrolling, but "tight enough for 768px" made it
+   cramped on the large screens this is actually used on. So the vertical rhythm
+   scales with viewport height: compact when short, comfortable when tall.
+   19 rows (14 items + 5 group headers) have to fit between the logo and the
+   user block, hence the vh-based middle terms. */
 .nav-section {
     display: flex;
     align-items: center;
-    padding: 12px 20px 6px;
+    padding: clamp(5px, 1.15vh, 16px) 20px clamp(2px, 0.55vh, 9px);
     gap: 10px;
     transition: all 0.3s ease;
 }
@@ -95,15 +112,16 @@
 }
 
 .section-icon {
-    width: 18px;
-    height: 18px;
+    width: clamp(18px, 1.9vh, 21px);
+    height: clamp(18px, 1.9vh, 21px);
+    flex-shrink: 0;
     filter: brightness(0) invert(1);
     opacity: 0.7;
 }
 
 .nav-section-title {
-    font-size: 15px;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: clamp(15px, 1.55vh, 17px);
+    color: rgba(255, 255, 255, 0.62);
     font-weight: 700;
     letter-spacing: 0.5px;
     white-space: nowrap;
@@ -112,11 +130,11 @@
 .nav-item {
     display: flex;
     align-items: center;
-    padding: 9px 24px;
+    padding: clamp(6px, 1.15vh, 13px) 24px;
     cursor: pointer;
     transition: background 0.2s;
     color: rgba(255, 255, 255, 0.8);
-    font-size: 14px;
+    font-size: clamp(13.5px, 1.45vh, 16px);
     white-space: nowrap;
     font-weight: bolder;
 }
@@ -124,6 +142,26 @@
 .sidebar.collapsed .nav-item {
     padding: 12px;
     justify-content: center;
+}
+
+/* Below ~750px tall the 19 rows cannot fit at a readable size, so stop trading
+   legibility for it: squeeze the padding only and let the slim scrollbar above
+   handle the remainder. Font sizes deliberately stay put. */
+@media (max-height: 750px) {
+    .nav-item {
+        padding-top: 5px;
+        padding-bottom: 5px;
+    }
+
+    .nav-item.sub-item {
+        padding-top: 4px;
+        padding-bottom: 4px;
+    }
+
+    .nav-section {
+        padding-top: 3px;
+        padding-bottom: 0;
+    }
 }
 
 /* Hover/active highlight, per the Figma sidebar spec: a solid 6px white bar on
@@ -172,13 +210,14 @@
     padding: 12px;
 }
 
+/* Sub-items read as children of the group above, so they stay a step smaller
+   than a top-level item — but only a step. The negative margins that used to
+   pull them together are gone; the vh padding already keeps the menu in frame. */
 .nav-item.sub-item {
-    font-size: 13px;
+    font-size: clamp(13px, 1.35vh, 15px);
     padding-left: 44px;
-    padding-top: 7px;
-    padding-bottom: 7px;
-    margin-top: -3px;
-    margin-bottom: -3px;
+    padding-top: clamp(4.5px, 0.95vh, 11px);
+    padding-bottom: clamp(4.5px, 0.95vh, 11px);
 }
 
 .sidebar.collapsed .nav-item.sub-item {
@@ -203,8 +242,10 @@
 }
 
 /* FOOTER */
+/* Gives up its own padding before the menu gives up legibility. */
 .sidebar-footer {
-    padding: 15px;
+    padding: clamp(8px, 1.6vh, 15px) 15px;
+    flex-shrink: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
@@ -261,6 +302,54 @@
     font-size: 28px;
     font-weight: 600;
     color: #000000;
+}
+
+/* Page title + decorative eye mark, kept together at the header's left edge. */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* Soft blue "lens" the eye sits in — picks up the icon's own cyan so the mark
+   reads as part of the header rather than a pasted-on image. */
+.header-eye {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 30% 25%, #ffffff 0%, #EAF6FE 45%, #D6ECFB 100%);
+    border: 1px solid rgba(41, 182, 246, 0.35);
+    box-shadow:
+        0 0 0 4px rgba(41, 182, 246, 0.08),
+        0 2px 6px rgba(20, 33, 61, 0.10);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.header-eye:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 0 0 5px rgba(41, 182, 246, 0.16),
+        0 4px 10px rgba(20, 33, 61, 0.16);
+}
+
+.header-eye img {
+    width: 30px;
+    height: auto;
+    display: block;
+    /* Faint blue lift so the mark separates from the pale lens behind it. */
+    filter: drop-shadow(0 1px 1px rgba(41, 182, 246, 0.45));
+}
+
+/* The eye is decoration, so it is the first thing dropped on small screens. */
+@media (max-width: 700px) {
+    .header-eye {
+        display: none;
+    }
 }
 
 .current-date {
