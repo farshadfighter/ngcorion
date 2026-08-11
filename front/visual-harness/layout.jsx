@@ -5,6 +5,9 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 
+// Bundled locally, same as the app — see src/main.jsx.
+import "@fortawesome/fontawesome-free/css/all.min.css";
+
 import "../src/index.css";
 import "../src/assets/Dashboard.css";
 import "../src/assets/HardeningDashboard.css";
