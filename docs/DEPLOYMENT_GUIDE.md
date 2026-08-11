@@ -37,8 +37,10 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
    رو بساز (self-signed، معتبر برای دامنه‌ی `ngcorion.local` و IP `172.16.200.90`، اعتبار
    ۱ ساله):
    ```bash
-   rm -f traefik/certs/ngcorion.crt traefik/certs/ngcorion.key
-   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+   # اگه پوشه‌ی traefik/certs مالکش root باشه، این دستورها رو با sudo بزن وگرنه
+   # openssl خطای «Permission denied» موقع نوشتن فایل می‌ده و گواهی ساخته نمی‌شه.
+   sudo rm -f traefik/certs/ngcorion.crt traefik/certs/ngcorion.key
+   sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
      -keyout traefik/certs/ngcorion.local.key \
      -out traefik/certs/ngcorion.local.crt \
      -subj "/C=IR/ST=Tehran/L=Tehran/O=NGCorion/CN=ngcorion.local" \
@@ -46,6 +48,9 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
    ```
    > اگه `tls.yml` به گواهی‌ای اشاره کنه که رو دیسک نیست، Traefik هیچ گواهی معتبری برای
    > پورت ۴۴۳ نداره و هند‌شیک TLS می‌شکنه (`curl` خطای `SSL_ERROR_SYSCALL` می‌ده).
+   > Traefik فقط پوشه‌ی `dynamic/` رو watch می‌کنه نه `certs/` رو، پس بعد از ساختن گواهی
+   > جدید روی یه استک در حال اجرا، باید Traefik رو ری‌استارت کنی تا گواهی رو بخونه:
+   > `docker compose restart traefik`.
 
 3. **Build فرانت**:
    ```bash
@@ -111,14 +116,16 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
    sudo sed -i '/ngcorion\.com/d' /etc/hosts
    ```
    (اگه از یه کلاینت دیگه تست می‌کنی، همین دو کار رو روی اون کلاینت هم انجام بده.)
-3. **گواهی جدید رو روی سرور بساز** (گواهی‌ها تو گیت نیستن — بخش «گواهی SSL» بالا):
+3. **گواهی جدید رو روی سرور بساز** (گواهی‌ها تو گیت نیستن — بخش «گواهی SSL» بالا؛ اگه
+   پوشه مالکش root باشه با sudo بزن، وگرنه گواهی ساخته نمی‌شه):
    ```bash
-   rm -f traefik/certs/ngcorion.crt traefik/certs/ngcorion.key
-   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+   sudo rm -f traefik/certs/ngcorion.crt traefik/certs/ngcorion.key
+   sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
      -keyout traefik/certs/ngcorion.local.key \
      -out traefik/certs/ngcorion.local.crt \
      -subj "/C=IR/ST=Tehran/L=Tehran/O=NGCorion/CN=ngcorion.local" \
      -addext "subjectAltName=IP:172.16.200.90,DNS:ngcorion.local"
+   ls -l traefik/certs/   # هر دو فایل .crt و .key باید باشن و خالی نباشن
    ```
 4. **فرانت رو build کن** (اگه build با خطای permission خورد، اول `sudo rm -rf front/dist`):
    ```bash
