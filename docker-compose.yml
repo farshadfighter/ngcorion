@@ -37,9 +37,19 @@ services:
       - ./front/dist:/app/front/dist:ro
       - ./pyproject.toml:/app/pyproject.toml
       - ./uv.lock:/app/uv.lock
+      # Persist the activated license (encrypted) across container recreates so
+      # the app doesn't fall back to license-locked and need re-activation.
+      # LICENSE_STORAGE_DIR defaults to ~/.license and the container runs as
+      # root, so this is /root/.license.
+      - license_client_data:/root/.license
     environment:
       DATABASE_URL: postgresql+psycopg://netease:1234@postgres:5432/netease_db
       REDIS_URL: redis://redis:6379/0
+      # Reach the license server over the docker network by its service name.
+      # Without this the default (http://localhost:8001) resolves to the backend
+      # container itself, so the app can never validate/activate a license and
+      # stays license-locked.
+      LICENSE_SERVER_URL: http://license-server:8001
     expose:
       - "8000"
     depends_on:
@@ -47,6 +57,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      license-server:
+        condition: service_started
     labels:
       - "traefik.enable=true"
       # HTTPS: the backend serves both the API and the React SPA, so a single
@@ -185,6 +197,7 @@ volumes:
   redis_data:
   postgres_license_data:
   license_admin_node_modules:
+  license_client_data:
 
 networks:
   app:
