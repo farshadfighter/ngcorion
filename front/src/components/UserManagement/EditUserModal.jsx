@@ -680,7 +680,9 @@ export const EditUserModal = ({ user, onClose }) => {
                                     }}>
                                         <td style={styles.permTd}>
                                             <span style={styles.moduleName}>
-                                                {module.icon}&nbsp;&nbsp;{module.label}
+                                                <i className={module.icon}
+                                                   style={{ width: "16px", textAlign: "center" }} />
+                                                &nbsp;&nbsp;{module.label}
                                             </span>
                                         </td>
                                         {["read", "write", "delete"].map(perm => (

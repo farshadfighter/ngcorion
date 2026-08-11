@@ -53,7 +53,7 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
                     fontSize: "28px",
                     margin: "0 auto 20px",
                 }}>
-                    🚫
+                    <i className="fa-solid fa-ban" />
                 </div>
 
                 {/* عنوان */}
@@ -81,7 +81,9 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
                         color: license.borderColor,
                         marginBottom: "24px",
                     }}>
-                        ⛔  {license.name}
+                        <i className="fa-solid fa-circle-exclamation"
+                           style={{ marginRight: "8px" }} />
+                        {license.name}
                     </div>
                 )}
 

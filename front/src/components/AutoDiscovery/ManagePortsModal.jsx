@@ -369,7 +369,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                                     <div className="mpm-mode-info">
                                                         <h5>Add as New Asset</h5>
                                                         <p>Create a new asset with all discovered data</p>
-                                                        <p className="mpm-mode-note">🎯 Will be added to Discovery Asset List</p>
+                                                        <p className="mpm-mode-note"><i className="fa-solid fa-bullseye" /> Will be added to Discovery Asset List</p>
                                                     </div>
                                                 </button>
 

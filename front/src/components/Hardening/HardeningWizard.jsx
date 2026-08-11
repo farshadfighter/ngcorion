@@ -188,7 +188,7 @@ export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
                     {/* Step 4: Harden */}
                     <div className={`stepper-item ${currentStep >= 4 ? "active" : ""}`}>
                         <div className="stepper-circle">
-                            <div className="stepper-icon">🛡</div>
+                            <div className="stepper-icon"><i className="fa-solid fa-shield-halved" /></div>
                         </div>
                         <div className="stepper-label">Harden</div>
                     </div>

@@ -343,7 +343,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
             {targetVdom && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderLeft: '5px solid #7c3aed', borderRadius: '10px' }}>
-                    <span style={{ fontSize: '18px' }}>🎯</span>
+                    <span style={{ fontSize: '18px' }}><i className="fa-solid fa-bullseye" /></span>
                     <span style={{ fontSize: '14px', color: '#4c1d95' }}>
                         Target VDOM: <strong>{vdomBadgeLabel(targetVdom)}</strong>
                         <span style={{ color: '#6b7280', marginLeft: '8px', fontSize: '12px' }}>
@@ -371,7 +371,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 12px 0' }}>
                         <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: 0, fontWeight: 700 }}>CLI Commands</h4>
                         <button onClick={handleCopy} style={{ padding: '7px 14px', background: copied ? '#059669' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                            {copied ? '✓ Copied' : '📄 Copy commands'}
+                            {copied ? '✓ Copied' : ' Copy commands'}
                         </button>
                     </div>
                     <pre style={preStyle}>{forDisplay(commands).join('\n')}</pre>
@@ -598,7 +598,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     Preview
                     {targetVdom && (
                         <span style={{ marginLeft: '10px', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#ede9fe', color: '#4c1d95', border: '1px solid #c4b5fd' }}>
-                            🎯 VDOM: {vdomBadgeLabel(targetVdom)}
+                            <i className="fa-solid fa-bullseye" /> VDOM: {vdomBadgeLabel(targetVdom)}
                         </span>
                     )}
                 </h4>
@@ -632,7 +632,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     </p>
                     {result.target_vdom && (
                         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4c1d95' }}>
-                            🎯 Modified VDOM: <strong>{vdomBadgeLabel(result.target_vdom)}</strong>
+                            <i className="fa-solid fa-bullseye" /> Modified VDOM: <strong>{vdomBadgeLabel(result.target_vdom)}</strong>
                         </p>
                     )}
                 </div>
@@ -679,7 +679,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
                 {result.backup_created && (
                     <div style={{ background: 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)', borderLeft: '5px solid #1e3a5f', padding: '14px 18px', borderRadius: '10px' }}>
-                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '13px', fontWeight: 600 }}>💾 Configuration backup created before applying.</p>
+                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '13px', fontWeight: 600 }}><i className="fa-solid fa-floppy-disk" /> Configuration backup created before applying.</p>
                     </div>
                 )}
             </div>
@@ -699,7 +699,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             <div className="hardening-modal-content hardening-modal-large" onClick={(e) => e.stopPropagation()}>
                 <div className="hardening-modal-header">
                     <div className="hardening-modal-title">
-                        <span className="hardening-modal-icon">📋</span>
+                        <span className="hardening-modal-icon"><i className="fa-solid fa-clipboard" /></span>
                         <h2>View Fix — Manual Remediation</h2>
                     </div>
                     <button className="hardening-modal-close" onClick={onClose}>×</button>

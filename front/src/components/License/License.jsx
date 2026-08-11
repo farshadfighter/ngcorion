@@ -127,18 +127,26 @@ export const License = () => {
                     {/* هدر باکس */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "32px", flexWrap: "wrap", gap: "16px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            {/* Frosted tile on the navy card; the icon is painted
+                                white via brightness(0) invert(1) so it never
+                                depends on the SVG's own fill. */}
                             <div style={{
                                 width: "56px", height: "56px",
                                 borderRadius: "14px",
-                                backgroundColor: "white",
+                                backgroundColor: "rgba(255,255,255,0.16)",
+                                border: "1px solid rgba(255,255,255,0.28)",
                                 display: "flex", alignItems: "center", justifyContent: "center",
-                                fontSize: "26px",
+                                flexShrink: 0,
                             }}>
                                 <img
                                     src="/icons/license.svg"
                                     alt=""
-                                    style={{ width: "24px", height: "24px", filter: "invert(1)" }}
-                                />                         </div>
+                                    style={{
+                                        width: "28px", height: "28px",
+                                        filter: "brightness(0) invert(1)",
+                                    }}
+                                />
+                            </div>
                             <div>
                                 <div style={{ fontSize: "13px", opacity: 0.7, marginBottom: "4px", letterSpacing: "0.5px" }}>
                                     ACTIVE LICENCE
@@ -251,7 +259,8 @@ export const License = () => {
                                 color: "#FCA5A5",
                                 marginBottom: "20px",
                             }}>
-                                🔒 No Active Licence
+                                <i className="fa-solid fa-lock" style={{ marginRight: "6px" }} />
+                                No Active Licence
                             </div>
                             <div style={{ fontSize: "22px", fontWeight: "700", marginBottom: "8px" }}>
                                 Activate Your Licence
@@ -300,7 +309,7 @@ export const License = () => {
                                         transition: "all 0.2s",
                                     }}
                                 >
-                                    {isActivating ? "⏳ Activating..." : "🚀 Activate"}
+                                    {isActivating ? "⏳ Activating...": "Activate"}
                                 </button>
                             </div>
 
@@ -318,7 +327,7 @@ export const License = () => {
                             minWidth: "200px",
                         }}>
                             <div style={{ fontSize: "13px", opacity: 0.6, marginBottom: "12px", fontWeight: "600", letterSpacing: "0.5px" }}>
-                                🎁 FREE PILOT PLAN
+                                <i className="fa-solid fa-gift" /> FREE PILOT PLAN
                             </div>
                             {Object.keys(MODULE_LABELS).map((module) => {
                                 const pilotLimit = LICENSE_TYPES.pilot?.limits[module];
@@ -383,7 +392,8 @@ export const License = () => {
                 fontSize: "13px",
                 color: "#9CA3AF",
             }}>
-                🔒 All licence operations are secured and validated against your server
+                <i className="fa-solid fa-shield-halved" style={{ marginRight: "6px" }} />
+                All licence operations are secured and validated against your server
             </div>
         </div>
     );

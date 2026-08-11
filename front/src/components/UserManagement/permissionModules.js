@@ -4,16 +4,20 @@
  * Names must match ModuleEnum in app/models/user_permission.py — the backend
  * rejects anything else. Shared by AddUserModal and EditUserModal so the two
  * lists cannot drift apart.
+ *
+ * `icon` is a Font Awesome class rather than a literal glyph: the emoji and
+ * geometric characters used before rendered inconsistently across systems (and
+ * not at all where the font lacked them).
  */
 export const PERMISSION_MODULES = [
-    { name: "dashboard",            label: "Dashboard",         icon: "⊞" },
-    { name: "asset_requirement",    label: "Asset Requirement", icon: "◈" },
-    { name: "asset_list",           label: "Asset List",        icon: "≡" },
-    { name: "asset_auto_discovery", label: "Auto Discovery",    icon: "⟳" },
-    { name: "user_management",      label: "User Management",   icon: "◎" },
-    { name: "hardening",            label: "Hardening",         icon: "🛡" },
-    { name: "auditing",             label: "Auditing",          icon: "📋" },
-    { name: "risk",                 label: "Risk Intelligence", icon: "⚠" },
+    { name: "dashboard",            label: "Dashboard",         icon: "fa-solid fa-table-columns" },
+    { name: "asset_requirement",    label: "Asset Requirement", icon: "fa-solid fa-clipboard-list" },
+    { name: "asset_list",           label: "Asset List",        icon: "fa-solid fa-server" },
+    { name: "asset_auto_discovery", label: "Auto Discovery",    icon: "fa-solid fa-tower-broadcast" },
+    { name: "user_management",      label: "User Management",   icon: "fa-solid fa-users-gear" },
+    { name: "hardening",            label: "Hardening",         icon: "fa-solid fa-shield-halved" },
+    { name: "auditing",             label: "Auditing",          icon: "fa-solid fa-list-check" },
+    { name: "risk",                 label: "Risk Intelligence", icon: "fa-solid fa-triangle-exclamation" },
 ];
 
 export default PERMISSION_MODULES;

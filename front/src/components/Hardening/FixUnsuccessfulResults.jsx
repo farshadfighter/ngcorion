@@ -107,7 +107,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     <div style={{ marginTop: '4px' }}>
                         <span style={{ ...chipStyle, background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}
                               title={`Remediation pushed to the device${vdomSuffix}; manual checks are not auto-verified`}>
-                            🛠 Applied — re-audit to verify{vdomSuffix}
+                            <i className="fa-solid fa-screwdriver-wrench" /> Applied — re-audit to verify{vdomSuffix}
                         </span>
                     </div>
                 )}
@@ -232,7 +232,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                     onClick={onNavigateToAuditing}
                                     style={{ padding: '10px 24px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                                 >
-                                    🔍 Go to Auditing
+                                    <i className="fa-solid fa-magnifying-glass" /> Go to Auditing
                                 </button>
                             )}
                             <button
@@ -240,7 +240,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 disabled={failedChecks === 0}
                                 style={{ padding: '10px 24px', background: failedChecks === 0 ? '#9ca3af' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: failedChecks === 0 ? 'not-allowed' : 'pointer' }}
                             >
-                                🛡️ Harden All
+                                <i className="fa-solid fa-shield-halved" />️ Harden All
                             </button>
                         </div>
                     </div>
@@ -298,7 +298,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                                     onClick={() => handleHardenSingle(check)}
                                                                     style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                                                 >
-                                                                    🛡️ Harden
+                                                                    <i className="fa-solid fa-shield-halved" />️ Harden
                                                                 </button>
                                                             ) : (
                                                                 <button
@@ -306,7 +306,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                                     title="No automated fix — view the manual remediation commands"
                                                                     style={{ padding: '8px 16px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                                                 >
-                                                                    📋 View Fix
+                                                                    <i className="fa-solid fa-clipboard" /> View Fix
                                                                 </button>
                                                             )
                                                         )}

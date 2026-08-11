@@ -9,7 +9,7 @@ import { HardeningMain } from "./Hardening/HardeningMain";
 // ── Access denied (shown when a user lacks read permission for a section) ──────
 export const AccessDenied = ({ menuName }) => (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "60vh", gap: "16px", color: "#6B7280" }}>
-        <div style={{ fontSize: "48px" }}>🔒</div>
+        <div style={{ fontSize: "48px" }}><i className="fa-solid fa-lock" /></div>
         <h2 style={{ fontSize: "20px", fontWeight: "600", color: "#111827", margin: 0 }}>Access Denied</h2>
         <p style={{ fontSize: "14px", margin: 0 }}>You don't have permission to view <strong>{menuName}</strong>.</p>
         <p style={{ fontSize: "13px", margin: 0, color: "#9CA3AF" }}>Contact your administrator to request access.</p>

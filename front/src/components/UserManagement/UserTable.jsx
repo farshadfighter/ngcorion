@@ -35,14 +35,18 @@ const UserTable = ({ users, onEdit, onDelete }) => {
                         <button
                             className="btn-icon"
                             onClick={() => onEdit(u.id)}
+                            title="Edit user"
+                            aria-label="Edit user"
                         >
-                            ✏
+                            <i className="fa-solid fa-pen" />
                         </button>
                         <button
                             className="btn-icon btn-icon--danger"
                             onClick={() => onDelete(u)}
+                            title="Delete user"
+                            aria-label="Delete user"
                         >
-                            🗑
+                            <i className="fa-solid fa-trash" />
                         </button>
                     </td>
                 </tr>

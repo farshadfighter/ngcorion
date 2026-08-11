@@ -51,14 +51,18 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                                 fontSize: "22px",
                             }}
                         >
-                            <img src="/icons/license.svg" alt="" className="section-icon" />
+                            {/* Not .section-icon — that class is the sidebar's and
+                                paints the icon white, invisible on this light tile. */}
+                            <img src="/icons/license.svg" alt=""
+                                 style={{ width: "22px", height: "22px" }} />
                         </div>
                         <div>
                             <div style={{ fontSize: "18px", fontWeight: "700", color: "#111827" }}>
                                 {license.name}
                             </div>
                             <div style={{ fontSize: "13px", color: "#6B7280", marginTop: "2px" }}>
-                                🕐 licence time: {license.duration}
+                                <i className="fa-regular fa-clock" style={{ marginRight: "6px" }} />
+                                licence time: {license.duration}
                             </div>
                         </div>
                     </div>
@@ -76,7 +80,7 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                             lineHeight: 1,
                         }}
                     >
-                        ✕
+                        <i className="fa-solid fa-xmark" />
                     </button>
                 </div>
 

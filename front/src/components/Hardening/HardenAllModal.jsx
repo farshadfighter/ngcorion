@@ -331,7 +331,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
             <div>
                 {result.dry_run && (
                     <div className="ha-notice">
-                        🔍 Dry run — nothing was executed and nothing changed on the device.
+                        <i className="fa-solid fa-magnifying-glass" /> Dry run — nothing was executed and nothing changed on the device.
                     </div>
                 )}
                 {!result.dry_run && (

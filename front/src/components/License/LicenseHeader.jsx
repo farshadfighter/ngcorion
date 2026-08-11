@@ -38,7 +38,7 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                         fontSize: "16px",
                     }}
                 >
-                    ⛔
+                    <i className="fa-solid fa-certificate" style={{ color: "#14213D" }} />
                 </div>
                 <div>
                     <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Active Licence</div>
@@ -47,7 +47,13 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                     </div>
                     {apiData?.expires_at && (
                         <div style={{ fontSize: "11px", color: expired ? "#EF4444" : "#6B7280" }}>
-                            {expired ? "⛔ Expired" : `Expires: ${formatExpiryDate(apiData.expires_at)}`}
+                            {expired ? (
+                                <>
+                                    <i className="fa-solid fa-circle-exclamation"
+                                       style={{ marginRight: "5px" }} />
+                                    Expired
+                                </>
+                            ) : `Expires: ${formatExpiryDate(apiData.expires_at)}`}
                         </div>
                     )}
                 </div>

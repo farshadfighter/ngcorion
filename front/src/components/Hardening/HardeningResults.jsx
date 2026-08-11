@@ -139,7 +139,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                     gap: '8px'
                                 }}
                             >
-                                🔍 Auditing
+                                <i className="fa-solid fa-magnifying-glass" /> Auditing
                             </button>
                         </div>
                     )}

@@ -217,7 +217,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 return (
                     <div className="hardening-modal-error" style={{ padding: '20px', borderRadius: '10px', borderLeft: isManual ? '5px solid #f59e0b' : '5px solid #ef4444', background: isManual ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
                         <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700', color: isManual ? '#92400e' : '#c0392b' }}>
-                            {isManual ? '🛠️ Manual remediation required' : '⚠️ Could not load hardening preview'}
+                            {isManual ? ' Manual remediation required' : '⚠️ Could not load hardening preview'}
                         </h3>
                         <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#4b5563', whiteSpace: 'pre-wrap' }}>{errorText}</p>
                     </div>
@@ -231,11 +231,11 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
         return (
             <div className="hardening-preview-section">
                 <h3 style={{ fontSize: '18px', color: '#1e3a5f', margin: '0 0 20px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📋 Hardening Preview
+                    <i className="fa-solid fa-clipboard" /> Hardening Preview
                 </h3>
                 {targetVdom && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', marginBottom: '16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderLeft: '5px solid #7c3aed', borderRadius: '10px' }}>
-                        <span style={{ fontSize: '18px' }}>🎯</span>
+                        <span style={{ fontSize: '18px' }}><i className="fa-solid fa-bullseye" /></span>
                         <span style={{ fontSize: '14px', color: '#4c1d95' }}>
                             Target VDOM: <strong>{vdomBadgeLabel(targetVdom)}</strong>
                             <span style={{ color: '#6b7280', marginLeft: '8px', fontSize: '12px' }}>
@@ -370,7 +370,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ padding: '16px 20px', borderRadius: '10px', borderLeft: '5px solid #7c3aed', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)' }}>
                         <p style={{ margin: 0, fontSize: '14px', color: '#4c1d95', fontWeight: 600 }}>
-                            🔍 Dry run — no commands were executed and nothing was changed on the server.
+                            <i className="fa-solid fa-magnifying-glass" /> Dry run — no commands were executed and nothing was changed on the server.
                         </p>
                         {executionResult.check_title && (
                             <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{executionResult.check_title}</p>
@@ -412,14 +412,14 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                     )}
                     {modifiedVdom && (
                         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4c1d95' }}>
-                            🎯 Modified VDOM: <strong>{vdomBadgeLabel(modifiedVdom)}</strong>
+                            <i className="fa-solid fa-bullseye" /> Modified VDOM: <strong>{vdomBadgeLabel(modifiedVdom)}</strong>
                         </p>
                     )}
                 </div>
 
                 {(executionResult.verification_passed !== undefined || verificationText) && (
                     <div style={{ background: 'linear-gradient(135deg,#fafbfc 0%,#ffffff 100%)', padding: '18px', borderRadius: '10px', border: '2px solid #e8edf5' }}>
-                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>🔍 Verification</h4>
+                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}><i className="fa-solid fa-magnifying-glass" /> Verification</h4>
                         {executionResult.verification_passed !== undefined && (
                             <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '600', color: executionResult.verification_passed ? '#1e3a5f' : '#ef4444' }}>
                                 {executionResult.verification_passed ? '✓ Verified' : '✗ Not Verified'}
@@ -447,7 +447,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
 
                 {executionResult.backup_created && (
                     <div style={{ background: 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)', borderLeft: '5px solid #1e3a5f', padding: '16px 20px', borderRadius: '10px' }}>
-                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '14px', fontWeight: '600' }}>💾 Configuration backup created successfully</p>
+                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '14px', fontWeight: '600' }}><i className="fa-solid fa-floppy-disk" /> Configuration backup created successfully</p>
                     </div>
                 )}
 

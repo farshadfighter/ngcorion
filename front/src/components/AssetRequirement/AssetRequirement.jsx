@@ -8,7 +8,7 @@ import { LocationsTab } from "./LocationsTab";
 import { NetworkZoneTab } from "./NetworkZoneTab";
 import { OSCatalogTab } from "./OSCatalogTab";
 import { VendorsTab } from "./VendorsTab";
-import { OthersTab } from "./OthersTab"; // 🆕 Combined tab
+import { OthersTab } from "./OthersTab"; // <i className="fa-solid fa-star" /> Combined tab
 
 // 🔥 Updated TABS - Dependencies حذف شد، 3 تب ترکیب شدند
 const TABS = [
@@ -18,7 +18,7 @@ const TABS = [
     { id: "network-zone", label: "Network Zone" },
     { id: "os-catalog", label: "OS Catalog" },
     { id: "vendors", label: "Vendors" },
-    { id: "others", label: "Others" }, // 🆕 Status + Confidentiality + Risk
+    { id: "others", label: "Others" }, // <i className="fa-solid fa-star" /> Status + Confidentiality + Risk
 ];
 
 export const AssetRequirement = () => {
@@ -135,7 +135,7 @@ export const AssetRequirement = () => {
             case "vendors":
                 return <VendorsTab />;
             case "others":
-                return <OthersTab />; // 🆕 Combined tab
+                return <OthersTab />; // <i className="fa-solid fa-star" /> Combined tab
             default:
                 return <AssetTypeTab />;
         }

@@ -13,13 +13,13 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
     const [showLicenseModal, setShowLicenseModal] = useState(false);
 
     const handleFixAllClick = () => {
-        console.log("🛡️ Fix All clicked");
+        console.log("Fix All clicked");
         setWizardMode("fix-all");
         setShowWizard(true);
     };
 
     const handleFixUnsuccessfulClick = () => {
-        console.log("🔧 Fix Unsuccessful clicked");
+        console.log("Fix Unsuccessful clicked");
         setWizardMode("fix-unsuccessful");
         setShowWizard(true);
     };
