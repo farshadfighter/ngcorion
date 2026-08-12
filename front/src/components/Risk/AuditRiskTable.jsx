@@ -48,7 +48,7 @@ export const AuditRiskTable = ({ rows, onRowClick }) => (
                         <td>{orDash(row.high_findings_count)}</td>
                         <td>{orDash(row.medium_findings_count)}</td>
                         <td>{orDash(row.low_findings_count)}</td>
-                        <RiskRowActions />
+                        <RiskRowActions row={row} />
                     </tr>
                 ))}
             </tbody>

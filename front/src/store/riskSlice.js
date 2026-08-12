@@ -76,6 +76,28 @@ export const fetchRiskDashboard = createAsyncThunk(
     }
 );
 
+/**
+ * Recalculate one asset's risk score. The backend responds with the fresh
+ * score, which replaces that row in place — no full refetch, so the table does
+ * not jump or lose the user's scroll position.
+ *
+ * Needs RISK:write, unlike the rest of this screen which only needs read.
+ */
+export const recalculateAssetRisk = createAsyncThunk(
+    "risk/recalculateAsset",
+    async (assetId, { rejectWithValue }) => {
+        try {
+            const res = await api.post(`/api/risk/assets/${assetId}/calculate`);
+            return { assetId, score: res.data };
+        } catch (err) {
+            return rejectWithValue({
+                assetId,
+                message: err.response?.data?.detail || err.message,
+            });
+        }
+    }
+);
+
 export const fetchRiskZones = createAsyncThunk(
     "risk/fetchZones",
     async (_, { rejectWithValue }) => {
@@ -99,8 +121,15 @@ const riskSlice = createSlice({
         zones: [],
         isLoading: false,
         error: null,
+        // asset_id currently being recalculated, so only that row shows a spinner.
+        recalculatingId: null,
+        recalcError: null,
     },
-    reducers: {},
+    reducers: {
+        clearRecalcError: (state) => {
+            state.recalcError = null;
+        },
+    },
     extraReducers: (builder) => {
         builder
             .addCase(fetchRiskDashboard.pending, (state) => {
@@ -121,8 +150,28 @@ const riskSlice = createSlice({
             })
             .addCase(fetchRiskZones.fulfilled, (state, action) => {
                 state.zones = action.payload;
+            })
+            .addCase(recalculateAssetRisk.pending, (state, action) => {
+                state.recalculatingId = action.meta.arg;
+                state.recalcError = null;
+            })
+            .addCase(recalculateAssetRisk.fulfilled, (state, action) => {
+                state.recalculatingId = null;
+                const { assetId, score } = action.payload;
+                const i = state.items.findIndex((r) => r.asset_id === assetId);
+                if (i !== -1) {
+                    // Merge, not replace: /calculate returns the score fields but
+                    // not the row's asset_name / ip_address / rank, which come
+                    // from the list endpoint.
+                    state.items[i] = { ...state.items[i], ...score };
+                }
+            })
+            .addCase(recalculateAssetRisk.rejected, (state, action) => {
+                state.recalculatingId = null;
+                state.recalcError = action.payload?.message || "Recalculation failed";
             });
     },
 });
 
+export const { clearRecalcError } = riskSlice.actions;
 export default riskSlice.reducer;

@@ -395,11 +395,27 @@
     background: #EEF1F6;
 }
 
-/* Inert until the design defines what these buttons do. */
+/* Genuinely unavailable now (no write permission, or a request in flight), so
+   it has to read as disabled rather than merely dimmed. */
 .risk-action-btn:disabled {
     color: #14213D;
-    opacity: 0.75;
-    cursor: default;
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+/* Inline banner above the table, not a full-page state like .risk-state alone. */
+.risk-recalc-error {
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    text-align: left;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    border-radius: 8px;
+}
+
+.risk-action-btn:focus-visible {
+    outline: 2px solid #2D5A9E;
+    outline-offset: 1px;
 }
 
 /* ── States ──────────────────────────────────────────────────────────────── */
