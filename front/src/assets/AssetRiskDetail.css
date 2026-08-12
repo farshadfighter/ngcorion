@@ -357,7 +357,129 @@
     background: #EEF1F6;
 }
 
+/* Genuinely unavailable (no risk:write) rather than merely decorative, so it
+   has to read as disabled instead of just slightly dimmed. */
 .ard-icon-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.ard-icon-btn:focus-visible {
+    outline: 2px solid #2D5A9E;
+    outline-offset: 1px;
+}
+
+/* Asset-level confidentiality, shown under the criticality column because the
+   two are different fields and only criticality is editable here. */
+.ard-cz-sub {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #6C6C6C;
+}
+
+/* ── Edit profile dialog ─────────────────────────────────────────────────── */
+
+.ard-edit-modal {
+    max-width: 460px;
+    background: #ffffff;
+}
+
+.ard-edit-body {
+    padding: 24px 32px 8px;
+}
+
+.ard-edit-note {
+    margin: 0 0 20px;
+    font-size: 13px;
+    color: #6C6C6C;
+}
+
+.ard-edit-field {
+    display: block;
+    margin-bottom: 18px;
+}
+
+.ard-edit-field > span {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #14213D;
+}
+
+.ard-edit-field > span em {
+    font-weight: 400;
+    font-style: normal;
+    color: #9AA5B5;
+}
+
+.ard-edit-field select,
+.ard-edit-field input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #D8DEE9;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #14213D;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.ard-edit-field select:focus,
+.ard-edit-field input:focus {
+    outline: none;
+    border-color: #2D5A9E;
+    box-shadow: 0 0 0 3px rgba(45, 90, 158, 0.15);
+}
+
+.ard-edit-error {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #DC2626;
+    font-size: 13px;
+}
+
+.ard-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 32px 24px;
+}
+
+.ard-btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.ard-btn:disabled {
     opacity: 0.6;
-    cursor: default;
+    cursor: not-allowed;
+}
+
+.ard-btn-ghost {
+    background: #ffffff;
+    border-color: #D8DEE9;
+    color: #14213D;
+}
+
+.ard-btn-ghost:hover:not(:disabled) {
+    background: #F4F6FA;
+}
+
+.ard-btn-primary {
+    background: #14213D;
+    color: #ffffff;
+}
+
+.ard-btn-primary:hover:not(:disabled) {
+    background: #1E3255;
 }
