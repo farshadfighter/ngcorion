@@ -209,8 +209,16 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     </div>
                 </div>
 
-                {/* Tabs and Table */}
-                <div style={{ padding: '0 24px 24px' }}>
+                {/* Tabs and Table. Flex column with min-height:0 so the table
+                    below can scroll — a plain block here grows to fit the rows
+                    and leaves .result-table-wrapper nothing to scroll against. */}
+                <div style={{
+                    padding: '0 24px 24px',
+                    flex: 1,
+                    minHeight: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button

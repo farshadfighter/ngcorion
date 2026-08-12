@@ -1021,14 +1021,27 @@ order: 1;
     box-sizing: border-box;
     overflow-y: auto;
 
-    /* Scroll stays available; only the bar is hidden (Firefox / legacy IE). */
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    /* A slim visible scrollbar: hiding it entirely made a scrollable table look
+       like a truncated one, since nothing signalled there were more rows. */
+    scrollbar-width: thin;
+    scrollbar-color: #C7CEDB transparent;
 }
 
-/* Chromium / WebKit half of the hidden-scrollbar rule above. */
 .result-table-wrapper::-webkit-scrollbar {
-    display: none;
+    width: 8px;
+}
+
+.result-table-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.result-table-wrapper::-webkit-scrollbar-thumb {
+    background: #C7CEDB;
+    border-radius: 4px;
+}
+
+.result-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #A9B3C4;
 }
 
 .result-table {
