@@ -75,6 +75,20 @@ services:
       - "traefik.http.routers.backend-http.entrypoints=web"
       - "traefik.http.routers.backend-http.middlewares=ngcorion-https-redirect"
       - "traefik.http.routers.backend-http.service=backend"
+      # Direct-IP access (NGCorion HTTPS Service Binding Standard): clients must
+      # also reach the app straight via the server IP, independent of DNS. Same
+      # backend service, same cert (its SAN already includes IP:172.16.200.90),
+      # served over the default certificate in the TLS store. A distinct Host
+      # rule keeps this from conflicting with the ngcorion.local routers.
+      - "traefik.http.routers.backend-ip.rule=Host(`172.16.200.90`)"
+      - "traefik.http.routers.backend-ip.entrypoints=websecure"
+      - "traefik.http.routers.backend-ip.tls=true"
+      - "traefik.http.routers.backend-ip.service=backend"
+      # Redirect plain-HTTP IP access to HTTPS too (reuses the same middleware).
+      - "traefik.http.routers.backend-ip-http.rule=Host(`172.16.200.90`)"
+      - "traefik.http.routers.backend-ip-http.entrypoints=web"
+      - "traefik.http.routers.backend-ip-http.middlewares=ngcorion-https-redirect"
+      - "traefik.http.routers.backend-ip-http.service=backend"
     networks:
       - app
 
