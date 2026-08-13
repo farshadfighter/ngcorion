@@ -38,6 +38,11 @@ DEFAULT_SETTINGS = [
     ("unknown_audit_score", "50", "int", "Audit score used when no audit results exist"),
     # Behavior flags
     ("include_warning_in_audit_risk", "false", "bool", "Whether warning-level audit findings count toward audit risk"),
+    # NOTE: the criticality level->score mapping (criticality_*_score) and the
+    # risk-level thresholds (risk_level_*_threshold) are NOT seeded here. They
+    # are owned by Alembic migration d4f6a8b0c2e1 (20260813_add_missing_risk_settings),
+    # which runs as part of `alembic upgrade head` on every deploy. Keeping them
+    # in one place avoids two sources of truth for the same rows.
 ]
 
 DEFAULT_ZONES = [

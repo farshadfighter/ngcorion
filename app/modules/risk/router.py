@@ -55,6 +55,15 @@ router = APIRouter()
 
 WEIGHT_KEYS = ("criticality_weight", "zone_weight", "open_port_weight", "audit_weight")
 
+# Ordered low-to-high; each is the lower bound of a risk-level band and must
+# stay strictly ascending (spec section 10, no overlap).
+THRESHOLD_KEYS = (
+    "risk_level_medium_threshold",
+    "risk_level_high_threshold",
+    "risk_level_very_high_threshold",
+    "risk_level_critical_threshold",
+)
+
 SORTABLE_COLUMNS = {
     "final_risk_score": AssetRiskScore.final_risk_score,
     "risk_level": AssetRiskScore.risk_level,
@@ -1084,6 +1093,24 @@ def update_port(
             detail=f"severity must be one of: {', '.join(PORT_SEVERITIES)}",
         )
 
+    # Excluding a port from risk requires a reason (spec section 7). Evaluate the
+    # resulting state: excluding now, or already excluded and clearing the reason.
+    resulting_included = (
+        data.is_included_in_risk
+        if data.is_included_in_risk is not None
+        else port.is_included_in_risk
+    )
+    resulting_reason = (
+        data.exclusion_reason
+        if "exclusion_reason" in data.model_fields_set
+        else port.exclusion_reason
+    )
+    if not resulting_included and not (resulting_reason or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="exclusion_reason is required when excluding a port from risk",
+        )
+
     changes = {}
     if data.severity is not None:
         changes["severity"] = data.severity
@@ -1187,6 +1214,28 @@ def update_settings(
                 detail=f"Factor weights must sum to 100 (got {total:g}): {merged}",
             )
 
+    # Risk-level thresholds must stay strictly ascending so the bands never
+    # overlap (spec section 10). Validate the merged post-update values.
+    if any(key in THRESHOLD_KEYS for key in updates):
+        merged = [
+            float(updates.get(key, rows[key].setting_value))
+            for key in THRESHOLD_KEYS
+            if key in rows
+        ]
+        if any(t < 0 or t > 100 for t in merged):
+            raise HTTPException(
+                status_code=400,
+                detail="Risk-level thresholds must be between 0 and 100",
+            )
+        if any(a >= b for a, b in zip(merged, merged[1:])):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Risk-level thresholds must be strictly ascending "
+                    "(medium < high < very_high < critical) so bands don't overlap"
+                ),
+            )
+
     for key, value in updates.items():
         row = rows[key]
         row.setting_value = str(value).lower() if isinstance(value, bool) else str(value)
@@ -1199,9 +1248,12 @@ def update_settings(
         detail=f"Updated risk settings: {sorted(updates.keys())}",
     )
 
-    # A change to any weight or normalization setting alters every asset's
-    # score, so recalculate all assets in the background.
-    if any(("weight" in key or "normalization" in key) for key in updates):
+    # A change to any weight, normalization, or level-threshold setting alters
+    # every asset's score or level, so recalculate all assets in the background.
+    if any(
+        ("weight" in key or "normalization" in key or "threshold" in key)
+        for key in updates
+    ):
         background_tasks.add_task(_recalculate_all_background, "settings_changed")
 
     return _settings_dict(db)

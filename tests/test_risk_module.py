@@ -443,6 +443,46 @@ def test_closed_port_removed_from_risk(db, factory):
     assert float(second.open_port_score) < first_port_score
 
 
+def test_excluding_port_requires_reason(db, factory):
+    """PUT /ports/{id} must reject excluding a port with no exclusion_reason."""
+    from app.modules.risk.router import update_port
+    from app.modules.risk.schemas import PortUpdateRequest
+
+    asset = factory.asset()
+    factory.profile(asset)
+    port = factory.port(asset, port=8080, severity="high", is_included_in_risk=True)
+
+    with pytest.raises(HTTPException) as exc_info:
+        update_port(
+            port_id=port.id,
+            data=PortUpdateRequest(is_included_in_risk=False),
+            current_user=factory.user(),
+            db=db,
+        )
+    assert exc_info.value.status_code == 400
+    assert "exclusion_reason is required" in exc_info.value.detail
+
+
+def test_excluding_port_with_reason_succeeds(db, factory):
+    from app.modules.risk.router import update_port
+    from app.modules.risk.schemas import PortUpdateRequest
+
+    asset = factory.asset()
+    factory.profile(asset)
+    port = factory.port(asset, port=8080, severity="high", is_included_in_risk=True)
+
+    result = update_port(
+        port_id=port.id,
+        data=PortUpdateRequest(
+            is_included_in_risk=False, exclusion_reason="approved internal service"
+        ),
+        current_user=factory.user(),
+        db=db,
+    )
+    assert result["port"]["is_included_in_risk"] is False
+    assert result["port"]["exclusion_reason"] == "approved internal service"
+
+
 # ======================================================================
 # 30.4 Audit Tests
 # ======================================================================
@@ -659,3 +699,59 @@ def test_risk_level_very_high(settings):
 def test_risk_level_critical(settings):
     assert _level(80, settings) == "critical"
     assert _level(100, settings) == "critical"
+
+
+# ======================================================================
+# Settings validation (thresholds / editable score settings)
+# ======================================================================
+
+def _ensure_threshold_rows(db):
+    set_setting(db, "risk_level_medium_threshold", 20)
+    set_setting(db, "risk_level_high_threshold", 40)
+    set_setting(db, "risk_level_very_high_threshold", 60)
+    set_setting(db, "risk_level_critical_threshold", 80)
+
+
+def test_thresholds_must_be_ascending(db, factory):
+    from fastapi import BackgroundTasks
+    from app.modules.risk.router import update_settings
+
+    _ensure_threshold_rows(db)
+    with pytest.raises(HTTPException) as exc_info:
+        update_settings(
+            updates={"risk_level_high_threshold": 70},  # >= very_high (60)
+            background_tasks=BackgroundTasks(),
+            current_user=factory.user(),
+            db=db,
+        )
+    assert exc_info.value.status_code == 400
+    assert "ascending" in exc_info.value.detail
+
+
+def test_thresholds_ascending_update_ok(db, factory):
+    from fastapi import BackgroundTasks
+    from app.modules.risk.router import update_settings
+
+    _ensure_threshold_rows(db)
+    result = update_settings(
+        updates={"risk_level_medium_threshold": 25},
+        background_tasks=BackgroundTasks(),
+        current_user=factory.user(),
+        db=db,
+    )
+    assert result["risk_level_medium_threshold"] == 25
+
+
+def test_criticality_score_setting_editable(db, factory):
+    """The criticality_*_score settings must be editable via PUT /settings."""
+    from fastapi import BackgroundTasks
+    from app.modules.risk.router import update_settings
+
+    set_setting(db, "criticality_high_score", 75)
+    result = update_settings(
+        updates={"criticality_high_score": 90},
+        background_tasks=BackgroundTasks(),
+        current_user=factory.user(),
+        db=db,
+    )
+    assert result["criticality_high_score"] == 90
