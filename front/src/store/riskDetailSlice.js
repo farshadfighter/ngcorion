@@ -44,6 +44,53 @@ export const fetchAssetRiskDetail = createAsyncThunk(
     }
 );
 
+/**
+ * Zones for the edit dialog's dropdown. Kept here rather than in riskSlice so
+ * the detail page can load them without pulling in the whole dashboard fetch.
+ */
+export const fetchZonesForDetail = createAsyncThunk(
+    "riskDetail/fetchZones",
+    async (_, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/risk/zones");
+            return res.data || [];
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || err.message);
+        }
+    }
+);
+
+/**
+ * PUT /api/risk/assets/{id}/profile — sets criticality and/or zone.
+ *
+ * The backend recalculates the score as part of this call and returns both the
+ * profile and the fresh risk_score, so the page updates from the response
+ * instead of refetching.
+ *
+ * Needs RISK:write. `zone_id: null` deliberately clears the zone, so it is sent
+ * whenever the field was touched rather than being stripped as empty.
+ */
+export const updateAssetProfile = createAsyncThunk(
+    "riskDetail/updateProfile",
+    async ({ assetId, criticalityLevel, zoneId, reason }, { rejectWithValue }) => {
+        try {
+            const body = {};
+            if (criticalityLevel !== undefined) {
+                body.criticality_level = criticalityLevel;
+            }
+            if (zoneId !== undefined) body.zone_id = zoneId;
+            if (reason) body.reason = reason;
+            const res = await api.put(
+                `/api/risk/assets/${assetId}/profile`,
+                body
+            );
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || err.message);
+        }
+    }
+);
+
 const riskDetailSlice = createSlice({
     name: "riskDetail",
     initialState: {
@@ -52,6 +99,9 @@ const riskDetailSlice = createSlice({
         findingsError: null,
         isLoading: false,
         error: null,
+        zones: [],
+        isSavingProfile: false,
+        profileError: null,
     },
     reducers: {
         clearRiskDetail(state) {
@@ -59,6 +109,10 @@ const riskDetailSlice = createSlice({
             state.findings = [];
             state.findingsError = null;
             state.error = null;
+            state.profileError = null;
+        },
+        clearProfileError(state) {
+            state.profileError = null;
         },
     },
     extraReducers: (builder) => {
@@ -76,9 +130,38 @@ const riskDetailSlice = createSlice({
             .addCase(fetchAssetRiskDetail.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload;
+            })
+            .addCase(fetchZonesForDetail.fulfilled, (state, action) => {
+                state.zones = action.payload;
+            })
+            .addCase(updateAssetProfile.pending, (state) => {
+                state.isSavingProfile = true;
+                state.profileError = null;
+            })
+            .addCase(updateAssetProfile.fulfilled, (state, action) => {
+                state.isSavingProfile = false;
+                if (!state.detail) return;
+                const { risk_score: score, profile } = action.payload || {};
+                if (score) {
+                    state.detail.risk_score = {
+                        ...state.detail.risk_score,
+                        ...score,
+                    };
+                }
+                // The asset block carries confidentiality_level, which this
+                // endpoint does not touch — only the zone label needs syncing,
+                // and the profile response gives an id rather than a name.
+                if (profile && state.detail.risk_score) {
+                    const zone = state.zones.find((z) => z.id === profile.zone_id);
+                    state.detail.risk_score.zone_name = zone ? zone.name : null;
+                }
+            })
+            .addCase(updateAssetProfile.rejected, (state, action) => {
+                state.isSavingProfile = false;
+                state.profileError = action.payload;
             });
     },
 });
 
-export const { clearRiskDetail } = riskDetailSlice.actions;
+export const { clearRiskDetail, clearProfileError } = riskDetailSlice.actions;
 export default riskDetailSlice.reducer;

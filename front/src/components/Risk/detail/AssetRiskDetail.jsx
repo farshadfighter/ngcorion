@@ -63,7 +63,11 @@ export const AssetRiskDetail = () => {
                 score={score}
                 incompleteData={detail.incomplete_data}
             />
-            <ConfidentialityZone asset={detail.asset} score={score} />
+            <ConfidentialityZone
+                asset={detail.asset}
+                score={score}
+                assetId={detail.asset?.id}
+            />
             <OpenPortsTable ports={detail.open_ports || []} />
             <AuditSummary score={score} auditSummary={detail.audit_summary} />
             <AuditFindingsTable findings={findings} error={findingsError} />

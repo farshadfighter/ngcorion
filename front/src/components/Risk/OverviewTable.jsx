@@ -58,7 +58,7 @@ export const OverviewTable = ({ rows, onRowClick }) => (
                                 : "-"}
                         </td>
                         <td>{formatDate(row.calculated_at)}</td>
-                        <RiskRowActions />
+                        <RiskRowActions row={row} />
                     </tr>
                 ))}
             </tbody>
