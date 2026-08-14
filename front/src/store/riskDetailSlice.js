@@ -45,6 +45,25 @@ export const fetchAssetRiskDetail = createAsyncThunk(
 );
 
 /**
+ * Score history for this asset, newest first. Every recalculation writes a row
+ * carrying the trigger that caused it and, for audit-driven ones, the audit
+ * session id — which is what makes the per-audit view possible.
+ */
+export const fetchAssetRiskHistory = createAsyncThunk(
+    "riskDetail/fetchHistory",
+    async (assetId, { rejectWithValue }) => {
+        try {
+            const res = await api.get(`/api/risk/assets/${assetId}/history`, {
+                params: { limit: 100 },
+            });
+            return res.data || [];
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || err.message);
+        }
+    }
+);
+
+/**
  * Zones for the edit dialog's dropdown. Kept here rather than in riskSlice so
  * the detail page can load them without pulling in the whole dashboard fetch.
  */
@@ -102,6 +121,9 @@ const riskDetailSlice = createSlice({
         zones: [],
         isSavingProfile: false,
         profileError: null,
+        history: [],
+        historyError: null,
+        isLoadingHistory: false,
     },
     reducers: {
         clearRiskDetail(state) {
@@ -110,6 +132,8 @@ const riskDetailSlice = createSlice({
             state.findingsError = null;
             state.error = null;
             state.profileError = null;
+            state.history = [];
+            state.historyError = null;
         },
         clearProfileError(state) {
             state.profileError = null;
@@ -133,6 +157,18 @@ const riskDetailSlice = createSlice({
             })
             .addCase(fetchZonesForDetail.fulfilled, (state, action) => {
                 state.zones = action.payload;
+            })
+            .addCase(fetchAssetRiskHistory.pending, (state) => {
+                state.isLoadingHistory = true;
+                state.historyError = null;
+            })
+            .addCase(fetchAssetRiskHistory.fulfilled, (state, action) => {
+                state.isLoadingHistory = false;
+                state.history = action.payload;
+            })
+            .addCase(fetchAssetRiskHistory.rejected, (state, action) => {
+                state.isLoadingHistory = false;
+                state.historyError = action.payload;
             })
             .addCase(updateAssetProfile.pending, (state) => {
                 state.isSavingProfile = true;

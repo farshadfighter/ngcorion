@@ -2,7 +2,11 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { fetchRiskDashboard, clearRecalcError } from "../../store/riskSlice";
+import {
+    fetchRiskDashboard,
+    clearRecalcError,
+    setSort,
+} from "../../store/riskSlice";
 import { RiskAssetTable } from "./RiskAssetTable";
 import "../../assets/RiskAsset.css";
 
@@ -15,13 +19,20 @@ import "../../assets/RiskAsset.css";
 export const RiskAsset = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { items, isLoading, error, recalcError } = useSelector(
-        (state) => state.risk
-    );
+    const { items, isLoading, error, recalcError, sortBy, sortOrder } =
+        useSelector((state) => state.risk);
 
     useEffect(() => {
-        dispatch(fetchRiskDashboard());
-    }, [dispatch]);
+        dispatch(fetchRiskDashboard({ sortBy, sortOrder }));
+    }, [dispatch, sortBy, sortOrder]);
+
+    // Clicking the active column flips direction; a new column starts at desc,
+    // which is what someone sorting by risk almost always wants first.
+    const handleSort = (key) => {
+        const nextOrder =
+            key === sortBy && sortOrder === "desc" ? "asc" : "desc";
+        dispatch(setSort({ sortBy: key, sortOrder: nextOrder }));
+    };
 
     // A failed row recalculation is transient — show it, then let it clear.
     useEffect(() => {
@@ -72,6 +83,9 @@ export const RiskAsset = () => {
             <RiskAssetTable
                 rows={items}
                 onRowClick={(row) => navigate(`/risk/assets/${row.asset_id}`)}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
             />
         </div>
     );

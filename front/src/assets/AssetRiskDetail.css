@@ -377,6 +377,32 @@
     color: #6C6C6C;
 }
 
+/* ── Risk history ────────────────────────────────────────────────────────── */
+
+.ard-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9AA5B5;
+    font-size: 14px;
+}
+
+/* This screen does not load RiskAsset.css, so the badge and muted-dash styles
+   the history table shares with the asset tables are defined here too. */
+.risk-level-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #E5E7EB;
+    color: #374151;
+}
+
+.risk-muted {
+    color: #9AA5B5;
+}
+
 /* ── Edit profile dialog ─────────────────────────────────────────────────── */
 
 .ard-edit-modal {

@@ -27,7 +27,13 @@ const matchesSearch = (row, term) =>
  * aggregates; once GET /api/risk/summary exists this should move to the
  * backend's ?search= parameter instead.
  */
-export const RiskAssetTable = ({ rows, onRowClick }) => {
+export const RiskAssetTable = ({
+    rows,
+    onRowClick,
+    sortBy,
+    sortOrder,
+    onSort,
+}) => {
     const [activeTab, setActiveTab] = useState("overview");
     const [search, setSearch] = useState("");
 
@@ -47,9 +53,21 @@ export const RiskAssetTable = ({ rows, onRowClick }) => {
             <RiskSearch value={search} onChange={setSearch} />
 
             {activeTab === "overview" ? (
-                <OverviewTable rows={visibleRows} onRowClick={onRowClick} />
+                <OverviewTable
+                    rows={visibleRows}
+                    onRowClick={onRowClick}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={onSort}
+                />
             ) : (
-                <AuditRiskTable rows={visibleRows} onRowClick={onRowClick} />
+                <AuditRiskTable
+                    rows={visibleRows}
+                    onRowClick={onRowClick}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={onSort}
+                />
             )}
         </section>
     );

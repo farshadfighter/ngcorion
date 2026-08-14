@@ -41,7 +41,7 @@ const normaliseSummary = (data) => ({
  */
 export const fetchRiskDashboard = createAsyncThunk(
     "risk/fetchDashboard",
-    async (_, { rejectWithValue }) => {
+    async (sort, { rejectWithValue }) => {
         // allSettled, not all: a failing /summary or /trend must not blank the
         // asset table, which is the whole point of the Risk Asset screen.
         const [summaryRes, listRes, trendRes] = await Promise.allSettled([
@@ -50,8 +50,8 @@ export const fetchRiskDashboard = createAsyncThunk(
                 params: {
                     page: 1,
                     page_size: PAGE_SIZE,
-                    sort_by: "final_risk_score",
-                    sort_order: "desc",
+                    sort_by: sort?.sortBy || "final_risk_score",
+                    sort_order: sort?.sortOrder || "desc",
                 },
             }),
             api.get("/api/risk/trend", { params: { months: 12 } }),
@@ -124,10 +124,18 @@ const riskSlice = createSlice({
         // asset_id currently being recalculated, so only that row shows a spinner.
         recalculatingId: null,
         recalcError: null,
+        // Mirrors the query the current rows came from, so the header arrow and
+        // the next request stay in step.
+        sortBy: "final_risk_score",
+        sortOrder: "desc",
     },
     reducers: {
         clearRecalcError: (state) => {
             state.recalcError = null;
+        },
+        setSort: (state, action) => {
+            state.sortBy = action.payload.sortBy;
+            state.sortOrder = action.payload.sortOrder;
         },
     },
     extraReducers: (builder) => {
@@ -173,5 +181,5 @@ const riskSlice = createSlice({
     },
 });
 
-export const { clearRecalcError } = riskSlice.actions;
+export const { clearRecalcError, setSort } = riskSlice.actions;
 export default riskSlice.reducer;

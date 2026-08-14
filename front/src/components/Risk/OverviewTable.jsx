@@ -1,36 +1,42 @@
 import React from "react";
 import { RiskScoreCell } from "./RiskScoreCell";
 import { RiskRowActions } from "./RiskRowActions";
+import { RiskLevelBadge } from "./RiskLevelBadge";
+import { SortableHeader } from "./SortableHeader";
 import { orDash, titleCase, formatDate } from "./riskConstants";
 
+/**
+ * Open Ports and Zone are deliberately absent: the client asked for them to be
+ * dropped from this table. Both still drive the score and remain on the asset
+ * detail screen.
+ *
+ * `key` marks a sortable column; the value is a sort_by the backend accepts.
+ * "Risk level" sorts by final_risk_score rather than risk_level, because
+ * risk_level is a string column — ordering by it is alphabetical, which would
+ * put critical next to low. The level is derived from the score, so sorting by
+ * score yields exactly the severity order.
+ */
 const COLUMNS = [
-    "Risk level",
+    { label: "Risk Score", key: "final_risk_score" },
     "Rank",
-    "Asset Name",
+    { label: "Asset Name", key: "asset_name" },
     "IP Address",
     "Vendor",
-    "Open Ports",
-    "Zone",
+    { label: "Risk Level", key: "final_risk_score" },
     "Confidentiality Level",
-    "Last Calculated",
+    { label: "Last Calculated", key: "calculated_at" },
     "Actions",
 ];
 
-/**
- * "Overview" tab table. Rows are clickable — the per-asset detail screen is not
- * built yet, so onRowClick is optional and the row only looks interactive when
- * a handler is supplied.
- */
-export const OverviewTable = ({ rows, onRowClick }) => (
+export const OverviewTable = ({ rows, onRowClick, sortBy, sortOrder, onSort }) => (
     <div className="risk-table-wrapper">
         <table className="risk-table">
-            <thead>
-                <tr>
-                    {COLUMNS.map((label) => (
-                        <th key={label}>{label}</th>
-                    ))}
-                </tr>
-            </thead>
+            <SortableHeader
+                columns={COLUMNS}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={onSort}
+            />
             <tbody>
                 {rows.length === 0 && (
                     <tr>
@@ -50,8 +56,9 @@ export const OverviewTable = ({ rows, onRowClick }) => (
                         <td>{orDash(row.asset_name)}</td>
                         <td>{orDash(row.ip_address)}</td>
                         <td>{orDash(row.vendor)}</td>
-                        <td>{orDash(row.open_ports_count)}</td>
-                        <td>{orDash(row.zone_name)}</td>
+                        <td>
+                            <RiskLevelBadge level={row.risk_level} />
+                        </td>
                         <td>
                             {row.confidentiality_level
                                 ? titleCase(row.confidentiality_level)

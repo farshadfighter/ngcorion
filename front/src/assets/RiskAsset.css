@@ -356,6 +356,52 @@
     width: 1%;
 }
 
+/* ── Risk level badge ────────────────────────────────────────────────────── */
+
+/* Same pill shape as the Hardening/Auditing status chips, so severity reads the
+   same way across the product. Colours come from RISK_LEVEL_BADGES. */
+.risk-level-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #E5E7EB;
+    color: #374151;
+}
+
+.risk-muted {
+    color: #9AA5B5;
+}
+
+/* ── Sortable headers ────────────────────────────────────────────────────── */
+
+.risk-th-sortable {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.risk-th-sortable:hover {
+    color: #14213D;
+}
+
+.risk-sort-icon {
+    margin-left: 6px;
+    font-size: 11px;
+    opacity: 0.35;
+}
+
+.risk-th-sortable:hover .risk-sort-icon {
+    opacity: 0.7;
+}
+
+.risk-th-sortable.is-active .risk-sort-icon {
+    opacity: 1;
+    color: #14213D;
+}
+
 /* Figma: dark #14213D box opening each row. */
 .risk-score-box {
     display: flex;

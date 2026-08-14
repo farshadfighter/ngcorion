@@ -12,6 +12,26 @@ export const RISK_LEVEL_COLORS = {
     critical: "#5F36D3",
 };
 
+/**
+ * Badge palette for risk levels — a tinted background with a readable text
+ * colour, matching the pill styling the Hardening and Auditing tables already
+ * use so the three screens look like one product.
+ *
+ * RISK_LEVEL_COLORS above stays as-is: those are the saturated chart fills, too
+ * strong to sit behind table text.
+ */
+export const RISK_LEVEL_BADGES = {
+    low: { bg: "#D1FAE5", fg: "#065F46" },
+    medium: { bg: "#E0E7FF", fg: "#3730A3" },
+    high: { bg: "#FEF3C7", fg: "#92400E" },
+    very_high: { bg: "#FED7AA", fg: "#9A3412" },
+    critical: { bg: "#FEE2E2", fg: "#991B1B" },
+};
+
+/** Severity order, lowest first — risk_level is a string in the database, so
+ *  sorting on it directly gives alphabetical nonsense (critical next to low). */
+export const RISK_LEVEL_ORDER = ["low", "medium", "high", "very_high", "critical"];
+
 export const CATEGORY_COLORS = [
     "#27E7B8",
     "#4FC3C7",
