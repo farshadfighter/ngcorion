@@ -102,6 +102,70 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
   dev قبلی (`license.netease.localhost` روی Traefik، پورت ۸۰) دست‌نخورده باقی مونده و
   تحت تأثیر این تغییرات نیستن.
 
+### پیش‌نیازهای System Configuration
+
+ماژول System Configuration (`/api/system` — تنظیمات زمان، SNMP، Syslog، SMS، SMTP و
+گواهی TLS) روی **خودِ هاست** فایل کانفیگ می‌نویسه و سرویس‌ها رو ری‌استارت می‌کنه. قبل از
+`docker compose up` این کارها رو روی سرور انجام بده:
+
+1. **ساختن پوشه‌ها و نصب سرویس‌ها روی هاست**:
+   ```bash
+   sudo mkdir -p /etc/ngcorion/certs
+   sudo apt-get install -y snmpd rsyslog
+   ```
+   > پوشه‌ی `/etc/ngcorion/certs` جاییه که گواهی آپلودشده از UI ذخیره می‌شه
+   > (`server.crt` و `server.key`).
+
+2. **فایل `timesyncd.conf` باید از قبل روی هاست وجود داشته باشه**:
+   ```bash
+   sudo touch /etc/systemd/timesyncd.conf
+   ```
+   چون این مورد یک bind mount **تک‌فایلی**ه؛ اگه مسیر روی هاست نباشه، داکر به‌جاش یک
+   **پوشه** می‌سازه و نوشتن تنظیمات NTP با خطا شکست می‌خوره.
+
+3. **کانتینر بک‌اند رو با کانفیگ جدید بالا بیار** (compose جدید شامل `user: root`،
+   `cap_add: [SYS_TIME, NET_ADMIN]` و مانت‌های `/etc/snmp`، `/etc/rsyslog.d`،
+   `/etc/systemd/timesyncd.conf`، `/etc/ngcorion`، `/usr/bin/timedatectl` و
+   `/run/systemd` هست):
+   ```bash
+   docker compose up -d backend
+   ```
+
+#### محدودیت‌های شناخته‌شده (مهم)
+
+ایمیج بک‌اند روی `python:3.13-slim` ساخته شده و **نه `systemctl` داره نه کتابخانه‌های
+systemd**. یعنی با کانفیگ فعلی:
+
+- **نوشتن فایل‌های کانفیگ کار می‌کنه** (`/etc/snmp/snmpd.conf`،
+  `/etc/rsyslog.d/99-ngcorion.conf`، `/etc/systemd/timesyncd.conf`) و تنظیمات هم در
+  دیتابیس ذخیره می‌شن.
+- **مرحله‌ی apply (ری‌استارت سرویس‌ها و `timedatectl`) از داخل کانتینر شکست می‌خوره** و
+  API با خطای ۵۰۰ و پیام «تنظیمات ذخیره شد ولی اعمال نشد: Command not found: systemctl»
+  برمی‌گرده. مانت‌کردن فقط باینری `timedatectl` کافی نیست: این باینری به
+  `/usr/lib/systemd/libsystemd-shared-*.so` لینک شده و از طریق سوکت D-Bus با systemd
+  حرف می‌زنه.
+
+  برای این‌که واقعاً کار کنه یکی از این دو راه:
+  1. **کلاینت systemd رو داخل ایمیج نصب کن** (`apt-get install -y systemd dbus` تو
+     `Dockerfile.netease`) و سوکت D-Bus هاست رو هم مانت کن:
+     `- /run/dbus/system_bus_socket:/run/dbus/system_bus_socket`
+  2. یا بعد از هر تغییر، سرویس‌ها رو **روی هاست** ری‌استارت کن:
+     `sudo systemctl restart snmpd rsyslog systemd-timesyncd`
+
+- **ری‌لود Traefik بعد از آپلود گواهی** خودکار انجام نمی‌شه: ماژول دستور
+  `docker compose -f /opt/ngcorion/docker-compose.yml restart traefik` رو اجرا می‌کنه،
+  ولی کانتینر بک‌اند نه CLI داکر داره نه `/var/run/docker.sock` رو مانت کرده، و مسیر
+  پروژه هم `/opt/ngcorion` نیست. پاسخ API این رو صادقانه گزارش می‌کنه
+  (`proxy_reload.reloaded = false`) و آپلود گواهی با موفقیت انجام می‌شه؛ ری‌استارت رو
+  دستی بزن:
+  ```bash
+  docker compose restart traefik
+  ```
+- گواهی آپلودشده در `/etc/ngcorion/certs/` ذخیره می‌شه، ولی Traefik گواهی‌اش رو از
+  `traefik/certs/` می‌خونه (`traefik/dynamic/tls.yml`). برای این‌که گواهی آپلودشده
+  واقعاً سرو بشه باید یا فایل‌ها رو به `traefik/certs/` کپی کنی یا مسیرهای `tls.yml` رو
+  به گواهی جدید تغییر بدی و بعد Traefik رو ری‌استارت کنی.
+
 ### چک‌لیست تأیید روی سرور `172.16.200.90`
 
 کارهایی که خودت باید روی سرور اجرا کنی تا مطمئن بشی سایت بالا میاد:
@@ -143,3 +207,8 @@ nginx استفاده نمی‌شه: فرانت (بیلد شده‌ی React از 
 9. تست ریدایرکت HTTP→HTTPS: `curl -kI http://ngcorion.local/` → باید `308` و
    `Location: https://ngcorion.local/` بده.
 10. تو مرورگر برو `https://ngcorion.local` و هشدار گواهی self-signed رو Accept کن.
+11. پیش‌نیازهای System Configuration رو انجام بده (بخش «پیش‌نیازهای System Configuration»
+    بالا): ساختن `/etc/ngcorion/certs`، نصب `snmpd` و `rsyslog`، و
+    `sudo touch /etc/systemd/timesyncd.conf` — بعدش `docker compose up -d backend`.
+    تست: `curl -k https://ngcorion.local/api/system/time -H "Authorization: Bearer <token>"`
+    باید تنظیمات ذخیره‌شده و ساعت فعلی سرور رو برگردونه.

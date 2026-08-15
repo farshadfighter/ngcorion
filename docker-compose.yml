@@ -32,6 +32,14 @@ services:
       dockerfile: Dockerfile.netease
       target: development
     container_name: backend
+    # The System Configuration module (app/modules/system_config) writes host
+    # config files and sets the clock, so the container runs as root and needs
+    # SYS_TIME (clock) / NET_ADMIN (network + syslog transport) on top of
+    # docker's default capability set.
+    user: root
+    cap_add:
+      - SYS_TIME
+      - NET_ADMIN
     volumes:
       - ./app:/app/app
       - ./front/dist:/app/front/dist:ro
@@ -42,6 +50,25 @@ services:
       # LICENSE_STORAGE_DIR defaults to ~/.license and the container runs as
       # root, so this is /root/.license.
       - license_client_data:/root/.license
+      # --- System Configuration (app/modules/system_config) -----------------
+      # Host paths the module reads/writes. All are read-write on purpose: the
+      # SNMP/syslog/NTP sections rewrite these files in place.
+      #   /etc/ngcorion holds the uploaded TLS certificate (certs/server.crt|key)
+      # Create the host directories before `up` (see docs/DEPLOYMENT_GUIDE.md):
+      #   sudo mkdir -p /etc/ngcorion/certs /etc/snmp /etc/rsyslog.d
+      #   sudo touch /etc/systemd/timesyncd.conf
+      # A single-file bind mount whose host path is missing makes docker create
+      # a *directory* there, and the module's write then fails — hence the touch.
+      - /etc/snmp:/etc/snmp
+      - /etc/rsyslog.d:/etc/rsyslog.d
+      - /etc/systemd/timesyncd.conf:/etc/systemd/timesyncd.conf
+      - /etc/ngcorion:/etc/ngcorion
+      # timedatectl/systemctl also need the systemd client libraries and the
+      # D-Bus socket to reach the host's systemd — see the "پیش‌نیازهای System
+      # Configuration" section of docs/DEPLOYMENT_GUIDE.md before relying on
+      # the time/SNMP/syslog *apply* steps from inside the container.
+      - /usr/bin/timedatectl:/usr/bin/timedatectl
+      - /run/systemd:/run/systemd
     environment:
       DATABASE_URL: postgresql+psycopg://netease:1234@postgres:5432/netease_db
       REDIS_URL: redis://redis:6379/0
