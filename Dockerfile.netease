@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
 
 RUN pip install --no-cache-dir uv -i https://mirror-pypi.runflare.com/simple
-
+RUN apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*
 FROM base AS development
 
 COPY pyproject.toml uv.lock ./
