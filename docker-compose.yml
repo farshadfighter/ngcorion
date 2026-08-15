@@ -29,7 +29,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.netease
+      dockerfile: Dockerfile.ngcorion
       target: development
     container_name: backend
     # The System Configuration module (app/modules/system_config) writes host
@@ -104,7 +104,7 @@ services:
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       # Redirect plain-HTTP requests for ngcorion.local to HTTPS. Scoped to
       # this Host only so other dev routers on entrypoint "web" (e.g.
-      # license.netease.localhost) are unaffected.
+      # license.ngcorion.localhost) are unaffected.
       - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
       - "traefik.http.routers.backend-http.rule=Host(`ngcorion.local`)"
       - "traefik.http.routers.backend-http.entrypoints=web"
@@ -209,7 +209,7 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.license-server.rule=Host(`license.netease.localhost`)"
+      - "traefik.http.routers.license-server.rule=Host(`license.ngcorion.localhost`)"
       - "traefik.http.routers.license-server.entrypoints=web"
       - "traefik.http.services.license-server.loadbalancer.server.port=8001"
     networks:
@@ -235,7 +235,7 @@ services:
       - license-server
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.license-admin.rule=Host(`license-admin.netease.localhost`)"
+      - "traefik.http.routers.license-admin.rule=Host(`license-admin.ngcorion.localhost`)"
       - "traefik.http.routers.license-admin.entrypoints=web"
       - "traefik.http.services.license-admin.loadbalancer.server.port=5173"
     networks:
