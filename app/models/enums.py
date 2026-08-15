@@ -19,6 +19,22 @@ class RiskLevelEnum(str, enum.Enum):
     VERY_HIGH = "very_high"
     CRITICAL = "critical"
 
+class SnmpVersionEnum(str, enum.Enum):
+    V2C = "v2c"
+    V3 = "v3"
+
+class SnmpAuthProtocolEnum(str, enum.Enum):
+    MD5 = "MD5"
+    SHA = "SHA"
+
+class SnmpPrivProtocolEnum(str, enum.Enum):
+    DES = "DES"
+    AES = "AES"
+
+class SyslogProtocolEnum(str, enum.Enum):
+    UDP = "UDP"
+    TCP = "TCP"
+
 class RelationTypeEnum(str, enum.Enum):
     NETWORK_LINK = "network_link"
     APP_DEPENDENCY = "app_dependency"

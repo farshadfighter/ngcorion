@@ -11,7 +11,11 @@ from app.models.enums import (
     StatusEnum,
     ConfidentialityLevelEnum,
     RiskLevelEnum,
-    RelationTypeEnum
+    RelationTypeEnum,
+    SnmpVersionEnum,
+    SnmpAuthProtocolEnum,
+    SnmpPrivProtocolEnum,
+    SyslogProtocolEnum
 )
 
 # Import user models (no dependencies)
@@ -119,6 +123,9 @@ from app.models.risk import (
     RiskCalculationLog
 )
 
+# Import system configuration model (depends on User)
+from app.models.system_config import SystemConfigSetting, CONFIG_SECTIONS
+
 # Export all
 __all__ = [
     "Base",
@@ -127,6 +134,10 @@ __all__ = [
     "ConfidentialityLevelEnum",
     "RiskLevelEnum",
     "RelationTypeEnum",
+    "SnmpVersionEnum",
+    "SnmpAuthProtocolEnum",
+    "SnmpPrivProtocolEnum",
+    "SyslogProtocolEnum",
     # User models
     "User",
     "UserRole",
@@ -182,6 +193,9 @@ __all__ = [
     "AssetRiskScore",
     "AssetRiskHistory",
     "RiskCalculationLog",
+    # System configuration
+    "SystemConfigSetting",
+    "CONFIG_SECTIONS",
     # CIS benchmark results
     "log_hardening_preview",
     "log_hardening_execute",
