@@ -12,9 +12,12 @@ pattern:
 Admins bypass permission checks as everywhere else.
 
 Persistence order for the applied sections (time/snmp/syslog) is
-save-then-apply: the operator's input is committed first, so a host-level
-failure (service missing, insufficient privileges) is reported as a 500 without
-throwing the submitted settings away.
+save-then-apply: the operator's input is committed first, then pushed to the
+host. Since the backend container has no systemd, the apply step is best-effort
+— whatever could not be done here comes back as
+``{"success": true, "warning": "Config saved. …"}`` with HTTP 200, never a 500
+that would hide the fact that the settings were stored. The audit log still
+records those as result=failed.
 """
 import logging
 from typing import Any, Dict, Optional
@@ -122,23 +125,29 @@ def _persist_and_apply(
     section: str,
     payload: Dict[str, Any],
     apply_fn,
-) -> None:
-    """Save the section, then apply it to the host (see module docstring)."""
+) -> Optional[str]:
+    """Save the section, then apply it to the host (see module docstring).
+
+    Returns None when the host accepted everything, or a single warning string
+    describing what still has to be done by hand. A host that can't be
+    reconfigured from here is not a request failure: the settings are stored, so
+    the caller gets 200 with the warning rather than a 500 that hides the save.
+    """
     user_id, username = user.id, user.username
     _save(db, section, payload, user)
 
     action = f"system_config.{section}.update"
-    try:
-        apply_fn(payload)
-    except SystemConfigError as exc:
+    warnings = apply_fn(payload) or []
+    if not warnings:
         _log(db, user_id, username, action,
-             detail=f"Saved but failed to apply: {exc}", result="failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Settings were saved but applying them failed: {exc}",
-        )
+             detail=f"Applied {section} configuration")
+        return None
 
-    _log(db, user_id, username, action, detail=f"Applied {section} configuration")
+    warning = "Config saved. " + " ".join(warnings)
+    # result=failed keeps the audit trail honest even though the API returns 200.
+    _log(db, user_id, username, action,
+         detail=f"Saved with warnings: {' '.join(warnings)}", result="failed")
+    return warning
 
 
 # ======================================================================
@@ -166,9 +175,11 @@ def update_time_config(
 ):
     """Save the time settings and apply them with timedatectl/timesyncd."""
     payload = data.model_dump(mode="json")
-    _persist_and_apply(db, current_user, SECTION_TIME, payload,
-                       service.apply_time_config)
+    warning = _persist_and_apply(db, current_user, SECTION_TIME, payload,
+                                 service.apply_time_config)
     return {
+        "success": True,
+        "warning": warning,
         "config": payload,
         "server_time": service.system_time_status(),
         "updated_at": _updated_at(db, SECTION_TIME),
@@ -219,9 +230,11 @@ def update_snmp_config(
             detail="v3_auth_password and v3_priv_password are required for SNMP v3",
         )
 
-    _persist_and_apply(db, current_user, SECTION_SNMP, payload,
-                       service.apply_snmp_config)
+    warning = _persist_and_apply(db, current_user, SECTION_SNMP, payload,
+                                 service.apply_snmp_config)
     return {
+        "success": True,
+        "warning": warning,
         "config": service.mask_snmp(payload),
         "updated_at": _updated_at(db, SECTION_SNMP),
     }
@@ -250,9 +263,11 @@ def update_syslog_config(
 ):
     """Save the syslog settings, write the rsyslog drop-in and restart rsyslog."""
     payload = data.model_dump(mode="json")
-    _persist_and_apply(db, current_user, SECTION_SYSLOG, payload,
-                       service.apply_syslog_config)
+    warning = _persist_and_apply(db, current_user, SECTION_SYSLOG, payload,
+                                 service.apply_syslog_config)
     return {
+        "success": True,
+        "warning": warning,
         "config": payload,
         "updated_at": _updated_at(db, SECTION_SYSLOG),
     }
@@ -294,6 +309,8 @@ def update_sms_config(
     _log(db, user_id, username, "system_config.sms.update",
          detail=f"Updated SMS settings (provider={payload.get('provider')})")
     return {
+        "success": True,
+        "warning": None,  # nothing to apply on the host
         "config": service.mask_sms(payload),
         "updated_at": _updated_at(db, SECTION_SMS),
     }
@@ -355,6 +372,8 @@ def update_smtp_config(
     _log(db, user_id, username, "system_config.smtp.update",
          detail=f"Updated SMTP settings (host={payload.get('host')}:{payload.get('port')})")
     return {
+        "success": True,
+        "warning": None,  # nothing to apply on the host
         "config": service.mask_smtp(payload),
         "updated_at": _updated_at(db, SECTION_SMTP),
     }
@@ -410,7 +429,7 @@ async def upload_certificate(
     db: Session = Depends(get_db),
 ):
     """Install a TLS certificate from either a cert(+key) pair or a PFX bundle,
-    then restart the reverse proxy so it serves the new certificate."""
+    then hand it to Traefik through the shared ./traefik/certs mount."""
     user_id, username = current_user.id, current_user.username
 
     if pfx_file is not None and cert_file is not None:
@@ -444,18 +463,20 @@ async def upload_certificate(
              detail=f"Upload failed: {exc}", result="failed")
         raise HTTPException(status_code=500, detail=str(exc))
 
-    reload_result = service.reload_reverse_proxy()
+    publish_result = service.publish_certificate_to_proxy()
     _log(db, user_id, username, "system_config.certificate.upload",
          detail=(
              f"Installed certificate from '{source}' "
              f"(issued_to={info.get('issued_to')}, expires_at={info.get('expires_at')}); "
-             f"proxy reload: {reload_result['message']}"
-         ))
+             f"traefik: {publish_result['message']}"
+         ),
+         result="success" if publish_result["published"] else "failed")
 
     return {
-        "message": "Certificate installed",
+        "success": True,
+        "message": publish_result["message"],
         "certificate": info,
-        "proxy_reload": reload_result,
+        "traefik": publish_result,
     }
 
 
@@ -478,4 +499,14 @@ def remove_certificate(
 
     _log(db, user_id, username, "system_config.certificate.delete",
          detail="Removed the installed certificate and key")
-    return {"message": "Certificate removed"}
+    # The copy published to traefik/certs is deliberately left in place:
+    # removing it would leave Traefik with no certificate at all and break
+    # HTTPS for everyone, including this UI.
+    return {
+        "success": True,
+        "message": (
+            "Certificate removed. The copy Traefik is serving from "
+            "traefik/certs was left in place so HTTPS keeps working; replace it "
+            "by uploading a new certificate."
+        ),
+    }

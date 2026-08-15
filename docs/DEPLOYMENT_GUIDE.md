@@ -139,32 +139,76 @@ systemd**. یعنی با کانفیگ فعلی:
 - **نوشتن فایل‌های کانفیگ کار می‌کنه** (`/etc/snmp/snmpd.conf`،
   `/etc/rsyslog.d/99-ngcorion.conf`، `/etc/systemd/timesyncd.conf`) و تنظیمات هم در
   دیتابیس ذخیره می‌شن.
-- **مرحله‌ی apply (ری‌استارت سرویس‌ها و `timedatectl`) از داخل کانتینر شکست می‌خوره** و
-  API با خطای ۵۰۰ و پیام «تنظیمات ذخیره شد ولی اعمال نشد: Command not found: systemctl»
-  برمی‌گرده. مانت‌کردن فقط باینری `timedatectl` کافی نیست: این باینری به
-  `/usr/lib/systemd/libsystemd-shared-*.so` لینک شده و از طریق سوکت D-Bus با systemd
-  حرف می‌زنه.
+- **مرحله‌ی apply هیچ‌وقت درخواست رو شکست نمی‌ده.** اگه `systemctl` یا `timedatectl` در
+  دسترس نباشه، ماژول اول fallback رو امتحان می‌کنه و اگه اونم نشد، پاسخ **۲۰۰** با فیلد
+  `warning` برمی‌گردونه (نه ۵۰۰):
+  ```json
+  {"success": true, "warning": "Config saved. 'snmpd' could not be restarted from here …"}
+  ```
+  تو لاگ ممیزی (audit log) این موارد با `result=failed` ثبت می‌شن، پس ردگیری‌شون از
+  دست نمی‌ره.
 
-  برای این‌که واقعاً کار کنه یکی از این دو راه:
-  1. **کلاینت systemd رو داخل ایمیج نصب کن** (`apt-get install -y systemd dbus` تو
+  زنجیره‌ی fallback:
+  | مرحله | تلاش اول | fallback |
+  |---|---|---|
+  | ری‌استارت سرویس | `systemctl restart <svc>` | `pkill -HUP snmpd` / `rsyslogd` / `ntpd` |
+  | تنظیم Timezone | `timedatectl set-timezone` | `ln -sf /usr/share/zoneinfo/<tz> /etc/localtime` |
+  | تنظیم دستی ساعت | `timedatectl set-ntp false` | `date -s "YYYY-MM-DD HH:MM:SS"` (نیازمند `SYS_TIME`) |
+  | روشن/خاموش کردن NTP | `timedatectl set-ntp` | ندارد — فقط warning |
+
+  دو نکته‌ی مهم برای این‌که fallbackها واقعاً روی هاست اثر کنن:
+  1. **`pkill` تو ایمیج نیست**: باید `procps` نصب بشه (تو `Dockerfile.netease`:
+     `apt-get install -y procps`)، وگرنه fallbackِ ری‌استارت هم در دسترس نیست. ضمناً
+     سیگنال فقط به پروسه‌های *داخل کانتینر* می‌رسه مگر این‌که کانتینر با `pid: host`
+     اجرا بشه.
+  2. **fallbackِ timezone فایل `/etc/localtime` را داخل کانتینر عوض می‌کنه**؛ برای
+     این‌که ساعت هاست هم عوض بشه این مانت رو هم اضافه کن:
+     `- /etc/localtime:/etc/localtime`
+
+  راه‌حل کاملِ ترجیحی (تا هیچ warningی نگیری) یکی از این دوتاست:
+  1. **کلاینت systemd رو داخل ایمیج نصب کن** (`apt-get install -y systemd dbus procps` تو
      `Dockerfile.netease`) و سوکت D-Bus هاست رو هم مانت کن:
      `- /run/dbus/system_bus_socket:/run/dbus/system_bus_socket`
-  2. یا بعد از هر تغییر، سرویس‌ها رو **روی هاست** ری‌استارت کن:
+     (مانت‌کردن فقط باینری `timedatectl` کافی نیست: این باینری به
+     `/usr/lib/systemd/libsystemd-shared-*.so` لینک شده و از طریق D-Bus با systemd حرف می‌زنه.)
+  2. یا بعد از هر تغییر، سرویس‌ها رو **روی هاست** ری‌استارت کن — دقیقاً همون دستوری که
+     تو متن `warning` بهت گفته می‌شه:
      `sudo systemctl restart snmpd rsyslog systemd-timesyncd`
 
-- **ری‌لود Traefik بعد از آپلود گواهی** خودکار انجام نمی‌شه: ماژول دستور
-  `docker compose -f /opt/ngcorion/docker-compose.yml restart traefik` رو اجرا می‌کنه،
-  ولی کانتینر بک‌اند نه CLI داکر داره نه `/var/run/docker.sock` رو مانت کرده، و مسیر
-  پروژه هم `/opt/ngcorion` نیست. پاسخ API این رو صادقانه گزارش می‌کنه
-  (`proxy_reload.reloaded = false`) و آپلود گواهی با موفقیت انجام می‌شه؛ ری‌استارت رو
-  دستی بزن:
-  ```bash
-  docker compose restart traefik
+- **گواهی آپلودشده خودکار به Traefik تحویل داده می‌شه** (بدون CLI داکر و بدون
+  ری‌استارت کانتینر). ماژول بعد از ذخیره‌ی گواهی در `/etc/ngcorion/certs/`، اون رو
+  داخل پوشه‌ی گواهی Traefik کپی می‌کنه — دقیقاً با همون نام‌هایی که
+  `traefik/dynamic/tls.yml` بهشون اشاره می‌کنه:
   ```
-- گواهی آپلودشده در `/etc/ngcorion/certs/` ذخیره می‌شه، ولی Traefik گواهی‌اش رو از
-  `traefik/certs/` می‌خونه (`traefik/dynamic/tls.yml`). برای این‌که گواهی آپلودشده
-  واقعاً سرو بشه باید یا فایل‌ها رو به `traefik/certs/` کپی کنی یا مسیرهای `tls.yml` رو
-  به گواهی جدید تغییر بدی و بعد Traefik رو ری‌استارت کنی.
+  /etc/ngcorion/certs/server.crt → traefik/certs/ngcorion.local.crt
+  /etc/ngcorion/certs/server.key → traefik/certs/ngcorion.local.key   (مود 600)
+  ```
+  این کار از طریق دو مانت جدید روی سرویس `backend` انجام می‌شه:
+  `./traefik/certs:/app/traefik/certs` و `./traefik/dynamic:/app/traefik/dynamic`.
+
+  > **توجه:** Traefik فقط پوشه‌ی `dynamic/` رو watch می‌کنه، نه `certs/` رو. برای همین
+  > ماژول بعد از کپی، فایل `dynamic/tls.yml` رو دوباره می‌نویسه (محتوا بایت‌به‌بایت
+  > عوض نمی‌شه، فقط mtime) تا file provider یک رویداد تغییر ببینه و کانفیگ TLS —
+  > و همراهش فایل گواهی — دوباره خونده بشه.
+
+  پاسخ API صادقانه می‌گه کدوم حالت اتفاق افتاده:
+  | حالت | `traefik.published` / `reloaded` | پیام |
+  |---|---|---|
+  | هر دو مانت هست | `true` / `true` | «Certificate uploaded. Traefik will reload automatically.» |
+  | فقط `certs` مانت شده | `true` / `false` | بهت می‌گه `docker compose restart traefik` بزن |
+  | هیچ‌کدوم مانت نشده | `false` / `false` | بهت می‌گه فایل رو دستی کپی کن |
+  | گواهی بدون کلید | `false` / `false` | Traefik بدون key نمی‌تونه سرو کنه |
+
+  اگه بعد از آپلود گواهی جدید تو مرورگر هنوز گواهی قدیمی رو می‌بینی، یک بار
+  `docker compose restart traefik` بزن (Traefik در بعضی نسخه‌ها کانفیگ بدون تغییرِ
+  محتوایی رو دوباره اعمال نمی‌کنه) و با این دستور چک کن:
+  ```bash
+  openssl s_client -connect ngcorion.local:443 -servername ngcorion.local </dev/null 2>/dev/null | openssl x509 -noout -subject -dates
+  ```
+- **حذف گواهی** (`DELETE /api/system/certificate`) فقط فایل‌های
+  `/etc/ngcorion/certs/` رو پاک می‌کنه و نسخه‌ی کپی‌شده تو `traefik/certs/` رو **دست
+  نمی‌زنه** — چون در غیر این صورت Traefik هیچ گواهی‌ای نداشت و HTTPS (از جمله همین
+  پنل) کامل از کار می‌افتاد. برای جایگزینی، گواهی جدید رو آپلود کن.
 
 ### چک‌لیست تأیید روی سرور `172.16.200.90`
 

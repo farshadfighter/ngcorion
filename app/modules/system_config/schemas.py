@@ -9,6 +9,7 @@ files (/etc/snmp/snmpd.conf, /etc/rsyslog.d/99-ngcorion.conf,
 /etc/systemd/timesyncd.conf). ``NoNewlines`` rejects CR/LF so a value can never
 inject an extra directive line into those files.
 """
+import re
 from datetime import datetime
 from typing import Optional
 
@@ -60,6 +61,18 @@ class TimeConfig(_ConfigBase):
     manual_time: Optional[datetime] = Field(
         None, description="Required when use_ntp is false"
     )
+
+    @field_validator("timezone")
+    @classmethod
+    def _check_timezone(cls, value: str) -> str:
+        # The timedatectl fallback resolves this against /usr/share/zoneinfo, so
+        # keep it to a plain zone name — no traversal, no absolute path.
+        value = value.strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_+\-]*(/[A-Za-z0-9_+\-]+)*", value):
+            raise ValueError(
+                "timezone must be a zone name such as 'Asia/Tehran'"
+            )
+        return value
 
     @model_validator(mode="after")
     def _check_mode(self):

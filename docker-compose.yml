@@ -63,6 +63,14 @@ services:
       - /etc/rsyslog.d:/etc/rsyslog.d
       - /etc/systemd/timesyncd.conf:/etc/systemd/timesyncd.conf
       - /etc/ngcorion:/etc/ngcorion
+      # Traefik's cert directory: an uploaded certificate is copied here as
+      # ngcorion.local.crt/.key (the names traefik/dynamic/tls.yml references)
+      # instead of restarting traefik — the backend has no docker CLI/socket.
+      # The dynamic/ mount is what lets the app nudge Traefik's file provider
+      # so it re-reads the certificate without a restart; traefik itself mounts
+      # both read-only, this container needs them writable.
+      - ./traefik/certs:/app/traefik/certs
+      - ./traefik/dynamic:/app/traefik/dynamic
       # timedatectl/systemctl also need the systemd client libraries and the
       # D-Bus socket to reach the host's systemd — see the "پیش‌نیازهای System
       # Configuration" section of docs/DEPLOYMENT_GUIDE.md before relying on
