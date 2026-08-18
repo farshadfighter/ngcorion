@@ -25,11 +25,11 @@ import { RiskAsset } from "./components/Risk/RiskAsset";
 import { RiskIntelDashboard } from "./components/Risk/RiskIntelDashboard";
 import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
 import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDashboard";
+import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
 import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
 import {
     RequirePermission,
     ComingSoon,
-    OverviewHome,
     AssetListRoute,
     AutoDiscoveryRoute,
     HardeningRoute,
@@ -126,7 +126,7 @@ function AppContent() {
                             </ProtectedRoute>
                         }
                     >
-                        <Route path="/overview" element={<OverviewHome />} />
+                        <Route path="/overview" element={<OverviewDashboard />} />
 
                         {/* Asset Management */}
                         <Route path="/assets" element={<AssetManagementDashboard />} />

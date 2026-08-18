@@ -1,0 +1,448 @@
+/* Main dashboard. Palette follows the rest of the product: #F5F5F5 page,
+   white cards, #14213D text. */
+
+.ov-page {
+    padding: 24px;
+    background: #F5F5F5;
+    min-height: 100%;
+}
+
+/* ── Headline metric tiles ───────────────────────────────────────────────── */
+
+/* Figma (dashbord.svg): 230x120 tiles, rx 5, 50px apart, five to a row in a
+   1350px band. They wrap rather than shrink below a readable width. */
+.ov-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 50px;
+    max-width: 1350px;
+    margin: 0 auto;
+}
+
+.ov-metric {
+    flex: 0 0 230px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #ffffff;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+    box-sizing: border-box;
+}
+
+.ov-metric-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #14213D;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.ov-metric-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #3C4A63;
+}
+
+/* Distinct from a real zero: this number has no endpoint behind it yet. */
+.ov-metric-pending {
+    font-size: 15px;
+    font-weight: 600;
+    color: #9AA5B5;
+    cursor: help;
+}
+
+/* ── Shared card shell ───────────────────────────────────────────────────── */
+
+.ov-card {
+    margin: 32px auto 0;
+    padding: 24px 28px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+    box-sizing: border-box;
+}
+
+/* Figma card widths: the wide tables run 1328px, the narrower panels 908px. */
+.ov-card-wide   { max-width: 1328px; }
+.ov-card-medium { max-width: 908px; }
+
+.ov-card-title {
+    margin: 0 0 20px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #14213D;
+    text-align: center;
+}
+
+/* ── Module tiles ────────────────────────────────────────────────────────── */
+
+/* Figma: four 320x320 squares, rx 10, 32px apart — a 1376px band. */
+.ov-modules {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 320px));
+    justify-content: center;
+    gap: 32px;
+    max-width: 1376px;
+    margin: 32px auto 0;
+}
+
+/* 1424 = the 1376 band plus the page's 24px gutters. */
+@media (max-width: 1424px) {
+    .ov-modules {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .ov-modules {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .ov-modules {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.ov-module {
+    display: flex;
+    flex-direction: column;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+/* Figma: the whole tile inverts to the product navy on hover. Every colour
+   inside has to flip with it, hence the descendant rules below. */
+.ov-module:hover {
+    background: #14213D;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(20, 33, 61, 0.22);
+}
+
+.ov-module:hover .ov-module-title,
+.ov-module:hover .ov-module-value {
+    color: #ffffff;
+}
+
+.ov-module:hover .ov-module-hint {
+    color: rgba(255, 255, 255, 0.75);
+    border-bottom-color: rgba(255, 255, 255, 0.15);
+}
+
+.ov-module:focus-visible {
+    outline: 2px solid #2D5A9E;
+    outline-offset: 2px;
+}
+
+.ov-module-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 10px;
+    color: #9AA5B5;
+    border-bottom: 1px solid #F1F3F7;
+}
+
+.ov-module-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px 16px;
+}
+
+.ov-module-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #14213D;
+    text-align: center;
+    line-height: 1.25;
+    transition: color 0.2s ease;
+}
+
+.ov-module-value {
+    font-size: 16px;
+    color: #3C4A63;
+    text-align: center;
+    transition: color 0.2s ease;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+
+/* Figma insets the table inside the card with its own rounded border. */
+.ov-table-wrapper {
+    border: 1px solid #EEF0F4;
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+.ov-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.ov-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #6C7A93;
+    background: #F7F8FA;
+    white-space: nowrap;
+}
+
+.ov-table td {
+    padding: 14px 16px;
+    color: #14213D;
+    border-top: 1px solid #EEF0F4;
+}
+
+.ov-table tbody tr:hover {
+    background: #FAFBFD;
+}
+
+.ov-table-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9AA5B5;
+}
+
+/* ── Security Trend ──────────────────────────────────────────────────────── */
+
+.ov-card-trend {
+    max-width: 1374px;
+}
+
+/* Figma: 30 columns, 18px bars 42.5px apart on a shared baseline. The columns
+   flex so the row still fits when the card is narrower than the mock. */
+.ov-trend {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 0 6px;
+}
+
+.ov-trend-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Fixed 235px scale (the mock's tallest bar), so each bar's percentage height
+   is measured against the same reference on every column. */
+.ov-trend-track {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 100%;
+    height: 235px;
+}
+
+.ov-trend-value {
+    font-size: 9px;
+    color: #6C7A93;
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
+.ov-trend-bar {
+    width: 18px;
+    max-width: 100%;
+    background: #29354E;
+    border-radius: 2px;
+    /* A 0% day still needs to be visible as a tick rather than vanishing. */
+    min-height: 2px;
+    transition: height 0.3s ease;
+}
+
+.ov-trend-label {
+    font-size: 9px;
+    color: #9AA5B5;
+    margin-top: 6px;
+    white-space: nowrap;
+}
+
+.ov-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #9AA5B5;
+    font-size: 13px;
+}
+
+/* ── Compliance vs Hardening ─────────────────────────────────────────────── */
+
+.ov-compare {
+    max-width: 908px;
+}
+
+.ov-compare-heads {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.ov-compare-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid #EEF0F4;
+    border-radius: 8px;
+}
+
+.ov-compare-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.ov-compare-value {
+    font-size: 15px;
+    color: #3C4A63;
+}
+
+.ov-bar-row {
+    margin-bottom: 14px;
+}
+
+.ov-bar-row:last-child {
+    margin-bottom: 0;
+}
+
+.ov-bar-track {
+    display: block;
+    height: 8px;
+    border-radius: 4px;
+    background: #EEF0F4;
+    overflow: hidden;
+}
+
+.ov-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Figma: compliance in the product's navy, hardening in green. */
+.ov-bar-compliance { background: #14213D; }
+.ov-bar-hardening  { background: #34C77B; }
+
+.ov-bar-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #3C4A63;
+}
+
+.ov-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.ov-dot-compliance { background: #14213D; }
+.ov-dot-hardening  { background: #34C77B; }
+
+/* ── Recent Security Events ──────────────────────────────────────────────── */
+
+.ov-card-events {
+    max-width: 1326px;
+}
+
+.ov-events {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Figma: two 614px panes per row, 72px tall. */
+/* Figma: two 614px panes with a 42px channel between them. */
+.ov-event {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 42px;
+    min-height: 72px;
+    align-items: center;
+}
+
+.ov-event-module,
+.ov-event-title {
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+    padding: 0 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.ov-event-module {
+    background: #F1F3F7;
+    color: #6C7A93;
+    font-weight: 600;
+}
+
+.ov-event-title {
+    gap: 10px;
+    background: #ffffff;
+    border: 1px solid #EEF0F4;
+    color: #14213D;
+}
+
+.ov-event-failed {
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #FEE2E2;
+    color: #991B1B;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+@media (max-width: 700px) {
+    .ov-event {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 8px 0;
+    }
+}
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+
+.ov-state {
+    padding: 48px 24px;
+    text-align: center;
+    color: #6C6C6C;
+    font-size: 14px;
+}
+
+.ov-state-error {
+    color: #DC2626;
+}

@@ -13,6 +13,7 @@ import riskDetailReducer from "./riskDetailSlice.js";
 import hardeningDashboardReducer from "./hardeningDashboardSlice.js";
 import systemConfigReducer from "./systemConfigSlice.js";
 import auditDashboardReducer from "./auditDashboardSlice.js";
+import overviewDashboardReducer from "./overviewDashboardSlice.js";
 
 
 export const store = configureStore({
@@ -31,5 +32,6 @@ export const store = configureStore({
         hardeningDashboard: hardeningDashboardReducer,
         systemConfig: systemConfigReducer,
         auditDashboard: auditDashboardReducer,
+        overviewDashboard: overviewDashboardReducer,
     },
 });

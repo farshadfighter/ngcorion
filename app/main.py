@@ -59,6 +59,7 @@ from app.modules.shared import hardening_router as unified_hardening_router
 # Shared cross-family audit endpoints (get/delete session by ID)
 from app.modules.audit.router import router as shared_audit_router
 from app.modules.audit.dashboard_router import router as audit_dashboard_router
+from app.modules.audit.events_router import router as security_events_router
 
 # Deprecated routes for backward compatibility
 from app.modules.deprecated_routes import deprecated_router
@@ -270,6 +271,9 @@ app.include_router(shared_audit_router)
 
 # Auditing dashboard — read-only aggregates for the KPI screen
 app.include_router(audit_dashboard_router)
+
+# Cross-module security event stream — read-only view over audit_logs
+app.include_router(security_events_router)
 
 # Module-specific audit log routes
 app.include_router(requirement_logs_router)
