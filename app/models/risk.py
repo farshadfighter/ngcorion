@@ -167,6 +167,12 @@ class AssetRiskScore(Base):
     criticality_weight = Column(Numeric(5, 2), nullable=True)
     criticality_contribution = Column(Numeric(5, 2), nullable=True)
 
+    # Asset risk factor (AR) - the asset's own asset_inventory.risk_level
+    asset_risk_level = Column(String(30), nullable=True)
+    asset_risk_score = Column(Numeric(5, 2), nullable=True)
+    asset_risk_weight = Column(Numeric(5, 2), nullable=True)
+    asset_risk_contribution = Column(Numeric(5, 2), nullable=True)
+
     # Zone factor
     zone_id = Column(
         Integer, ForeignKey("risk_zones.id", ondelete="SET NULL"), nullable=True
@@ -189,9 +195,17 @@ class AssetRiskScore(Base):
     audit_weight = Column(Numeric(5, 2), nullable=True)
     audit_contribution = Column(Numeric(5, 2), nullable=True)
 
+    # Hardening-fix-found factor (HF)
+    hardening_fix_raw_score = Column(Numeric(8, 2), nullable=True)
+    hardening_applicable_weight = Column(Numeric(8, 2), nullable=True)
+    hardening_fix_score = Column(Numeric(5, 2), nullable=True)
+    hardening_weight = Column(Numeric(5, 2), nullable=True)
+    hardening_contribution = Column(Numeric(5, 2), nullable=True)
+
     # Result
     final_risk_score = Column(Numeric(5, 2), nullable=True)
-    risk_level = Column(String(20), nullable=True)  # low, medium, high, critical
+    # informational, low, medium, high, critical
+    risk_level = Column(String(20), nullable=True)
 
     # Counts
     critical_findings_count = Column(Integer, default=0, nullable=False)
@@ -202,6 +216,8 @@ class AssetRiskScore(Base):
     risky_ports_count = Column(Integer, default=0, nullable=False)
     resolved_by_hardening_count = Column(Integer, default=0, nullable=False)
     active_audit_findings_count = Column(Integer, default=0, nullable=False)
+    # Open findings a hardening fix was found for (drives HF)
+    hardening_fixes_found_count = Column(Integer, default=0, nullable=False)
 
     # Meta
     incomplete_data = Column(Boolean, default=False, nullable=False)
@@ -238,14 +254,18 @@ class AssetRiskHistory(Base):
     risk_level = Column(String(20), nullable=False)
 
     criticality_score = Column(Numeric(5, 2), nullable=True)
+    asset_risk_score = Column(Numeric(5, 2), nullable=True)
     zone_score = Column(Numeric(5, 2), nullable=True)
     open_port_score = Column(Numeric(5, 2), nullable=True)
     audit_risk_score = Column(Numeric(5, 2), nullable=True)
+    hardening_fix_score = Column(Numeric(5, 2), nullable=True)
 
     criticality_contribution = Column(Numeric(5, 2), nullable=True)
+    asset_risk_contribution = Column(Numeric(5, 2), nullable=True)
     zone_contribution = Column(Numeric(5, 2), nullable=True)
     open_port_contribution = Column(Numeric(5, 2), nullable=True)
     audit_contribution = Column(Numeric(5, 2), nullable=True)
+    hardening_contribution = Column(Numeric(5, 2), nullable=True)
 
     audit_id = Column(Integer, nullable=True)
     reason = Column(String(255), nullable=True)  # what triggered the recalculation

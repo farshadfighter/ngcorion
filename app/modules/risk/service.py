@@ -1,10 +1,17 @@
 """
 Asset Risk Calculation Service
 
-Computes a 0-100 risk score per asset from four weighted factors:
-  criticality (asset_risk_profiles), network zone (risk_zones),
-  open-port exposure (asset_open_ports), and audit findings
-  (audit_sessions/audit_results, adjusted by hardening_actions).
+Computes a 0-100 risk score per asset from six weighted factors:
+
+  RiskScore = (AC*0.20) + (AR*0.20) + (AZ*0.15)
+            + (OP*0.10) + (AF*0.25) + (HF*0.10)
+
+  AC  Asset Criticality      asset_risk_profiles          20%
+  AR  Asset Risk             asset_inventory.risk_level   20%
+  AZ  Asset Zone             risk_zones                   15%
+  OP  Open Port Risk         asset_open_ports             10%
+  AF  Audit Failure Risk     audit_sessions/audit_results 25%
+  HF  Hardening Fix Found    hardening_actions            10%
 
 All tunables (factor weights, severity weights, fallback scores, level
 thresholds) come from risk_settings; hardcoded values below are only the
@@ -17,6 +24,12 @@ Schema notes (differ from the original design doc):
     verification_passed is True.
   - AuditResult.status is the CheckStatus enum; NOT_APPLICABLE and ERROR
     results are excluded from the applicable weight.
+  - Findings (audit + hardening) and open ports use *different* severity
+    scales: severity_*_weight (1/4/7/10) vs port_severity_*_weight
+    (1/3/5/10).
+  - HF counts findings a hardening fix was *found* for (a hardening_actions
+    row exists for the audit result) that are still not verified-fixed. With
+    no hardening rows at all HF is 0, not an "unknown" fallback.
 """
 
 import asyncio
@@ -46,27 +59,48 @@ logger = logging.getLogger(__name__)
 
 # Fallbacks used only when the corresponding risk_settings row is missing
 DEFAULT_SETTINGS = {
-    "criticality_weight": 25.0,
-    "zone_weight": 20.0,
-    "open_port_weight": 15.0,
-    "audit_weight": 40.0,
+    # Factor weights (must sum to 100)
+    "criticality_weight": 20.0,      # AC
+    "asset_risk_weight": 20.0,       # AR
+    "zone_weight": 15.0,             # AZ
+    "open_port_weight": 10.0,        # OP
+    "audit_weight": 25.0,            # AF
+    "hardening_weight": 10.0,        # HF
+    # Finding severity weights (audit failures + hardening fixes found)
     "severity_low_weight": 1.0,
-    "severity_medium_weight": 3.0,
+    "severity_medium_weight": 4.0,
     "severity_high_weight": 7.0,
     "severity_critical_weight": 10.0,
-    "open_port_normalization_factor": 4.0,
+    # Open-port severity weights (Standard/Low, Medium, High, Critical/Insecure)
+    "port_severity_low_weight": 1.0,
+    "port_severity_medium_weight": 3.0,
+    "port_severity_high_weight": 5.0,
+    "port_severity_critical_weight": 10.0,
+    # Open-port score normalization: OP = min(100, raw * factor)
+    "open_port_normalization_factor": 1.0,
     "unknown_zone_score": 50.0,
     "unknown_port_score": 50.0,
     "unknown_audit_score": 50.0,
+    "unknown_asset_risk_score": 50.0,
+    # HF when the asset has no hardening data at all (spec: 0, not "unknown")
+    "no_hardening_data_score": 0.0,
     "include_warning_in_audit_risk": False,
     "criticality_low_score": 25.0,
     "criticality_medium_score": 50.0,
     "criticality_high_score": 75.0,
     "criticality_critical_score": 100.0,
-    # Lower bound of each level; evaluated from highest to lowest
-    "risk_level_medium_threshold": 20.0,
-    "risk_level_high_threshold": 40.0,
-    "risk_level_very_high_threshold": 60.0,
+    # asset_inventory.risk_level -> AR score. very_high is a legacy enum
+    # member kept mappable; the spec's four levels are low/medium/high/critical.
+    "asset_risk_low_score": 25.0,
+    "asset_risk_medium_score": 50.0,
+    "asset_risk_high_score": 75.0,
+    "asset_risk_very_high_score": 90.0,
+    "asset_risk_critical_score": 100.0,
+    # Exclusive lower bound of each level, evaluated highest to lowest:
+    #   0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical
+    "risk_level_low_threshold": 20.0,
+    "risk_level_medium_threshold": 40.0,
+    "risk_level_high_threshold": 60.0,
     "risk_level_critical_threshold": 80.0,
 }
 
@@ -99,12 +133,18 @@ class AssetRiskCalculationService:
             settings[row.setting_key] = value
         return settings
 
-    def _severity_weight(self, severity, settings: dict) -> float:
-        key = f"severity_{(severity or 'medium').strip().lower()}_weight"
+    def _severity_weight(self, severity, settings: dict, prefix: str = "severity") -> float:
+        """Severity -> weight. prefix picks the scale: findings (`severity`,
+        1/4/7/10) or open ports (`port_severity`, 1/3/5/10)."""
+        key = f"{prefix}_{(severity or 'medium').strip().lower()}_weight"
         if key not in settings:
             # info/unknown severities score as low
-            key = "severity_low_weight" if severity == "info" else "severity_medium_weight"
+            key = (f"{prefix}_low_weight" if severity == "info"
+                   else f"{prefix}_medium_weight")
         return float(settings[key])
+
+    def _port_severity_weight(self, severity, settings: dict) -> float:
+        return self._severity_weight(severity, settings, prefix="port_severity")
 
     # ------------------------------------------------------------------
     # Factor scores
@@ -116,6 +156,21 @@ class AssetRiskCalculationService:
         level = (profile.criticality_level or "medium").strip().lower()
         return float(settings.get(f"criticality_{level}_score",
                                   settings["criticality_medium_score"]))
+
+    def _asset_risk_score(self, asset: Asset, settings: dict):
+        """AR: the asset's own risk_level (asset_inventory).
+
+        Returns (level, score, is_unknown); an unset risk_level falls back to
+        unknown_asset_risk_score (50 by spec).
+        """
+        raw = getattr(asset.risk_level, "value", asset.risk_level)
+        level = (str(raw).strip().lower() or None) if raw is not None else None
+        if not level:
+            return None, float(settings["unknown_asset_risk_score"]), True
+        return level, float(
+            settings.get(f"asset_risk_{level}_score",
+                         settings["unknown_asset_risk_score"])
+        ), False
 
     def _zone_score(self, db: Session, profile: AssetRiskProfile, settings: dict):
         """Returns (zone, zone_score, is_unknown)."""
@@ -144,7 +199,9 @@ class AssetRiskCalculationService:
         if not included:
             return None, float(settings["unknown_port_score"]), open_ports_count, 0, True
 
-        raw_score = sum(self._severity_weight(p.severity, settings) for p in included)
+        raw_score = sum(
+            self._port_severity_weight(p.severity, settings) for p in included
+        )
         factor = float(settings["open_port_normalization_factor"])
         score = min(100.0, raw_score * factor)
         risky_count = sum(
@@ -152,8 +209,29 @@ class AssetRiskCalculationService:
         )
         return raw_score, score, open_ports_count, risky_count, False
 
-    def _audit_risk_score(self, db: Session, asset_id: int, settings: dict) -> dict:
-        """STEP 7. Returns a dict with score, weights, counts and the session used."""
+    def _audit_and_hardening_risk(
+        self, db: Session, asset_id: int, settings: dict
+    ) -> dict:
+        """STEP 7: AF (audit failure risk) and HF (hardening fix found risk).
+
+        Both read the same latest non-running audit session, so they are
+        computed in one pass over its results:
+
+            AF_Raw = sum(weight) of failed controls that are still open
+            AF     = 100 * AF_Raw / MaxPossibleAuditScore
+            HF_Raw = sum(weight) of those still-open failures a hardening fix
+                     was *found* for (a hardening_actions row exists for the
+                     finding)
+            HF     = 100 * HF_Raw / MaxPossibleHardeningScore
+
+        MaxPossibleAuditScore / MaxPossibleHardeningScore are both the
+        weighted sum of every applicable control in the session
+        (NOT_APPLICABLE/ERROR excluded), so HF <= AF by construction.
+
+        A finding is resolved - counting toward neither AF nor HF - when a
+        non-preview hardening action succeeded and its verification passed.
+        With no hardening rows at all, HF is no_hardening_data_score (0).
+        """
         out = {
             "session": None,
             "failed_weight": None,
@@ -163,6 +241,12 @@ class AssetRiskCalculationService:
             "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0},
             "resolved_by_hardening": 0,
             "active_findings": 0,
+            # HF block
+            "hardening_raw": None,
+            "hardening_applicable_weight": None,
+            "hardening_score": float(settings["no_hardening_data_score"]),
+            "hardening_is_unknown": True,
+            "fixes_found": 0,
         }
 
         session = (
@@ -183,6 +267,8 @@ class AssetRiskCalculationService:
 
         failed_weight = 0.0
         applicable_weight = 0.0
+        hardening_weight_found = 0.0
+        has_hardening_data = False
         for result in results:
             if result.status in (CheckStatus.NOT_APPLICABLE, CheckStatus.ERROR):
                 continue
@@ -192,15 +278,26 @@ class AssetRiskCalculationService:
             if result.status != CheckStatus.FAIL:
                 continue
 
-            # A fail is resolved only by a verified successful hardening execute
-            resolved = (
-                db.query(HardeningAction.id)
-                .filter(HardeningAction.audit_result_id == result.id,
-                        HardeningAction.action_type != "preview",
-                        HardeningAction.status == "success",
-                        HardeningAction.verification_passed.is_(True))
-                .first()
-                is not None
+            # One pass over the finding's hardening actions: a fix was "found"
+            # when any action row exists; it is resolved only by a verified
+            # successful execute.
+            actions = (
+                db.query(
+                    HardeningAction.action_type,
+                    HardeningAction.status,
+                    HardeningAction.verification_passed,
+                )
+                .filter(HardeningAction.audit_result_id == result.id)
+                .all()
+            )
+            fix_found = bool(actions)
+            if fix_found:
+                has_hardening_data = True
+            resolved = any(
+                action_type != "preview"
+                and status == "success"
+                and verification_passed is True
+                for action_type, status, verification_passed in actions
             )
             if resolved:
                 out["resolved_by_hardening"] += 1
@@ -208,6 +305,9 @@ class AssetRiskCalculationService:
 
             failed_weight += weight
             out["active_findings"] += 1
+            if fix_found:
+                hardening_weight_found += weight
+                out["fixes_found"] += 1
             sev = (result.severity or "medium").lower()
             if sev not in out["findings"]:
                 sev = "medium"
@@ -226,18 +326,39 @@ class AssetRiskCalculationService:
             out["score"] = float(settings["unknown_audit_score"])
         else:
             out["score"] = round(100.0 * failed_weight / applicable_weight, 4)
+
+        # HF: only meaningful once the asset has hardening data at all.
+        if has_hardening_data and applicable_weight > 0:
+            out["hardening_raw"] = hardening_weight_found
+            out["hardening_applicable_weight"] = applicable_weight
+            out["hardening_score"] = round(
+                100.0 * hardening_weight_found / applicable_weight, 4
+            )
+            out["hardening_is_unknown"] = False
+        else:
+            out["hardening_raw"] = 0.0 if has_hardening_data else None
+            out["hardening_applicable_weight"] = (
+                applicable_weight if has_hardening_data else None
+            )
+            out["hardening_score"] = float(settings["no_hardening_data_score"])
+            out["hardening_is_unknown"] = not has_hardening_data
         return out
 
     def _risk_level(self, score: float, settings: dict) -> str:
-        if score >= float(settings["risk_level_critical_threshold"]):
+        """0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical.
+
+        Thresholds are exclusive lower bounds, so a score sitting exactly on a
+        boundary (20, 40, 60, 80) stays in the lower band.
+        """
+        if score > float(settings["risk_level_critical_threshold"]):
             return "critical"
-        if score >= float(settings["risk_level_very_high_threshold"]):
-            return "very_high"
-        if score >= float(settings["risk_level_high_threshold"]):
+        if score > float(settings["risk_level_high_threshold"]):
             return "high"
-        if score >= float(settings["risk_level_medium_threshold"]):
+        if score > float(settings["risk_level_medium_threshold"]):
             return "medium"
-        return "low"
+        if score > float(settings["risk_level_low_threshold"]):
+            return "low"
+        return "informational"
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -291,8 +412,15 @@ class AssetRiskCalculationService:
             elif profile.criticality_is_default:
                 incomplete_reasons.append("missing_criticality")
 
-            # STEP 4: criticality
+            # STEP 4: criticality (AC)
             criticality_score = self._criticality_score(profile, settings)
+
+            # STEP 4b: asset's own risk level (AR)
+            asset_risk_level, asset_risk_score, asset_risk_unknown = (
+                self._asset_risk_score(asset, settings)
+            )
+            if asset_risk_unknown:
+                incomplete_reasons.append("missing_asset_risk")
 
             # STEP 5: zone
             zone, zone_score, zone_unknown = self._zone_score(db, profile, settings)
@@ -310,27 +438,36 @@ class AssetRiskCalculationService:
             if ports_unknown:
                 incomplete_reasons.append("missing_port_scan")
 
-            # STEP 7: audit
-            audit = self._audit_risk_score(db, asset_id, settings)
+            # STEP 7: audit failures (AF) + hardening fixes found (HF)
+            audit = self._audit_and_hardening_risk(db, asset_id, settings)
             if audit["is_unknown"]:
                 incomplete_reasons.append("missing_audit")
 
             # STEP 8: weighted final score
+            #   (AC*0.20)+(AR*0.20)+(AZ*0.15)+(OP*0.10)+(AF*0.25)+(HF*0.10)
             criticality_weight = float(settings["criticality_weight"])
+            asset_risk_weight = float(settings["asset_risk_weight"])
             zone_weight = float(settings["zone_weight"])
             open_port_weight = float(settings["open_port_weight"])
             audit_weight = float(settings["audit_weight"])
+            hardening_weight = float(settings["hardening_weight"])
 
             criticality_contribution = criticality_score * criticality_weight / 100.0
+            asset_risk_contribution = asset_risk_score * asset_risk_weight / 100.0
             zone_contribution = zone_score * zone_weight / 100.0
             open_port_contribution = open_port_score * open_port_weight / 100.0
             audit_contribution = audit["score"] * audit_weight / 100.0
+            hardening_contribution = (
+                audit["hardening_score"] * hardening_weight / 100.0
+            )
 
             final_risk_score = (
                 criticality_contribution
+                + asset_risk_contribution
                 + zone_contribution
                 + open_port_contribution
                 + audit_contribution
+                + hardening_contribution
             )
             final_risk_score = round(max(0.0, min(100.0, final_risk_score)), 2)
 
@@ -358,6 +495,10 @@ class AssetRiskCalculationService:
             score_row.criticality_score = criticality_score
             score_row.criticality_weight = criticality_weight
             score_row.criticality_contribution = round(criticality_contribution, 2)
+            score_row.asset_risk_level = asset_risk_level
+            score_row.asset_risk_score = asset_risk_score
+            score_row.asset_risk_weight = asset_risk_weight
+            score_row.asset_risk_contribution = round(asset_risk_contribution, 2)
             score_row.zone_id = zone.id if zone is not None else None
             score_row.zone_name = zone.name if zone is not None else None
             score_row.zone_score = zone_score
@@ -372,6 +513,12 @@ class AssetRiskCalculationService:
             score_row.audit_risk_score = audit["score"]
             score_row.audit_weight = audit_weight
             score_row.audit_contribution = round(audit_contribution, 2)
+            score_row.hardening_fix_raw_score = audit["hardening_raw"]
+            score_row.hardening_applicable_weight = audit["hardening_applicable_weight"]
+            score_row.hardening_fix_score = audit["hardening_score"]
+            score_row.hardening_weight = hardening_weight
+            score_row.hardening_contribution = round(hardening_contribution, 2)
+            score_row.hardening_fixes_found_count = audit["fixes_found"]
             score_row.final_risk_score = final_risk_score
             score_row.risk_level = risk_level
             score_row.critical_findings_count = audit["findings"]["critical"]
@@ -393,13 +540,17 @@ class AssetRiskCalculationService:
                     risk_score=final_risk_score,
                     risk_level=risk_level,
                     criticality_score=criticality_score,
+                    asset_risk_score=asset_risk_score,
                     zone_score=zone_score,
                     open_port_score=open_port_score,
                     audit_risk_score=audit["score"],
+                    hardening_fix_score=audit["hardening_score"],
                     criticality_contribution=round(criticality_contribution, 2),
+                    asset_risk_contribution=round(asset_risk_contribution, 2),
                     zone_contribution=round(zone_contribution, 2),
                     open_port_contribution=round(open_port_contribution, 2),
                     audit_contribution=round(audit_contribution, 2),
+                    hardening_contribution=round(hardening_contribution, 2),
                     audit_id=audit_id,
                     reason=trigger_type,
                     calculated_at=calculated_at,
@@ -410,13 +561,17 @@ class AssetRiskCalculationService:
                 "final_risk_score": final_risk_score,
                 "risk_level": risk_level,
                 "criticality_score": criticality_score,
+                "asset_risk_score": asset_risk_score,
                 "zone_score": zone_score,
                 "open_port_score": open_port_score,
                 "audit_risk_score": audit["score"],
+                "hardening_fix_score": audit["hardening_score"],
                 "criticality_contribution": round(criticality_contribution, 2),
+                "asset_risk_contribution": round(asset_risk_contribution, 2),
                 "zone_contribution": round(zone_contribution, 2),
                 "open_port_contribution": round(open_port_contribution, 2),
                 "audit_contribution": round(audit_contribution, 2),
+                "hardening_contribution": round(hardening_contribution, 2),
                 "incomplete_data": incomplete_data,
                 "incomplete_reasons": incomplete_reasons,
                 "audit_session_id": audit_id,
@@ -560,7 +715,9 @@ def get_risk_summary(db: Session) -> dict:
         .scalar()
     ) or 0
 
-    by_level = {"low": 0, "medium": 0, "high": 0, "very_high": 0, "critical": 0}
+    by_level = {
+        "informational": 0, "low": 0, "medium": 0, "high": 0, "critical": 0,
+    }
     for level, count in (
         db.query(AssetRiskScore.risk_level, func.count(AssetRiskScore.id))
         .group_by(AssetRiskScore.risk_level)

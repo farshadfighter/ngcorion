@@ -53,14 +53,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-WEIGHT_KEYS = ("criticality_weight", "zone_weight", "open_port_weight", "audit_weight")
+# The six factor weights of the current formula; must keep summing to 100.
+WEIGHT_KEYS = (
+    "criticality_weight",     # AC
+    "asset_risk_weight",      # AR
+    "zone_weight",            # AZ
+    "open_port_weight",       # OP
+    "audit_weight",           # AF
+    "hardening_weight",       # HF
+)
 
-# Ordered low-to-high; each is the lower bound of a risk-level band and must
-# stay strictly ascending (spec section 10, no overlap).
+# Ordered low-to-high; each is the *exclusive* lower bound of a risk-level band
+# and must stay strictly ascending so the bands never overlap:
+#   0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical
 THRESHOLD_KEYS = (
+    "risk_level_low_threshold",
     "risk_level_medium_threshold",
     "risk_level_high_threshold",
-    "risk_level_very_high_threshold",
     "risk_level_critical_threshold",
 )
 
@@ -68,9 +77,11 @@ SORTABLE_COLUMNS = {
     "final_risk_score": AssetRiskScore.final_risk_score,
     "risk_level": AssetRiskScore.risk_level,
     "criticality_score": AssetRiskScore.criticality_score,
+    "asset_risk_score": AssetRiskScore.asset_risk_score,
     "zone_score": AssetRiskScore.zone_score,
     "open_port_score": AssetRiskScore.open_port_score,
     "audit_risk_score": AssetRiskScore.audit_risk_score,
+    "hardening_fix_score": AssetRiskScore.hardening_fix_score,
     "open_ports_count": AssetRiskScore.open_ports_count,
     "calculated_at": AssetRiskScore.calculated_at,
     "asset_name": Asset.asset_name,
@@ -97,6 +108,10 @@ def _score_to_dict(score: AssetRiskScore) -> dict:
         "criticality_score": _num(score.criticality_score),
         "criticality_weight": _num(score.criticality_weight),
         "criticality_contribution": _num(score.criticality_contribution),
+        "asset_risk_level": score.asset_risk_level,
+        "asset_risk_score": _num(score.asset_risk_score),
+        "asset_risk_weight": _num(score.asset_risk_weight),
+        "asset_risk_contribution": _num(score.asset_risk_contribution),
         "zone_id": score.zone_id,
         "zone_name": score.zone_name,
         "zone_score": _num(score.zone_score),
@@ -111,6 +126,11 @@ def _score_to_dict(score: AssetRiskScore) -> dict:
         "audit_risk_score": _num(score.audit_risk_score),
         "audit_weight": _num(score.audit_weight),
         "audit_contribution": _num(score.audit_contribution),
+        "hardening_fix_raw_score": _num(score.hardening_fix_raw_score),
+        "hardening_applicable_weight": _num(score.hardening_applicable_weight),
+        "hardening_fix_score": _num(score.hardening_fix_score),
+        "hardening_weight": _num(score.hardening_weight),
+        "hardening_contribution": _num(score.hardening_contribution),
         "final_risk_score": _num(score.final_risk_score),
         "risk_level": score.risk_level,
         "critical_findings_count": score.critical_findings_count,
@@ -121,6 +141,7 @@ def _score_to_dict(score: AssetRiskScore) -> dict:
         "risky_ports_count": score.risky_ports_count,
         "resolved_by_hardening_count": score.resolved_by_hardening_count,
         "active_audit_findings_count": score.active_audit_findings_count,
+        "hardening_fixes_found_count": score.hardening_fixes_found_count,
         "incomplete_data": score.incomplete_data,
         "incomplete_reasons": score.incomplete_reasons_json or [],
         "audit_id": score.audit_id,
@@ -179,13 +200,17 @@ def _history_to_dict(row: AssetRiskHistory) -> dict:
         "risk_score": _num(row.risk_score),
         "risk_level": row.risk_level,
         "criticality_score": _num(row.criticality_score),
+        "asset_risk_score": _num(row.asset_risk_score),
         "zone_score": _num(row.zone_score),
         "open_port_score": _num(row.open_port_score),
         "audit_risk_score": _num(row.audit_risk_score),
+        "hardening_fix_score": _num(row.hardening_fix_score),
         "criticality_contribution": _num(row.criticality_contribution),
+        "asset_risk_contribution": _num(row.asset_risk_contribution),
         "zone_contribution": _num(row.zone_contribution),
         "open_port_contribution": _num(row.open_port_contribution),
         "audit_contribution": _num(row.audit_contribution),
+        "hardening_contribution": _num(row.hardening_contribution),
         "audit_id": row.audit_id,
         "reason": row.reason,
         "calculated_at": _dt(row.calculated_at),
@@ -296,11 +321,12 @@ def _criticality_score_for_level(db: Session, level: str) -> float:
 
 
 def _severity_score_for(db: Session, severity: str) -> int:
+    """Points an open port of this severity contributes to OP (port scale)."""
     settings = _settings_dict(db)
     return int(
         settings.get(
-            f"severity_{severity}_weight",
-            DEFAULT_SETTINGS[f"severity_{severity}_weight"],
+            f"port_severity_{severity}_weight",
+            DEFAULT_SETTINGS[f"port_severity_{severity}_weight"],
         )
     )
 
@@ -369,11 +395,15 @@ def _list_item(score: AssetRiskScore, asset: Asset, rank: int) -> dict:
         ),
         "criticality_level": score.criticality_level,
         "criticality_score": _num(score.criticality_score),
+        "asset_risk_level": score.asset_risk_level,
+        "asset_risk_score": _num(score.asset_risk_score),
         "zone_name": score.zone_name,
         "zone_score": _num(score.zone_score),
         "open_ports_count": score.open_ports_count,
         "open_port_score": _num(score.open_port_score),
         "audit_risk_score": _num(score.audit_risk_score),
+        "hardening_fix_score": _num(score.hardening_fix_score),
+        "hardening_fixes_found_count": score.hardening_fixes_found_count,
         "active_audit_findings_count": score.active_audit_findings_count,
         # Severity breakdown of the active findings; the UI's "Audit Risk" tab
         # lists them per asset. Already loaded on `score`, so no extra query.
@@ -426,7 +456,7 @@ async def _recalculate_all_background(trigger_type: str = "bulk_recalculation"):
 
 # Canonical high-to-low ordering for the risk-level breakdown, so the
 # frontend always receives every level in a stable order (zero-filled).
-_RISK_LEVEL_ORDER = ("critical", "very_high", "high", "medium", "low")
+_RISK_LEVEL_ORDER = ("critical", "high", "medium", "low", "informational")
 
 # Map stored enum member name (e.g. 'PUBLIC') back to its lowercase API value.
 _CONFIDENTIALITY_BY_NAME = {e.name: e.value for e in ConfidentialityLevelEnum}
@@ -1202,7 +1232,7 @@ def update_settings(
                 detail=f"Invalid value for {key}: expected {value_type}",
             )
 
-    # CRITICAL: the four factor weights must sum to 100 after the update
+    # CRITICAL: the six factor weights must sum to 100 after the update
     if any(key in WEIGHT_KEYS for key in updates):
         merged = {}
         for key in WEIGHT_KEYS:
@@ -1232,7 +1262,7 @@ def update_settings(
                 status_code=400,
                 detail=(
                     "Risk-level thresholds must be strictly ascending "
-                    "(medium < high < very_high < critical) so bands don't overlap"
+                    "(low < medium < high < critical) so bands don't overlap"
                 ),
             )
 
@@ -1288,9 +1318,11 @@ def get_asset_history(
 CSV_COLUMNS = [
     "Rank", "Asset Name", "IP Address", "Asset Type", "Confidentiality Level",
     "Vendor", "Product", "Model", "Version",
-    "Criticality", "Criticality Score", "Zone", "Zone Score", "Open Ports Count",
+    "Criticality", "Criticality Score", "Asset Risk Level", "Asset Risk Score",
+    "Zone", "Zone Score", "Open Ports Count",
     "Open Port Score", "Critical Findings", "High Findings", "Medium Findings",
-    "Low Findings", "Audit Risk Score", "Risk Score", "Risk Level",
+    "Low Findings", "Audit Risk Score", "Hardening Fixes Found",
+    "Hardening Fix Score", "Risk Score", "Risk Level",
     "Last Audit Date", "Last Calculation Date", "Incomplete Data",
 ]
 
@@ -1343,6 +1375,8 @@ def export_csv(
             asset.os_version,
             score.criticality_level,
             _num(score.criticality_score),
+            score.asset_risk_level,
+            _num(score.asset_risk_score),
             score.zone_name,
             _num(score.zone_score),
             score.open_ports_count,
@@ -1352,6 +1386,8 @@ def export_csv(
             score.medium_findings_count,
             score.low_findings_count,
             _num(score.audit_risk_score),
+            score.hardening_fixes_found_count,
+            _num(score.hardening_fix_score),
             _num(score.final_risk_score),
             score.risk_level,
             _dt(asset.last_audit_date),
@@ -1413,6 +1449,12 @@ def export_asset_json(
                 "weight": _num(score.criticality_weight),
                 "contribution": _num(score.criticality_contribution),
             },
+            "asset_risk": {
+                "level": score.asset_risk_level,
+                "score": _num(score.asset_risk_score),
+                "weight": _num(score.asset_risk_weight),
+                "contribution": _num(score.asset_risk_contribution),
+            },
             "zone": {
                 "name": score.zone_name,
                 "score": _num(score.zone_score),
@@ -1432,6 +1474,14 @@ def export_asset_json(
                 "score": _num(score.audit_risk_score),
                 "weight": _num(score.audit_weight),
                 "contribution": _num(score.audit_contribution),
+            },
+            "hardening": {
+                "applicable_weight": _num(score.hardening_applicable_weight),
+                "fixes_found_weight": _num(score.hardening_fix_raw_score),
+                "fixes_found_count": score.hardening_fixes_found_count,
+                "score": _num(score.hardening_fix_score),
+                "weight": _num(score.hardening_weight),
+                "contribution": _num(score.hardening_contribution),
             },
         },
     }
