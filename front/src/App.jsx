@@ -25,6 +25,7 @@ import { RiskAsset } from "./components/Risk/RiskAsset";
 import { RiskIntelDashboard } from "./components/Risk/RiskIntelDashboard";
 import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
 import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDashboard";
+import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
 import {
     RequirePermission,
     ComingSoon,
@@ -193,8 +194,14 @@ function AppContent() {
                             </RequirePermission>
                         } />
                         <Route path="/settings/license" element={<License />} />
-                        <Route path="/settings/ntp" element={<ComingSoon name="NTP Configuration" />} />
-                        <Route path="/settings/snmp" element={<ComingSoon name="SNMP Configuration" />} />
+                        <Route path="/settings/system" element={
+                            <RequirePermission module="system_config" name="System Configuration">
+                                <SystemConfiguration />
+                            </RequirePermission>
+                        } />
+                        {/* Both former pages now live as dialogs inside System Configuration. */}
+                        <Route path="/settings/ntp" element={<Navigate to="/settings/system" replace />} />
+                        <Route path="/settings/snmp" element={<Navigate to="/settings/system" replace />} />
 
                         {/* Risk Intelligence */}
                         <Route path="/risk/assets" element={

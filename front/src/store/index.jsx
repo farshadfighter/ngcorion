@@ -11,6 +11,7 @@ import logsReducer from "./logsSlice.js";
 import riskReducer from "./riskSlice.js";
 import riskDetailReducer from "./riskDetailSlice.js";
 import hardeningDashboardReducer from "./hardeningDashboardSlice.js";
+import systemConfigReducer from "./systemConfigSlice.js";
 import auditDashboardReducer from "./auditDashboardSlice.js";
 
 
@@ -28,6 +29,7 @@ export const store = configureStore({
         risk: riskReducer,
         riskDetail: riskDetailReducer,
         hardeningDashboard: hardeningDashboardReducer,
+        systemConfig: systemConfigReducer,
         auditDashboard: auditDashboardReducer,
     },
 });

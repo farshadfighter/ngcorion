@@ -18,6 +18,7 @@ export const PERMISSION_MODULES = [
     { name: "hardening",            label: "Hardening",         icon: "fa-solid fa-shield-halved" },
     { name: "auditing",             label: "Auditing",          icon: "fa-solid fa-list-check" },
     { name: "risk",                 label: "Risk Intelligence", icon: "fa-solid fa-triangle-exclamation" },
+    { name: "system_config",        label: "System Config",     icon: "fa-solid fa-sliders" },
 ];
 
 export default PERMISSION_MODULES;

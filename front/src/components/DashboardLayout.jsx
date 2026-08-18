@@ -28,8 +28,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
-    if (pathname.startsWith("/settings/ntp"))         return "ntp-configuration";
-    if (pathname.startsWith("/settings/snmp"))        return "snmp-configuration";
+    if (pathname.startsWith("/settings/system"))      return "system-configuration";
     if (pathname.startsWith("/risk/assets"))          return "risk-asset";
     if (pathname.startsWith("/risk/exposure"))        return "risk-asset";
     if (pathname.startsWith("/risk/attack-surface"))  return "attack-surface";
@@ -59,6 +58,7 @@ export const DashboardLayout = () => {
     const canReadUserMgmt  = usePermission("user_management",      "read");
     const canReadLogs      = usePermission("logs",                 "read");
     const canReadBackup    = usePermission("backup",               "read");
+    const canReadSysConfig = usePermission("system_config",        "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -116,8 +116,7 @@ export const DashboardLayout = () => {
         "backup":              "Configuration Backup",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
-        "ntp-configuration":   "NTP Configuration",
-        "snmp-configuration":  "SNMP Configuration",
+        "system-configuration": "System Configuration",
         "licence":             "License Management",
     };
 
@@ -238,16 +237,13 @@ export const DashboardLayout = () => {
                             <span className="nav-section-title">System</span>
                         </div>
                     )}
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "snmp-configuration" ? "active" : ""} nav-item-disabled`}
-                         onClick={() => navigate("/settings/snmp")} title="SNMP Configuration">
-                        {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
-                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>SNMP configuration</span>}
-                    </div>
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "ntp-configuration" ? "active" : ""} nav-item-disabled`}
-                         onClick={() => navigate("/settings/ntp")} title="ntp Configuration">
-                        {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
-                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>ntp Configuration</span>}
-                    </div>
+                    {canReadSysConfig && (
+                        <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "system-configuration" ? "active" : ""}`}
+                             onClick={() => navigate("/settings/system")} title="System Configuration">
+                            {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
+                            {!isSidebarCollapsed && <span>System Configuration</span>}
+                        </div>
+                    )}
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}
                          onClick={() => navigate("/settings/license")} title="License management">
                         {isSidebarCollapsed && <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />}
