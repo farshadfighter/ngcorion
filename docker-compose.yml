@@ -1,5 +1,6 @@
 services:
   traefik:
+    restart: always
     image: docker.arvancloud.ir/traefik:v3.7
     container_name: traefik
     command:
@@ -21,21 +22,13 @@ services:
     networks:
       - app
 
-  # Application backend (FastAPI). Also serves the built React SPA from
-  # front/dist directly (no nginx) — see app/main.py's SPA catch-all. Traefik
-  # terminates TLS and forwards ALL Host(`ngcorion.local`) traffic here; the
-  # backend routes /api, /auth, /docs, /static itself and returns the SPA
-  # shell for everything else. Never publishes a host port.
   backend:
+    restart: always
     build:
       context: .
       dockerfile: Dockerfile.ngcorion
       target: development
     container_name: backend
-    # The System Configuration module (app/modules/system_config) writes host
-    # config files and sets the clock, so the container runs as root and needs
-    # SYS_TIME (clock) / NET_ADMIN (network + syslog transport) on top of
-    # docker's default capability set.
     user: root
     cap_add:
       - SYS_TIME
@@ -45,45 +38,18 @@ services:
       - ./front/dist:/app/front/dist:ro
       - ./pyproject.toml:/app/pyproject.toml
       - ./uv.lock:/app/uv.lock
-      # Persist the activated license (encrypted) across container recreates so
-      # the app doesn't fall back to license-locked and need re-activation.
-      # LICENSE_STORAGE_DIR defaults to ~/.license and the container runs as
-      # root, so this is /root/.license.
       - license_client_data:/root/.license
-      # --- System Configuration (app/modules/system_config) -----------------
-      # Host paths the module reads/writes. All are read-write on purpose: the
-      # SNMP/syslog/NTP sections rewrite these files in place.
-      #   /etc/ngcorion holds the uploaded TLS certificate (certs/server.crt|key)
-      # Create the host directories before `up` (see docs/DEPLOYMENT_GUIDE.md):
-      #   sudo mkdir -p /etc/ngcorion/certs /etc/snmp /etc/rsyslog.d
-      #   sudo touch /etc/systemd/timesyncd.conf
-      # A single-file bind mount whose host path is missing makes docker create
-      # a *directory* there, and the module's write then fails — hence the touch.
       - /etc/snmp:/etc/snmp
       - /etc/rsyslog.d:/etc/rsyslog.d
       - /etc/systemd/timesyncd.conf:/etc/systemd/timesyncd.conf
       - /etc/ngcorion:/etc/ngcorion
-      # Traefik's cert directory: an uploaded certificate is copied here as
-      # ngcorion.local.crt/.key (the names traefik/dynamic/tls.yml references)
-      # instead of restarting traefik — the backend has no docker CLI/socket.
-      # The dynamic/ mount is what lets the app nudge Traefik's file provider
-      # so it re-reads the certificate without a restart; traefik itself mounts
-      # both read-only, this container needs them writable.
       - ./traefik/certs:/app/traefik/certs
       - ./traefik/dynamic:/app/traefik/dynamic
-      # timedatectl/systemctl also need the systemd client libraries and the
-      # D-Bus socket to reach the host's systemd — see the "پیش‌نیازهای System
-      # Configuration" section of docs/DEPLOYMENT_GUIDE.md before relying on
-      # the time/SNMP/syslog *apply* steps from inside the container.
       - /usr/bin/timedatectl:/usr/bin/timedatectl
       - /run/systemd:/run/systemd
     environment:
       DATABASE_URL: postgresql+psycopg://netease:1234@postgres:5432/netease_db
       REDIS_URL: redis://redis:6379/0
-      # Reach the license server over the docker network by its service name.
-      # Without this the default (http://localhost:8001) resolves to the backend
-      # container itself, so the app can never validate/activate a license and
-      # stays license-locked.
       LICENSE_SERVER_URL: http://license-server:8001
     expose:
       - "8000"
@@ -96,38 +62,43 @@ services:
         condition: service_started
     labels:
       - "traefik.enable=true"
-      # HTTPS: the backend serves both the API and the React SPA, so a single
-      # Host rule covers every path on this domain.
+      - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
+      # ngcorion.local — HTTPS
       - "traefik.http.routers.backend.rule=Host(`ngcorion.local`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls=true"
+<<<<<<< HEAD
       - "traefik.http.services.backend.loadbalancer.server.port=8000"
       # Redirect plain-HTTP requests for ngcorion.local to HTTPS. Scoped to
       # this Host only so other dev routers on entrypoint "web" (e.g.
       # license.ngcorion.localhost) are unaffected.
       - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
+=======
+      - "traefik.http.routers.backend.service=backend"
+      # ngcorion.local — HTTP→HTTPS redirect
+>>>>>>> d821e10 (fix 0.0.0.0)
       - "traefik.http.routers.backend-http.rule=Host(`ngcorion.local`)"
       - "traefik.http.routers.backend-http.entrypoints=web"
       - "traefik.http.routers.backend-http.middlewares=ngcorion-https-redirect"
       - "traefik.http.routers.backend-http.service=backend"
-      # Direct-IP access (NGCorion HTTPS Service Binding Standard): clients must
-      # also reach the app straight via the server IP, independent of DNS. Same
-      # backend service, same cert (its SAN already includes IP:172.16.200.90),
-      # served over the default certificate in the TLS store. A distinct Host
-      # rule keeps this from conflicting with the ngcorion.local routers.
-      - "traefik.http.routers.backend-ip.rule=Host(`172.16.200.90`)"
+      # هر IP دیگه‌ای — HTTPS (بدون نیاز به تغییر IP)
+      - "traefik.http.routers.backend-ip.rule=PathPrefix(`/`)"
       - "traefik.http.routers.backend-ip.entrypoints=websecure"
       - "traefik.http.routers.backend-ip.tls=true"
       - "traefik.http.routers.backend-ip.service=backend"
-      # Redirect plain-HTTP IP access to HTTPS too (reuses the same middleware).
-      - "traefik.http.routers.backend-ip-http.rule=Host(`172.16.200.90`)"
+      - "traefik.http.routers.backend-ip.priority=1"
+      # هر IP دیگه‌ای — HTTP→HTTPS redirect
+      - "traefik.http.routers.backend-ip-http.rule=PathPrefix(`/`)"
       - "traefik.http.routers.backend-ip-http.entrypoints=web"
       - "traefik.http.routers.backend-ip-http.middlewares=ngcorion-https-redirect"
       - "traefik.http.routers.backend-ip-http.service=backend"
+      - "traefik.http.routers.backend-ip-http.priority=1"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     networks:
       - app
 
   postgres:
+    restart: always
     image: docker.arvancloud.ir/postgres:17-alpine
     container_name: postgres
     environment:
@@ -148,6 +119,7 @@ services:
       - app
 
   redis:
+    restart: always
     image: docker.arvancloud.ir/redis:8-alpine
     container_name: redis
     command: redis-server --save 60 1 --loglevel warning
@@ -164,11 +136,10 @@ services:
     networks:
       - app
 
-  # --- License Server -------------------------------------------------------
   postgres-license:
+    restart: always
     image: docker.arvancloud.ir/postgres:17-alpine
     container_name: postgres-license
-    restart: always
     environment:
       POSTGRES_DB: license_db
       POSTGRES_USER: license_user
@@ -187,11 +158,11 @@ services:
       - app
 
   license-server:
+    restart: always
     build:
       context: ./license_server
       dockerfile: Dockerfile
     container_name: license-server
-    restart: always
     environment:
       DATABASE_URL: postgresql://license_user:license1234@postgres-license:5432/license_db
       SECRET_KEY: change-this-license-secret-key-in-production
@@ -216,11 +187,11 @@ services:
       - app
 
   license-admin:
+    restart: always
     build:
       context: ./license-admin-ui
       dockerfile: Dockerfile.dev
     container_name: license-admin
-    restart: always
     command: >
       sh -c "npm install &&
              npm run dev -- --host 0.0.0.0 --port 5173"
@@ -251,4 +222,3 @@ volumes:
 networks:
   app:
     name: app
-
