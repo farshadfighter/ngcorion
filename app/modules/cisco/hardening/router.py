@@ -11,6 +11,8 @@ Endpoints:
 - DELETE /api/hardening/actions/{id} - Delete action record
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
@@ -34,6 +36,8 @@ from app.core.ssh_exceptions import (
 from app.models import User
 from app.models import User, Asset, AuditResult, log_hardening_preview, log_hardening_execute
 from .service import HardeningService, CheckAlreadyPassingError, MissingParametersError
+
+logger = logging.getLogger(__name__)
 
 
 def _log_preview_outcome(
@@ -69,8 +73,11 @@ def _log_preview_outcome(
             status=status_value,
             error=error,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "[Cisco Hardening] preview audit log failed for audit result "
+            f"{audit_result_id}: {e}"
+        )
 
 
 def _log_execute_outcome(
@@ -102,8 +109,8 @@ def _log_execute_outcome(
             status=status_value,
             error=error,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[Cisco Hardening] execute audit log failed for action {action_id}: {e}")
 
 
 # ========================= SCHEMAS =========================

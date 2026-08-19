@@ -255,8 +255,8 @@ class NmapScanner:
                 try:
                     process.kill()
                     process.communicate()
-                except:
-                    pass
+                except BaseException as exc:
+                    logger.warning(f"[Nmap] could not kill the timed-out scan process: {exc}")
             return 1, None, str(e)
 
         finally:

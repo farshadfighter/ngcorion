@@ -329,8 +329,8 @@ class LinuxSSHClient:
         if self.connection:
             try:
                 self.connection.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[Linux SSH] disconnect from {self.ip} failed: {e}")
             finally:
                 self.connection = None
 

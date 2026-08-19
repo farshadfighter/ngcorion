@@ -84,8 +84,11 @@ def save_device_backup(
         logger.warning("%s backup: failed to save device_backups row: %s", device_type, exc)
         try:
             db.rollback()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "[Hardening] rollback after the failed device_backups insert "
+                f"also failed: {e}"
+            )
         return None
 
 

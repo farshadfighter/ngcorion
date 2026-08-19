@@ -6,6 +6,7 @@ apache, mongodb, mssql, windows) all write to the same `hardening_logs`
 table with consistent failure semantics. They are best-effort: a failure
 in the logging path never propagates back to the caller.
 """
+import logging
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -19,6 +20,8 @@ from app.models import (
     log_batch_hardening,
     log_auto_hardening,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def ensure_session_usable(db: Session) -> None:
@@ -35,8 +38,11 @@ def ensure_session_usable(db: Session) -> None:
     try:
         if not db.is_active:
             db.rollback()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "[Hardening] rollback of the doomed session failed before audit "
+            f"logging: {e}"
+        )
 
 
 def _resolve_audit_result_context(db: Session, audit_result_id: Optional[int]):
@@ -57,8 +63,11 @@ def _resolve_audit_result_context(db: Session, audit_result_id: Optional[int]):
                 asset = db.query(Asset).filter(
                     Asset.id == audit_result.audit_session.asset_id
                 ).first()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "[Hardening] could not resolve the context of audit result "
+            f"{audit_result_id}: {e}"
+        )
     return asset, session_id, check_number, check_title
 
 
@@ -78,8 +87,8 @@ def _resolve_action_context(db: Session, action_id: Optional[int]):
             session_id = action.audit_session_id
             if action.asset_id:
                 asset = db.query(Asset).filter(Asset.id == action.asset_id).first()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[Hardening] could not resolve the context of action {action_id}: {e}")
     return asset, session_id, check_number, check_title
 
 
@@ -112,8 +121,11 @@ def log_preview_outcome(
             status=status_value,
             error=error,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(
+            "[Hardening] preview audit log failed for audit result "
+            f"{audit_result_id}: {e}"
+        )
 
 
 def log_execute_outcome(
@@ -154,10 +166,14 @@ def log_execute_outcome(
                     trigger_type="hardening_verified",
                     trigger_reference_id=action_id,
                 )
-        except Exception:
-            pass  # never block the hardening flow
-    except Exception:
-        pass
+        except Exception as exc:
+            # never block the hardening flow
+            logger.warning(
+                "[Risk] risk recalculation after hardening execute failed for "
+                f"action {action_id}: {exc}"
+            )
+    except Exception as e:
+        logger.warning(f"[Hardening] execute audit log failed for action {action_id}: {e}")
 
 
 def _resolve_asset(db: Session, asset_id: Optional[int]):
@@ -219,7 +235,11 @@ def log_session_execute_outcome(
                     trigger_type="hardening_verified",
                     trigger_reference_id=session_id,
                 )
-        except Exception:
-            pass  # never block the hardening flow
-    except Exception:
-        pass
+        except Exception as exc:
+            # never block the hardening flow
+            logger.warning(
+                "[Risk] risk recalculation after session hardening failed for "
+                f"asset {asset_id}: {exc}"
+            )
+    except Exception as e:
+        logger.warning(f"[Hardening] session audit log failed for audit session {session_id}: {e}")

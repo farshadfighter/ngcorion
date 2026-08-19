@@ -143,8 +143,8 @@ class HardeningSSHRunner:
     def _safe_close(client: paramiko.SSHClient) -> None:
         try:
             client.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[Linux SSH] closing the SSH client failed: {e}")
 
     # ------------------------------------------------------------------ #
     #  Command execution                                                  #
@@ -179,8 +179,8 @@ class HardeningSSHRunner:
             stdin, stdout, stderr = self._client.exec_command(command, timeout=timeout)
             try:
                 stdin.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(f"[Linux SSH] closing stdin failed on {self.ip}: {exc}")
             out = stdout.read().decode("utf-8", errors="replace")
             err = stderr.read().decode("utf-8", errors="replace")
             exit_status = stdout.channel.recv_exit_status()

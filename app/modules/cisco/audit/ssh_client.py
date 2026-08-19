@@ -264,8 +264,8 @@ class CiscoSSHClient:
                 # Disable paging
                 try:
                     self.connection.send_command("terminal length 0", cmd_verify=False)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning(f"[Cisco SSH] could not disable paging on {self.ip}: {exc}")
 
                 logger.info(f"Successfully connected to {self.ip}")
                 return  # Success - exit retry loop
@@ -594,8 +594,8 @@ class CiscoSSHClient:
         if self.connection:
             try:
                 self.connection.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[Cisco SSH] disconnect from {self.ip} failed: {e}")
             finally:
                 self.connection = None
 

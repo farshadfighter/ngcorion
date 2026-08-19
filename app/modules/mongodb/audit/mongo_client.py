@@ -130,8 +130,8 @@ class MongoDBSSHClient:
         if self._conn:
             try:
                 self._conn.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[MongoDB] disconnect from {self.ip} failed: {e}")
             self._conn = None
 
     # ------------------------------------------------------------------ #

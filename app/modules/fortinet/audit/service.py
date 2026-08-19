@@ -1431,8 +1431,12 @@ class FortinetAuditService:
                         trigger_type="audit_completed",
                         trigger_reference_id=session.id,
                     )
-            except Exception:
-                pass  # never block the audit flow
+            except Exception as exc:
+                # never block the audit flow
+                logger.warning(
+                    "[Risk] risk recalculation after FortiGate audit failed for "
+                    f"asset {asset_id}: {exc}"
+                )
 
             return session
 

@@ -116,8 +116,8 @@ class MongoDBSSHExecutor:
         if self._conn:
             try:
                 self._conn.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[MongoDB Hardening] SSH disconnect from {self.ip} failed: {e}")
             self._conn = None
             logger.info(f"Disconnected from {self.ip}")
 

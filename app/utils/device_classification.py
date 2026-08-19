@@ -18,7 +18,10 @@ future improvement is to persist an explicit `device_type` column on the asset
 (backfilled with this same heuristic) so the mapping becomes exact.
 """
 
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
@@ -80,8 +83,8 @@ def _asset_text(asset) -> str:
         asset_type = getattr(asset, "asset_type", None)
         if asset_type is not None:
             parts.append(getattr(asset_type, "type_name", None))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[DeviceClassification] could not read asset_type for classification: {e}")
     return " ".join(p for p in parts if p).lower()
 
 

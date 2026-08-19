@@ -270,8 +270,12 @@ class MSSQLAuditService:
                         trigger_type="audit_completed",
                         trigger_reference_id=session.id,
                     )
-            except Exception:
-                pass  # never block the audit flow
+            except Exception as e:
+                # never block the audit flow
+                logger.warning(
+                    "[Risk] risk recalculation after MSSQL audit failed for asset "
+                    f"{asset_id}: {e}"
+                )
 
             return session
 

@@ -162,8 +162,8 @@ class MSSQLClient:
         if self._conn:
             try:
                 self._conn.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[MSSQL] disconnect from {self.ip} failed: {e}")
             self._conn = None
 
     # ------------------------------------------------------------------ #

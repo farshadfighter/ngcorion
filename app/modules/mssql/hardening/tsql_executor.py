@@ -203,8 +203,8 @@ class MSSQLTSQLExecutor:
         if self._conn:
             try:
                 self._conn.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[MSSQL Hardening] disconnect from {self.ip} failed: {e}")
             self._conn = None
             logger.info(f"Disconnected from SQL Server {self.ip}")
 
@@ -459,8 +459,11 @@ class MSSQLTSQLExecutor:
             if any("USE [" in stmt.upper() for stmt in statements + verify_stmts):
                 try:
                     self._execute("USE [master]")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(
+                        "[MSSQL Hardening] could not reset the connection to master "
+                        f"after {check_id}: {e}"
+                    )
 
             if execution_errors and not result.success:
                 result.error_message = "; ".join(execution_errors[:3])

@@ -678,8 +678,12 @@ async def execute_hardening_controls(
                 trigger_type="hardening_verified",
                 trigger_reference_id=request.session_id,
             )
-    except Exception:
-        pass  # never block the hardening flow
+    except Exception as exc:
+        # never block the hardening flow
+        logger.warning(
+            "[Risk] risk recalculation after hardening execute failed for "
+            f"session {request.session_id}: {exc}"
+        )
 
     return ExecuteControlsResponse(
         total_controls=len(request.control_states),

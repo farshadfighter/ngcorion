@@ -5,6 +5,8 @@ app/modules/discovery/router.py
 API endpoints for network scanning and asset discovery
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
@@ -39,6 +41,7 @@ from .schemas import (
 from .service import DiscoveryService
 from .port_service import PortService
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/discovery",
@@ -197,7 +200,10 @@ async def cancel_scan(
             if scan:
                 log_scan_cancelled(db, current_user.id, scan_id, scan.target)
         except Exception as log_err:
-            pass
+            logger.warning(
+                "[Discovery] scan-cancelled audit log failed for scan "
+                f"{scan_id}: {log_err}"
+            )
         return result
     else:
         raise HTTPException(
@@ -225,15 +231,18 @@ async def delete_scan(
         scan = db.query(DiscoveryScan).filter(DiscoveryScan.scan_id == scan_id).first()
         if scan:
             scan_target = scan.target
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[Discovery] could not read scan {scan_id} before deleting it: {e}")
 
     if DiscoveryService.delete_scan(db, scan_id):
         # Log scan deletion
         try:
             log_scan_deleted(db, current_user.id, scan_id, scan_target)
         except Exception as log_err:
-            pass
+            logger.warning(
+                f"[Discovery] scan-deleted audit log failed for scan {scan_id}: "
+                f"{log_err}"
+            )
         return {"message": "Scan deleted"}
     raise HTTPException(status_code=404, detail="Scan not found")
 
@@ -898,7 +907,10 @@ async def apply_discovery_bulk(
     try:
         log_bulk_application_started(db, current_user.id, scan_id, len(asset_mappings))
     except Exception as log_err:
-        pass
+        logger.warning(
+            "[Discovery] bulk-application started audit log failed for scan "
+            f"{scan_id}: {log_err}"
+        )
     
     results = []
     created_count = 0
@@ -940,7 +952,10 @@ async def apply_discovery_bulk(
     try:
         log_bulk_application_completed(db, current_user.id, scan_id, created_count, merged_count, updated_count, failed_count)
     except Exception as log_err:
-        pass
+        logger.warning(
+            "[Discovery] bulk-application completed audit log failed for "
+            f"scan {scan_id}: {log_err}"
+        )
     
     return {
         "total": len(asset_mappings),
@@ -1097,8 +1112,12 @@ async def add_ports_to_asset(
                 trigger_type="port_scan_updated",
                 trigger_reference_id=None,  # scan_id is a string; column is Integer
             )
-    except Exception:
-        pass  # never block the port-management flow
+    except Exception as e:
+        # never block the port-management flow
+        logger.warning(
+            "[Risk] risk recalculation after adding ports failed for asset "
+            f"{request.asset_id}: {e}"
+        )
 
     return result
 
@@ -1165,8 +1184,12 @@ async def overwrite_asset_ports(
                 trigger_type="port_scan_updated",
                 trigger_reference_id=None,  # scan_id is a string; column is Integer
             )
-    except Exception:
-        pass  # never block the port-management flow
+    except Exception as e:
+        # never block the port-management flow
+        logger.warning(
+            "[Risk] risk recalculation after overwriting ports failed for "
+            f"asset {request.asset_id}: {e}"
+        )
 
     return result
 
@@ -1353,7 +1376,7 @@ async def preview_discovery_application(
     try:
         log_discovery_preview(db, current_user.id, host.scan_id, host_id, host.ip_address)
     except Exception as log_err:
-        pass
+        logger.warning(f"[Discovery] preview audit log failed for host {host_id}: {log_err}")
 
     return response
 
@@ -1469,7 +1492,10 @@ async def apply_discovery_with_mode(
         try:
             log_host_applied(db, current_user.id, host.scan_id, host_id, host.ip_address, "create", asset.id, asset.asset_name)
         except Exception as log_err:
-            pass
+            logger.warning(
+                f"[Discovery] host-applied audit log failed for host {host_id}: "
+                f"{log_err}"
+            )
 
         return ApplyDiscoveryModeResponse(
             success=True,
@@ -1609,7 +1635,10 @@ async def apply_discovery_with_mode(
         try:
             log_host_applied(db, current_user.id, host.scan_id, host_id, host.ip_address, mode, asset.id, asset.asset_name)
         except Exception as log_err:
-            pass
+            logger.warning(
+                f"[Discovery] host-applied audit log failed for host {host_id}: "
+                f"{log_err}"
+            )
         
         return ApplyDiscoveryModeResponse(
             success=True,

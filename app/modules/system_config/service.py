@@ -586,8 +586,8 @@ def _load_certificate(data: bytes) -> x509.Certificate:
     """Parse a certificate in either PEM or DER form."""
     try:
         return x509.load_pem_x509_certificate(data)
-    except ValueError:
-        pass
+    except ValueError as e:
+        logger.debug(f"[SystemConfig] certificate is not PEM, retrying as DER: {e}")
     try:
         return x509.load_der_x509_certificate(data)
     except ValueError:

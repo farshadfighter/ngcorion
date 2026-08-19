@@ -621,8 +621,11 @@ class FortiGateSSHClient:
             # Best effort to back out before failing.
             try:
                 self._raw_send("end")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(
+                    "[FortiGate SSH] could not back out of the VDOM context on "
+                    f"{self.host}: {e}"
+                )
             raise FortiGateContextError(
                 f"Failed to enter VDOM '{target}': {(out1 + out2).strip()[:160]}"
             )

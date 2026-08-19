@@ -118,8 +118,12 @@ async def lifespan(app: FastAPI):
     app.state.license_client = client
     try:
         refresh_license_state(client)
-    except Exception:
-        pass  # App starts even if license server is unreachable
+    except Exception as exc:
+        # App starts even if license server is unreachable
+        logger.warning(
+            "[Startup] license state refresh failed, starting without a "
+            f"refreshed license: {exc}"
+        )
     start_heartbeat(client)
 
     # Seed default risk settings/zones (idempotent). Uses its own session so a
