@@ -67,16 +67,8 @@ services:
       - "traefik.http.routers.backend.rule=Host(`ngcorion.local`)"
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls=true"
-<<<<<<< HEAD
-      - "traefik.http.services.backend.loadbalancer.server.port=8000"
-      # Redirect plain-HTTP requests for ngcorion.local to HTTPS. Scoped to
-      # this Host only so other dev routers on entrypoint "web" (e.g.
-      # license.ngcorion.localhost) are unaffected.
-      - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
-=======
       - "traefik.http.routers.backend.service=backend"
       # ngcorion.local — HTTP→HTTPS redirect
->>>>>>> d821e10 (fix 0.0.0.0)
       - "traefik.http.routers.backend-http.rule=Host(`ngcorion.local`)"
       - "traefik.http.routers.backend-http.entrypoints=web"
       - "traefik.http.routers.backend-http.middlewares=ngcorion-https-redirect"
