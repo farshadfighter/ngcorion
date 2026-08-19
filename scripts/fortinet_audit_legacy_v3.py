@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple, Set, Iterable
 
 from netmiko import ConnectHandler
-from netmiko.ssh_exception import NetmikoAuthenticationException, NetmikoTimeoutException
+from netmiko.exceptions import NetmikoAuthenticationException, NetmikoTimeoutException
 
 # Optional YAML support
 try:
