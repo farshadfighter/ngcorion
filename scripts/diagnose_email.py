@@ -165,8 +165,8 @@ elif server is not None and results.get("login"):
     finally:
         try:
             server.quit()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Warning] SMTP quit failed: {e}", file=sys.stderr)
 else:
     warn("skipped (login did not pass)")
 

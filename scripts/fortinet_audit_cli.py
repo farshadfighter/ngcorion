@@ -179,8 +179,12 @@ class ConnectionPool:
         else:
             try:
                 conn.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                print(
+                    f"[Warning] closing the surplus pooled connection to {self.host} "
+                    f"failed: {e}",
+                    file=sys.stderr,
+                )
 
     def _create_connection(self) -> ConnectHandler:
         """Create new connection"""
@@ -200,8 +204,12 @@ class ConnectionPool:
         for conn in self._connections:
             try:
                 conn.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                print(
+                    f"[Warning] closing a pooled connection to {self.host} failed: "
+                    f"{e}",
+                    file=sys.stderr,
+                )
         self._connections.clear()
 
 
@@ -218,8 +226,8 @@ class DeviceAdapter:
     def disconnect(self, conn: Any) -> None:
         try:
             conn.disconnect()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Warning] device disconnect failed: {e}", file=sys.stderr)
 
     def send(self, conn: Any, cmd: str) -> str:
         raise NotImplementedError
@@ -1712,8 +1720,8 @@ def main() -> int:
         if conn:
             try:
                 adapter.disconnect(conn)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[Warning] disconnect during cleanup failed: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":

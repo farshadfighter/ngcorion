@@ -1,7 +1,11 @@
+import logging
+
 import redis
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 redis_client = redis.Redis(
     host=settings.REDIS_HOST,
@@ -32,9 +36,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         detail="Rate limit exceeded. Please try again later."
                     )
                 redis_client.incr(key)
-        except redis.RedisError:
+        except redis.RedisError as e:
             # If Redis is down, allow the request to proceed
-            pass
+            logger.warning(f"[RateLimit] Redis check failed, allowing request: {e}")
         
         response = await call_next(request)
         return response

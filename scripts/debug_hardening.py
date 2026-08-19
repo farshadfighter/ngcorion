@@ -227,8 +227,12 @@ def main() -> int:
                 out = client._raw_send("end")
                 if not FortiGateSSHClient._is_command_ok(out):
                     break
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            print(
+                "[Warning] could not unwind the FortiGate config contexts "
+                f"before disconnecting: {exc}",
+                file=sys.stderr,
+            )
         client.disconnect()
 
 

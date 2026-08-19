@@ -151,8 +151,8 @@ class DeviceAdapter:
     def disconnect(self, conn: Any) -> None:
         try:
             conn.disconnect()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Warning] device disconnect failed: {e}", file=sys.stderr)
 
     def send(self, conn: Any, cmd: str) -> str:
         raise NotImplementedError
@@ -953,8 +953,8 @@ def main() -> int:
     finally:
         try:
             if conn: adapter.disconnect(conn)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[Warning] disconnect during cleanup failed: {exc}", file=sys.stderr)
 
 
 if __name__=="__main__":

@@ -1,8 +1,11 @@
 import hashlib
+import logging
 import platform
 import uuid
 import subprocess
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 def get_mac_address() -> Optional[str]:
     """Get the MAC address of the first non-loopback interface"""
@@ -29,8 +32,8 @@ def get_machine_id() -> Optional[str]:
                 for line in result.stdout.split('\n'):
                     if "MachineGuid" in line:
                         return line.split()[-1]
-    except:
-        pass
+    except BaseException as e:
+        logger.warning(f"[Fingerprint] could not read the machine id: {e}")
     return None
 
 def get_vm_fingerprint() -> str:
@@ -52,16 +55,16 @@ def get_vm_fingerprint() -> str:
         hostname = platform.node()
         if hostname:
             components.append(f"host:{hostname}")
-    except:
-        pass
+    except BaseException as exc:
+        logger.warning(f"[Fingerprint] could not read the hostname, excluding it: {exc}")
     
     # CPU info
     try:
         cpu = platform.processor()
         if cpu:
             components.append(f"cpu:{cpu}")
-    except:
-        pass
+    except BaseException as e:
+        logger.warning(f"[Fingerprint] could not read the CPU model, excluding it: {e}")
     
     # Combine and hash
     fingerprint_string = "|".join(components)
