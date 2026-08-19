@@ -95,6 +95,9 @@ from app.modules.risk.router import router as risk_router
 # Import system configuration router
 from app.modules.system_config.router import router as system_config_router
 
+# Import organization-wide dashboard routers
+from app.modules.dashboard.security_score_router import router as security_score_router
+
 # Import license components
 from app.core.license_client import LicenseClient
 from app.core.license_state import refresh_license_state
@@ -291,6 +294,11 @@ app.include_router(backup_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])
+
+# Organization dashboard routes (security score)
+app.include_router(
+    security_score_router, prefix="/api/dashboard", tags=["Dashboard"]
+)
 
 # System Configuration routes (time, SNMP, syslog, SMS, SMTP, certificate)
 app.include_router(

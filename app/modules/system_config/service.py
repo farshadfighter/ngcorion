@@ -408,12 +408,22 @@ def mask_snmp(config: Dict[str, Any]) -> Dict[str, Any]:
 # ======================================================================
 
 def render_rsyslog_conf(config: Dict[str, Any]) -> str:
-    target = "@@" if config.get("protocol") == "TCP" else "@"
-    return (
-        f"{MANAGED_HEADER}"
-        f"# facility: {config.get('facility', 'local0')}\n"
-        f"*.* {target}{config['server_ip']}:{config.get('port', 514)}\n"
-    )
+    """Render the rsyslog forwarding rule.
+
+    Selector syntax is `<facility>.<priority>  <target><host>:<port>`, where a
+    single @ means UDP and @@ means TCP, e.g. `local0.* @@10.0.0.50:514`. The
+    configured facility is what selects the messages - an empty/unset facility
+    falls back to `*.*` (forward everything).
+    """
+    protocol = str(config.get("protocol") or "").strip().upper()
+    target = "@@" if protocol == "TCP" else "@"
+
+    facility = str(config.get("facility") or "").strip().lower()
+    selector = f"{facility}.*" if facility else "*.*"
+
+    server_ip = config["server_ip"]
+    port = config.get("port") or 514
+    return f"{MANAGED_HEADER}{selector} {target}{server_ip}:{port}\n"
 
 
 def apply_syslog_config(config: Dict[str, Any]) -> List[str]:

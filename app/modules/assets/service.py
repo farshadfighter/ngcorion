@@ -1,6 +1,7 @@
 """
 Asset Service - Complete CRUD operations
 """
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
 from typing import List, Optional
@@ -12,6 +13,8 @@ from app.models import (
     AssetDependency, AssetSecurityStatus
 )
 from .schemas import AssetTypeCreate
+
+logger = logging.getLogger(__name__)
 
 
 class AssetService:
@@ -142,8 +145,12 @@ class AssetService:
                 db=db,
                 trigger_type="asset_created",
             )
-        except Exception:
-            pass  # never block asset creation
+        except Exception as e:
+            # Never block asset creation on a risk-scoring failure.
+            logger.warning(
+                f"[Risk] initial risk calculation failed for new asset "
+                f"{asset.id}: {e}"
+            )
 
         return asset
     

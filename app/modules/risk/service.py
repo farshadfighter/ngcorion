@@ -690,6 +690,9 @@ async def recalculate_all(
         except Exception as exc:
             failed += 1
             errors.append({"asset_id": asset_id, "error": str(exc)[:500]})
+            logger.warning(
+                f"[Risk] bulk recalculation failed for asset {asset_id}: {exc}"
+            )
         if background:
             await asyncio.sleep(0)
 

@@ -54,6 +54,14 @@ DEFAULT_SETTINGS = [
     ("asset_risk_critical_score", "100", "int", "AR score for assets with risk level critical"),
     # Behavior flags
     ("include_warning_in_audit_risk", "false", "bool", "Whether warning-level audit findings count toward audit risk"),
+    # Organization security-score sub-score weights (must sum to 100) -
+    # consumed by app/modules/dashboard/security_score_router.py
+    ("security_asset_health_weight", "20", "int", "Security score: weight of asset health (active/total assets) (%)"),
+    ("security_audit_compliance_weight", "20", "int", "Security score: weight of audit compliance (passed/applicable controls) (%)"),
+    ("security_hardening_weight", "20", "int", "Security score: weight of hardening success (verified fixes/attempts) (%)"),
+    ("security_risk_intelligence_weight", "20", "int", "Security score: weight of inverted average asset risk (%)"),
+    ("security_exposure_intelligence_weight", "10", "int", "Security score: weight of inverted open-port exposure (%)"),
+    ("security_vulnerability_weight", "10", "int", "Security score: weight of inverted vulnerability assessment (%)"),
     # NOTE: the criticality level->score mapping (criticality_*_score) and the
     # risk-level thresholds (risk_level_*_threshold) are NOT seeded here. They
     # are owned by Alembic migrations d4f6a8b0c2e1 (20260813_add_missing_risk_settings)

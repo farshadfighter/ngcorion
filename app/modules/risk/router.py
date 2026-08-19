@@ -305,7 +305,13 @@ def _settings_dict(db: Session) -> Dict[str, Any]:
                 out[row.setting_key] = float(raw)
             else:
                 out[row.setting_key] = raw
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as e:
+            # Fall back to the raw string so a single bad row never breaks
+            # the settings page.
+            logger.warning(
+                f"[Risk] setting {row.setting_key} has unparseable "
+                f"{row.value_type} value {raw!r}, returning it as text: {e}"
+            )
             out[row.setting_key] = raw
     return out
 
@@ -435,8 +441,13 @@ def _recalculate_zone_assets_background(zone_id: int):
                     trigger_type="zone_updated",
                     trigger_reference_id=zone_id,
                 )
-            except Exception:
-                continue  # per-asset errors are logged by the service
+            except Exception as e:
+                # Per-asset errors never abort the zone-wide recalculation.
+                logger.warning(
+                    f"[Risk] zone {zone_id} recalculation failed for asset "
+                    f"{asset_id}: {e}"
+                )
+                continue
     finally:
         db.close()
 
