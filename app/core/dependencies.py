@@ -13,9 +13,13 @@ from jose import JWTError, ExpiredSignatureError, jwt
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.license_client import LicenseServerUnreachable
 from app.models import User
 
+import logging
 import requests
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -231,6 +235,18 @@ def require_quota(operation_type: str, count: int = 1):
             result = client.consume(operation_type, count)
             # Optimistic update of local usage counter
             update_usage(operation_type, count)
+        except LicenseServerUnreachable as e:
+            # Network-level failure (already retried by the client). Report it as
+            # a temporary infrastructure problem, not as a licensing verdict.
+            logger.warning(f"[License] consume({operation_type}) failed: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "License server is unreachable, so this operation cannot be "
+                    "authorized right now. Please retry once connectivity is restored."
+                ),
+                headers={"X-License-Server-Unreachable": "true"},
+            )
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code == 400:
                 detail = e.response.json().get("detail", "Quota exhausted")
@@ -239,7 +255,11 @@ def require_quota(operation_type: str, count: int = 1):
                     detail=detail,
                     headers={"X-Quota-Exhausted": "true"}
                 )
-            raise HTTPException(status_code=503, detail="License server unreachable")
+            status_code = e.response.status_code if e.response is not None else "unknown"
+            raise HTTPException(
+                status_code=503,
+                detail=f"License server returned an error (HTTP {status_code})",
+            )
         except Exception as e:
             raise HTTPException(status_code=503, detail=f"License check failed: {str(e)}")
     
@@ -284,6 +304,18 @@ def consume_quota_on_success(operation_type: str, count: int = 1):
             result = client.consume(operation_type, count)
             # Optimistic update of local usage counter
             update_usage(operation_type, count)
+        except LicenseServerUnreachable as e:
+            # Network-level failure (already retried by the client). Report it as
+            # a temporary infrastructure problem, not as a licensing verdict.
+            logger.warning(f"[License] consume({operation_type}) failed: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "License server is unreachable, so this operation cannot be "
+                    "authorized right now. Please retry once connectivity is restored."
+                ),
+                headers={"X-License-Server-Unreachable": "true"},
+            )
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code == 400:
                 detail = e.response.json().get("detail", "Quota exhausted")
@@ -292,7 +324,11 @@ def consume_quota_on_success(operation_type: str, count: int = 1):
                     detail=detail,
                     headers={"X-Quota-Exhausted": "true"}
                 )
-            raise HTTPException(status_code=503, detail="License server unreachable")
+            status_code = e.response.status_code if e.response is not None else "unknown"
+            raise HTTPException(
+                status_code=503,
+                detail=f"License server returned an error (HTTP {status_code})",
+            )
         except Exception as e:
             raise HTTPException(status_code=503, detail=f"License check failed: {str(e)}")
     

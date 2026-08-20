@@ -1,0 +1,145 @@
+# ---------------------------------------------------------------------------
+# NGCorion — standalone License Server stack
+# ---------------------------------------------------------------------------
+# Runs on the DEDICATED license server host. Contains only what the license
+# service needs: its own Postgres, its own Redis, and the license API.
+# The application stack (backend / postgres / redis / traefik) stays on the app
+# server and reaches this host over HTTP on port 8001.
+#
+# Expected layout on the license host:
+#
+#   /opt/ngcorion-license/
+#   ├── docker-compose.yml        <- this file
+#   ├── .env                      <- secrets (see .env.license.example)
+#   ├── license_server/           <- copied from the repo
+#   └── db/
+#       ├── postgres-license/init.sql
+#       └── redis/redis.conf
+#
+# Start with:  docker compose up -d
+# With TLS:    docker compose --profile tls up -d
+#
+# Full procedure: docs/LICENSE_SERVER_MIGRATION.md
+# ---------------------------------------------------------------------------
+
+services:
+  postgres-license:
+    restart: always
+    image: docker.arvancloud.ir/postgres:17-alpine
+    container_name: postgres-license
+    environment:
+      POSTGRES_DB: ${LICENSE_DB_NAME:-license_db}
+      POSTGRES_USER: ${LICENSE_DB_USER:-license_user}
+      # No default: the license database must not ship with a known password.
+      POSTGRES_PASSWORD: ${LICENSE_DB_PASSWORD:?set LICENSE_DB_PASSWORD in .env}
+    volumes:
+      - postgres_license_data:/var/lib/postgresql/data
+      - ./db/postgres-license/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # Not published to the host: only the license-server container talks to it.
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LICENSE_DB_USER:-license_user} -d ${LICENSE_DB_NAME:-license_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - license
+
+  redis:
+    restart: always
+    image: docker.arvancloud.ir/redis:8-alpine
+    container_name: license-redis
+    # Rate-limit counters only — no persistence needed (see db/redis/redis.conf).
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./db/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - license
+
+  license-server:
+    restart: always
+    build:
+      context: ./license_server
+      dockerfile: Dockerfile
+    container_name: license-server
+    environment:
+      DATABASE_URL: postgresql://${LICENSE_DB_USER:-license_user}:${LICENSE_DB_PASSWORD:?set LICENSE_DB_PASSWORD in .env}@postgres-license:5432/${LICENSE_DB_NAME:-license_db}
+      # MUST be the same value the original all-in-one deployment used, otherwise
+      # every issued license-admin JWT stops verifying. Generate a new one only
+      # for a brand-new installation: openssl rand -hex 32
+      SECRET_KEY: ${LICENSE_SERVER_SECRET_KEY:?set LICENSE_SERVER_SECRET_KEY in .env}
+      # This Redis instance is dedicated to the license server; DB 1 is kept for
+      # continuity with the previous shared-Redis layout.
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: ${LICENSE_REDIS_DB:-1}
+      RATE_LIMIT_PER_MINUTE: ${LICENSE_RATE_LIMIT_PER_MINUTE:-60}
+      ADMIN_USERNAME: ${LICENSE_ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${LICENSE_ADMIN_PASSWORD:?set LICENSE_ADMIN_PASSWORD in .env}
+    ports:
+      # Bind to the interface the app server reaches, e.g.
+      # LICENSE_BIND_ADDR=10.0.0.20 — never leave 0.0.0.0 on a public host
+      # without the firewall rules from docs/LICENSE_SERVER_MIGRATION.md.
+      - "${LICENSE_BIND_ADDR:-0.0.0.0}:8001:8001"
+    depends_on:
+      postgres-license:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # The image has no curl; python is always present.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.license-server.rule=Host(`${LICENSE_HOSTNAME:-license.ngcorion.local}`)"
+      - "traefik.http.routers.license-server.entrypoints=websecure"
+      - "traefik.http.routers.license-server.tls=true"
+      - "traefik.http.services.license-server.loadbalancer.server.port=8001"
+    networks:
+      - license
+
+  # OPTIONAL — only started with:  docker compose --profile tls up -d
+  # Terminates HTTPS in front of the license server. Requires a certificate in
+  # ./traefik/certs and a matching ./traefik/dynamic/tls.yml (copy both from the
+  # app server). When TLS is on, set LICENSE_SERVER_URL on the app server to
+  # https://<LICENSE_HOSTNAME>:443 instead of http://<IP>:8001.
+  traefik:
+    profiles: ["tls"]
+    restart: always
+    image: docker.arvancloud.ir/traefik:v3.7
+    container_name: license-traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./traefik/certs:/etc/traefik/certs:ro
+    networks:
+      - license
+
+volumes:
+  postgres_license_data:
+
+networks:
+  license:
+    name: license

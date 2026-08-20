@@ -46,6 +46,24 @@ class LicenseMiddleware(BaseHTTPMiddleware):
         # Check license state
         state = get_license_state()
         if not state.valid:
+            # Tell an infrastructure problem apart from a licensing problem.
+            # "License server unreachable" is a 503 the operator can fix by
+            # restoring connectivity; telling them to "activate a license" when
+            # a perfectly good license exists just sends them down the wrong path
+            # (and, worse, towards re-activating on a fingerprint that no longer
+            # matches).
+            if state.offline:
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": (
+                            "License server is unreachable. The application is "
+                            "temporarily unavailable — check network connectivity "
+                            "to the license server."
+                        ),
+                        "license_server_unreachable": True,
+                    },
+                )
             return JSONResponse(
                 status_code=403,
                 content={

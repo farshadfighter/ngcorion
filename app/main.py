@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.core.database import Base, engine, SessionLocal
-from app.core.config import settings
+from app.core.config import settings, require_license_server_url
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
 from app.modules.users import router as users_router
@@ -114,10 +114,19 @@ Base.metadata.create_all(bind=engine)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    client = LicenseClient(settings.LICENSE_SERVER_URL, settings.LICENSE_STORAGE_DIR)
+    # Misconfiguration fails fast (there is no localhost fallback); an
+    # unreachable server does not — those are different problems.
+    license_server_url = require_license_server_url()
+    client = LicenseClient(license_server_url, settings.LICENSE_STORAGE_DIR)
     app.state.license_client = client
+    logger.info(f"[Startup] license server: {license_server_url}")
     try:
-        refresh_license_state(client)
+        state = refresh_license_state(client)
+        if state.offline:
+            logger.warning(
+                "[Startup] license server unreachable; running on the last "
+                "validated license state until it can be reached again"
+            )
     except Exception as exc:
         # App starts even if license server is unreachable
         logger.warning(

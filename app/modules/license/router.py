@@ -11,7 +11,8 @@ from datetime import datetime
 import logging
 import requests
 
-from app.core.license_state import get_license_state, refresh_license_state, set_license_state
+from app.core.license_state import get_license_state, refresh_license_state
+from app.core.license_client import LicenseServerUnreachable
 from app.core.heartbeat import start_heartbeat
 
 logger = logging.getLogger(__name__)
@@ -68,14 +69,14 @@ def get_license_status(request: Request):
 
     if client is not None and not is_fresh:
         try:
-            # Refresh from the authoritative license server. Update the cache
-            # only on success — never flip validity on a transient outage, or
-            # the license middleware would lock the whole app out.
-            result = client.validate()
-            set_license_state(result)
-            state = get_license_state()
+            # Refresh from the authoritative license server. refresh_license_state
+            # keeps the last validated state (flagged `offline`) when the server
+            # is unreachable — never flip validity on a transient outage, or the
+            # license middleware would lock the whole app out.
+            state = refresh_license_state(client)
         except Exception as e:
             logger.warning(f"License status refresh failed, using cached state: {e}")
+            state = get_license_state()
 
     usage = dict(state.usage) if state.usage else None
 
@@ -124,6 +125,19 @@ def activate_license(data: LicenseActivateRequest, request: Request):
             usage=state.usage
         )
     
+    except LicenseServerUnreachable as e:
+        # Not the user's fault and not a licensing verdict: the license server
+        # could not be reached at all. 503 + an actionable message beats a 500.
+        logger.warning(f"License activation could not reach the license server: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "License server is unreachable. Check that LICENSE_SERVER_URL "
+                "points at the license server and that the network/firewall "
+                "allows it, then try again."
+            ),
+        )
+
     except requests.HTTPError as e:
         # License server returned an error
         if e.response is not None:

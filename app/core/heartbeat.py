@@ -8,7 +8,13 @@ import threading
 import time
 import logging
 from typing import Optional
-from .license_state import refresh_license_state, set_license_state
+
+from .license_client import LicenseServerUnreachable
+from .license_state import (
+    mark_license_server_offline,
+    refresh_license_state,
+    set_license_state,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,6 +59,13 @@ class HeartbeatService:
                         "plan_type": "pilot",
                         "is_pilot_mode": True
                     })
+            except LicenseServerUnreachable as e:
+                # Connectivity problem, not a licensing verdict: keep the last
+                # validated state (the offline grace window in license_state
+                # bounds how long that lasts) but flag it, so API responses can
+                # say "license server unreachable" instead of "no valid license".
+                mark_license_server_offline(e)
+                logger.warning(f"Heartbeat could not reach the license server: {e}")
             except Exception as e:
                 logger.error(f"Heartbeat failed: {e}")
             

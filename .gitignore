@@ -64,3 +64,7 @@ documents
 # TLS (self-signed, generated per-deployment — see docs/DEPLOYMENT_GUIDE.md)
 traefik/certs/*.key
 traefik/certs/*.crt
+
+# Stray env backups (never commit real secrets)
+.env.bak*
+.env.*.bak
