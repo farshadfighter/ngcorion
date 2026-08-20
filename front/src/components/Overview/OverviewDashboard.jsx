@@ -8,6 +8,7 @@ import {
     moduleCards,
     complianceScore,
     hardeningScore,
+    breakdownRows,
 } from "./overviewMetrics";
 import "../../assets/OverviewDashboard.css";
 
@@ -34,6 +35,116 @@ const MetricCard = ({ metric }) => (
         )}
     </div>
 );
+
+/* Bands mirror SCORE_LEVEL_BANDS in the backend's security_score_router, so
+   the gauge and the returned score_level always agree. */
+const SCORE_BANDS = [
+    { key: "critical", label: "Critical", range: "0-40", color: "#DC2626" },
+    { key: "poor", label: "Poor", range: "41-60", color: "#F97316" },
+    { key: "fair", label: "Fair", range: "61-75", color: "#F59E0B" },
+    { key: "good", label: "Good", range: "76-90", color: "#22C55E" },
+    { key: "excellent", label: "Excellent", range: "91-100", color: "#16A34A" },
+];
+
+/** "Security Posture Gauge": the overall score against its level bands. */
+const SecurityPostureGauge = ({ securityScore }) => {
+    const score = securityScore?.security_score;
+    const level = securityScore?.score_level;
+
+    return (
+        <section className="ov-card ov-card-medium">
+            <h3 className="ov-card-title">Security Posture Gauge</h3>
+            <div className="ov-gauge">
+                <div className="ov-gauge-readout">
+                    <span className="ov-gauge-label">Security Posture</span>
+                    <span className="ov-gauge-value">
+                        {score === null || score === undefined
+                            ? "—"
+                            : `${Math.round(score)}/100`}
+                    </span>
+                </div>
+
+                <div className="ov-gauge-track">
+                    {SCORE_BANDS.map((band) => (
+                        <span
+                            key={band.key}
+                            className={`ov-gauge-band${
+                                band.key === level ? " is-active" : ""
+                            }`}
+                            style={{ background: band.color }}
+                            title={`${band.label}: ${band.range}`}
+                        />
+                    ))}
+                    {score !== null && score !== undefined && (
+                        <span
+                            className="ov-gauge-needle"
+                            style={{ left: `${Math.min(100, Math.max(0, score))}%` }}
+                        />
+                    )}
+                </div>
+
+                <div className="ov-gauge-legend">
+                    {SCORE_BANDS.map((band) => (
+                        <span key={band.key} className="ov-gauge-legend-item">
+                            <i
+                                className="ov-dot"
+                                style={{ background: band.color }}
+                            />
+                            {band.label}: {band.range}
+                        </span>
+                    ))}
+                </div>
+
+                {securityScore?.incomplete_data && (
+                    <p className="ov-gauge-note">
+                        Some inputs are incomplete, so this score is provisional.
+                    </p>
+                )}
+            </div>
+        </section>
+    );
+};
+
+/** "NGCorion Security Score Breakdown": the weighted sub-scores behind it. */
+const SecurityScoreBreakdown = ({ securityScore }) => {
+    const rows = breakdownRows(securityScore);
+
+    return (
+        <section className="ov-card ov-card-events">
+            <h3 className="ov-card-title">NGCorion Security Score Breakdown</h3>
+            {rows.length === 0 ? (
+                <p className="ov-empty">Security score is not available yet.</p>
+            ) : (
+                <ul className="ov-events">
+                    <li className="ov-event">
+                        <span className="ov-event-module">Security Score</span>
+                        <span className="ov-event-title">
+                            {securityScore?.security_score === undefined
+                                ? "—"
+                                : Math.round(securityScore.security_score)}
+                        </span>
+                    </li>
+                    {rows.map((row) => (
+                        <li className="ov-event" key={row.key}>
+                            <span className="ov-event-module">{row.label}</span>
+                            <span className="ov-event-title">
+                                {row.score === null ? "—" : row.score}
+                                {row.incomplete && (
+                                    <span
+                                        className="ov-event-failed"
+                                        title="Not enough data for this component"
+                                    >
+                                        partial
+                                    </span>
+                                )}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
+    );
+};
 
 /** One of the four module tiles; the whole card is the link to its screen. */
 const ModuleCard = ({ card, onOpen }) => (
@@ -310,6 +421,8 @@ export const OverviewDashboard = () => {
                 ))}
             </div>
 
+            <SecurityPostureGauge securityScore={state.securityScore} />
+
             <div className="ov-modules">
                 {moduleCards(state).map((card) => (
                     <ModuleCard key={card.key} card={card} onOpen={navigate} />
@@ -336,6 +449,8 @@ export const OverviewDashboard = () => {
                 items={state.recentEvents?.items || []}
                 message={state.recentEvents?.message}
             />
+
+            <SecurityScoreBreakdown securityScore={state.securityScore} />
         </div>
     );
 };

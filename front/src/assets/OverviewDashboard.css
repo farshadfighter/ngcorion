@@ -371,6 +371,94 @@
 .ov-dot-compliance { background: #14213D; }
 .ov-dot-hardening  { background: #34C77B; }
 
+/* ── Security posture gauge ──────────────────────────────────────────────── */
+
+.ov-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+
+.ov-gauge-readout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border: 1px solid #EEF0F4;
+    border-radius: 8px;
+}
+
+.ov-gauge-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.ov-gauge-value {
+    font-size: 15px;
+    color: #3C4A63;
+}
+
+/* Five equal bands with a marker at the score's position. */
+.ov-gauge-track {
+    position: relative;
+    display: flex;
+    width: 100%;
+    max-width: 620px;
+    height: 10px;
+    border-radius: 5px;
+}
+
+.ov-gauge-band {
+    flex: 1 1 0;
+    height: 100%;
+    opacity: 0.45;
+    transition: opacity 0.2s ease;
+}
+
+.ov-gauge-band:first-child { border-radius: 5px 0 0 5px; }
+.ov-gauge-band:last-child  { border-radius: 0 5px 5px 0; }
+
+/* The band the score actually falls in. */
+.ov-gauge-band.is-active {
+    opacity: 1;
+}
+
+.ov-gauge-needle {
+    position: absolute;
+    top: -5px;
+    width: 3px;
+    height: 20px;
+    margin-left: -1.5px;
+    border-radius: 2px;
+    background: #14213D;
+    box-shadow: 0 0 0 2px #ffffff;
+}
+
+.ov-gauge-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    font-size: 12px;
+    color: #3C4A63;
+}
+
+.ov-gauge-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.ov-gauge-note {
+    margin: 0;
+    font-size: 12px;
+    color: #92400E;
+}
+
 /* ── Recent Security Events ──────────────────────────────────────────────── */
 
 .ov-card-events {
