@@ -3,14 +3,18 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults } from "../../store/hardeningSlice";
 import HardenAllModal from "./HardenAllModal";
 import FixSingleModal from "./FixSingleModal";
+import ViewFixModal from "./ViewFixModal";
 import { groupChecksByScope } from "./vdomScope";
 
 export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
-    const { cisChecks, isLoading } = useSelector((state) => state.hardening);
+    const { cisChecks, isLoading, fortinetTemplatedChecks } = useSelector(
+        (state) => state.hardening
+    );
     const [showHardenAllModal, setShowHardenAllModal] = useState(false);
     const [showFixSingleModal, setShowFixSingleModal] = useState(false);
     const [selectedCheck, setSelectedCheck] = useState(null);
+    const [viewFixCheck, setViewFixCheck] = useState(null);
 
     useEffect(() => {
         if (sessionData?.session_id && sessionData?.device_type) {
@@ -83,7 +87,32 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
         return 'Cisco';
     };
 
+    // A check is auto-fixable when it's not a FortiGate device, or the templated
+    // list hasn't loaded (fail open — never hide "Harden" by mistake), or the
+    // check number is in the templated set. Anything else only has manual
+    // remediation, which is what View Fix shows.
+    const isFortinet = (sessionData?.sub_device_type || sessionData?.device_type) === 'fortinet';
+    const templatedSet = new Set(fortinetTemplatedChecks || []);
+    const isAutoFixable = (check) =>
+        !isFortinet || templatedSet.size === 0 || templatedSet.has(check.check_number);
+
     const totalChecks = cisChecks?.length || 0;
+
+    // Conformity split for the summary cards, same rule as the status badge.
+    const passedChecks = (cisChecks || []).filter((c) =>
+        ['PASS', 'PASSED'].includes(c.status?.toString().toUpperCase())
+    ).length;
+    const failedChecks = (cisChecks || []).filter((c) =>
+        ['FAIL', 'FAILED'].includes(c.status?.toString().toUpperCase())
+    ).length;
+    const conformityPercent = totalChecks ? Math.round((passedChecks / totalChecks) * 100) : 0;
+    const nonConformityPercent = totalChecks ? Math.round((failedChecks / totalChecks) * 100) : 0;
+
+    const fmtDate = (value) => {
+        if (!value) return '—';
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+    };
 
     // Split into Global vs per-VDOM groups (FortiGate multi-VDOM devices tag
     // each row with its vdom; flat devices get a single unlabeled group).
@@ -112,73 +141,92 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     display: 'flex',
                     flexDirection: 'column',
                 }}>
-                    {!isLoading && !hasKnownStatus && (
-                        <div style={{
-                            background: '#f9fafb',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '12px',
-                            padding: '20px',
-                            textAlign: 'center',
-                            marginBottom: '20px'
-                        }}>
-                            <div style={{
-                                fontSize: '16px',
-                                color: '#374151',
-                                marginBottom: '14px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px'
-                            }}>
-                                <span style={{ fontSize: '20px' }}>ℹ️</span>
-                                <span>Status of CIS Benchmark section is unknown, audit your asset to specify status</span>
+                    {/* Summary cards + session metadata, matching the Figma
+                        layout: the numbers lead the page, the details sit
+                        underneath them. */}
+                    {!isLoading && (
+                        <div className="hr-summary">
+                            <div className="hr-cards">
+                                <div className="hr-card hr-card-success">
+                                    <div className="hr-card-percent">
+                                        {conformityPercent}% <span className="hr-card-sep">|</span> {passedChecks}
+                                    </div>
+                                    <div className="hr-card-label">Conformity</div>
+                                </div>
+                                <div className="hr-card hr-card-danger">
+                                    <div className="hr-card-percent">
+                                        {nonConformityPercent}% <span className="hr-card-sep">|</span> {failedChecks}
+                                    </div>
+                                    <div className="hr-card-label">Non-Conformity</div>
+                                </div>
+                                <div className="hr-card hr-card-plain">
+                                    <div className="hr-card-number">{totalChecks}</div>
+                                    <div className="hr-card-label">Total Condition</div>
+                                </div>
+                                <div className="hr-card hr-card-plain">
+                                    <div className="hr-card-number hr-card-benchmark">
+                                        {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}
+                                    </div>
+                                    <div className="hr-card-label">CIS Benchmark</div>
+                                </div>
                             </div>
-                            <button
-                                onClick={handleAuditingClick}
-                                style={{
-                                    padding: '12px 32px',
-                                    background: '#1e3a5f',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '8px'
-                                }}
-                            >
+
+                            <div className="hr-meta">
+                                <div className="hr-meta-item">
+                                    <span className="hr-meta-label">Asset</span>
+                                    <span className="hr-meta-value">{sessionData?.asset_name || '—'}</span>
+                                </div>
+                                <div className="hr-meta-item">
+                                    <span className="hr-meta-label">IP Address</span>
+                                    <span className="hr-meta-value">{sessionData?.target_ip || '—'}</span>
+                                </div>
+                                <div className="hr-meta-item">
+                                    <span className="hr-meta-label">Audit Date</span>
+                                    <span className="hr-meta-value">
+                                        {fmtDate(sessionData?.completed_at || sessionData?.started_at)}
+                                    </span>
+                                </div>
+                                <div className="hr-meta-item">
+                                    <span className="hr-meta-label">Device Type</span>
+                                    <span className="hr-meta-value">
+                                        {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}
+                                    </span>
+                                </div>
+                                <div className="hr-meta-item">
+                                    <span className="hr-meta-label">Status</span>
+                                    <span className="hr-meta-value">{sessionData?.status || '—'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Figma prompts a re-audit after hardening; the original
+                        "status unknown" wording only applied before one had
+                        ever run, so both cases share this banner. */}
+                    {!isLoading && (
+                        <div className="hr-recheck">
+                            <div className="hr-recheck-text">
+                                <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                                <span>
+                                    {hasKnownStatus
+                                        ? 'After hardening, audit your asset again to get to know the status of your assets'
+                                        : 'Status of CIS Benchmark section is unknown, audit your asset to specify status'}
+                                </span>
+                            </div>
+                            <button className="hr-btn hr-btn-primary" onClick={handleAuditingClick}>
                                 <i className="fa-solid fa-magnifying-glass" /> Auditing
                             </button>
                         </div>
                     )}
 
-                    {/* Section Header with Harden All */}
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '20px',
-                        paddingBottom: '16px',
-                        borderBottom: '2px solid #e5e7eb'
-                    }}>
-                        <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                            {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)} CIS Benchmark
-                        </h3>
+                    {/* Figma puts the section title on the left and Harden All
+                        on the right, with no heavy rule underneath. */}
+                    <div className="hr-table-header">
+                        <h3 className="hr-table-title">Audit Result</h3>
                         <button
+                            className="hr-btn hr-btn-primary"
                             onClick={handleHardenAll}
                             disabled={totalChecks === 0}
-                            style={{
-                                padding: '10px 24px',
-                                background: totalChecks === 0 ? '#9ca3af' : '#1e3a5f',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: totalChecks === 0 ? 'not-allowed' : 'pointer'
-                            }}
                         >
                             <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden All
                         </button>
@@ -230,22 +278,20 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                     <td style={{ textAlign: 'center' }}>
                                                         {check.status?.toString().toUpperCase() === 'PASS' ? (
                                                             <span style={{ color: '#9ca3af' }}>—</span>
-                                                        ) : (
+                                                        ) : isAutoFixable(check) ? (
                                                             <button
+                                                                className="hr-btn hr-btn-row"
                                                                 onClick={() => handleHardenSingle(check)}
-                                                                style={{
-                                                                    padding: '8px 18px',
-                                                                    background: '#1e3a5f',
-                                                                    color: 'white',
-                                                                    border: 'none',
-                                                                    borderRadius: '6px',
-                                                                    fontSize: '13px',
-                                                                    fontWeight: '600',
-                                                                    cursor: 'pointer',
-                                                                    whiteSpace: 'nowrap'
-                                                                }}
                                                             >
                                                                 <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                className="hr-btn hr-btn-outline"
+                                                                onClick={() => setViewFixCheck(check)}
+                                                                title="No automated fix — view the manual remediation commands"
+                                                            >
+                                                                <i className="fa-solid fa-clipboard" /> View Fix
                                                             </button>
                                                         )}
                                                     </td>
@@ -287,6 +333,17 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                         setSelectedCheck(null);
                     }}
                     onSuccess={handleFixSingleSuccess}
+                />
+            )}
+
+            {viewFixCheck && (
+                <ViewFixModal
+                    checkId={viewFixCheck.check_number}
+                    checkTitle={viewFixCheck.check_title}
+                    resultId={viewFixCheck.id}
+                    assetId={sessionData?.asset_id}
+                    onClose={() => setViewFixCheck(null)}
+                    onSuccess={handleModalSuccess}
                 />
             )}
         </div>

@@ -291,11 +291,19 @@
 /* ── Hardening impact (before / after donuts) ────────────────────────────── */
 
 /* Figma splits the card in two with a vertical rule between the donuts. */
+/* Exactly two rings, before and after. auto-fit used to open a third empty
+   column on wide screens because the note below is a grid child too. */
 .hd-impact {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
     position: relative;
+}
+
+@media (max-width: 640px) {
+    .hd-impact {
+        grid-template-columns: 1fr;
+    }
 }
 
 .hd-impact-side {

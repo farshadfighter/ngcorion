@@ -2,8 +2,10 @@
    AUDITING DASHBOARD - STYLES
    ============================================ */
 
+/* Figma (auditing/dashboard.svg) is drawn on a 1920 canvas with a 352px
+   sidebar; the content band runs 1374px wide and is centred in what is left. */
 .aud-container {
-    padding: 32px 40px;
+    padding: 32px 24px;
     background: transparent;
     min-height: 100vh;
 }
@@ -12,9 +14,11 @@
 .aud-row {
     display: grid;
     gap: 24px;
-    margin-bottom: 24px;
+    margin: 0 auto 24px;
+    max-width: 1374px;
 }
 
+/* Equal halves — Findings By Severity / Top Failed Controls (571 + 571). */
 .aud-row-2 {
     grid-template-columns: 1fr 1fr;
     min-width: 0;
@@ -25,7 +29,24 @@
     overflow: hidden;
 }
 
+/* Unequal halves — Figma pairs a 540px panel with a 745px one. */
+.aud-row-split {
+    grid-template-columns: minmax(0, 540fr) minmax(0, 745fr);
+    align-items: start;
+}
+
+.aud-row-split > * {
+    min-width: 0;
+    overflow: hidden;
+}
+
 .aud-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+/* Full-width rows keep the same band as the split ones. */
+.aud-container > .aud-card {
+    max-width: 1374px;
+    margin: 0 auto 24px;
+}
 
 /* ── باکس کارت عمومی ── */
 .aud-card {
@@ -130,6 +151,13 @@
     color: #374151;
     margin-bottom: 6px;
     font-weight: 500;
+}
+
+/* Figma prints the percentage in the same grey as the label rather than
+   colour-coding it — the bar length already carries the signal. */
+.aud-progress-value {
+    color: #6b7280;
+    font-weight: 600;
 }
 
 .aud-progress-track {
@@ -312,7 +340,8 @@
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {
-    .aud-row-2 { grid-template-columns: 1fr; }
+    .aud-row-2,
+    .aud-row-split { grid-template-columns: 1fr; }
     .aud-summary-cards { grid-template-columns: repeat(2, 1fr); }
 }
 

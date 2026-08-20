@@ -1271,3 +1271,217 @@ order: 1;
     font-weight: 600;
     cursor: pointer;
 }
+
+/* ============================================================
+   HARDENING "SEE RESULT" — Figma layout
+   Summary cards lead the page, then session metadata, a
+   re-audit prompt, and the checks table. Scoped with hr- so it
+   cannot collide with the auditing result modal above.
+   ============================================================ */
+
+.hr-summary {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+}
+
+.hr-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 24px;
+}
+
+/* Figma: 148x108 tiles, rounded 8. */
+.hr-card {
+    flex: 0 0 148px;
+    min-height: 108px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px 12px;
+    border-radius: 8px;
+    background: #F4F6FA;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.hr-card-success {
+    background: #F4F6FA;
+    color: #16a34a;
+}
+
+/* The one filled tile in the mock — non-conformity is what needs acting on. */
+.hr-card-danger {
+    background: #E8413C;
+    color: #ffffff;
+}
+
+.hr-card-plain {
+    color: #14213D;
+}
+
+.hr-card-percent {
+    font-size: 17px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.hr-card-sep {
+    opacity: 0.55;
+    margin: 0 2px;
+}
+
+.hr-card-number {
+    font-size: 20px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.hr-card-benchmark {
+    font-size: 17px;
+}
+
+.hr-card-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.hr-card-danger .hr-card-label,
+.hr-card-success .hr-card-label {
+    color: inherit;
+}
+
+.hr-card-plain .hr-card-label {
+    color: #6C7A93;
+}
+
+/* Session details, spread under the cards. */
+.hr-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 28px;
+}
+
+.hr-meta-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.hr-meta-label {
+    font-size: 12px;
+    color: #9AA5B5;
+}
+
+.hr-meta-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #14213D;
+    overflow-wrap: anywhere;
+}
+
+/* Re-audit prompt. */
+.hr-recheck {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+}
+
+.hr-recheck-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #14213D;
+}
+
+.hr-recheck-text i {
+    color: #14213D;
+}
+
+.hr-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.hr-table-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.hr-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.hr-btn-primary {
+    padding: 11px 26px;
+    background: #14213D;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.hr-btn-primary:hover:not(:disabled) {
+    background: #1E3255;
+}
+
+.hr-btn-primary:disabled {
+    background: #9AA5B5;
+    cursor: not-allowed;
+}
+
+.hr-btn-row {
+    padding: 8px 18px;
+    background: #14213D;
+    color: #ffffff;
+    font-size: 13px;
+}
+
+.hr-btn-row:hover {
+    background: #1E3255;
+}
+
+/* Manual-remediation checks: outlined so they read as a different action
+   from the one-click Harden. */
+.hr-btn-outline {
+    padding: 8px 16px;
+    background: #ffffff;
+    color: #14213D;
+    border: 2px solid #14213D;
+    font-size: 13px;
+}
+
+.hr-btn-outline:hover {
+    background: #F4F6FA;
+}
+
+@media (max-width: 720px) {
+    .hr-meta { gap: 20px; }
+    .hr-summary { padding: 20px 16px; }
+}
