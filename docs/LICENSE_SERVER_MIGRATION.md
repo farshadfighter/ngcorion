@@ -56,7 +56,8 @@
 - تمام ارتباط **یک‌طرفه** است: app به license-server وصل می‌شود، هرگز برعکس.
   یعنی روی سرور لایسنس فقط باید پورت **8001** برای IP سرور app باز باشد.
 - `postgres-license` و `redis` سرور لایسنس **نباید** روی هاست publish شوند؛ فقط داخل شبکهٔ داکر.
-- `license-admin` (پنل مدیریت لایسنس) در عمل یک UI روی همان API است و بهتر است **همراه سرور لایسنس** منتقل شود، نه اینکه روی سرور app بماند.
+- `license-admin` (پنل مدیریت لایسنس) یک UI روی همان API است و حالا **بخشی از استک سرور
+  لایسنس** است (پورت 5174). فقط برای IP ادمین باز شود — بخش ۸.
 
 ---
 
@@ -253,7 +254,7 @@ sudo nano .env
 |---|---|
 | `LICENSE_DB_PASSWORD` | همان رمز دیتابیس لایسنس در استک قبلی (پیش‌فرض قدیمی: `license1234`). اگر رمز جدیدی می‌گذارید، بعد از restore با `ALTER USER license_user WITH PASSWORD '...';` هماهنگش کنید. |
 | `LICENSE_SERVER_SECRET_KEY` | **همان مقدار سرور قبلی**. فقط JWTهای پنل ادمین را امضا می‌کند؛ اگر عوض شود، ارتباط app با لایسنس مشکلی پیدا نمی‌کند ولی نشست‌های ادمین باطل می‌شوند. |
-| `LICENSE_ADMIN_USERNAME` / `LICENSE_ADMIN_PASSWORD` | ورود HTTP Basic به API/پنل ادمین. مقدار قدیمی `admin` / `12qw!@QW` بود — **حتماً عوض شود**. |
+| `LICENSE_ADMIN_USERNAME` / `LICENSE_ADMIN_PASSWORD` | نام‌کاربری/رمز ورود پنل ادمین (`POST /api/admin/login` → توکن JWT). مقدار قدیمی `admin` / `12qw!@QW` بود — **حتماً عوض شود**. |
 | `LICENSE_BIND_ADDR` | ترجیحاً IP خصوصی‌ای که سرور app از آن می‌بیند، نه `0.0.0.0`. |
 
 ---
@@ -267,6 +268,7 @@ sudo nano .env
 - `postgres-license` — دیتابیس لایسنس (فقط `expose`، publish نشده)
 - `redis` — instance اختصاصی، DB 1، بدون persistence
 - `license-server` — API روی پورت 8001 با healthcheck
+- `license-admin` — پنل ادمین (بیلد production؛ nginx روی پورت 5174)
 - `traefik` — **اختیاری**، فقط با profile فعال می‌شود
 
 اجرا:
@@ -291,13 +293,14 @@ docker compose logs -f license-server
 
 ## ۶. مرحله ۳ — آپدیت سرور اصلی
 
-روی **سرور app**، در `docker-compose.yml`:
+> ✅ **این مرحله در مخزن انجام شده است.** `docker-compose.yml` سرور app دیگر
+> سرویس‌های `license-server`، `postgres-license` و `license-admin` (و والیوم‌های
+> `postgres_license_data` و `license_admin_node_modules`) را ندارد. فقط
+> `traefik`، `backend`، `postgres` و `redis` باقی مانده‌اند و والیوم
+> `license_client_data` — که **لایسنس فعال را نگه می‌دارد** — دست‌نخورده است.
+> کاری که روی سرور باقی می‌ماند، فقط تنظیم `.env` و ری‌استارت است.
 
-1. سرویس `license-server` را حذف کنید.
-2. سرویس `postgres-license` و والیوم `postgres_license_data` را حذف کنید.
-3. سرویس `license-admin` و والیوم `license_admin_node_modules` را حذف کنید (اختیاری —
-   بهتر است روی سرور لایسنس مستقر شود).
-4. در `depends_on` سرویس `backend`، وابستگی به `license-server` را بردارید:
+وضعیت فعلی `docker-compose.yml` سرور app:
 
 ```yaml
     depends_on:
@@ -305,22 +308,38 @@ docker compose logs -f license-server
         condition: service_healthy
       redis:
         condition: service_healthy
-      # license-server:              ← حذف شود
-      #   condition: service_started
+      # license-server حذف شده است
+
+    environment:
+      ...
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL}    # بدون مقدار پیش‌فرض
 ```
 
-5. آدرس سرور لایسنس را در فایل `.env` سرور app ست کنید (نیازی به دست‌زدن به compose نیست،
-   چون `LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-http://license-server:8001}` است):
+۱. آدرس سرور لایسنس را در فایل `.env` سرور app ست کنید — چون مقدار پیش‌فرضی وجود ندارد،
+این تنها مرحلهٔ الزامی است:
 
 ```bash
 cd /path/to/ngcorion
 echo 'LICENSE_SERVER_URL=http://NEW_LICENSE_SERVER_IP:8001' >> .env
+docker compose config | grep LICENSE_SERVER_URL      # باید IP جدید را نشان بدهد
 ```
 
-6. سرویس `redis` سرور app: کد فعلی برنامه از Redis استفاده نمی‌کند و بعد از جدا شدن
-   license-server هیچ مصرف‌کننده‌ای ندارد. می‌توانید نگهش دارید (بی‌ضرر) یا حذفش کنید.
+اگر این متغیر ست نشده باشد، `docker compose` هشدار «variable is not set» می‌دهد و
+backend هنگام startup با پیام `RuntimeError: LICENSE_SERVER_URL is not set ...` بالا
+نمی‌آید. اگر ترجیح می‌دهید خطا زودتر و در سطح compose رخ بدهد، در `docker-compose.yml`
+مقدار را به این شکل بنویسید:
 
-7. اعمال تغییرات — **بدون `-v`**:
+```yaml
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:?set LICENSE_SERVER_URL in .env}
+```
+
+۲. سرویس `redis` سرور app: کد فعلی برنامه از Redis استفاده نمی‌کند و بعد از جدا شدن
+license-server هیچ مصرف‌کننده‌ای ندارد. می‌توانید نگهش دارید (بی‌ضرر) یا حذفش کنید.
+
+۳. پنل ادمین لایسنس (`license-admin`) دیگر روی سرور app اجرا نمی‌شود؛ حالا بخشی از
+استک سرور لایسنس است. جزئیات دسترسی در بخش ۸.
+
+۴. اعمال تغییرات — **بدون `-v`**:
 
 ```bash
 docker compose config >/dev/null          # اعتبارسنجی فایل
@@ -388,7 +407,50 @@ curl -k -s https://APP_SERVER_IP/api/license/status | python3 -m json.tool
 
 ---
 
-## ۸. مرحله ۵ — Firewall
+## ۸. دسترسی به پنل ادمین لایسنس (license-admin)
+
+پنل ادمین حالا داخل استک سرور لایسنس اجرا می‌شود: باندل production با Vite ساخته و با
+nginx سرو می‌شود (`license-admin-ui/Dockerfile.prod`). دیگر خبری از سرور توسعهٔ Vite نیست.
+
+- **آدرس:** `http://LICENSE_SERVER_IP:5174`
+- **نام‌کاربری / رمز:** از فایل `.env` سرور لایسنس می‌آید —
+  `LICENSE_ADMIN_USERNAME` و `LICENSE_ADMIN_PASSWORD`
+  (همان مقادیری که به سرویس `license-server` داده می‌شوند)
+
+```bash
+# روی سرور لایسنس
+cd /opt/ngcorion-license
+docker compose up -d --build license-admin
+docker compose ps license-admin
+```
+
+**نحوهٔ ارتباط پنل با API:** آدرس سرور لایسنس داخل جاوااسکریپت باندل نمی‌شود. کلاینت
+مسیرهای نسبی (`/api/...` و `/health`) را صدا می‌زند و nginx آن‌ها را داخل شبکهٔ داکر به
+`http://license-server:8001` پروکسی می‌کند (`license-admin-ui/nginx.conf`). یعنی same-origin،
+بدون CORS، و بدون نیاز به rebuild اگر IP سرور عوض شود.
+
+**احراز هویت:** ورود از طریق `POST /api/admin/login` انجام می‌شود و یک توکن **JWT**
+برمی‌گرداند (امضا شده با `LICENSE_SERVER_SECRET_KEY`)؛ بقیهٔ فراخوانی‌های ادمین با هدر
+`Authorization: Bearer <token>` می‌روند. HTTP Basic روی این endpointها کار **نمی‌کند**.
+معادل خط فرمانِ همان کاری که پنل انجام می‌دهد:
+
+```bash
+TOKEN=$(curl -s -X POST http://LICENSE_SERVER_IP:8001/api/admin/login \
+        -H 'Content-Type: application/json' \
+        -d "{\"username\":\"$LICENSE_ADMIN_USERNAME\",\"password\":\"$LICENSE_ADMIN_PASSWORD\"}" \
+        | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+     http://LICENSE_SERVER_IP:8001/api/admin/licenses | python3 -m json.tool
+```
+
+> ⚠️ **پورت 5174 را روی اینترنت باز نگذارید.** این رابط، لایسنس صادر می‌کند. در بخش ۹
+> فقط IP ادمین اجازهٔ دسترسی می‌گیرد. برای HTTPS، profile `tls` را فعال کنید و از
+> `LICENSE_ADMIN_HOSTNAME` استفاده کنید.
+
+---
+
+## ۹. مرحله ۵ — Firewall
 
 روی **سرور لایسنس** فقط IP سرور app اجازهٔ پورت 8001 داشته باشد:
 
@@ -401,7 +463,8 @@ sudo ufw enable
 sudo ufw status numbered
 ```
 
-اگر پنل ادمین لایسنس هم روی همین سرور اجرا می‌شود:
+پنل ادمین (`license-admin`، پورت 5174) روی همین سرور اجرا می‌شود — دسترسی به آن را فقط
+برای IP ادمین باز کنید، نه برای سرور app:
 
 ```bash
 sudo ufw allow from YOUR_ADMIN_IP to any port 5174 proto tcp   # یا 443 در حالت TLS
@@ -418,7 +481,7 @@ curl -m 5 http://LICENSE_SERVER_IP:8001/health
 
 ---
 
-## ۹. بازگشت به عقب (Rollback)
+## ۱۰. بازگشت به عقب (Rollback)
 
 اگر بعد از انتقال مشکلی پیش آمد:
 
@@ -435,7 +498,7 @@ docker compose up -d
 
 ---
 
-## ۱۰. نکات مهم
+## ۱۱. نکات مهم
 
 1. **`SECRET_KEY` نیازی به یکسان بودن بین دو سرور ندارد.** برخلاف تصور رایج، رمز مشترکِ
    بین app و license-server مقدار `organization_token` هر لایسنس است (امضای HMAC-SHA256 در
@@ -483,13 +546,14 @@ docker compose up -d
 
 ---
 
-## ۱۱. چک‌لیست نهایی
+## ۱۲. چک‌لیست نهایی
 
 - [ ] backup از `license_db` گرفته و در جای امن نگه‌داری شد
 - [ ] fingerprint دیتابیس با fingerprint ذخیره‌شدهٔ سمت app مقایسه و یکسان بودنش تأیید شد
 - [ ] Docker و NTP روی سرور لایسنس نصب و فعال است
 - [ ] `.env` سرور لایسنس با رمزهای **جدید و قوی** پر شده و `chmod 600` است
 - [ ] استک لایسنس بالا آمده و `/health` پاسخ می‌دهد
+- [ ] پنل ادمین روی `http://LICENSE_SERVER_IP:5174` بالا می‌آید و لاگین با مقادیر `.env` کار می‌کند
 - [ ] دیتابیس restore شده و ردیف‌های `licenses` با مقادیر مصرف قابل مشاهده‌اند
 - [ ] `LICENSE_SERVER_URL` در `.env` سرور app ست شده
 - [ ] سرویس‌های `license-server` / `postgres-license` / `license-admin` از compose سرور app حذف شدند
@@ -499,4 +563,5 @@ docker compose up -d
 - [ ] یک audit آزمایشی اجرا شد و `used_audits` افزایش یافت
 - [ ] فایروال سرور لایسنس فقط IP سرور app را روی 8001 می‌پذیرد
 - [ ] پورت 8001 از یک ماشین سوم قابل دسترس **نیست**
+- [ ] پورت 5174 (پنل ادمین) فقط از IP ادمین قابل دسترس است
 - [ ] والیوم‌های سرور app پاک نشده‌اند (`docker compose down -v` اجرا نشده)

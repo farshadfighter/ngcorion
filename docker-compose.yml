@@ -49,14 +49,16 @@ services:
       - /run/systemd:/run/systemd
     environment:
       DATABASE_URL: postgresql+psycopg://netease:${POSTGRES_PASSWORD:-1234}@postgres:5432/netease_db
-      # Redis DB 0 belongs to the app, DB 1 to the license server (see the
-      # license-server service). No application code uses Redis today; the
-      # variable is kept for forward compatibility.
+      # No application code uses Redis today; the variable is kept for forward
+      # compatibility. (The license server, which used DB 1 of this instance,
+      # now runs on its own host with its own Redis.)
       REDIS_URL: redis://redis:6379/0
-      # All-in-one deployment: the license server in this stack.
-      # After moving the license server to its own host, set LICENSE_SERVER_URL
-      # in .env (e.g. http://10.0.0.20:8001) — see docs/LICENSE_SERVER_MIGRATION.md.
-      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-http://license-server:8001}
+      # REQUIRED — the license server runs on a separate host. Set it in .env,
+      # e.g. LICENSE_SERVER_URL=http://10.0.0.20:8001
+      # There is deliberately no fallback: the backend refuses to start on an
+      # empty value rather than silently pointing nowhere.
+      # See docs/LICENSE_SERVER_MIGRATION.md and deploy/docker-compose.license.yml.
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL}
     expose:
       - "8000"
     depends_on:
@@ -64,8 +66,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      license-server:
-        condition: service_started
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.ngcorion-https-redirect.redirectscheme.scheme=https"
@@ -135,94 +135,9 @@ services:
     networks:
       - app
 
-  postgres-license:
-    restart: always
-    image: docker.arvancloud.ir/postgres:17-alpine
-    container_name: postgres-license
-    environment:
-      POSTGRES_DB: license_db
-      POSTGRES_USER: license_user
-      # Development default. Set LICENSE_DB_PASSWORD in .env for any real deployment.
-      POSTGRES_PASSWORD: ${LICENSE_DB_PASSWORD:-license1234}
-    volumes:
-      - postgres_license_data:/var/lib/postgresql/data
-      - ./db/postgres-license/init.sql:/docker-entrypoint-initdb.d/init.sql
-    expose:
-      - "5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U license_user -d license_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app
-
-  license-server:
-    restart: always
-    build:
-      context: ./license_server
-      dockerfile: Dockerfile
-    container_name: license-server
-    environment:
-      DATABASE_URL: postgresql://license_user:${LICENSE_DB_PASSWORD:-license1234}@postgres-license:5432/license_db
-      # No default on purpose: this key signs the license-admin JWTs. A shipped
-      # default is the same as no secret at all. Set it in .env — see .env.example.
-      SECRET_KEY: ${LICENSE_SERVER_SECRET_KEY:?set LICENSE_SERVER_SECRET_KEY in .env (openssl rand -hex 32)}
-      # Redis DB 1 — separate keyspace from the app's DB 0 on the same instance.
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 1
-      ADMIN_USERNAME: ${LICENSE_ADMIN_USERNAME:-admin}
-      # No default on purpose: these credentials guard license issuing.
-      ADMIN_PASSWORD: ${LICENSE_ADMIN_PASSWORD:?set LICENSE_ADMIN_PASSWORD in .env}
-    ports:
-      - "8001:8001"
-    depends_on:
-      postgres-license:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.license-server.rule=Host(`license.ngcorion.localhost`)"
-      - "traefik.http.routers.license-server.entrypoints=web"
-      - "traefik.http.services.license-server.loadbalancer.server.port=8001"
-    networks:
-      - app
-
-  license-admin:
-    restart: always
-    build:
-      context: ./license-admin-ui
-      dockerfile: Dockerfile.dev
-    container_name: license-admin
-    command: >
-      sh -c "npm install &&
-             npm run dev -- --host 0.0.0.0 --port 5173"
-    volumes:
-      - ./license-admin-ui:/app
-      - license_admin_node_modules:/app/node_modules
-    environment:
-      # Vite dev-proxy target. Follows the same variable as the backend so the
-      # admin UI keeps working when the license server moves to another host.
-      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-http://license-server:8001}
-    ports:
-      - "5174:5173"
-    depends_on:
-      - license-server
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.license-admin.rule=Host(`license-admin.ngcorion.localhost`)"
-      - "traefik.http.routers.license-admin.entrypoints=web"
-      - "traefik.http.services.license-admin.loadbalancer.server.port=5173"
-    networks:
-      - app
-
 volumes:
   postgres_data:
   redis_data:
-  postgres_license_data:
-  license_admin_node_modules:
   license_client_data:
 
 networks:

@@ -2,7 +2,8 @@
 # NGCorion — standalone License Server stack
 # ---------------------------------------------------------------------------
 # Runs on the DEDICATED license server host. Contains only what the license
-# service needs: its own Postgres, its own Redis, and the license API.
+# service needs: its own Postgres, its own Redis, the license API, and the
+# admin UI that issues licenses.
 # The application stack (backend / postgres / redis / traefik) stays on the app
 # server and reaches this host over HTTP on port 8001.
 #
@@ -12,6 +13,7 @@
 #   ├── docker-compose.yml        <- this file
 #   ├── .env                      <- secrets (see .env.license.example)
 #   ├── license_server/           <- copied from the repo
+#   ├── license-admin-ui/         <- copied from the repo (built by Dockerfile.prod)
 #   └── db/
 #       ├── postgres-license/init.sql
 #       └── redis/redis.conf
@@ -109,6 +111,34 @@ services:
       - "traefik.http.services.license-server.loadbalancer.server.port=8001"
     networks:
       - license
+
+  license-admin:
+    # Production build of the admin UI: Vite bundle served by nginx, with /api
+    # and /health proxied to license-server over the internal network. The API
+    # address is NOT baked into the bundle — see license-admin-ui/nginx.conf.
+    restart: always
+    build:
+      # Sibling of this compose file on the license host, same convention as
+      # ./license_server above (NOT ../ — that points outside /opt/ngcorion-license).
+      context: ./license-admin-ui
+      dockerfile: Dockerfile.prod
+    container_name: license-admin
+    ports:
+      # Admin panel. Restrict this to your admin IP in the firewall — it is the
+      # interface that issues licenses (see docs/LICENSE_SERVER_MIGRATION.md).
+      - "5174:80"
+    depends_on:
+      license-server:
+        condition: service_healthy
+    networks:
+      - license
+    labels:
+      # Only take effect when the optional `tls` profile is running.
+      - "traefik.enable=true"
+      - "traefik.http.routers.license-admin.rule=Host(`${LICENSE_ADMIN_HOSTNAME:-license-admin.ngcorion.local}`)"
+      - "traefik.http.routers.license-admin.entrypoints=websecure"
+      - "traefik.http.routers.license-admin.tls=true"
+      - "traefik.http.services.license-admin.loadbalancer.server.port=80"
 
   # OPTIONAL — only started with:  docker compose --profile tls up -d
   # Terminates HTTPS in front of the license server. Requires a certificate in
