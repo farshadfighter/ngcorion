@@ -67,6 +67,12 @@ class WindowsCISRule:
     scope: str = "all"               # all / MS (member server) / DC (domain controller)
     audit_key: str = ""              # data key the check reads (debug/evidence aid)
     versions: List[str] = field(default_factory=lambda: ["win_2025"])
+    # Collection sections this check reads. When every one of them failed to
+    # collect, the check is unevaluable and is reported ERROR instead of being
+    # silently scored (a missing secedit export must never read as "No One").
+    # Several entries mean "any one of these is enough" (USER_RIGHTS falls back
+    # to SECURITY_POLICY).
+    data_sections: List[str] = field(default_factory=list)
 
 
 # ============================================================ #
@@ -101,6 +107,63 @@ def _parse_json(text: str) -> Any:
 
 def _json_section(dump: str, name: str) -> Any:
     return _parse_json(_section(dump, name))
+
+
+# ============================================================ #
+#  Collection health                                          #
+# ============================================================ #
+
+# Markers emitted by the collector when a PowerShell command failed. A section
+# carrying one of these holds no configuration data, so every rule that reads it
+# is unevaluable — reporting it as compliant (or even as non-compliant) would be
+# a guess.
+_SECTION_FAILURE_PREFIXES = ("PS_ERROR", "CMD_ERROR", "COLLECTION_ERROR")
+_SECTION_EMPTY_MARKERS = ("", "(no output)", "(empty)", "SECEDIT_EXPORT_FAILED")
+
+# Sections whose payload must parse as JSON; anything else means the command
+# produced an error page / partial output rather than data.
+_JSON_SECTIONS = frozenset({
+    "OS_VERSION", "DOMAIN_ROLE", "REGISTRY", "FIREWALL_PROFILES", "LOCAL_USERS",
+})
+
+
+def section_failure(dump: str, name: str) -> Optional[str]:
+    """
+    Return a short reason when a collection section is unusable, else None.
+
+    Used by evaluate_compliance to mark dependent checks ERROR rather than
+    scoring them: a failed ``secedit /export`` used to make every
+    'set to No One' user-rights check read as compliant.
+    """
+    content = _section(dump, name).strip()
+    if content in _SECTION_EMPTY_MARKERS:
+        return f"{name} was not collected"
+    if content.startswith(_SECTION_FAILURE_PREFIXES):
+        return f"{name} collection failed: {content.splitlines()[0][:160]}"
+    if "SECEDIT_EXPORT_FAILED" in content:
+        return f"{name} collection failed: secedit /export returned no policy file"
+    if name in _JSON_SECTIONS and _parse_json(content) is None:
+        return f"{name} returned unparseable output: {content.splitlines()[0][:160]}"
+    return None
+
+
+def rule_data_failure(dump: str, rule: "WindowsCISRule") -> Optional[str]:
+    """
+    Return a reason when none of a rule's data sections could be collected.
+
+    A rule listing several sections needs only one of them (USER_RIGHTS falls
+    back to the full SECURITY_POLICY export), so this reports a failure only
+    when every declared section is unusable.
+    """
+    if not rule.data_sections:
+        return None
+    reasons = []
+    for name in rule.data_sections:
+        reason = section_failure(dump, name)
+        if reason is None:
+            return None
+        reasons.append(reason)
+    return "; ".join(reasons)
 
 
 # ============================================================ #
@@ -368,15 +431,40 @@ def _firewall_profile(dump: str, name: str) -> Optional[Dict]:
     return None
 
 
+# MSFT_NetFirewallProfile stores these flags as uint16 GpoBoolean enums, not
+# booleans, and publishes no ValueMap. The collector now casts them to their
+# member name ("True"/"False"/"NotConfigured") so the value is unambiguous; this
+# map only interprets integers from dumps collected before that change.
+# Unverified against a live host on purpose — anything not listed is treated as
+# unknown and fails closed, rather than the old "non-zero means on", which read
+# a disabled firewall as compliant.
+_GPO_BOOL_INTS = {1: True, 2: False}
+
+# LogMaxSizeKilobytes is a uint64 where MAXUINT64 means "Not Configured"
+# (documented on MSFT_NetFirewallProfile) — not an enormous configured size.
+_UINT64_MAX = 18446744073709551615
+
+
 def _fw_bool(p: Optional[Dict], key: str, want: bool) -> bool:
+    """Compliant when a firewall GpoBoolean equals ``want``.
+
+    Anything indeterminate — NotConfigured, an unmapped integer, a missing key —
+    is not compliant; this never guesses a verdict from an unrecognised value.
+    """
     if not p or key not in p:
         return False
     v = p.get(key)
-    if isinstance(v, bool):
+    if isinstance(v, bool):      # a real JSON boolean (hand-authored fixtures)
         return v == want
-    if isinstance(v, int):
-        return (v != 0) == want
-    return str(v).strip().lower() in (("true", "1") if want else ("false", "0"))
+    if isinstance(v, int):       # legacy dumps: the raw enum integer
+        state = _GPO_BOOL_INTS.get(v)
+        return state is not None and state == want
+    text = str(v).strip().lower()
+    if text in ("true", "1"):
+        return want is True
+    if text in ("false", "0"):
+        return want is False
+    return False                 # NotConfigured / unrecognised
 
 
 def _fw_enabled(dump: str, name: str) -> bool:
@@ -389,6 +477,8 @@ def _fw_inbound_block(dump: str, name: str) -> bool:
         return False
     action = p.get("DefaultInboundAction")
     if isinstance(action, int):
+        # Legacy dumps carry the raw Action enum; the collector now sends the
+        # member name instead (see audit_commands.FIREWALL_PROFILES).
         return action == 4          # NetSecurity Action enum: 4 = Block
     return str(action).strip().lower() == "block"
 
@@ -398,7 +488,9 @@ def _fw_int_gte(dump: str, name: str, key: str, target: int) -> bool:
     if not p:
         return False
     iv = _to_int(p.get(key))
-    return iv is not None and iv >= target
+    if iv is None or iv == _UINT64_MAX:  # MAXUINT64 = Not Configured, not "huge"
+        return False
+    return iv >= target
 
 
 def _fw_logname(dump: str, name: str, expected_file: str) -> bool:
@@ -850,12 +942,25 @@ REGISTRY_CHECKS: List[Dict[str, Any]] = [
 ]
 
 
+def get_registry_properties() -> Dict[str, List[str]]:
+    """
+    ``{registry path: [property names]}`` the rule engine actually reads.
+
+    The collector uses this to fetch named values only. Dumping whole keys used
+    to sweep up neighbouring secrets — ``Winlogon`` is read for AutoAdminLogon
+    and also holds ``DefaultPassword`` in cleartext when autologon is on.
+    """
+    wanted: Dict[str, set] = {}
+    for c in REGISTRY_CHECKS:
+        wanted.setdefault(c["path"], set()).add(c["prop"])
+    # Properties read by rules that are not in the table.
+    wanted.setdefault(_NETLOGON, set()).add("VulnerableChannelAllowList")  # 2.3.5.2
+    return {path: sorted(props) for path, props in sorted(wanted.items())}
+
+
 def get_registry_paths() -> List[str]:
     """Distinct registry paths referenced by REGISTRY_CHECKS (+ non-table reads)."""
-    paths = {c["path"] for c in REGISTRY_CHECKS}
-    # Paths read by non-table rules (absent/eq checks below).
-    paths.add(_NETLOGON)  # 2.3.5.2 VulnerableChannelAllowList
-    return sorted(paths)
+    return list(get_registry_properties())
 
 
 # ============================================================ #
@@ -864,7 +969,7 @@ def get_registry_paths() -> List[str]:
 
 def _add(rules, id, section, title, severity, level, check_fn, evidence_fn,
          remediation, description="", manual=False, scope="all", audit_key="",
-         versions=None):
+         versions=None, data_sections=None):
     rules.append(WindowsCISRule(
         id=id, section=section, title=title,
         description=description or title,
@@ -873,6 +978,7 @@ def _add(rules, id, section, title, severity, level, check_fn, evidence_fn,
         remediation=remediation, manual=manual, scored=not manual,
         scope=scope, audit_key=audit_key,
         versions=versions or ["win_2025"],
+        data_sections=list(data_sections or []),
     ))
 
 
@@ -883,7 +989,7 @@ def _build_section1(rules):
              check_fn=(lambda d, k=key, f=ok: f(_secpol_int(d, k))),
              evidence_fn=(lambda d, k=key: f"{k} = {_secpol_value(d, k)}"),
              remediation=remediation or f"Account Policies > set '{title}'.",
-             audit_key=key)
+             audit_key=key, data_sections=["SECURITY_POLICY"])
 
     secpol_rule("1.1.1", "Enforce password history >= 24 passwords",
                 "PasswordHistorySize", lambda v: v is not None and v >= 24)
@@ -1035,7 +1141,8 @@ def _build_user_rights(rules):
              check_fn=fn,
              evidence_fn=(lambda d, p=priv: f"{p} = {_user_right_sids(d, p)}"),
              remediation=f"User Rights Assignment > set '{title}'.",
-             scope=scope, audit_key=priv)
+             scope=scope, audit_key=priv,
+             data_sections=["USER_RIGHTS", "SECURITY_POLICY"])
 
     # 2.2.33 Impersonate a client (MS) — set may include IIS_IUSRS when IIS present,
     # so an exact match false-fails IIS hosts; verified manually.
@@ -1047,7 +1154,8 @@ def _build_user_rights(rules):
              ["Administrators", "LOCAL SERVICE", "NETWORK SERVICE", "SERVICE"]),
          evidence_fn=lambda d: f"SeImpersonatePrivilege = {_user_right_sids(d, 'SeImpersonatePrivilege')}",
          remediation="Set to Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE (+ IIS_IUSRS when IIS is installed).",
-         scope="MS", audit_key="SeImpersonatePrivilege")
+         scope="MS", audit_key="SeImpersonatePrivilege",
+         data_sections=["USER_RIGHTS", "SECURITY_POLICY"])
 
 
 def _build_security_options_misc(rules):
@@ -1056,7 +1164,8 @@ def _build_security_options_misc(rules):
          "Ensure 'Accounts: Guest account status' is set to 'Disabled'", "high", "L1",
          check_fn=_guest_disabled,
          evidence_fn=lambda d: _ev_section(d, "LOCAL_USERS", 300),
-         remediation="Disable-LocalUser -Name Guest.", scope="MS", audit_key="Guest")
+         remediation="Disable-LocalUser -Name Guest.", scope="MS", audit_key="Guest",
+         data_sections=["LOCAL_USERS"])
 
     for sec, title in [
         ("2.3.1.3", "Accounts: Rename administrator account"),
@@ -1085,7 +1194,8 @@ def _build_security_options_misc(rules):
          check_fn=lambda d: _reg(d, _NETLOGON, "VulnerableChannelAllowList") is None,
          evidence_fn=lambda d: f"VulnerableChannelAllowList = {_reg(d, _NETLOGON, 'VulnerableChannelAllowList')}",
          remediation="Remove any VulnerableChannelAllowList entry (leave Not Configured).",
-         scope="DC", audit_key="VulnerableChannelAllowList")
+         scope="DC", audit_key="VulnerableChannelAllowList",
+         data_sections=["REGISTRY"])
 
 
 def _build_registry_rules(rules, version="win_2025"):
@@ -1099,7 +1209,7 @@ def _build_registry_rules(rules, version="win_2025"):
              evidence_fn=(lambda d, p=path, pr=prop: f"{pr} = {_reg(d, p, pr)}"),
              remediation=f"Set-ItemProperty '{path}' -Name {prop} to the CIS value.",
              scope=c["scope"], audit_key=f"{path}\\{prop}",
-             versions=[version])
+             versions=[version], data_sections=["REGISTRY"])
 
 
 def _build_firewall(rules):
@@ -1118,7 +1228,7 @@ def _build_firewall(rules):
                  evidence_fn=(lambda d, p=prof: _json_section(d, "FIREWALL_PROFILES") and
                               f"{p}: {_firewall_profile(d, p)}" or "(no firewall data)"),
                  remediation=f"Set-NetFirewallProfile -Profile {prof} accordingly.",
-                 audit_key=f"firewall/{prof}")
+                 audit_key=f"firewall/{prof}", data_sections=["FIREWALL_PROFILES"])
 
         fwrule("1", "Firewall state = On", (lambda d, p=prof: _fw_enabled(d, p)), "high")
         fwrule("2", "Inbound connections = Block", (lambda d, p=prof: _fw_inbound_block(d, p)), "high")
@@ -1186,7 +1296,8 @@ def _build_audit_policy(rules):
              check_fn=(lambda d, s=subcat, e=expected: _audit_matches(d, s, e)),
              evidence_fn=(lambda d, s=subcat: f"{s}: {_audit_policy_setting(d, s) or '(not found)'}"),
              remediation=f"auditpol /set /subcategory:\"{subcat}\" for '{expected}'.",
-             scope=scope, audit_key=f"auditpol/{subcat}")
+             scope=scope, audit_key=f"auditpol/{subcat}",
+             data_sections=["AUDIT_POLICY"])
 
 
 def _build_user_templates(rules):
@@ -1298,19 +1409,27 @@ def filter_rules_by_scope(rules: List[WindowsCISRule], is_dc: bool) -> List[Wind
 #  Compliance evaluation                                      #
 # ============================================================ #
 
+# Severity weights behind weighted_compliance_pct. Module-level so hardening can
+# recompute the same score after it flips results, instead of leaving the audit's
+# value frozen next to an updated compliance_pct.
+SEVERITY_WEIGHTS = {"high": 3, "medium": 2, "low": 1, "info": 0}
+DEFAULT_SEVERITY_WEIGHT = 1
+
 def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any]:
     """
     Evaluate all rules against the collected audit dump.
 
     Manual controls are reported (status "skipped", surfaced NOT_APPLICABLE by
-    the service) but never scored. Returns a summary + per-finding list.
+    the service) but never scored. Checks whose data could not be collected are
+    reported (status "error", surfaced ERROR by the service) and are likewise
+    never scored — an absent secedit export must not read as "No One".
+    Returns a summary + per-finding list.
     """
-    SEVERITY_WEIGHTS = {"high": 3, "medium": 2, "low": 1, "info": 0}
-
     findings = []
     passed_scored = 0
     failed_scored = 0
     manual_checks = 0
+    error_checks = 0
     total_weight = 0
     passed_weight = 0
 
@@ -1324,10 +1443,27 @@ def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any
             findings.append({
                 "id": rule.id, "title": rule.title, "description": rule.description,
                 "section": rule.section, "severity": rule.severity, "level": rule.level,
-                "compliant": False, "manual": True, "status": "skipped",
+                "compliant": False, "manual": True, "error": False, "status": "skipped",
                 "evidence": (
                     f"SKIPPED — manual verification required. {rule.remediation}\n\n"
                     f"Collected evidence:\n{evidence}"
+                )[:1000],
+                "remediation": rule.remediation,
+            })
+            continue
+
+        # Unevaluable: the section(s) this rule reads never made it back from
+        # the host. Report ERROR rather than guessing a verdict.
+        data_failure = rule_data_failure(dump, rule)
+        if data_failure:
+            error_checks += 1
+            findings.append({
+                "id": rule.id, "title": rule.title, "description": rule.description,
+                "section": rule.section, "severity": rule.severity, "level": rule.level,
+                "compliant": False, "manual": False, "error": True, "status": "error",
+                "evidence": (
+                    f"ERROR — not evaluated: {data_failure}. "
+                    "Re-run the audit with an account that can read this data."
                 )[:1000],
                 "remediation": rule.remediation,
             })
@@ -1342,7 +1478,7 @@ def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any
         except Exception:
             evidence = "(evidence extraction failed)"
 
-        weight = SEVERITY_WEIGHTS.get(rule.severity, 1)
+        weight = SEVERITY_WEIGHTS.get(rule.severity, DEFAULT_SEVERITY_WEIGHT)
         if rule.level != "INFO":
             total_weight += weight
             if compliant:
@@ -1354,7 +1490,7 @@ def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any
         findings.append({
             "id": rule.id, "title": rule.title, "description": rule.description,
             "section": rule.section, "severity": rule.severity, "level": rule.level,
-            "compliant": compliant, "manual": False,
+            "compliant": compliant, "manual": False, "error": False,
             "status": "pass" if compliant else "fail",
             "evidence": evidence, "remediation": rule.remediation,
         })
@@ -1367,6 +1503,7 @@ def evaluate_compliance(dump: str, rules: List[WindowsCISRule]) -> Dict[str, Any
         "summary": {
             "total_rules_scored": total_scored,
             "manual_checks": manual_checks,
+            "error_checks": error_checks,
             "passed_scored": passed_scored,
             "failed_scored": failed_scored,
             "compliance_pct": compliance_pct,

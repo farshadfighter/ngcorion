@@ -15,6 +15,7 @@ from app.core.dependencies import (
     check_quota_available,
     consume_quota_on_success,
     require_permission,
+    assert_session_access,
 )
 from app.core.ssh_exceptions import (
     SSHAlgorithmMismatchError,
@@ -24,7 +25,7 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError,
     SSHNetworkError,
 )
-from app.models import User
+from app.models import AuditSession, User
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 
 from . import service
@@ -33,6 +34,18 @@ from .contract import HardenAllPlan, HardenAllRequest, HardenAllResult
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/hardening/harden-all", tags=["Hardening - Harden All"])
+
+
+def _assert_session_owner(db: Session, session_id: int, current_user: User) -> None:
+    """
+    Object-level check on the audit session both endpoints work from.
+
+    Harden All plans and remediates from a session id alone, and execution
+    rewrites that session's results — so ownership has to be enforced here, not
+    just by the module-level HARDENING permission.
+    """
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    assert_session_access(session, current_user)
 
 
 @router.get("/session/{session_id}/plan", response_model=HardenAllPlan)
@@ -47,6 +60,7 @@ def get_harden_all_plan(
     to collect, the credential fields to render, and which execution options
     (backup, dry run) this device family supports.
     """
+    _assert_session_owner(db, session_id, current_user)
     try:
         return service.build_plan(db, session_id)
     except ValueError as e:
@@ -81,6 +95,8 @@ def execute_harden_all(
 
     # Resolved up front so the audit log still names the right device family when
     # execution blows up before the plan is built.
+    _assert_session_owner(db, request.session_id, current_user)
+
     device_family, asset_id = service.describe_session(db, request.session_id)
 
     def _log(*, success: int = 0, failed: int = 0, error: str = None):

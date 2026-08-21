@@ -12,14 +12,15 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import(
-    get_current_user,
+from app.core.dependencies import (
     require_permission,
+    assert_session_access,
     check_quota_available,
-    consume_quota_on_success
-    )
-    
-from app.models import User
+    consume_quota_on_success,
+)
+
+from app.models import User, AuditSession
+from app.models.audit import DeviceType
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 
 from .service import WindowsHardeningService
@@ -41,6 +42,13 @@ class SingleFixRequest(BaseModel):
     transport: str = Field("ntlm", pattern="^(ntlm|kerberos|credssp|basic)$")
     check_id: str = Field(..., description="CIS check ID to fix")
     parameters: Dict[str, str] = Field(default_factory=dict)
+    verify_ssl: Optional[bool] = Field(
+        None,
+        description=(
+            "Validate the WinRM TLS certificate. Omit to use the server default "
+            "(WINRM_VERIFY_SSL, off by default for self-signed listeners)."
+        ),
+    )
 
     class Config:
         json_schema_extra = {
@@ -61,6 +69,26 @@ router = APIRouter(
     prefix="/api/hardening/windows",
     tags=["Hardening - Windows Server"],
 )
+
+
+def _assert_windows_session(db: Session, session_id: Optional[int], current_user: User):
+    """
+    Authorize a session before hardening writes to its results.
+
+    A fix reports success by flipping that session's AuditResult rows to PASS,
+    so an unchecked session_id let any user with HARDENING write rewrite another
+    user's audit findings. Also refuses sessions from another device family,
+    whose check numbers mean something different.
+    """
+    if session_id is None:
+        return
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    assert_session_access(session, current_user)
+    if session.device_type != DeviceType.WINDOWS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Session {session_id} is not a Windows audit session",
+        )
 
 
 class WindowsPreviewRequest(BaseModel):
@@ -115,13 +143,17 @@ def preview_windows_hardening(
         "commands": commands,
         "required_parameters": required,
         "optional_parameters": optional,
+        # Default values keyed by parameter name — FixSingleModal pre-fills the
+        # optional inputs from this, so empty strings are never submitted.
+        # Without it the UI rendered "PARAM = undefined".
+        "parameter_defaults": dict(get_windows_check_defaults(request.check_id)),
         "warnings": warnings,
         "auto_fixable": is_windows_check_auto_fixable(request.check_id),
     }
 
 
 @router.post("/execute-single")
-async def execute_single_fix(
+def execute_single_fix(
     http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
@@ -132,6 +164,11 @@ async def execute_single_fix(
     """
     Execute hardening for a single CIS check.
 
+    Deliberately a sync `def`: every call below is blocking (WinRM connect with
+    retry sleeps, then a PowerShell round-trip per statement). As `async def`
+    that ran on the event loop and stalled every other request for the length of
+    the fix; sync handlers get FastAPI's threadpool instead.
+
     **Permissions:** Requires HARDENING write permission
     """
     consume_quota = consume_quota_on_success("harden")
@@ -139,6 +176,7 @@ async def execute_single_fix(
     # and refreshing it inside an exception handler (after a failed flush)
     # raises PendingRollbackError, masking the real error.
     user_id = current_user.id
+    _assert_windows_session(db, request.session_id, current_user)
     try:
         result = WindowsHardeningService.execute_single_fix(
             db=db,
@@ -150,6 +188,7 @@ async def execute_single_fix(
             parameters=request.parameters,
             winrm_port=request.winrm_port,
             transport=request.transport,
+            verify_ssl=request.verify_ssl,
         )
 
         consume_quota(http_request)

@@ -6,17 +6,18 @@ RESTful endpoints for CIS Windows Server security auditing.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import (get_current_user,
+from app.core.dependencies import (
     require_permission,
     assert_session_access,
-    require_quota,
+    owner_scope,
     consume_quota_on_success,
-    check_quota_available)
+    check_quota_available,
+)
 
 from app.models import User, log_action
 
@@ -52,6 +53,13 @@ class WindowsAuditRequest(BaseModel):
     job_name: Optional[str] = Field(
         None, max_length=200,
         description="Optional human-readable label for this run"
+    )
+    verify_ssl: Optional[bool] = Field(
+        None,
+        description=(
+            "Validate the WinRM TLS certificate. Omit to use the server default "
+            "(WINRM_VERIFY_SSL, off by default for self-signed listeners)."
+        ),
     )
 
     class Config:
@@ -89,16 +97,22 @@ class WindowsAuditSessionResponse(BaseModel):
 
 
 class WindowsAuditResultResponse(BaseModel):
-    """Individual CIS check result."""
+    """Individual CIS check result.
+
+    Every field except ``id`` and ``status`` is nullable in ``audit_results``
+    (rows are also written by other code paths), so they are Optional here.
+    Declaring them required turned a missing value into a ResponseValidationError
+    — a 500 on a read endpoint — instead of returning the row.
+    """
 
     id: int
-    check_number: str
-    check_title: str
-    severity: str
-    level: str
+    check_number: Optional[str] = None
+    check_title: Optional[str] = None
+    severity: Optional[str] = None
+    level: Optional[str] = None
     status: str
     evidence_snippet: Optional[str] = None
-    checked_at: str
+    checked_at: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -138,6 +152,7 @@ def execute_windows_audit(
             transport=audit_request.transport,
             profile=audit_request.profile,
             job_name=audit_request.job_name,
+            verify_ssl=audit_request.verify_ssl,
         )
 
         summary = WindowsAuditService.get_session_summary(db, session.id)
@@ -221,13 +236,18 @@ def execute_windows_audit(
 
 @router.get("/sessions", response_model=List[WindowsAuditSessionResponse])
 def list_audit_sessions(
-    limit: int = 50,
-    offset: int = 0,
+    # Bounded at the edge: a negative LIMIT/OFFSET is a Postgres error, which
+    # surfaced as an opaque 500 on a read endpoint.
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
-    limit = min(limit, 100)
-    sessions = WindowsAuditService.get_all_sessions(db, limit, offset)
+    # Non-admins see only their own sessions — the listing counterpart of the
+    # assert_session_access check on the detail endpoint.
+    sessions = WindowsAuditService.get_all_sessions(
+        db, limit, offset, owner_id=owner_scope(current_user)
+    )
     summaries = [WindowsAuditService.get_session_summary(db, s.id) for s in sessions]
     return [s for s in summaries if s]
 
@@ -237,7 +257,11 @@ def get_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
-    return {"total": WindowsAuditService.get_sessions_count(db)}
+    return {
+        "total": WindowsAuditService.get_sessions_count(
+            db, owner_id=owner_scope(current_user)
+        )
+    }
 
 
 @router.get("/sessions/{session_id}", response_model=WindowsAuditSessionResponse)
@@ -276,6 +300,7 @@ def get_audit_results(
             "check_title": r.check_title,
             "severity": r.severity,
             "level": r.level or "L1",
+            # status is NOT NULL in the schema, so it stays a required field.
             "status": r.status.value,
             "evidence_snippet": r.evidence_snippet,
             "checked_at": r.checked_at.isoformat() if r.checked_at else None,
@@ -290,7 +315,7 @@ def get_audit_results(
 )
 def get_asset_audit_history(
     asset_id: int,
-    limit: int = 10,
+    limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
@@ -303,7 +328,9 @@ def get_asset_audit_history(
             detail=f"Asset {asset_id} not found",
         )
 
-    sessions = WindowsAuditService.get_asset_audit_history(db, asset_id, limit)
+    sessions = WindowsAuditService.get_asset_audit_history(
+        db, asset_id, limit, owner_id=owner_scope(current_user)
+    )
     summaries = [WindowsAuditService.get_session_summary(db, s.id) for s in sessions]
     return [s for s in summaries if s]
 

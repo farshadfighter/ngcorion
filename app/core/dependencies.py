@@ -7,6 +7,8 @@ Provides FastAPI dependency functions for:
 - Role-based access control
 - License quota enforcement
 """
+from typing import Optional
+
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, ExpiredSignatureError, jwt
@@ -153,6 +155,19 @@ def assert_session_access(session, current_user: User):
             detail="Audit session not found",
         )
     return session
+
+
+def owner_scope(current_user: User) -> Optional[int]:
+    """
+    The user id a *list* query must be filtered by, or None for admins.
+
+    The list endpoints are the other half of assert_session_access: without this
+    filter a non-admin could not open someone else's session but could still
+    enumerate them (target IPs, job names, compliance scores) from the listing.
+    """
+    if current_user.role.value == "admin":
+        return None
+    return current_user.id
 
 
 def require_permission(module: str, permission_type: str):

@@ -4,9 +4,13 @@ Database configuration and session management.
 Provides SQLAlchemy engine, session factory, and database dependency
 for FastAPI endpoints.
 """
+import logging
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 # Create database engine with connection pooling
 # pool_size: Number of permanent connections to keep
@@ -50,3 +54,23 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def ensure_session_usable(db) -> None:
+    """
+    Recover a session that a failed flush left in pending-rollback state.
+
+    Error handlers routinely run right after a DB error (a value too long for a
+    column, a constraint violation). Without this rollback the next statement —
+    the one writing the failure state, or the audit-log entry — raises
+    PendingRollbackError, which replaces the real error in the HTTP 500 and
+    loses the record of what happened.
+
+    Rolls back only an already-doomed transaction, so calling it on the success
+    path is a no-op.
+    """
+    try:
+        if not db.is_active:
+            db.rollback()
+    except Exception as exc:  # noqa: BLE001 - recovery is best-effort
+        logger.warning("rollback of the doomed session failed: %s", exc)

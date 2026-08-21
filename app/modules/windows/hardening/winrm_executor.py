@@ -48,9 +48,23 @@ def _validate_windows_parameters(parameters: Dict[str, str]) -> Optional[str]:
                     return f"Parameter {name}: value '{value}' not in {allowed}"
                 continue
             try:
-                int(value)
+                number = int(value)
             except ValueError:
                 return f"Parameter {name}: '{value}' is not a number"
+            # The UI advertises min_value/max_value but only the browser was
+            # enforcing them, so an out-of-range value reached the host —
+            # `net accounts /maxpwage:0` means "never expires", the opposite of
+            # what the CIS control asks for.
+            if meta.min_value is not None and number < meta.min_value:
+                return (
+                    f"Parameter {name}: {number} is below the minimum "
+                    f"{meta.min_value}"
+                )
+            if meta.max_value is not None and number > meta.max_value:
+                return (
+                    f"Parameter {name}: {number} is above the maximum "
+                    f"{meta.max_value}"
+                )
         else:
             for bad in _UNSAFE_TEXT_CHARS:
                 if bad in value:
@@ -237,10 +251,18 @@ class WindowsWinRMExecutor:
                 stderr = result.std_err.decode("utf-8", errors="replace").strip()
 
                 if result.status_code != 0 and not stdout:
+                    # Nothing usable came back and the command failed. The
+                    # stderr-less case used to return "(ok)", reporting the
+                    # statement as executed — for a template without a verify
+                    # statement that is enough to call the fix a success.
                     if stderr:
                         raise RuntimeError(f"PowerShell error: {stderr[:300]}")
-                    return "(ok)"
+                    raise RuntimeError(
+                        f"PowerShell exited {result.status_code} with no output"
+                    )
 
+                # A non-zero exit that still produced stdout keeps its output:
+                # verification reads the PASS/FAIL the script printed.
                 return stdout if stdout else "(ok)"
 
             except RuntimeError:
@@ -471,6 +493,7 @@ class WindowsHardeningBatchExecutor:
         port: int = 5986,
         max_retries: int = 3,
         transport: str = "ntlm",
+        verify_ssl: bool = False,
     ):
         self.ip = ip
         self.username = username
@@ -478,6 +501,7 @@ class WindowsHardeningBatchExecutor:
         self.port = port
         self.max_retries = max_retries
         self.transport = transport
+        self.verify_ssl = verify_ssl
 
     def _make_executor(self) -> WindowsWinRMExecutor:
         return WindowsWinRMExecutor(
@@ -487,6 +511,7 @@ class WindowsHardeningBatchExecutor:
             port=self.port,
             max_retries=self.max_retries,
             transport=self.transport,
+            verify_ssl=self.verify_ssl,
         )
 
     def execute_auto_harden(

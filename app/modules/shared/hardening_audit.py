@@ -11,6 +11,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.database import ensure_session_usable as _ensure_session_usable
 from app.models import (
     Asset,
     AuditResult,
@@ -32,17 +33,11 @@ def ensure_session_usable(db: Session) -> None:
     after a DB error (e.g. a value too long for a column). Without this
     rollback, the first query here raises PendingRollbackError — which used to
     replace the real error in the HTTP 500 and lose the audit-log entry.
-    Rolls back only an already-doomed transaction, so calling it on the
-    success path is a no-op.
+
+    Re-exported from app.core.database so the audit services share the one
+    implementation; kept here as a name because every hardening caller uses it.
     """
-    try:
-        if not db.is_active:
-            db.rollback()
-    except Exception as e:
-        logger.warning(
-            "[Hardening] rollback of the doomed session failed before audit "
-            f"logging: {e}"
-        )
+    _ensure_session_usable(db)
 
 
 def _resolve_audit_result_context(db: Session, audit_result_id: Optional[int]):

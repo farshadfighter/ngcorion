@@ -14,36 +14,60 @@ names line up 1:1 with the parsers in ``rules.py``:
     SECURITY_POLICY   -> [System Access]  (Section 1)
     USER_RIGHTS       -> [Privilege Rights] (Section 2.2)
     AUDIT_POLICY      -> auditpol CSV       (Section 17)
-    REGISTRY          -> {path: {props}}    (Section 2.3 / 18)
+    REGISTRY          -> {path: {named props only}} (Section 2.3 / 18)
     FIREWALL_PROFILES -> Get-NetFirewallProfile (Section 9)
     LOCAL_USERS       -> Guest account status (2.3.1.1)
 """
 
 from typing import Dict
 
-from .rules import get_registry_paths
+from .rules import get_registry_properties
 
 
 def _registry_collection_script() -> str:
     """
-    Build the REGISTRY collection PowerShell from the single list of paths the
-    rule engine reads (rules.get_registry_paths). Emits a hashtable of
-    {full_path: <json string of properties>} so rules._reg can look up any
-    (path, property) pair. -LiteralPath avoids wildcard/bracket surprises.
+    Build the REGISTRY collection PowerShell from the (path -> property names)
+    map the rule engine reads (rules.get_registry_properties). Emits a hashtable
+    of {full_path: <json string of the requested properties>} so rules._reg can
+    look up any (path, property) pair. -LiteralPath avoids wildcard/bracket
+    surprises.
+
+    Only the named values are read. Fetching whole keys used to sweep up
+    neighbouring secrets — Winlogon is audited for AutoAdminLogon and also holds
+    DefaultPassword/DefaultUserName in cleartext when autologon is configured,
+    which then landed in audit_sessions.turbo_dump.
+
+    The spec travels as a here-string (one "path=prop|prop" line each) rather
+    than a PowerShell hashtable literal: same data, ~1KB less quoting overhead
+    on a script that is already a few KB.
     """
-    paths = get_registry_paths()
-    # Single-quote each path; none contain a single quote.
-    ps_array = ", ".join("'" + p.replace("'", "''") + "'" for p in paths)
+    spec_lines = [
+        f"{path}={'|'.join(props)}"
+        for path, props in get_registry_properties().items()
+    ]
+    spec = "\n".join(spec_lines)
     return (
-        f"$paths = @({ps_array}); "
+        "$spec = @'\n"
+        f"{spec}\n"
+        "'@\n"
         "$result = @{}; "
-        "foreach ($p in $paths) { "
+        "foreach ($line in ($spec -split \"`r?`n\")) { "
+        "    if (-not $line.Trim()) { continue } "
+        "    $i = $line.IndexOf('='); "
+        "    if ($i -lt 1) { continue } "
+        "    $p = $line.Substring(0, $i); "
+        "    $names = $line.Substring($i + 1) -split '\\|'; "
         "    try { "
         "        if (Test-Path -LiteralPath $p) { "
-        "            $props = Get-ItemProperty -LiteralPath $p -ErrorAction SilentlyContinue; "
+        "            $props = Get-ItemProperty -LiteralPath $p -Name $names "
+        "                -ErrorAction SilentlyContinue; "
         "            if ($props) { "
-        "                $result[$p] = ($props | Select-Object * -ExcludeProperty PS* | "
-        "                    ConvertTo-Json -Compress -Depth 3) "
+        "                $o = @{}; "
+        "                foreach ($n in $names) { "
+        "                    $pp = $props.PSObject.Properties[$n]; "
+        "                    if ($pp) { $o[$n] = $pp.Value } "
+        "                } "
+        "                $result[$p] = ($o | ConvertTo-Json -Compress -Depth 3) "
         "            } "
         "        } "
         "    } catch {} "
@@ -104,11 +128,26 @@ def get_windows_audit_commands() -> Dict[str, str]:
     commands["REGISTRY"] = _registry_collection_script()
 
     # ---- Firewall Profiles (Section 9) ------------------------------ #
+    # Every flag here is a uint16 enum (GpoBoolean: True/False/NotConfigured),
+    # not a boolean — see MSFT_NetFirewallProfile. ConvertTo-Json serialises an
+    # enum as its *integer*, and the published class documents no ValueMap, so
+    # a disabled profile arrived as some non-zero number and read as "on".
+    # Casting to [string] emits the member name ("True"/"False"/"NotConfigured",
+    # "Block"/"Allow"), which is unambiguous whatever the numbering is.
+    _enum_fields = [
+        "Enabled", "DefaultInboundAction", "DefaultOutboundAction",
+        "NotifyOnListen", "AllowLocalFirewallRules", "AllowLocalIPsecRules",
+        "LogAllowed", "LogBlocked",
+        # uint64: MAXUINT64 means "Not Configured", so keep it exact.
+        "LogMaxSizeKilobytes",
+    ]
+    _projection = ", ".join(
+        ["Name"]
+        + [f"@{{n='{f}';e={{[string]$_.{f}}}}}" for f in _enum_fields]
+        + ["LogFileName"]
+    )
     commands["FIREWALL_PROFILES"] = (
-        "Get-NetFirewallProfile -All | "
-        "Select-Object Name, Enabled, DefaultInboundAction, DefaultOutboundAction, "
-        "NotifyOnListen, AllowLocalFirewallRules, AllowLocalIPsecRules, "
-        "LogAllowed, LogBlocked, LogFileName, LogMaxSizeKilobytes | "
+        f"Get-NetFirewallProfile -All | Select-Object {_projection} | "
         "ConvertTo-Json -Compress"
     )
 

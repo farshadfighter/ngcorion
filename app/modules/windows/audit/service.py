@@ -8,8 +8,8 @@ Orchestrates the end-to-end Windows Server CIS audit workflow:
   4. Redact sensitive values from the dump
   5. Detect OS version and filter rules
   6. Evaluate CIS rules against the dump
-  7. Update session with compliance metrics
-  8. Bulk-insert individual AuditResult rows
+  7. Bulk-insert individual AuditResult rows
+  8. Update session with compliance metrics (one commit marks it completed)
 """
 
 import logging
@@ -20,6 +20,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
+from app.core.database import ensure_session_usable
 from app.models import AuditResult, AuditSession, Asset
 from app.models.audit import CheckStatus, DeviceType
 
@@ -120,8 +122,12 @@ class WindowsAuditService:
         for finding in findings:
             # Manual controls are stored as NOT_APPLICABLE (surfaced as
             # "skipped" by the API); they are never scored as pass/fail.
+            # Checks whose data never came back are stored as ERROR — scoring
+            # them either way would be a guess.
             if finding.get("manual"):
                 status = CheckStatus.NOT_APPLICABLE
+            elif finding.get("error"):
+                status = CheckStatus.ERROR
             elif finding["compliant"]:
                 status = CheckStatus.PASS
             else:
@@ -171,6 +177,7 @@ class WindowsAuditService:
         transport: str = "ntlm",
         profile: str = "L1",
         job_name: Optional[str] = None,
+        verify_ssl: Optional[bool] = None,
     ) -> AuditSession:
         """
         Execute a CIS Windows Server compliance audit.
@@ -185,6 +192,8 @@ class WindowsAuditService:
             transport:         WinRM transport: ntlm, kerberos, credssp, basic
             profile:           CIS profile – "L1" or "FULL"
             job_name:          Optional human-readable label for this audit run
+            verify_ssl:        Validate the WinRM TLS certificate; None uses
+                               settings.WINRM_VERIFY_SSL
 
         Returns:
             AuditSession with status="completed" and compliance metrics set.
@@ -198,6 +207,8 @@ class WindowsAuditService:
                 f"Asset '{asset.asset_name}' has no IP address configured"
             )
         target_ip = asset.ip_address
+        if verify_ssl is None:
+            verify_ssl = settings.WINRM_VERIFY_SSL
 
         # 2. Create session
         session = AuditSession(
@@ -223,6 +234,7 @@ class WindowsAuditService:
                     password=windows_password,
                     port=winrm_port,
                     transport=transport,
+                    verify_ssl=verify_ssl,
                 ) as client:
                     raw_dump = client.collect_audit_data()
 
@@ -248,29 +260,41 @@ class WindowsAuditService:
 
             summary = report["summary"]
 
-            # 7. Persist session metrics
-            session.status = "completed"
-            session.completed_at = datetime.now(timezone.utc)
-            session.total_checks = summary["total_rules_scored"]
-            session.passed_checks = summary["passed_scored"]
-            session.failed_checks = summary["failed_scored"]
-            session.error_checks = 0
-            session.compliance_pct = summary["compliance_pct"]
-            session.weighted_compliance_pct = summary["weighted_compliance_pct"]
-            session.turbo_dump = clean_dump[:100000]  # Limit size (matches Apache/Linux)
-            db.commit()
-
-            # 8. Persist individual check results
+            # 7. Persist individual check results *before* the session is
+            #    marked completed: a failure here must not leave a "completed"
+            #    session whose counters have no rows behind them.
             with WindowsAuditService._timed_op("Bulk insert audit results"):
                 WindowsAuditService._bulk_insert_results(
                     db, session.id, report["findings"]
                 )
 
+            # 8. Persist session metrics (the commit that marks it completed)
+            session.status = "completed"
+            session.completed_at = datetime.now(timezone.utc)
+            session.total_checks = summary["total_rules_scored"]
+            session.passed_checks = summary["passed_scored"]
+            session.failed_checks = summary["failed_scored"]
+            # Checks that could not be evaluated (a section failed to collect).
+            session.error_checks = summary["error_checks"]
+            session.compliance_pct = summary["compliance_pct"]
+            session.weighted_compliance_pct = summary["weighted_compliance_pct"]
+            session.turbo_dump = clean_dump[:100000]  # Limit size (matches Apache/Linux)
+            db.commit()
+
             db.refresh(session)
             logger.info(
                 f"Windows audit completed for asset {asset_id} ({target_ip}): "
-                f"{summary['compliance_pct']}% compliance"
+                f"{summary['compliance_pct']}% compliance "
+                f"({summary['passed_scored']}/{summary['total_rules_scored']} scored, "
+                f"{summary['error_checks']} not evaluated, "
+                f"{summary['manual_checks']} manual)"
             )
+            if summary["error_checks"]:
+                logger.warning(
+                    f"Windows audit for asset {asset_id} could not evaluate "
+                    f"{summary['error_checks']} checks — some data did not "
+                    "collect; compliance is computed over the rest"
+                )
 
             # Risk recalculation trigger
             try:
@@ -292,6 +316,11 @@ class WindowsAuditService:
             return session
 
         except Exception as exc:
+            # A DB-layer failure (e.g. an over-long value) leaves the
+            # transaction doomed: without this rollback the commit below raises
+            # PendingRollbackError, replacing the real error and leaving the
+            # session stuck at "running".
+            ensure_session_usable(db)
             session.status = "failed"
             session.completed_at = datetime.now(timezone.utc)
             session.connection_error = WindowsAuditService._sanitize_error(exc)
@@ -320,11 +349,20 @@ class WindowsAuditService:
 
     @staticmethod
     def get_all_sessions(
-        db: Session, limit: int = 50, offset: int = 0
+        db: Session,
+        limit: int = 50,
+        offset: int = 0,
+        owner_id: Optional[int] = None,
     ) -> List[AuditSession]:
+        """``owner_id`` restricts the listing to one user's sessions (None = all,
+        for admins). See app.core.dependencies.owner_scope."""
+        query = db.query(AuditSession).filter(
+            AuditSession.device_type == DeviceType.WINDOWS
+        )
+        if owner_id is not None:
+            query = query.filter(AuditSession.user_id == owner_id)
         return (
-            db.query(AuditSession)
-            .filter(AuditSession.device_type == DeviceType.WINDOWS)
+            query
             .order_by(AuditSession.started_at.desc())
             .offset(offset)
             .limit(limit)
@@ -332,23 +370,29 @@ class WindowsAuditService:
         )
 
     @staticmethod
-    def get_sessions_count(db: Session) -> int:
-        return (
-            db.query(AuditSession)
-            .filter(AuditSession.device_type == DeviceType.WINDOWS)
-            .count()
+    def get_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
+        query = db.query(AuditSession).filter(
+            AuditSession.device_type == DeviceType.WINDOWS
         )
+        if owner_id is not None:
+            query = query.filter(AuditSession.user_id == owner_id)
+        return query.count()
 
     @staticmethod
     def get_asset_audit_history(
-        db: Session, asset_id: int, limit: int = 10
+        db: Session,
+        asset_id: int,
+        limit: int = 10,
+        owner_id: Optional[int] = None,
     ) -> List[AuditSession]:
+        query = db.query(AuditSession).filter(
+            AuditSession.asset_id == asset_id,
+            AuditSession.device_type == DeviceType.WINDOWS,
+        )
+        if owner_id is not None:
+            query = query.filter(AuditSession.user_id == owner_id)
         return (
-            db.query(AuditSession)
-            .filter(
-                AuditSession.asset_id == asset_id,
-                AuditSession.device_type == DeviceType.WINDOWS,
-            )
+            query
             .order_by(AuditSession.started_at.desc())
             .limit(limit)
             .all()

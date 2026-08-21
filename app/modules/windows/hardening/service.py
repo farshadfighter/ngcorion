@@ -15,8 +15,13 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models import Asset, AuditResult, AuditSession
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.windows.audit.rules import (
+    DEFAULT_SEVERITY_WEIGHT,
+    SEVERITY_WEIGHTS,
+)
 
 from .command_templates import get_all_supported_checks, get_windows_hardening_template
 from .parameter_metadata import (
@@ -34,8 +39,13 @@ logger = logging.getLogger(__name__)
 
 def _recompute_session_stats(db: Session, session_id: int) -> None:
     """
-    Refresh AuditSession pass/fail counters and compliance_pct after hardening
-    flips AuditResult rows to PASS, so the sessions list stays consistent.
+    Refresh AuditSession counters, compliance_pct and weighted_compliance_pct
+    after hardening flips AuditResult rows to PASS, so the sessions list stays
+    consistent.
+
+    Both percentages are recomputed together: updating only the simple one left
+    the weighted score frozen at its audit-time value, so a session could report
+    95% compliance beside 41% weighted compliance.
     """
     session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
     if not session:
@@ -51,6 +61,23 @@ def _recompute_session_stats(db: Session, session_id: int) -> None:
     scored = passed + failed
     if scored > 0:
         session.compliance_pct = round(100.0 * passed / scored, 2)
+
+    # Same weighting evaluate_compliance used, over the rows it scored:
+    # PASS and FAIL only (manual/NOT_APPLICABLE and ERROR are unscored).
+    weighted_rows = [
+        r for r in scored_rows
+        if r.status in (CheckStatus.PASS, CheckStatus.FAIL)
+    ]
+    total_weight = sum(
+        SEVERITY_WEIGHTS.get(r.severity, DEFAULT_SEVERITY_WEIGHT)
+        for r in weighted_rows
+    )
+    if total_weight > 0:
+        passed_weight = sum(
+            SEVERITY_WEIGHTS.get(r.severity, DEFAULT_SEVERITY_WEIGHT)
+            for r in weighted_rows if r.status == CheckStatus.PASS
+        )
+        session.weighted_compliance_pct = round(100.0 * passed_weight / total_weight, 2)
 
 
 class WindowsHardeningService:
@@ -173,6 +200,7 @@ class WindowsHardeningService:
         windows_password: str,
         winrm_port: int = 5986,
         transport: str = "ntlm",
+        verify_ssl: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """
         Execute automatic hardening using CIS default values only.
@@ -211,6 +239,9 @@ class WindowsHardeningService:
             password=windows_password,
             port=winrm_port,
             transport=transport,
+            verify_ssl=(
+                settings.WINRM_VERIFY_SSL if verify_ssl is None else verify_ssl
+            ),
         )
 
         result = executor.execute_auto_harden(failed_check_ids)
@@ -252,6 +283,7 @@ class WindowsHardeningService:
         checks: List[Dict[str, Any]],
         winrm_port: int = 5986,
         transport: str = "ntlm",
+        verify_ssl: Optional[bool] = None,
         create_backup: bool = False,
         user_id: Optional[int] = None,
     ) -> Dict[str, Any]:
@@ -259,7 +291,17 @@ class WindowsHardeningService:
 
         ``create_backup`` snapshots the security/audit policy first and records
         it on the Backups page.
+
+        The caller is responsible for authorizing ``session_id`` (the Harden All
+        router does this); this only guarantees the session exists and belongs to
+        the Windows family, so results are never flipped on a foreign session.
         """
+        session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+        if not session:
+            raise ValueError(f"Session {session_id} not found")
+        if session.device_type != DeviceType.WINDOWS:
+            raise ValueError(f"Session {session_id} is not a Windows audit session")
+
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
             raise ValueError(f"Asset {asset_id} not found")
@@ -277,6 +319,9 @@ class WindowsHardeningService:
             password=windows_password,
             port=winrm_port,
             transport=transport,
+            verify_ssl=(
+                settings.WINRM_VERIFY_SSL if verify_ssl is None else verify_ssl
+            ),
         )
 
         result = executor.execute_selected(checks, create_backup=create_backup)
@@ -336,6 +381,7 @@ class WindowsHardeningService:
         parameters: Dict[str, str] = None,
         winrm_port: int = 5986,
         transport: str = "ntlm",
+        verify_ssl: Optional[bool] = None,
         session_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute hardening for a single check with given parameters."""
@@ -353,6 +399,9 @@ class WindowsHardeningService:
             password=windows_password,
             port=winrm_port,
             transport=transport,
+            verify_ssl=(
+                settings.WINRM_VERIFY_SSL if verify_ssl is None else verify_ssl
+            ),
         )
 
         result = executor.execute_single(check_id, parameters)

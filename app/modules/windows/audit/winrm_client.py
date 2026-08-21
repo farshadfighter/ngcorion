@@ -22,12 +22,54 @@ from typing import Dict, Optional
 logger = logging.getLogger(__name__)
 
 
-# Patterns to redact from audit output before storing
+# Value/setting names that carry a credential. Matched as whole tokens, never
+# as substrings: audited names legitimately end in "password"
+# (ClearTextPassword, MaximumPasswordAge, LimitBlankPasswordUse,
+# UseLogonCredential). A substring match redacted ClearTextPassword's value,
+# which made check 1.1.7 report a false NON-COMPLIANT on every compliant host.
+_SECRET_NAMES = (
+    # Autologon credentials, stored in cleartext beside AutoAdminLogon.
+    "DefaultPassword", "AltDefaultPassword",
+    "DefaultUserName", "AltDefaultUserName",
+    "DefaultDomainName", "AltDefaultDomainName",
+    # Generic names that only ever hold a secret.
+    "Password", "Passwd", "Pwd", "Secret", "Credential",
+    "ApiKey", "PrivateKey", "ConnectionString",
+)
+# Longest first so an alternation never settles for a shorter prefix.
+_SECRET_ALT = "|".join(sorted(_SECRET_NAMES, key=len, reverse=True))
+
+# Characters a redacted value may consume. Deliberately excludes everything that
+# holds the dump's structure together — " \ } ] , — because the REGISTRY section
+# is JSON carrying JSON-encoded property blobs: eating a closing quote or an
+# escape backslash corrupted the whole key, after which every check reading it
+# reported a false NON-COMPLIANT.
+_REDACT_VALUE = r"[^\s'\"\\;,}\]\n]+"
+
 _REDACT_PATTERNS = [
-    (re.compile(r"(password\s*[=:]\s*)'?[^\s';\n]+", re.I), r"\1<REDACTED>"),
-    (re.compile(r"(credential\s*[=:]\s*)'?[^\s';\n]+", re.I), r"\1<REDACTED>"),
-    (re.compile(r"(secret\s*[=:]\s*)'?[^\s';\n]+", re.I), r"\1<REDACTED>"),
-    (re.compile(r"(-Password\s+)'?[^\s';\n]+", re.I), r"\1<REDACTED>"),
+    # Plain text / secedit INF: "Name = value", "Name: 'value'". The name must
+    # start the token (no letter or digit before it) so ClearTextPassword and
+    # friends are left alone. The opening quote is kept in group 1 so a quoted
+    # value stays balanced as '<REDACTED>'.
+    (
+        re.compile(r"(?<![A-Za-z0-9_])((?:" + _SECRET_ALT + r")\s*[=:]\s*'?)" + _REDACT_VALUE, re.I),
+        r"\1<REDACTED>",
+    ),
+    # PowerShell argument form: -Password value
+    (
+        re.compile(r"(-(?:" + _SECRET_ALT + r")\s+'?)" + _REDACT_VALUE, re.I),
+        r"\1<REDACTED>",
+    ),
+    # JSON, plain "Name":"value" and escaped \"Name\":\"value\" (the registry
+    # section nests JSON inside JSON). The value class stops at the first quote
+    # or backslash, leaving the structure after it intact.
+    (
+        re.compile(
+            r'(\\?"(?:' + _SECRET_ALT + r')\\?"\s*:\s*\\?")[^"\\]*',
+            re.I,
+        ),
+        r"\1<REDACTED>",
+    ),
 ]
 
 

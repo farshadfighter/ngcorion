@@ -51,6 +51,13 @@ class Settings(BaseSettings):
                 return [self.BACKEND_CORS_ORIGINS]
         return self.BACKEND_CORS_ORIGINS
 
+    # WinRM (Windows audit + hardening)
+    # Validate the target's WinRM HTTPS certificate. Defaults to False because
+    # Windows ships a self-signed WinRM listener; set WINRM_VERIFY_SSL=true once
+    # the fleet presents certificates a CA in the trust store can validate.
+    # A per-request verify_ssl in the API body overrides this.
+    WINRM_VERIFY_SSL: bool = False
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
