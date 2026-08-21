@@ -9,6 +9,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -93,6 +94,75 @@ def list_backups(
         ))
 
     return result
+
+
+class BackupAssetGroup(BaseModel):
+    asset_id: int
+    asset_name: Optional[str]
+    device_ip: Optional[str]
+    device_type: Optional[str]
+    backup_count: int
+    manual_count: int
+    hardening_count: int
+    last_backup_at: Optional[datetime]
+
+
+@router.get("/by-asset", response_model=List[BackupAssetGroup])
+def list_backups_by_asset(
+    search: Optional[str] = Query(None),
+    device_type: Optional[str] = Query(None),
+    current_user: User = Depends(require_permission("hardening", "read")),
+    db: Session = Depends(get_db),
+):
+    """One row per asset that has backups, with its counts and latest date.
+
+    Grouped in SQL rather than by paging through /api/backups and counting
+    client-side: that list caps at 500 rows, so on a large estate assets would
+    silently drop off the list.
+    """
+    query = db.query(
+        DeviceBackup.asset_id,
+        func.max(DeviceBackup.asset_name).label("asset_name"),
+        func.max(DeviceBackup.device_ip).label("device_ip"),
+        func.max(DeviceBackup.device_type).label("device_type"),
+        func.count(DeviceBackup.id).label("backup_count"),
+        func.sum(
+            case((DeviceBackup.source == "manual", 1), else_=0)
+        ).label("manual_count"),
+        func.sum(
+            case((DeviceBackup.source == "hardening", 1), else_=0)
+        ).label("hardening_count"),
+        func.max(DeviceBackup.created_at).label("last_backup_at"),
+    )
+
+    if device_type:
+        query = query.filter(DeviceBackup.device_type == device_type)
+    if search:
+        term = f"%{search.strip()}%"
+        query = query.filter(
+            (DeviceBackup.asset_name.ilike(term))
+            | (DeviceBackup.device_ip.ilike(term))
+        )
+
+    rows = (
+        query.group_by(DeviceBackup.asset_id)
+        .order_by(func.max(DeviceBackup.created_at).desc())
+        .all()
+    )
+
+    return [
+        BackupAssetGroup(
+            asset_id=row.asset_id,
+            asset_name=row.asset_name,
+            device_ip=row.device_ip,
+            device_type=row.device_type,
+            backup_count=int(row.backup_count or 0),
+            manual_count=int(row.manual_count or 0),
+            hardening_count=int(row.hardening_count or 0),
+            last_backup_at=row.last_backup_at,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/{backup_id}", response_model=BackupDetail)

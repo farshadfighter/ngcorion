@@ -34,6 +34,7 @@ Schema notes (differ from the original design doc):
 
 import asyncio
 import logging
+import re
 from datetime import datetime
 
 from sqlalchemy import func
@@ -60,15 +61,18 @@ logger = logging.getLogger(__name__)
 # Fallbacks used only when the corresponding risk_settings row is missing
 DEFAULT_SETTINGS = {
     # Factor weights (must sum to 100)
-    "criticality_weight": 20.0,      # AC
-    "asset_risk_weight": 20.0,       # AR
-    "zone_weight": 15.0,             # AZ
-    "open_port_weight": 10.0,        # OP
-    "audit_weight": 25.0,            # AF
-    "hardening_weight": 10.0,        # HF
+    # Spec section 4: the four scored components must sum to 100.
+    "criticality_weight": 25.0,      # AC
+    "zone_weight": 20.0,             # AZ
+    "open_port_weight": 15.0,        # OP
+    "audit_weight": 40.0,            # AF
+    # Kept at 0: still computed and shown in the breakdown, but outside the
+    # spec's formula (see STEP 8).
+    "asset_risk_weight": 0.0,        # AR
+    "hardening_weight": 0.0,         # HF
     # Finding severity weights (audit failures + hardening fixes found)
     "severity_low_weight": 1.0,
-    "severity_medium_weight": 4.0,
+    "severity_medium_weight": 3.0,
     "severity_high_weight": 7.0,
     "severity_critical_weight": 10.0,
     # Open-port severity weights (Standard/Low, Medium, High, Critical/Insecure)
@@ -77,7 +81,8 @@ DEFAULT_SETTINGS = {
     "port_severity_high_weight": 5.0,
     "port_severity_critical_weight": 10.0,
     # Open-port score normalization: OP = min(100, raw * factor)
-    "open_port_normalization_factor": 1.0,
+    # Spec section 7.4: Open Port Score = min(100, raw x 4)
+    "open_port_normalization_factor": 4.0,
     "unknown_zone_score": 50.0,
     "unknown_port_score": 50.0,
     "unknown_audit_score": 50.0,
@@ -150,10 +155,39 @@ class AssetRiskCalculationService:
     # Factor scores
     # ------------------------------------------------------------------
 
-    def _criticality_score(self, profile: AssetRiskProfile, settings: dict) -> float:
-        if profile.criticality_score is not None:
-            return float(profile.criticality_score)
-        level = (profile.criticality_level or "medium").strip().lower()
+    # asset_inventory.confidentiality_level -> criticality level. The asset's
+    # confidentiality is set once in Asset List (spec section 3.1), so it is
+    # what the risk engine scores unless a risk profile overrides it.
+    # ConfidentialityLevelEnum (app/models/enums.py) -> criticality level.
+    _CONFIDENTIALITY_TO_CRITICALITY = {
+        "public": "low",
+        "internal": "medium",
+        "confidential": "high",
+        "critical": "critical",
+        # Imports sometimes carry the criticality words straight through.
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+    }
+
+    def _criticality_level(self, asset: Asset, profile: AssetRiskProfile):
+        """Returns (level, from_asset). An explicit profile wins; otherwise the
+        asset's own confidentiality is used so the value only has to be set in
+        one place."""
+        if not profile.criticality_is_default and profile.criticality_level:
+            return profile.criticality_level.strip().lower(), False
+
+        raw = getattr(asset, "confidentiality_level", None)
+        raw = getattr(raw, "value", raw)
+        mapped = self._CONFIDENTIALITY_TO_CRITICALITY.get(
+            str(raw or "").strip().lower()
+        )
+        if mapped:
+            return mapped, True
+
+        return (profile.criticality_level or "medium").strip().lower(), False
+
+    def _criticality_score(self, level: str, settings: dict) -> float:
         return float(settings.get(f"criticality_{level}_score",
                                   settings["criticality_medium_score"]))
 
@@ -172,12 +206,38 @@ class AssetRiskCalculationService:
                          settings["unknown_asset_risk_score"])
         ), False
 
-    def _zone_score(self, db: Session, profile: AssetRiskProfile, settings: dict):
-        """Returns (zone, zone_score, is_unknown)."""
+    @staticmethod
+    def _zone_key(name) -> str:
+        """Normalised zone name for matching across the two zone tables.
+
+        The asset form stores a free-text zone name while risk_zones is seeded
+        with fixed ones, so "Internet / Public", "internet/public" and
+        "Internet-Public" all have to resolve to the same zone.
+        """
+        return re.sub(r"[^a-z0-9]", "", str(name or "").lower())
+
+    def _zone_score(self, db: Session, asset: Asset, profile: AssetRiskProfile,
+                    settings: dict):
+        """Returns (zone, zone_score, is_unknown).
+
+        Spec section 3.1 says the zone comes from Asset Management. In practice
+        it is picked in the asset form and stored as text on
+        asset_inventory.asset_role, so an explicit risk profile wins and the
+        asset's own value is the fallback — that way a zone set once in Asset
+        List is what the risk engine scores, with no second place to maintain.
+        """
         if profile.zone_id is not None:
             zone = db.query(RiskZone).filter(RiskZone.id == profile.zone_id).first()
             if zone is not None:
                 return zone, float(zone.score), False
+
+        asset_zone = getattr(asset, "asset_role", None)
+        key = self._zone_key(asset_zone)
+        if key:
+            for zone in db.query(RiskZone).filter(RiskZone.status == "active").all():
+                if self._zone_key(zone.name) == key:
+                    return zone, float(zone.score), False
+
         return None, float(settings["unknown_zone_score"]), True
 
     def _open_port_score(self, db: Session, asset_id: int, settings: dict):
@@ -345,20 +405,23 @@ class AssetRiskCalculationService:
         return out
 
     def _risk_level(self, score: float, settings: dict) -> str:
-        """0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical.
+        """Spec section 10:
+            0 <= s < 20  low | 20 <= s < 40  medium | 40 <= s < 60  high
+            60 <= s < 80 very_high | 80 <= s <= 100 critical
 
-        Thresholds are exclusive lower bounds, so a score sitting exactly on a
-        boundary (20, 40, 60, 80) stays in the lower band.
+        Thresholds are *inclusive* lower bounds: a score sitting exactly on a
+        boundary belongs to the higher band, so 20 is medium and 80 is
+        critical (spec test 30.7).
         """
-        if score > float(settings["risk_level_critical_threshold"]):
+        if score >= float(settings["risk_level_critical_threshold"]):
             return "critical"
-        if score > float(settings["risk_level_high_threshold"]):
+        if score >= float(settings["risk_level_high_threshold"]):
+            return "very_high"
+        if score >= float(settings["risk_level_medium_threshold"]):
             return "high"
-        if score > float(settings["risk_level_medium_threshold"]):
+        if score >= float(settings["risk_level_low_threshold"]):
             return "medium"
-        if score > float(settings["risk_level_low_threshold"]):
-            return "low"
-        return "informational"
+        return "low"
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -408,12 +471,23 @@ class AssetRiskCalculationService:
                 )
                 db.add(profile)
                 db.flush()
-                incomplete_reasons.append("missing_criticality")
-            elif profile.criticality_is_default:
+
+            # STEP 4: criticality (AC) — from the asset's confidentiality
+            # unless the risk profile overrides it.
+            criticality_level, criticality_from_asset = self._criticality_level(
+                asset, profile
+            )
+            criticality_score = self._criticality_score(criticality_level, settings)
+
+            # Only genuinely unset criticality is incomplete: a value taken
+            # from the asset is a real answer, not a default.
+            if profile.criticality_is_default and not criticality_from_asset:
                 incomplete_reasons.append("missing_criticality")
 
-            # STEP 4: criticality (AC)
-            criticality_score = self._criticality_score(profile, settings)
+            # Keep the profile in step so the detail screen and the score agree.
+            if profile.criticality_level != criticality_level:
+                profile.criticality_level = criticality_level
+            profile.criticality_score = criticality_score
 
             # STEP 4b: asset's own risk level (AR)
             asset_risk_level, asset_risk_score, asset_risk_unknown = (
@@ -423,7 +497,9 @@ class AssetRiskCalculationService:
                 incomplete_reasons.append("missing_asset_risk")
 
             # STEP 5: zone
-            zone, zone_score, zone_unknown = self._zone_score(db, profile, settings)
+            zone, zone_score, zone_unknown = self._zone_score(
+                db, asset, profile, settings
+            )
             if zone_unknown:
                 incomplete_reasons.append("missing_zone")
 
@@ -443,8 +519,14 @@ class AssetRiskCalculationService:
             if audit["is_unknown"]:
                 incomplete_reasons.append("missing_audit")
 
-            # STEP 8: weighted final score
-            #   (AC*0.20)+(AR*0.20)+(AZ*0.15)+(OP*0.10)+(AF*0.25)+(HF*0.10)
+            # STEP 8: weighted final score — spec section 4:
+            #   Risk = 0.25*Criticality + 0.20*Zone + 0.15*OpenPort + 0.40*Audit
+            #
+            # AR (the asset's own risk_level) and HF (hardening fixes found)
+            # are still computed and stored for the breakdown, but carry no
+            # weight: the spec's four components must sum to 100 on their own,
+            # and hardening is meant to lower risk by resolving findings out of
+            # AF (spec section 9), not by contributing its own term.
             criticality_weight = float(settings["criticality_weight"])
             asset_risk_weight = float(settings["asset_risk_weight"])
             zone_weight = float(settings["zone_weight"])

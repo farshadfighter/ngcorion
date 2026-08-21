@@ -20,17 +20,19 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SETTINGS = [
-    # Factor weights (must sum to 100) - RiskScore =
-    # (AC*0.20)+(AR*0.20)+(AZ*0.15)+(OP*0.10)+(AF*0.25)+(HF*0.10)
-    ("criticality_weight", "20", "int", "AC: weight of asset criticality in the final risk score (%)"),
-    ("asset_risk_weight", "20", "int", "AR: weight of the asset's own risk level in the final risk score (%)"),
-    ("zone_weight", "15", "int", "AZ: weight of network zone exposure in the final risk score (%)"),
-    ("open_port_weight", "10", "int", "OP: weight of open-port exposure in the final risk score (%)"),
-    ("audit_weight", "25", "int", "AF: weight of audit findings in the final risk score (%)"),
-    ("hardening_weight", "10", "int", "HF: weight of hardening fixes found in the final risk score (%)"),
+    # Factor weights - spec section 4:
+    #   RiskScore = (AC*0.25)+(AZ*0.20)+(OP*0.15)+(AF*0.40)
+    # These four must sum to 100.
+    ("criticality_weight", "25", "int", "AC: weight of asset criticality in the final risk score (%)"),
+    ("zone_weight", "20", "int", "AZ: weight of network zone exposure in the final risk score (%)"),
+    ("open_port_weight", "15", "int", "OP: weight of open-port exposure in the final risk score (%)"),
+    ("audit_weight", "40", "int", "AF: weight of audit findings in the final risk score (%)"),
+    # Computed for the breakdown but outside the spec's formula, hence 0.
+    ("asset_risk_weight", "0", "int", "AR: asset's own risk level — shown in the breakdown, not weighted"),
+    ("hardening_weight", "0", "int", "HF: hardening fixes found — shown in the breakdown, not weighted"),
     # Per-severity weights for audit findings and hardening fixes found
     ("severity_low_weight", "1", "int", "Finding weight for low severity"),
-    ("severity_medium_weight", "4", "int", "Finding weight for medium severity"),
+    ("severity_medium_weight", "3", "int", "Finding weight for medium severity"),
     ("severity_high_weight", "7", "int", "Finding weight for high severity"),
     ("severity_critical_weight", "10", "int", "Finding weight for critical severity"),
     # Per-severity weights for open ports (a different scale from findings)
@@ -39,7 +41,7 @@ DEFAULT_SETTINGS = [
     ("port_severity_high_weight", "5", "int", "Open-port points for high-risk ports"),
     ("port_severity_critical_weight", "10", "int", "Open-port points for critical/insecure ports"),
     # Open-port score normalization: OP = min(100, raw_points * factor)
-    ("open_port_normalization_factor", "1", "int", "Multiplier applied to the raw open-port points before the 0-100 cap"),
+    ("open_port_normalization_factor", "4", "int", "Multiplier applied to the raw open-port points before the 0-100 cap"),
     # Fallback scores when input data is missing
     ("unknown_zone_score", "50", "int", "Zone score used when the asset has no zone assigned"),
     ("unknown_port_score", "50", "int", "Port score used when no port scan data exists"),

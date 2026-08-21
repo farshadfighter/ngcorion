@@ -236,3 +236,386 @@
         padding: 10px 12px;
     }
 }
+
+/* ============================================
+   TWO-LEVEL LAYOUT
+   Level one lists assets; level two lists one
+   asset's backups. Palette follows the rest of
+   the product: #1e3a5f primary, blue = manual,
+   green = hardening.
+   ============================================ */
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+
+.backup-search {
+    position: relative;
+    margin-bottom: 18px;
+    max-width: 380px;
+}
+
+.backup-search input {
+    width: 100%;
+    padding: 11px 14px 11px 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 14px;
+    font-family: inherit;
+    color: #14213D;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.backup-search input::placeholder {
+    color: #9aa5b5;
+}
+
+.backup-search input:focus {
+    outline: none;
+    border-color: #1e3a5f;
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12);
+}
+
+/* Magnifier drawn in CSS so the field needs no extra markup. */
+.backup-search::before {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    width: 13px;
+    height: 13px;
+    margin-top: -8px;
+    border: 2px solid #9aa5b5;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.backup-search::after {
+    content: "";
+    position: absolute;
+    left: 26px;
+    top: 50%;
+    width: 6px;
+    height: 2px;
+    margin-top: 3px;
+    background: #9aa5b5;
+    transform: rotate(45deg);
+    border-radius: 1px;
+    pointer-events: none;
+}
+
+/* ── Level one: asset rows ───────────────────────────────────────────────── */
+
+.backup-asset-table tbody tr {
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* The whole row opens the asset, so it has to look interactive. */
+.backup-asset-row {
+    cursor: pointer;
+}
+
+.backup-asset-row:hover {
+    background: #f7f9fc;
+    box-shadow: inset 3px 0 0 #1e3a5f;
+}
+
+.backup-asset-row .backup-asset-name {
+    font-weight: 600;
+    color: #14213D;
+}
+
+.backup-asset-row:hover .backup-asset-name {
+    color: #1e3a5f;
+}
+
+/* Count cell: the total leads, the split explains it. */
+.backup-count-total {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 26px;
+    padding: 0 8px;
+    margin-right: 10px;
+    border-radius: 8px;
+    background: #eef2f7;
+    color: #1e3a5f;
+    font-weight: 700;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.backup-count-split {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    vertical-align: middle;
+}
+
+.backup-count-split .backup-source-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+/* Chevron hint that the row drills in. */
+.backup-asset-row td:last-child {
+    white-space: nowrap;
+}
+
+/* ── Level two: header ───────────────────────────────────────────────────── */
+
+.backup-detail-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+    padding: 14px 18px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    border-left: 4px solid #1e3a5f;
+}
+
+.backup-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1e3a5f;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.backup-back-btn:hover {
+    background: #f4f6fa;
+    border-color: #1e3a5f;
+}
+
+.backup-detail-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.backup-detail-title .backup-asset-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+
+.backup-empty {
+    padding: 44px 24px;
+    text-align: center;
+    color: #6b7280;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+}
+
+@media (max-width: 640px) {
+    .backup-search { max-width: none; }
+
+    .backup-detail-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+/* Device-type chips. Muted tints so a table full of them stays calm — the
+   source badges (blue/green) are the ones that should catch the eye. */
+.backup-type-cisco     { background: #eef2ff; color: #4338ca; }
+.backup-type-fortinet  { background: #fef2f2; color: #b91c1c; }
+.backup-type-linux     { background: #fefce8; color: #a16207; }
+.backup-type-windows   { background: #eff6ff; color: #1d4ed8; }
+.backup-type-apache    { background: #f5f3ff; color: #6d28d9; }
+.backup-type-mongodb   { background: #f0fdf4; color: #15803d; }
+.backup-type-mssql     { background: #fff7ed; color: #c2410c; }
+.backup-type-unknown   { background: #f3f4f6; color: #6b7280; }
+
+/* Chevron on the drill-in button. */
+.btn-see-result svg {
+    margin-left: 2px;
+}
+
+/* ============================================
+   BUTTONS — richer treatment, scoped to this
+   page so the shared .btn-header / .btn-see-result
+   used by other screens stay as they are.
+   ============================================ */
+
+/* Primary action: gradient, lift on hover, press-down on click. */
+.backup-container .btn-header {
+    position: relative;
+    padding: 11px 22px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #24486f 0%, #1e3a5f 55%, #162c48 100%);
+    box-shadow: 0 2px 5px rgba(20, 33, 61, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    letter-spacing: 0.2px;
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.backup-container .btn-header:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow: 0 6px 16px rgba(20, 33, 61, 0.32),
+                inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.backup-container .btn-header:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.3);
+}
+
+.backup-container .btn-header:focus-visible {
+    outline: 2px solid #7ea6d8;
+    outline-offset: 2px;
+}
+
+/* Sheen that sweeps across on hover. */
+.backup-container .btn-header::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(
+        100deg,
+        transparent,
+        rgba(255, 255, 255, 0.28),
+        transparent
+    );
+    transform: skewX(-18deg);
+    transition: left 0.55s ease;
+    pointer-events: none;
+}
+
+.backup-container .btn-header:hover::after {
+    left: 130%;
+}
+
+/* Row action: quiet until the row is hovered, then it steps forward. */
+.backup-container .btn-see-result {
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1e3a5f;
+    border: 1.5px solid #d7e0ec;
+    box-shadow: 0 1px 2px rgba(20, 33, 61, 0.06);
+    transition: background 0.18s ease, border-color 0.18s ease,
+                color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.backup-asset-row:hover .btn-see-result {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: #ffffff;
+    box-shadow: 0 3px 8px rgba(20, 33, 61, 0.28);
+}
+
+.backup-container .btn-see-result:hover {
+    transform: translateY(-1px);
+}
+
+.backup-container .btn-see-result:active {
+    transform: translateY(0);
+}
+
+.backup-container .btn-see-result:focus-visible {
+    outline: 2px solid #1e3a5f;
+    outline-offset: 2px;
+}
+
+/* The chevron leans in as the row is hovered. */
+.backup-container .btn-see-result svg {
+    transition: transform 0.18s ease;
+}
+
+.backup-asset-row:hover .btn-see-result svg {
+    transform: translateX(3px);
+}
+
+/* Back button: same family, arrow pulls left on hover. */
+.backup-back-btn svg {
+    transition: transform 0.18s ease;
+}
+
+.backup-back-btn:hover svg {
+    transform: translateX(-3px);
+}
+
+.backup-back-btn:focus-visible {
+    outline: 2px solid #1e3a5f;
+    outline-offset: 2px;
+}
+
+/* Filter chips: clearer selected state than a flat fill. */
+.backup-container .backup-filter-btn {
+    transition: background 0.18s ease, border-color 0.18s ease,
+                color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.backup-container .backup-filter-btn:hover {
+    border-color: #1e3a5f;
+    background: #f7f9fc;
+}
+
+.backup-container .backup-filter-btn.active {
+    background: linear-gradient(135deg, #24486f 0%, #1e3a5f 100%);
+    box-shadow: 0 3px 8px rgba(20, 33, 61, 0.26);
+}
+
+/* Delete stays understated until you reach for it. */
+.backup-container .btn-delete-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: #9aa5b5;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.backup-container .btn-delete-icon:hover {
+    background: #fef2f2;
+    color: #dc2626;
+    transform: none;
+}
+
+.backup-container .btn-delete-icon:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 1px;
+}
+
+/* Motion is decoration; users who ask for less should not get it. */
+@media (prefers-reduced-motion: reduce) {
+    .backup-container .btn-header,
+    .backup-container .btn-header::after,
+    .backup-container .btn-see-result,
+    .backup-container .btn-see-result svg,
+    .backup-back-btn svg,
+    .backup-container .btn-delete-icon {
+        transition: none;
+    }
+
+    .backup-container .btn-header:hover,
+    .backup-container .btn-see-result:hover {
+        transform: none;
+    }
+}

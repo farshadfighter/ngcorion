@@ -129,18 +129,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     </button>
                 </div>
 
-                {/* Hint box — only when statuses are genuinely unknown.
-                    Must stay a flex column with min-height:0: it sits between
-                    .result-modal-content and .result-table-wrapper, and a plain
-                    block here would grow to fit the rows, leaving the table
-                    with nothing to scroll against. */}
-                <div style={{
-                    padding: '24px',
-                    flex: 1,
-                    minHeight: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}>
+                <div className="hr-body">
                     {/* Summary cards + session metadata, matching the Figma
                         layout: the numbers lead the page, the details sit
                         underneath them. */}

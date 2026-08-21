@@ -1050,6 +1050,32 @@ def _sync_asset_open_ports(db: Session, asset_id: int, ports_data: list, overwri
                 old.last_seen_at = now
 
 
+def _close_mirrored_open_port(db: Session, asset_id: int, port_number: int,
+                              protocol: str):
+    """Mark the asset_open_ports mirror of a deleted port closed.
+
+    Deleting a port from the ports table has to stop it counting toward the
+    risk score; without this the mirror keeps the row open forever. Closed
+    rather than deleted so the history survives (spec section 7.5).
+
+    Does not commit: the caller's request-scoped session does.
+    """
+    from app.models.risk import AssetOpenPort
+
+    if port_number is None:
+        return
+
+    rows = db.query(AssetOpenPort).filter_by(
+        asset_id=asset_id,
+        port=port_number,
+        protocol=(protocol or "tcp").lower(),
+    ).all()
+    for row in rows:
+        if row.status != "closed":
+            row.status = "closed"
+            row.last_seen_at = datetime.now(timezone.utc)
+
+
 @router.post("/ports/add", response_model=PortManagementResponse)
 async def add_ports_to_asset(
     request: AddPortsRequest,
@@ -1240,9 +1266,28 @@ async def delete_port(
         if not asset or asset.user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized to delete this port")
 
+    # Captured before the delete: the risk mirror is matched on these.
+    # Port.protocol is a relationship to Protocol, so the name comes off it.
+    deleted_asset_id = port.asset_id
+    deleted_port = port.port_number
+    deleted_protocol = port.protocol.name if port.protocol else "tcp"
+
     success = PortService.delete_port(db, port_id)
     if not success:
         raise HTTPException(status_code=404, detail="Port not found")
+
+    # Close the mirrored row so the port stops counting toward the risk score.
+    # Marked closed rather than deleted, matching _sync_asset_open_ports and
+    # spec section 7.5 (history is kept, closed ports leave the current score).
+    try:
+        _close_mirrored_open_port(
+            db, deleted_asset_id, deleted_port, deleted_protocol
+        )
+    except Exception:
+        _ports_sync_logger.warning(
+            "asset_open_ports close failed for asset %s port %s",
+            deleted_asset_id, deleted_port, exc_info=True,
+        )
 
     return {"success": True, "message": "Port deleted successfully"}
 
@@ -1469,6 +1514,14 @@ async def apply_discovery_with_mode(
             if ports_data:
                 result = PortService.add_ports(db, asset.id, ports_data, host.scan_id)
                 ports_added = result.get("ports_added", 0)
+                # Mirror into asset_open_ports so the risk engine sees them.
+                try:
+                    _sync_asset_open_ports(db, asset.id, ports_data, overwrite=False)
+                except Exception:
+                    _ports_sync_logger.warning(
+                        "asset_open_ports sync failed for asset %s", asset.id,
+                        exc_info=True,
+                    )
 
         # Mark host as approved
         host.status = "approved"
@@ -1575,6 +1628,15 @@ async def apply_discovery_with_mode(
                 result = PortService.overwrite_ports(db, asset.id, ports_data, host.scan_id)
                 ports_removed = result.get("ports_removed", 0)
                 ports_added = result.get("ports_added", 0)
+                # overwrite=True: ports missing from this scan become closed,
+                # matching what overwrite_ports just did to the ports table.
+                try:
+                    _sync_asset_open_ports(db, asset.id, ports_data, overwrite=True)
+                except Exception:
+                    _ports_sync_logger.warning(
+                        "asset_open_ports sync failed for asset %s", asset.id,
+                        exc_info=True,
+                    )
 
         else:  # merge mode
             # Merge mode: Only fill empty fields and add new ports
@@ -1610,6 +1672,13 @@ async def apply_discovery_with_mode(
                     })
                 result = PortService.add_ports(db, asset.id, ports_data, host.scan_id)
                 ports_added = result.get("ports_added", 0)
+                try:
+                    _sync_asset_open_ports(db, asset.id, ports_data, overwrite=False)
+                except Exception:
+                    _ports_sync_logger.warning(
+                        "asset_open_ports sync failed for asset %s", asset.id,
+                        exc_info=True,
+                    )
 
         # Update discovered_fields marker
         asset.discovered_fields = discovered_fields
