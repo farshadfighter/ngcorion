@@ -1,9 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    Cell, LabelList,
-} from "recharts";
 import api from "../../config/api.js";
 import { fetchAuditSessions } from "../../store/auditSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
@@ -66,9 +62,8 @@ export const AuditingDashboard = () => {
     const { sessions, isLoading } = useSelector((state) => state.audit);
     // Aggregates the sessions list cannot answer on its own (per-severity
     // findings, per-control failures, month-by-month trend).
-    const { severity, topFailed, trend, overview, remediation, critical } = useSelector(
-        (state) => state.auditDashboard
-    );
+    const { severity, topFailed, trend, overview, remediation, critical, byDevice } =
+        useSelector((state) => state.auditDashboard);
     const [assets, setAssets] = useState([]);
 
     useEffect(() => {
@@ -118,21 +113,19 @@ export const AuditingDashboard = () => {
     }, [latestByAsset]);
 
     // ── Breakdown by OS / service type ────────────────────────────────────────
-    const byType = useMemo(() => {
-        const agg = {};
-        assetRows.forEach((r) => {
-            if (!agg[r.family]) agg[r.family] = { sum: 0, count: 0, failed: 0 };
-            agg[r.family].sum += r.pct;
-            agg[r.family].count += 1;
-            agg[r.family].failed += r.failed;
-        });
-        return Object.entries(agg).map(([family, v]) => ({
-            name: getDeviceName(family),
-            family,
-            value: Math.round(v.sum / v.count),
-            count: v.count,
-        })).sort((a, b) => b.value - a.value);
-    }, [assetRows]);
+    /* Straight from /compliance-by-device-type, which aggregates this in SQL.
+       The page used to recompute it from the session list instead, so the
+       endpoint was fetched and then ignored — and the two could disagree. */
+    const byType = useMemo(
+        () =>
+            (byDevice?.items || []).map((item) => ({
+                family: item.name,
+                name: getDeviceName(item.name),
+                value: Math.round(item.percent),
+                count: item.session_count,
+            })),
+        [byDevice]
+    );
 
     // ── Summary metrics ───────────────────────────────────────────────────────
     const summary = useMemo(() => {
@@ -190,36 +183,29 @@ export const AuditingDashboard = () => {
                 </div>
             </div>
 
-            {/* ── Compliance by device type + coverage ── */}
-            <div className="aud-row aud-row-2">
+            {/* ── Compliance by asset type + critical findings ── */}
+            <div className="aud-row aud-row-split">
                 <div className="aud-card">
-                    <div className="aud-card-title">Compliance By OS / Service Type</div>
+                    <div className="aud-card-title">Compliance By Asset Type</div>
                     {byType.length === 0 ? (
                         <div className="aud-empty">No completed audits yet.</div>
                     ) : (
+                        /* Figma shows labelled horizontal bars only — the
+                           duplicate column chart that used to sit above them
+                           said the same thing twice. */
                         <>
-                            <ResponsiveContainer width="100%" height={200}>
-                                <BarChart data={byType} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#6b7280" }} interval={0} angle={-12} textAnchor="end" height={50} />
-                                    <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} domain={[0, 100]} />
-                                    <Tooltip formatter={(v, _n, p) => [`${v}% (${p.payload.count} asset(s))`, "Compliance"]} />
-                                    <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-                                        <LabelList dataKey="value" position="top" fontSize={10} fill="#6b7280" formatter={(v) => `${v}%`} />
-                                        {byType.map((entry) => (
-                                            <Cell key={entry.family} fill={scoreColor(entry.value)} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
                             {byType.map((item) => (
                                 <div key={item.family} className="aud-progress-bar-wrapper">
                                     <div className="aud-progress-label">
-                                        <span>{item.name} <span style={{ color: "#9ca3af" }}>({item.count})</span></span>
-                                        <span style={{ color: scoreColor(item.value), fontWeight: 700 }}>{item.value}%</span>
+                                        <span>{item.name}</span>
+                                        <span className="aud-progress-value">{item.value}%</span>
                                     </div>
                                     <div className="aud-progress-track">
-                                        <div className="aud-progress-fill" style={{ width: `${item.value}%`, background: scoreColor(item.value) }} />
+                                        <div
+                                            className="aud-progress-fill"
+                                            style={{ width: `${item.value}%` }}
+                                            title={`${item.count} asset(s)`}
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -227,55 +213,8 @@ export const AuditingDashboard = () => {
                     )}
                 </div>
 
-                {/* Audit coverage */}
-                <div className="aud-coverage-card">
-                    <div className="aud-card-title">Audit Coverage</div>
-                    <div className="aud-coverage-inner">
-                        <div className="aud-coverage-total-label">Total Assets</div>
-                        <div className="aud-coverage-total-value">{totalAssets.toLocaleString()}</div>
-                        <div className="aud-coverage-track">
-                            <div className="aud-coverage-fill" style={{ width: `${coveragePercent}%` }} />
-                        </div>
-                        <div className="aud-coverage-legend">
-                            <div className="aud-coverage-legend-item">
-                                <div className="aud-coverage-dot" style={{ background: "#1e3a5f" }} />
-                                <span>Audited: <strong>{summary.audited.toLocaleString()}</strong></span>
-                            </div>
-                            <div className="aud-coverage-legend-item">
-                                <div className="aud-coverage-dot" style={{ background: "#e5e7eb" }} />
-                                <span>Not Audited: <strong>{notAudited.toLocaleString()}</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Executive summary + critical findings ── */}
-            <div className="aud-row aud-row-2">
-                <div className="aud-card">
-                    <div className="aud-card-title">Executive Summary</div>
-                    <div className="aud-summary-cards">
-                        <StatCard
-                            label="Compliance Score"
-                            value={
-                                overview?.average_compliance === undefined
-                                    ? "—"
-                                    : `${overview.average_compliance}%`
-                            }
-                        />
-                        <StatCard label="Audited Assets" value={overview?.audited_assets ?? "—"} />
-                        <StatCard label="Failed Controls" value={overview?.failed_checks ?? "—"} />
-                        <StatCard
-                            label="Critical Findings"
-                            value={critical?.items?.length ?? "—"}
-                        />
-                        <StatCard
-                            label="Assets Out Of Compliance"
-                            value={summary.outOfCompliance}
-                        />
-                    </div>
-                </div>
-
+                {/* Critical findings — Figma pairs this with the asset-type
+                    bars, not with the executive summary. */}
                 <div className="aud-card">
                     <div className="aud-card-title">Critical Findings Table</div>
                     {(critical?.items || []).length === 0 ? (
@@ -309,17 +248,48 @@ export const AuditingDashboard = () => {
                 </div>
             </div>
 
-            {/* ── Summary cards ── */}
-            <div className="aud-card">
-                <div className="aud-card-title">Compliance Overview</div>
-                <div className="aud-summary-cards">
-                    <StatCard label="Average Compliance" value={`${summary.avg}%`} />
-                    <StatCard label="Audited Assets" value={summary.audited} />
-                    <StatCard label="Assets Out Of Compliance (<80%)" value={summary.outOfCompliance} />
-                    <StatCard label="Failed Controls" value={summary.failedControls} />
-                    <StatCard label="Total Known Assets" value={totalAssets} />
+            {/* ── Executive summary + audit coverage ── */}
+            <div className="aud-row aud-row-split">
+                <div className="aud-card">
+                    <div className="aud-card-title">Executive Summary</div>
+                    <div className="aud-summary-cards">
+                        <StatCard
+                            label="Compliance Score"
+                            value={
+                                overview?.average_compliance === undefined
+                                    ? "—"
+                                    : `${overview.average_compliance}%`
+                            }
+                        />
+                        <StatCard label="Audited Assets" value={overview?.audited_assets ?? "—"} />
+                        <StatCard label="Failed Controls" value={overview?.failed_checks ?? "—"} />
+                        <StatCard label="Critical Findings" value={critical?.items?.length ?? "—"} />
+                        <StatCard label="Assets Out Of Compliance" value={summary.outOfCompliance} />
+                    </div>
+                </div>
+
+                <div className="aud-coverage-card">
+                    <div className="aud-card-title">Audit Coverage</div>
+                    <div className="aud-coverage-inner">
+                        <div className="aud-coverage-total-label">Total Assets</div>
+                        <div className="aud-coverage-total-value">{totalAssets.toLocaleString()}</div>
+                        <div className="aud-coverage-track">
+                            <div className="aud-coverage-fill" style={{ width: `${coveragePercent}%` }} />
+                        </div>
+                        <div className="aud-coverage-legend">
+                            <div className="aud-coverage-legend-item">
+                                <div className="aud-coverage-dot" style={{ background: "#1e3a5f" }} />
+                                <span>Audited: <strong>{summary.audited.toLocaleString()}</strong></span>
+                            </div>
+                            <div className="aud-coverage-legend-item">
+                                <div className="aud-coverage-dot" style={{ background: "#e5e7eb" }} />
+                                <span>Not Audited: <strong>{notAudited.toLocaleString()}</strong></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
 
             {/* ── Per-asset compliance table ── */}
             <div className="aud-table-card">

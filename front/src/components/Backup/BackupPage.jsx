@@ -2,7 +2,9 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import api from '../../config/api.js';
 import BackupViewModal from './BackupViewModal.jsx';
 import NewBackupModal from './NewBackupModal.jsx';
+import { Pagination } from '../Logs/Pagination.jsx';
 import '../../assets/Backup.css';
+import '../../assets/LogsPage.css';
 
 const formatDate = (ts) => {
     if (!ts) return '-';
@@ -22,10 +24,13 @@ export const BackupPage = () => {
     const [showNew, setShowNew] = useState(false);
     const [deleteId, setDeleteId] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
 
     // برای NewBackupModal onSuccess
     const load = useCallback(async () => {
-        const params = new URLSearchParams({ limit: 200 });
+        // 500 is the endpoint's ceiling; the table pages through them locally.
+        const params = new URLSearchParams({ limit: 500 });
         if (sourceFilter !== 'all') params.append('source', sourceFilter);
         const res = await api.get(`/api/backups/?${params}`);
         setBackups(res.data || []);
@@ -37,7 +42,8 @@ export const BackupPage = () => {
             setLoading(true);
             setError(null);
             try {
-                const params = new URLSearchParams({ limit: 200 });
+                // 500 is the endpoint's ceiling; the table pages through them locally.
+        const params = new URLSearchParams({ limit: 500 });
                 if (sourceFilter !== 'all') params.append('source', sourceFilter);
                 const res = await api.get(`/api/backups/?${params}`);
                 setBackups(res.data || []);
@@ -73,7 +79,32 @@ export const BackupPage = () => {
         [backups, typeFilter]
     );
 
+    // Paginated client-side: the list endpoint already returns the whole set,
+    // and the filters above operate on it.
+    //
+    // The page is clamped during render rather than corrected in an effect —
+    // filtering or deleting can put `page` past the end, and fixing it here
+    // avoids a second render pass showing an empty table first.
+    const lastPage = Math.max(1, Math.ceil(visibleBackups.length / pageSize));
+    const safePage = Math.min(page, lastPage);
+
+    const pagedBackups = useMemo(
+        () => visibleBackups.slice((safePage - 1) * pageSize, safePage * pageSize),
+        [visibleBackups, safePage, pageSize]
+    );
+
     const typeLabel = (t) => (t === 'unknown' ? 'Unknown' : t.charAt(0).toUpperCase() + t.slice(1));
+
+    // A new filter is a new result set, so start reading it from the top.
+    const applyTypeFilter = (value) => {
+        setTypeFilter(value);
+        setPage(1);
+    };
+
+    const applySourceFilter = (value) => {
+        setSourceFilter(value);
+        setPage(1);
+    };
 
     const handleDelete = async (id) => {
         setDeleting(true);
@@ -104,7 +135,7 @@ export const BackupPage = () => {
             {/* Device Type Tabs */}
             <div className="backup-filters backup-type-tabs">
                 <button
-                    onClick={() => setTypeFilter('all')}
+                    onClick={() => applyTypeFilter('all')}
                     className={`backup-filter-btn ${typeFilter === 'all' ? 'active' : ''}`}
                 >
                     All Devices <span className="backup-tab-count">{backups.length}</span>
@@ -112,7 +143,7 @@ export const BackupPage = () => {
                 {deviceTypes.map(([t, count]) => (
                     <button
                         key={t}
-                        onClick={() => setTypeFilter(t)}
+                        onClick={() => applyTypeFilter(t)}
                         className={`backup-filter-btn ${typeFilter === t ? 'active' : ''}`}
                     >
                         {typeLabel(t)} <span className="backup-tab-count">{count}</span>
@@ -125,7 +156,7 @@ export const BackupPage = () => {
                 {['all', 'manual', 'hardening'].map((s) => (
                     <button
                         key={s}
-                        onClick={() => setSourceFilter(s)}
+                        onClick={() => applySourceFilter(s)}
                         className={`backup-filter-btn ${sourceFilter === s ? 'active' : ''}`}
                     >
                         {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -171,7 +202,7 @@ export const BackupPage = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {visibleBackups.map((b) => (
+                        {pagedBackups.map((b) => (
                             <tr key={b.id}>
                                 <td>
                                         <span className="backup-asset-name">
@@ -213,6 +244,17 @@ export const BackupPage = () => {
                         ))}
                         </tbody>
                     </table>
+
+                    <Pagination
+                        page={safePage}
+                        pageSize={pageSize}
+                        totalItems={visibleBackups.length}
+                        onPageChange={setPage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size);
+                            setPage(1);
+                        }}
+                    />
                 </div>
             )}
 

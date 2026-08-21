@@ -42,6 +42,35 @@ export const hardeningScore = (hardeningOverview) =>
     round(hardeningOverview?.hardening_score);
 
 /**
+ * Labels for the breakdown rows, keyed by the sub_scores keys the backend
+ * returns. "vulnerability" is not in the Figma mock but the endpoint computes
+ * it, so it is shown rather than silently dropped.
+ */
+export const SUB_SCORE_LABELS = {
+    asset_health: "Asset Health",
+    audit_compliance: "Audit Compliance",
+    hardening: "Hardening",
+    risk_intelligence: "Risk Intelligence",
+    exposure_intelligence: "Exposure Intelligence",
+    vulnerability: "Vulnerability",
+};
+
+/** sub_scores object -> ordered rows for the breakdown table. */
+export const breakdownRows = (securityScore) => {
+    const subs = securityScore?.sub_scores;
+    if (!subs) return [];
+    return Object.keys(SUB_SCORE_LABELS)
+        .filter((key) => subs[key])
+        .map((key) => ({
+            key,
+            label: SUB_SCORE_LABELS[key],
+            score: round(subs[key].score),
+            weight: subs[key].weight,
+            incomplete: !!subs[key].incomplete,
+        }));
+};
+
+/**
  * The four module tiles, each summarising one area and linking to its screen.
  *
  * The headline number is whatever that module leads with on its own dashboard,
@@ -85,24 +114,18 @@ export const moduleCards = ({
     },
 ];
 
-/**
- * The six headline tiles across the top of the design.
- *
- * `securityScore` has no endpoint — the overall score is a product decision
- * about weighting, not a query — so it is reported as pending rather than
- * invented here.
- */
+/** The six headline tiles across the top of the design. */
 export const headlineMetrics = ({
     riskSummary,
     auditOverview,
     hardeningOverview,
+    securityScore,
 }) => [
     {
         key: "security_score",
         label: "Security Score",
-        value: null,
+        value: round(securityScore?.security_score),
         suffix: "/100",
-        pending: true,
     },
     {
         key: "total_assets",

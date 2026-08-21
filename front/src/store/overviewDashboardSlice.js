@@ -9,9 +9,6 @@ import api from "../config/api";
  * only some of those still gets a useful page, so every request is allowed to
  * fail on its own and the reducer records which ones did.
  *
- * Not covered by any endpoint yet, so deliberately absent here:
- *   - the overall Security Score, its gauge and the six-row breakdown.
- * Those need a backend decision on the formula, not a query.
  */
 const SOURCES = {
     riskSummary: { url: "/api/risk/summary" },
@@ -40,6 +37,7 @@ const SOURCES = {
         url: "/api/events/recent",
         params: { limit: 8 },
     },
+    securityScore: { url: "/api/dashboard/security-score" },
 };
 
 export const fetchOverviewDashboard = createAsyncThunk(
@@ -87,6 +85,7 @@ const overviewDashboardSlice = createSlice({
         topRisky: null,
         requiringAttention: null,
         recentEvents: null,
+        securityScore: null,
         failedPanels: [],
         isLoading: false,
         error: null,
