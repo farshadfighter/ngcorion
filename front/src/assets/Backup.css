@@ -449,6 +449,37 @@
     margin-left: 2px;
 }
 
+/* The asset table sits directly on the page background here, so it brings its
+   own card. .table-container (AssetRequirement.css) only supplies a border —
+   other screens nest it inside a white panel that this page does not have. */
+.backup-container .table-container {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(20, 33, 61, 0.08);
+    border-color: #eef0f4;
+}
+
+.backup-asset-table thead th {
+    background: #f7f8fa;
+    color: #6c7a93;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Rows are clickable; make that legible and keep the pointer consistent. */
+.backup-asset-row {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.backup-asset-row:hover {
+    background: #fafbfd;
+}
+
+.backup-asset-name {
+    font-weight: 600;
+    color: #14213d;
+}
+
 /* ============================================
    BUTTONS — richer treatment, scoped to this
    page so the shared .btn-header / .btn-see-result

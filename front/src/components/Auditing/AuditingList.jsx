@@ -31,6 +31,18 @@ export const AuditingList = () => {
     );
 
     const [showWizard, setShowWizard] = useState(false);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
+
+    // Paged client-side: the sessions list is already in the store. Clamped
+    // while rendering so a shrinking list cannot strand the user on a page
+    // that no longer exists.
+    const totalSessions = sessions?.length || 0;
+    const safePage = Math.min(page, Math.max(1, Math.ceil(totalSessions / pageSize)));
+    const pagedSessions = (sessions || []).slice(
+        (safePage - 1) * pageSize,
+        safePage * pageSize
+    );
 
     // The open result modal is derived from the URL (:sessionId) rather than
     // stored in state, so a deep link and a click behave identically.
@@ -194,8 +206,8 @@ export const AuditingList = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {sessions && sessions.length > 0 ? (
-                            sessions.map((session) => (
+                        {pagedSessions.length > 0 ? (
+                            pagedSessions.map((session) => (
                                 <tr key={session.session_id}>
                                     <td>{session.job_name || `job number${session.session_id}`}</td>
                                     <td>
@@ -240,6 +252,17 @@ export const AuditingList = () => {
                     </table>
                 )}
             </div>
+
+            <Pagination
+                page={safePage}
+                pageSize={pageSize}
+                totalItems={totalSessions}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                }}
+            />
 
             {/* ── Delete single modal ────────────────────────────────────────────── */}
             {showDeleteModal && (
