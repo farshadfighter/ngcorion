@@ -7,8 +7,9 @@ which is different from how it behaves when a license is genuinely invalid:
 - a license server that answers 5xx/429, or with a body that is not JSON, is an
   outage — it must never flip the in-memory state to "invalid" and lock the
   product out;
-- a licensing verdict from the server (HTTP 200 with `valid: false`) must still
-  fail closed;
+- a licensing verdict from the server — HTTP 200 with `valid: false` on
+  validate, or HTTP 400 on the heartbeat — must fail closed immediately, with
+  no grace window: the grace window covers outages, not rejections;
 - the last validated state is cached on disk so a restart during an outage
   resumes inside the offline grace window instead of refusing every request,
   while a cache older than the grace window is refused;
@@ -40,6 +41,7 @@ from app.core import license_state as st
 from app.core.heartbeat import HeartbeatService
 from app.core.license_client import (
     LicenseNotActivated,
+    LicenseRejected,
     LicenseServerError,
     LicenseServerUnreachable,
 )
@@ -150,6 +152,84 @@ def test_server_verdict_still_fails_closed():
     assert state.valid is False
     assert state.offline is False
     assert state.message == "License expired"
+
+
+# ==================== an explicit rejection blocks immediately ====================
+
+def test_heartbeat_rejection_invalidates_without_waiting_for_the_grace_window():
+    """HTTP 400 on the heartbeat is the server refusing this license.
+
+    Expired, revoked, unknown key, fingerprint mismatch — the server looked it
+    up and said no. That must take effect at once; coasting on the offline
+    grace window would keep serving a license the server has already refused.
+    """
+    _seed_valid_state()
+    assert st.get_license_state().valid is True
+
+    service = HeartbeatService(
+        StubClient(heartbeat_error=LicenseRejected("License has expired"))
+    )
+    assert service._run_once() is True   # the server answered: not a retryable failure
+
+    state = st.get_license_state()
+    assert state.valid is False
+    assert state.offline is False        # a verdict, not an outage
+    assert "License has expired" in state.message
+
+
+def test_rejection_clears_the_plan_and_quota_snapshot():
+    _seed_valid_state()
+
+    st.mark_license_rejected("License revoked")
+
+    state = st.get_license_state()
+    assert state.valid is False
+    assert state.plan_type is None
+    assert state.limits is None
+    assert state.usage is None
+
+
+def test_rejection_is_written_through_to_the_cache():
+    """A restart must not resurrect the pre-rejection "valid" snapshot."""
+    cache = FakeCache()
+    st.attach_state_cache(cache)
+    _seed_valid_state()
+
+    st.mark_license_rejected("Invalid VM fingerprint")
+    assert cache.state["valid"] is False
+
+    st._license_state.__init__()          # restart
+    st.attach_state_cache(cache)
+    st.restore_cached_state()
+    assert st.get_license_state().valid is False
+
+
+def test_rejection_does_not_trigger_the_outage_backoff():
+    """The verdict will not change in 60s — stay on the normal interval."""
+    service = HeartbeatService(
+        StubClient(heartbeat_error=LicenseRejected("License has expired")),
+        interval_seconds=3600, retry_seconds=60,
+    )
+    service._run_once()
+
+    assert service._consecutive_failures == 0
+    assert service._next_delay(succeeded=True) == 3600
+
+
+@pytest.mark.parametrize("error", [
+    LicenseServerUnreachable("down"),
+    LicenseServerError("broken", status_code=500),
+])
+def test_outages_still_do_not_invalidate(error):
+    """The contrast case: a broken or absent server keeps the license alive."""
+    _seed_valid_state()
+    service = HeartbeatService(StubClient(heartbeat_error=error))
+
+    service._run_once()
+
+    state = st.get_license_state()
+    assert state.valid is True
+    assert state.offline is True
 
 
 def test_missing_activation_does_not_raise():

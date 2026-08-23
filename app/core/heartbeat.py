@@ -11,6 +11,8 @@ Reliability rules this service follows:
   window;
 * the thread never dies silently: any unexpected error is logged and the
   service marks itself stopped so it can be restarted;
+* an explicit rejection from the server (HTTP 400) blocks the product
+  immediately — the offline grace window covers outages, not verdicts;
 * nothing here ever propagates out of the thread into the app.
 """
 import logging
@@ -19,8 +21,14 @@ from typing import Optional
 
 from app.core.config import settings
 
-from .license_client import LicenseNotActivated, LicenseServerError, LicenseServerUnreachable
+from .license_client import (
+    LicenseNotActivated,
+    LicenseRejected,
+    LicenseServerError,
+    LicenseServerUnreachable,
+)
 from .license_state import (
+    mark_license_rejected,
     mark_license_server_offline,
     refresh_license_state,
     set_license_state,
@@ -99,6 +107,20 @@ class HeartbeatService:
                 self._consecutive_failures + 1, e,
             )
             return False
+        except LicenseRejected as e:
+            # The server looked this license up and refused it. A verdict, not
+            # an outage: block immediately instead of coasting on the offline
+            # grace window, which exists to cover unreachable servers only.
+            mark_license_rejected(e.detail)
+            logger.error(
+                "[Heartbeat] License rejected by the license server (HTTP %s): %s. "
+                "All licensed requests are now blocked; re-activate a valid "
+                "license key to restore service.",
+                e.status_code, e.detail,
+            )
+            # The server answered, so this is not a connectivity failure to back
+            # off from — retrying in 60s would not change the verdict.
+            return True
         except LicenseNotActivated as e:
             # Steady state, not a transient failure: retrying faster will not
             # help, so report it once per interval at WARNING and move on.

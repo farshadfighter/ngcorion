@@ -66,6 +66,26 @@ class LicenseNotActivated(Exception):
     """
 
 
+class LicenseRejected(Exception):
+    """
+    The license server explicitly rejected this license (HTTP 400).
+
+    This is a verdict, not a failure: the server looked the license up and said
+    no — expired, revoked, unknown key, or a VM fingerprint that no longer
+    matches. Unlike an outage it must take effect immediately, so callers
+    invalidate the local state on the spot instead of coasting on the offline
+    grace window.
+
+    `detail` carries the license server's own explanation, which is what the
+    operator actually needs to see.
+    """
+
+    def __init__(self, detail: str, status_code: int = 400):
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = status_code
+
+
 class SecureStorage:
     """Encrypted storage for license data"""
 
@@ -417,11 +437,39 @@ class LicenseClient:
             "vm_fingerprint": license_data["vm_fingerprint"]
         }
 
-        response = self._request(
-            "POST", "/api/licenses/heartbeat", json=data, idempotent=True
-        )
+        try:
+            response = self._request(
+                "POST", "/api/licenses/heartbeat", json=data, idempotent=True
+            )
+        except requests.HTTPError as exc:
+            # The heartbeat endpoint answers 400 for every rejection it makes
+            # (expired, revoked, unknown key, fingerprint mismatch) — see
+            # license_server/app/routers/licenses.py. That is a decision about
+            # this license, not a transport or server failure, so it is raised
+            # as a distinct type the heartbeat loop acts on immediately.
+            status = exc.response.status_code if exc.response is not None else None
+            if status == 400:
+                raise LicenseRejected(
+                    self._error_detail(exc.response, "License rejected by the license server"),
+                    status_code=status,
+                ) from exc
+            raise
 
         return self._json(response)
+
+    @staticmethod
+    def _error_detail(response: Optional[requests.Response], fallback: str) -> str:
+        """Pull the license server's own message out of an error response."""
+        if response is None:
+            return fallback
+        try:
+            payload = response.json()
+            if isinstance(payload, dict) and payload.get("detail"):
+                return str(payload["detail"])
+        except ValueError:
+            pass
+        body = (response.text or "").strip()
+        return body[:200] if body else fallback
     
     def consume(self, operation_type: str, count: int = 1) -> dict:
         """Consume operation quota"""

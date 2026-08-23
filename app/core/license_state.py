@@ -218,6 +218,32 @@ def mark_license_server_offline(error) -> None:
             _license_state.message = f"License server unreachable: {error}"
 
 
+def mark_license_rejected(reason) -> None:
+    """
+    Invalidate the license immediately, on an explicit verdict from the server.
+
+    This is the opposite of mark_license_server_offline(): there the server
+    could not be reached, so the last validated state coasts through the offline
+    grace window. Here the server *did* answer and said no (HTTP 400 on the
+    heartbeat: expired, revoked, unknown key, fingerprint mismatch), so there is
+    nothing to wait for — the grace window exists to cover outages, not
+    rejections.
+
+    The new state is written through to the on-disk cache as well, so a restart
+    cannot resurrect the old "valid" snapshot from before the rejection.
+    """
+    with _state_lock:
+        _license_state.valid = False
+        _license_state.offline = False
+        _license_state.plan_type = None
+        _license_state.is_pilot_mode = False
+        _license_state.limits = None
+        _license_state.usage = None
+        _license_state.last_validated_at = datetime.utcnow()
+        _license_state.message = f"License rejected by the license server: {reason}"
+        _persist_state()
+
+
 def refresh_license_state(client) -> LicenseState:
     """
     Call client.validate() and update in-memory state.
