@@ -12,7 +12,8 @@ import logging
 import requests
 
 from app.core.license_state import get_license_state, refresh_license_state
-from app.core.license_client import LicenseServerUnreachable
+from app.core.dependencies import license_error_detail
+from app.core.license_client import LicenseServerError, LicenseServerUnreachable
 from app.core.heartbeat import start_heartbeat
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,13 @@ def get_license_status(request: Request):
             # license middleware would lock the whole app out.
             state = refresh_license_state(client)
         except Exception as e:
-            logger.warning(f"License status refresh failed, using cached state: {e}")
+            # refresh_license_state already handled connectivity failures and
+            # 5xx internally; anything landing here is a hard rejection, and the
+            # cached state it left behind is what we report.
+            logger.warning(
+                "License status refresh failed (%s: %s), using cached state",
+                type(e).__name__, e,
+            )
             state = get_license_state()
 
     usage = dict(state.usage) if state.usage else None
@@ -125,6 +132,20 @@ def activate_license(data: LicenseActivateRequest, request: Request):
             usage=state.usage
         )
     
+    except LicenseServerError as e:
+        # The server answered with a 5xx/429: it is broken or overloaded, and
+        # the license key the operator just typed is very probably fine.
+        logger.error(f"License activation: license server error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"License server returned HTTP {e.status_code}. The license key "
+                f"was not rejected — the server itself is failing. Try again "
+                f"shortly, and check the license server's own logs."
+            ),
+            headers={"Retry-After": "30"},
+        )
+
     except LicenseServerUnreachable as e:
         # Not the user's fault and not a licensing verdict: the license server
         # could not be reached at all. 503 + an actionable message beats a 500.
@@ -136,15 +157,23 @@ def activate_license(data: LicenseActivateRequest, request: Request):
                 "points at the license server and that the network/firewall "
                 "allows it, then try again."
             ),
+            headers={"Retry-After": "30"},
         )
 
     except requests.HTTPError as e:
-        # License server returned an error
-        if e.response is not None:
-            detail = e.response.json().get("detail", str(e))
-        else:
-            detail = str(e)
+        # License server rejected the request (4xx) — a real answer about this
+        # key. Parse its message defensively: a non-JSON body used to raise
+        # inside this handler and surface as an opaque 500.
+        detail = license_error_detail(e, "License activation was rejected.")
+        logger.warning(f"License activation rejected by the license server: {detail}")
         raise HTTPException(status_code=400, detail=detail)
-    
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Activation failed: {str(e)}")
+        logger.exception("License activation failed unexpectedly")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Activation failed ({type(e).__name__}): {e}",
+        )

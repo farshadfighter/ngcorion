@@ -37,6 +37,112 @@ class LicenseState:
 _license_state = LicenseState()
 _state_lock = threading.Lock()
 
+# Optional on-disk cache of the last validated state (a SecureStorage instance,
+# attached at startup). Without it, restarting the app while the license server
+# is unreachable starts from an empty state and locks the product out
+# immediately, even though the offline grace window says the last validated
+# license is still good for hours.
+_state_cache = None
+
+
+def attach_state_cache(store) -> None:
+    """
+    Register the store used to persist the last validated state.
+
+    `store` only needs save_state(dict) / load_state() -> Optional[dict]
+    (SecureStorage implements both), so this module stays free of any
+    license-client import.
+    """
+    global _state_cache
+    _state_cache = store
+
+
+def _persist_state() -> None:
+    """Write the current state to the cache. Never raises: a cache write is a
+    convenience, and failing it must not break validation. Caller holds the lock."""
+    if _state_cache is None or not settings.LICENSE_STATE_CACHE_ENABLED:
+        return
+    try:
+        _state_cache.save_state({
+            "valid": _license_state.valid,
+            "plan_type": _license_state.plan_type,
+            "is_pilot_mode": _license_state.is_pilot_mode,
+            "limits": _license_state.limits,
+            "usage": _license_state.usage,
+            "message": _license_state.message,
+            "last_validated_at": (
+                _license_state.last_validated_at.isoformat()
+                if _license_state.last_validated_at else None
+            ),
+        })
+    except Exception as exc:
+        logger.warning(f"[License] Could not cache license state: {exc}")
+
+
+def restore_cached_state() -> bool:
+    """
+    Load the last validated state from the cache into memory.
+
+    Called at startup *before* the first validation attempt, so that if the
+    license server is unreachable right then, the app comes up on the cached
+    state instead of on "no license activated". The cached timestamp is
+    restored as-is, so the offline grace window keeps counting from the last
+    real validation and is not silently reset by a restart.
+
+    Returns True when a state was restored.
+    """
+    if _state_cache is None or not settings.LICENSE_STATE_CACHE_ENABLED:
+        return False
+    try:
+        cached = _state_cache.load_state()
+    except Exception as exc:
+        logger.warning(f"[License] Could not read cached license state: {exc}")
+        return False
+    if not cached:
+        return False
+
+    last_raw = cached.get("last_validated_at")
+    try:
+        last = datetime.fromisoformat(last_raw) if last_raw else None
+    except (TypeError, ValueError):
+        last = None
+    if last is None:
+        # Without a timestamp the grace window cannot be enforced, and an
+        # ungraced cached "valid" would never expire. Fail closed.
+        logger.warning(
+            "[License] Cached license state has no usable timestamp; ignoring it."
+        )
+        return False
+
+    age = datetime.utcnow() - last
+    if age > _grace_window():
+        logger.warning(
+            "[License] Cached license state is %.1fh old, past the %sh offline "
+            "grace window; ignoring it.",
+            age.total_seconds() / 3600, settings.LICENSE_OFFLINE_GRACE_HOURS,
+        )
+        return False
+
+    with _state_lock:
+        _license_state.valid = bool(cached.get("valid", False))
+        _license_state.plan_type = cached.get("plan_type")
+        _license_state.is_pilot_mode = bool(cached.get("is_pilot_mode", False))
+        _license_state.limits = cached.get("limits")
+        _license_state.usage = cached.get("usage")
+        _license_state.last_validated_at = last
+        # Not yet confirmed by the server in this process.
+        _license_state.offline = True
+        _license_state.message = (
+            "Using the last validated license state cached "
+            f"{age.total_seconds() / 3600:.1f}h ago; "
+            "re-validating with the license server."
+        )
+    logger.info(
+        "[License] Restored cached license state (valid=%s, plan=%s, age=%.1fh)",
+        cached.get("valid"), cached.get("plan_type"), age.total_seconds() / 3600,
+    )
+    return True
+
 
 def _grace_window() -> timedelta:
     """How long a validated state survives without a successful re-validation."""
@@ -89,6 +195,7 @@ def set_license_state(data: dict):
         _license_state.message = data.get("message", "")
         _license_state.last_validated_at = datetime.utcnow()
         _license_state.offline = False
+        _persist_state()
 
 
 def mark_license_server_offline(error) -> None:
@@ -127,25 +234,47 @@ def refresh_license_state(client) -> LicenseState:
       False on the first failed call would 403 every request in the product
       because of a dropped packet.
 
-    Never raises for connectivity problems — callers read `state.offline`.
+    * No license is activated at all -> valid=False with an actionable message
+      ("activate a license key"), and no exception: this is a steady state, not
+      a transient error, and raising it once an hour from the heartbeat thread
+      only produced noisy stack traces.
+
+    Never raises for connectivity problems (including 5xx from the license
+    server) — callers read `state.offline`.
     """
-    from app.core.license_client import LicenseServerUnreachable
+    from app.core.license_client import LicenseNotActivated, LicenseServerUnreachable
 
     try:
         result = client.validate()
         set_license_state(result)
         return get_license_state()
     except LicenseServerUnreachable as e:
+        # Covers both "no answer" and LicenseServerError (5xx/429/garbage body).
+        # A broken license server is an outage, never a licensing verdict, so
+        # the last validated state stands until the grace window runs out.
         mark_license_server_offline(e)
         logger.warning(f"[License] {e}")
         return get_license_state()
-    except Exception as e:
-        # The server answered with something we could not use (HTTP error,
-        # malformed payload). Treat it as a failed validation.
+    except LicenseNotActivated as e:
         with _state_lock:
             _license_state.valid = False
             _license_state.offline = False
-            _license_state.message = f"License validation failed: {str(e)}"
+            _license_state.plan_type = None
+            _license_state.limits = None
+            _license_state.usage = None
+            _license_state.message = str(e)
+        logger.warning(f"[License] {e}")
+        return get_license_state()
+    except Exception as e:
+        # The server answered with a real 4xx, i.e. it rejected the request.
+        # Treat it as a failed validation (fail closed) and say so clearly.
+        with _state_lock:
+            _license_state.valid = False
+            _license_state.offline = False
+            _license_state.message = (
+                f"License validation was rejected by the license server: {e}"
+            )
+        logger.error(f"[License] Validation rejected: {e}")
         raise
 
 

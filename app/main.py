@@ -3,6 +3,7 @@ Ngicorn - Main Application
 
 FastAPI application entry point with CORS middleware and route registration.
 """
+import asyncio
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -100,7 +101,12 @@ from app.modules.dashboard.security_score_router import router as security_score
 
 # Import license components
 from app.core.license_client import LicenseClient
-from app.core.license_state import refresh_license_state
+from app.core.license_state import (
+    attach_state_cache,
+    get_license_state,
+    refresh_license_state,
+    restore_cached_state,
+)
 from app.core.heartbeat import start_heartbeat, stop_heartbeat
 from app.middleware.license_middleware import LicenseMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -116,23 +122,55 @@ async def lifespan(app: FastAPI):
     # Startup
     # Misconfiguration fails fast (there is no localhost fallback); an
     # unreachable server does not — those are different problems.
-    license_server_url = require_license_server_url()
+    try:
+        license_server_url = require_license_server_url()
+    except RuntimeError as exc:
+        logger.critical("[Startup] %s", exc)
+        raise
+
     client = LicenseClient(license_server_url, settings.LICENSE_STORAGE_DIR)
     app.state.license_client = client
     logger.info(f"[Startup] license server: {license_server_url}")
+
+    # Seed the in-memory state from the on-disk cache *before* the first
+    # validation. If the license server is unreachable right now, the app comes
+    # up on the last validated state (still bounded by the offline grace
+    # window) instead of 403/503-ing every request until connectivity returns.
+    attach_state_cache(client.storage)
+    restored = restore_cached_state()
+
     try:
-        state = refresh_license_state(client)
+        # Blocking HTTP call: run it off the event loop so a slow or dead
+        # license server cannot stall startup for other lifespan work.
+        state = await asyncio.to_thread(refresh_license_state, client)
         if state.offline:
             logger.warning(
                 "[Startup] license server unreachable; running on the last "
-                "validated license state until it can be reached again"
+                "validated license state (cached: %s) until it can be reached "
+                "again. The application still starts.",
+                restored,
+            )
+        else:
+            logger.info(
+                "[Startup] license validated (valid=%s, plan=%s)",
+                state.valid, state.plan_type,
             )
     except Exception as exc:
-        # App starts even if license server is unreachable
-        logger.warning(
+        # App starts even if license validation fails — never block startup on
+        # the license server. The middleware reports the state per request.
+        logger.error(
             "[Startup] license state refresh failed, starting without a "
-            f"refreshed license: {exc}"
+            "refreshed license: %s: %s",
+            type(exc).__name__, exc,
         )
+
+    if not get_license_state().valid:
+        logger.warning(
+            "[Startup] no valid license state: /api/* requests will be refused "
+            "until the license server confirms a license. Current status: %s",
+            get_license_state().message,
+        )
+
     start_heartbeat(client)
 
     # Seed default risk settings/zones (idempotent). Uses its own session so a
