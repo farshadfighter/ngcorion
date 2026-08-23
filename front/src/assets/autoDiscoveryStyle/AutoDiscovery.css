@@ -26,6 +26,7 @@
     --warning: #f59e0b;
     --warning-bg: #fef3c7;
     --warning-border: #fcd34d;
+    --warning-text: #92400e;
 
     --info: #3b82f6;
     --info-bg: #dbeafe;
@@ -216,6 +217,43 @@
     background: var(--danger-bg);
     color: var(--danger-text);
     border: 1px solid var(--danger-border);
+}
+
+/* A missing server-side dependency is an operator warning, not a scan error */
+.alert-warning {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+    align-items: flex-start;
+}
+
+.nmap-missing {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.nmap-missing-title {
+    font-weight: 600;
+}
+
+.nmap-missing-hint {
+    opacity: 0.9;
+}
+
+.nmap-missing-cmd {
+    align-self: flex-start;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm, 4px);
+    background: rgba(0, 0, 0, 0.07);
+    border: 1px solid var(--warning-border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    white-space: nowrap;
+    user-select: all;
 }
 
 .alert svg {

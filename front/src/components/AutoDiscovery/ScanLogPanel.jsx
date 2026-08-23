@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrors.jsx';
 
 const ACTION_LABELS = {
     scan_started: 'Scan Started',
@@ -9,6 +10,17 @@ const ACTION_LABELS = {
     port_scanned: 'Port Scanned',
     discovery_applied: 'Discovery Applied',
     asset_created_from_discovery: 'Asset Created',
+};
+
+// The nmap-missing failure reaches the log stream verbatim; replace it there
+// too so the panel and the alert say the same actionable thing.
+const logDetail = (entry) => {
+    const detail = entry.error_message || entry.details?.message;
+    if (!detail) return null;
+    if (isNmapMissing(detail)) {
+        return `nmap روی سرور نصب نیست — ${NMAP_INSTALL_COMMAND}`;
+    }
+    return detail;
 };
 
 const ScanLogPanel = ({ logs }) => {
@@ -42,9 +54,9 @@ const ScanLogPanel = ({ logs }) => {
                     {entry.ip_address && (
                         <span className="log-ip">{entry.ip_address}</span>
                     )}
-                    {(entry.error_message || entry.details?.message) && (
+                    {logDetail(entry) && (
                         <span className="log-detail">
-                            {entry.error_message || entry.details.message}
+                            {logDetail(entry)}
                         </span>
                     )}
                 </div>
