@@ -74,6 +74,8 @@ class LinuxSSHClient:
 
     MAX_RETRIES = 3
     RETRY_DELAY = 2
+    # Connection-wide read budget; also the default per-command read_timeout.
+    READ_TIMEOUT = 30
 
     def __init__(
         self,
@@ -132,7 +134,13 @@ class LinuxSSHClient:
                     username=self.username,
                     password=self.password,
                     timeout=self.timeout,
-                    global_delay_factor=1,
+                    global_delay_factor=2,
+                    session_timeout=60,
+                    # netmiko's internal reads (find_prompt, _test_channel_read)
+                    # take no timeout argument and default to 10s, which is what
+                    # raises "Pattern not detected" on slow-prompting hosts.
+                    # read_timeout_override is the only lever that reaches them.
+                    read_timeout_override=self.READ_TIMEOUT,
                     banner_timeout=20,
                     auth_timeout=20
                 )
@@ -198,7 +206,7 @@ class LinuxSSHClient:
         except Exception:
             return False
 
-    def send_command(self, command: str, use_sudo: bool = False, timeout: int = 30) -> str:
+    def send_command(self, command: str, use_sudo: bool = False, timeout: int = READ_TIMEOUT) -> str:
         """
         Execute a command on the Linux server.
 
