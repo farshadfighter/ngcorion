@@ -411,8 +411,10 @@
     border-radius: 5px;
 }
 
+/* Width comes from the band's real share of the 0-100 scale (set inline), not
+   an equal split — the needle is positioned at `score%` and the two must agree. */
 .ov-gauge-band {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     height: 100%;
     opacity: 0.45;
     transition: opacity 0.2s ease;

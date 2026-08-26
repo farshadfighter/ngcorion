@@ -5,6 +5,11 @@ import HardenAllModal from "./HardenAllModal";
 import FixSingleModal from "./FixSingleModal";
 import ViewFixModal from "./ViewFixModal";
 import { groupChecksByScope } from "./vdomScope";
+// This screen reuses the Auditing result table's styling (result-table,
+// result-badge, severity-badge). The build inlines every stylesheet into one
+// bundle so it renders either way, but the dependency is real — import it so
+// the styles cannot disappear if that ever changes.
+import "../../assets/Auditing.css";
 
 export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
@@ -62,6 +67,22 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
         setSelectedCheck(null);
     };
 
+    /* Per-control risk level, same badge as the Auditing result table: both
+       screens read the same /sessions/{id}/results payload, which already
+       carries `severity` per row. */
+    const titleCase = (s) =>
+        s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-";
+
+    const getSeverityBadge = (severity) => {
+        const level = severity?.toString().toLowerCase();
+        if (!level) return <span style={{ color: '#9ca3af' }}>—</span>;
+        return (
+            <span className={`severity-badge severity-${level}`}>
+                {titleCase(level)}
+            </span>
+        );
+    };
+
     // Real audit statuses (this flow runs an audit right before this screen).
     // "Unknown" only when the row genuinely has no status.
     const getStatusBadge = (status) => {
@@ -116,8 +137,9 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
 
     // Split into Global vs per-VDOM groups (FortiGate multi-VDOM devices tag
     // each row with its vdom; flat devices get a single unlabeled group).
+    // Section, [VDOM], Recommendation, Risk Level, Status, Action
     const { hasVdom, groups } = groupChecksByScope(cisChecks);
-    const colCount = hasVdom ? 5 : 4;
+    const colCount = hasVdom ? 6 : 5;
 
     return (
         <div className="modal-overlay result-modal-overlay" onClick={!showFixSingleModal && !showHardenAllModal ? onClose : undefined}>
@@ -232,6 +254,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                     <th>Section</th>
                                     {hasVdom && <th>VDOM</th>}
                                     <th>Recommendation</th>
+                                    <th>Risk Level</th>
                                     <th>Status</th>
                                     <th style={{ width: '120px' }}>Action</th>
                                 </tr>
@@ -263,6 +286,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                     <td>
                                                         <div className="recommendation-text">{check.check_title}</div>
                                                     </td>
+                                                    <td>{getSeverityBadge(check.severity)}</td>
                                                     <td>{getStatusBadge(check.status)}</td>
                                                     <td style={{ textAlign: 'center' }}>
                                                         {check.status?.toString().toUpperCase() === 'PASS' ? (

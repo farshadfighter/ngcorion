@@ -241,3 +241,15 @@
     color: #1e3a5f;
     cursor: pointer;
 }
+
+/* Shown when DELETE /api/logs/clear fails, so the page never reports a
+   successful clear that did not happen. */
+.logs-clear-error {
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border: 1px solid #FCA5A5;
+    border-radius: 6px;
+    background: #FEE2E2;
+    color: #991B1B;
+    font-size: 13px;
+}

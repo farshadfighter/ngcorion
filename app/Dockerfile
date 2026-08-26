@@ -8,6 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy
 
 RUN pip install --no-cache-dir uv
+# tzdata provides /usr/share/zoneinfo. Without it the image has no zone
+# database, so the Time settings reject every timezone as "not a known zone".
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 
 FROM base AS development
 

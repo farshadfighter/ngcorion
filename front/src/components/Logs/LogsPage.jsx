@@ -6,20 +6,27 @@ import "../../assets/LogsPage.css";
 
 export const LogsPage = () => {
     const dispatch = useDispatch();
-    const { items, isLoading, isCleared } = useSelector((state) => state.logs);
+    const { items, isLoading, isClearing, clearError } = useSelector(
+        (state) => state.logs
+    );
 
     const [sortDirection, setSortDirection] = useState("desc");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
 
     useEffect(() => {
-        if (!isCleared) {
-            dispatch(fetchAllLogs());
-        }
-    }, [dispatch, isCleared]);
+        dispatch(fetchAllLogs());
+    }, [dispatch]);
 
+    // Deleting every log row cannot be undone, so confirm first. The security
+    // audit trail is kept server-side; say so rather than implying a full wipe.
     const handleClearHistory = () => {
-        dispatch(clearLogs());
+        const ok = window.confirm(
+            "Permanently delete all login, asset, asset requirement, discovery " +
+            "and hardening log entries?\n\n" +
+            "This cannot be undone. The security audit trail is preserved."
+        );
+        if (ok) dispatch(clearLogs());
     };
 
     const handleRefresh = () => {
@@ -82,17 +89,21 @@ export const LogsPage = () => {
 
             {/* Toolbar */}
             <div className="logs-toolbar">
-                <button className="logs-btn-clear" onClick={handleClearHistory}>
+                <button
+                    className="logs-btn-clear"
+                    onClick={handleClearHistory}
+                    disabled={isClearing}
+                >
                     <i className="fa-solid fa-trash"></i>
-                    Clear History
+                    {isClearing ? "Clearing…" : "Clear History"}
                 </button>
 
-                {isCleared && (
-                    <button className="logs-btn-refresh" onClick={handleRefresh}>
-                        <i className="fa-solid fa-rotate-right"></i>
-                        Refresh
-                    </button>
-                )}
+                {/* Refresh used to appear only after a "clear"; it is useful on
+                    every visit, since the feed is a point-in-time snapshot. */}
+                <button className="logs-btn-refresh" onClick={handleRefresh}>
+                    <i className="fa-solid fa-rotate-right"></i>
+                    Refresh
+                </button>
 
                 <button className="logs-btn-sort" onClick={handleSort}>
                     <i className={
@@ -103,6 +114,13 @@ export const LogsPage = () => {
                     Sort by
                 </button>
             </div>
+
+            {/* A failed clear must not look like a successful one. */}
+            {clearError && (
+                <p className="logs-clear-error" role="alert">
+                    Could not clear logs: {clearError}
+                </p>
+            )}
 
             {/* Table */}
             <div className="table-container">

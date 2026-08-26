@@ -17,6 +17,7 @@ from app.core.database import Base, engine, SessionLocal
 from app.core.config import settings, require_license_server_url
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
+from app.modules.logs import clear_router as logs_clear_router
 from app.modules.users import router as users_router
 from app.modules.assets.enums_router import enums_router
 from app.modules.discovery import router as discovery_router
@@ -248,6 +249,8 @@ app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
 
 # Protected routes (auth required)
 app.include_router(logs_router.router, prefix="/api/logs", tags=["Logs"])
+# DELETE /api/logs/clear — carries its own prefix, so no prefix= here.
+app.include_router(logs_clear_router.router)
 app.include_router(users_router.router, prefix="/api/users", tags=["Users"])
 app.include_router(asset_types_router)
 app.include_router(assets_router)

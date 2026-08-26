@@ -29,7 +29,6 @@ import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
 import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
 import {
     RequirePermission,
-    ComingSoon,
     AssetListRoute,
     AutoDiscoveryRoute,
     HardeningRoute,
@@ -223,7 +222,6 @@ function AppContent() {
                         } />
                         {/* Legacy path kept as an alias of the Risk Asset page */}
                         <Route path="/risk/exposure" element={<Navigate to="/risk/assets" replace />} />
-                        <Route path="/risk/attack-surface" element={<ComingSoon name="Attack Surface" />} />
                     </Route>
 
                     {/* Legacy /dashboard → overview, plus catch-all */}

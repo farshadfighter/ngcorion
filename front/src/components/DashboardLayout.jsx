@@ -31,7 +31,6 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/settings/system"))      return "system-configuration";
     if (pathname.startsWith("/risk/assets"))          return "risk-asset";
     if (pathname.startsWith("/risk/exposure"))        return "risk-asset";
-    if (pathname.startsWith("/risk/attack-surface"))  return "attack-surface";
     if (pathname.startsWith("/risk/overview"))        return "risk-intelligence";
     return "dashboard";
 };
@@ -112,7 +111,6 @@ export const DashboardLayout = () => {
         "hardening-operation": "Operation and Device",
         "risk-intelligence":   "Risk Intelligence",
         "risk-asset":          "Risk Asset",
-        "attack-surface":      "Attack Surface",
         "backup":              "Configuration Backup",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
@@ -223,11 +221,6 @@ export const DashboardLayout = () => {
                          onClick={() => navigate("/risk/assets")} title="Risk Asset">
                         {isSidebarCollapsed && <img src="/icons/risk.svg" alt="" className="nav-icon-img" />}
                         {!isSidebarCollapsed && <span>Risk Asset</span>}
-                    </div>
-                    <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "attack-surface" ? "active" : ""} nav-item-disabled`}
-                         onClick={() => navigate("/risk/attack-surface")} title="Attack Surface">
-                        {isSidebarCollapsed && <img src="/icons/risk.svg" alt="" className="nav-icon-img" style={{ opacity: 0.4 }} />}
-                        {!isSidebarCollapsed && <span style={{ opacity: 0.5 }}>Attack Surface</span>}
                     </div>
 
                     {/* ── SYSTEM ── */}

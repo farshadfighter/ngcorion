@@ -9,7 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
 
 RUN pip install --no-cache-dir uv -i https://mirror-pypi.runflare.com/simple
-RUN apt-get update && apt-get install -y procps nmap && rm -rf /var/lib/apt/lists/*
+# tzdata provides /usr/share/zoneinfo. Without it the image has no zone
+# database at all, so the Time settings fall back to the /etc/localtime symlink
+# and reject every zone ("not a known zone under /usr/share/zoneinfo") --
+# there is no systemd in the container for timedatectl to reach either.
+RUN apt-get update && apt-get install -y procps nmap tzdata && rm -rf /var/lib/apt/lists/*
 FROM base AS development
 
 COPY pyproject.toml uv.lock ./

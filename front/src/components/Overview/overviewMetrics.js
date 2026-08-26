@@ -55,7 +55,9 @@ export const SUB_SCORE_LABELS = {
     vulnerability: "Vulnerability",
 };
 
-/** sub_scores object -> ordered rows for the breakdown table. */
+/** sub_scores object -> ordered rows for the breakdown table.
+ *  Currently unused: the "NGCorion Security Score Breakdown" panel was removed
+ *  from the dashboard pending further development. Kept for when it returns. */
 export const breakdownRows = (securityScore) => {
     const subs = securityScore?.sub_scores;
     if (!subs) return [];

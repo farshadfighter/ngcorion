@@ -8,8 +8,8 @@ import {
     moduleCards,
     complianceScore,
     hardeningScore,
-    breakdownRows,
 } from "./overviewMetrics";
+import { RiskLevelBadge } from "../Risk/RiskLevelBadge";
 import "../../assets/OverviewDashboard.css";
 
 const fmt = (value) =>
@@ -37,13 +37,18 @@ const MetricCard = ({ metric }) => (
 );
 
 /* Bands mirror SCORE_LEVEL_BANDS in the backend's security_score_router, so
-   the gauge and the returned score_level always agree. */
+   the gauge and the returned score_level always agree.
+
+   `width` is the band's true share of the 0-100 scale. The bands used to be
+   equal flex children (20% each) while the needle was positioned at `score%`,
+   so the two used different scales and the needle sat over the wrong colour at
+   nearly every score -- always flattering: 40 (Critical) pointed at "Fair". */
 const SCORE_BANDS = [
-    { key: "critical", label: "Critical", range: "0-40", color: "#DC2626" },
-    { key: "poor", label: "Poor", range: "41-60", color: "#F97316" },
-    { key: "fair", label: "Fair", range: "61-75", color: "#F59E0B" },
-    { key: "good", label: "Good", range: "76-90", color: "#22C55E" },
-    { key: "excellent", label: "Excellent", range: "91-100", color: "#16A34A" },
+    { key: "critical", label: "Critical", range: "0-40", color: "#DC2626", width: 40 },
+    { key: "poor", label: "Poor", range: "41-60", color: "#F97316", width: 20 },
+    { key: "fair", label: "Fair", range: "61-75", color: "#F59E0B", width: 15 },
+    { key: "good", label: "Good", range: "76-90", color: "#22C55E", width: 15 },
+    { key: "excellent", label: "Excellent", range: "91-100", color: "#16A34A", width: 10 },
 ];
 
 /** "Security Posture Gauge": the overall score against its level bands. */
@@ -71,7 +76,7 @@ const SecurityPostureGauge = ({ securityScore }) => {
                             className={`ov-gauge-band${
                                 band.key === level ? " is-active" : ""
                             }`}
-                            style={{ background: band.color }}
+                            style={{ background: band.color, width: `${band.width}%` }}
                             title={`${band.label}: ${band.range}`}
                         />
                     ))}
@@ -105,46 +110,11 @@ const SecurityPostureGauge = ({ securityScore }) => {
     );
 };
 
-/** "NGCorion Security Score Breakdown": the weighted sub-scores behind it. */
-const SecurityScoreBreakdown = ({ securityScore }) => {
-    const rows = breakdownRows(securityScore);
-
-    return (
-        <section className="ov-card ov-card-events">
-            <h3 className="ov-card-title">NGCorion Security Score Breakdown</h3>
-            {rows.length === 0 ? (
-                <p className="ov-empty">Security score is not available yet.</p>
-            ) : (
-                <ul className="ov-events">
-                    <li className="ov-event">
-                        <span className="ov-event-module">Security Score</span>
-                        <span className="ov-event-title">
-                            {securityScore?.security_score === undefined
-                                ? "—"
-                                : Math.round(securityScore.security_score)}
-                        </span>
-                    </li>
-                    {rows.map((row) => (
-                        <li className="ov-event" key={row.key}>
-                            <span className="ov-event-module">{row.label}</span>
-                            <span className="ov-event-title">
-                                {row.score === null ? "—" : row.score}
-                                {row.incomplete && (
-                                    <span
-                                        className="ov-event-failed"
-                                        title="Not enough data for this component"
-                                    >
-                                        partial
-                                    </span>
-                                )}
-                            </span>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </section>
-    );
-};
+/* "NGCorion Security Score Breakdown", "Security Trend" and "Recent Security
+   Events" were removed from this page while those features are still being
+   developed. The endpoints they read (/api/dashboard/security-score,
+   .../compliance-trend, /api/events/recent) are untouched, so restoring a
+   panel means re-adding its component and its entry in the render below. */
 
 /** One of the four module tiles; the whole card is the link to its screen. */
 const ModuleCard = ({ card, onOpen }) => (
@@ -219,10 +189,12 @@ const ComplianceVsHardening = ({ compliance, hardening }) => (
 const dash = (value) =>
     value === null || value === undefined || value === "" ? "-" : value;
 
-/** "Top 10 Risky Assets" — the highest-scoring assets, newest calculation. */
+/** "Top 20 Risky Assets" — the highest-scoring assets, newest calculation.
+ *  Score and level are shown so the ordering is legible; the level badge is the
+ *  shared one, so the colours match the Risk Asset and Risk Intelligence pages. */
 const TopRiskyAssets = ({ items }) => (
     <section className="ov-card ov-card-wide">
-        <h3 className="ov-card-title">Top 10 Risky Assets</h3>
+        <h3 className="ov-card-title">Top 20 Risky Assets</h3>
         <div className="ov-table-wrapper">
             <table className="ov-table">
                 <thead>
@@ -234,12 +206,14 @@ const TopRiskyAssets = ({ items }) => (
                         <th>Zone</th>
                         <th>Manufacturer</th>
                         <th>Model</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.length === 0 && (
                         <tr>
-                            <td colSpan={7} className="ov-table-empty">
+                            <td colSpan={9} className="ov-table-empty">
                                 No assets have a risk score yet.
                             </td>
                         </tr>
@@ -253,39 +227,11 @@ const TopRiskyAssets = ({ items }) => (
                             <td>{dash(row.zone_name)}</td>
                             <td>{dash(row.vendor)}</td>
                             <td>{dash(row.model)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </section>
-);
-
-/** "Assets Requiring Attention" — unresolved hardening findings, worst first. */
-const AssetsRequiringAttention = ({ items }) => (
-    <section className="ov-card ov-card-medium">
-        <h3 className="ov-card-title">Assets Requiring Attention</h3>
-        <div className="ov-table-wrapper">
-            <table className="ov-table">
-                <thead>
-                    <tr>
-                        <th>Asset</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.length === 0 && (
-                        <tr>
-                            <td colSpan={2} className="ov-table-empty">
-                                No assets with unresolved findings.
+                            <td>{dash(row.final_risk_score)}</td>
+                            <td>
+                                <RiskLevelBadge level={row.risk_level} />
                             </td>
                         </tr>
-                    )}
-                    {items.map((row) => (
-                        <tr key={row.asset_id}>
-                            <td>{dash(row.asset_name)}</td>
-                            <td>{dash(row.active_findings_count)}</td>
-                        </tr>
                     ))}
                 </tbody>
             </table>
@@ -293,90 +239,50 @@ const AssetsRequiringAttention = ({ items }) => (
     </section>
 );
 
-/** "2026-08-18" -> "8/18", matching the design's compact axis labels. */
-const dayLabel = (period) => {
-    const parts = String(period).split("-");
-    return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : period;
-};
+/** "Assets Requiring Attention" — the Very High and Critical assets by risk
+ *  score, worst first, with the same level colours as the Risk pages. */
+const ATTENTION_LEVELS = ["critical", "very_high"];
 
-/**
- * "Security Trend": one bar per day over the last 30 days.
- *
- * Drawn with plain elements rather than a chart library — the design is a flat
- * column per point with its value on top, and recharts would fight the fixed
- * 18px bar width the mock specifies.
- */
-const SecurityTrend = ({ points, message }) => (
-    <section className="ov-card ov-card-trend">
-        <h3 className="ov-card-title">Security Trend</h3>
-        {points.length === 0 ? (
-            <p className="ov-empty">
-                {message || "No audit history in the last 30 days."}
-            </p>
-        ) : (
-            <div className="ov-trend">
-                {points.map((p) => {
-                    const value = Math.max(0, Math.min(100, p.average_compliance));
-                    return (
-                        <div className="ov-trend-col" key={p.period}>
-                            {/* The value sits above a fixed-height track so a
-                                bar's height is a true share of the scale — with
-                                the label inside the flex flow, tall bars all
-                                clipped to the same height. */}
-                            <span className="ov-trend-value">
-                                {Math.round(value)}%
-                            </span>
-                            <span className="ov-trend-track">
-                                <span
-                                    className="ov-trend-bar"
-                                    style={{ height: `${value}%` }}
-                                    title={`${p.period}: ${Math.round(value)}% (${
-                                        p.session_count
-                                    } audits)`}
-                                />
-                            </span>
-                            <span className="ov-trend-label">
-                                {dayLabel(p.period)}
-                            </span>
-                        </div>
-                    );
-                })}
+const AssetsRequiringAttention = ({ items }) => {
+    const rows = (items || [])
+        .filter((row) => ATTENTION_LEVELS.includes(row.risk_level))
+        .slice(0, 10);
+
+    return (
+        <section className="ov-card ov-card-medium">
+            <h3 className="ov-card-title">Assets Requiring Attention</h3>
+            <div className="ov-table-wrapper">
+                <table className="ov-table">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>Risk Score</th>
+                            <th>Risk Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.length === 0 && (
+                            <tr>
+                                <td colSpan={3} className="ov-table-empty">
+                                    No Very High or Critical risk assets.
+                                </td>
+                            </tr>
+                        )}
+                        {rows.map((row) => (
+                            <tr key={row.asset_id}>
+                                <td>{dash(row.asset_name)}</td>
+                                <td>{dash(row.final_risk_score)}</td>
+                                <td>
+                                    <RiskLevelBadge level={row.risk_level} />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-        )}
-    </section>
-);
-
-/**
- * "Recent Security Events": cross-module activity, newest first.
- *
- * Two columns per row in the design — where it happened, and what happened —
- * so the module label and the action title are shown side by side rather than
- * as a conventional table.
- */
-const RecentSecurityEvents = ({ items, message }) => (
-    <section className="ov-card ov-card-events">
-        <h3 className="ov-card-title">Recent Security Events</h3>
-        {items.length === 0 ? (
-            <p className="ov-empty">{message || "No activity recorded yet."}</p>
-        ) : (
-            <ul className="ov-events">
-                {items.map((event) => (
-                    <li className="ov-event" key={event.id}>
-                        <span className="ov-event-module">
-                            {event.module_label || event.module || "—"}
-                        </span>
-                        <span className="ov-event-title">
-                            {event.title}
-                            {event.result === "failed" && (
-                                <span className="ov-event-failed">failed</span>
-                            )}
-                        </span>
-                    </li>
-                ))}
-            </ul>
-        )}
-    </section>
-);
+        </section>
+    );
+};
 
 /**
  * The main dashboard.
@@ -431,11 +337,6 @@ export const OverviewDashboard = () => {
 
             <TopRiskyAssets items={state.topRisky?.items || []} />
 
-            <SecurityTrend
-                points={state.complianceTrend?.points || []}
-                message={state.complianceTrend?.message}
-            />
-
             <ComplianceVsHardening
                 compliance={complianceScore(state.auditOverview)}
                 hardening={hardeningScore(state.hardeningOverview)}
@@ -444,13 +345,6 @@ export const OverviewDashboard = () => {
             <AssetsRequiringAttention
                 items={state.requiringAttention?.items || []}
             />
-
-            <RecentSecurityEvents
-                items={state.recentEvents?.items || []}
-                message={state.recentEvents?.message}
-            />
-
-            <SecurityScoreBreakdown securityScore={state.securityScore} />
         </div>
     );
 };

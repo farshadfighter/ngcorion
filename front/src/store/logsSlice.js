@@ -99,6 +99,42 @@ export const fetchAllLogs = createAsyncThunk("logs/fetchAll", async (_, { getSta
     }
 });
 
+/**
+ * Actually delete the logs on the server.
+ *
+ * This used to be a plain reducer that only emptied the local array, so the
+ * page reported success and the rows reappeared on the next refresh. The real
+ * work happens in DELETE /api/logs/clear.
+ */
+export const clearLogs = createAsyncThunk(
+    "logs/clear",
+    async (_, { getState, dispatch, rejectWithValue }) => {
+        const token = getState().auth.token;
+        try {
+            const res = await fetch(`${API_BASE}/logs/clear`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+                let detail = `Clear failed (${res.status})`;
+                try {
+                    detail = (await res.json())?.detail || detail;
+                } catch {
+                    /* non-JSON error body — keep the status text */
+                }
+                return rejectWithValue(detail);
+            }
+            const data = await res.json();
+            // Re-read from the server rather than trusting a local empty array:
+            // the audit trail is intentionally preserved, so some rows remain.
+            await dispatch(fetchAllLogs());
+            return data;
+        } catch (err) {
+            return rejectWithValue(err.message);
+        }
+    }
+);
+
 const logsSlice = createSlice({
     name: "logs",
     initialState: {
@@ -106,13 +142,10 @@ const logsSlice = createSlice({
         isLoading: false,
         error: null,
         isCleared: false,
+        isClearing: false,
+        clearError: null,
     },
-    reducers: {
-        clearLogs(state) {
-            state.items = [];
-            state.isCleared = true;
-        },
-    },
+    reducers: {},
     extraReducers: (builder) => {
         builder
             .addCase(fetchAllLogs.pending, (state) => {
@@ -127,9 +160,20 @@ const logsSlice = createSlice({
             .addCase(fetchAllLogs.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.payload;
+            })
+            .addCase(clearLogs.pending, (state) => {
+                state.isClearing = true;
+                state.clearError = null;
+            })
+            .addCase(clearLogs.fulfilled, (state) => {
+                state.isClearing = false;
+                // fetchAllLogs (dispatched by the thunk) refills `items`.
+            })
+            .addCase(clearLogs.rejected, (state, action) => {
+                state.isClearing = false;
+                state.clearError = action.payload;
             });
     },
 });
 
-export const { clearLogs } = logsSlice.actions;
 export default logsSlice.reducer;

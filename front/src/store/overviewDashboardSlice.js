@@ -12,30 +12,35 @@ import api from "../config/api";
  */
 const SOURCES = {
     riskSummary: { url: "/api/risk/summary" },
-    // The design's trend is 30 daily bars, which is what this endpoint's
-    // `days` mode returns — /api/risk/trend only groups by month.
-    complianceTrend: {
-        url: "/api/audit/dashboard/compliance-trend",
-        params: { days: 30 },
-    },
+    // The "Security Trend" and "Recent Security Events" panels were removed
+    // from the page pending further development, so their sources
+    // (/api/audit/dashboard/compliance-trend and /api/events/recent) are no
+    // longer requested. Restore them here alongside the panels.
     auditOverview: { url: "/api/audit/dashboard/overview" },
     hardeningOverview: { url: "/api/hardening/dashboard/overview" },
     topRisky: {
         url: "/api/risk/assets",
         params: {
             page: 1,
-            page_size: 10,
+            page_size: 20,
             sort_by: "final_risk_score",
             sort_order: "desc",
         },
     },
+    // Assets needing attention are the worst-scoring ones, so this reads the
+    // risk list rather than the hardening one: the hardening endpoint only
+    // returns assets with active audit findings, so a very-high-risk asset that
+    // has never been audited -- exactly the kind worth surfacing -- was hidden.
+    // The API filters one risk_level at a time, so the page takes the top slice
+    // (already sorted by score desc) and keeps very_high + critical.
     requiringAttention: {
-        url: "/api/hardening/dashboard/assets-requiring-hardening",
-        params: { page: 1, page_size: 10 },
-    },
-    recentEvents: {
-        url: "/api/events/recent",
-        params: { limit: 8 },
+        url: "/api/risk/assets",
+        params: {
+            page: 1,
+            page_size: 50,
+            sort_by: "final_risk_score",
+            sort_order: "desc",
+        },
     },
     securityScore: { url: "/api/dashboard/security-score" },
 };
@@ -79,12 +84,10 @@ const overviewDashboardSlice = createSlice({
     name: "overviewDashboard",
     initialState: {
         riskSummary: null,
-        complianceTrend: null,
         auditOverview: null,
         hardeningOverview: null,
         topRisky: null,
         requiringAttention: null,
-        recentEvents: null,
         securityScore: null,
         failedPanels: [],
         isLoading: false,
