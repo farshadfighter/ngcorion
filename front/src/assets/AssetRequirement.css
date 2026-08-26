@@ -403,3 +403,173 @@
         padding: 10px 12px;
     }
 }
+/* ── Wide tables ──────────────────────────────────────────────────────────
+   width:100% alone squeezes seven columns into whatever space is available,
+   so Email/Department wrap to unreadable slivers. A min-width lets the table
+   keep legible columns and hand the overflow to .table-container's scroller
+   instead — no zooming out to read a cell. */
+.requirement-table {
+    min-width: 900px;
+}
+
+.requirement-table th,
+.requirement-table td {
+    white-space: nowrap;
+}
+
+/* Long free-text columns may wrap rather than push the table wider forever. */
+.requirement-table td.cell-wrap {
+    white-space: normal;
+    min-width: 180px;
+}
+
+/* The horizontal scrollbar should be visible, not a hidden affordance. */
+.table-container {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* ── Row selection ────────────────────────────────────────────────────────── */
+
+.requirement-table .cell-select {
+    width: 44px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.requirement-table .cell-select input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #1e3a5f;
+}
+
+.requirement-table tr.row-selected {
+    background: #f0f5fb;
+}
+
+/* ── Bulk delete bar ──────────────────────────────────────────────────────── */
+
+/* Only rendered once something is ticked, so it reads as a response to the
+   user's action rather than permanent chrome. */
+.bulk-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+    background: #f0f5fb;
+    border: 1px solid #d7e0ec;
+    border-radius: 10px;
+}
+
+.bulk-bar-count {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e3a5f;
+}
+
+.bulk-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bulk-bar-clear,
+.bulk-bar-delete {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+
+.bulk-bar-clear {
+    background: #ffffff;
+    border: 1px solid #d7e0ec;
+    color: #1e3a5f;
+}
+
+.bulk-bar-clear:hover:not(:disabled) {
+    background: #f7f9fc;
+}
+
+.bulk-bar-delete {
+    background: #dc2626;
+    border: 1px solid #dc2626;
+    color: #ffffff;
+}
+
+.bulk-bar-delete:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+.bulk-bar-clear:disabled,
+.bulk-bar-delete:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ── Error banner ─────────────────────────────────────────────────────────── */
+
+/* Delete and save failures used to reject into the store with nothing
+   rendering them, so a refused action looked like a dead button. */
+.requirement-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 11px 16px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    color: #b91c1c;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.requirement-error i {
+    flex-shrink: 0;
+}
+
+.requirement-error span {
+    flex: 1;
+    overflow-wrap: anywhere;
+}
+
+.requirement-error-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #b91c1c;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.requirement-error-close:hover {
+    background: #fee2e2;
+}

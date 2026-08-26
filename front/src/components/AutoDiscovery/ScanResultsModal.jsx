@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import ManagePortsModal from './ManagePortsModal';
+import ScanErrorAlert from './scanErrors.jsx';
 import "../../assets/autoDiscoveryStyle/ScanResultsModal.css"
 
 const ScanResultsModal = ({ scan, onClose }) => {
@@ -144,15 +145,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     </div>
 
                     {/* Error Message — field is 'error' from list API, 'error_message' from detail API */}
-                    {(scan.error_message || scan.error) && (
-                        <div className="alert alert-error">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <path d="M12 8v4M12 16h.01" />
-                            </svg>
-                            <span>{scan.error_message || scan.error}</span>
-                        </div>
-                    )}
+                    <ScanErrorAlert error={scan.error_message || scan.error} />
 
                     {/* Hosts Table */}
                     {hosts.length === 0 ? (

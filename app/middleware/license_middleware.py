@@ -61,13 +61,20 @@ class LicenseMiddleware(BaseHTTPMiddleware):
                             "temporarily unavailable — check network connectivity "
                             "to the license server."
                         ),
+                        # The state message carries the specific cause (refused
+                        # connection, HTTP 500, offline grace window expired).
+                        # Without it every one of those looked identical to the
+                        # operator, who then had no idea what to fix.
+                        "reason": state.message,
                         "license_server_unreachable": True,
                     },
+                    headers={"Retry-After": "60"},
                 )
             return JSONResponse(
                 status_code=403,
                 content={
                     "detail": "No valid license. Please activate a license first.",
+                    "reason": state.message,
                     "license_required": True
                 }
             )

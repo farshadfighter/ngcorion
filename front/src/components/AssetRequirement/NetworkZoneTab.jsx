@@ -3,6 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchZones, deleteZone } from "../../store/requirementSlice";
 import { NetworkZoneModal } from "./NetworkZoneModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { BulkDeleteBar } from "./BulkDeleteBar";
+import { RequirementError } from "./RequirementError";
+import { EditRequirementModal } from "./EditRequirementModal";
+import { useTableSelection } from "./useTableSelection";
+import { Pagination } from "../Logs/Pagination.jsx";
+import "../../assets/LogsPage.css";
 
 const DescriptionModal = ({ description, zoneName, onClose }) => {
     return (
@@ -188,6 +194,32 @@ export const NetworkZoneTab = () => {
         }
     });
 
+    // Paging + selection (shared with the other requirement tabs).
+    const {
+        page, setPage, pageSize, setPageSize, paged, total,
+        selectedIds, selectedCount, allSelected, toggleOne, toggleAll,
+        clearSelection,
+    } = useTableSelection(sortedData);
+
+    const [editItem, setEditItem] = useState(null);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+
+    const confirmBulkDelete = async () => {
+        setIsBulkDeleting(true);
+        try {
+            // Sequential: each delete refetches the list, and parallel calls
+            // race the store into an inconsistent state.
+            for (const id of [...selectedIds]) {
+                await dispatch(deleteZone(id)).unwrap().catch(() => {});
+            }
+        } finally {
+            setIsBulkDeleting(false);
+            setShowBulkConfirm(false);
+            clearSelection();
+        }
+    };
+
     const renderSortIcon = (column) => {
         if (sortColumn !== column) return " ↕";
         return sortDirection === "asc" ? " ↑" : " ↓";
@@ -224,10 +256,27 @@ export const NetworkZoneTab = () => {
                     </button>
                 </div>
 
+                <RequirementError />
+
+                <BulkDeleteBar
+                    count={selectedCount}
+                    onDelete={() => setShowBulkConfirm(true)}
+                    onClear={clearSelection}
+                    isDeleting={isBulkDeleting}
+                />
+
                 <div className="table-container">
                     <table className="requirement-table">
                         <thead>
                         <tr>
+                            <th className="cell-select">
+                                <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={toggleAll}
+                                    aria-label="Select all rows on this page"
+                                />
+                            </th>
                             <th>Number</th>
 
                             <th onClick={() => handleSort("zone_name")} style={{ cursor: "pointer" }}>
@@ -238,16 +287,24 @@ export const NetworkZoneTab = () => {
                         </tr>
                         </thead>
                         <tbody>
-                        {sortedData.length === 0 ? (
+                        {paged.length === 0 ? (
                             <tr>
-                                <td colSpan="5" className="no-data">
+                                <td colSpan="6" className="no-data">
                                     No zones found
                                 </td>
                             </tr>
                         ) : (
-                            sortedData.map((item, index) => (
-                                <tr key={item.id}>
-                                    <td>{index + 1}</td>
+                            paged.map((item, index) => (
+                                <tr key={item.id} className={selectedIds.has(item.id) ? "row-selected" : ""}>
+                                <td className="cell-select">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.has(item.id)}
+                                        onChange={() => toggleOne(item.id)}
+                                        aria-label={`Select ${item.zone_name || item.id}`}
+                                    />
+                                </td>
+                                    <td>{(page - 1) * pageSize + index + 1}</td>
                                     <td>{item.zone_name}</td>
                                     <td>
                                         {item.description ? (
@@ -269,6 +326,13 @@ export const NetworkZoneTab = () => {
                                     <td className="actions">
                                         <button
                                             className="btn-icon"
+                                            onClick={() => setEditItem(item)}
+                                            title="Edit"
+                                        >
+                                            <i className="fa-solid fa-pen"></i>
+                                        </button>
+                                        <button
+                                            className="btn-icon"
                                             onClick={() => handleDelete(item)}
                                         >
                                             <i className="fa-solid fa-trash"></i>
@@ -280,6 +344,31 @@ export const NetworkZoneTab = () => {
                         </tbody>
                     </table>
                 </div>
+
+            <Pagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={total}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+            />
+
+            {editItem && (
+                <EditRequirementModal
+                    kind="zone"
+                    item={editItem}
+                    onClose={() => setEditItem(null)}
+                />
+            )}
+
+            {showBulkConfirm && (
+                <DeleteConfirmModal
+                    title="Delete Network Zones"
+                    message={`Are you sure you want to delete ${selectedCount} item${selectedCount === 1 ? "" : "s"}?`}
+                    onConfirm={confirmBulkDelete}
+                    onCancel={() => setShowBulkConfirm(false)}
+                />
+            )}
 
                 {showModal && (
                     <NetworkZoneModal onClose={() => setShowModal(false)} />

@@ -237,12 +237,16 @@ def execute_windows_audit(
 @router.get("/sessions", response_model=List[WindowsAuditSessionResponse])
 def list_audit_sessions(
     # Bounded at the edge: a negative LIMIT/OFFSET is a Postgres error, which
-    # surfaced as an opaque 500 on a read endpoint.
-    limit: int = Query(50, ge=1, le=100),
+    # surfaced as an opaque 500 on a read endpoint. The upper bound is clamped
+    # rather than rejected, matching the other audit modules — callers that ask
+    # for more than 100 get 100, not a 422.
+    limit: int = Query(50, ge=1),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    limit = min(limit, 100)
+
     # Non-admins see only their own sessions — the listing counterpart of the
     # assert_session_access check on the detail endpoint.
     sessions = WindowsAuditService.get_all_sessions(

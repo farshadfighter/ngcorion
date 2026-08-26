@@ -77,6 +77,7 @@ CMD_LAST_READ = 2.0        # seconds of channel silence that ends a normal read
 CMD_READ_TIMEOUT = 120.0   # hard cap per command (long outputs: config backups)
 DRAIN_LAST_READ = 1.0      # silence window per prompt-drain read
 DRAIN_READ_TIMEOUT = 15.0  # hard cap per prompt-drain read (max 8 drains)
+PROMPT_READ_TIMEOUT = 30.0 # hard cap for netmiko's own find_prompt() read
 
 # Scope constants (kept in sync with rules.FortiGateControl.scope)
 SCOPE_GLOBAL = "global"
@@ -169,8 +170,18 @@ class FortiGateSSHClient:
             password=self.password,
             port=self.port,
             fast_cli=False,
-            global_delay_factor=1,
+            global_delay_factor=2,
+            session_timeout=60,
         )
+        # NOTE: deliberately no read_timeout_override here. It is a hard
+        # override netmiko applies to EVERY read, including the read_timeout
+        # this client passes explicitly. Setting it to 30 would clamp the
+        # CMD_READ_TIMEOUT (120s) budget that long outputs like config backups
+        # need, truncating them; setting it to 120 would stretch the bounded
+        # DRAIN_READ_TIMEOUT (15s) drain loop to eight two-minute reads. The
+        # reads on this client's own paths all pass their own read_timeout, so
+        # the only ones left on netmiko's 10s default are its internal prompt
+        # reads — those get a scoped budget in _current_prompt() instead.
 
         last_error = None
         for device_type in ("fortinet", "fortigate"):
@@ -667,14 +678,32 @@ class FortiGateSSHClient:
             self._raw_send("end")
 
     def _current_prompt(self) -> str:
-        """Best-effort read of the current CLI prompt ('' when unavailable)."""
-        find_prompt = getattr(self._connection, "find_prompt", None)
+        """
+        Best-effort read of the current CLI prompt ('' when unavailable).
+
+        netmiko's find_prompt() takes no timeout and falls back to a 10s read,
+        which is what raises "Pattern not detected" on a device slow to echo a
+        bare newline. Scope the override to this call only — applying it at the
+        connection level would also rewrite the explicit CMD/DRAIN budgets.
+        """
+        conn = self._connection
+        find_prompt = getattr(conn, "find_prompt", None)
         if not callable(find_prompt):
             return ""
+        prev = getattr(conn, "read_timeout_override", None)
+        try:
+            conn.read_timeout_override = PROMPT_READ_TIMEOUT
+        except Exception:  # noqa: BLE001 - non-netmiko fake without the attr
+            prev = None
         try:
             return find_prompt() or ""
         except Exception:  # noqa: BLE001 - best effort; never fail a read
             return ""
+        finally:
+            try:
+                conn.read_timeout_override = prev
+            except Exception:  # noqa: BLE001
+                pass
 
     def _run_operational(self, command: str) -> str:
         """

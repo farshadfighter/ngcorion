@@ -168,6 +168,15 @@ export const createOS = createAsyncThunk("requirements/createOS", async (data, {
     }
 });
 
+export const updateOS = createAsyncThunk("requirements/updateOS", async ({ id, data }, { rejectWithValue }) => {
+    try {
+        const response = await api.put(`/api/os-catalog/${id}`, data);
+        return response.data;
+    } catch (err) {
+        return rejectWithValue(err.response?.data?.detail || "Failed to update OS");
+    }
+});
+
 export const deleteOS = createAsyncThunk("requirements/deleteOS", async (id, { rejectWithValue }) => {
     try {
         await api.delete(`/api/os-catalog/${id}`);
@@ -193,6 +202,15 @@ export const createVendor = createAsyncThunk("requirements/createVendor", async 
         return response.data;
     } catch (err) {
         return rejectWithValue(err.response?.data?.detail || "Failed to create vendor");
+    }
+});
+
+export const updateVendor = createAsyncThunk("requirements/updateVendor", async ({ id, data }, { rejectWithValue }) => {
+    try {
+        const response = await api.put(`/api/vendors/${id}`, data);
+        return response.data;
+    } catch (err) {
+        return rejectWithValue(err.response?.data?.detail || "Failed to update vendor");
     }
 });
 
@@ -340,6 +358,14 @@ const requirementSlice = createSlice({
                 state.successMessage = "Zone created successfully";
             })
 
+            .addCase(updateOS.fulfilled, (state, action) => {
+                const i = state.osCatalog.findIndex(x => x.id === action.payload.id);
+                if (i !== -1) state.osCatalog[i] = action.payload;
+            })
+            .addCase(updateVendor.fulfilled, (state, action) => {
+                const i = state.vendors.findIndex(x => x.id === action.payload.id);
+                if (i !== -1) state.vendors[i] = action.payload;
+            })
             .addCase(updateZone.fulfilled, (state, action) => {
                 const index = state.zones.findIndex(item => item.id === action.payload.id);
                 if (index !== -1) state.zones[index] = action.payload;
@@ -405,10 +431,13 @@ const requirementSlice = createSlice({
                     updateLocation.rejected,
                     deleteLocation.rejected,
                     createZone.rejected,
+                    updateZone.rejected,
                     deleteZone.rejected,
                     createOS.rejected,
+                    updateOS.rejected,
                     deleteOS.rejected,
                     createVendor.rejected,
+                    updateVendor.rejected,
                     deleteVendor.rejected,
                     createDependency.rejected,
                     deleteDependency.rejected,

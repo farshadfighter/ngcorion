@@ -18,6 +18,7 @@ import ScanResultsModal from "./ScanResultsModal.jsx";
 import ApplyDiscoveryModal from "./ApplyDiscoveryModal.jsx";
 import AutoDiscoveryAssetListModal from "./AutoDiscoveryAssetListModal";
 import ScanLogPanel from "./ScanLogPanel.jsx";
+import ScanErrorAlert from "./scanErrors.jsx";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/autoDiscoveryStyle/AutoDiscovery.css";
@@ -234,33 +235,8 @@ const AutoDiscovery = () => {
                     </div>
                 </div>
 
-                {/* Error Alert */}
-                {error && (
-                    <div className="alert alert-error">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M15 9l-6 6M9 9l6 6" />
-                        </svg>
-                        <span>
-              {(() => {
-                  if (!error) return null;
-                  if (typeof error === "string") return error;
-                  if (Array.isArray(error)) {
-                      return error.map((e) => (typeof e === "object" ? e.msg || JSON.stringify(e) : String(e))).join(" | ");
-                  }
-                  if (typeof error === "object") {
-                      return error.msg || error.detail || JSON.stringify(error);
-                  }
-                  return String(error);
-              })()}
-            </span>
-                        <button className="alert-close" onClick={() => dispatch(clearError())}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                )}
+                {/* Error Alert — nmap-missing renders as an actionable warning */}
+                <ScanErrorAlert error={error} onClose={() => dispatch(clearError())} />
 
                 {/* Loading Card - نمایش در حین Scan */}
                 {hasRunningScan &&

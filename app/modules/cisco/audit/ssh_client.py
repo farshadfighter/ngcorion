@@ -5,6 +5,7 @@ Handles SSH connections and command execution on Cisco IOS/IOS-XE devices.
 Based on netmiko library with "turbo" command collection strategy.
 """
 
+from contextlib import contextmanager
 from typing import List, Optional
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
@@ -179,6 +180,15 @@ class CiscoSSHClient:
     MAX_RETRIES = 3
     RETRY_DELAY = 2  # seconds
 
+    # Connection-wide read budget. netmiko's own reads (find_prompt,
+    # check_config_mode, _test_channel_read) take no timeout argument and
+    # default to 10s, which is what raises "Pattern not detected: '[>#]'" on
+    # devices slow to echo a prompt. read_timeout_override is the only lever
+    # that reaches those internal reads.
+    READ_TIMEOUT = 30
+    # Config pushes legitimately run longer than a single show command.
+    CONFIG_READ_TIMEOUT = 120
+
     def __init__(self,
                  ip: str,
                  username: str,
@@ -242,7 +252,9 @@ class CiscoSSHClient:
                     secret=self.secret,
                     fast_cli=self.fast_cli,
                     timeout=self.timeout,
-                    global_delay_factor=1,
+                    global_delay_factor=2,
+                    session_timeout=60,
+                    read_timeout_override=self.READ_TIMEOUT,
                     banner_timeout=20,  # Longer banner timeout for slow devices
                     auth_timeout=20     # Longer auth timeout
                 )
@@ -335,6 +347,41 @@ class CiscoSSHClient:
         except Exception:
             return False
 
+    @contextmanager
+    def _read_budget(self, seconds: float):
+        """
+        Temporarily widen the connection-wide read budget.
+
+        ``read_timeout_override`` is a hard override: netmiko applies it to
+        every read, including a ``read_timeout=`` passed to send_command or
+        send_config_set. Without lifting it here, the longer config-push budget
+        would be silently clamped down to READ_TIMEOUT.
+        """
+        prev = self.connection.read_timeout_override
+        self.connection.read_timeout_override = seconds
+        try:
+            yield
+        finally:
+            self.connection.read_timeout_override = prev
+
+    def _prompt_kwargs(self) -> dict:
+        """
+        Reuse the prompt netmiko captured at login instead of re-deriving it
+        on every command.
+
+        Each send_command() otherwise calls find_prompt(), and that read is
+        what raises "Pattern not detected: '[>#]'" when a device is slow to
+        echo a bare newline. base_prompt is set once by session_preparation and
+        is stable for the session, so anchoring to it drops the per-command
+        round trip that was failing.
+
+        Falls back to netmiko's default when base_prompt is empty: an empty
+        expect pattern matches immediately and would truncate every response.
+        """
+        if getattr(self.connection, "base_prompt", ""):
+            return {"auto_find_prompt": False}
+        return {}
+
     def _ensure_enable_mode(self) -> bool:
         """
         Ensure the session is in privileged (enable) mode.
@@ -413,7 +460,8 @@ class CiscoSSHClient:
                 out = self.connection.send_command(
                     cmd,
                     cmd_verify=False,
-                    read_timeout=30  # Per-command timeout
+                    read_timeout=self.READ_TIMEOUT,  # Per-command timeout
+                    **self._prompt_kwargs()
                 )
                 chunks.append(f"!! {cmd}\n{out}\n")
             except Exception as e:
@@ -492,7 +540,8 @@ class CiscoSSHClient:
             output = self.connection.send_command(
                 command,
                 cmd_verify=False,
-                read_timeout=timeout
+                read_timeout=timeout,
+                **self._prompt_kwargs()
             )
             return output
         except Exception as e:
@@ -566,14 +615,15 @@ class CiscoSSHClient:
                 r"|^no\s+interface\s+Tunnel"
             )
 
-            output = self.connection.send_config_set(
-                expanded,
-                exit_config_mode=True,
-                cmd_verify=False,
-                read_timeout=120,
-                delay_factor=2.0,
-                bypass_commands=interactive_pattern,
-            )
+            with self._read_budget(self.CONFIG_READ_TIMEOUT):
+                output = self.connection.send_config_set(
+                    expanded,
+                    exit_config_mode=True,
+                    cmd_verify=False,
+                    read_timeout=self.CONFIG_READ_TIMEOUT,
+                    delay_factor=2.0,
+                    bypass_commands=interactive_pattern,
+                )
 
             logger.info(f"Successfully executed {len(commands)} config commands on {self.ip}")
             return output

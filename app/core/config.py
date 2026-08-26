@@ -109,6 +109,21 @@ class Settings(BaseSettings):
     # the whole app out on the first failed call.
     LICENSE_OFFLINE_GRACE_HOURS: int = 48
 
+    # Heartbeat cadence. On a *failed* heartbeat the loop does not wait a whole
+    # interval before trying again: it backs off from RETRY_SECONDS, doubling up
+    # to MAX_RETRY_SECONDS, until a heartbeat succeeds. Waiting the full hour
+    # after a single dropped packet burns most of the 48h offline grace window
+    # on doing nothing.
+    LICENSE_HEARTBEAT_INTERVAL_SECONDS: int = 3600
+    LICENSE_HEARTBEAT_RETRY_SECONDS: int = 60
+    LICENSE_HEARTBEAT_MAX_RETRY_SECONDS: int = 900
+
+    # Persist the last successfully validated license state (encrypted, next to
+    # the license data) so a restart while the license server is unreachable
+    # resumes inside the offline grace window instead of locking the product out
+    # with an empty in-memory state.
+    LICENSE_STATE_CACHE_ENABLED: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

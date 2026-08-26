@@ -117,6 +117,13 @@ class MongoDBSSHClient:
                 port=self.ssh_port,
                 timeout=self.timeout,
                 conn_timeout=self.timeout,
+                global_delay_factor=2,
+                session_timeout=60,
+                # netmiko's internal reads (find_prompt, _test_channel_read)
+                # take no timeout argument and default to 10s, which is what
+                # raises "Pattern not detected" on slow-prompting hosts.
+                # read_timeout_override is the only lever that reaches them.
+                read_timeout_override=self.COMMAND_TIMEOUT,
             )
             logger.info(f"SSH connection established to {self.ip}")
         except NetmikoTimeoutException as exc:

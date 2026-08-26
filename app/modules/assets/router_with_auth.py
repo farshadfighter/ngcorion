@@ -560,6 +560,24 @@ def create_zone(
     return result
 
 
+@zones_router.put("/{zone_id}", response_model=NetworkZoneResponse)
+def update_zone(
+    zone_id: int,
+    data: NetworkZoneCreate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Update zone (admin only, matching create/delete on this router)."""
+    result = AssetService.update_zone(db, zone_id, data.model_dump())
+    if not result:
+        raise HTTPException(status_code=404, detail="Zone not found")
+    log_requirement_update(
+        db, current_user.id, "zone", result.id, result.zone_name,
+        data.model_dump()
+    )
+    return result
+
+
 @zones_router.delete("/{zone_id}")
 def delete_zone(
     zone_id: int,
@@ -604,6 +622,24 @@ def create_os(
     return result
 
 
+@os_router.put("/{os_id}", response_model=OSCatalogResponse)
+def update_os(
+    os_id: int,
+    data: OSCatalogCreate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Update os (admin only, matching create/delete on this router)."""
+    result = AssetService.update_os(db, os_id, data.model_dump())
+    if not result:
+        raise HTTPException(status_code=404, detail="Os not found")
+    log_requirement_update(
+        db, current_user.id, "os", result.id, result.os_name,
+        data.model_dump()
+    )
+    return result
+
+
 @os_router.delete("/{os_id}")
 def delete_os(
     os_id: int,
@@ -645,6 +681,24 @@ def create_vendor(
     """Create vendor (admin only)"""
     result = AssetService.create_vendor(db, data.model_dump())
     log_requirement_create(db, current_user.id, "vendor", result.id, result.vendor_name)
+    return result
+
+
+@vendors_router.put("/{vendor_id}", response_model=VendorCatalogResponse)
+def update_vendor(
+    vendor_id: int,
+    data: VendorCatalogCreate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """Update vendor (admin only, matching create/delete on this router)."""
+    result = AssetService.update_vendor(db, vendor_id, data.model_dump())
+    if not result:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    log_requirement_update(
+        db, current_user.id, "vendor", result.id, result.vendor_name,
+        data.model_dump()
+    )
     return result
 
 

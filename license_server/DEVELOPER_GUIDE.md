@@ -1,5 +1,14 @@
 # Developer Guide: License Management
 
+> **Note on the `client` package.** The standalone SDK that used to live in
+> `license_server/client/` (`from client import LicenseClient, HeartbeatService`)
+> has been removed — it was an unmaintained duplicate of the client the product
+> actually runs. The maintained implementation is `app/core/license_client.py`
+> and `app/core/heartbeat.py` in the main app, wired up in `app/main.py`'s
+> lifespan. The `from client import ...` snippets below are kept as
+> illustrations of the call sequence; import from `app.core.license_client`
+> instead.
+
 ## For Backend Developers: Generating Licenses
 
 ### Method 1: Using the Admin API (Recommended)

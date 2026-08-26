@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrors.jsx';
 
 const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // Format date
@@ -30,6 +31,7 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // Derive a human-readable label from status + optional error message
   const getStatusLabel = (scan) => {
     if (scan.status === 'failed') {
+      if (isNmapMissing(scan.error)) return 'nmap Missing';
       const err = (scan.error || '').toLowerCase();
       if (err.includes('timed out') || err.includes('timeout')) return 'Timed Out';
       return 'Failed';
@@ -39,6 +41,15 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
     if (scan.status === 'running') return 'Running';
     if (scan.status === 'pending') return 'Pending';
     return scan.status;
+  };
+
+  // Tooltip text for the status badge. The raw nmap-missing string is
+  // unactionable, so surface the install command instead.
+  const getStatusTitle = (scan) => {
+    if (isNmapMissing(scan.error)) {
+      return `nmap روی سرور نصب نیست — ${NMAP_INSTALL_COMMAND}`;
+    }
+    return scan.error || undefined;
   };
 
   // Get status icon
@@ -132,7 +143,7 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
               <td>
                 <span
                   className={`status-badge status-${scan.status}`}
-                  title={scan.error || undefined}
+                  title={getStatusTitle(scan)}
                 >
                   {getStatusIcon(scan.status)}
                   {getStatusLabel(scan)}

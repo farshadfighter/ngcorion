@@ -10,6 +10,7 @@ import {
 import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
 import { LicenseLimitModal } from "../License/LicenseLimitModal";
+import { Pagination } from "../Logs/Pagination.jsx";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
 

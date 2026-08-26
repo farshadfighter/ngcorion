@@ -328,6 +328,19 @@ class AssetService:
         return zone
     
     @staticmethod
+    def update_zone(db: Session, zone_id: int, data: dict):
+        """Update zone. Only keys present in `data` are written, so a partial
+        payload leaves the other columns alone."""
+        row = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
+        if row:
+            for key, value in data.items():
+                if value is not None and hasattr(row, key):
+                    setattr(row, key, value)
+            db.commit()
+            db.refresh(row)
+        return row
+
+    @staticmethod
     def delete_zone(db: Session, zone_id: int):
         """Delete network zone"""
         zone = db.query(NetworkZone).filter(NetworkZone.id == zone_id).first()
@@ -356,6 +369,19 @@ class AssetService:
         return os_entry
     
     @staticmethod
+    def update_os(db: Session, os_id: int, data: dict):
+        """Update os. Only keys present in `data` are written, so a partial
+        payload leaves the other columns alone."""
+        row = db.query(OSCatalog).filter(OSCatalog.id == os_id).first()
+        if row:
+            for key, value in data.items():
+                if value is not None and hasattr(row, key):
+                    setattr(row, key, value)
+            db.commit()
+            db.refresh(row)
+        return row
+
+    @staticmethod
     def delete_os(db: Session, os_id: int):
         """Delete OS entry"""
         os_entry = db.query(OSCatalog).filter(OSCatalog.id == os_id).first()
@@ -383,6 +409,19 @@ class AssetService:
         db.refresh(vendor)
         return vendor
     
+    @staticmethod
+    def update_vendor(db: Session, vendor_id: int, data: dict):
+        """Update vendor. Only keys present in `data` are written, so a partial
+        payload leaves the other columns alone."""
+        row = db.query(VendorCatalog).filter(VendorCatalog.id == vendor_id).first()
+        if row:
+            for key, value in data.items():
+                if value is not None and hasattr(row, key):
+                    setattr(row, key, value)
+            db.commit()
+            db.refresh(row)
+        return row
+
     @staticmethod
     def delete_vendor(db: Session, vendor_id: int):
         """Delete vendor"""
