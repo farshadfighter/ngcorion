@@ -20,28 +20,28 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_SETTINGS = [
-    # Factor weights - spec section 4:
-    #   RiskScore = (AC*0.25)+(AZ*0.20)+(OP*0.15)+(AF*0.40)
-    # These four must sum to 100.
-    ("criticality_weight", "25", "int", "AC: weight of asset criticality in the final risk score (%)"),
-    ("zone_weight", "20", "int", "AZ: weight of network zone exposure in the final risk score (%)"),
-    ("open_port_weight", "15", "int", "OP: weight of open-port exposure in the final risk score (%)"),
-    ("audit_weight", "40", "int", "AF: weight of audit findings in the final risk score (%)"),
-    # Computed for the breakdown but outside the spec's formula, hence 0.
-    ("asset_risk_weight", "0", "int", "AR: asset's own risk level — shown in the breakdown, not weighted"),
-    ("hardening_weight", "0", "int", "HF: hardening fixes found — shown in the breakdown, not weighted"),
-    # Per-severity weights for audit findings and hardening fixes found
+    # Factor weights - PDF sections 2/4:
+    #   RiskScore = (AC*0.20)+(AR*0.20)+(AZ*0.15)+(OP*0.10)+(AF*0.25)+(HF*0.10)
+    # These six must sum to 100.
+    ("criticality_weight", "20", "int", "AC: weight of asset criticality in the final risk score (%)"),
+    ("asset_risk_weight", "20", "int", "AR: weight of the asset's own risk level in the final risk score (%)"),
+    ("zone_weight", "15", "int", "AZ: weight of network zone exposure in the final risk score (%)"),
+    ("open_port_weight", "10", "int", "OP: weight of open-port exposure in the final risk score (%)"),
+    ("audit_weight", "25", "int", "AF: weight of audit findings in the final risk score (%)"),
+    ("hardening_weight", "10", "int", "HF: weight of hardening fixes found in the final risk score (%)"),
+    # Per-severity weights for audit findings and hardening fixes found (PDF 7/8)
     ("severity_low_weight", "1", "int", "Finding weight for low severity"),
-    ("severity_medium_weight", "3", "int", "Finding weight for medium severity"),
+    ("severity_medium_weight", "4", "int", "Finding weight for medium severity"),
     ("severity_high_weight", "7", "int", "Finding weight for high severity"),
     ("severity_critical_weight", "10", "int", "Finding weight for critical severity"),
-    # Per-severity weights for open ports (a different scale from findings)
+    # Per-severity weights for open ports (a different scale from findings, PDF 6)
     ("port_severity_low_weight", "1", "int", "Open-port points for standard/low-risk ports"),
     ("port_severity_medium_weight", "3", "int", "Open-port points for medium-risk ports"),
     ("port_severity_high_weight", "5", "int", "Open-port points for high-risk ports"),
     ("port_severity_critical_weight", "10", "int", "Open-port points for critical/insecure ports"),
-    # Open-port score normalization: OP = min(100, raw_points * factor)
-    ("open_port_normalization_factor", "4", "int", "Multiplier applied to the raw open-port points before the 0-100 cap"),
+    # Open-port score normalization: OP = min(100, raw_points * factor).
+    # PDF section 6: OP = min(100, Sum(points)) — no extra multiplier (factor 1).
+    ("open_port_normalization_factor", "1", "int", "Multiplier applied to the raw open-port points before the 0-100 cap"),
     # Fallback scores when input data is missing
     ("unknown_zone_score", "50", "int", "Zone score used when the asset has no zone assigned"),
     ("unknown_port_score", "50", "int", "Port score used when no port scan data exists"),
@@ -72,13 +72,16 @@ DEFAULT_SETTINGS = [
     # two sources of truth for the same rows.
 ]
 
+# Network zones and their exposure scores — PDF section 5 (Asset Zone).
 DEFAULT_ZONES = [
-    ("Management/Restricted", 20, "Isolated management network with tightly restricted access"),
-    ("Internal User Zone", 35, "Internal end-user workstation network"),
-    ("Internal Server Zone", 50, "Internal server network"),
-    ("Partner/Extranet", 65, "Network segments shared with partners or extranet services"),
+    ("Isolated / Lab", 10, "Isolated or lab network with no production exposure"),
+    ("Management", 20, "Restricted management network"),
+    ("Internal Server Zone", 40, "Internal server network"),
+    ("User Network", 50, "Internal end-user workstation network"),
     ("DMZ", 80, "Demilitarized zone hosting externally reachable services"),
-    ("Internet/Public", 100, "Directly internet-facing / public network"),
+    ("Internet / Public", 100, "Directly internet-facing / public network"),
+    # Not from the PDF: operational fallback matched when an asset's zone text
+    # is unknown; also mirrored by the unknown_zone_score setting.
     ("Unknown", 50, "Default zone when the real network zone is not known"),
 ]
 

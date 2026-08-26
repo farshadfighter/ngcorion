@@ -15,8 +15,14 @@ This re-derives risk_level from the score everywhere it is stored, using the
 same inclusive lower bounds as service.py::_risk_level (20/40/60/80), so the
 two columns agree without waiting for a recalculation of every asset.
 
+Runs after b3f7c1d9e2a4 (the PDF six-factor restore), which re-derives the
+stored levels into the PDF's informational/low/medium/high/critical bands. The
+client requires the very_high scheme instead, so this revision re-derives them
+once more and is the last word on the level text. The weight/zone changes from
+b3f7c1d9e2a4 are left untouched -- only the level bands differ.
+
 Revision ID: a4c7e1b90d52
-Revises: f9d2b6e41a73
+Revises: b3f7c1d9e2a4
 """
 from typing import Sequence, Union
 
@@ -24,7 +30,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = 'a4c7e1b90d52'
-down_revision: Union[str, Sequence[str], None] = 'f9d2b6e41a73'
+down_revision: Union[str, Sequence[str], None] = 'b3f7c1d9e2a4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

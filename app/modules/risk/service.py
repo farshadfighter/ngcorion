@@ -1,7 +1,8 @@
 """
 Asset Risk Calculation Service
 
-Computes a 0-100 risk score per asset from six weighted factors:
+Computes a 0-100 risk score per asset from six weighted factors, following the
+NGCorion Risk Score Calculation Specification (risk.pdf):
 
   RiskScore = (AC*0.20) + (AR*0.20) + (AZ*0.15)
             + (OP*0.10) + (AF*0.25) + (HF*0.10)
@@ -13,23 +14,34 @@ Computes a 0-100 risk score per asset from six weighted factors:
   AF  Audit Failure Risk     audit_sessions/audit_results 25%
   HF  Hardening Fix Found    hardening_actions            10%
 
-All tunables (factor weights, severity weights, fallback scores, level
-thresholds) come from risk_settings; hardcoded values below are only the
+Every component is normalized to 0-100 before the weights apply; the final
+score is rounded to the nearest integer and clamped to 0-100 (PDF sections 9,
+11, 12). All tunables (factor weights, severity weights, fallback scores, level
+thresholds) come from risk_settings; the hardcoded values below are only the
 fallback when a setting row is missing.
 
-Schema notes (differ from the original design doc):
+Spec model notes (PDF sections 7 & 8):
+  - AF is the severity-weighted share of *all* failed applicable controls in
+    the latest audit session:
+        AF = 100 * (sum of severity weights of FAILED controls)
+                 / (sum of severity weights of all applicable controls)
+  - HF is the severity-weighted share of failed controls that have a fix
+    identified (a hardening_actions row exists for the finding), added as a
+    positive risk term:
+        HF = 100 * (sum of severity weights of FAILED controls with a fix)
+                 / (sum of severity weights of all applicable controls)
+    So HF <= AF by construction. Per the PDF, hardening does NOT remove a
+    finding from AF; a fixed control only leaves AF once a re-audit flips it
+    to PASS. `resolved_by_hardening_count` (a verified successful execute) is
+    still computed for display but no longer affects AF or HF.
+
+Schema notes (differ from the raw pseudocode):
   - HardeningAction stores `verification_passed` (Boolean), not a
-    verification_status string. A finding counts as resolved when an
-    execute action for the result has status 'success' and
-    verification_passed is True.
+    verification_status string.
   - AuditResult.status is the CheckStatus enum; NOT_APPLICABLE and ERROR
     results are excluded from the applicable weight.
   - Findings (audit + hardening) and open ports use *different* severity
-    scales: severity_*_weight (1/4/7/10) vs port_severity_*_weight
-    (1/3/5/10).
-  - HF counts findings a hardening fix was *found* for (a hardening_actions
-    row exists for the audit result) that are still not verified-fixed. With
-    no hardening rows at all HF is 0, not an "unknown" fallback.
+    scales: severity_*_weight (1/4/7/10) vs port_severity_*_weight (1/3/5/10).
 """
 
 import asyncio
@@ -58,31 +70,33 @@ from app.models.risk import (
 
 logger = logging.getLogger(__name__)
 
-# Fallbacks used only when the corresponding risk_settings row is missing
+# Fallbacks used only when the corresponding risk_settings row is missing.
+# These mirror the values the Alembic migration seeds; they only take effect on
+# a database that predates the risk settings rows.
 DEFAULT_SETTINGS = {
-    # Factor weights (must sum to 100)
-    # Spec section 4: the four scored components must sum to 100.
-    "criticality_weight": 25.0,      # AC
-    "zone_weight": 20.0,             # AZ
-    "open_port_weight": 15.0,        # OP
-    "audit_weight": 40.0,            # AF
-    # Kept at 0: still computed and shown in the breakdown, but outside the
-    # spec's formula (see STEP 8).
-    "asset_risk_weight": 0.0,        # AR
-    "hardening_weight": 0.0,         # HF
-    # Finding severity weights (audit failures + hardening fixes found)
+    # Factor weights (must sum to 100) — PDF section 2/4:
+    #   RiskScore = AC*0.20 + AR*0.20 + AZ*0.15 + OP*0.10 + AF*0.25 + HF*0.10
+    "criticality_weight": 20.0,      # AC
+    "asset_risk_weight": 20.0,       # AR
+    "zone_weight": 15.0,             # AZ
+    "open_port_weight": 10.0,        # OP
+    "audit_weight": 25.0,            # AF
+    "hardening_weight": 10.0,        # HF
+    # Finding severity weights (audit failures + hardening fixes found) —
+    # PDF sections 7/8: Low 1, Medium 4, High 7, Critical 10.
     "severity_low_weight": 1.0,
-    "severity_medium_weight": 3.0,
+    "severity_medium_weight": 4.0,
     "severity_high_weight": 7.0,
     "severity_critical_weight": 10.0,
-    # Open-port severity weights (Standard/Low, Medium, High, Critical/Insecure)
+    # Open-port severity weights (Standard/Low, Medium, High, Critical/Insecure) —
+    # PDF section 6: 1, 3, 5, 10.
     "port_severity_low_weight": 1.0,
     "port_severity_medium_weight": 3.0,
     "port_severity_high_weight": 5.0,
     "port_severity_critical_weight": 10.0,
-    # Open-port score normalization: OP = min(100, raw * factor)
-    # Spec section 7.4: Open Port Score = min(100, raw x 4)
-    "open_port_normalization_factor": 4.0,
+    # Open-port score normalization: OP = min(100, raw * factor).
+    # PDF section 6: OP = min(100, Sum(points)) — no extra multiplier, factor = 1.
+    "open_port_normalization_factor": 1.0,
     "unknown_zone_score": 50.0,
     "unknown_port_score": 50.0,
     "unknown_audit_score": 50.0,
@@ -276,21 +290,22 @@ class AssetRiskCalculationService:
         """STEP 7: AF (audit failure risk) and HF (hardening fix found risk).
 
         Both read the same latest non-running audit session, so they are
-        computed in one pass over its results:
+        computed in one pass over its results (PDF sections 7 & 8):
 
-            AF_Raw = sum(weight) of failed controls that are still open
+            AF_Raw = sum(weight) of ALL failed applicable controls
             AF     = 100 * AF_Raw / MaxPossibleAuditScore
-            HF_Raw = sum(weight) of those still-open failures a hardening fix
-                     was *found* for (a hardening_actions row exists for the
-                     finding)
+            HF_Raw = sum(weight) of failed controls a fix was *found* for
+                     (a hardening_actions row exists for the finding)
             HF     = 100 * HF_Raw / MaxPossibleHardeningScore
 
         MaxPossibleAuditScore / MaxPossibleHardeningScore are both the
         weighted sum of every applicable control in the session
         (NOT_APPLICABLE/ERROR excluded), so HF <= AF by construction.
 
-        A finding is resolved - counting toward neither AF nor HF - when a
-        non-preview hardening action succeeded and its verification passed.
+        Per the PDF, hardening does not remove a finding from AF: a fixed
+        control only leaves AF when a re-audit flips it to PASS. A verified
+        successful (non-preview) execute is still counted in
+        `resolved_by_hardening` for display, but it affects neither AF nor HF.
         With no hardening rows at all, HF is no_hardening_data_score (0).
         """
         out = {
@@ -339,9 +354,18 @@ class AssetRiskCalculationService:
             if result.status != CheckStatus.FAIL:
                 continue
 
-            # One pass over the finding's hardening actions: a fix was "found"
-            # when any action row exists; it is resolved only by a verified
-            # successful execute.
+            # Every failed applicable control counts toward AF (PDF section 7).
+            failed_weight += weight
+            out["active_findings"] += 1
+            sev = (result.severity or "medium").lower()
+            if sev not in out["findings"]:
+                sev = "medium"
+            out["findings"][sev] += 1
+
+            # One pass over the finding's hardening actions: a fix is "found"
+            # when any action row exists (drives HF, PDF section 8); a verified
+            # successful non-preview execute is tracked for display only and,
+            # per the PDF, does NOT remove the finding from AF or HF.
             actions = (
                 db.query(
                     HardeningAction.action_type,
@@ -351,28 +375,17 @@ class AssetRiskCalculationService:
                 .filter(HardeningAction.audit_result_id == result.id)
                 .all()
             )
-            fix_found = bool(actions)
-            if fix_found:
+            if actions:
                 has_hardening_data = True
-            resolved = any(
+                hardening_weight_found += weight
+                out["fixes_found"] += 1
+            if any(
                 action_type != "preview"
                 and status == "success"
                 and verification_passed is True
                 for action_type, status, verification_passed in actions
-            )
-            if resolved:
+            ):
                 out["resolved_by_hardening"] += 1
-                continue
-
-            failed_weight += weight
-            out["active_findings"] += 1
-            if fix_found:
-                hardening_weight_found += weight
-                out["fixes_found"] += 1
-            sev = (result.severity or "medium").lower()
-            if sev not in out["findings"]:
-                sev = "medium"
-            out["findings"][sev] += 1
 
         out["session"] = session
         out["failed_weight"] = failed_weight
@@ -413,6 +426,13 @@ class AssetRiskCalculationService:
         Thresholds are *inclusive* lower bounds: a score sitting exactly on a
         boundary belongs to the higher band, so 20 is medium and 80 is
         critical (spec test 30.7).
+
+        NOTE: this five-level scheme (with very_high, without informational) is
+        a direct client requirement and takes precedence over the PDF's
+        informational/low/medium/high/critical bands. Do not "restore" the PDF
+        wording here without checking with the client first -- the Risk UI's
+        level colours, KPI cards and the a4c7e1b90d52 migration all depend on
+        very_high existing.
         """
         if score >= float(settings["risk_level_critical_threshold"]):
             return "critical"
@@ -423,6 +443,37 @@ class AssetRiskCalculationService:
         if score >= float(settings["risk_level_low_threshold"]):
             return "medium"
         return "low"
+
+    # ------------------------------------------------------------------
+    # Weighted aggregation
+    # ------------------------------------------------------------------
+
+    # component key -> the risk_settings weight key that scales it
+    _WEIGHT_KEYS = {
+        "criticality": "criticality_weight",
+        "asset_risk": "asset_risk_weight",
+        "zone": "zone_weight",
+        "open_port": "open_port_weight",
+        "audit": "audit_weight",
+        "hardening": "hardening_weight",
+    }
+
+    def _final_score(self, components: dict, settings: dict) -> tuple:
+        """STEP 8: apply the PDF weights to the six normalized components.
+
+        ``components`` maps each component key in ``_WEIGHT_KEYS`` to its
+        already-normalized 0-100 score. Returns ``(final_score, contributions)``
+        where contributions maps the same keys to ``score * weight / 100`` and
+        ``final_score`` is ``round(sum(contributions))`` clamped to 0-100
+        (PDF sections 9, 11, 12 — round the final score to an integer).
+        """
+        contributions = {
+            key: float(components[key]) * float(settings[weight_key]) / 100.0
+            for key, weight_key in self._WEIGHT_KEYS.items()
+        }
+        total = sum(contributions.values())
+        final_score = float(min(100.0, max(0.0, round(total))))
+        return final_score, contributions
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -520,14 +571,8 @@ class AssetRiskCalculationService:
             if audit["is_unknown"]:
                 incomplete_reasons.append("missing_audit")
 
-            # STEP 8: weighted final score — spec section 4:
-            #   Risk = 0.25*Criticality + 0.20*Zone + 0.15*OpenPort + 0.40*Audit
-            #
-            # AR (the asset's own risk_level) and HF (hardening fixes found)
-            # are still computed and stored for the breakdown, but carry no
-            # weight: the spec's four components must sum to 100 on their own,
-            # and hardening is meant to lower risk by resolving findings out of
-            # AF (spec section 9), not by contributing its own term.
+            # STEP 8: weighted final score — PDF sections 2/4/9:
+            #   Risk = AC*0.20 + AR*0.20 + AZ*0.15 + OP*0.10 + AF*0.25 + HF*0.10
             criticality_weight = float(settings["criticality_weight"])
             asset_risk_weight = float(settings["asset_risk_weight"])
             zone_weight = float(settings["zone_weight"])
@@ -535,24 +580,23 @@ class AssetRiskCalculationService:
             audit_weight = float(settings["audit_weight"])
             hardening_weight = float(settings["hardening_weight"])
 
-            criticality_contribution = criticality_score * criticality_weight / 100.0
-            asset_risk_contribution = asset_risk_score * asset_risk_weight / 100.0
-            zone_contribution = zone_score * zone_weight / 100.0
-            open_port_contribution = open_port_score * open_port_weight / 100.0
-            audit_contribution = audit["score"] * audit_weight / 100.0
-            hardening_contribution = (
-                audit["hardening_score"] * hardening_weight / 100.0
+            final_risk_score, contributions = self._final_score(
+                {
+                    "criticality": criticality_score,
+                    "asset_risk": asset_risk_score,
+                    "zone": zone_score,
+                    "open_port": open_port_score,
+                    "audit": audit["score"],
+                    "hardening": audit["hardening_score"],
+                },
+                settings,
             )
-
-            final_risk_score = (
-                criticality_contribution
-                + asset_risk_contribution
-                + zone_contribution
-                + open_port_contribution
-                + audit_contribution
-                + hardening_contribution
-            )
-            final_risk_score = round(max(0.0, min(100.0, final_risk_score)), 2)
+            criticality_contribution = contributions["criticality"]
+            asset_risk_contribution = contributions["asset_risk"]
+            zone_contribution = contributions["zone"]
+            open_port_contribution = contributions["open_port"]
+            audit_contribution = contributions["audit"]
+            hardening_contribution = contributions["hardening"]
 
             # STEP 9: level
             risk_level = self._risk_level(final_risk_score, settings)

@@ -979,7 +979,11 @@ _PORT_SEVERITY_MAP = {
     22: "medium", 161: "medium", 80: "medium",         # SSH, SNMP, HTTP
     443: "low", 53: "low",                             # HTTPS, DNS
 }
-_SEVERITY_SCORE_MAP = {"low": 1, "medium": 3, "high": 7, "critical": 10}
+# Open-port risk points per severity — PDF section 6 port scale (1/3/5/10),
+# matching the risk engine's port_severity_* weights (not the 1/4/7/10 finding
+# scale). The risk score itself keys off the severity label, so this only keeps
+# the stored severity_score consistent with the PDF port classification.
+_SEVERITY_SCORE_MAP = {"low": 1, "medium": 3, "high": 5, "critical": 10}
 
 
 def _sync_asset_open_ports(db: Session, asset_id: int, ports_data: list, overwrite: bool = False):
