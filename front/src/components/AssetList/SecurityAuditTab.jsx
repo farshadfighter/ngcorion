@@ -44,7 +44,10 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
         return sortDirection === "asc" ? " ↑" : " ↓";
     };
 
-    const sortedAssets = [...assets].sort((a, b) => {
+    // Spreading a non-array throws, and the caller's data is only as
+    // reliable as the API response it came from.
+    const rows = Array.isArray(assets) ? assets : [];
+    const sortedAssets = [...rows].sort((a, b) => {
         if (!sortColumn) return 0;
         const aValue = a[sortColumn] || "";
         const bValue = b[sortColumn] || "";

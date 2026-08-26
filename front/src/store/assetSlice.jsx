@@ -259,7 +259,10 @@ const assetSlice = createSlice({
             })
             .addCase(fetchAssets.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.assets = action.payload;
+                // Guard the shape: a proxy error page or an auth redirect can
+                // resolve with HTML or an object, and every consumer spreads
+                // this with [...assets], which throws on a non-array.
+                state.assets = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchAssets.rejected, (state, action) => {
                 state.isLoading = false;

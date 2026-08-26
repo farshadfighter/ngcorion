@@ -63,10 +63,6 @@ export const useAssetFormOptions = () => {
         () => mapEnumOptions(null, RISK_FALLBACK)
     );
 
-    useEffect(() => {
-        loadOptions();
-    }, []);
-
     const loadOptions = async () => {
         setIsLoading(true);
 
@@ -143,6 +139,12 @@ export const useAssetFormOptions = () => {
             setIsLoading(false);
         }
     };
+
+    // Declared after loadOptions on purpose: `const` is not hoisted, so an
+    // effect placed above it referenced the binding before initialisation.
+    useEffect(() => {
+        loadOptions();
+    }, []);
 
     return {
         isLoading,

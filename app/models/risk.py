@@ -20,7 +20,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 from datetime import datetime
 from app.core.database import Base
 
@@ -98,7 +98,11 @@ class AssetRiskProfile(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
-    asset = relationship("Asset", backref="risk_profile")
+    # asset_id is NOT NULL with ON DELETE CASCADE; without passive_deletes
+    # SQLAlchemy would try to null it on asset delete and fail.
+    asset = relationship(
+        "Asset", backref=backref("risk_profile", passive_deletes=True)
+    )
     zone = relationship("RiskZone", back_populates="risk_profiles")
 
 
@@ -145,7 +149,9 @@ class AssetOpenPort(Base):
         ),
     )
 
-    asset = relationship("Asset", backref="open_ports")
+    asset = relationship(
+        "Asset", backref=backref("open_ports", passive_deletes=True)
+    )
 
 
 # Latest computed risk score per asset (one row per asset, upserted)
@@ -235,7 +241,9 @@ class AssetRiskScore(Base):
         Index("ix_asset_risk_scores_risk_level", "risk_level"),
     )
 
-    asset = relationship("Asset", backref="risk_score")
+    asset = relationship(
+        "Asset", backref=backref("risk_score", passive_deletes=True)
+    )
     zone = relationship("RiskZone")
 
 
@@ -278,7 +286,9 @@ class AssetRiskHistory(Base):
         ),
     )
 
-    asset = relationship("Asset", backref="risk_history")
+    asset = relationship(
+        "Asset", backref=backref("risk_history", passive_deletes=True)
+    )
 
 
 # Per-run calculation log for debugging/traceability

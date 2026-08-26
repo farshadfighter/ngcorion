@@ -6,6 +6,7 @@ import { OverviewTab } from "./OverviewTab";
 import { NetworkSystemTab } from "./NetworkSystemTab";
 import { LocationOwnerTab } from "./LocationOwnerTab";
 import { SecurityAuditTab } from "./SecurityAuditTab";
+import { Pagination } from "../Logs/Pagination.jsx";
 import { EditOverviewModal } from "./EditOverviewModal";
 import { EditNetworkModal } from "./EditNetworkModal";
 import { EditLocationModal } from "./EditLocationModal";
@@ -14,6 +15,8 @@ import { AddAssetModal } from "./AddAssetModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 
 import "../../assets/AssetList.css"
+// Pagination's styles live with the Logs page it was first built for.
+import "../../assets/LogsPage.css"
 
 const PRIMARY = "#1e3a5f";
 
@@ -27,6 +30,8 @@ export const AssetList = () => {
     const [activeTab, setActiveTab]           = useState("overview");
     const [searchQuery, setSearchQuery]       = useState("");
     const [sortDir, setSortDir]               = useState("asc");
+    const [page, setPage]                     = useState(1);
+    const [pageSize, setPageSize]             = useState(25);
     const [selectedAsset, setSelectedAsset]   = useState(null);
 
     // ── Single delete ──────────────────────────────────────────────────────────
@@ -93,8 +98,25 @@ export const AssetList = () => {
         };
     });
 
+    // ── Pagination ─────────────────────────────────────────────────────────────
+    // Client-side: /api/assets/ returns the whole inventory and the search and
+    // sort above already operate on it.
+    const totalPages  = Math.max(1, Math.ceil(enrichedAssets.length / pageSize));
+    const safePage    = Math.min(page, totalPages);
+    const pagedAssets = enrichedAssets.slice(
+        (safePage - 1) * pageSize,
+        safePage * pageSize
+    );
+
+    // A search that shrinks the list can leave the current page past the end.
+    useEffect(() => {
+        if (page > totalPages) setPage(1);
+    }, [totalPages, page]);
+
     // ── Selection helpers ──────────────────────────────────────────────────────
-    const allIds         = enrichedAssets.map(a => a.id);
+    // Scoped to the visible page: "select all" ticking rows the user cannot
+    // see would make the delete count surprising.
+    const allIds         = pagedAssets.map(a => a.id);
     const allSelected    = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
     const someSelected   = selectedIds.size > 0;
 
@@ -164,7 +186,7 @@ export const AssetList = () => {
 
     // ── Shared tab props ───────────────────────────────────────────────────────
     const tabProps = {
-        assets:          enrichedAssets,
+        assets:          pagedAssets,
         onEdit:          handleEdit,
         onDelete:        handleDeleteClick,
         isNewAsset,
@@ -240,7 +262,8 @@ export const AssetList = () => {
                         <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                     </svg>
                     <input className="search-input" placeholder="Search Asset"
-                           value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                           value={searchQuery}
+                           onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} />
                 </div>
 
                 {/* Delete Selected — فقط وقتی چیزی select شده نمایش داده میشه */}
@@ -266,6 +289,16 @@ export const AssetList = () => {
             {!isLoading && activeTab === "network"   && <NetworkSystemTab {...tabProps} />}
             {!isLoading && activeTab === "location"  && <LocationOwnerTab {...tabProps} />}
             {!isLoading && activeTab === "security"  && <SecurityAuditTab {...tabProps} />}
+
+            {!isLoading && (
+                <Pagination
+                    page={safePage}
+                    pageSize={pageSize}
+                    totalItems={enrichedAssets.length}
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+                />
+            )}
 
             {/* ── Delete single modal ──────────────────────────────────────────── */}
             {showDeleteModal && (

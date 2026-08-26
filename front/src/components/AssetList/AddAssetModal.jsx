@@ -102,14 +102,6 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         });
     };
 
-    useEffect(() => {
-        if (!isOpen) { resetModal(); return; }
-        loadDropdownOptions();
-        if (osCatalog.length === 0) {
-            dispatch(fetchOSCatalog());
-        }
-    }, [isOpen]);
-
     const loadDropdownOptions = async () => {
         setIsLoadingOptions(true);
         setError(null);
@@ -133,6 +125,17 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             setIsLoadingOptions(false);
         }
     };
+
+    // Placed after loadDropdownOptions: `const` is not hoisted, so calling it
+    // from an effect declared above hits the temporal dead zone.
+    useEffect(() => {
+        if (!isOpen) { resetModal(); return; }
+        loadDropdownOptions();
+        if (osCatalog.length === 0) {
+            dispatch(fetchOSCatalog());
+        }
+    }, [isOpen]);
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;

@@ -281,6 +281,9 @@ class Asset(Base):
         "Port",
         back_populates="asset",
         cascade="all, delete-orphan",
+        # The FK is ON DELETE CASCADE, so let the database remove the rows
+        # instead of loading every port just to delete it one by one.
+        passive_deletes=True,
         lazy="select"
     )
 

@@ -67,8 +67,16 @@ class HardeningAction(Base):
     audit_result = relationship("AuditResult", backref=backref("hardening_actions", passive_deletes=True))
     user = relationship("User", backref="hardening_actions")
     #asset = relationship("Asset", backref="hardening_actions")
+    # asset_id is NOT NULL with ON DELETE CASCADE, so the database removes
+    # these rows; passive_deletes stops SQLAlchemy loading every action just
+    # to delete it one at a time when an asset goes.
     asset = relationship(
-    "Asset",
-    backref=backref("hardening_actions", cascade="all, delete-orphan"))
+        "Asset",
+        backref=backref(
+            "hardening_actions",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        ),
+    )
     audit_session = relationship("AuditSession", backref=backref("hardening_actions", passive_deletes=True))
     
