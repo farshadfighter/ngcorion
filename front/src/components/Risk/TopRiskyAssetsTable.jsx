@@ -1,6 +1,6 @@
 import React from "react";
-import { RISK_LEVEL_COLORS, orDash, titleCase } from "./riskConstants";
-import { RISK_LEVEL_LABELS } from "../../store/riskSlice";
+import { orDash } from "./riskConstants";
+import { RiskLevelBadge } from "./RiskLevelBadge";
 
 const COLUMNS = [
     "Number",
@@ -46,20 +46,7 @@ export const TopRiskyAssetsTable = ({ rows }) => (
                             <td>{orDash(row.model)}</td>
                             <td>{orDash(row.final_risk_score)}</td>
                             <td>
-                                {row.risk_level ? (
-                                    <span
-                                        className="risk-level-pill"
-                                        style={{
-                                            background:
-                                                RISK_LEVEL_COLORS[row.risk_level] || "#9AA5B5",
-                                        }}
-                                    >
-                                        {RISK_LEVEL_LABELS[row.risk_level] ||
-                                            titleCase(row.risk_level)}
-                                    </span>
-                                ) : (
-                                    "-"
-                                )}
+                                <RiskLevelBadge level={row.risk_level} />
                             </td>
                         </tr>
                     ))}

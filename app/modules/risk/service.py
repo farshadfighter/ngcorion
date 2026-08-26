@@ -101,8 +101,9 @@ DEFAULT_SETTINGS = {
     "asset_risk_high_score": 75.0,
     "asset_risk_very_high_score": 90.0,
     "asset_risk_critical_score": 100.0,
-    # Exclusive lower bound of each level, evaluated highest to lowest:
-    #   0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical
+    # Inclusive lower bound of each level, evaluated highest to lowest
+    # (see _risk_level); a score on a boundary belongs to the higher band:
+    #   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
     "risk_level_low_threshold": 20.0,
     "risk_level_medium_threshold": 40.0,
     "risk_level_high_threshold": 60.0,

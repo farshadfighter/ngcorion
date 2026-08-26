@@ -63,9 +63,9 @@ WEIGHT_KEYS = (
     "hardening_weight",       # HF
 )
 
-# Ordered low-to-high; each is the *exclusive* lower bound of a risk-level band
+# Ordered low-to-high; each is the *inclusive* lower bound of a risk-level band
 # and must stay strictly ascending so the bands never overlap:
-#   0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical
+#   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
 THRESHOLD_KEYS = (
     "risk_level_low_threshold",
     "risk_level_medium_threshold",
@@ -467,7 +467,11 @@ async def _recalculate_all_background(trigger_type: str = "bulk_recalculation"):
 
 # Canonical high-to-low ordering for the risk-level breakdown, so the
 # frontend always receives every level in a stable order (zero-filled).
-_RISK_LEVEL_ORDER = ("critical", "high", "medium", "low", "informational")
+# Must match the levels service.py::_risk_level actually emits: a level missing
+# here is dropped from the response entirely (its count never reaches the
+# dashboard), and one listed here that the engine never emits shows up as a
+# permanent zero.
+_RISK_LEVEL_ORDER = ("critical", "very_high", "high", "medium", "low")
 
 # Map stored enum member name (e.g. 'PUBLIC') back to its lowercase API value.
 _CONFIDENTIALITY_BY_NAME = {e.name: e.value for e in ConfidentialityLevelEnum}
