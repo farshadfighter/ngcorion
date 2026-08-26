@@ -8,12 +8,26 @@
 /* SIDEBAR */
 .sidebar {
     width: 290px;
+    /* Never let the sidebar be squeezed by the content beside it: it is a flex
+       child, so without this the nav labels compress on a narrow laptop. */
+    flex-shrink: 0;
     background: linear-gradient(180deg, #041632 0%, #061D42 60%, #08224A 100%);
     color: white;
     display: flex;
     flex-direction: column;
     box-shadow: 4px 0 12px rgba(0, 0, 0, 0.15);
     transition: width 0.3s ease;
+}
+
+/* 290px is ~15% of a 1920 screen but ~23% of a 1280 laptop, which is what made
+   the content column feel so different across machines. Give the narrower
+   laptops a slimmer rail so the content keeps a usable width. */
+@media (max-width: 1600px) {
+    .sidebar { width: 250px; }
+}
+
+@media (max-width: 1366px) {
+    .sidebar { width: 220px; }
 }
 
 .sidebar.collapsed {
@@ -281,6 +295,10 @@
 .main-content {
     flex: 1;
     overflow-y: auto;
+    /* A flex item defaults to min-width:auto, so a wide table inside would push
+       this column past the viewport and scroll the whole page sideways. min-width:0
+       lets it shrink; the table's own wrapper keeps the horizontal scroll local. */
+    min-width: 0;
 }
 
 /* NEW HEADER BOX */

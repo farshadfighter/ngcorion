@@ -10,19 +10,24 @@
 /* ── Headline metric tiles ───────────────────────────────────────────────── */
 
 /* Figma (dashbord.svg): 230x120 tiles, rx 5, 50px apart, five to a row in a
-   1350px band. They wrap rather than shrink below a readable width. */
+   1350px band.
+
+   The tiles used to be `flex: 0 0 230px` with a fixed 50px gap, which needs the
+   full 1350px to fit five. Content width is the window minus the 290px sidebar,
+   so a 1920 screen fitted five but 1600/1440 dropped to four and 1366/1280 to
+   three -- the same page looked different on every laptop. A grid that packs as
+   many >=200px columns as fit keeps the tiles evenly sized and full-width at
+   any of those widths instead of leaving a ragged last row. */
 .ov-metrics {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 50px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: clamp(16px, 2vw, 50px);
     max-width: 1350px;
     margin: 0 auto;
 }
 
 .ov-metric {
-    flex: 0 0 230px;
-    height: 120px;
+    min-height: 120px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -68,9 +73,11 @@
     box-sizing: border-box;
 }
 
-/* Figma card widths: the wide tables run 1328px, the narrower panels 908px. */
-.ov-card-wide   { max-width: 1328px; }
-.ov-card-medium { max-width: 908px; }
+/* Figma card widths: the wide tables run 1328px, the narrower panels 908px.
+   These are ceilings, not fixed widths — `width: 100%` lets a card shrink to
+   the content column on a narrower laptop instead of overflowing it. */
+.ov-card-wide   { width: 100%; max-width: 1328px; }
+.ov-card-medium { width: 100%; max-width: 908px; }
 
 .ov-card-title {
     margin: 0 0 20px;
