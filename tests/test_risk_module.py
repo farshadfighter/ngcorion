@@ -13,8 +13,9 @@ Factors and their default weights (from risk_settings / service defaults):
     criticality 25%, zone 20%, open_port 15%, audit 40%
 Severity weights: low=1, medium=3, high=7, critical=10; port normalization
 factor = 4.  Fallback ("unknown") scores = 50 for zone/port/audit.
-Risk-level thresholds (lower bound): medium=20, high=40, very_high=60,
-critical=80.
+Risk-level bands (inclusive lower bound): medium=20, high=40, very_high=60,
+critical=80.  The setting keys are offset from the band they open -- the
+boundary at 60 is stored as risk_level_high_threshold but starts Very High.
 """
 
 import sys
@@ -706,9 +707,11 @@ def test_risk_level_critical(settings):
 # ======================================================================
 
 def _ensure_threshold_rows(db):
-    set_setting(db, "risk_level_medium_threshold", 20)
-    set_setting(db, "risk_level_high_threshold", 40)
-    set_setting(db, "risk_level_very_high_threshold", 60)
+    # The four boundaries between the five bands. There is no
+    # *_very_high_threshold key: risk_level_high_threshold=60 opens Very High.
+    set_setting(db, "risk_level_low_threshold", 20)
+    set_setting(db, "risk_level_medium_threshold", 40)
+    set_setting(db, "risk_level_high_threshold", 60)
     set_setting(db, "risk_level_critical_threshold", 80)
 
 
@@ -719,7 +722,7 @@ def test_thresholds_must_be_ascending(db, factory):
     _ensure_threshold_rows(db)
     with pytest.raises(HTTPException) as exc_info:
         update_settings(
-            updates={"risk_level_high_threshold": 70},  # >= very_high (60)
+            updates={"risk_level_high_threshold": 90},  # >= critical (80)
             background_tasks=BackgroundTasks(),
             current_user=factory.user(),
             db=db,

@@ -66,6 +66,12 @@ WEIGHT_KEYS = (
 # Ordered low-to-high; each is the *inclusive* lower bound of a risk-level band
 # and must stay strictly ascending so the bands never overlap:
 #   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
+#
+# NOTE the keys are offset from the band they open: each one is the lower bound
+# of the band ABOVE its name (risk_level_low_threshold=20 starts Medium, and
+# risk_level_high_threshold=60 starts Very High). There are five bands but only
+# four boundaries, so there is deliberately no *_very_high_threshold key --
+# e5c1a7d93b48 dropped it. Renaming these means migrating the stored rows.
 THRESHOLD_KEYS = (
     "risk_level_low_threshold",
     "risk_level_medium_threshold",
@@ -1277,7 +1283,9 @@ def update_settings(
                 status_code=400,
                 detail=(
                     "Risk-level thresholds must be strictly ascending "
-                    "(low < medium < high < critical) so bands don't overlap"
+                    "(low < medium < high < critical) so bands don't overlap. "
+                    "Note each key is the lower bound of the *next* band up: "
+                    "risk_level_high_threshold opens the Very High band"
                 ),
             )
 

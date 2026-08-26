@@ -21,8 +21,10 @@ export const RiskIntelDashboard = () => {
         (state) => state.risk
     );
 
+    // Only the Top 10 table consumes `items` here, so ask for 10 rows rather
+    // than the default 100 — the other 90 were fetched and thrown away.
     useEffect(() => {
-        dispatch(fetchRiskDashboard());
+        dispatch(fetchRiskDashboard({ pageSize: 10 }));
     }, [dispatch]);
 
     const riskLevelData = useMemo(

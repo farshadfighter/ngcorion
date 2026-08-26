@@ -14,6 +14,8 @@ export const RISK_LEVEL_LABELS = {
 };
 
 // Backend caps page_size at 100; the table shows the highest-risk assets first.
+// The Risk Asset table wants the full page, but the Intelligence dashboard only
+// renders the top 10 — it passes pageSize so it does not pull 90 unused rows.
 const PAGE_SIZE = 100;
 
 /**
@@ -49,7 +51,7 @@ export const fetchRiskDashboard = createAsyncThunk(
             api.get("/api/risk/assets", {
                 params: {
                     page: 1,
-                    page_size: PAGE_SIZE,
+                    page_size: sort?.pageSize || PAGE_SIZE,
                     sort_by: sort?.sortBy || "final_risk_score",
                     sort_order: sort?.sortOrder || "desc",
                 },

@@ -52,9 +52,12 @@ export const ConfidentialityZone = ({ asset, score, assetId }) => {
                             <i className="fa-solid fa-pen" aria-hidden="true"></i>
                         </button>
                     </div>
+                    {/* A different field from criticality above: it comes from
+                        Asset Management and is not part of the risk formula, so
+                        it is labelled as such to stop it reading as an input. */}
                     {asset?.confidentiality_level && (
                         <p className="ard-cz-sub">
-                            Asset confidentiality:{" "}
+                            Confidentiality (from Asset List, not scored):{" "}
                             {titleCase(asset.confidentiality_level)}
                         </p>
                     )}
