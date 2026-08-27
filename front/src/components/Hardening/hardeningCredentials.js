@@ -1,3 +1,4 @@
+import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
 // Shared helpers for hardening credentials, used by HardenAllModal and
 // FixSingleModal (and anywhere else that collects device credentials for a
 // hardening run). Keeping the device-type predicates, the credential state
@@ -34,7 +35,7 @@ export const defaultCredentialsState = {
     // Windows (WinRM)
     windows_username: "",
     windows_password: "",
-    winrm_port:       "5986",
+    winrm_port:       DEFAULT_WINRM_PORT,
     transport:        "ntlm",
 };
 
@@ -62,7 +63,7 @@ export function buildCredentials(deviceType, creds, { vdomEnabled = false } = {}
         return {
             windows_username: creds.windows_username,
             windows_password: creds.windows_password,
-            winrm_port:       parseInt(creds.winrm_port) || 5986,
+            winrm_port:       parseInt(creds.winrm_port) || Number(DEFAULT_WINRM_PORT),
             transport:        creds.transport || "ntlm",
         };
     }

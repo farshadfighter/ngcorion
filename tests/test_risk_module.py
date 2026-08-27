@@ -17,8 +17,9 @@ Severity weights: low=1, medium=3, high=7, critical=10; port normalization
 factor = 4.  Fallback ("unknown") scores = 50 for zone/port/audit.
 
 Risk-level bands (inclusive lower bound): medium=20, high=40, very_high=60,
-critical=80.  The setting keys are offset from the band they open -- the
-boundary at 60 is stored as risk_level_high_threshold but starts Very High.
+critical=80.  Each risk_level_<name>_threshold key is the lower bound of the
+band it names; `low` is the floor and has no key.  See app/modules/risk/levels.py,
+which is the only implementation of the score -> level rule.
 
 NOTE: the five levels here are low/medium/high/very_high/critical, not the
 PDF's informational/low/medium/high/critical. The very_high scheme is a direct
@@ -623,7 +624,11 @@ def test_no_hardening_data_hf_zero(db, factory, settings):
 
 def test_six_factor_formula(db, factory):
     """AC=100, AR=75, AZ=80, OP=40, AF=100, HF=0
-        -> 20 + 15 + 12 + 4 + 25 + 0 = 76  -> High."""
+        -> 20 + 15 + 12 + 4 + 25 + 0 = 76  -> Very High.
+
+    76 sits in the 60-80 band. It used to assert "high" because the threshold
+    keys were read one band off; see app/modules/risk/levels.py.
+    """
     zone = factory.zone(score=80)                                    # AZ = 80
     asset = factory.asset(risk_level=RiskLevelEnum.HIGH)             # AR = 75
     factory.profile(asset, criticality_level="critical",
@@ -643,7 +648,7 @@ def test_six_factor_formula(db, factory):
     assert float(score.audit_risk_score) == 100
     assert float(score.hardening_fix_score) == 0
     assert float(score.final_risk_score) == 76
-    assert score.risk_level == "high"
+    assert score.risk_level == "very_high"
 
 
 def test_final_score_is_integer(db, factory):
@@ -658,11 +663,10 @@ def test_final_score_is_integer(db, factory):
 # ======================================================================
 
 def _ensure_threshold_rows(db):
-    # The four boundaries between the five bands. There is no
-    # *_very_high_threshold key: risk_level_high_threshold=60 opens Very High.
-    set_setting(db, "risk_level_low_threshold", 20)
-    set_setting(db, "risk_level_medium_threshold", 40)
-    set_setting(db, "risk_level_high_threshold", 60)
+    # The four boundaries between the five bands, each naming the band it opens.
+    set_setting(db, "risk_level_medium_threshold", 20)
+    set_setting(db, "risk_level_high_threshold", 40)
+    set_setting(db, "risk_level_very_high_threshold", 60)
     set_setting(db, "risk_level_critical_threshold", 80)
 
 
@@ -673,7 +677,7 @@ def test_thresholds_must_be_ascending(db, factory):
     _ensure_threshold_rows(db)
     with pytest.raises(HTTPException) as exc_info:
         update_settings(
-            updates={"risk_level_high_threshold": 90},  # >= critical (80)
+            updates={"risk_level_high_threshold": 90},  # >= very_high (60)
             background_tasks=BackgroundTasks(),
             current_user=factory.user(),
             db=db,
@@ -688,12 +692,12 @@ def test_thresholds_ascending_update_ok(db, factory):
 
     _ensure_threshold_rows(db)
     result = update_settings(
-        updates={"risk_level_low_threshold": 25},
+        updates={"risk_level_medium_threshold": 25},
         background_tasks=BackgroundTasks(),
         current_user=factory.user(),
         db=db,
     )
-    assert result["risk_level_low_threshold"] == 25
+    assert result["risk_level_medium_threshold"] == 25
 
 
 def _ensure_weight_rows(db):

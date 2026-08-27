@@ -304,6 +304,15 @@ def update_sms_config(
     payload["password"] = service.unmask(
         payload.get("password"), stored.get("password")
     )
+    # Echoing the mask back for a secret that was never stored unmasks to None,
+    # which would then be written over a field the schema declares as required
+    # (and later fail at send time with an unhelpful error). Reject it here, the
+    # way the SNMP route already does for its v3 passwords.
+    if not payload.get("api_key"):
+        raise HTTPException(
+            status_code=400,
+            detail="api_key is required; no stored value to keep",
+        )
 
     _save(db, SECTION_SMS, payload, current_user)
     _log(db, user_id, username, "system_config.sms.update",
@@ -367,6 +376,14 @@ def update_smtp_config(
     payload["password"] = service.unmask(
         payload.get("password"), stored.get("password")
     )
+    if payload.get("password") is None:
+        # See the SMS route: the mask can only stand in for a secret that
+        # actually exists. (An empty string is a legitimate SMTP password for a
+        # relay that does not authenticate, so only None is rejected.)
+        raise HTTPException(
+            status_code=400,
+            detail="password is required; no stored value to keep",
+        )
 
     _save(db, SECTION_SMTP, payload, current_user)
     _log(db, user_id, username, "system_config.smtp.update",

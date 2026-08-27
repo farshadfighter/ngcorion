@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../../config/api.js";
 import { executeAuditWithDevice, discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
+import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -82,7 +83,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         mssql_port:       "1433",
         windows_username: "",
         windows_password: "",
-        winrm_port:       "5986",
+        winrm_port:       DEFAULT_WINRM_PORT,
         transport:        "ntlm",
     });
 
@@ -180,7 +181,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             credentials = {
                 windows_username: formData.windows_username,
                 windows_password: formData.windows_password,
-                winrm_port:       parseInt(formData.winrm_port) || 5986,
+                winrm_port:       parseInt(formData.winrm_port) || Number(DEFAULT_WINRM_PORT),
                 transport:        formData.transport || "ntlm",
             };
         } else if (isMssql(dt)) {
@@ -607,7 +608,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                     name="winrm_port"
                                     value={formData.winrm_port}
                                     onChange={handleChange}
-                                    placeholder="5986"
+                                    placeholder={DEFAULT_WINRM_PORT}
                                     autoComplete="off"
                                 />
                             </div>

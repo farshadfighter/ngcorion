@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.core.database import ensure_session_usable
 from app.models import AuditResult, AuditSession, Asset
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
 
 from .winrm_client import WindowsWinRMClient, redact_sensitive_windows_data
 from .rules import (
@@ -173,7 +174,7 @@ class WindowsAuditService:
         user_id: int,
         windows_username: str,
         windows_password: str,
-        winrm_port: int = 5986,
+        winrm_port: int = DEFAULT_WINRM_PORT,
         transport: str = "ntlm",
         profile: str = "L1",
         job_name: Optional[str] = None,
@@ -188,7 +189,7 @@ class WindowsAuditService:
             user_id:           Authenticated user performing the audit
             windows_username:  Windows admin account (domain\\user or local)
             windows_password:  Windows password (not stored)
-            winrm_port:        WinRM HTTPS port (default 5986)
+            winrm_port:        WinRM listener port (default 5985/HTTP; 5986 is HTTPS)
             transport:         WinRM transport: ntlm, kerberos, credssp, basic
             profile:           CIS profile – "L1" or "FULL"
             job_name:          Optional human-readable label for this audit run

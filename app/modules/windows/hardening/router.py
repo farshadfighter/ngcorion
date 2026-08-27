@@ -21,6 +21,7 @@ from app.core.dependencies import (
 
 from app.models import User, AuditSession
 from app.models.audit import DeviceType
+from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 
 from .service import WindowsHardeningService
@@ -38,7 +39,7 @@ class SingleFixRequest(BaseModel):
     session_id: Optional[int] = Field(None, description="Audit session ID (updates AuditResult status on success)")
     windows_username: str = Field(..., min_length=1)
     windows_password: str = Field(..., min_length=1)
-    winrm_port: int = Field(5986, ge=1, le=65535)
+    winrm_port: int = Field(DEFAULT_WINRM_PORT, ge=1, le=65535)
     transport: str = Field("ntlm", pattern="^(ntlm|kerberos|credssp|basic)$")
     check_id: str = Field(..., description="CIS check ID to fix")
     parameters: Dict[str, str] = Field(default_factory=dict)
@@ -56,7 +57,7 @@ class SingleFixRequest(BaseModel):
                 "asset_id": 5,
                 "windows_username": "Administrator",
                 "windows_password": "********",
-                "winrm_port": 5986,
+                "winrm_port": DEFAULT_WINRM_PORT,
                 "transport": "ntlm",
                 "check_id": "WIN-2025-2.3.11.7",
                 "parameters": {},

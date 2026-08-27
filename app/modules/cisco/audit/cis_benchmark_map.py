@@ -192,7 +192,7 @@ CIS_BENCHMARK_SECTIONS: List[Dict[str, str]] = [
     },
     {
         "section": "2.1.1.1.4",
-        "recommendation": "Set 'seconds' for 'ip ssh timeout'",
+        "recommendation": "Set 'seconds' for 'ip ssh time-out'",
         "rule_id": "CIS-2.1.1.1.4",
     },
     {

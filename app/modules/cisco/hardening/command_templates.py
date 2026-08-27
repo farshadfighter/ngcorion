@@ -169,7 +169,7 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
     "IOS-L1-008": {
         "commands": [
             "configure terminal",
-            "ip ssh timeout {TIMEOUT_SEC}",
+            "ip ssh time-out {TIMEOUT_SEC}",
             "end",
             "write memory"
         ],
@@ -1916,7 +1916,7 @@ CIS_SECTION_TO_IOS: Dict[str, str] = {
     "CIS-2.1.1.1.1": "IOS-L1-0010",  # hostname
     "CIS-2.1.1.1.2": "IOS-L1-0011",  # ip domain-name
     "CIS-2.1.1.1.3": "IOS-L1-0120",  # crypto key generate rsa modulus >= 2048
-    "CIS-2.1.1.1.4": "IOS-L1-008",   # ip ssh timeout
+    "CIS-2.1.1.1.4": "IOS-L1-008",   # ip ssh time-out
     "CIS-2.1.1.1.5": "IOS-L1-0113",  # ip ssh authentication-retries
     "CIS-2.1.1.2":   "IOS-L1-007",   # ip ssh version 2
     # 2.1 Services

@@ -21,6 +21,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pytest
 
+from app.modules.risk.levels import (
+    DEFAULT_THRESHOLDS,
+    RISK_LEVELS,
+    THRESHOLD_KEYS,
+    risk_level_for_score,
+    thresholds_from_settings,
+)
 from app.modules.risk.service import (
     DEFAULT_SETTINGS,
     risk_calculation_service as svc,
@@ -108,24 +115,103 @@ def test_port_severity_weights(settings, severity, expected):
 
 
 # ----------------------------------------------------------------------
-# Risk levels (PDF 10): 0-20 info | 21-40 low | 41-60 med | 61-80 high | 81-100 crit
+# Risk levels: the five-level client scheme, not the PDF's informational band.
+#   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
+# A boundary score belongs to the HIGHER band. See app/modules/risk/levels.py.
 # ----------------------------------------------------------------------
 
 @pytest.mark.parametrize("score,expected", [
-    (0, "informational"),
-    (20, "informational"),   # boundary belongs to the lower band
-    (21, "low"),
-    (40, "low"),
-    (41, "medium"),
-    (60, "medium"),
-    (61, "high"),
-    (80, "high"),
-    (81, "critical"),
+    (0, "low"),
+    (19.99, "low"),
+    (20, "medium"),          # boundary belongs to the higher band
+    (39.99, "medium"),
+    (40, "high"),
+    (50, "high"),
+    (59.99, "high"),
+    (60, "very_high"),
+    (79.99, "very_high"),
+    (80, "critical"),        # boundary belongs to the higher band
     (100, "critical"),
-    (75, "high"),            # PDF section 9 result
+    (75, "very_high"),       # PDF section 9 result under these bands
 ])
 def test_risk_level_bands(settings, score, expected):
     assert svc._risk_level(score, settings) == expected
+
+
+# ----------------------------------------------------------------------
+# Regression: one score, one level.
+#
+# risk_level is stored denormalised next to the score, so the bug this guards
+# was two different levels for the same number depending on which of the two
+# threshold-key conventions produced the row. Every entry point must now agree.
+# ----------------------------------------------------------------------
+
+def test_same_score_always_yields_same_level(settings):
+    """The rule is a pure function of the score — no per-asset variation."""
+    for score in range(0, 101):
+        levels = {svc._risk_level(score, settings) for _ in range(5)}
+        assert len(levels) == 1, f"score {score} produced {levels}"
+
+
+def test_score_50_is_high_everywhere(settings):
+    """The exact case from the bug report: 50 must never read as medium.
+
+    Checked through all three entry points that can produce a level, since the
+    original defect was precisely that they disagreed.
+    """
+    assert svc._risk_level(50, settings) == "high"
+    assert risk_level_for_score(50) == "high"
+    assert risk_level_for_score(50, thresholds_from_settings(settings)) == "high"
+    assert risk_level_for_score(50, DEFAULT_THRESHOLDS) == "high"
+
+
+def test_service_defaults_match_the_authoritative_thresholds(settings):
+    """DEFAULT_SETTINGS must not carry a second copy of the bands.
+
+    The defect was a settings table using one convention while the service's
+    fallbacks used another, so a partially seeded table mixed the two.
+    """
+    for key, value in DEFAULT_THRESHOLDS.items():
+        assert float(settings[key]) == value
+    assert "risk_level_low_threshold" not in settings
+
+
+def test_thresholds_are_strictly_ascending(settings):
+    bounds = thresholds_from_settings(settings)
+    ordered = [bounds[key] for key in THRESHOLD_KEYS]
+    assert ordered == sorted(ordered)
+    assert len(set(ordered)) == len(ordered)
+
+
+def test_missing_threshold_row_falls_back_per_key(settings):
+    """A half-seeded settings table must still produce coherent bands.
+
+    Reading a live value for one bound and a default from the *other*
+    convention for another is what let neighbouring bands overlap.
+    """
+    partial = dict(settings)
+    del partial["risk_level_high_threshold"]
+    bounds = thresholds_from_settings(partial)
+    assert bounds["risk_level_high_threshold"] == DEFAULT_THRESHOLDS[
+        "risk_level_high_threshold"
+    ]
+    ordered = [bounds[key] for key in THRESHOLD_KEYS]
+    assert ordered == sorted(ordered)
+
+
+def test_custom_thresholds_are_honoured():
+    """Operators can move the bands; the rule still comes from one place."""
+    bounds = {
+        "risk_level_medium_threshold": 10,
+        "risk_level_high_threshold": 30,
+        "risk_level_very_high_threshold": 55,
+        "risk_level_critical_threshold": 90,
+    }
+    assert risk_level_for_score(9, bounds) == "low"
+    assert risk_level_for_score(10, bounds) == "medium"
+    assert risk_level_for_score(30, bounds) == "high"
+    assert risk_level_for_score(55, bounds) == "very_high"
+    assert risk_level_for_score(90, bounds) == "critical"
 
 
 # ----------------------------------------------------------------------
@@ -147,7 +233,9 @@ def test_pdf_section9_example(settings):
     assert contrib["audit"] == 18
     assert contrib["hardening"] == 6
     assert final == 75
-    assert svc._risk_level(final, settings) == "high"
+    # 75 lands in Very High under the client's five-level scheme (the PDF calls
+    # this band "high"; the extra very_high band shifts the name, not the score).
+    assert svc._risk_level(final, settings) == "very_high"
 
 
 def test_final_score_rounds_to_integer(settings):

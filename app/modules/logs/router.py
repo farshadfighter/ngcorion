@@ -1,13 +1,20 @@
 """
-Logs Router - API 
+Logs Router - API
+
+Every route is gated on the LOGS module permission, matching the
+require_permission(module, type) pattern used across the codebase and the
+DELETE /api/logs/clear route in clear_router.py. Login history names accounts
+and source IPs, so it is not readable by any authenticated user: it needs LOGS
+read, which an admin grants from User Management -> System Log.
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.core.database import get_db
+from app.core.dependencies import require_permission
 from app.schemas.log import LoginLogResponse
-from app.models import LoginLog
+from app.models import LoginLog, User
 
 router = APIRouter()
 
@@ -16,6 +23,7 @@ router = APIRouter()
 def get_all_logs(
     limit: int = 50,
     success_only: Optional[bool] = None,
+    _current_user: User = Depends(require_permission("LOGS", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -37,6 +45,7 @@ def get_all_logs(
 def get_user_logs(
     username: str,
     limit: int = 20,
+    _current_user: User = Depends(require_permission("LOGS", "read")),
     db: Session = Depends(get_db)
 ):
     """
@@ -53,7 +62,10 @@ def get_user_logs(
 
 
 @router.get("/stats")
-def get_login_stats(db: Session = Depends(get_db)):
+def get_login_stats(
+    _current_user: User = Depends(require_permission("LOGS", "read")),
+    db: Session = Depends(get_db),
+):
     """
     Login attempt statistics.
 

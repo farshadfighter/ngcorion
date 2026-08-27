@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { isAssetComplete } from "./assetCompleteness";
 
-export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected }) => {
+export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
     const [sortDirection, setSortDirection] = useState("asc");
 
@@ -75,9 +75,9 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                                 <button className="btn-icon" onClick={() => onEdit(asset)}>
                                     <i className="fa-solid fa-pen"></i>
                                 </button>
-                                <button className="btn-icon" onClick={() => onDelete(asset.id)}>
+                                {canDelete && (<button className="btn-icon" onClick={() => onDelete(asset.id)}>
                                     <i className="fa-solid fa-trash"></i>
-                                </button>
+                                </button>)}
                             </td>
                         </tr>
                     );

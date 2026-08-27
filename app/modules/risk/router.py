@@ -35,6 +35,11 @@ from app.models.risk import (
     RiskSetting,
     RiskZone,
 )
+from .levels import (
+    DEFAULT_THRESHOLDS,
+    RISK_LEVELS,
+    THRESHOLD_KEYS,
+)
 from .schemas import (
     CRITICALITY_LEVELS,
     PORT_SEVERITIES,
@@ -63,21 +68,15 @@ WEIGHT_KEYS = (
     "hardening_weight",       # HF
 )
 
-# Ordered low-to-high; each is the *inclusive* lower bound of a risk-level band
-# and must stay strictly ascending so the bands never overlap:
+# Ordered low-to-high; each is the *inclusive* lower bound of the band it NAMES
+# and they must stay strictly ascending so the bands never overlap:
 #   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
 #
-# NOTE the keys are offset from the band they open: each one is the lower bound
-# of the band ABOVE its name (risk_level_low_threshold=20 starts Medium, and
-# risk_level_high_threshold=60 starts Very High). There are five bands but only
-# four boundaries, so there is deliberately no *_very_high_threshold key --
-# e5c1a7d93b48 dropped it. Renaming these means migrating the stored rows.
-THRESHOLD_KEYS = (
-    "risk_level_low_threshold",
-    "risk_level_medium_threshold",
-    "risk_level_high_threshold",
-    "risk_level_critical_threshold",
-)
+# Imported from app/modules/risk/levels.py rather than restated here: the keys
+# previously meant one thing in the calculation service and another in the rows
+# risk_settings actually held, which is how one score ended up with two levels.
+# `low` is the floor and has no configurable bound, so there are four keys for
+# five bands.
 
 SORTABLE_COLUMNS = {
     "final_risk_score": AssetRiskScore.final_risk_score,
@@ -473,11 +472,11 @@ async def _recalculate_all_background(trigger_type: str = "bulk_recalculation"):
 
 # Canonical high-to-low ordering for the risk-level breakdown, so the
 # frontend always receives every level in a stable order (zero-filled).
-# Must match the levels service.py::_risk_level actually emits: a level missing
-# here is dropped from the response entirely (its count never reaches the
-# dashboard), and one listed here that the engine never emits shows up as a
-# permanent zero.
-_RISK_LEVEL_ORDER = ("critical", "very_high", "high", "medium", "low")
+# Derived from RISK_LEVELS so it can never fall out of step with what the
+# engine emits: a level missing here is dropped from the response entirely
+# (its count never reaches the dashboard), and one listed here that the engine
+# never emits shows up as a permanent zero.
+_RISK_LEVEL_ORDER = tuple(reversed(RISK_LEVELS))
 
 # Map stored enum member name (e.g. 'PUBLIC') back to its lowercase API value.
 _CONFIDENTIALITY_BY_NAME = {e.name: e.value for e in ConfidentialityLevelEnum}
@@ -1269,9 +1268,12 @@ def update_settings(
     # overlap (spec section 10). Validate the merged post-update values.
     if any(key in THRESHOLD_KEYS for key in updates):
         merged = [
-            float(updates.get(key, rows[key].setting_value))
+            float(
+                updates[key] if key in updates
+                else rows[key].setting_value if key in rows
+                else DEFAULT_THRESHOLDS[key]
+            )
             for key in THRESHOLD_KEYS
-            if key in rows
         ]
         if any(t < 0 or t > 100 for t in merged):
             raise HTTPException(
@@ -1283,9 +1285,9 @@ def update_settings(
                 status_code=400,
                 detail=(
                     "Risk-level thresholds must be strictly ascending "
-                    "(low < medium < high < critical) so bands don't overlap. "
-                    "Note each key is the lower bound of the *next* band up: "
-                    "risk_level_high_threshold opens the Very High band"
+                    "(medium < high < very_high < critical) so bands don't "
+                    "overlap. Each key is the inclusive lower bound of the "
+                    "band it names."
                 ),
             )
 

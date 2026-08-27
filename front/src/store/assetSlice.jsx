@@ -145,12 +145,23 @@ export const updateAsset = createAsyncThunk(
 export const deleteAsset = createAsyncThunk(
     "assets/delete",
     async (assetId, { rejectWithValue }) => {
+        const id = getAssetId({ id: assetId }) ?? assetId;
+        if (id === null || id === undefined || id === "") {
+            // Without this the request goes to /api/assets/undefined, which
+            // 422s, and the row silently stays put.
+            return rejectWithValue("Cannot delete: this asset has no id.");
+        }
         try {
-            await api.delete(`/api/assets/${assetId}`);
-            return assetId;
+            await api.delete(`/api/assets/${id}`);
+            return id;
         } catch (err) {
+            const detail = err.response?.data?.detail;
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to delete asset"
+                // FastAPI validation errors arrive as a list of objects, which
+                // React cannot render — flatten them to one line.
+                Array.isArray(detail)
+                    ? detail.map((d) => d.msg || String(d)).join(", ")
+                    : detail || "Failed to delete asset"
             );
         }
     }
@@ -238,6 +249,7 @@ const assetSlice = createSlice({
         ports: [],
         isLoading: false,
         isLoadingPorts: false,
+        isDeleting: false,
         error: null,
         successMessage: null,
     },
@@ -304,12 +316,26 @@ const assetSlice = createSlice({
             })
 
             // delete
+            .addCase(deleteAsset.pending, (state) => {
+                state.isDeleting = true;
+                state.error = null;
+            })
             .addCase(deleteAsset.fulfilled, (state, action) => {
-                const deletedAssetId = getAssetId({ id: action.payload });
+                state.isDeleting = false;
+                // Compare loosely: the id round-trips through a URL, so the
+                // list can hold numbers while the payload is a string.
+                const deletedAssetId = String(action.payload);
                 state.assets = state.assets.filter(
-                    (a) => getAssetId(a) !== deletedAssetId
+                    (a) => String(getAssetId(a)) !== deletedAssetId
                 );
                 state.successMessage = "Asset deleted successfully!";
+            })
+            // A rejected delete used to fall through with no case at all: the
+            // row stayed, no message appeared, and a 403 from a user without
+            // delete permission looked exactly like nothing happening.
+            .addCase(deleteAsset.rejected, (state, action) => {
+                state.isDeleting = false;
+                state.error = action.payload || "Failed to delete asset";
             })
 
             // fetch ports

@@ -51,7 +51,7 @@ CISCO_TURBO_COMMANDS: List[str] = [
     "show run | i ^banner motd|^banner login",
 
     # SSH hardening
-    "show run | i ^ip ssh version|^ip ssh timeout|^ip ssh authentication-retries|^ip ssh server algorithm",
+    "show run | i ^ip ssh version|^ip ssh timeout|^ip ssh time-out|^ip ssh authentication-retries|^ip ssh server algorithm",
     "show ip ssh",
 
     # Service hygiene one-liners. These are default-state global services that

@@ -19,6 +19,11 @@ import logging
 import time
 from typing import Dict, Optional
 
+from app.modules.windows.winrm_endpoint import (
+    DEFAULT_WINRM_PORT,
+    winrm_endpoint,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -86,14 +91,14 @@ class WindowsWinRMClient:
     """
     WinRM-based audit client for Windows Server.
 
-    Connects to the Windows Server instance via HTTPS WinRM and runs
+    Connects to the Windows Server instance over WinRM and runs
     PowerShell commands to collect CIS Benchmark compliance data.
 
     Args:
         ip:          Target Windows Server IP or hostname
         username:    Windows admin account (domain\\user or local user)
         password:    Windows password
-        port:        WinRM HTTPS port (default 5986)
+        port:        WinRM listener port (default 5985/HTTP; 5986 is HTTPS)
         timeout:     Connection/operation timeout in seconds
         max_retries: Max connection attempts
         transport:   WinRM transport: ntlm, kerberos, credssp, basic
@@ -109,7 +114,7 @@ class WindowsWinRMClient:
         ip: str,
         username: str,
         password: str,
-        port: int = 5986,
+        port: int = DEFAULT_WINRM_PORT,
         timeout: int = 30,
         max_retries: int = 3,
         transport: str = "ntlm",
@@ -157,7 +162,7 @@ class WindowsWinRMClient:
                     f"(attempt {attempt}/{self.max_retries})"
                 )
                 self._session = winrm.Session(
-                    f"https://{self.ip}:{self.port}/wsman",
+                    winrm_endpoint(self.ip, self.port),
                     auth=(self.username, self.password),
                     transport=self.transport,
                     server_cert_validation=cert_validation,

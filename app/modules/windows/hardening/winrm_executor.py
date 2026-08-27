@@ -16,6 +16,11 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
+from app.modules.windows.winrm_endpoint import (
+    DEFAULT_WINRM_PORT,
+    winrm_endpoint,
+)
+
 from .command_templates import (
     get_windows_hardening_template,
     get_windows_template_statements,
@@ -127,7 +132,7 @@ class WindowsWinRMExecutor:
         ip: str,
         username: str,
         password: str,
-        port: int = 5986,
+        port: int = DEFAULT_WINRM_PORT,
         timeout: int = 30,
         max_retries: int = 3,
         transport: str = "ntlm",
@@ -166,7 +171,7 @@ class WindowsWinRMExecutor:
                     f"(attempt {attempt}/{self.max_retries})"
                 )
                 self._session = winrm.Session(
-                    f"https://{self.ip}:{self.port}/wsman",
+                    winrm_endpoint(self.ip, self.port),
                     auth=(self.username, self.password),
                     transport=self.transport,
                     server_cert_validation=cert_validation,
@@ -490,7 +495,7 @@ class WindowsHardeningBatchExecutor:
         ip: str,
         username: str,
         password: str,
-        port: int = 5986,
+        port: int = DEFAULT_WINRM_PORT,
         max_retries: int = 3,
         transport: str = "ntlm",
         verify_ssl: bool = False,

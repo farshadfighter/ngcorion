@@ -22,7 +22,8 @@ import os
 import shutil
 import smtplib
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -229,7 +230,9 @@ def system_time_status() -> Dict[str, Any]:
     on a host where timedatectl is unavailable."""
     status: Dict[str, Any] = {
         "current_time": datetime.now().astimezone().isoformat(),
-        "utc_time": datetime.utcnow().isoformat() + "Z",
+        # datetime.utcnow() is deprecated (and returns a *naive* value that the
+        # trailing "Z" then mislabels); an aware UTC instant serialises itself.
+        "utc_time": datetime.now(dt_timezone.utc).isoformat(),
         "system_timezone": None,
         "ntp_enabled": None,
         "ntp_synchronized": None,
@@ -303,11 +306,33 @@ def _set_ntp(enabled: bool) -> Optional[str]:
     )
 
 
-def _set_manual_time(manual_time) -> Optional[str]:
+def _set_manual_time(manual_time, tz_name: Optional[str] = None) -> Optional[str]:
+    """Set the host clock from the operator's manual time.
+
+    `date -s` reads its argument as a *local wall-clock* string, so an aware
+    timestamp has to be converted into the zone the host is being set to before
+    it is formatted. The UI sends `new Date(...).toISOString()`, i.e. a UTC
+    instant: formatting that directly wrote the UTC wall clock into a host
+    running in Asia/Tehran and left it 3.5 hours behind. A naive value is taken
+    as already being local wall-clock time, which is what it means.
+    """
     if isinstance(manual_time, str):
         manual_time = datetime.fromisoformat(manual_time)
-    # `date -s` wants a local wall-clock string; the argv form means the value
-    # can never be interpreted as shell syntax. Needs the SYS_TIME capability.
+
+    if manual_time.tzinfo is not None:
+        target = None
+        if tz_name:
+            try:
+                target = ZoneInfo(tz_name)
+            except (ZoneInfoNotFoundError, ValueError):
+                # The schema validates the zone, so this only happens when the
+                # host's tz database lacks it. Fall back to the host's own
+                # local zone rather than writing a UTC wall clock.
+                logger.warning("Unknown timezone %s for manual time", tz_name)
+        manual_time = manual_time.astimezone(target) if target else manual_time.astimezone()
+
+    # The argv form means the value can never be interpreted as shell syntax.
+    # Needs the SYS_TIME capability.
     stamp = manual_time.strftime("%Y-%m-%d %H:%M:%S")
     result = try_command(["date", "-s", stamp])
     if result is not None and result.returncode == 0:
@@ -329,7 +354,9 @@ def apply_time_config(config: Dict[str, Any]) -> List[str]:
     timezone = config["timezone"]
     use_ntp = bool(config.get("use_ntp"))
 
-    for warning in (_set_ntp(use_ntp), _set_timezone(timezone)):
+    # Order matters: the timezone goes first so the manual `date -s` below is
+    # interpreted against the zone the operator just chose, not the outgoing one.
+    for warning in (_set_timezone(timezone), _set_ntp(use_ntp)):
         if warning:
             warnings.append(warning)
 
@@ -351,7 +378,7 @@ def apply_time_config(config: Dict[str, Any]) -> List[str]:
         if not manual_time:
             warnings.append("manual_time is missing, so the clock was left alone.")
         else:
-            warning = _set_manual_time(manual_time)
+            warning = _set_manual_time(manual_time, timezone)
             if warning:
                 warnings.append(warning)
 

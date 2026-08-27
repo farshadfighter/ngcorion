@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models import Asset, AuditResult, AuditSession
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
 from app.modules.windows.audit.rules import (
     DEFAULT_SEVERITY_WEIGHT,
     SEVERITY_WEIGHTS,
@@ -198,7 +199,7 @@ class WindowsHardeningService:
         asset_id: int,
         windows_username: str,
         windows_password: str,
-        winrm_port: int = 5986,
+        winrm_port: int = DEFAULT_WINRM_PORT,
         transport: str = "ntlm",
         verify_ssl: Optional[bool] = None,
     ) -> Dict[str, Any]:
@@ -281,7 +282,7 @@ class WindowsHardeningService:
         windows_username: str,
         windows_password: str,
         checks: List[Dict[str, Any]],
-        winrm_port: int = 5986,
+        winrm_port: int = DEFAULT_WINRM_PORT,
         transport: str = "ntlm",
         verify_ssl: Optional[bool] = None,
         create_backup: bool = False,
@@ -379,7 +380,7 @@ class WindowsHardeningService:
         windows_password: str,
         check_id: str,
         parameters: Dict[str, str] = None,
-        winrm_port: int = 5986,
+        winrm_port: int = DEFAULT_WINRM_PORT,
         transport: str = "ntlm",
         verify_ssl: Optional[bool] = None,
         session_id: Optional[int] = None,
