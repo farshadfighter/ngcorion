@@ -137,7 +137,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
 
     // Split into Global vs per-VDOM groups (FortiGate multi-VDOM devices tag
     // each row with its vdom; flat devices get a single unlabeled group).
-    // Section, [VDOM], Recommendation, Risk Level, Status, Action
+    // Section, [VDOM], Recommendation, Risk Level, Result, Action
     const { hasVdom, groups } = groupChecksByScope(cisChecks);
     const colCount = hasVdom ? 6 : 5;
 
@@ -155,61 +155,65 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     {/* Summary cards + session metadata, matching the Figma
                         layout: the numbers lead the page, the details sit
                         underneath them. */}
-                    {!isLoading && (
-                        <div className="hr-summary">
-                            <div className="hr-cards">
-                                <div className="hr-card hr-card-success">
-                                    <div className="hr-card-percent">
-                                        {conformityPercent}% <span className="hr-card-sep">|</span> {passedChecks}
-                                    </div>
-                                    <div className="hr-card-label">Conformity</div>
-                                </div>
-                                <div className="hr-card hr-card-danger">
-                                    <div className="hr-card-percent">
-                                        {nonConformityPercent}% <span className="hr-card-sep">|</span> {failedChecks}
-                                    </div>
-                                    <div className="hr-card-label">Non-Conformity</div>
-                                </div>
-                                <div className="hr-card hr-card-plain">
-                                    <div className="hr-card-number">{totalChecks}</div>
-                                    <div className="hr-card-label">Total Condition</div>
-                                </div>
-                                <div className="hr-card hr-card-plain">
-                                    <div className="hr-card-number hr-card-benchmark">
-                                        {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}
-                                    </div>
-                                    <div className="hr-card-label">CIS Benchmark</div>
-                                </div>
-                            </div>
-
-                            <div className="hr-meta">
-                                <div className="hr-meta-item">
-                                    <span className="hr-meta-label">Asset</span>
-                                    <span className="hr-meta-value">{sessionData?.asset_name || '—'}</span>
-                                </div>
-                                <div className="hr-meta-item">
-                                    <span className="hr-meta-label">IP Address</span>
-                                    <span className="hr-meta-value">{sessionData?.target_ip || '—'}</span>
-                                </div>
-                                <div className="hr-meta-item">
-                                    <span className="hr-meta-label">Audit Date</span>
-                                    <span className="hr-meta-value">
-                                        {fmtDate(sessionData?.completed_at || sessionData?.started_at)}
-                                    </span>
-                                </div>
-                                <div className="hr-meta-item">
-                                    <span className="hr-meta-label">Device Type</span>
-                                    <span className="hr-meta-value">
-                                        {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}
-                                    </span>
-                                </div>
-                                <div className="hr-meta-item">
-                                    <span className="hr-meta-label">Status</span>
-                                    <span className="hr-meta-value">{sessionData?.status || '—'}</span>
-                                </div>
+                    {/* Same card layout as FixUnsuccessfulResults so the two
+                        result screens read identically: the device/session row
+                        first, then the conformity summary. */}
+                    <div className="result-stats-container">
+                        <div className="result-card result-card-info">
+                            <div className="card-label">Benchmark</div>
+                            <div className="card-value">
+                                {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)} CIS
                             </div>
                         </div>
-                    )}
+
+                        <div className="result-card result-card-info">
+                            <div className="card-label">Asset</div>
+                            <div className="card-value">{sessionData?.asset_name || 'N/A'}</div>
+                        </div>
+
+                        <div className="result-card result-card-info">
+                            <div className="card-label">IP Address</div>
+                            <div className="card-value">{sessionData?.target_ip || 'N/A'}</div>
+                        </div>
+
+                        <div className="result-card result-card-info">
+                            <div className="card-label">Audit Date</div>
+                            <div className="card-value">
+                                {fmtDate(sessionData?.completed_at || sessionData?.started_at)}
+                            </div>
+                        </div>
+
+                        <div className="result-card result-card-info">
+                            <div className="card-label">Device Type</div>
+                            <div className="card-value">
+                                {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}
+                            </div>
+                        </div>
+
+                        <div className="result-card result-card-info">
+                            <div className="card-label">Status</div>
+                            <div className="card-value">{sessionData?.status || 'Completed'}</div>
+                        </div>
+                    </div>
+
+                    <div className="result-stats-summary">
+                        <div className="result-card result-card-success">
+                            <div className="card-percent">{conformityPercent}%</div>
+                            <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
+                            <div className="card-label">Conformity</div>
+                        </div>
+
+                        <div className="result-card result-card-danger">
+                            <div className="card-percent">{nonConformityPercent}%</div>
+                            <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
+                            <div className="card-label">Non-Conformity</div>
+                        </div>
+
+                        <div className="result-card result-card-total">
+                            <div className="card-number">{totalChecks}</div>
+                            <div className="card-label">Total Conditions</div>
+                        </div>
+                    </div>
 
                     {/* Figma prompts a re-audit after hardening; the original
                         "status unknown" wording only applied before one had
@@ -224,23 +228,30 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                         : 'Status of CIS Benchmark section is unknown, audit your asset to specify status'}
                                 </span>
                             </div>
-                            <button className="hr-btn hr-btn-primary" onClick={handleAuditingClick}>
-                                <i className="fa-solid fa-magnifying-glass" /> Auditing
-                            </button>
                         </div>
                     )}
 
-                    {/* Figma puts the section title on the left and Harden All
-                        on the right, with no heavy rule underneath. */}
-                    <div className="hr-table-header">
-                        <h3 className="hr-table-title">Audit Result</h3>
-                        <button
-                            className="hr-btn hr-btn-primary"
-                            onClick={handleHardenAll}
-                            disabled={totalChecks === 0}
-                        >
-                            <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden All
-                        </button>
+                    {/* Same toolbar as FixUnsuccessfulResults: the section label
+                        on the left, Go to Auditing + Harden All on the right. */}
+                    <div className="result-toolbar">
+                        <div className="result-toolbar-left">
+                            <span className="result-toolbar-title">Audit Result</span>
+                        </div>
+                        <div className="result-toolbar-right">
+                            <button
+                                className="result-toolbar-btn result-toolbar-btn-outline"
+                                onClick={handleAuditingClick}
+                            >
+                                <i className="fa-solid fa-magnifying-glass" /> Go to Auditing
+                            </button>
+                            <button
+                                className="result-toolbar-btn result-toolbar-btn-primary"
+                                onClick={handleHardenAll}
+                                disabled={totalChecks === 0}
+                            >
+                                <i className="fa-solid fa-shield-halved" /> Harden All
+                            </button>
+                        </div>
                     </div>
 
                     {/* Table */}
@@ -255,7 +266,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                     {hasVdom && <th>VDOM</th>}
                                     <th>Recommendation</th>
                                     <th>Risk Level</th>
-                                    <th>Status</th>
+                                    <th>Result</th>
                                     <th style={{ width: '120px' }}>Action</th>
                                 </tr>
                                 </thead>

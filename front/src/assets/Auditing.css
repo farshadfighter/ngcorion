@@ -1277,6 +1277,14 @@ order: 1;
    Summary cards lead the page, then session metadata, a
    re-audit prompt, and the checks table. Scoped with hr- so it
    cannot collide with the auditing result modal above.
+
+   NOTE: the card/meta/table-header rules below (.hr-summary, .hr-cards,
+   .hr-card*, .hr-meta*, .hr-table-header, .hr-table-title, .hr-btn-primary)
+   are currently UNUSED. HardeningResults now shares the .result-stats-* cards
+   and .result-toolbar with FixUnsuccessfulResults so the two result screens
+   look the same. Kept because a new Figma for these screens is pending; still
+   live from this block are .hr-body, .hr-recheck*, .hr-btn, .hr-btn-outline
+   and .hr-btn-row.
    ============================================================ */
 
 .hr-summary {
@@ -1656,4 +1664,78 @@ order: 1;
         padding: 10px 20px;
         margin: 10px auto 0;
     }
+}
+
+/* ── Result screen toolbar ───────────────────────────────────────────────────
+   Shared by both hardening result screens (HardeningResults and
+   FixUnsuccessfulResults) so their tab/action bars match. These were inline
+   styles duplicated in one of the two screens. */
+.result-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.result-toolbar-left,
+.result-toolbar-right {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.result-toolbar-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #14213D;
+}
+
+.result-toolbar-btn {
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.result-toolbar-btn-primary {
+    background: #1e3a5f;
+    color: #ffffff;
+    border: none;
+}
+
+.result-toolbar-btn-primary:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.result-toolbar-btn-outline {
+    background: #ffffff;
+    color: #1e3a5f;
+    border: 2px solid #1e3a5f;
+}
+
+/* Tab buttons: same shell, selected state filled like the primary button. */
+.result-toolbar-tab {
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background: #ffffff;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+
+.result-toolbar-tab.is-active {
+    background: #1e3a5f;
+    color: #ffffff;
+    border-color: #1e3a5f;
 }

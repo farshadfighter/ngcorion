@@ -5,6 +5,11 @@ import HardenAllModal from './HardenAllModal';
 import FixSingleModal from './FixSingleModal';
 import ViewFixModal from './ViewFixModal';
 import { groupChecksByScope } from './vdomScope';
+// This screen reuses the Auditing result table's styling (result-table,
+// result-badge, severity-badge). The build inlines every stylesheet into one
+// bundle so it renders either way, but the dependency is real — import it so
+// the styles cannot disappear if that ever changes.
+import '../../assets/Auditing.css';
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : null);
 
@@ -82,6 +87,19 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         textAlign: 'left',
     };
 
+    /* Per-control risk level, same badge as the Auditing and Hardening Result
+       tables: all three read the same /sessions/{id}/results payload, which
+       already carries `severity` per row. */
+    const getSeverityBadge = (severity) => {
+        const level = severity?.toString().toLowerCase();
+        if (!level) return <span style={{ color: '#9ca3af' }}>—</span>;
+        return (
+            <span className={`severity-badge severity-${level}`}>
+                {titleCase(level)}
+            </span>
+        );
+    };
+
     const getStatusBadge = (check) => {
         const s = check.status?.toString().toUpperCase();
         const base =
@@ -137,8 +155,9 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
 
     // Split into Global vs per-VDOM groups (FortiGate multi-VDOM audits tag
     // each row with its vdom; flat devices get a single unlabeled group).
+    // Section, [VDOM], Recommendation, Risk Level, Result, Action
     const { hasVdom, groups } = groupChecksByScope(displayedChecks);
-    const colCount = hasVdom ? 5 : 4;
+    const colCount = hasVdom ? 6 : 5;
 
     return (
         <div className="modal-overlay result-modal-overlay" onClick={!showFixSingleModal && !showHardenAllModal ? onClose : undefined}>
@@ -219,36 +238,38 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     display: 'flex',
                     flexDirection: 'column',
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: 'white', padding: '16px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                        <div style={{ display: 'flex', gap: '12px' }}>
+                    {/* Shared toolbar styling with HardeningResults — see
+                        .result-toolbar in Auditing.css. */}
+                    <div className="result-toolbar">
+                        <div className="result-toolbar-left">
                             <button
+                                className={`result-toolbar-tab${activeTab === 'audit' ? ' is-active' : ''}`}
                                 onClick={() => setActiveTab('audit')}
-                                style={{ padding: '10px 24px', background: activeTab === 'audit' ? '#1e3a5f' : 'white', color: activeTab === 'audit' ? 'white' : '#6b7280', border: activeTab === 'audit' ? 'none' : '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                             >
                                 Audit Result
                             </button>
                             <button
+                                className={`result-toolbar-tab${activeTab === 'unsuccessful' ? ' is-active' : ''}`}
                                 onClick={() => setActiveTab('unsuccessful')}
-                                style={{ padding: '10px 24px', background: activeTab === 'unsuccessful' ? '#1e3a5f' : 'white', color: activeTab === 'unsuccessful' ? 'white' : '#6b7280', border: activeTab === 'unsuccessful' ? 'none' : '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                             >
                                 Unsuccessful Section
                             </button>
                         </div>
-                        <div style={{ display: 'flex', gap: '12px' }}>
+                        <div className="result-toolbar-right">
                             {onNavigateToAuditing && (
                                 <button
+                                    className="result-toolbar-btn result-toolbar-btn-outline"
                                     onClick={onNavigateToAuditing}
-                                    style={{ padding: '10px 24px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
                                 >
                                     <i className="fa-solid fa-magnifying-glass" /> Go to Auditing
                                 </button>
                             )}
                             <button
+                                className="result-toolbar-btn result-toolbar-btn-primary"
                                 onClick={handleHardenAll}
                                 disabled={failedChecks === 0}
-                                style={{ padding: '10px 24px', background: failedChecks === 0 ? '#9ca3af' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '600', cursor: failedChecks === 0 ? 'not-allowed' : 'pointer' }}
                             >
-                                <i className="fa-solid fa-shield-halved" />️ Harden All
+                                <i className="fa-solid fa-shield-halved" /> Harden All
                             </button>
                         </div>
                     </div>
@@ -264,6 +285,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                     <th>Section</th>
                                     {hasVdom && <th>VDOM</th>}
                                     <th>Recommendation</th>
+                                    <th>Risk Level</th>
                                     <th>Result</th>
                                     <th style={{ width: '120px' }}>Action</th>
                                 </tr>
@@ -298,6 +320,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                     <td>
                                                         <div className="recommendation-text">{check.check_title}</div>
                                                     </td>
+                                                    <td>{getSeverityBadge(check.severity)}</td>
                                                     <td>{getStatusBadge(check)}</td>
                                                     <td style={{ textAlign: 'center' }}>
                                                         {check.status?.toString().toUpperCase() === 'FAIL' && (
