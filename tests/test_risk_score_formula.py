@@ -92,6 +92,21 @@ def test_asset_risk_unknown_falls_back(settings):
     assert score == float(settings["unknown_asset_risk_score"])
 
 
+def test_asset_risk_very_high_is_not_a_fifth_tier(settings):
+    """Spec section 4 defines exactly four AR tiers. asset_inventory's
+    risklevelenum also carries a legacy "very_high" member; it must not score
+    as an undocumented fifth tier (the old behavior: 90) -- it falls back to
+    unknown_asset_risk_score like any other unrecognized/unset level, and is
+    flagged incomplete so the gap is visible."""
+    assert "asset_risk_very_high_score" not in settings
+
+    asset = SimpleNamespace(risk_level="very_high")
+    level, score, is_unknown = svc._asset_risk_score(asset, settings)
+    assert level == "very_high"  # raw value preserved for display
+    assert score == float(settings["unknown_asset_risk_score"])
+    assert is_unknown is True
+
+
 # ----------------------------------------------------------------------
 # Finding severity scale (AF/HF): Low 1 / Medium 4 / High 7 / Critical 10 (PDF 7/8)
 # ----------------------------------------------------------------------
@@ -115,24 +130,25 @@ def test_port_severity_weights(settings, severity, expected):
 
 
 # ----------------------------------------------------------------------
-# Risk levels: the five-level client scheme, not the PDF's informational band.
-#   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
-# A boundary score belongs to the HIGHER band. See app/modules/risk/levels.py.
+# Risk levels: spec section 10's five gapped bands.
+#   0-20 informational | 21-40 low | 41-60 medium | 61-80 high | 81-100 critical
+# Expressed as inclusive lower bounds (21/41/61/81) evaluated highest band
+# first, which reproduces the gapped table exactly for every integer score
+# (final_risk_score is always an integer). See app/modules/risk/levels.py.
 # ----------------------------------------------------------------------
 
 @pytest.mark.parametrize("score,expected", [
-    (0, "low"),
-    (19.99, "low"),
-    (20, "medium"),          # boundary belongs to the higher band
-    (39.99, "medium"),
-    (40, "high"),
-    (50, "high"),
-    (59.99, "high"),
-    (60, "very_high"),
-    (79.99, "very_high"),
-    (80, "critical"),        # boundary belongs to the higher band
+    (0, "informational"),
+    (20, "informational"),   # top of the Informational band
+    (21, "low"),             # bottom of the Low band
+    (40, "low"),
+    (41, "medium"),
+    (60, "medium"),
+    (61, "high"),
+    (75, "high"),            # PDF section 9 result under these bands
+    (80, "high"),
+    (81, "critical"),
     (100, "critical"),
-    (75, "very_high"),       # PDF section 9 result under these bands
 ])
 def test_risk_level_bands(settings, score, expected):
     assert svc._risk_level(score, settings) == expected
@@ -153,16 +169,17 @@ def test_same_score_always_yields_same_level(settings):
         assert len(levels) == 1, f"score {score} produced {levels}"
 
 
-def test_score_50_is_high_everywhere(settings):
-    """The exact case from the bug report: 50 must never read as medium.
-
-    Checked through all three entry points that can produce a level, since the
-    original defect was precisely that they disagreed.
+def test_score_50_is_consistent_everywhere(settings):
+    """Regression guard for the original bug report: one score, one level,
+    everywhere -- regardless of which convention produced 50's own historical
+    disagreement (medium vs. high vs. very_high). Under spec section 10's
+    bands, 50 falls in 41-60 and is Medium; checked through all three entry
+    points that can produce a level.
     """
-    assert svc._risk_level(50, settings) == "high"
-    assert risk_level_for_score(50) == "high"
-    assert risk_level_for_score(50, thresholds_from_settings(settings)) == "high"
-    assert risk_level_for_score(50, DEFAULT_THRESHOLDS) == "high"
+    assert svc._risk_level(50, settings) == "medium"
+    assert risk_level_for_score(50) == "medium"
+    assert risk_level_for_score(50, thresholds_from_settings(settings)) == "medium"
+    assert risk_level_for_score(50, DEFAULT_THRESHOLDS) == "medium"
 
 
 def test_service_defaults_match_the_authoritative_thresholds(settings):
@@ -173,7 +190,7 @@ def test_service_defaults_match_the_authoritative_thresholds(settings):
     """
     for key, value in DEFAULT_THRESHOLDS.items():
         assert float(settings[key]) == value
-    assert "risk_level_low_threshold" not in settings
+    assert "risk_level_very_high_threshold" not in settings
 
 
 def test_thresholds_are_strictly_ascending(settings):
@@ -202,15 +219,15 @@ def test_missing_threshold_row_falls_back_per_key(settings):
 def test_custom_thresholds_are_honoured():
     """Operators can move the bands; the rule still comes from one place."""
     bounds = {
-        "risk_level_medium_threshold": 10,
-        "risk_level_high_threshold": 30,
-        "risk_level_very_high_threshold": 55,
+        "risk_level_low_threshold": 10,
+        "risk_level_medium_threshold": 30,
+        "risk_level_high_threshold": 55,
         "risk_level_critical_threshold": 90,
     }
-    assert risk_level_for_score(9, bounds) == "low"
-    assert risk_level_for_score(10, bounds) == "medium"
-    assert risk_level_for_score(30, bounds) == "high"
-    assert risk_level_for_score(55, bounds) == "very_high"
+    assert risk_level_for_score(9, bounds) == "informational"
+    assert risk_level_for_score(10, bounds) == "low"
+    assert risk_level_for_score(30, bounds) == "medium"
+    assert risk_level_for_score(55, bounds) == "high"
     assert risk_level_for_score(90, bounds) == "critical"
 
 
@@ -233,9 +250,8 @@ def test_pdf_section9_example(settings):
     assert contrib["audit"] == 18
     assert contrib["hardening"] == 6
     assert final == 75
-    # 75 lands in Very High under the client's five-level scheme (the PDF calls
-    # this band "high"; the extra very_high band shifts the name, not the score).
-    assert svc._risk_level(final, settings) == "very_high"
+    # 75 lands in the 61-80 band -> High, matching spec section 9 exactly.
+    assert svc._risk_level(final, settings) == "high"
 
 
 def test_final_score_rounds_to_integer(settings):

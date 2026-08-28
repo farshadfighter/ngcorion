@@ -1,15 +1,15 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 
-// The backend emits five levels (router.py::_RISK_LEVEL_ORDER); "very_high"
-// was confirmed as an official level, so it is rendered as its own slice.
-export const RISK_LEVELS = ["low", "medium", "high", "very_high", "critical"];
+// The backend emits five levels (router.py::_RISK_LEVEL_ORDER), matching the
+// NGCorion Risk Score spec's bands (app/modules/risk/levels.py).
+export const RISK_LEVELS = ["informational", "low", "medium", "high", "critical"];
 
 export const RISK_LEVEL_LABELS = {
+    informational: "Informational",
     low: "Low",
     medium: "Medium",
     high: "High",
-    very_high: "Very High",
     critical: "Critical",
 };
 

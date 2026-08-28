@@ -261,9 +261,15 @@ export const AssetList = () => {
                    onChange={async (e) => {
                        const file = e.target.files?.[0]; if (!file) return;
                        setUploading(true);
-                       const formData = new FormData(); formData.append("file", file);
-                       await api.post("/api/assets/import/excel", formData);
-                       await dispatch(fetchAssets()); setUploading(false); e.target.value = "";
+                       try {
+                           const formData = new FormData(); formData.append("file", file);
+                           await api.post("/api/assets/import/excel/upload", formData);
+                           await dispatch(fetchAssets());
+                       } catch (err) {
+                           setBulkError("Import failed: " + (err.response?.data?.detail || err.message));
+                       } finally {
+                           setUploading(false); e.target.value = "";
+                       }
                    }}
             />
 

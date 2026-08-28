@@ -302,6 +302,9 @@ class LinuxSSHClient:
                 - cmd: Command string
                 - sudo: Whether to use sudo (default: False)
                 - key: Optional key for results dict (default: cmd)
+                - timeout: Optional per-command read_timeout override (seconds),
+                  for commands known to be slower than the READ_TIMEOUT default
+                  (e.g. network-facing package-manager calls).
 
         Returns:
             Dict mapping command/key to output
@@ -317,20 +320,48 @@ class LinuxSSHClient:
             cmd = cmd_info.get("cmd", "")
             use_sudo = cmd_info.get("sudo", False)
             key = cmd_info.get("key", cmd)
+            cmd_timeout = cmd_info.get("timeout", self.READ_TIMEOUT)
 
             try:
-                output = self.send_command(cmd, use_sudo=use_sudo)
+                output = self.send_command(cmd, use_sudo=use_sudo, timeout=cmd_timeout)
                 results[key] = output
             except Exception as e:
                 failed_count += 1
                 error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
                 results[key] = f"<<ERROR: {type(e).__name__}: {error_msg}>>"
                 logger.warning(f"Audit command failed on {self.ip}: {cmd[:50]}... - {type(e).__name__}")
+                # A command that times out (e.g. a hung network call) can leave
+                # the channel mid-output with the prompt never having reappeared.
+                # Left alone, the *next* command's read starts by consuming that
+                # stale output instead of its own, so its own prompt match fails
+                # too - cascading one bad command into several. Drain the buffer
+                # and re-anchor on the prompt before continuing.
+                self._resync_channel()
 
         success_rate = ((total_count - failed_count) / total_count) * 100 if total_count > 0 else 0
         logger.info(f"Audit collection on {self.ip}: {total_count - failed_count}/{total_count} commands succeeded ({success_rate:.1f}%)")
 
         return results
+
+    def _resync_channel(self) -> None:
+        """
+        Best-effort recovery after a failed command leaves the channel's read
+        state out of sync (stale/partial output still sitting unread).
+
+        Drains whatever is left in the buffer, then re-detects the prompt so
+        the next ``send_command`` starts from a known-good state instead of
+        immediately failing on leftover output from the previous command.
+        Never raises - if this doesn't work, the next command fails on its
+        own and is reported normally.
+        """
+        try:
+            self.connection.clear_buffer()
+        except Exception as e:
+            logger.debug(f"[Linux SSH] buffer clear after failed command on {self.ip} failed: {e}")
+        try:
+            self.connection.find_prompt()
+        except Exception as e:
+            logger.debug(f"[Linux SSH] prompt re-sync after failed command on {self.ip} failed: {e}")
 
     def disconnect(self) -> None:
         """Disconnect from server."""

@@ -92,7 +92,10 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
         ])
     else:
         commands.extend([
-            {"cmd": "dnf repolist 2>/dev/null || yum repolist 2>/dev/null || echo 'no repos'", "sudo": False, "key": "dnf_repos", "section": "1.2"},
+            # dnf/yum repolist can hang for well over the SSH read timeout when
+            # repos are unreachable (each mirror is retried before giving up),
+            # so `timeout` bounds the whole call and lets the fallback/echo run.
+            {"cmd": "timeout 15 dnf repolist 2>/dev/null || timeout 15 yum repolist 2>/dev/null || echo 'no repos'", "sudo": False, "key": "dnf_repos", "section": "1.2", "timeout": 45},
             {"cmd": "rpm -q gpg-pubkey --qf '%{name}-%{version}-%{release}\\n' 2>/dev/null || echo 'no keys'", "sudo": False, "key": "rpm_gpg_keys", "section": "1.2.1"},
             # 1.2.3 - gpgcheck enabled in dnf.conf
             {"cmd": "grep -E '^\\s*gpgcheck' /etc/dnf/dnf.conf 2>/dev/null || echo 'not configured'", "sudo": False, "key": "dnf_gpgcheck", "section": "1.2.3"},
@@ -100,7 +103,11 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
             {"cmd": "update-crypto-policies --show 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy", "section": "1.2.4"},
             {"cmd": "cat /etc/crypto-policies/state/current 2>/dev/null || echo 'not available'", "sudo": False, "key": "crypto_policy_state", "section": "1.2.4"},
             # 1.9.1 - Pending updates (inventory)
-            {"cmd": "dnf check-update 2>/dev/null | head -30 || yum check-update 2>/dev/null | head -30 || echo 'up to date or dnf unavailable'", "sudo": False, "key": "pending_updates", "section": "1.9.1"},
+            # Same network-hang risk as dnf_repos above: check-update refreshes
+            # repo metadata, which can stall far past the SSH read timeout when
+            # a repo is unreachable. `timeout` bounds it so the shell always
+            # returns and the fallback chain (yum, then the echo) still runs.
+            {"cmd": "timeout 15 dnf check-update 2>/dev/null | head -30 || timeout 15 yum check-update 2>/dev/null | head -30 || echo 'up to date or dnf unavailable'", "sudo": False, "key": "pending_updates", "section": "1.9.1", "timeout": 45},
         ])
 
     # 1.3 - Mandatory Access Control

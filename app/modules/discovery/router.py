@@ -972,12 +972,15 @@ import logging
 _ports_sync_logger = logging.getLogger(__name__)
 
 # Default severity per well-known risky port; anything else is "medium".
+# Critical/insecure tier matches the spec's section 6 worked example exactly
+# (Telnet, SMB, RDP -> critical); FTP and the database ports are "high" per
+# the spec's high-risk-service list, not called out in that worked example.
 _PORT_SEVERITY_MAP = {
-    23: "critical",                                    # Telnet
-    21: "high", 3389: "high", 1433: "high",            # FTP, RDP, MSSQL
-    3306: "high", 5432: "high",                        # MySQL, PostgreSQL
-    22: "medium", 161: "medium", 80: "medium",         # SSH, SNMP, HTTP
-    443: "low", 53: "low",                             # HTTPS, DNS
+    23: "critical", 445: "critical", 3389: "critical",  # Telnet, SMB, RDP
+    21: "high", 1433: "high",                            # FTP, MSSQL
+    3306: "high", 5432: "high",                          # MySQL, PostgreSQL
+    22: "medium", 161: "medium", 80: "medium",           # SSH, SNMP, HTTP
+    443: "low", 53: "low",                               # HTTPS, DNS
 }
 # Open-port risk points per severity — PDF section 6 port scale (1/3/5/10),
 # matching the risk engine's port_severity_* weights (not the 1/4/7/10 finding

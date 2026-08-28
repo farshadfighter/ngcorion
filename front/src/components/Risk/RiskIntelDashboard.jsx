@@ -88,8 +88,8 @@ export const RiskIntelDashboard = () => {
                 <div className="risk-kpi-grid">
                     <KpiCard label="Number of assets" value={totals.total_assets} />
                     <KpiCard label="Critical Risk assets" value={levelCount("critical")} />
-                    <KpiCard label="Very High Risk assets" value={levelCount("very_high")} />
                     <KpiCard label="High Risk assets" value={levelCount("high")} />
+                    <KpiCard label="Medium Risk assets" value={levelCount("medium")} />
                     <KpiCard label="Risk Score average" value={totals.risk_score_average} />
                     <KpiCard
                         label="Number of incomplete assets"

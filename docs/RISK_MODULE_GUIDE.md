@@ -6,29 +6,33 @@
 
 ---
 
-## ۱) معماری کلی — چهار مؤلفه و فرمول
+## ۱) معماری کلی — شش مؤلفه و فرمول
 
 هر دارایی (Asset) یک **امتیاز ریسک ۰ تا ۱۰۰** می‌گیرد که از ترکیب وزن‌دار
-چهار مؤلفه ساخته می‌شود:
+شش مؤلفه‌ی مشخص‌شده در NGCorion Risk Score Calculation Specification ساخته
+می‌شود:
 
-| مؤلفه | منبع داده | معنی |
-|-------|-----------|------|
-| **Criticality** (بحرانیت) | `asset_risk_profiles` | اهمیت کسب‌وکاری دارایی (low/medium/high/critical) |
-| **Zone** (منطقه‌ی شبکه) | `risk_zones` | میزان در معرض بودن شبکه (DMZ، اینترنت‌فیسینگ، داخلی و…) |
-| **Open Ports** (پورت‌های باز) | `asset_open_ports` | اکسپوژر ناشی از پورت‌های باز، وزن‌دهی‌شده با شدت |
-| **Audit** (یافته‌های ممیزی) | `audit_sessions` / `audit_results` + `hardening_actions` | درصد کنترل‌های CIS مردود، پس از کسر مواردی که هاردنینگ حل کرده |
+| مؤلفه | منبع داده | معنی | وزن |
+|-------|-----------|------|----:|
+| **AC — Criticality** (بحرانیت) | `asset_risk_profiles` | اهمیت کسب‌وکاری دارایی (low/medium/high/critical) | ۲۰٪ |
+| **AR — Asset Risk** (ریسک ذاتی دارایی) | `asset_inventory.risk_level` | سطح ریسک خودِ دارایی، مستقل از ممیزی/هاردنینگ | ۲۰٪ |
+| **AZ — Zone** (منطقه‌ی شبکه) | `risk_zones` | میزان در معرض بودن شبکه (DMZ، اینترنت‌فیسینگ، داخلی و…) | ۱۵٪ |
+| **OP — Open Ports** (پورت‌های باز) | `asset_open_ports` | اکسپوژر ناشی از پورت‌های باز، وزن‌دهی‌شده با ریسک سرویس | ۱۰٪ |
+| **AF — Audit Failure** (یافته‌های ممیزی) | `audit_sessions` / `audit_results` | درصد وزنی کنترل‌های مردود از کل کنترل‌های قابل‌اجرا (بدون کسر هاردنینگ) | ۲۵٪ |
+| **HF — Hardening Fix Found** (فیکس‌های شناسایی‌شده) | `hardening_actions` | درصد وزنی یافته‌های مردودی که برایشان فیکس شناسایی شده | ۱۰٪ |
 
 **فرمول نهایی** (در `service.py`، STEP 8):
 
 ```
 contribution(x)  = score(x) * weight(x) / 100
-final_risk_score = Σ contribution(criticality, zone, open_port, audit)
-final_risk_score = round(clamp(final_risk_score, 0, 100), 2)
+final_risk_score = Σ contribution(criticality, asset_risk, zone, open_port, audit, hardening)
+final_risk_score = min(100, max(0, round(final_risk_score)))
 ```
 
-چهار وزن باید همیشه جمعشان **۱۰۰** شود (در endpoint تنظیمات اعتبارسنجی می‌شود).
-سپس امتیاز نهایی با آستانه‌ها به یک **سطح ریسک** نگاشت می‌شود:
-`low → medium → high → very_high → critical`.
+شش وزن باید همیشه جمعشان **۱۰۰** شود (در endpoint تنظیمات اعتبارسنجی می‌شود).
+سپس امتیاز نهایی با آستانه‌ها به یک **سطح ریسک** نگاشت می‌شود (پنج سطح، مطابق
+بخش ۱۰ اسپک، با کران‌های شکاف‌دار):
+`informational (۰-۲۰) → low (۲۱-۴۰) → medium (۴۱-۶۰) → high (۶۱-۸۰) → critical (۸۱-۱۰۰)`.
 
 ---
 
@@ -143,13 +147,19 @@ final_risk_score = round(clamp(final_risk_score, 0, 100), 2)
 
 از طریق `PUT /api/risk/settings` (فقط ردیف‌های `is_editable`). مهم‌ترین‌ها:
 
-- **وزن مؤلفه‌ها** (باید جمعشان ۱۰۰ شود): `criticality_weight`، `zone_weight`،
-  `open_port_weight`، `audit_weight`.
-- **وزن شدت‌ها:** `severity_{low,medium,high,critical}_weight`.
-- **امتیاز بحرانیت:** `criticality_{low,medium,high,critical}_score`.
+- **وزن مؤلفه‌ها** (باید جمعشان ۱۰۰ شود): `criticality_weight`، `asset_risk_weight`،
+  `zone_weight`، `open_port_weight`، `audit_weight`، `hardening_weight`.
+- **وزن شدت یافته‌ها (AF/HF):** `severity_{low,medium,high,critical}_weight`.
+- **وزن شدت پورت (OP):** `port_severity_{low,medium,high,critical}_weight`.
+- **امتیاز بحرانیت (AC):** `criticality_{low,medium,high,critical}_score`.
+- **امتیاز ریسک دارایی (AR):** `asset_risk_{low,medium,high,critical}_score`
+  (اسپک دقیقاً چهار سطح دارد؛ مقدار قدیمیِ `very_high` روی
+  `asset_inventory.risk_level` مثل نامشخص‌بودن مقدار امتیازدهی می‌شود).
 - **نرمال‌سازی پورت:** `open_port_normalization_factor`.
-- **مقادیر fallback:** `unknown_{zone,port,audit}_score`.
-- **آستانه‌های سطح:** `risk_level_{medium,high,very_high,critical}_threshold`.
+- **مقادیر fallback:** `unknown_{zone,port,audit,asset_risk}_score`،
+  `no_hardening_data_score`.
+- **آستانه‌های سطح:** `risk_level_{low,medium,high,critical}_threshold`
+  (کران پایین *شامل* همان سطح؛ `informational` کف است و کلید ندارد).
 - **رفتار:** `include_warning_in_audit_risk`.
 
 > تغییر هر تنظیمی که `weight` یا `normalization` در نامش باشد، به‌طور خودکار

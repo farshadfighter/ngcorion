@@ -48,11 +48,12 @@ DEFAULT_SETTINGS = [
     ("unknown_audit_score", "50", "int", "Audit score used when no audit results exist"),
     ("unknown_asset_risk_score", "50", "int", "Asset-risk score used when the asset has no risk level set"),
     ("no_hardening_data_score", "0", "int", "Hardening-fix score used when the asset has no hardening data"),
-    # asset_inventory.risk_level -> AR score
+    # asset_inventory.risk_level -> AR score (spec section 4: exactly four
+    # tiers; a legacy "very_high" risk_level value is treated as unknown, see
+    # AssetRiskCalculationService._AR_RECOGNIZED_LEVELS)
     ("asset_risk_low_score", "25", "int", "AR score for assets with risk level low"),
     ("asset_risk_medium_score", "50", "int", "AR score for assets with risk level medium"),
     ("asset_risk_high_score", "75", "int", "AR score for assets with risk level high"),
-    ("asset_risk_very_high_score", "90", "int", "AR score for assets with the legacy risk level very_high"),
     ("asset_risk_critical_score", "100", "int", "AR score for assets with risk level critical"),
     # Behavior flags
     ("include_warning_in_audit_risk", "false", "bool", "Whether warning-level audit findings count toward audit risk"),

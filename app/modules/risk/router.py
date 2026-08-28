@@ -69,14 +69,15 @@ WEIGHT_KEYS = (
 )
 
 # Ordered low-to-high; each is the *inclusive* lower bound of the band it NAMES
-# and they must stay strictly ascending so the bands never overlap:
-#   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
+# and they must stay strictly ascending so the bands never overlap (spec
+# section 10): <=20 informational | 21-40 low | 41-60 medium | 61-80 high |
+# >=81 critical.
 #
 # Imported from app/modules/risk/levels.py rather than restated here: the keys
 # previously meant one thing in the calculation service and another in the rows
 # risk_settings actually held, which is how one score ended up with two levels.
-# `low` is the floor and has no configurable bound, so there are four keys for
-# five bands.
+# `informational` is the floor and has no configurable bound, so there are
+# four keys for five bands.
 
 SORTABLE_COLUMNS = {
     "final_risk_score": AssetRiskScore.final_risk_score,
@@ -1285,7 +1286,7 @@ def update_settings(
                 status_code=400,
                 detail=(
                     "Risk-level thresholds must be strictly ascending "
-                    "(medium < high < very_high < critical) so bands don't "
+                    "(low < medium < high < critical) so bands don't "
                     "overlap. Each key is the inclusive lower bound of the "
                     "band it names."
                 ),

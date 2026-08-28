@@ -29,10 +29,10 @@ const SOURCES = {
     },
     // Assets needing attention are the worst-scoring ones, so this reads the
     // risk list rather than the hardening one: the hardening endpoint only
-    // returns assets with active audit findings, so a very-high-risk asset that
-    // has never been audited -- exactly the kind worth surfacing -- was hidden.
+    // returns assets with active audit findings, so a high-risk asset that has
+    // never been audited -- exactly the kind worth surfacing -- was hidden.
     // The API filters one risk_level at a time, so the page takes the top slice
-    // (already sorted by score desc) and keeps very_high + critical.
+    // (already sorted by score desc) and keeps high + critical.
     requiringAttention: {
         url: "/api/risk/assets",
         params: {
