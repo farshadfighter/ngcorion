@@ -50,11 +50,11 @@ export const AssetRequirement = () => {
             const formData = new FormData();
             formData.append("file", file);
 
-            const response = await api.post("/api/asset-requirements/import/excel", formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
+            // Do NOT set Content-Type manually here: the browser needs to compute it
+            // itself (including the multipart boundary) when sending a FormData body.
+            // A hardcoded "multipart/form-data" header has no boundary, so the
+            // backend can't parse the request and the import silently fails.
+            const response = await api.post("/api/asset-requirements/import/excel", formData);
 
             alert("Import successful! " + JSON.stringify(response.data));
             window.location.reload();
