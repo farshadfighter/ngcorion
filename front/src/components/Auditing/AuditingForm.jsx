@@ -4,6 +4,7 @@ import api from "../../config/api.js";
 import { executeAudit } from "../../store/auditSlice";
 import { discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 import { FortinetBenchmarkModal } from "./FortinetBenchmarkModal";
+import { DEFAULT_WINRM_PORT } from "../Hardening/winrmDefaults";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -76,7 +77,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         mssql_port:       "1433",
         windows_username: "",
         windows_password: "",
-        winrm_port:       "5986",
+        winrm_port:       DEFAULT_WINRM_PORT,
         transport:        "ntlm",
     });
 
@@ -606,7 +607,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     name="winrm_port"
                                     value={formData.winrm_port}
                                     onChange={handleChange}
-                                    placeholder="5986"
+                                    placeholder={DEFAULT_WINRM_PORT}
                                     autoComplete="off"
                                 />
                             </div>

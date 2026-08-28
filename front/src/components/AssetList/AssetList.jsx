@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets, deleteAsset, clearMessages } from "../../store/assetSlice";
+import { usePermission } from "../../hooks/usePermission";
 import api from "../../config/api";
 import { OverviewTab } from "./OverviewTab";
 import { NetworkSystemTab } from "./NetworkSystemTab";
@@ -26,6 +27,10 @@ export const AssetList = () => {
     const dispatch = useDispatch();
     const { assets, isLoading, error, successMessage } = useSelector((state) => state.assets);
     const { assetTypes, locations, owners } = useAssetFormOptions();
+    // The backend requires ASSET_LIST delete; without this the button is shown
+    // to everyone and a user who lacks the permission just gets a 403 that used
+    // to be swallowed, so deleting looked broken rather than forbidden.
+    const canDelete = usePermission("asset_list", "delete");
 
     const [activeTab, setActiveTab]           = useState("overview");
     const [searchQuery, setSearchQuery]       = useState("");
@@ -41,6 +46,7 @@ export const AssetList = () => {
     const [selectedIds, setSelectedIds]               = useState(new Set());
     const [showDeleteSelectedModal, setShowDeleteSelectedModal] = useState(false);
     const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+    const [bulkError, setBulkError]                   = useState(null);
 
     // ── Edit modals ────────────────────────────────────────────────────────────
     const [showEditOverviewModal,  setShowEditOverviewModal]  = useState(false);
@@ -61,11 +67,14 @@ export const AssetList = () => {
     useEffect(() => { dispatch(fetchAssets()); }, [dispatch]);
 
     useEffect(() => {
-        if (successMessage || error) {
-            const timer = setTimeout(() => dispatch(clearMessages()), 3000);
+        if (successMessage || error || bulkError) {
+            const timer = setTimeout(() => {
+                dispatch(clearMessages());
+                setBulkError(null);
+            }, 3000);
             return () => clearTimeout(timer);
         }
-    }, [successMessage, error, dispatch]);
+    }, [successMessage, error, bulkError, dispatch]);
 
     // ── Filtering & sorting ────────────────────────────────────────────────────
     const filteredAssets = Array.isArray(assets)
@@ -157,25 +166,45 @@ export const AssetList = () => {
         setShowDeleteModal(true);
     };
 
-    const handleDeleteConfirm = () => {
+    const handleDeleteConfirm = async () => {
         const assetId = resolveAssetId(selectedAsset);
-        if (assetId) {
-            dispatch(deleteAsset(assetId));
+        // `0` is not a real asset id here (the column is a serial starting at
+        // 1), but check for absence rather than falsiness so a future id of 0
+        // would not silently do nothing — which is how this failed before.
+        if (assetId === null || assetId === undefined || assetId === "") {
+            return;
+        }
+        setShowDeleteModal(false);
+        const result = await dispatch(deleteAsset(assetId));
+        setSelectedAsset(null);
+        if (deleteAsset.fulfilled.match(result)) {
             setSelectedIds(prev => { const n = new Set(prev); n.delete(assetId); return n; });
-            setShowDeleteModal(false);
-            setSelectedAsset(null);
+            // Re-read the list: the delete cascades to ports, risk scores and
+            // hardening rows, so the server is the only accurate view of what
+            // is left. A failed delete keeps the row, and the slice's rejected
+            // case surfaces why.
+            dispatch(fetchAssets());
         }
     };
 
     // ── Multi delete ───────────────────────────────────────────────────────────
     const handleDeleteSelectedConfirm = async () => {
         setIsDeletingSelected(true);
-        await Promise.allSettled(
+        const outcomes = await Promise.allSettled(
             [...selectedIds].map(id => dispatch(deleteAsset(id)).unwrap())
         );
         setSelectedIds(new Set());
         setShowDeleteSelectedModal(false);
         setIsDeletingSelected(false);
+        // allSettled swallows per-asset failures, and the last thunk to settle
+        // decides what the slice's error says — so count them here rather than
+        // reporting "deleted" for a batch that partly failed.
+        const failed = outcomes.filter(o => o.status === "rejected").length;
+        if (failed) {
+            setBulkError(
+                `${failed} of ${outcomes.length} assets could not be deleted.`
+            );
+        }
         dispatch(fetchAssets());
     };
 
@@ -189,6 +218,7 @@ export const AssetList = () => {
         assets:          pagedAssets,
         onEdit:          handleEdit,
         onDelete:        handleDeleteClick,
+        canDelete,
         isNewAsset,
         selectedIds,
         onToggleSelect:  toggleSelectOne,
@@ -239,6 +269,7 @@ export const AssetList = () => {
 
             {successMessage && <div className="alert alert-success">{successMessage}</div>}
             {error          && <div className="alert alert-error">{error}</div>}
+            {bulkError      && <div className="alert alert-error">{bulkError}</div>}
 
             {/* Tabs */}
             <div className="asset-tabs">
@@ -267,7 +298,7 @@ export const AssetList = () => {
                 </div>
 
                 {/* Delete Selected — فقط وقتی چیزی select شده نمایش داده میشه */}
-                {someSelected && (
+                {someSelected && canDelete && (
                     <button
                         onClick={() => setShowDeleteSelectedModal(true)}
                         style={{

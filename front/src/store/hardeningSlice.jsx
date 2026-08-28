@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { DEFAULT_WINRM_PORT } from "../components/Hardening/winrmDefaults";
 
 // ===========================
 // ERROR NORMALIZATION
@@ -206,7 +207,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             return {
                 windows_username: credentials.windows_username,
                 windows_password: credentials.windows_password,
-                winrm_port:       credentials.winrm_port  || 5986,
+                winrm_port:       credentials.winrm_port  || Number(DEFAULT_WINRM_PORT),
                 transport:        credentials.transport    || "ntlm",
             };
 

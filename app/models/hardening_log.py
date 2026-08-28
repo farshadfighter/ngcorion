@@ -8,7 +8,7 @@ This provides user-level summary logging for compliance and monitoring.
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, JSON, Text, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 from app.core.database import Base
 from datetime import datetime, timezone
 
@@ -153,7 +153,14 @@ class HardeningLog(Base):
 
     # Relationships
     user = relationship("User", backref="hardening_logs")
-    asset = relationship("Asset", backref="hardening_logs")
+    # asset_id is nullable with ON DELETE SET NULL, so the database detaches
+    # these rows itself. passive_deletes stops SQLAlchemy loading the whole
+    # history of an asset just to null it out one row at a time — the last
+    # child relationship on Asset that still did (the rest were fixed in
+    # 6a78fc5).
+    asset = relationship(
+        "Asset", backref=backref("hardening_logs", passive_deletes=True)
+    )
     audit_session = relationship("AuditSession", backref="hardening_logs")
 
     def __repr__(self):

@@ -6,6 +6,7 @@ import {
     isMongo,
     needsSudo,
 } from "./hardeningCredentials";
+import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
 
 // Shared credentials form used by HardenAllModal and FixSingleModal.
 //
@@ -62,8 +63,8 @@ export default function CredentialsForm({
                 </div>
                 <div className="hardening-form-group">
                     <label>WinRM Port</label>
-                    <input type="number" name="winrm_port" value={value.winrm_port} onChange={onChange} placeholder="5986" autoComplete="off" style={inputStyle} />
-                    <span style={hintStyle}>Default: 5986 (HTTPS)</span>
+                    <input type="number" name="winrm_port" value={value.winrm_port} onChange={onChange} placeholder={DEFAULT_WINRM_PORT} autoComplete="off" style={inputStyle} />
+                    <span style={hintStyle}>Default: {DEFAULT_WINRM_PORT} (HTTP); use 5986 for HTTPS</span>
                 </div>
                 <div className="hardening-form-group">
                     <label>Transport</label>

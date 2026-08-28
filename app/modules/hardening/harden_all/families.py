@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 from app.models.audit import DeviceType
+from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
 
 from .contract import CredentialField, PlanCapabilities
 
@@ -311,7 +312,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
             windows_username=ctx.cred("windows_username"),
             windows_password=ctx.cred("windows_password"),
             checks=ctx.checks,
-            winrm_port=ctx.int_cred("winrm_port", 5986),
+            winrm_port=ctx.int_cred("winrm_port", DEFAULT_WINRM_PORT),
             transport=ctx.cred("transport", "ntlm"),
             create_backup=ctx.create_backup,
             user_id=ctx.user_id,
@@ -406,7 +407,8 @@ def _build_registry() -> Dict[str, FamilySpec]:
             credential_fields=[
                 CredentialField(name="windows_username", label="Windows Username", type="text", required=True),
                 CredentialField(name="windows_password", label="Windows Password", type="password", required=True),
-                CredentialField(name="winrm_port", label="WinRM Port", type="number", default="5986"),
+                CredentialField(name="winrm_port", label="WinRM Port", type="number",
+                                default=str(DEFAULT_WINRM_PORT)),
                 CredentialField(
                     name="transport", label="Transport", type="select", default="ntlm",
                     options=["ntlm", "kerberos", "credssp", "basic"],

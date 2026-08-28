@@ -6,6 +6,8 @@ from pydantic import BaseModel, EmailStr, Field , field_validator
 from datetime import datetime
 from typing import Optional, List
 
+from app.models.user_permission import ModuleEnum
+
 
 # ====================================
 # Shared validators
@@ -157,19 +159,33 @@ class ModuleInfo(BaseModel):
     description: str
 
 
+# Human-readable label per module. ModuleEnum below is the source of truth for
+# *which* modules exist — this only supplies the wording, so a module added to
+# the enum can never go missing from the User Management permission picker
+# (which is how "logs" ended up unassignable and "system_config" undocumented).
+MODULE_DESCRIPTIONS = {
+    ModuleEnum.DASHBOARD: "Main Dashboard",
+    ModuleEnum.ASSET_REQUIREMENT: "Asset Requirement Form",
+    ModuleEnum.ASSET_LIST: "Asset List View",
+    ModuleEnum.ASSET_AUTO_DISCOVERY: "Asset Auto Discovery",
+    ModuleEnum.USER_MANAGEMENT: "User Management",
+    ModuleEnum.AUDITING: "Auditing Module",
+    ModuleEnum.HARDENING: "Hardening Module",
+    ModuleEnum.RISK: "Risk Module",
+    ModuleEnum.SYSTEM_CONFIG: "System Configuration",
+    ModuleEnum.LOGS: "System Log",
+}
+
+
 def get_available_modules() -> List[ModuleInfo]:
     """
     Returns list of all available modules with descriptions.
     Useful for frontend to show module options.
     """
     return [
-        ModuleInfo(name="dashboard", description="Main Dashboard"),
-        ModuleInfo(name="asset_requirement", description="Asset Requirement Form"),
-        ModuleInfo(name="asset_list", description="Asset List View"),
-        ModuleInfo(name="asset_auto_discovery", description="Asset Auto Discovery"),
-        ModuleInfo(name="user_management", description="User Management"),
-        ModuleInfo(name="auditing", description="Auditing Module"),
-        ModuleInfo(name="hardening", description="Hardening Module"),
-        ModuleInfo(name="risk", description="Risk Module"),
-        ModuleInfo(name="logs", description="System Logs"),
+        ModuleInfo(
+            name=module.value,
+            description=MODULE_DESCRIPTIONS.get(module, module.value),
+        )
+        for module in ModuleEnum
     ]

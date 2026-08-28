@@ -67,6 +67,11 @@ from app.models.risk import (
     RiskSetting,
     RiskZone,
 )
+from app.modules.risk.levels import (
+    DEFAULT_THRESHOLDS,
+    risk_level_for_score,
+    thresholds_from_settings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,13 +120,11 @@ DEFAULT_SETTINGS = {
     "asset_risk_high_score": 75.0,
     "asset_risk_very_high_score": 90.0,
     "asset_risk_critical_score": 100.0,
-    # Inclusive lower bound of each level, evaluated highest to lowest
-    # (see _risk_level); a score on a boundary belongs to the higher band:
-    #   <20 low | 20-40 medium | 40-60 high | 60-80 very_high | >=80 critical
-    "risk_level_low_threshold": 20.0,
-    "risk_level_medium_threshold": 40.0,
-    "risk_level_high_threshold": 60.0,
-    "risk_level_critical_threshold": 80.0,
+    # Inclusive lower bound of the band each key NAMES — owned by
+    # app/modules/risk/levels.py, which is the single definition of the
+    # score -> level rule. Spelled out there rather than here so the service,
+    # the settings API and the data migration cannot disagree again.
+    **DEFAULT_THRESHOLDS,
 }
 
 
@@ -419,13 +422,11 @@ class AssetRiskCalculationService:
         return out
 
     def _risk_level(self, score: float, settings: dict) -> str:
-        """Spec section 10:
-            0 <= s < 20  low | 20 <= s < 40  medium | 40 <= s < 60  high
-            60 <= s < 80 very_high | 80 <= s <= 100 critical
+        """The stored risk level for a final score.
 
-        Thresholds are *inclusive* lower bounds: a score sitting exactly on a
-        boundary belongs to the higher band, so 20 is medium and 80 is
-        critical (spec test 30.7).
+        Thin wrapper over risk_level_for_score() so this service has no band
+        logic of its own — see app/modules/risk/levels.py for the bands, the
+        naming convention and why both are defined in exactly one place.
 
         NOTE: this five-level scheme (with very_high, without informational) is
         a direct client requirement and takes precedence over the PDF's
@@ -434,15 +435,7 @@ class AssetRiskCalculationService:
         level colours, KPI cards and the a4c7e1b90d52 migration all depend on
         very_high existing.
         """
-        if score >= float(settings["risk_level_critical_threshold"]):
-            return "critical"
-        if score >= float(settings["risk_level_high_threshold"]):
-            return "very_high"
-        if score >= float(settings["risk_level_medium_threshold"]):
-            return "high"
-        if score >= float(settings["risk_level_low_threshold"]):
-            return "medium"
-        return "low"
+        return risk_level_for_score(score, thresholds_from_settings(settings))
 
     # ------------------------------------------------------------------
     # Weighted aggregation

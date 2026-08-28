@@ -20,7 +20,7 @@ from .schemas import (
     AssetSecurityStatusCreate, AssetSecurityStatusResponse,
     PaginatedResponse
 )
-from .service import AssetService
+from .service import AssetInUseError, AssetService
 from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission
 from app.models import User
 from app.models import (
@@ -219,16 +219,22 @@ def delete_asset(
     db: Session = Depends(get_db)
 ):
     """Delete asset (requires delete permission)"""
-    # Get asset info before deletion
+    # Read the identifying fields before deletion: the audit-log entry below
+    # outlives the row, and the instance is expired once the delete commits.
     asset = AssetService.get_asset(db, asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     asset_name = asset.asset_name
     ip_address = asset.ip_address
-    if not AssetService.delete_asset(db, asset_id):
+    try:
+        deleted = AssetService.delete_asset(db, asset_id)
+    except AssetInUseError as exc:
+        # 409, not 500: the request was valid and the asset still exists.
+        raise HTTPException(status_code=409, detail=str(exc))
+    if not deleted:
         raise HTTPException(status_code=404, detail="Asset not found")
     log_asset_deleted(db, current_user.id, asset_id, asset_name, ip_address)
-    return {"message": "Deleted successfully"}
+    return {"message": "Deleted successfully", "id": asset_id}
 
 
 @assets_router.get("/export/excel")

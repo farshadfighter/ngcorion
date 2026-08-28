@@ -2,6 +2,7 @@
 Asset Service - Complete CRUD operations
 """
 import logging
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
 from typing import List, Optional
@@ -15,6 +16,14 @@ from app.models import (
 from .schemas import AssetTypeCreate
 
 logger = logging.getLogger(__name__)
+
+
+class AssetInUseError(Exception):
+    """An asset could not be deleted because another record still points at it.
+
+    Distinct from "not found" so the router can answer 409 rather than 404 or a
+    bare 500 — the caller needs to know the asset is still there.
+    """
 
 
 class AssetService:
@@ -201,13 +210,28 @@ class AssetService:
     
     @staticmethod
     def delete_asset(db: Session, asset_id: int):
-        """Delete asset"""
+        """Delete an asset and everything the database cascades with it.
+
+        Every child FK is ON DELETE CASCADE or SET NULL and the ORM side is
+        passive_deletes, so Postgres does the whole job in one statement. A row
+        that still references the asset through some constraint added later
+        would raise IntegrityError mid-transaction and leave the session
+        unusable for the audit-log write that follows, so it is rolled back and
+        reported instead of surfacing as an opaque 500.
+        """
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
-        if asset:
+        if not asset:
+            return False
+        try:
             db.delete(asset)
             db.commit()
-            return True
-        return False
+        except IntegrityError as exc:
+            db.rollback()
+            raise AssetInUseError(
+                f"Asset {asset_id} could not be deleted because other records "
+                f"still reference it."
+            ) from exc
+        return True
     
     # ==========================================
     # Owners

@@ -20,6 +20,7 @@ from app.core.dependencies import (
 )
 
 from app.models import User, log_action
+from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
 
 from .service import WindowsAuditService
 
@@ -37,8 +38,8 @@ class WindowsAuditRequest(BaseModel):
         description="Windows password (not stored)"
     )
     winrm_port: int = Field(
-        5986, ge=1, le=65535,
-        description="WinRM HTTPS port (default 5986)"
+        DEFAULT_WINRM_PORT, ge=1, le=65535,
+        description="WinRM listener port (default 5985/HTTP; use 5986 for HTTPS)"
     )
     transport: str = Field(
         "ntlm",
@@ -68,7 +69,7 @@ class WindowsAuditRequest(BaseModel):
                 "asset_id": 42,
                 "windows_username": "Administrator",
                 "windows_password": "********",
-                "winrm_port": 5986,
+                "winrm_port": DEFAULT_WINRM_PORT,
                 "transport": "ntlm",
                 "profile": "L1",
                 "job_name": "Monthly Windows Server CIS Scan",

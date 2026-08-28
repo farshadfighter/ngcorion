@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ManagePortsModal } from "./ManagePortsModal";
 import { isAssetComplete } from "./assetCompleteness";
 
-export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected }) => {
+export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [showPortsModal, setShowPortsModal] = useState(false);
     const [sortColumn, setSortColumn] = useState(null);
@@ -85,9 +85,9 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                                 <button className="btn-icon" onClick={() => onEdit(asset)}>
                                     <i className="fa-solid fa-pen"></i>
                                 </button>
-                                <button className="btn-icon" onClick={() => onDelete(asset.id)}>
+                                {canDelete && (<button className="btn-icon" onClick={() => onDelete(asset.id)}>
                                     <i className="fa-solid fa-trash"></i>
-                                </button>
+                                </button>)}
                             </td>
                         </tr>
                     );

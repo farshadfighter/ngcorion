@@ -12,6 +12,7 @@ inject an extra directive line into those files.
 import re
 from datetime import datetime
 from typing import Optional
+from zoneinfo import available_timezones
 
 from pydantic import (
     BaseModel,
@@ -71,6 +72,16 @@ class TimeConfig(_ConfigBase):
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_+\-]*(/[A-Za-z0-9_+\-]+)*", value):
             raise ValueError(
                 "timezone must be a zone name such as 'Asia/Tehran'"
+            )
+        # Shape alone is not enough: 'Asia/Tehrn' passes the pattern, is stored,
+        # and only surfaces later as an apply-time warning — leaving the config
+        # claiming a zone the host never adopted. Check it against the real tz
+        # database so a typo is a 422 at save time. Offsets are deliberately not
+        # accepted: a fixed offset cannot follow a DST change.
+        if value not in available_timezones():
+            raise ValueError(
+                f"unknown timezone '{value}'; use an IANA zone name "
+                f"such as 'Asia/Tehran'"
             )
         return value
 

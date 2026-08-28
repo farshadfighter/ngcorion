@@ -45,6 +45,10 @@ class CiscoRegex:
     # SSH
     ssh_v2 = re.compile(r"^ip ssh version 2", re.M)
     ssh_timeout = re.compile(r"^ip ssh timeout\s+(\d+)", re.M)
+    # CIS 2.1.1.1.4 expects the IOS spelling "ip ssh time-out"; the
+    # hyphen-less form above is kept for the legacy IOS-L1-0112 rule, which
+    # predates the benchmark and still matches what older configs emit.
+    ssh_time_out = re.compile(r"^ip ssh time-out\s+(\d+)", re.M)
     ssh_retries = re.compile(r"^ip ssh authentication-retries\s+(\d+)", re.M)
     ssh_algo_line = re.compile(r"^ip ssh server algorithm .*$", re.M)
     # Match "2048 bit", "2048 bits", "2048-bit" and "Modulus Size : 2048 bits"
@@ -1329,13 +1333,13 @@ def build_cis_benchmark_rules() -> List[CISRule]:
 
     rules.append(CISRule(
         id="CIS-2.1.1.1.4",
-        title="Set 'seconds' for 'ip ssh timeout'",
+        title="Set 'seconds' for 'ip ssh time-out'",
         severity="medium",
         level="L1",
         rationale="Limit SSH authentication timeout to prevent hanging sessions.",
-        remediation="Configure: ip ssh timeout 60",
-        check=lambda c: bool(RE.ssh_timeout.search(c)),
-        evidence=lambda c: RE.ssh_timeout.search(c).group(0) if RE.ssh_timeout.search(c) else "not set"
+        remediation="Configure: ip ssh time-out 60",
+        check=lambda c: bool(RE.ssh_time_out.search(c)),
+        evidence=lambda c: RE.ssh_time_out.search(c).group(0) if RE.ssh_time_out.search(c) else "not set"
     ))
 
     rules.append(CISRule(
