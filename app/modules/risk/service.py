@@ -113,12 +113,12 @@ DEFAULT_SETTINGS = {
     "criticality_medium_score": 50.0,
     "criticality_high_score": 75.0,
     "criticality_critical_score": 100.0,
-    # asset_inventory.risk_level -> AR score. very_high is a legacy enum
-    # member kept mappable; the spec's four levels are low/medium/high/critical.
+    # asset_inventory.risk_level -> AR score. Spec section 4 defines exactly
+    # four tiers; there is deliberately no "very_high" entry here (see
+    # _asset_risk_score / _AR_RECOGNIZED_LEVELS below).
     "asset_risk_low_score": 25.0,
     "asset_risk_medium_score": 50.0,
     "asset_risk_high_score": 75.0,
-    "asset_risk_very_high_score": 90.0,
     "asset_risk_critical_score": 100.0,
     # Inclusive lower bound of the band each key NAMES — owned by
     # app/modules/risk/levels.py, which is the single definition of the
@@ -209,20 +209,29 @@ class AssetRiskCalculationService:
         return float(settings.get(f"criticality_{level}_score",
                                   settings["criticality_medium_score"]))
 
+    # Spec section 4 defines exactly four Asset Risk tiers. asset_inventory's
+    # risklevelenum also carries a legacy "very_high" member (added for
+    # asset_inventory.risk_level generally; it has no place in the Asset Risk
+    # table). An asset classified "very_high" is treated the same as one with
+    # no risk_level set at all -- the unknown_asset_risk_score fallback --
+    # rather than inventing a fifth score for it: the spec model only has room
+    # for four tiers, and silently picking one of them for "very_high" would
+    # just move the same undocumented guess somewhere else.
+    _AR_RECOGNIZED_LEVELS = {"low", "medium", "high", "critical"}
+
     def _asset_risk_score(self, asset: Asset, settings: dict):
         """AR: the asset's own risk_level (asset_inventory).
 
-        Returns (level, score, is_unknown); an unset risk_level falls back to
-        unknown_asset_risk_score (50 by spec).
+        Returns (level, score, is_unknown). ``level`` is the raw value from
+        the asset (preserved for display/audit even when it is not one of the
+        four recognized tiers). An unset or unrecognized risk_level falls back
+        to unknown_asset_risk_score (50 by spec) and is flagged incomplete.
         """
         raw = getattr(asset.risk_level, "value", asset.risk_level)
         level = (str(raw).strip().lower() or None) if raw is not None else None
-        if not level:
-            return None, float(settings["unknown_asset_risk_score"]), True
-        return level, float(
-            settings.get(f"asset_risk_{level}_score",
-                         settings["unknown_asset_risk_score"])
-        ), False
+        if not level or level not in self._AR_RECOGNIZED_LEVELS:
+            return level, float(settings["unknown_asset_risk_score"]), True
+        return level, float(settings[f"asset_risk_{level}_score"]), False
 
     @staticmethod
     def _zone_key(name) -> str:
@@ -425,15 +434,9 @@ class AssetRiskCalculationService:
         """The stored risk level for a final score.
 
         Thin wrapper over risk_level_for_score() so this service has no band
-        logic of its own — see app/modules/risk/levels.py for the bands, the
-        naming convention and why both are defined in exactly one place.
-
-        NOTE: this five-level scheme (with very_high, without informational) is
-        a direct client requirement and takes precedence over the PDF's
-        informational/low/medium/high/critical bands. Do not "restore" the PDF
-        wording here without checking with the client first -- the Risk UI's
-        level colours, KPI cards and the a4c7e1b90d52 migration all depend on
-        very_high existing.
+        logic of its own — see app/modules/risk/levels.py for the bands
+        (spec section 10: informational/low/medium/high/critical) and why
+        they are defined in exactly one place.
         """
         return risk_level_for_score(score, thresholds_from_settings(settings))
 

@@ -11,19 +11,19 @@ Requires a migrated database (``alembic upgrade head``) reachable via
 levels, OP cap, AF/HF raw math) is covered separately by
 ``tests/test_risk_score_formula.py``, which needs no database.
 
-Factors and their default weights (from risk_settings / service defaults):
-    criticality 25%, zone 20%, open_port 15%, audit 40%
-Severity weights: low=1, medium=3, high=7, critical=10; port normalization
-factor = 4.  Fallback ("unknown") scores = 50 for zone/port/audit.
+Factors and their weights (from risk_settings / service defaults, spec
+sections 2/4): criticality (AC) 20%, asset_risk (AR) 20%, zone (AZ) 15%,
+open_port (OP) 10%, audit (AF) 25%, hardening (HF) 10%.
+Finding severity weights (AF/HF, spec 7/8): low=1, medium=4, high=7,
+critical=10. Port severity weights (OP, spec 6): low=1, medium=3, high=5,
+critical=10; port normalization factor = 1. Fallback ("unknown") scores = 50
+for zone/port/audit/asset_risk; hardening's no-data fallback is 0.
 
-Risk-level bands (inclusive lower bound): medium=20, high=40, very_high=60,
-critical=80.  Each risk_level_<name>_threshold key is the lower bound of the
-band it names; `low` is the floor and has no key.  See app/modules/risk/levels.py,
-which is the only implementation of the score -> level rule.
-
-NOTE: the five levels here are low/medium/high/very_high/critical, not the
-PDF's informational/low/medium/high/critical. The very_high scheme is a direct
-client requirement and overrides the PDF on this point.
+Risk-level bands (inclusive lower bound, spec section 10):
+low=21, medium=41, high=61, critical=81. Each risk_level_<name>_threshold key
+is the lower bound of the band it names; `informational` is the floor and has
+no key. See app/modules/risk/levels.py, which is the only implementation of
+the score -> level rule.
 """
 
 import sys
@@ -306,6 +306,20 @@ def test_missing_asset_risk_flagged_incomplete(db, factory):
     assert "missing_asset_risk" in (score.incomplete_reasons_json or [])
 
 
+def test_asset_risk_very_high_scores_as_unknown_not_a_fifth_tier(db, factory):
+    """asset_inventory.risk_level's enum still carries a legacy VERY_HIGH
+    member, but spec section 4 has exactly four AR tiers. It must not score
+    as an undocumented 90 -- it falls back to unknown_asset_risk_score, same
+    as a missing risk_level, and is flagged incomplete."""
+    asset = factory.asset(risk_level=RiskLevelEnum.VERY_HIGH)
+    factory.profile(asset)
+    score = calc(db, asset)
+    assert score.asset_risk_level == "very_high"       # raw value preserved
+    assert float(score.asset_risk_score) == 50          # unknown_asset_risk_score
+    assert score.incomplete_data is True
+    assert "missing_asset_risk" in (score.incomplete_reasons_json or [])
+
+
 # ======================================================================
 # Zone (AZ)
 # ======================================================================
@@ -406,6 +420,42 @@ def test_op_pdf_example_26(db, factory):
     factory.port(asset, port=80, severity="medium")     # HTTP -> 3
     factory.port(asset, port=445, severity="critical")  # SMB -> 10
     factory.port(asset, port=3389, severity="critical") # RDP -> 10
+
+    score = calc(db, asset)
+    assert float(score.open_port_raw_score) == 26
+    assert float(score.open_port_score) == 26
+
+
+def test_real_port_classifier_matches_pdf_example_26(db, factory):
+    """Same as above, but through the actual production classifier
+    (_sync_asset_open_ports / _PORT_SEVERITY_MAP) instead of a fixture that
+    hands severities directly to AssetOpenPort -- proves the real ingestion
+    path, not just the summation math, reproduces spec section 6:
+        22/SSH=3, 80/HTTP=3, 445/SMB=10, 3389/RDP=10 -> OP = 26.
+    """
+    from app.modules.discovery.router import _sync_asset_open_ports
+    from app.models.risk import AssetOpenPort
+
+    asset = factory.asset()
+    factory.profile(asset)
+
+    ports_data = [
+        {"port_number": 22, "protocol": "tcp", "state": "open", "service_name": "ssh"},
+        {"port_number": 80, "protocol": "tcp", "state": "open", "service_name": "http"},
+        {"port_number": 445, "protocol": "tcp", "state": "open", "service_name": "microsoft-ds"},
+        {"port_number": 3389, "protocol": "tcp", "state": "open", "service_name": "ms-wbt-server"},
+    ]
+    _sync_asset_open_ports(db, asset.id, ports_data)
+    db.flush()
+
+    severities = {
+        p.port: p.severity
+        for p in db.query(AssetOpenPort).filter(AssetOpenPort.asset_id == asset.id).all()
+    }
+    assert severities[22] == "medium"     # SSH   -> 3
+    assert severities[80] == "medium"     # HTTP  -> 3
+    assert severities[445] == "critical"  # SMB   -> 10
+    assert severities[3389] == "critical" # RDP   -> 10
 
     score = calc(db, asset)
     assert float(score.open_port_raw_score) == 26
@@ -607,6 +657,32 @@ def test_hf_le_af(db, factory):
     assert float(score.hardening_fix_score) < float(score.audit_risk_score)
 
 
+def test_hf_denominator_equals_af_denominator(db, factory):
+    """Proves the chosen MaximumPossibleHardeningScore: AF and HF are defined
+    over the exact same applicable-control population in a single audit
+    session (spec sections 7/8 don't say otherwise, and the architecture here
+    genuinely shares that population -- one pass over one session's results
+    populates both), so hardening_applicable_weight must equal
+    audit_applicable_weight exactly, not some independently-scoped subset.
+    """
+    asset = factory.asset()
+    factory.profile(asset)
+    session = factory.audit_session(asset)
+    with_fix = factory.result(session, CheckStatus.FAIL, severity="high")     # 7
+    factory.result(session, CheckStatus.FAIL, severity="medium")              # 4, no fix
+    factory.result(session, CheckStatus.PASS, severity="critical")            # 10, applicable
+    factory.result(session, CheckStatus.NOT_APPLICABLE, severity="critical")  # excluded
+    factory.hardening(with_fix, session, asset, status="success", verification_passed=True)
+
+    score = calc(db, asset)
+    # applicable_weight = 7 (FAIL high) + 4 (FAIL medium) + 10 (PASS critical) = 21
+    assert float(score.audit_applicable_weight) == 21
+    assert float(score.hardening_applicable_weight) == 21
+    assert float(score.audit_applicable_weight) == float(score.hardening_applicable_weight)
+    # HF_Raw = 7 (only the high-severity fix was found) -> HF = 100*7/21.
+    assert float(score.hardening_fix_score) == round(100.0 * 7 / 21, 2)
+
+
 def test_no_hardening_data_hf_zero(db, factory, settings):
     asset = factory.asset()
     factory.profile(asset)
@@ -624,10 +700,11 @@ def test_no_hardening_data_hf_zero(db, factory, settings):
 
 def test_six_factor_formula(db, factory):
     """AC=100, AR=75, AZ=80, OP=40, AF=100, HF=0
-        -> 20 + 15 + 12 + 4 + 25 + 0 = 76  -> Very High.
+        -> 20 + 15 + 12 + 4 + 25 + 0 = 76  -> High.
 
-    76 sits in the 60-80 band. It used to assert "high" because the threshold
-    keys were read one band off; see app/modules/risk/levels.py.
+    76 sits in the 61-80 band, matching spec section 10's literal table.
+    Also proves every required component score is persisted (spec section
+    13), not just the final score.
     """
     zone = factory.zone(score=80)                                    # AZ = 80
     asset = factory.asset(risk_level=RiskLevelEnum.HIGH)             # AR = 75
@@ -641,6 +718,7 @@ def test_six_factor_formula(db, factory):
     factory.result(session, CheckStatus.FAIL, severity="critical")  # 10 / 10
 
     score = calc(db, asset)
+    assert score.asset_id == asset.id
     assert float(score.criticality_score) == 100
     assert float(score.asset_risk_score) == 75
     assert float(score.zone_score) == 80
@@ -648,7 +726,8 @@ def test_six_factor_formula(db, factory):
     assert float(score.audit_risk_score) == 100
     assert float(score.hardening_fix_score) == 0
     assert float(score.final_risk_score) == 76
-    assert score.risk_level == "very_high"
+    assert score.risk_level == "high"
+    assert score.calculated_at is not None
 
 
 def test_final_score_is_integer(db, factory):
@@ -664,10 +743,10 @@ def test_final_score_is_integer(db, factory):
 
 def _ensure_threshold_rows(db):
     # The four boundaries between the five bands, each naming the band it opens.
-    set_setting(db, "risk_level_medium_threshold", 20)
-    set_setting(db, "risk_level_high_threshold", 40)
-    set_setting(db, "risk_level_very_high_threshold", 60)
-    set_setting(db, "risk_level_critical_threshold", 80)
+    set_setting(db, "risk_level_low_threshold", 21)
+    set_setting(db, "risk_level_medium_threshold", 41)
+    set_setting(db, "risk_level_high_threshold", 61)
+    set_setting(db, "risk_level_critical_threshold", 81)
 
 
 def test_thresholds_must_be_ascending(db, factory):
@@ -677,7 +756,7 @@ def test_thresholds_must_be_ascending(db, factory):
     _ensure_threshold_rows(db)
     with pytest.raises(HTTPException) as exc_info:
         update_settings(
-            updates={"risk_level_high_threshold": 90},  # >= very_high (60)
+            updates={"risk_level_high_threshold": 90},  # >= critical (81)
             background_tasks=BackgroundTasks(),
             current_user=factory.user(),
             db=db,
@@ -692,12 +771,12 @@ def test_thresholds_ascending_update_ok(db, factory):
 
     _ensure_threshold_rows(db)
     result = update_settings(
-        updates={"risk_level_medium_threshold": 25},
+        updates={"risk_level_medium_threshold": 45},
         background_tasks=BackgroundTasks(),
         current_user=factory.user(),
         db=db,
     )
-    assert result["risk_level_medium_threshold"] == 25
+    assert result["risk_level_medium_threshold"] == 45
 
 
 def _ensure_weight_rows(db):

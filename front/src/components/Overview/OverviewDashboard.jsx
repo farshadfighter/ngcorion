@@ -239,9 +239,9 @@ const TopRiskyAssets = ({ items }) => (
     </section>
 );
 
-/** "Assets Requiring Attention" — the Very High and Critical assets by risk
+/** "Assets Requiring Attention" — the High and Critical assets by risk
  *  score, worst first, with the same level colours as the Risk pages. */
-const ATTENTION_LEVELS = ["critical", "very_high"];
+const ATTENTION_LEVELS = ["critical", "high"];
 
 const AssetsRequiringAttention = ({ items }) => {
     const rows = (items || [])
@@ -264,7 +264,7 @@ const AssetsRequiringAttention = ({ items }) => {
                         {rows.length === 0 && (
                             <tr>
                                 <td colSpan={3} className="ov-table-empty">
-                                    No Very High or Critical risk assets.
+                                    No High or Critical risk assets.
                                 </td>
                             </tr>
                         )}

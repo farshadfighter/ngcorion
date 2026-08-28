@@ -9,67 +9,72 @@ the bands move, so any disagreement about where a band starts is frozen into
 the rows written while that disagreement was live — and the same score then
 reads as two different levels depending on when its row was last calculated.
 
-That is exactly what happened. Two conventions for the same setting keys were
-in use at once:
+That is exactly what happened, twice:
 
-* the *offset* convention, where ``risk_level_<name>_threshold`` was the lower
-  bound of the band **above** ``<name>`` (so ``risk_level_high_threshold`` = 60
-  opened Very High) and there was no ``*_very_high_threshold`` key at all;
-* the *natural* convention seeded by 20260813_add_missing_risk_settings, where
-  each key is the lower bound of the band it names (medium=20, high=40,
-  very_high=60, critical=80).
+* Two conventions for the same setting keys were in use at once (the
+  *offset* convention the calculation service read vs. the *natural*
+  convention the settings table actually held), so a score of 50 came out
+  differently depending on which entry point produced the row. Fixed by
+  revision c3a91f57d8b4, which settled on the natural convention below.
+* Separately, the five-level scheme itself (``low/medium/high/very_high/
+  critical``) did not match the NGCorion Risk Score Calculation
+  Specification, which defines exactly five *different* bands:
+  ``informational/low/medium/high/critical`` with gapped integer bounds
+  (0-20 / 21-40 / 41-60 / 61-80 / 81-100). ``very_high`` had no place in the
+  spec at all. Fixed by revision <risk_level_spec_alignment>, which is what
+  this module now implements.
 
-``service.py`` read the keys the first way while the rows in ``risk_settings``
-held the second, so a score of 50 came out "very_high" from the live settings,
-"high" from the code defaults, and "high" again from the a4c7e1b90d52 data
-migration. Three answers, one score.
+This module is the only place the score -> level mapping is written. The
+calculation service, the settings validation and the data migrations all go
+through it.
 
-This module settles it on the natural convention — every key is the inclusive
-lower bound of the band it names — and is the only place the mapping is
-written. The calculation service, the settings validation and the data
-migration all go through it.
+Bands (spec section 10)::
 
-Bands (spec section 10, and the five-level client requirement that keeps
-``very_high`` rather than the PDF's ``informational``)::
+    0 <= s <= 20   informational
+    21 <= s <= 40  low
+    41 <= s <= 60  medium
+    61 <= s <= 80  high
+    81 <= s <= 100 critical
 
-    0 <= s < 20   low
-    20 <= s < 40  medium
-    40 <= s < 60  high
-    60 <= s < 80  very_high
-    80 <= s <= 100 critical
-
-A score on a boundary belongs to the higher band.
+Expressed here as four *inclusive lower bounds* (21/41/61/81) evaluated
+highest band first, which is equivalent to the spec's gapped table for every
+integer score (the only kind ``final_risk_score`` ever is, since it is
+rounded before classification) and needs no separate "upper bound" concept:
+a score of 20 is not >= 21, so it falls through to the floor band
+(informational); a score of 21 is.
 """
 from typing import Dict, Mapping, Sequence
 
-# Lowest band first. ``low`` is the floor and has no configurable lower bound,
-# which is why there is no ``risk_level_low_threshold``: a key for it can only
-# ever be redundant with 0, and its former existence is what made the offset
-# convention look plausible.
-RISK_LEVELS: Sequence[str] = ("low", "medium", "high", "very_high", "critical")
+# Lowest band first. ``informational`` is the floor and has no configurable
+# lower bound, which is why there is no ``risk_level_informational_threshold``:
+# a key for it can only ever be redundant with 0.
+RISK_LEVELS: Sequence[str] = ("informational", "low", "medium", "high", "critical")
 
 # Band name -> the risk_settings key holding its inclusive lower bound,
 # ordered lowest to highest.
 LEVEL_THRESHOLD_KEYS: Sequence[tuple] = (
+    ("low", "risk_level_low_threshold"),
     ("medium", "risk_level_medium_threshold"),
     ("high", "risk_level_high_threshold"),
-    ("very_high", "risk_level_very_high_threshold"),
     ("critical", "risk_level_critical_threshold"),
 )
 
 THRESHOLD_KEYS: Sequence[str] = tuple(key for _, key in LEVEL_THRESHOLD_KEYS)
 
+# Spec section 10's gapped table (0-20/21-40/41-60/61-80/81-100) expressed as
+# inclusive lower bounds of the band each key names.
 DEFAULT_THRESHOLDS: Dict[str, float] = {
-    "risk_level_medium_threshold": 20.0,
-    "risk_level_high_threshold": 40.0,
-    "risk_level_very_high_threshold": 60.0,
-    "risk_level_critical_threshold": 80.0,
+    "risk_level_low_threshold": 21.0,
+    "risk_level_medium_threshold": 41.0,
+    "risk_level_high_threshold": 61.0,
+    "risk_level_critical_threshold": 81.0,
 }
 
-# Dropped by this change; the migration removes the row. Named here so the
+# Retired by the spec-alignment revision: the old five-level scheme's extra
+# band between High and Critical has no place in the spec. Named here so the
 # settings API can reject a write to it with an explanation rather than a
 # bare "unknown setting".
-RETIRED_THRESHOLD_KEYS: Sequence[str] = ("risk_level_low_threshold",)
+RETIRED_THRESHOLD_KEYS: Sequence[str] = ("risk_level_very_high_threshold",)
 
 
 def thresholds_from_settings(settings: Mapping) -> Dict[str, float]:
@@ -91,12 +96,13 @@ def risk_level_for_score(score: float, thresholds: Mapping = None) -> str:
 
     ``thresholds`` maps each THRESHOLD_KEYS entry to its inclusive lower bound;
     omit it for the defaults. Evaluated highest band first, so a score sitting
-    exactly on a boundary belongs to the higher band (20 is medium, 80 is
-    critical).
+    exactly on a boundary belongs to the higher band (21 is low, 81 is
+    critical) — the spec's own worked examples land on whole numbers, and this
+    tie-break reproduces its gapped table exactly for every integer score.
     """
     bounds = DEFAULT_THRESHOLDS if thresholds is None else thresholds
     value = float(score)
     for level, key in reversed(LEVEL_THRESHOLD_KEYS):
         if value >= float(bounds[key]):
             return level
-    return "low"
+    return "informational"

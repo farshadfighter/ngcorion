@@ -280,11 +280,11 @@
     text-transform: capitalize;
 }
 
-.hd-risk-critical  { background: #fee2e2; color: #991b1b; }
-.hd-risk-very_high { background: #fed7aa; color: #9a3412; }
-.hd-risk-high      { background: #fef3c7; color: #92400e; }
-.hd-risk-medium    { background: #e0e7ff; color: #3730a3; }
-.hd-risk-low       { background: #d1fae5; color: #065f46; }
+.hd-risk-critical      { background: #fee2e2; color: #991b1b; }
+.hd-risk-high          { background: #fef3c7; color: #92400e; }
+.hd-risk-medium        { background: #e0e7ff; color: #3730a3; }
+.hd-risk-low           { background: #d1fae5; color: #065f46; }
+.hd-risk-informational { background: #f1f5f9; color: #475569; }
 
 .hd-muted { color: #B4BCC8; }
 

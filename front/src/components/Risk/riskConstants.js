@@ -1,14 +1,15 @@
 // Shared presentation constants for the Risk Intelligence screens.
 // Palette values come from the Figma chart exports.
 
-// "very_high" is absent from the Figma donut (the design predates the
-// five-level split in service.py::_risk_level) so it borrows #345D9D, which the
-// Zone chart already uses — see front/RISK_FRONTEND_BACKEND_REQUIREMENTS.md.
+// "informational" is absent from the Figma donut (the design predates the
+// spec's five-band alignment in app/modules/risk/levels.py) so it borrows a
+// neutral gray, distinct from the four original colours — see
+// front/RISK_FRONTEND_BACKEND_REQUIREMENTS.md.
 export const RISK_LEVEL_COLORS = {
+    informational: "#9CA3AF",
     low: "#27E7B8",
     medium: "#4FC3C7",
     high: "#26AD85",
-    very_high: "#345D9D",
     critical: "#5F36D3",
 };
 
@@ -21,16 +22,16 @@ export const RISK_LEVEL_COLORS = {
  * strong to sit behind table text.
  */
 export const RISK_LEVEL_BADGES = {
+    informational: { bg: "#F1F5F9", fg: "#475569" },
     low: { bg: "#D1FAE5", fg: "#065F46" },
     medium: { bg: "#E0E7FF", fg: "#3730A3" },
     high: { bg: "#FEF3C7", fg: "#92400E" },
-    very_high: { bg: "#FED7AA", fg: "#9A3412" },
     critical: { bg: "#FEE2E2", fg: "#991B1B" },
 };
 
 /** Severity order, lowest first — risk_level is a string in the database, so
  *  sorting on it directly gives alphabetical nonsense (critical next to low). */
-export const RISK_LEVEL_ORDER = ["low", "medium", "high", "very_high", "critical"];
+export const RISK_LEVEL_ORDER = ["informational", "low", "medium", "high", "critical"];
 
 export const CATEGORY_COLORS = [
     "#27E7B8",
@@ -43,7 +44,7 @@ export const CATEGORY_COLORS = [
 
 export const TREND_BAR_COLOR = "#29354E";
 
-/** "very_high" -> "Very High"; also covers labels the backend adds later. */
+/** "informational" -> "Informational"; also covers labels the backend adds later. */
 export const titleCase = (value) =>
     String(value)
         .split("_")
