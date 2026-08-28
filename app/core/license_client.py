@@ -222,6 +222,7 @@ class LicenseClient:
         connect_timeout: Optional[float] = None,
         read_timeout: Optional[float] = None,
         retries: Optional[int] = None,
+        ca_bundle: Optional[str] = None,
     ):
         self.server_url = server_url.rstrip('/')
         self.storage = SecureStorage(storage_dir)
@@ -236,6 +237,45 @@ class LicenseClient:
         # read timeouts and 5xx, for calls that are safe to repeat.
         self.session = self._build_session(self.retries, idempotent=False)
         self.idempotent_session = self._build_session(self.retries, idempotent=True)
+
+        # The license server runs on an internal host reached by IP, so it
+        # serves a self-signed certificate that certifi knows nothing about.
+        # Trusting that certificate explicitly keeps full verification on
+        # (hostname/IP match, expiry, signature) — the alternative people reach
+        # for, verify=False, would leave the licensing channel open to anyone
+        # on the path who can answer on that address.
+        self.ca_bundle = self._resolve_ca_bundle(
+            ca_bundle if ca_bundle is not None else settings.LICENSE_SERVER_CA_BUNDLE
+        )
+        if self.ca_bundle:
+            self.session.verify = self.ca_bundle
+            self.idempotent_session.verify = self.ca_bundle
+
+    @staticmethod
+    def _resolve_ca_bundle(configured: str) -> Optional[str]:
+        """
+        Validate LICENSE_SERVER_CA_BUNDLE and return an absolute path, or None.
+
+        A missing or mistyped path is fatal on purpose. Left to requests, a bad
+        bundle surfaces as an OSError from deep inside the first TLS handshake,
+        which this module would classify as LicenseServerUnreachable — i.e. it
+        would look exactly like a license server outage, coast for the 48h
+        offline grace window, and only then fail the product closed. Refusing to
+        start with a clear message is much easier to diagnose.
+        """
+        path = (configured or "").strip()
+        if not path:
+            return None
+
+        resolved = Path(path).expanduser()
+        if not resolved.is_file():
+            raise RuntimeError(
+                f"LICENSE_SERVER_CA_BUNDLE points at {resolved}, which is not a "
+                f"readable file. It must be the PEM certificate the license "
+                f"server presents (copy license-server.crt from the license "
+                f"host), so HTTPS verification can succeed."
+            )
+        return str(resolved)
 
     @staticmethod
     def _build_session(attempts: int, idempotent: bool) -> requests.Session:

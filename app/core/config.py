@@ -92,6 +92,17 @@ class Settings(BaseSettings):
     LICENSE_SERVER_URL: str = ""
     LICENSE_STORAGE_DIR: str = "~/.license"
 
+    # Path to a PEM certificate to verify the license server's HTTPS listener
+    # against. The license server is internal and reached by IP, so it cannot
+    # have a publicly-issued certificate; it serves a self-signed one instead.
+    # Pointing this at that certificate makes verification *succeed properly*
+    # rather than be switched off — there is deliberately no "skip verify"
+    # option here, because disabling verification on the one channel that
+    # authorises the whole product is exactly the wrong trade.
+    # Empty (the default) = plain HTTP, or HTTPS against a publicly trusted CA;
+    # either way requests uses its normal certifi bundle.
+    LICENSE_SERVER_CA_BUNDLE: str = ""
+
     # HTTP behaviour for calls to the license server. Explicit connect/read
     # timeouts matter much more once the license server is a remote host: with
     # no timeout a single unreachable server hangs a worker thread forever.

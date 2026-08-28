@@ -54,11 +54,17 @@ services:
       # now runs on its own host with its own Redis.)
       REDIS_URL: redis://redis:6379/0
       # REQUIRED — the license server runs on a separate host. Set it in .env,
-      # e.g. LICENSE_SERVER_URL=http://10.0.0.20:8001
+      # e.g. LICENSE_SERVER_URL=https://172.16.120.81:443
       # There is deliberately no fallback: the backend refuses to start on an
       # empty value rather than silently pointing nowhere.
       # See docs/LICENSE_SERVER_MIGRATION.md and deploy/docker-compose.license.yml.
       LICENSE_SERVER_URL: ${LICENSE_SERVER_URL}
+      # The license server is internal and reached by IP, so it serves a
+      # self-signed certificate. This is the copy of that certificate used to
+      # verify it — full verification stays on, it just trusts the right issuer.
+      # The path is inside the container; ./traefik/certs is already mounted at
+      # /app/traefik/certs below, so drop license-server.crt in there.
+      LICENSE_SERVER_CA_BUNDLE: ${LICENSE_SERVER_CA_BUNDLE:-}
     expose:
       - "8000"
     depends_on:
