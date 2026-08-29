@@ -25,21 +25,23 @@ export const exposedAssets = (riskSummary) => {
 };
 
 /**
- * Assets an operator classified as critical in Asset List.
+ * Assets whose *calculated* risk level is critical.
  *
- * This reads asset_inventory.risk_level (the classification shown in the Asset
- * List "Risk Level" column), NOT asset_risk_scores.risk_level (the calculated
- * band aggregated by /api/risk/summary). They are different columns: the
- * classification is one of the six inputs to the score, so an asset marked
- * critical can still score medium once zone, ports, audit and hardening are
- * weighed in. Reading the calculated band here showed 0 while the Asset List
- * plainly listed critical assets, which read as a bug.
+ * Reads by_risk_level from /api/risk/summary — the aggregate over
+ * asset_risk_scores.risk_level — not the operator's own classification in
+ * asset_inventory.risk_level. The two are easy to confuse (both columns are
+ * called "risk level"), but only the calculated band answers "is this asset
+ * actually in a critical state?": the manual classification is one of six
+ * inputs and carries 20% of the weight, so an asset marked critical that sits
+ * in a safe zone with no open ports and a clean audit is not a critical risk.
+ *
+ * A 0 here is a real answer, not a missing one — it means nothing scored >= 81.
  */
-export const criticalRisks = (assetList) => {
-    if (!Array.isArray(assetList)) return null;
-    return assetList.filter(
-        (a) => String(a?.risk_level || "").toLowerCase() === "critical"
-    ).length;
+export const criticalRisks = (riskSummary) => {
+    const levels = riskSummary?.by_risk_level;
+    if (!Array.isArray(levels)) return null;
+    const critical = levels.find((l) => l.level === "critical");
+    return critical ? critical.count : 0;
 };
 
 export const totalAssets = (riskSummary) =>
@@ -105,7 +107,6 @@ export const breakdownRows = (securityScore) => {
  */
 export const moduleCards = ({
     riskSummary,
-    assetList,
     auditOverview,
     hardeningOverview,
 }) => [
@@ -135,8 +136,8 @@ export const moduleCards = ({
     {
         key: "risk",
         title: "Risk Intelligence",
-        value: criticalRisks(assetList),
-        unit: "Critical Risks",
+        value: criticalRisks(riskSummary),
+        unit: "Critical Risk Assets",
         to: "/risk/overview",
     },
 ];
@@ -144,7 +145,6 @@ export const moduleCards = ({
 /** The six headline tiles across the top of the design. */
 export const headlineMetrics = ({
     riskSummary,
-    assetList,
     auditOverview,
     hardeningOverview,
     securityScore,
@@ -162,9 +162,12 @@ export const headlineMetrics = ({
         value: totalAssets(riskSummary),
     },
     {
+        // "Critical Risk Assets", not "Critical Risks": it counts assets whose
+        // calculated level is critical, and the bare wording was read as the
+        // Asset List classification of the same name.
         key: "critical_risks",
-        label: "Critical Risks",
-        value: criticalRisks(assetList),
+        label: "Critical Risk Assets",
+        value: criticalRisks(riskSummary),
     },
     {
         key: "exposed_assets",
