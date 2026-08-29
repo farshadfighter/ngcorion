@@ -8,6 +8,7 @@ import {
     moduleCards,
     complianceScore,
     hardeningScore,
+    riskFromSecurityScore,
 } from "./overviewMetrics";
 import { RiskLevelBadge } from "../Risk/RiskLevelBadge";
 import "../../assets/OverviewDashboard.css";
@@ -36,41 +37,54 @@ const MetricCard = ({ metric }) => (
     </div>
 );
 
-/* Bands mirror SCORE_LEVEL_BANDS in the backend's security_score_router, so
-   the gauge and the returned score_level always agree.
-
-   `width` is the band's true share of the 0-100 scale. The bands used to be
-   equal flex children (20% each) while the needle was positioned at `score%`,
-   so the two used different scales and the needle sat over the wrong colour at
-   nearly every score -- always flattering: 40 (Critical) pointed at "Fair". */
-const SCORE_BANDS = [
-    { key: "critical", label: "Critical", range: "0-40", color: "#DC2626", width: 40 },
-    { key: "poor", label: "Poor", range: "41-60", color: "#F97316", width: 20 },
-    { key: "fair", label: "Fair", range: "61-75", color: "#F59E0B", width: 15 },
-    { key: "good", label: "Good", range: "76-90", color: "#22C55E", width: 15 },
-    { key: "excellent", label: "Excellent", range: "91-100", color: "#16A34A", width: 10 },
+/* The gauge reads as RISK, not health: higher is worse.
+ *
+ * The backend's security_score is a *health* score — every sub-score is
+ * inverted (100 - avg_risk) and its bands run 90+ excellent .. <40 critical.
+ * Showing that number under a risk-coloured scale would contradict itself, so
+ * the page converts it once, here: riskScore = 100 - security_score. The band
+ * a score falls into is then derived from that risk number rather than trusting
+ * the backend's health-oriented `score_level`, which would disagree.
+ *
+ * `width` is each band's true share of the 0-100 scale, so the needle (placed
+ * at `risk%`) and the colours use the same scale. */
+const RISK_BANDS = [
+    { key: "minimal", label: "Minimal", range: "0-9", color: "#16A34A", width: 10 },
+    { key: "low", label: "Low", range: "10-24", color: "#22C55E", width: 15 },
+    { key: "moderate", label: "Moderate", range: "25-39", color: "#F59E0B", width: 15 },
+    { key: "high", label: "High", range: "40-59", color: "#F97316", width: 20 },
+    { key: "critical", label: "Critical", range: "60-100", color: "#DC2626", width: 40 },
 ];
 
-/** "Security Posture Gauge": the overall score against its level bands. */
+/** Which band a risk score sits in — highest band first, inclusive bounds. */
+const riskBandFor = (risk) => {
+    if (risk === null || risk === undefined) return null;
+    if (risk >= 60) return "critical";
+    if (risk >= 40) return "high";
+    if (risk >= 25) return "moderate";
+    if (risk >= 10) return "low";
+    return "minimal";
+};
+
+/** "Security Risk Gauge": the overall risk score against its level bands.
+ *  Higher is worse — see riskFromSecurityScore. */
 const SecurityPostureGauge = ({ securityScore }) => {
-    const score = securityScore?.security_score;
-    const level = securityScore?.score_level;
+    const risk = riskFromSecurityScore(securityScore?.security_score);
+    const level = riskBandFor(risk);
 
     return (
         <section className="ov-card ov-card-medium">
-            <h3 className="ov-card-title">Security Posture Gauge</h3>
+            <h3 className="ov-card-title">Security Risk Gauge</h3>
             <div className="ov-gauge">
                 <div className="ov-gauge-readout">
-                    <span className="ov-gauge-label">Security Posture</span>
+                    <span className="ov-gauge-label">Security Risk</span>
                     <span className="ov-gauge-value">
-                        {score === null || score === undefined
-                            ? "—"
-                            : `${Math.round(score)}/100`}
+                        {risk === null ? "—" : `${risk}/100`}
                     </span>
                 </div>
 
                 <div className="ov-gauge-track">
-                    {SCORE_BANDS.map((band) => (
+                    {RISK_BANDS.map((band) => (
                         <span
                             key={band.key}
                             className={`ov-gauge-band${
@@ -80,16 +94,16 @@ const SecurityPostureGauge = ({ securityScore }) => {
                             title={`${band.label}: ${band.range}`}
                         />
                     ))}
-                    {score !== null && score !== undefined && (
+                    {risk !== null && (
                         <span
                             className="ov-gauge-needle"
-                            style={{ left: `${Math.min(100, Math.max(0, score))}%` }}
+                            style={{ left: `${Math.min(100, Math.max(0, risk))}%` }}
                         />
                     )}
                 </div>
 
                 <div className="ov-gauge-legend">
-                    {SCORE_BANDS.map((band) => (
+                    {RISK_BANDS.map((band) => (
                         <span key={band.key} className="ov-gauge-legend-item">
                             <i
                                 className="ov-dot"

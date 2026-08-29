@@ -45,6 +45,20 @@ export const criticalRisks = (assetList) => {
 export const totalAssets = (riskSummary) =>
     riskSummary?.totals?.total_assets ?? null;
 
+/**
+ * The dashboard reports RISK, where a higher number is worse.
+ *
+ * /api/dashboard/security-score returns the opposite: a *health* score, with
+ * every sub-score inverted (100 - avg_risk) and bands running 90+ excellent ..
+ * <40 critical. Flip it once here so the headline tile and the gauge show the
+ * same risk number, and nothing has to reason about which direction a given
+ * value is in.
+ */
+export const riskFromSecurityScore = (securityScore) => {
+    const value = round(securityScore);
+    return value === null ? null : 100 - value;
+};
+
 export const complianceScore = (auditOverview) =>
     round(auditOverview?.average_compliance);
 
@@ -136,9 +150,10 @@ export const headlineMetrics = ({
     securityScore,
 }) => [
     {
+        // Risk, not health: higher is worse, matching the gauge below.
         key: "security_score",
-        label: "Security Score",
-        value: round(securityScore?.security_score),
+        label: "Security Risk Score",
+        value: riskFromSecurityScore(securityScore?.security_score),
         suffix: "/100",
     },
     {
