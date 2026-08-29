@@ -124,16 +124,21 @@
 
 /* ── Confidentiality & Zone ──────────────────────────────────────────────── */
 
+/* Three cells now (Criticality, Asset Risk, Zone) rather than two, so the
+   minimum column is narrower — at 320px the third wrapped onto its own row on
+   a 1280px laptop. */
 .ard-cz-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 24px;
 }
 
+/* Two columns, not three: the Actions column held the edit pencils, and these
+   values are read-only here (they are set in Asset List — spec section 3.1). */
 .ard-cz-head,
 .ard-cz-row {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: auto 1fr;
     gap: 16px;
     align-items: center;
 }

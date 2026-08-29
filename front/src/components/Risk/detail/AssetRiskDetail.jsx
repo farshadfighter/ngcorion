@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -23,7 +23,7 @@ export const AssetRiskDetail = () => {
     const navigate = useNavigate();
     const {
         detail, findings, findingsError, isLoading, error,
-        history, historyError, isLoadingHistory, isSavingProfile,
+        history, historyError, isLoadingHistory,
     } = useSelector((state) => state.riskDetail);
 
     useEffect(() => {
@@ -32,16 +32,9 @@ export const AssetRiskDetail = () => {
         return () => dispatch(clearRiskDetail());
     }, [dispatch, assetId]);
 
-    // Editing the profile triggers a recalculation, which appends a history row.
-    // Only the true -> false transition means a save just finished; firing on
-    // mount too would duplicate the fetch above.
-    const wasSaving = useRef(false);
-    useEffect(() => {
-        if (wasSaving.current && !isSavingProfile) {
-            dispatch(fetchAssetRiskHistory(assetId));
-        }
-        wasSaving.current = isSavingProfile;
-    }, [isSavingProfile, dispatch, assetId]);
+    // Nothing on this screen edits the profile any more (criticality, asset
+    // risk and zone are set in Asset List), so there is no save to refetch
+    // history after — the mount fetch above is the only one needed.
 
     if (isLoading && !detail) {
         return (
@@ -81,11 +74,7 @@ export const AssetRiskDetail = () => {
                 score={score}
                 incompleteData={detail.incomplete_data}
             />
-            <ConfidentialityZone
-                asset={detail.asset}
-                score={score}
-                assetId={detail.asset?.id}
-            />
+            <ConfidentialityZone asset={detail.asset} score={score} />
             <OpenPortsTable ports={detail.open_ports || []} />
             <AuditSummary score={score} auditSummary={detail.audit_summary} />
             <AuditFindingsTable findings={findings} error={findingsError} />
