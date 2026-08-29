@@ -394,6 +394,9 @@
 }
 
 /* Figma: dark #14213D box opening each row. */
+/* Background and text colour come from RISK_LEVEL_BADGES (set inline), so the
+   score box matches the Risk Level badge in the same row. The values here are
+   the fallback for a row whose level is unknown. */
 .risk-score-box {
     display: flex;
     align-items: center;
@@ -402,7 +405,6 @@
     height: 46px;
     padding: 0 10px;
     background: #14213D;
-    border-left: 4px solid transparent;
     border-radius: 4px;
     color: #ffffff;
     font-size: 18px;
