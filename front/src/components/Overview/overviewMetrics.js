@@ -24,12 +24,22 @@ export const exposedAssets = (riskSummary) => {
         .reduce((sum, z) => sum + (z.count || 0), 0);
 };
 
-/** Assets whose computed level is "critical". */
-export const criticalRisks = (riskSummary) => {
-    const levels = riskSummary?.by_risk_level;
-    if (!Array.isArray(levels)) return null;
-    const critical = levels.find((l) => l.level === "critical");
-    return critical ? critical.count : 0;
+/**
+ * Assets an operator classified as critical in Asset List.
+ *
+ * This reads asset_inventory.risk_level (the classification shown in the Asset
+ * List "Risk Level" column), NOT asset_risk_scores.risk_level (the calculated
+ * band aggregated by /api/risk/summary). They are different columns: the
+ * classification is one of the six inputs to the score, so an asset marked
+ * critical can still score medium once zone, ports, audit and hardening are
+ * weighed in. Reading the calculated band here showed 0 while the Asset List
+ * plainly listed critical assets, which read as a bug.
+ */
+export const criticalRisks = (assetList) => {
+    if (!Array.isArray(assetList)) return null;
+    return assetList.filter(
+        (a) => String(a?.risk_level || "").toLowerCase() === "critical"
+    ).length;
 };
 
 export const totalAssets = (riskSummary) =>
@@ -81,6 +91,7 @@ export const breakdownRows = (securityScore) => {
  */
 export const moduleCards = ({
     riskSummary,
+    assetList,
     auditOverview,
     hardeningOverview,
 }) => [
@@ -110,7 +121,7 @@ export const moduleCards = ({
     {
         key: "risk",
         title: "Risk Intelligence",
-        value: criticalRisks(riskSummary),
+        value: criticalRisks(assetList),
         unit: "Critical Risks",
         to: "/risk/overview",
     },
@@ -119,6 +130,7 @@ export const moduleCards = ({
 /** The six headline tiles across the top of the design. */
 export const headlineMetrics = ({
     riskSummary,
+    assetList,
     auditOverview,
     hardeningOverview,
     securityScore,
@@ -137,7 +149,7 @@ export const headlineMetrics = ({
     {
         key: "critical_risks",
         label: "Critical Risks",
-        value: criticalRisks(riskSummary),
+        value: criticalRisks(assetList),
     },
     {
         key: "exposed_assets",

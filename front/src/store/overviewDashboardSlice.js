@@ -12,6 +12,16 @@ import api from "../config/api";
  */
 const SOURCES = {
     riskSummary: { url: "/api/risk/summary" },
+    // The "Critical Risks" tile counts assets an operator *classified* as
+    // critical in Asset List (asset_inventory.risk_level), not assets whose
+    // calculated score landed in the critical band (asset_risk_scores.
+    // risk_level, which is what /api/risk/summary aggregates). Those are two
+    // different columns: the classification is one of the six inputs to the
+    // score, so an asset can be classified critical and still score medium.
+    // The tile is meant to answer "how many assets did we mark critical?",
+    // which /summary cannot answer. No page_size => the endpoint returns every
+    // asset, and the count is done client-side.
+    assetList: { url: "/api/assets/" },
     // The "Security Trend" and "Recent Security Events" panels were removed
     // from the page pending further development, so their sources
     // (/api/audit/dashboard/compliance-trend and /api/events/recent) are no
@@ -84,6 +94,7 @@ const overviewDashboardSlice = createSlice({
     name: "overviewDashboard",
     initialState: {
         riskSummary: null,
+        assetList: null,
         auditOverview: null,
         hardeningOverview: null,
         topRisky: null,
