@@ -38,6 +38,42 @@ class ParsedRemediation:
     warnings: List[str]
 
 
+# Value constraints a parameter must satisfy for the resulting command to
+# actually satisfy its CIS control. Without this, MODULUS=1024 substitutes
+# cleanly, the device happily generates a 1024-bit key, and the check that
+# asked for the fix still fails afterwards.
+MINIMUM_PARAMETER_VALUES: Dict[str, Tuple[int, str]] = {
+    "MODULUS": (
+        2048,
+        "CIS requires an RSA key of at least 2048 bits for SSH",
+    ),
+}
+
+
+def validate_parameter_values(parameters: Dict[str, str]) -> None:
+    """
+    Raise if a numeric parameter is below the minimum its control requires.
+
+    Args:
+        parameters: Parameter values about to be substituted
+
+    Raises:
+        ValueError: If a value is non-numeric or below the required minimum
+    """
+    for name, (minimum, reason) in MINIMUM_PARAMETER_VALUES.items():
+        if name not in parameters or parameters[name] is None:
+            continue
+        raw = str(parameters[name]).strip()
+        if not raw:
+            continue
+        if not raw.isdigit():
+            raise ValueError(f"{name} must be a number, got '{raw}'")
+        if int(raw) < minimum:
+            raise ValueError(
+                f"{name} must be at least {minimum} ({reason}), got {raw}"
+            )
+
+
 class RemediationParser:
     """Parser for CIS remediation strings."""
 
@@ -238,6 +274,10 @@ class RemediationParser:
             ... )
             ['enable secret MyPass123']
         """
+        # Reject values that would produce a command the CIS control cannot
+        # accept, before anything is sent to the device.
+        validate_parameter_values(parameters)
+
         result = []
 
         for cmd in commands:

@@ -524,6 +524,8 @@ COMMAND_TEMPLATES: Dict[str, Dict[str, Any]] = {
         },
         "warnings": [
             "This will generate or replace the existing RSA key pair",
+            "Existing SSH sessions keep working, but new sessions see a new host key",
+            "Requires a hostname and 'ip domain-name' to already be set (CIS 2.1.1.1.1/2.1.1.1.2)",
             "Key generation may take a moment to complete"
         ],
         "config_mode": True

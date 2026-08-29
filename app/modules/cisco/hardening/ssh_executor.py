@@ -311,6 +311,11 @@ class CiscoHardeningExecutor:
             "% Unknown command",
             "% Cannot",
             "% Failed",
+            # "crypto key generate rsa" refuses with "% Please define a hostname
+            # other than Router." / "% Please define a domain-name first." — the
+            # key is not created and the check stays failing, so surface it
+            # instead of leaving an unexplained verification failure.
+            "% Please define",
         ]
 
         lines = output.split('\n')

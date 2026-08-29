@@ -164,6 +164,23 @@ PARAMETER_REGISTRY: Dict[str, ParameterMetadata] = {
         max_value=5
     ),
 
+    # ==================== CRYPTO ====================
+    "MODULUS": ParameterMetadata(
+        name="MODULUS",
+        input_type="select",
+        label="RSA Key Modulus (bits)",
+        description=(
+            "Size of the RSA host key generated for SSH. CIS requires at least "
+            "2048 bits; smaller keys (the IOS default is 512, and legacy devices "
+            "commonly carry 1024) do not satisfy this control."
+        ),
+        required=False,
+        default="2048",
+        options=["2048", "4096"],
+        min_value=2048,
+        max_value=4096
+    ),
+
     # ==================== LOGGING ====================
     "SIZE": ParameterMetadata(
         name="SIZE",

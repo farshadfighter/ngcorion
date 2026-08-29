@@ -15,6 +15,7 @@ Each rule includes:
 Based on CIS Cisco IOS Benchmark guidelines.
 """
 
+import base64
 import re
 from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass
@@ -55,6 +56,26 @@ class CiscoRegex:
     # forms — "show crypto key mypubkey rsa" reports the plural "bits", which the
     # old "\s*bit\b" pattern missed, making compliant RSA keys verify as FAIL.
     ssh_key_bits = re.compile(r"\b(\d{3,4})[\s-]*bits?\b", re.I)
+    # "show ip ssh" reports the Diffie-Hellman key-exchange floor, NOT the RSA
+    # host key: "Minimum expected Diffie Hellman key size : 1024 bits". It is a
+    # different control and its default is 1024, so counting it as the RSA
+    # modulus pinned every device to 1024 bits — a freshly generated 2048-bit
+    # key still verified as FAIL. Drop these lines before scanning for bits.
+    dh_key_size_line = re.compile(r"^.*diffie[\s-]*hellman.*$", re.I | re.M)
+    # "show crypto key mypubkey rsa" always prints the public key as grouped hex
+    # (DER), even on platforms that never print a "Modulus Size" line.
+    # The final hex group of a key is often shorter than 8 nibbles, so the
+    # group width must be a range or the last line (and the modulus bytes it
+    # carries) is silently dropped.
+    crypto_key_data = re.compile(
+        r"^[ \t]*Key Data:[ \t]*$\n((?:^[ \t]*(?:[0-9A-Fa-f]{2,8}[ \t]*)+$\n?)+)",
+        re.M,
+    )
+    # "show ip ssh" prints the live SSH host key in SECSH (base64) form.
+    secsh_key_blob = re.compile(
+        r"IOS Keys in SECSH format[^\n]*\n((?:^[ \t]*[A-Za-z0-9+/=]{4,}[ \t]*$\n?)+)",
+        re.I | re.M,
+    )
 
     # Services
     svc_pwd_enc = re.compile(r"^service password-encryption", re.M)
@@ -261,13 +282,138 @@ def _has_exec_timeout_configured(block: str) -> bool:
     return not (mins == 0 and secs == 0)
 
 
-def _extract_ssh_key_bits(text: str) -> Optional[int]:
-    """Extract SSH RSA key size from show ip ssh output."""
-    bits = [int(m.group(1)) for m in RE.ssh_key_bits.finditer(text)]
-    if not bits:
+# Plausible RSA modulus range; anything outside is not a key size.
+_MIN_KEY_BITS = 512
+_MAX_KEY_BITS = 8192
+
+
+def _plausible_key_bits(bits: Optional[int]) -> Optional[int]:
+    """Keep a bit count only if it could be an RSA modulus size."""
+    if bits is None:
         return None
-    # Filter valid key sizes
-    bits = [b for b in bits if 512 <= b <= 8192]
+    return bits if _MIN_KEY_BITS <= bits <= _MAX_KEY_BITS else None
+
+
+def _der_modulus_bits(der: bytes) -> Optional[int]:
+    """
+    Return the RSA modulus size (bits) of a DER-encoded public key.
+
+    Accepts both encodings IOS emits under "Key Data:":
+    SubjectPublicKeyInfo (SEQUENCE { AlgorithmIdentifier, BIT STRING }) and a
+    bare PKCS#1 RSAPublicKey (SEQUENCE { INTEGER n, INTEGER e }).
+    """
+
+    def read_tlv(buf: bytes, pos: int):
+        """Read one ASN.1 TLV; return (tag, value_bytes, next_pos)."""
+        if pos + 2 > len(buf):
+            raise ValueError("truncated DER")
+        tag = buf[pos]
+        length = buf[pos + 1]
+        pos += 2
+        if length & 0x80:
+            n_bytes = length & 0x7F
+            if n_bytes == 0 or pos + n_bytes > len(buf):
+                raise ValueError("bad DER length")
+            length = int.from_bytes(buf[pos:pos + n_bytes], "big")
+            pos += n_bytes
+        end = pos + length
+        if end > len(buf):
+            raise ValueError("DER value overruns buffer")
+        return tag, buf[pos:end], end
+
+    try:
+        tag, outer, _ = read_tlv(der, 0)
+        if tag != 0x30:  # SEQUENCE
+            return None
+
+        tag, value, pos = read_tlv(outer, 0)
+        if tag == 0x30:  # AlgorithmIdentifier -> SubjectPublicKeyInfo
+            tag, bitstring, _ = read_tlv(outer, pos)
+            if tag != 0x03 or not bitstring:
+                return None
+            # First BIT STRING byte counts unused trailing bits.
+            tag, inner, _ = read_tlv(bitstring[1:], 0)
+            if tag != 0x30:
+                return None
+            tag, value, _ = read_tlv(inner, 0)
+
+        if tag != 0x02:  # INTEGER modulus
+            return None
+        modulus = int.from_bytes(value, "big")
+        return _plausible_key_bits(modulus.bit_length())
+    except ValueError:
+        return None
+
+
+def _crypto_key_bits(text: str) -> List[int]:
+    """Key sizes of every keypair listed by 'show crypto key mypubkey rsa'."""
+    sizes = []
+    for m in RE.crypto_key_data.finditer(text):
+        hex_data = re.sub(r"[^0-9A-Fa-f]", "", m.group(1))
+        if len(hex_data) % 2:
+            hex_data = hex_data[:-1]
+        try:
+            der = bytes.fromhex(hex_data)
+        except ValueError:
+            continue
+        bits = _der_modulus_bits(der)
+        if bits:
+            sizes.append(bits)
+    return sizes
+
+
+def _secsh_key_bits(text: str) -> Optional[int]:
+    """
+    Key size of the live SSH host key advertised by 'show ip ssh'.
+
+    The SECSH blob is the ssh-rsa wire format: a sequence of length-prefixed
+    fields — the algorithm name "ssh-rsa", the exponent, then the modulus.
+    """
+    m = RE.secsh_key_blob.search(text)
+    if not m:
+        return None
+    blob = re.sub(r"\s+", "", m.group(1))
+    try:
+        raw = base64.b64decode(blob + "=" * (-len(blob) % 4), validate=True)
+    except Exception:
+        return None
+
+    fields = []
+    pos = 0
+    while pos + 4 <= len(raw):
+        size = int.from_bytes(raw[pos:pos + 4], "big")
+        pos += 4
+        if size <= 0 or pos + size > len(raw):
+            return None
+        fields.append(raw[pos:pos + size])
+        pos += size
+    if len(fields) < 3 or fields[0] != b"ssh-rsa":
+        return None
+    return _plausible_key_bits(int.from_bytes(fields[2], "big").bit_length())
+
+
+def _extract_ssh_key_bits(text: str) -> Optional[int]:
+    """
+    Extract the RSA host key size from the collected device output.
+
+    The key material itself is authoritative, so it is read first: the SECSH
+    blob in "show ip ssh" is the key SSH actually serves, then the DER blobs
+    under "show crypto key mypubkey rsa". Only if neither is present does this
+    fall back to scanning for a textual "<n> bits", and that scan must ignore
+    the "Minimum expected Diffie Hellman key size" line, which reports the DH
+    key-exchange floor (default 1024) rather than the RSA modulus.
+    """
+    secsh_bits = _secsh_key_bits(text)
+    if secsh_bits:
+        return secsh_bits
+
+    crypto_bits = _crypto_key_bits(text)
+    if crypto_bits:
+        return max(crypto_bits)
+
+    scannable = RE.dh_key_size_line.sub("", text)
+    bits = [int(m.group(1)) for m in RE.ssh_key_bits.finditer(scannable)]
+    bits = [b for b in bits if _MIN_KEY_BITS <= b <= _MAX_KEY_BITS]
     return max(bits) if bits else None
 
 
