@@ -1,14 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchAllLogs, clearLogs } from "../../store/logsSlice.js";
+import {
+    fetchAllLogs,
+    clearLogs,
+    dismissClearResult,
+} from "../../store/logsSlice.js";
 import { Pagination } from "./Pagination.jsx";
 import "../../assets/LogsPage.css";
 
+/* DELETE /api/logs/clear keys -> the Section names this page shows, so the
+   summary line matches the table's own labels. */
+const SECTION_LABELS = {
+    login: "Login",
+    asset: "Asset Management",
+    asset_requirement: "Asset Requirement",
+    discovery: "Auto Discovery",
+    hardening: "Hardening",
+};
+
 export const LogsPage = () => {
     const dispatch = useDispatch();
-    const { items, isLoading, isClearing, clearError } = useSelector(
-        (state) => state.logs
-    );
+    const { items, isLoading, isClearing, clearError, clearResult } =
+        useSelector((state) => state.logs);
 
     const [sortDirection, setSortDirection] = useState("desc");
     const [page, setPage] = useState(1);
@@ -18,13 +31,18 @@ export const LogsPage = () => {
         dispatch(fetchAllLogs());
     }, [dispatch]);
 
-    // Deleting every log row cannot be undone, so confirm first. The security
-    // audit trail is kept server-side; say so rather than implying a full wipe.
+    // Deleting every log row cannot be undone, so confirm first. Name the
+    // sections that survive: the server keeps audit_logs (the tamper-evidence
+    // record of privileged actions), which is what the feed labels "Auditing",
+    // so those rows stay on screen afterwards and otherwise look like a failure.
     const handleClearHistory = () => {
         const ok = window.confirm(
-            "Permanently delete all login, asset, asset requirement, discovery " +
-            "and hardening log entries?\n\n" +
-            "This cannot be undone. The security audit trail is preserved."
+            "Permanently delete all Login, Asset Management, Asset Requirement, " +
+            "Auto Discovery and Hardening log entries?\n\n" +
+            "This cannot be undone.\n\n" +
+            "Entries in the Auditing section are NOT deleted — they are the " +
+            "security audit trail and are kept on purpose, so they will still " +
+            "be listed after this."
         );
         if (ok) dispatch(clearLogs());
     };
@@ -114,6 +132,39 @@ export const LogsPage = () => {
                     Sort by
                 </button>
             </div>
+
+            {/* Report the actual per-table counts. Without this the page looks
+                unchanged when the only rows left are the preserved Auditing
+                ones, which reads as "the button did nothing". */}
+            {clearResult && (
+                <div className="logs-clear-notice" role="status">
+                    <button
+                        type="button"
+                        className="logs-clear-notice-close"
+                        onClick={() => dispatch(dismissClearResult())}
+                        aria-label="Dismiss"
+                    >
+                        ×
+                    </button>
+                    <strong>
+                        Cleared {clearResult.total_deleted ?? 0} log{" "}
+                        {clearResult.total_deleted === 1 ? "entry" : "entries"}.
+                    </strong>
+                    {clearResult.deleted && (
+                        <span className="logs-clear-notice-detail">
+                            {" "}
+                            {Object.entries(clearResult.deleted)
+                                .map(([k, v]) => `${SECTION_LABELS[k] || k}: ${v}`)
+                                .join(" · ")}
+                        </span>
+                    )}
+                    <div className="logs-clear-notice-detail">
+                        Entries in the <strong>Auditing</strong> section are the
+                        security audit trail and are kept on purpose — they are
+                        still listed below.
+                    </div>
+                </div>
+            )}
 
             {/* A failed clear must not look like a successful one. */}
             {clearError && (

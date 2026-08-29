@@ -329,38 +329,23 @@
     gap: 14px;
 }
 
-/* Soft blue "lens" the eye sits in — picks up the icon's own cyan so the mark
-   reads as part of the header rather than a pasted-on image. */
+/* The eye mark sits directly on the header. It used to be inset in a circular
+   blue "lens", but the artwork is a wide 96x67 eye: a 44px round frame cropped
+   its wings and shrank it. No frame, no fixed box — the image keeps its own
+   aspect ratio at the title's scale. */
 .header-eye {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
     flex-shrink: 0;
-    border-radius: 50%;
-    background:
-        radial-gradient(circle at 30% 25%, #ffffff 0%, #EAF6FE 45%, #D6ECFB 100%);
-    border: 1px solid rgba(41, 182, 246, 0.35);
-    box-shadow:
-        0 0 0 4px rgba(41, 182, 246, 0.08),
-        0 2px 6px rgba(20, 33, 61, 0.10);
-    transition: box-shadow 0.25s ease, transform 0.25s ease;
-}
-
-.header-eye:hover {
-    transform: translateY(-1px);
-    box-shadow:
-        0 0 0 5px rgba(41, 182, 246, 0.16),
-        0 4px 10px rgba(20, 33, 61, 0.16);
 }
 
 .header-eye img {
-    width: 30px;
+    /* 96x67 artwork: set the width and let height follow, so the wings stay
+       uncropped and the mark lines up with the 28px title. */
+    width: 58px;
     height: auto;
     display: block;
-    /* Faint blue lift so the mark separates from the pale lens behind it. */
-    filter: drop-shadow(0 1px 1px rgba(41, 182, 246, 0.45));
 }
 
 /* The eye is decoration, so it is the first thing dropped on small screens. */

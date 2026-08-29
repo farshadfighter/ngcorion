@@ -119,6 +119,15 @@ export const EditSecurityModal = ({ asset, isOpen, onClose }) => {
                                     <select name="risk_level" value={formData.risk_level} onChange={handleChange} disabled={isSubmitting}>
                                         <option value="">Select level</option>
                                         {riskOptions.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                                        {/* An asset saved before very_high was withdrawn keeps its value:
+                                            without this the select would silently fall back to "Select
+                                            level" and a plain Save would rewrite the asset's risk level. */}
+                                        {formData.risk_level &&
+                                            !riskOptions.some((opt) => opt.value === formData.risk_level) && (
+                                            <option value={formData.risk_level}>
+                                                {String(formData.risk_level).replace(/_/g, " ")} (not scored)
+                                            </option>
+                                        )}
                                     </select>
                                 </div>
                                 <div className="form-group">

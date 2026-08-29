@@ -144,8 +144,16 @@ const logsSlice = createSlice({
         isCleared: false,
         isClearing: false,
         clearError: null,
+        // Result of the last clear: { total_deleted, deleted: {…} }. Kept so the
+        // page can report what actually went, instead of leaving the user to
+        // guess why the Auditing rows are still on screen.
+        clearResult: null,
     },
-    reducers: {},
+    reducers: {
+        dismissClearResult: (state) => {
+            state.clearResult = null;
+        },
+    },
     extraReducers: (builder) => {
         builder
             .addCase(fetchAllLogs.pending, (state) => {
@@ -164,10 +172,12 @@ const logsSlice = createSlice({
             .addCase(clearLogs.pending, (state) => {
                 state.isClearing = true;
                 state.clearError = null;
+                state.clearResult = null;
             })
-            .addCase(clearLogs.fulfilled, (state) => {
+            .addCase(clearLogs.fulfilled, (state, action) => {
                 state.isClearing = false;
                 // fetchAllLogs (dispatched by the thunk) refills `items`.
+                state.clearResult = action.payload;
             })
             .addCase(clearLogs.rejected, (state, action) => {
                 state.isClearing = false;
@@ -176,4 +186,5 @@ const logsSlice = createSlice({
     },
 });
 
+export const { dismissClearResult } = logsSlice.actions;
 export default logsSlice.reducer;

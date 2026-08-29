@@ -6,6 +6,9 @@ import { getLicenseStatusThunk } from "../../store/licenseSlice";
 import { fetchOSCatalog } from "../../store/requirementSlice";
 
 import api from "../../config/api";
+// Shared with EditSecurityModal (via useAssetFormOptions) so both forms offer
+// exactly the risk tiers the scoring engine can score — see the note there.
+import { dropUnscoredRiskLevels } from "./useAssetFormOptions";
 
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
@@ -80,7 +83,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     const [vendors, setVendors] = useState([]);
     const [statusOptions, setStatusOptions] = useState(() => mapEnumOptions(null, STATUS_FALLBACK));
     const [confidentialityOptions, setConfidentialityOptions] = useState(() => mapEnumOptions(null, CONFIDENTIALITY_FALLBACK));
-    const [riskOptions, setRiskOptions] = useState(() => mapEnumOptions(null, RISK_FALLBACK));
+    const [riskOptions, setRiskOptions] = useState(() => dropUnscoredRiskLevels(mapEnumOptions(null, RISK_FALLBACK)));
 
     const [formData, setFormData] = useState({
         asset_name: "", hostname: "", asset_type_id: "", asset_role: "", manufacturer: "", model: "",
@@ -118,7 +121,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             setVendors(vendorsRes.status === "fulfilled" && Array.isArray(vendorsRes.value.data) ? vendorsRes.value.data : []);
             setStatusOptions(mapEnumOptions(statusRes.status === "fulfilled" ? statusRes.value.data : null, STATUS_FALLBACK));
             setConfidentialityOptions(mapEnumOptions(confRes.status === "fulfilled" ? confRes.value.data : null, CONFIDENTIALITY_FALLBACK));
-            setRiskOptions(mapEnumOptions(riskRes.status === "fulfilled" ? riskRes.value.data : null, RISK_FALLBACK));
+            setRiskOptions(dropUnscoredRiskLevels(mapEnumOptions(riskRes.status === "fulfilled" ? riskRes.value.data : null, RISK_FALLBACK)));
         } catch (err) {
             setError("Failed to load form options.");
         } finally {

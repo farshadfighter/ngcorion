@@ -253,3 +253,39 @@
     color: #991B1B;
     font-size: 13px;
 }
+
+/* Result banner after a successful clear. Same shell as .logs-clear-error but
+   in a neutral/positive palette; it carries the per-section counts and the note
+   that the Auditing rows are preserved deliberately. */
+.logs-clear-notice {
+    position: relative;
+    margin: 0 0 12px;
+    padding: 10px 36px 10px 14px;
+    border: 1px solid #A7D8C0;
+    border-radius: 6px;
+    background: #E9F7F0;
+    color: #14532D;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.logs-clear-notice-detail {
+    color: #3C4A63;
+}
+
+.logs-clear-notice-close {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #3C4A63;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.logs-clear-notice-close:hover {
+    color: #14213D;
+}

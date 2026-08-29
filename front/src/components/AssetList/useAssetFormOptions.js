@@ -5,6 +5,22 @@ const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
 const RISK_FALLBACK = ["low", "medium", "high", "critical"];
 
+/**
+ * Asset Risk tiers the scoring engine actually recognises.
+ *
+ * GET /api/enums/risk is built from RiskLevelEnum, which still carries a
+ * "very_high" member, but service.py::_AR_RECOGNIZED_LEVELS only scores
+ * low/medium/high/critical (the spec defines four tiers). An asset saved as
+ * very_high therefore falls back to the "unknown" score of 50 -- *below* high's
+ * 75 -- and is flagged incomplete, so offering it in the form actively
+ * misleads. Filter it out of the dropdown rather than change the enum: the DB
+ * type cannot drop a value, and existing very_high assets must keep loading.
+ */
+const UNSCORED_RISK_LEVELS = new Set(["very_high"]);
+
+export const dropUnscoredRiskLevels = (options) =>
+    options.filter((opt) => !UNSCORED_RISK_LEVELS.has(String(opt.value).toLowerCase()));
+
 function mapEnumOptions(raw, fallbackArray) {
     let source = [];
 
@@ -60,7 +76,7 @@ export const useAssetFormOptions = () => {
         () => mapEnumOptions(null, CONFIDENTIALITY_FALLBACK)
     );
     const [riskOptions, setRiskOptions] = useState(
-        () => mapEnumOptions(null, RISK_FALLBACK)
+        () => dropUnscoredRiskLevels(mapEnumOptions(null, RISK_FALLBACK))
     );
 
     const loadOptions = async () => {
@@ -131,7 +147,9 @@ export const useAssetFormOptions = () => {
             if (riskRes.status === "fulfilled") {
                 riskRaw = riskRes.value.data;
             }
-            setRiskOptions(mapEnumOptions(riskRaw, RISK_FALLBACK));
+            setRiskOptions(
+                dropUnscoredRiskLevels(mapEnumOptions(riskRaw, RISK_FALLBACK))
+            );
 
         } catch (err) {
             console.error("Failed to load dropdown options:", err);
