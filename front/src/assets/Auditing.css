@@ -830,11 +830,19 @@ order: 1;
     white-space: nowrap;
 }
 
+/* Values match RISK_LEVEL_BADGES (front/src/components/Risk/riskConstants.js)
+   and .hd-risk-* in HardeningDashboard.css, so one risk level is one colour
+   across every screen. high/medium used to be shifted one step warmer here
+   (high orange, medium yellow), which made the same level look like two
+   different severities depending on the page. */
 .severity-badge.severity-critical { background: #fee2e2; color: #991b1b; }
-.severity-badge.severity-high     { background: #fed7aa; color: #9a3412; }
-.severity-badge.severity-medium   { background: #fef3c7; color: #92400e; }
+.severity-badge.severity-high     { background: #fef3c7; color: #92400e; }
+.severity-badge.severity-medium   { background: #e0e7ff; color: #3730a3; }
 .severity-badge.severity-low      { background: #d1fae5; color: #065f46; }
-.severity-badge.severity-info     { background: #e0e7ff; color: #3730a3; }
+/* The audit rules emit "info"; the risk engine's own label is "informational".
+   Both map to the same neutral chip. */
+.severity-badge.severity-info,
+.severity-badge.severity-informational { background: #f1f5f9; color: #475569; }
 
 /* ── Hardening bar (Figma: 1229x180 card rx=30, 338x67 button rx=5) ───────── */
 
