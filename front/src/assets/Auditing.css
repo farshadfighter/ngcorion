@@ -1747,3 +1747,32 @@ order: 1;
     color: #ffffff;
     border-color: #1e3a5f;
 }
+
+/* ── Hardening result: summary panel ─────────────────────────────────────────
+   Wraps the conformity cards and the session details in one white card, so the
+   two hardening result screens open the same way the auditing one does.
+
+   .result-stats-summary carries order:1 and .result-stats-container order:2,
+   so the numbers render above the details regardless of DOM order — this is
+   also why the panel must be a flex column: `order` only applies to flex
+   children, and without it the blocks fell back to source order (which put the
+   details, and on one screen the whole block, in the wrong place). */
+.hr-panel {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    margin: 0 0 16px;
+    padding: 8px 0 16px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
+}
+
+/* Inside the panel the rows own the spacing, not the page. */
+.hr-panel .result-stats-summary {
+    padding: 16px 24px 8px;
+}
+
+.hr-panel .result-stats-container {
+    padding: 0 24px;
+}

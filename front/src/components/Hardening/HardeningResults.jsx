@@ -152,12 +152,29 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                 </div>
 
                 <div className="hr-body">
-                    {/* Summary cards + session metadata, matching the Figma
-                        layout: the numbers lead the page, the details sit
-                        underneath them. */}
-                    {/* Same card layout as FixUnsuccessfulResults so the two
-                        result screens read identically: the device/session row
-                        first, then the conformity summary. */}
+                    {/* One panel: the conformity numbers lead, the session
+                        details sit underneath them. Shared with
+                        FixUnsuccessfulResults so both result screens match. */}
+                    <div className="hr-panel">
+                    <div className="result-stats-summary">
+                        <div className="result-card result-card-success">
+                            <div className="card-percent">{conformityPercent}%</div>
+                            <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
+                            <div className="card-label">Conformity</div>
+                        </div>
+
+                        <div className="result-card result-card-danger">
+                            <div className="card-percent">{nonConformityPercent}%</div>
+                            <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
+                            <div className="card-label">Non-Conformity</div>
+                        </div>
+
+                        <div className="result-card result-card-total">
+                            <div className="card-number">{totalChecks}</div>
+                            <div className="card-label">Total Conditions</div>
+                        </div>
+                    </div>
+
                     <div className="result-stats-container">
                         <div className="result-card result-card-info">
                             <div className="card-label">Benchmark</div>
@@ -195,24 +212,6 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                             <div className="card-value">{sessionData?.status || 'Completed'}</div>
                         </div>
                     </div>
-
-                    <div className="result-stats-summary">
-                        <div className="result-card result-card-success">
-                            <div className="card-percent">{conformityPercent}%</div>
-                            <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
-                            <div className="card-label">Conformity</div>
-                        </div>
-
-                        <div className="result-card result-card-danger">
-                            <div className="card-percent">{nonConformityPercent}%</div>
-                            <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
-                            <div className="card-label">Non-Conformity</div>
-                        </div>
-
-                        <div className="result-card result-card-total">
-                            <div className="card-number">{totalChecks}</div>
-                            <div className="card-label">Total Conditions</div>
-                        </div>
                     </div>
 
                     {/* Figma prompts a re-audit after hardening; the original

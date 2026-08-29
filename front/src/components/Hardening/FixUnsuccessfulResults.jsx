@@ -169,7 +169,10 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     </button>
                 </div>
 
-                {/* Statistics Cards — device info row, then summary row */}
+                {/* One panel: the conformity numbers lead (CSS `order` lifts the
+                    summary above this block), the session details sit under
+                    them. Same shell as HardeningResults. */}
+                <div className="hr-panel">
                 <div className="result-stats-container">
                     <div className="result-card result-card-info">
                         <div className="card-label">Benchmark</div>
@@ -226,6 +229,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                         <div className="card-number">{totalChecks}</div>
                         <div className="card-label">Total Conditions</div>
                     </div>
+                </div>
                 </div>
 
                 {/* Tabs and Table. Flex column with min-height:0 so the table
