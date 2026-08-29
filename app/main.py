@@ -204,17 +204,19 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # --- Frontend (React SPA) ---------------------------------------------------
 # The built bundle in front/dist is served directly by this backend (no nginx).
-# Hashed build assets under /assets are mounted for aggressive caching; the SPA
-# shell + deep-link fallback is handled by the catch-all route at the very end
-# of this file (registered after all API routers so it never shadows them).
+# The SPA shell, the hashed build files and the deep-link fallback are all
+# handled by the catch-all route at the very end of this file (registered after
+# all API routers so it never shadows them).
+#
+# There is deliberately no app.mount("/assets", StaticFiles(...)) here. A mount
+# owns its whole path prefix: it answers every /assets/* request itself and
+# 404s when no file matches, so the request never reaches the catch-all. The
+# client-side routes /assets/inventory, /assets/requirements and
+# /assets/discovery share that prefix, so reloading (Ctrl+F5) any Asset
+# Management page returned {"detail":"Not Found"} instead of the app. Serving
+# the build files from the catch-all keeps one consistent rule for the prefix.
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "front" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST / "index.html"
-if (FRONTEND_DIST / "assets").is_dir():
-    app.mount(
-        "/assets",
-        StaticFiles(directory=FRONTEND_DIST / "assets"),
-        name="frontend-assets",
-    )
 
 # Configure CORS middleware
 # WARNING: Default allows all origins - configure BACKEND_CORS_ORIGINS in .env for production
@@ -395,7 +397,10 @@ def health_check():
 def serve_spa(full_path: str = ""):
     # Reserved backend prefixes must 404 honestly rather than be masked by the
     # SPA shell — reaching here with one means no router above matched it.
-    if full_path.startswith(("api/", "auth/", "docs", "openapi.json", "static/", "assets/")):
+    # "assets/" is NOT reserved: it is shared by the build output and by the
+    # Asset Management client-side routes, and the file check below tells them
+    # apart.
+    if full_path.startswith(("api/", "auth/", "docs", "openapi.json", "static/")):
         raise HTTPException(status_code=404, detail="Not Found")
 
     if not FRONTEND_INDEX.is_file():
@@ -409,6 +414,14 @@ def serve_spa(full_path: str = ""):
         candidate = (FRONTEND_DIST / full_path).resolve()
         if candidate.is_file() and FRONTEND_DIST.resolve() in candidate.parents:
             return FileResponse(candidate)
+
+        # The file does not exist. Anything that looks like a file request (it
+        # has an extension) is a missing asset and must 404 — returning the
+        # HTML shell for a missing .js/.css would make the browser fail on a
+        # syntax error instead of a clear 404. Extensionless paths are
+        # client-side routes and fall through to the shell below.
+        if "." in Path(full_path).name:
+            raise HTTPException(status_code=404, detail="Not Found")
 
     return FileResponse(FRONTEND_INDEX)
 
