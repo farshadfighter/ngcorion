@@ -3,6 +3,14 @@ import { useDispatch, useSelector } from "react-redux";
 import api from "../../config/api.js";
 import { executeAuditWithDevice, discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
+import {
+    isCisco,
+    isFortinet,
+    isMongo,
+    isMssql,
+    isWindows,
+    needsSudo,
+} from "./hardeningCredentials";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -42,15 +50,11 @@ const normalizeFamily = (deviceType) => {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const isLinux    = (dt) => dt?.startsWith("linux-");
-const isCisco    = (dt) => dt === "cisco";
-const isFortinet = (dt) => dt === "fortinet";
-const isApache   = (dt) => dt === "apache";
-const isMongo    = (dt) => dt === "mongodb";
-const isMssql    = (dt) => dt?.startsWith("mssql-");
-const isWindows  = (dt) => dt?.startsWith("windows-");
-
-const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+// The device-type predicates come from hardeningCredentials.js. They used to be
+// copied here, and the copies only matched the prefixed form ("windows-2022"),
+// so they silently disagreed with the shared ones once those learned to accept
+// the bare enum too — the same drift that had the single-check modal asking a
+// Windows Server for SSH credentials. One definition, no drift.
 const needsVdom  = (dt) => isFortinet(dt);
 const needsSecret= (dt) => isCisco(dt);
 

@@ -5,6 +5,14 @@ import { executeAudit } from "../../store/auditSlice";
 import { discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 import { FortinetBenchmarkModal } from "./FortinetBenchmarkModal";
 import { DEFAULT_WINRM_PORT } from "../Hardening/winrmDefaults";
+import {
+    isCisco,
+    isFortinet,
+    isMongo,
+    isMssql,
+    isWindows,
+    needsSudo,
+} from "../Hardening/hardeningCredentials";
 
 // ─── Device type list ─────────────────────────────────────────────────────────
 const DEVICE_TYPES = [
@@ -44,14 +52,9 @@ const normalizeFamily = (deviceType) => {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const isLinux    = (dt) => dt?.startsWith("linux-");
-const isCisco    = (dt) => dt === "cisco";
-const isFortinet = (dt) => dt === "fortinet";
-const isApache   = (dt) => dt === "apache";
-const isMongo    = (dt) => dt === "mongodb";
-const isMssql    = (dt) => dt?.startsWith("mssql-");
-const isWindows  = (dt) => dt?.startsWith("windows-");
-const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+// Device-type predicates are imported from Hardening/hardeningCredentials.js —
+// auditing and hardening connect to the same devices the same way, and keeping
+// a second copy here is what let them drift apart before.
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
