@@ -64,7 +64,7 @@ def list_backups(
     source: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(require_permission("hardening", "read")),
+    current_user: User = Depends(require_permission("backup", "read")),
     db: Session = Depends(get_db),
 ):
     """List all device backups (config content excluded for performance)."""
@@ -111,7 +111,7 @@ class BackupAssetGroup(BaseModel):
 def list_backups_by_asset(
     search: Optional[str] = Query(None),
     device_type: Optional[str] = Query(None),
-    current_user: User = Depends(require_permission("hardening", "read")),
+    current_user: User = Depends(require_permission("backup", "read")),
     db: Session = Depends(get_db),
 ):
     """One row per asset that has backups, with its counts and latest date.
@@ -168,7 +168,7 @@ def list_backups_by_asset(
 @router.get("/{backup_id}", response_model=BackupDetail)
 def get_backup(
     backup_id: int,
-    current_user: User = Depends(require_permission("hardening", "read")),
+    current_user: User = Depends(require_permission("backup", "read")),
     db: Session = Depends(get_db),
 ):
     """Get a single backup including full config content."""
@@ -195,7 +195,7 @@ def get_backup(
 @router.post("/", response_model=BackupSummary, status_code=201)
 def create_manual_backup(
     request: ManualBackupRequest,
-    current_user: User = Depends(require_permission("hardening", "write")),
+    current_user: User = Depends(require_permission("backup", "write")),
     db: Session = Depends(get_db),
 ):
     """Trigger a manual backup for a device by connecting via SSH."""
@@ -254,7 +254,7 @@ def create_manual_backup(
 @router.delete("/{backup_id}", status_code=204)
 def delete_backup(
     backup_id: int,
-    current_user: User = Depends(require_permission("hardening", "write")),
+    current_user: User = Depends(require_permission("backup", "delete")),
     db: Session = Depends(get_db),
 ):
     """Delete a backup record."""

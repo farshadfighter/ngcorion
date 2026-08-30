@@ -46,6 +46,7 @@ class ModuleEnum(str, enum.Enum):
     RISK = "risk"
     SYSTEM_CONFIG = "system_config"
     LOGS = "logs"
+    BACKUP = "backup"
 
 
 class UserPermission(Base):

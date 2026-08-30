@@ -20,6 +20,7 @@ export const PERMISSION_MODULES = [
     { name: "risk",                 label: "Risk Intelligence", icon: "fa-solid fa-triangle-exclamation" },
     { name: "system_config",        label: "System Config",     icon: "fa-solid fa-sliders" },
     { name: "logs",                 label: "System Log",        icon: "fa-solid fa-file-lines" },
+    { name: "backup",               label: "Configuration Backup", icon: "fa-solid fa-database" },
 ];
 
 export default PERMISSION_MODULES;
