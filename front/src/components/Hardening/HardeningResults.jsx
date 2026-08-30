@@ -345,12 +345,15 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                 />
             )}
 
+            {/* sub_device_type first: the session stores the bare enum
+                ("windows"), but the credential form and the API path map key
+                off the detailed value ("windows-2022"). */}
             {showFixSingleModal && selectedCheck && (
                 <FixSingleModal
                     check={selectedCheck}
                     assetId={sessionData?.asset_id}
                     sessionId={sessionData?.session_id}
-                    deviceType={sessionData.device_type}
+                    deviceType={sessionData.sub_device_type || sessionData.device_type}
                     onClose={() => {
                         setShowFixSingleModal(false);
                         setSelectedCheck(null);

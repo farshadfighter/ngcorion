@@ -6,13 +6,20 @@ import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
 // drift that previously let the two modals diverge (e.g. VDOM handling).
 
 // ─── Device type predicates ─────────────────────────────────────────────────
+// Each accepts both forms a caller may hold: the bare DeviceType enum value
+// stored on the session (audit.py::DeviceType -> "windows", "mssql", "linux")
+// and the detailed sub_device_type ("windows-2022", "mssql-2019", "linux-ubuntu-22").
+// isMssql/isWindows previously matched only the prefixed form, so a session
+// carrying the bare "windows" fell through to the SSH branch below and asked a
+// Windows Server for SSH credentials instead of WinRM. isLinux already had the
+// two-form shape; these now match it.
 export const isLinux    = (dt) => dt === "linux" || dt?.startsWith("linux-");
 export const isCisco    = (dt) => dt === "cisco";
 export const isFortinet = (dt) => dt === "fortinet";
 export const isApache   = (dt) => dt === "apache";
 export const isMongo    = (dt) => dt === "mongodb";
-export const isMssql    = (dt) => dt?.startsWith("mssql-");
-export const isWindows  = (dt) => dt?.startsWith("windows-");
+export const isMssql    = (dt) => dt === "mssql" || dt?.startsWith("mssql-");
+export const isWindows  = (dt) => dt === "windows" || dt?.startsWith("windows-");
 export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
 // ─── Default form state ──────────────────────────────────────────────────────
