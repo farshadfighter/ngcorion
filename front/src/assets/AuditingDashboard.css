@@ -261,9 +261,9 @@
    emits it as a real level (app/modules/risk/levels.py); without it that badge
    rendered unstyled. */
 .aud-severity.critical      { background: #fee2e2; color: #991b1b; }
-.aud-severity.high          { background: #fef3c7; color: #92400e; }
-.aud-severity.medium        { background: #e0e7ff; color: #3730a3; }
-.aud-severity.low           { background: #d1fae5; color: #065f46; }
+.aud-severity.high          { background: #ffedd5; color: #9a3412; }
+.aud-severity.medium        { background: #fef9c3; color: #854d0e; }
+.aud-severity.low           { background: #dcfce7; color: #166534; }
 .aud-severity.informational { background: #f1f5f9; color: #475569; }
 
 /* ── Audit Coverage ── */

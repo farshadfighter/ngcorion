@@ -7,8 +7,16 @@
  */
 
 /** Zones the seed defines as reachable from outside the organisation.
- *  See DEFAULT_ZONES in app/modules/risk/seed.py. */
-const EXPOSED_ZONES = ["Internet/Public", "DMZ"];
+ *  See DEFAULT_ZONES in app/modules/risk/seed.py.
+ *
+ *  Matched on a normalised key (lowercased, spaces around the slash removed)
+ *  because the seeded name is "Internet / Public" while operator-created zones
+ *  spell it "Internet/Public". Comparing the raw strings missed the seeded
+ *  zone entirely, so its assets never counted as internet-exposed. */
+const EXPOSED_ZONES = new Set(["internet/public", "dmz"]);
+
+const zoneKey = (name) =>
+    String(name || "").toLowerCase().replace(/\s*\/\s*/g, "/").trim();
 
 const round = (value) =>
     typeof value === "number" && Number.isFinite(value)
@@ -20,7 +28,7 @@ export const exposedAssets = (riskSummary) => {
     const zones = riskSummary?.by_zone;
     if (!Array.isArray(zones)) return null;
     return zones
-        .filter((z) => EXPOSED_ZONES.includes(z.zone_name))
+        .filter((z) => EXPOSED_ZONES.has(zoneKey(z.zone_name)))
         .reduce((sum, z) => sum + (z.count || 0), 0);
 };
 

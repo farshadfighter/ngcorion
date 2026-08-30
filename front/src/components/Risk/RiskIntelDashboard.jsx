@@ -36,14 +36,26 @@ export const RiskIntelDashboard = () => {
         [summary]
     );
 
-    const zoneData = useMemo(
-        () =>
-            (summary?.by_zone || []).map((entry) => ({
-                ...entry,
-                label: entry.key === "unclassified" ? "Unassigned" : entry.key,
-            })),
-        [summary]
-    );
+    /* Zones that differ only in spacing around the slash are the same place:
+       the seed creates "Internet / Public" while an operator adding one by hand
+       types "Internet/Public", and the chart drew them as two slices with two
+       colours. Merge on a normalised key and keep the first spelling seen, so
+       one zone is one slice. */
+    const zoneData = useMemo(() => {
+        const merged = new Map();
+        for (const entry of summary?.by_zone || []) {
+            const label =
+                entry.key === "unclassified" ? "Unassigned" : entry.key;
+            const key = String(label).toLowerCase().replace(/\s*\/\s*/g, "/").trim();
+            const existing = merged.get(key);
+            if (existing) {
+                existing.count += entry.count || 0;
+            } else {
+                merged.set(key, { ...entry, label, count: entry.count || 0 });
+            }
+        }
+        return [...merged.values()];
+    }, [summary]);
 
     const confidentialityData = useMemo(
         () =>
