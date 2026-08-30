@@ -120,6 +120,24 @@ CISCO_NON_RUNNING_CONFIG_TURBO_COMMANDS: List[str] = [
     if not cmd.strip().lower().startswith("show run")
 ]
 
+# Config commands that stop on an interactive question instead of returning to
+# the config prompt. `crypto key generate rsa` is the important one: when the
+# device already holds a keypair, IOS answers with
+#   % You already have RSA keys defined named <name>.
+#   % Do you really want to replace them? [yes/no]:
+# and waits. send_config_set() never answers it, so the key was never replaced
+# and the device kept its old (1024-bit) modulus — CIS 2.1.1.1.3 then verified
+# FAIL no matter how often hardening ran.
+CONFIRMATION_COMMANDS = re.compile(r"^\s*crypto key (?:generate|zeroize)\b", re.I)
+
+# Interactive questions these commands ask, most specific first.
+YES_NO_PROMPT = re.compile(r"\[yes/no\]\s*:?\s*$", re.I)
+CONFIRM_PROMPT = re.compile(r"\[confirm\]\s*$", re.I)
+# "How many bits in the modulus [512]:" — only asked when the command itself
+# carried no "modulus <n>"; answering with the device default would create a
+# 512-bit key, so the requested size is echoed back instead.
+MODULUS_PROMPT = re.compile(r"how many bits in the modulus[^\n]*$", re.I)
+
 # Redaction patterns for sensitive data
 REDACT_PATTERNS = [
     # enable secret/password values
@@ -548,6 +566,81 @@ class CiscoSSHClient:
             logger.error(f"Command execution failed on {self.ip}: {command} - {str(e)}")
             raise RuntimeError(f"Command execution failed: {str(e)}")
 
+    # Maximum interactive questions answered for a single command; a device
+    # that keeps asking is a loop, not a prompt sequence.
+    MAX_CONFIRMATIONS = 5
+
+    @staticmethod
+    def _confirmation_answer(output: str, command: str) -> Optional[str]:
+        """
+        Return the reply for the question at the end of ``output``, if any.
+
+        Args:
+            output: What the device has printed so far.
+            command: The command that triggered the question — the modulus
+                     prompt is answered with the size the command asked for.
+
+        Returns:
+            The text to send, or None when the device is not waiting on an
+            answer (the tail is a prompt or ordinary output).
+        """
+        tail = output.rstrip()[-200:]
+        if MODULUS_PROMPT.search(tail):
+            m = re.search(r"\bmodulus\s+(\d+)", command, re.I)
+            return m.group(1) if m else "2048"
+        if YES_NO_PROMPT.search(tail):
+            return "yes"
+        if CONFIRM_PROMPT.search(tail):
+            return ""  # bare newline confirms
+        return None
+
+    def _send_interactive_config_command(self, command: str) -> str:
+        """
+        Run one config command that asks interactive questions, answering them.
+
+        Timing-based reads are used rather than prompt detection: the device is
+        deliberately NOT at a prompt while it is asking, and RSA generation then
+        pauses for tens of seconds before printing "[OK]".
+
+        Args:
+            command: Single configuration command
+
+        Returns:
+            str: Full transcript including the questions and the answers sent
+        """
+        if not self.connection.check_config_mode():
+            self.connection.config_mode()
+
+        read_kwargs = dict(
+            strip_prompt=False,
+            strip_command=False,
+            read_timeout=self.CONFIG_READ_TIMEOUT,
+            last_read=5.0,
+        )
+
+        output = self.connection.send_command_timing(command, **read_kwargs)
+        for _ in range(self.MAX_CONFIRMATIONS):
+            answer = self._confirmation_answer(output, command)
+            if answer is None:
+                break
+            logger.info(
+                f"Answering device confirmation for '{command}' on {self.ip} "
+                f"with {answer!r}"
+            )
+            output += self.connection.send_command_timing(answer, **read_kwargs)
+
+        # Key generation can stay silent well past the timing read; wait for the
+        # config prompt so the next command is not typed into a busy channel.
+        if self._confirmation_answer(output, command) is None:
+            try:
+                output += self.connection.read_until_pattern(
+                    pattern=r"[>#]", read_timeout=self.CONFIG_READ_TIMEOUT
+                )
+            except Exception:
+                pass  # already back at the prompt; nothing left to read
+
+        return output
+
     def send_config_commands(self, commands: List[str]) -> str:
         """
         Send configuration commands to device using netmiko's send_config_set().
@@ -615,15 +708,38 @@ class CiscoSSHClient:
                 r"|^no\s+interface\s+Tunnel"
             )
 
+            # Commands that ask a question are executed one at a time by
+            # _send_interactive_config_command, which answers it. Everything
+            # else is batched through send_config_set as before. Order is
+            # preserved so a sequence that mixes the two still applies in the
+            # order the template wrote it.
             with self._read_budget(self.CONFIG_READ_TIMEOUT):
-                output = self.connection.send_config_set(
-                    expanded,
-                    exit_config_mode=True,
-                    cmd_verify=False,
-                    read_timeout=self.CONFIG_READ_TIMEOUT,
-                    delay_factor=2.0,
-                    bypass_commands=interactive_pattern,
-                )
+                outputs: list = []
+                batch: list = []
+
+                def flush_batch() -> None:
+                    if not batch:
+                        return
+                    outputs.append(self.connection.send_config_set(
+                        list(batch),
+                        exit_config_mode=False,
+                        cmd_verify=False,
+                        read_timeout=self.CONFIG_READ_TIMEOUT,
+                        delay_factor=2.0,
+                        bypass_commands=interactive_pattern,
+                    ))
+                    batch.clear()
+
+                for cmd in expanded:
+                    if CONFIRMATION_COMMANDS.match(cmd):
+                        flush_batch()
+                        outputs.append(self._send_interactive_config_command(cmd))
+                    else:
+                        batch.append(cmd)
+                flush_batch()
+
+                self.connection.exit_config_mode()
+                output = "\n".join(outputs)
 
             logger.info(f"Successfully executed {len(commands)} config commands on {self.ip}")
             return output
