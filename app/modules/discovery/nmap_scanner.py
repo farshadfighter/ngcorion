@@ -191,6 +191,13 @@ class NmapScanner:
             if "-sU" in scan_flags:
                 # UDP per-host scans are much slower; allow more time per host.
                 host_timeout = "900s" if version_detection else "600s"
+            elif scan_type == "all_ports":
+                # Scanning all 65535 ports per host takes far longer than a
+                # well-known/custom port set — match calculate_timeout()'s own
+                # all_ports estimate instead of the short ceiling meant for
+                # smaller port sets (was truncating every host before it could
+                # finish, so all_ports scans came back with no open ports).
+                host_timeout = "3600s" if version_detection else "900s"
             else:
                 host_timeout = "300s" if version_detection else "120s"
             cmd.append(f"--host-timeout={host_timeout}")
