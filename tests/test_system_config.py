@@ -7,6 +7,7 @@ zone.
 """
 
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
@@ -17,9 +18,20 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import event
+from sqlalchemy.orm import Session
 
+from app.core.database import engine
+from app.models import User
+from app.models.system_config import SECTION_SMS, SECTION_SNMP, SystemConfigSetting
 from app.modules.system_config import service
-from app.modules.system_config.schemas import SmsConfig, SnmpConfig, TimeConfig
+from app.modules.system_config.router import (
+    get_sms_config,
+    get_snmp_config,
+    update_sms_config,
+    update_snmp_config,
+)
+from app.modules.system_config.schemas import MASK, SmsConfig, SnmpConfig, TimeConfig
 
 FRONTEND_TIMEZONES = (
     PROJECT_ROOT / "front/src/components/SystemConfig/timezones.js"
@@ -263,7 +275,6 @@ def _sms_config(**overrides):
 
 
 def test_mask_sms_masks_present_secrets():
-    from app.modules.system_config.schemas import MASK
     masked = service.mask_sms({**_sms_config(), "password": "hunter2"})
     assert masked["api_key"] == MASK
     assert masked["password"] == MASK
@@ -275,7 +286,6 @@ def test_mask_sms_leaves_absent_password_as_none():
 
 
 def test_unmask_keeps_stored_secret_when_mask_is_echoed_back():
-    from app.modules.system_config.schemas import MASK
     assert service.unmask(MASK, "the-real-key") == "the-real-key"
 
 
@@ -359,3 +369,170 @@ def test_sms_request_generic_provider_adds_basic_auth_when_username_and_password
         "09121234567", "hello",
     )
     assert kwargs["auth"] == ("svc", "secret")
+
+
+# ----------------------------------------------------------------------
+# Integration: real router calls against Postgres
+#
+# The project never substitutes SQLite (see test_risk_module.py), so these run
+# against the real database inside a transaction that is rolled back on
+# teardown — the same pattern that module uses, since _save/log_action commit
+# internally (SAVEPOINTs re-open after each one).
+#
+# service.apply_snmp_config is stubbed out for the SNMP tests: the real
+# implementation writes /etc/snmp/snmpd.conf and restarts snmpd on the host
+# running the tests, which must never happen here. It's replaced with a stand-
+# in that still calls the real render_snmpd_conf, so the captured content is
+# exactly what would have been written.
+# ----------------------------------------------------------------------
+
+@pytest.fixture
+def db():
+    connection = engine.connect()
+    trans = connection.begin()
+    session = Session(bind=connection)
+    session.begin_nested()
+
+    @event.listens_for(session, "after_transaction_end")
+    def _restart_savepoint(sess, transaction):
+        if transaction.nested and not transaction._parent.nested:
+            sess.begin_nested()
+
+    try:
+        yield session
+    finally:
+        event.remove(session, "after_transaction_end", _restart_savepoint)
+        session.close()
+        trans.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def sc_user(db):
+    user = User(
+        username=f"sc_test_operator_{uuid.uuid4().hex[:8]}",
+        hashed_password="x",
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+def _stored_row(db, section):
+    return (
+        db.query(SystemConfigSetting)
+        .filter(SystemConfigSetting.section == section)
+        .first()
+    )
+
+
+def test_snmp_server_ip_change_is_persisted_and_rendered(db, sc_user):
+    """A PUT lands in the DB, and the saved value is what render_snmpd_conf
+    (what apply_snmp_config would have written to disk) actually uses."""
+    rendered = {}
+
+    def fake_apply(config):
+        rendered["conf"] = service.render_snmpd_conf(config)
+        return []
+
+    with mock.patch.object(service, "apply_snmp_config", side_effect=fake_apply):
+        update_snmp_config(
+            data=SnmpConfig(version="v2c", server_ip="10.0.0.25",
+                             v2_community="public", v2_port=161),
+            current_user=sc_user, db=db,
+        )
+    assert _stored_row(db, SECTION_SNMP).config_json["server_ip"] == "10.0.0.25"
+    assert "agentAddress udp:10.0.0.25:161" in rendered["conf"].splitlines()
+
+    # Changing server_ip overwrites the same row and the rendered directive.
+    with mock.patch.object(service, "apply_snmp_config", side_effect=fake_apply):
+        update_snmp_config(
+            data=SnmpConfig(version="v2c", server_ip="192.168.50.7",
+                             v2_community="public", v2_port=161),
+            current_user=sc_user, db=db,
+        )
+    assert _stored_row(db, SECTION_SNMP).config_json["server_ip"] == "192.168.50.7"
+    assert "agentAddress udp:192.168.50.7:161" in rendered["conf"].splitlines()
+
+    fetched = get_snmp_config(_current_user=sc_user, db=db)
+    assert fetched["config"]["server_ip"] == "192.168.50.7"
+
+
+def test_snmp_v3_server_ip_is_persisted_and_rendered(db, sc_user):
+    rendered = {}
+
+    def fake_apply(config):
+        rendered["conf"] = service.render_snmpd_conf(config)
+        return []
+
+    with mock.patch.object(service, "apply_snmp_config", side_effect=fake_apply):
+        update_snmp_config(
+            data=SnmpConfig(
+                version="v3", server_ip="2001:db8::1",
+                v3_username="monitor", v3_auth_protocol="SHA",
+                v3_auth_password="authpass123", v3_priv_protocol="AES",
+                v3_priv_password="privpass123", v3_port=161,
+            ),
+            current_user=sc_user, db=db,
+        )
+    assert _stored_row(db, SECTION_SNMP).config_json["server_ip"] == "2001:db8::1"
+    assert "agentAddress udp6:[2001:db8::1]:161" in rendered["conf"].splitlines()
+
+
+def test_snmp_legacy_row_without_server_ip_does_not_break_get_or_rendering(db, sc_user):
+    """A row saved before server_ip existed must stay readable and renderable
+    — GET must not 500, and rendering falls back to binding every interface
+    rather than raising a KeyError."""
+    legacy = SystemConfigSetting(
+        section=SECTION_SNMP,
+        config_json={"version": "v2c", "v2_community": "public", "v2_port": 161},
+        updated_by=sc_user.id,
+    )
+    db.add(legacy)
+    db.flush()
+
+    fetched = get_snmp_config(_current_user=sc_user, db=db)
+    assert fetched["config"]["v2_community"] == "public"
+    assert "server_ip" not in fetched["config"]
+
+    conf = service.render_snmpd_conf(fetched["config"])
+    assert "agentAddress udp:161" in conf.splitlines()
+
+
+def test_sms_masked_secrets_survive_a_round_trip_without_ever_storing_the_mask(db, sc_user):
+    update_sms_config(
+        data=SmsConfig(
+            provider="  Kavenegar  ", server_address="https://api.kavenegar.com",
+            api_key="realkey123", password="realpass456", username="svc",
+            sender_number="  10008663  ",
+        ),
+        current_user=sc_user, db=db,
+    )
+    row = _stored_row(db, SECTION_SMS)
+    assert row.config_json["api_key"] == "realkey123"
+    assert row.config_json["password"] == "realpass456"
+    assert row.config_json["provider"] == "Kavenegar"
+    assert row.config_json["sender_number"] == "10008663"
+
+    fetched = get_sms_config(_current_user=sc_user, db=db)
+    assert fetched["config"]["api_key"] == MASK
+    assert fetched["config"]["password"] == MASK
+    assert fetched["config"]["provider"] == "Kavenegar"
+
+    # Echo the mask back for both secrets (what the frontend sends when those
+    # fields are left untouched) while changing an unrelated field.
+    update_sms_config(
+        data=SmsConfig(
+            provider=fetched["config"]["provider"],
+            server_address=fetched["config"]["server_address"],
+            api_key=MASK, password=MASK, username="svc",
+            sender_number="10009999",
+        ),
+        current_user=sc_user, db=db,
+    )
+    row = _stored_row(db, SECTION_SMS)
+    assert row.config_json["api_key"] == "realkey123"
+    assert row.config_json["password"] == "realpass456"
+    assert row.config_json["api_key"] != MASK
+    assert row.config_json["password"] != MASK
+    assert row.config_json["sender_number"] == "10009999"
