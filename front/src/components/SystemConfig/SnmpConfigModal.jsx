@@ -20,6 +20,7 @@ const SnmpForm = ({ stored, onClose }) => {
     const config = stored?.config;
 
     const [version, setVersion] = useState(config?.version || "v2c");
+    const [serverIp, setServerIp] = useState(config?.server_ip || "");
     const [v2Community, setV2Community] = useState(config?.v2_community || "");
     const [v2Port, setV2Port] = useState(config?.v2_port ?? 161);
     const [v3Username, setV3Username] = useState(config?.v3_username || "");
@@ -43,13 +44,24 @@ const SnmpForm = ({ stored, onClose }) => {
     const handleSave = async () => {
         setLocalError(null);
 
+        const ip = serverIp.trim();
+        if (!ip) {
+            setLocalError("Enter the SNMP server IP address.");
+            return;
+        }
+        // Shape check only — the backend is the source of truth (ipaddress.ip_address).
+        if (!/^[0-9a-fA-F.:]+$/.test(ip)) {
+            setLocalError("Server IP must be a valid IPv4 or IPv6 address.");
+            return;
+        }
+
         const port = Number(isV3 ? v3Port : v2Port);
         if (!Number.isInteger(port) || port < 1 || port > 65535) {
             setLocalError("Port must be between 1 and 65535.");
             return;
         }
 
-        const payload = { version };
+        const payload = { version, server_ip: ip };
         if (isV3) {
             const missing = [];
             if (!v3Username.trim()) missing.push("username");
@@ -105,6 +117,17 @@ const SnmpForm = ({ stored, onClose }) => {
                     SNMP v3
                 </button>
             </div>
+
+            <label className="sc-field">
+                <span>Server IP Address</span>
+                <input
+                    type="text"
+                    value={serverIp}
+                    onChange={(e) => setServerIp(e.target.value)}
+                    placeholder="10.0.0.25"
+                    maxLength={100}
+                />
+            </label>
 
             {isV3 ? (
                 <>

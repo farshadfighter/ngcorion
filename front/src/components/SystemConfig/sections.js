@@ -29,7 +29,7 @@ export const SECTIONS = [
     {
         key: "snmp",
         title: "SNMP Configurations",
-        hint: "v2c community or v3 credentials",
+        hint: "Server address, v2c community or v3 credentials",
         icon: "fa-solid fa-network-wired",
         modal: SnmpConfigModal,
     },

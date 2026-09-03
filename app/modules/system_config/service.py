@@ -17,6 +17,7 @@ to `date -s` and the /etc/localtime symlink, and whatever still cannot be done
 here comes back as a warning string. The config file is written and stored
 either way, so the host picks it up at the next service start.
 """
+import ipaddress
 import logging
 import os
 import shutil
@@ -389,11 +390,34 @@ def apply_time_config(config: Dict[str, Any]) -> List[str]:
 # 2. SNMP
 # ======================================================================
 
+def render_agent_address(server_ip: Optional[str], port: int) -> str:
+    """The `agentAddress` directive binding snmpd to a specific host IP.
+
+    Format is `udp:<ip>:<port>` for IPv4 and `udp6:[<ip>]:<port>` for IPv6 (the
+    brackets are net-snmp's literal syntax for a bracketed IPv6 host). Falls
+    back to binding every interface (`udp:<port>`, snmpd's own default) when no
+    address is on file — this only happens for a row saved before server_ip
+    existed, since the schema requires it on every new write.
+    """
+    server_ip = (server_ip or "").strip()
+    if not server_ip:
+        return f"agentAddress udp:{port}"
+    try:
+        is_v6 = ipaddress.ip_address(server_ip).version == 6
+    except ValueError:
+        # The schema already validates this on the way in; treat an
+        # unparsable legacy value the same as a missing one rather than
+        # writing a directive snmpd would refuse to parse.
+        return f"agentAddress udp:{port}"
+    return f"agentAddress udp6:[{server_ip}]:{port}" if is_v6 else f"agentAddress udp:{server_ip}:{port}"
+
+
 def render_snmpd_conf(config: Dict[str, Any]) -> str:
     lines = [MANAGED_HEADER.rstrip("\n"), ""]
+    server_ip = config.get("server_ip")
     if config.get("version") == "v2c":
         lines.append(f"rocommunity {config['v2_community']} default")
-        lines.append(f"agentAddress udp:{config.get('v2_port', 161)}")
+        lines.append(render_agent_address(server_ip, config.get('v2_port', 161)))
     else:
         lines.append(
             "createUser {username} {auth_proto} {auth_pass} "
@@ -406,7 +430,7 @@ def render_snmpd_conf(config: Dict[str, Any]) -> str:
             )
         )
         lines.append(f"rouser {config['v3_username']}")
-        lines.append(f"agentAddress udp:{config.get('v3_port', 161)}")
+        lines.append(render_agent_address(server_ip, config.get('v3_port', 161)))
     return "\n".join(lines) + "\n"
 
 

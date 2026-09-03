@@ -9,6 +9,7 @@ files (/etc/snmp/snmpd.conf, /etc/rsyslog.d/99-ngcorion.conf,
 /etc/systemd/timesyncd.conf). ``NoNewlines`` rejects CR/LF so a value can never
 inject an extra directive line into those files.
 """
+import ipaddress
 import re
 from datetime import datetime
 from typing import Optional
@@ -98,6 +99,10 @@ class TimeConfig(_ConfigBase):
 
 class SnmpConfig(_ConfigBase):
     version: SnmpVersionEnum
+    # The address snmpd binds to (agentAddress in snmpd.conf) — required so the
+    # daemon listens on a known management interface rather than silently
+    # falling back to every interface on the host.
+    server_ip: str = Field(..., min_length=1, max_length=100, examples=["10.0.0.25"])
     v2_community: Optional[str] = Field(None, max_length=255)
     v2_port: int = Field(161, ge=1, le=65535)
     v3_username: Optional[str] = Field(None, max_length=255)
@@ -106,6 +111,18 @@ class SnmpConfig(_ConfigBase):
     v3_priv_protocol: Optional[SnmpPrivProtocolEnum] = None
     v3_priv_password: Optional[str] = Field(None, max_length=255)
     v3_port: int = Field(161, ge=1, le=65535)
+
+    @field_validator("server_ip")
+    @classmethod
+    def _check_server_ip(cls, value: str) -> str:
+        value = value.strip()
+        try:
+            ipaddress.ip_address(value)
+        except ValueError:
+            raise ValueError(
+                "server_ip must be a valid IPv4 or IPv6 address, e.g. '10.0.0.25'"
+            )
+        return value
 
     @model_validator(mode="after")
     def _check_version_fields(self):
@@ -161,6 +178,36 @@ class SmsConfig(_ConfigBase):
     sender_number: Optional[str] = Field(None, max_length=50)
     username: Optional[str] = Field(None, max_length=255)
     password: Optional[str] = Field(None, max_length=255)
+
+    @field_validator("provider")
+    @classmethod
+    def _check_provider(cls, value: str) -> str:
+        # Stored verbatim and compared case-insensitively against "kavenegar"/
+        # "ghasedak" both when routing the test-SMS request (service._sms_request)
+        # and when the frontend decides whether to show the known-provider preset
+        # or fall back to "Other". Without trimming here, a value saved with
+        # stray whitespace (e.g. via a direct API call) sends correctly but the
+        # UI can no longer recognise it as the known provider on reload.
+        value = value.strip()
+        if not value:
+            raise ValueError("provider must not be blank")
+        return value
+
+    @field_validator("server_address")
+    @classmethod
+    def _check_server_address(cls, value: str) -> str:
+        value = value.strip()
+        if not value or any(char.isspace() for char in value):
+            raise ValueError("server_address must be a single token without whitespace")
+        return value
+
+    @field_validator("sender_number", "username")
+    @classmethod
+    def _strip_optional(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
 
 
 class SmsTestRequest(BaseModel):
