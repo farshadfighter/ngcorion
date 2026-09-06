@@ -27,6 +27,16 @@ migration, or human review and are intentionally not auto-fixable.
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
+from app.core.hardening_param_security import (
+    escape_single_quoted_shell_literal,
+    reject_shell_breakout_chars,
+    validate_host_list,
+    validate_identifier,
+    validate_integer,
+    validate_path,
+    validate_select,
+)
+
 
 @dataclass
 class MongoDBHardeningTemplate:
@@ -375,6 +385,56 @@ _register(MongoDBHardeningTemplate(
 # Helper functions
 # ===================================================================
 
+# Every parameter here is substituted somewhere into a `sh -c` shell command
+# — some as a bare unquoted word (e.g. `mkdir -p {KEYFILE_PATH}`), others
+# already inside a single-quoted sed program (e.g.
+# `sed -i -E 's|...|\1{KEYFILE_PATH}|' ...`), sometimes both for the same
+# parameter across different commands in one template. Restricting each to
+# a charset that is inert in both positions (see hardening_param_security)
+# avoids needing to track which context every substitution site uses.
+_PATH_PARAMS = {"KEYFILE_PATH", "TLS_CERT_FILE", "TLS_CA_FILE", "AUDIT_LOG_PATH"}
+_IDENTIFIER_PARAMS = {"MONGO_SERVICE_USER"}
+_HOST_LIST_PARAMS = {"MONGO_BIND_IP"}
+# AUDIT_FILTER is free JSON-like text (needs '$', '{', '}', ':' for MongoDB
+# query-operator syntax like "$in") wrapped in \"...\" inside a
+# single-quoted `sed ... a\` append (see parameter_metadata.py) and is never
+# used as a bare shell word — only deny what can break out of that single
+# specific context (an embedded "'" closes the argument early; the "\""
+# extra guards the surrounding \"...\" wrap the template itself adds).
+_SHELL_TEXT_PARAMS = {"AUDIT_FILTER"}
+
+
+def _validated_value(param_name: str, param_value: str) -> str:
+    """
+    Validate a substituted value against the security rules for its
+    parameter before it is inserted into a shell command that runs (via
+    `sh -c`) on the managed MongoDB host.
+    """
+    if param_name in _PATH_PARAMS:
+        return validate_path(param_value, param_name)
+    if param_name in _IDENTIFIER_PARAMS:
+        return validate_identifier(param_value, param_name)
+    if param_name in _HOST_LIST_PARAMS:
+        return validate_host_list(param_value, param_name)
+    if param_name in _SHELL_TEXT_PARAMS:
+        return escape_single_quoted_shell_literal(param_value, param_name, deny=('"',))
+
+    from .parameter_metadata import get_mongodb_parameter_metadata
+
+    meta = get_mongodb_parameter_metadata(param_name)
+    if meta is not None:
+        if meta.input_type == "number":
+            return validate_integer(
+                param_value, param_name, min_value=meta.min_value, max_value=meta.max_value
+            )
+        if meta.input_type == "select" and meta.options:
+            return validate_select(param_value, param_name, meta.options)
+
+    # Unknown/unmapped parameter — fall back to the strict shell denylist
+    # rather than trust it blindly.
+    return reject_shell_breakout_chars(param_value, param_name)
+
+
 def get_mongodb_hardening_template(check_id: str) -> Optional[MongoDBHardeningTemplate]:
     """Get hardening template for a specific check."""
     return MONGODB_HARDENING_TEMPLATES.get(check_id)
@@ -398,7 +458,7 @@ def get_mongodb_template_commands(
     result = []
     for cmd in template.commands:
         for name, value in parameters.items():
-            cmd = cmd.replace(f"{{{name}}}", str(value))
+            cmd = cmd.replace(f"{{{name}}}", _validated_value(name, value))
         result.append(cmd)
     return result
 
@@ -416,6 +476,6 @@ def get_mongodb_verify_commands(
     result = []
     for cmd in template.verify_commands:
         for name, value in parameters.items():
-            cmd = cmd.replace(f"{{{name}}}", str(value))
+            cmd = cmd.replace(f"{{{name}}}", _validated_value(name, value))
         result.append(cmd)
     return result

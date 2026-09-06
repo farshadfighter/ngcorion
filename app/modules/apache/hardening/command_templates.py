@@ -28,6 +28,14 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 import copy
 
+from app.core.hardening_param_security import (
+    reject_shell_breakout_chars,
+    validate_host_list,
+    validate_integer,
+    validate_path,
+    validate_select,
+)
+
 
 # Distro-specific Apache paths and service names
 APACHE_CONFIG = {
@@ -120,6 +128,46 @@ def get_apache_hardening_template(check_id: str) -> Optional[ApacheHardeningTemp
     return APACHE_HARDENING_TEMPLATES.get(check_id)
 
 
+# Every parameter here is substituted into a `sh -c` shell command line —
+# some as a bare unquoted word (`test -f {SSL_CERT_FILE}`), others already
+# inside a single- or double-quoted region (a sed program, an echo/printf
+# argument), sometimes both for the same parameter across commands.
+# Restricting each to a charset/denylist that is inert in every position it
+# is used avoids needing to track which context each site uses (see
+# app.core.hardening_param_security for the reasoning).
+_PATH_PARAMS = {"SSL_CERT_FILE", "SSL_KEY_FILE"}
+_HOST_LIST_PARAMS = {"LISTEN_IP"}
+# RESTRICTED_EXTENSIONS is wrapped in \"...\" inside a FilesMatch regex
+# attribute (see parameter_metadata.py) — also deny embedded double quotes.
+_SHELL_TEXT_PARAMS_EXTRA_DENY = {"RESTRICTED_EXTENSIONS": ('"',)}
+
+
+def _validated_value(param_name: str, param_value: str) -> str:
+    """
+    Validate a substituted value against the security rules for its
+    parameter before it is inserted into a shell command that runs (via
+    `sh -c`) on the managed Apache host.
+    """
+    if param_name in _PATH_PARAMS:
+        return validate_path(param_value, param_name)
+    if param_name in _HOST_LIST_PARAMS:
+        return validate_host_list(param_value, param_name)
+
+    from .parameter_metadata import APACHE_PARAMETER_REGISTRY
+
+    meta = APACHE_PARAMETER_REGISTRY.get(param_name)
+    if meta is not None:
+        if meta.input_type == "number":
+            return validate_integer(
+                param_value, param_name, min_value=meta.min_value, max_value=meta.max_value
+            )
+        if meta.input_type == "select" and meta.options:
+            return validate_select(param_value, param_name, meta.options)
+
+    extra = _SHELL_TEXT_PARAMS_EXTRA_DENY.get(param_name, ())
+    return reject_shell_breakout_chars(param_value, param_name, extra=extra)
+
+
 def _substitute_parameters(commands: List[str], parameters: Optional[Dict[str, str]]) -> List[str]:
     """Substitute {PARAM} placeholders via plain replace — str.format() would
     raise on any brace the shell command itself contains."""
@@ -128,7 +176,7 @@ def _substitute_parameters(commands: List[str], parameters: Optional[Dict[str, s
     result = []
     for cmd in commands:
         for name, value in parameters.items():
-            cmd = cmd.replace(f"{{{name}}}", str(value))
+            cmd = cmd.replace(f"{{{name}}}", _validated_value(name, value))
         result.append(cmd)
     return result
 

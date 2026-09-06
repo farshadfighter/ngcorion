@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
 from ..audit.rules import REGISTRY_CHECKS
+from app.core.hardening_param_security import ParameterSecurityError
 
 
 @dataclass
@@ -351,6 +352,28 @@ def get_all_supported_checks() -> Set[str]:
     return set(WINDOWS_HARDENING_TEMPLATES.keys())
 
 
+def _validated_parameters(parameters: Dict[str, str]) -> Dict[str, str]:
+    """
+    Run the same parameter validation the real WinRM execution path uses
+    (winrm_executor._validate_windows_parameters) before substitution, so a
+    dangerous value is rejected here too — not just when a check actually
+    runs. Without this, the preview/"get commands" endpoint (which calls
+    this function directly, never through the executor) could return a
+    malformed/unvalidated PowerShell statement, and any future caller that
+    reuses this function for something other than display would inherit an
+    unvalidated substitution path.
+
+    Imported locally: winrm_executor.py imports this module at module load
+    time, so a top-level import here would be circular.
+    """
+    from .winrm_executor import _validate_windows_parameters
+
+    error = _validate_windows_parameters(parameters)
+    if error:
+        raise ParameterSecurityError(error)
+    return parameters
+
+
 def get_windows_template_statements(
     check_id: str, parameters: Dict[str, str] = None
 ) -> List[str]:
@@ -358,7 +381,7 @@ def get_windows_template_statements(
     template = get_windows_hardening_template(check_id)
     if not template:
         return []
-    parameters = parameters or {}
+    parameters = _validated_parameters(parameters or {})
     result = []
     for stmt in template.statements:
         for name, value in parameters.items():
@@ -374,7 +397,7 @@ def get_windows_verify_statements(
     template = get_windows_hardening_template(check_id)
     if not template:
         return []
-    parameters = parameters or {}
+    parameters = _validated_parameters(parameters or {})
     result = []
     for stmt in template.verify_statements:
         for name, value in parameters.items():

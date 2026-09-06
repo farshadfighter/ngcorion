@@ -17,6 +17,31 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 from .command_templates import has_fortigate_template, get_fortigate_template
+from app.core.hardening_param_security import validate_cli_line, validate_integer
+
+
+def _validated_value(param_name: str, param_value: str) -> str:
+    """
+    Validate a substituted value against the security rules for its
+    declared parameter type before it is inserted into a command sent over
+    the interactive FortiOS CLI session. FortiOS has no shell/SQL
+    metacharacter semantics of its own; the real injection primitive is an
+    embedded newline/carriage-return, read as pressing Enter and starting a
+    fresh CLI command (e.g. an attacker-chosen extra `config`/`set` line).
+    No FortiGate hardening parameter is multi-line, so every parameter gets
+    the strict single-line check.
+
+    This checks shape only (single line vs. integer), not UI-declared
+    min/max bounds: that is a business-logic/UX check, not injection
+    surface, and enforcing it here risks rejecting legitimate template
+    defaults that a range was never actually checked against before.
+    """
+    from .parameter_metadata import get_fortigate_parameter_metadata
+
+    meta = get_fortigate_parameter_metadata(param_name)
+    if meta is not None and meta.input_type == "number":
+        return validate_integer(param_value, param_name)
+    return validate_cli_line(param_value, param_name)
 
 
 @dataclass
@@ -218,9 +243,10 @@ class FortiGateRemediationParser:
             # Replace parameters
             substituted = cmd
             for param_name, param_value in parameters.items():
+                safe_value = _validated_value(param_name, param_value)
                 # Replace both formats
-                substituted = substituted.replace(f"<{param_name}>", str(param_value))
-                substituted = substituted.replace(f"{{{param_name}}}", str(param_value))
+                substituted = substituted.replace(f"<{param_name}>", safe_value)
+                substituted = substituted.replace(f"{{{param_name}}}", safe_value)
 
             result.append(substituted)
 

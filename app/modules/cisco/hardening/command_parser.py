@@ -15,6 +15,45 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 
 from .command_templates import has_template, get_template
+from app.core.hardening_param_security import (
+    validate_cli_line,
+    validate_delimited_text,
+    validate_integer,
+)
+
+# The delimiter Cisco IOS `banner <type> <delim>text<delim>` templates use
+# (see command_templates.py) — text runs until this character reappears,
+# wherever it falls, not just at a line start.
+_BANNER_DELIMITER = "^"
+
+
+def _validated_value(param_name: str, param_value: str) -> str:
+    """
+    Validate a substituted value against the security rules for its
+    declared parameter type before it is inserted into a command that runs
+    on the device, closing command-line injection over the interactive SSH
+    session (an embedded newline is read as pressing Enter and starting a
+    fresh CLI command).
+
+    This intentionally checks shape only (single line vs. delimited
+    multi-line banner vs. integer), not UI-declared min/max bounds or
+    select option lists: those are business-logic/UX checks, not injection
+    surface — enforcing them here would reject legitimate template defaults
+    and the mapping-validation tooling's synthetic test values, neither of
+    which can carry a CLI metacharacter regardless of range/option-list
+    membership.
+    """
+    from .parameter_metadata import get_parameter_metadata
+
+    meta = get_parameter_metadata(param_name)
+    if meta is not None and meta.input_type == "textarea":
+        # Cisco banners (BANNER_TEXT) are the one legitimately multi-line
+        # value; guard the '^' delimiter they're wrapped in instead of
+        # rejecting the newlines that make it a banner.
+        return validate_delimited_text(param_value, param_name, delimiter=_BANNER_DELIMITER)
+    if meta is not None and meta.input_type == "number":
+        return validate_integer(param_value, param_name)
+    return validate_cli_line(param_value, param_name)
 
 
 @dataclass
@@ -301,9 +340,10 @@ class RemediationParser:
             # Replace parameters
             substituted = cmd
             for param_name, param_value in parameters.items():
+                safe_value = _validated_value(param_name, param_value)
                 # Replace both formats
-                substituted = substituted.replace(f"<{param_name}>", param_value)
-                substituted = substituted.replace(f"{{{param_name}}}", param_value)
+                substituted = substituted.replace(f"<{param_name}>", safe_value)
+                substituted = substituted.replace(f"{{{param_name}}}", safe_value)
 
             result.append(substituted)
 

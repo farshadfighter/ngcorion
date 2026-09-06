@@ -17,6 +17,8 @@ import copy
 import re
 import shlex
 
+from app.core.hardening_param_security import validate_heredoc_body
+
 
 @dataclass
 class LinuxHardeningTemplate:
@@ -2256,8 +2258,13 @@ def get_linux_hardening_template_for_distro(
 
 # Parameters whose value is inserted into a quoted heredoc body (cat << 'EOF').
 # These must NOT be shell-quoted: shlex.quote would wrap the literal text in
-# stray single quotes inside the heredoc.
-_HEREDOC_PARAMS = {"MOTD_TEXT", "BANNER_TEXT"}
+# stray single quotes inside the heredoc. SSH_BANNER_TEXT (LNX-L1-5.2.14) uses
+# the same "cat > file << 'EOF' ... EOF" pattern as MOTD_TEXT/BANNER_TEXT and
+# belongs in this set for the same reason.
+_HEREDOC_PARAMS = {"MOTD_TEXT", "BANNER_TEXT", "SSH_BANNER_TEXT"}
+
+# The heredoc delimiter every template above uses (`<< 'EOF'`).
+_HEREDOC_DELIMITER = "EOF"
 
 
 def _substitute_params(cmd: str, parameters: Dict[str, str]) -> str:
@@ -2265,12 +2272,18 @@ def _substitute_params(cmd: str, parameters: Dict[str, str]) -> str:
     Substitute {PARAM} placeholders in a command string.
 
     Values are shell-quoted with shlex.quote for injection safety, except
-    heredoc-body parameters (see _HEREDOC_PARAMS) which are inserted literally.
+    heredoc-body parameters (see _HEREDOC_PARAMS) which are inserted
+    literally after being checked for heredoc-delimiter collision: a value
+    containing a line that is exactly "EOF" would otherwise terminate the
+    heredoc early and let whatever follows run as a fresh shell command.
     """
     for param_name, param_value in parameters.items():
-        value = str(param_value)
-        if param_name not in _HEREDOC_PARAMS:
-            value = shlex.quote(value)
+        if param_name in _HEREDOC_PARAMS:
+            value = validate_heredoc_body(
+                param_value, param_name, delimiter=_HEREDOC_DELIMITER
+            )
+        else:
+            value = shlex.quote(str(param_value))
         cmd = cmd.replace(f"{{{param_name}}}", value)
     return cmd
 

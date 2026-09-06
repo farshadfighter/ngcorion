@@ -21,6 +21,8 @@ manual_only), and any change that needs a service restart or out-of-band step
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 
+from app.core.hardening_param_security import ParameterSecurityError
+
 
 @dataclass
 class MSSQLHardeningTemplate:
@@ -306,6 +308,28 @@ def get_all_supported_checks() -> Set[str]:
     return set(MSSQL_HARDENING_TEMPLATES.keys())
 
 
+def _validated_parameters(parameters: Dict[str, str]) -> Dict[str, str]:
+    """
+    Run the same parameter validation the real T-SQL execution path uses
+    (tsql_executor._validate_mssql_parameters) before substitution, so a
+    dangerous value is rejected here too — not just when a check actually
+    runs. Without this, the preview/"get commands" endpoint (which calls
+    this function directly, never through the executor) could return
+    unvalidated T-SQL, and any future caller that reuses this function for
+    something other than display would inherit an unvalidated substitution
+    path.
+
+    Imported locally: tsql_executor.py imports this module at module load
+    time, so a top-level import here would be circular.
+    """
+    from .tsql_executor import _validate_mssql_parameters
+
+    error = _validate_mssql_parameters(parameters)
+    if error:
+        raise ParameterSecurityError(error)
+    return parameters
+
+
 def get_mssql_template_statements(
     check_id: str,
     parameters: Dict[str, str] = None,
@@ -314,7 +338,7 @@ def get_mssql_template_statements(
     template = get_mssql_hardening_template(check_id)
     if not template:
         return []
-    parameters = parameters or {}
+    parameters = _validated_parameters(parameters or {})
     result = []
     for stmt in template.statements:
         for name, value in parameters.items():
@@ -331,7 +355,7 @@ def get_mssql_verify_statements(
     template = get_mssql_hardening_template(check_id)
     if not template:
         return []
-    parameters = parameters or {}
+    parameters = _validated_parameters(parameters or {})
     result = []
     for stmt in template.verify_statements:
         for name, value in parameters.items():
