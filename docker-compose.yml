@@ -10,11 +10,28 @@ services:
       - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--api.insecure=true"
+      # NOTE: --api.insecure=true is deliberately absent. It served Traefik's
+      # API *and* dashboard on :8080 with no authentication whatsoever, exposing
+      # the full routing topology (every router, service, middleware and backend
+      # address) to anyone who could reach the host. Nothing in this stack needs
+      # it: routing comes from the Docker provider labels and the file provider
+      # in traefik/dynamic/, and no router publishes api@internal. The license
+      # stack's Traefik (deploy/docker-compose.license.yml) already runs this way.
+      # To inspect the dashboard temporarily: add "--api.insecure=true" back,
+      # `docker compose up -d traefik`, then tunnel from your workstation
+      # (`ssh -L 8080:127.0.0.1:8080 <user>@<deployment-host>`) and open
+      # http://127.0.0.1:8080/dashboard/ locally. Remove the flag afterwards —
+      # the port below is loopback-only precisely so it is never published.
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
+      # Traefik management port. Bound to loopback by default so it is not
+      # reachable from the network even if the API is switched on for debugging;
+      # override only for an admin-only interface, never 0.0.0.0. Same pattern as
+      # LICENSE_BIND_ADDR in deploy/docker-compose.license.yml.
+      # With the API disabled (above) nothing listens here — the mapping is kept
+      # so the scoping is already correct if it is ever re-enabled.
+      - "${TRAEFIK_BIND_ADDR:-127.0.0.1}:8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
