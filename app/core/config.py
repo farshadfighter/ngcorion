@@ -6,6 +6,7 @@ SECURITY: Override all sensitive defaults in production via .env file.
 """
 from pydantic_settings import BaseSettings
 from typing import List
+from urllib.parse import urlparse
 import json
 
 
@@ -35,21 +36,52 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
 
-    # CORS Origins
-    # WARNING: ["*"] allows all origins - NOT SECURE for production!
-    # In production, set to specific frontend URLs like:
-    # BACKEND_CORS_ORIGINS=["https://yourdomain.com","https://app.yourdomain.com"]
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]  # حتما عوضش کنیم
+    # CORS Origins — browsers only; see resolve_cors_origins() below.
+    #
+    # Empty by default, and that is the correct value for the normal
+    # deployment: the frontend is served by this same application (front/dist via
+    # the catch-all route) and calls the API with a relative base URL, so those
+    # requests are same-origin and never involve CORS at all. The Vite dev server
+    # likewise proxies /api and /auth to the backend, so dev is same-origin too.
+    #
+    # Only set this when a browser app served from a DIFFERENT origin must call
+    # this API, e.g.:
+    #   BACKEND_CORS_ORIGINS=["https://app.example.com","http://localhost:5173"]
+    #   BACKEND_CORS_ORIGINS=https://app.example.com,http://localhost:5173
+    # "*" is rejected at startup: it cannot be combined with credentialed
+    # requests without letting any site on the internet drive this API as a
+    # logged-in user.
+    #
+    # Typed as a plain string on purpose: pydantic-settings JSON-decodes a
+    # List[str] field *before* any of our code runs, so the comma-separated
+    # form above would raise a SettingsError at import and take the whole app
+    # down. Parsing happens in `cors_origins` instead, which accepts both.
+    BACKEND_CORS_ORIGINS: str = ""
 
     @property
     def cors_origins(self) -> List[str]:
-        """Parse CORS origins from string or list."""
-        if isinstance(self.BACKEND_CORS_ORIGINS, str):
+        """
+        Raw configured origins, accepting the shapes an operator may supply.
+
+        pydantic-settings already parses a JSON list from the environment; this
+        additionally tolerates a bare string and a comma-separated list. It does
+        NOT validate — use resolve_cors_origins() for anything security-relevant.
+        """
+        raw = self.BACKEND_CORS_ORIGINS
+        if isinstance(raw, str):
+            text = raw.strip()
+            if not text:
+                return []
             try:
-                return json.loads(self.BACKEND_CORS_ORIGINS)
-            except:
-                return [self.BACKEND_CORS_ORIGINS]
-        return self.BACKEND_CORS_ORIGINS
+                parsed = json.loads(text)
+            except ValueError:
+                return [part.strip() for part in text.split(",") if part.strip()]
+            if isinstance(parsed, str):
+                return [parsed]
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+            return []
+        return [str(item).strip() for item in (raw or []) if str(item).strip()]
 
     # SSH host-key verification (all managed-device connections)
     # "tofu"   — trust on first use: the first connection to a host pins its key
@@ -175,3 +207,104 @@ def require_license_server_url() -> str:
             "or .env file. There is deliberately no localhost default."
         )
     return url.rstrip("/")
+
+
+class CORSConfigurationError(RuntimeError):
+    """BACKEND_CORS_ORIGINS contains an unsafe or malformed value."""
+
+
+def _normalize_cors_origin(raw: str) -> str:
+    """
+    Validate one configured origin and return it in the exact form a browser
+    sends in the ``Origin`` header: ``scheme://host[:port]``, lowercased, with
+    no trailing slash and no path.
+
+    Starlette compares the request's Origin header against this list with plain
+    string equality, so a value that merely *looks* right ("https://app.example.com/",
+    "APP.EXAMPLE.COM", "https://*.example.com") would silently never match and
+    the operator would think CORS was configured when it was not. Rejecting
+    these loudly is the difference between a security control and a placebo.
+
+    Raises:
+        CORSConfigurationError: value is unsafe or cannot be a browser Origin.
+    """
+    value = (raw or "").strip()
+    if not value:
+        raise CORSConfigurationError("BACKEND_CORS_ORIGINS contains an empty entry.")
+
+    if value == "*":
+        raise CORSConfigurationError(
+            'BACKEND_CORS_ORIGINS contains "*". A wildcard cannot be combined '
+            "with credentialed cross-origin requests: Starlette reflects the "
+            "caller's own Origin back, so ANY website could drive this API as a "
+            "logged-in user. List the exact frontend origins instead, e.g. "
+            'BACKEND_CORS_ORIGINS=["https://app.example.com"] — or leave it '
+            "empty (the default) when the frontend is served by this same "
+            "application, which is the normal deployment and needs no CORS."
+        )
+
+    if value.lower() == "null":
+        raise CORSConfigurationError(
+            'BACKEND_CORS_ORIGINS contains "null". The null origin is sent by '
+            "sandboxed iframes and local files and is not a trustworthy identity."
+        )
+
+    if "*" in value:
+        raise CORSConfigurationError(
+            f"BACKEND_CORS_ORIGINS entry {raw!r} contains a wildcard. Origins are "
+            "matched by exact string comparison, so a pattern like "
+            '"https://*.example.com" would never match anything. List each '
+            "origin explicitly."
+        )
+
+    parsed = urlparse(value)
+    if parsed.scheme not in ("http", "https"):
+        raise CORSConfigurationError(
+            f"BACKEND_CORS_ORIGINS entry {raw!r} must start with http:// or "
+            "https:// (a browser Origin always carries a scheme)."
+        )
+    if not parsed.hostname:
+        raise CORSConfigurationError(
+            f"BACKEND_CORS_ORIGINS entry {raw!r} has no host."
+        )
+    if parsed.username or parsed.password:
+        raise CORSConfigurationError(
+            f"BACKEND_CORS_ORIGINS entry {raw!r} must not contain credentials."
+        )
+    if parsed.query or parsed.fragment or parsed.path not in ("", "/"):
+        raise CORSConfigurationError(
+            f"BACKEND_CORS_ORIGINS entry {raw!r} must be a bare origin "
+            "(scheme://host[:port]) with no path, query or fragment — that is "
+            "all a browser ever sends in the Origin header."
+        )
+
+    # Rebuild rather than string-munge, so the result is canonical.
+    host = parsed.hostname.lower()
+    if ":" in host:  # IPv6 literal
+        host = f"[{host}]"
+    origin = f"{parsed.scheme.lower()}://{host}"
+    if parsed.port is not None:
+        origin = f"{origin}:{parsed.port}"
+    return origin
+
+
+def resolve_cors_origins() -> List[str]:
+    """
+    Return the validated, normalized CORS allowlist.
+
+    Fails closed in both directions:
+      * unset/empty -> ``[]``: no cross-origin browser access is granted. This is
+        the default and the correct value for the standard deployment, where the
+        frontend is served by this same app and its requests are same-origin.
+      * unsafe/malformed (``*``, ``null``, wildcards, paths, bad scheme) ->
+        raises :class:`CORSConfigurationError` at startup rather than quietly
+        degrading to something permissive.
+
+    Duplicates are collapsed while preserving order.
+    """
+    resolved: List[str] = []
+    for raw in settings.cors_origins:
+        origin = _normalize_cors_origin(raw)
+        if origin not in resolved:
+            resolved.append(origin)
+    return resolved

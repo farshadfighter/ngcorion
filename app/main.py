@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.core.database import Base, engine, SessionLocal
-from app.core.config import settings, require_license_server_url
+from app.core.config import settings, require_license_server_url, resolve_cors_origins
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
 from app.modules.logs import clear_router as logs_clear_router
@@ -218,15 +218,47 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "front" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 
-# Configure CORS middleware
-# WARNING: Default allows all origins - configure BACKEND_CORS_ORIGINS in .env for production
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+# The allowlist is explicit and validated (resolve_cors_origins raises on "*",
+# wildcards, paths and bad schemes), so an unsafe value stops the app at import
+# time instead of silently reflecting whatever Origin a caller sends.
+#
+# Empty is the normal, correct configuration: this app serves the frontend
+# itself (front/dist, below) and the frontend calls the API with a relative base
+# URL, so those requests are same-origin and CORS never applies. The Vite dev
+# server proxies /api and /auth for the same reason. Only a browser app hosted
+# on a *different* origin needs entries here — see .env.example.
+#
+# The middleware is installed either way: with an empty list Starlette answers a
+# cross-origin preflight with an explicit "Disallowed CORS origin" instead of a
+# confusing 405 from the router, and never emits Access-Control-Allow-Origin.
+CORS_ORIGINS = resolve_cors_origins()
+if CORS_ORIGINS:
+    logger.info("[Startup] CORS enabled for origins: %s", ", ".join(CORS_ORIGINS))
+else:
+    logger.info(
+        "[Startup] No BACKEND_CORS_ORIGINS configured — cross-origin browser "
+        "access is disabled. The bundled same-origin frontend is unaffected."
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins if hasattr(settings, 'cors_origins') else settings.BACKEND_CORS_ORIGINS,
+    allow_origins=CORS_ORIGINS,
+    # Credentials are granted only to the explicitly listed origins above; with
+    # an empty list nothing is credentialed. Starlette refuses to pair this with
+    # a literal "*", which is exactly the combination we validate against.
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],  # Allow all response headers to be accessible
+    # Narrowed from "*" to the verbs this API actually exposes. A new verb
+    # (e.g. PATCH) must be added here as well as to its router.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    # Narrowed from "*": the frontend sends a bearer token and JSON, plus the
+    # headers axios/browsers add for uploads and content negotiation.
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    # Only what a cross-origin caller legitimately needs to read. Downloads
+    # (Excel export/template) carry the filename here.
+    expose_headers=["Content-Disposition"],
 )
 
 # Add security headers middleware (after CORS, before routes)

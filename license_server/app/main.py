@@ -4,7 +4,7 @@ from .database import engine, Base
 from .routers import licenses, admin
 from .middleware.logging import LoggingMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
-from .core.config import settings
+from .core.config import settings, resolve_cors_origins
 from .utils.fingerprint import get_vm_fingerprint
 from .schemas import FingerprintResponse
 
@@ -20,12 +20,17 @@ app = FastAPI(
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
 
+# CORS: explicit allowlist only. "*" with allow_credentials=True would reflect
+# the caller's Origin back and expose these HTTP Basic protected admin endpoints
+# to any site an administrator happens to visit. Empty (the default) is correct
+# for the shipped deployment — the admin UI is same-origin behind nginx and the
+# NGCorion backend is a server-to-server client, neither of which uses CORS.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=resolve_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 app.include_router(licenses.router)

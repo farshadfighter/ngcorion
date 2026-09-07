@@ -411,7 +411,77 @@ verifiable and revertible.
     (no functional regression).
 - **Acceptance criteria**: CORS origin list is explicit and environment-required in
   production; wildcard + credentials combination no longer present.
-- **Status**: [ ]
+- **Status**: [x] — Implemented and verified 2026-09-07.
+  - **Key finding that shaped the fix**: CORS was never actually needed by this
+    product. `front/src/config/api.js` uses a *relative* base URL (`''`) and the
+    backend serves `front/dist` itself, so production requests are same-origin;
+    in dev, `front/vite.config.js` proxies `/api` and `/auth` to the backend, so
+    that is same-origin too. Auth is a `Authorization: Bearer` header from
+    `localStorage`, not cookies. So an **empty** allowlist is both the most
+    secure setting and fully functional — no origin needs to be configured for
+    either environment.
+  - **`app/core/config.py`**: default changed from `["*"]` to `""` (empty).
+    Added `resolve_cors_origins()` + `_normalize_cors_origin()` +
+    `CORSConfigurationError`, following the existing `require_license_server_url()`
+    fail-fast convention. Origins are normalized to the exact form browsers send
+    (lowercased, no trailing slash) and validated; `*`, `null`, embedded
+    wildcards, missing/non-http schemes, paths, queries and userinfo are all
+    **refused at startup** rather than silently ignored — Starlette matches
+    origins by exact string equality, so an entry that merely looks right would
+    otherwise be a dead allowlist entry the operator believes is protecting them.
+  - **`app/main.py`**: `allow_origins` now comes from the validated resolver;
+    `allow_methods` narrowed `["*"]` → `["GET","POST","PUT","DELETE","OPTIONS"]`
+    (the verbs the API actually exposes), `allow_headers` narrowed → 
+    `["Authorization","Content-Type","Accept","X-Requested-With"]`,
+    `expose_headers` narrowed `["*"]` → `["Content-Disposition"]` (downloads).
+    The middleware stays installed even with an empty list so a cross-origin
+    preflight gets an explicit "Disallowed CORS origin" instead of a confusing
+    405, and startup logs which mode is active.
+  - **Field typed `str`, not `List[str]`** — caught during end-to-end
+    verification: pydantic-settings JSON-decodes a `List[str]` env var *before*
+    our code runs, so the documented comma-separated form
+    (`BACKEND_CORS_ORIGINS=https://a,https://b`) raised `SettingsError` and took
+    the whole app down. Parsing moved into `cors_origins`, which accepts a JSON
+    list, a comma-separated list, or a single origin. Regression-tested.
+  - **License Server fixed too** (`license_server/app/main.py` + its
+    `core/config.py`): it had the *identical* `allow_origins=["*"]` +
+    `allow_credentials=True`, and worse, its admin endpoints use HTTP Basic auth
+    — which browsers do send as CORS credentials. Now an explicit `CORS_ORIGINS`
+    allowlist (default empty, wildcards refused). Safe because its admin UI is
+    served same-origin behind nginx (`license-admin-ui/nginx.conf` proxies
+    `/api/`) and the NGCorion backend is a server-to-server client. Included
+    because this item required repo-wide confirmation that no
+    wildcard+credentials pairing remains; the services were otherwise untouched.
+  - **Tests**: `tests/test_cors_policy.py` (56 tests) covering all seven required
+    cases — trusted origin allowed, untrusted granted nothing (incl. suffix/query/
+    scheme/port lookalikes), wildcard+credentials refused, multiple origins,
+    authenticated bearer requests from an allowed origin, preflight for allowed/
+    untrusted/empty/disallowed-method, and "missing config never becomes `*`".
+    Plus normalization, `Vary: Origin`, and assertions against the **real**
+    `app.main` middleware options so the shipped config cannot drift from what
+    the tests prove. Requests are driven straight through ASGI (starlette's
+    TestClient needs httpx, which this project does not depend on). Verified
+    meaningful by mutation: restoring the original config fails 3 tests + 4
+    errors; making the resolver pass `*` through fails 3; making an empty config
+    default to `*` fails 5.
+  - **Verification**: full suite 1104 passed / 68 failed / 47 skipped — the 68
+    are byte-for-byte identical (`diff`'d) to the pre-change baseline
+    (pre-existing live-Postgres tests). Zero regressions. End-to-end env-var
+    checks confirm all four documented config forms produce the right allowlist
+    and that both `*` spellings refuse to boot.
+  - **Repo-wide sweep**: no `allow_origins` containing a wildcard remains, no
+    `allow_methods`/`allow_headers`/`expose_headers` wildcards, no
+    `allow_origin_regex`, and no middleware/proxy (Traefik, nginx) emits
+    `Access-Control-*` headers outside the CORS middleware.
+  - **Deployment**: no action needed for the standard deployment. Documented in
+    `.env.example` (and `license-admin-ui/.env.example` for the case where
+    `VITE_LICENSE_API_URL` makes the admin UI cross-origin and the license
+    server's `CORS_ORIGINS` must then list it).
+  - **Remaining risk / note**: `LicenseMiddleware` is registered after
+    `CORSMiddleware`, so it runs *outside* it — a license-invalid 503 on
+    `/api/*` returns without CORS headers, which a genuine cross-origin browser
+    client would see as a CORS error rather than a readable 503. Pre-existing,
+    no effect on the same-origin deployment, and out of scope for this item.
 
 ### 2.2 — Docker/infra: privileged backend container + exposed Traefik dashboard
 
