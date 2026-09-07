@@ -39,6 +39,19 @@ htmlcov/
 
 # Archives (never commit secrets bundled into a tarball, e.g. ~/.license data)
 *.tar.gz
+*.tar
+*.tgz
+
+# License activation secrets (SecureStorage in app/core/license_client.py).
+# Default LICENSE_STORAGE_DIR is ~/.license, outside the repo, so these
+# should never appear here — this is a guard against an accidental local
+# override/copy, not a normal generated-artifact path. See item 1.2 in
+# docs/SECURITY_REMEDIATION_CHECKLIST.md (license_data.tar.gz history leak).
+.license/
+.license.key
+.license.dat
+.state.dat
+license_data*
 
 # Node.js / Frontend
 node_modules/

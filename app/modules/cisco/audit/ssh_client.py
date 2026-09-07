@@ -37,6 +37,11 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError,
     map_ssh_exception
 )
+from app.core.ssh_host_keys import (
+    classify_netmiko_auth_failure,
+    ensure_host_key_trusted,
+    netmiko_host_key_kwargs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +262,10 @@ class CiscoSSHClient:
         """
         last_exception = None
 
+        # Verify (and, under the tofu policy, pin) the device's host key before
+        # any credential — including the enable secret — is sent.
+        ensure_host_key_trusted(self.ip, self.port, timeout=self.timeout)
+
         for attempt in range(1, self.max_retries + 1):
             try:
                 logger.debug(f"SSH connection attempt {attempt}/{self.max_retries} to {self.ip}")
@@ -274,7 +283,8 @@ class CiscoSSHClient:
                     session_timeout=60,
                     read_timeout_override=self.READ_TIMEOUT,
                     banner_timeout=20,  # Longer banner timeout for slow devices
-                    auth_timeout=20     # Longer auth timeout
+                    auth_timeout=20,    # Longer auth timeout
+                    **netmiko_host_key_kwargs(),
                 )
 
                 # Enter enable mode if needed/possible. Always check current state
@@ -301,6 +311,13 @@ class CiscoSSHClient:
                 return  # Success - exit retry loop
 
             except NetmikoAuthenticationException as e:
+                # netmiko wraps every paramiko SSHException (BadHostKeyException,
+                # RejectPolicy's "not found in known_hosts") in this type, so a
+                # host-key failure must be separated out before it is reported
+                # to the operator as a credential problem.
+                host_key_error = classify_netmiko_auth_failure(e, self.ip)
+                if host_key_error:
+                    raise host_key_error
                 # Don't retry on auth failures - credentials are wrong
                 logger.error(f"Authentication failed for {self.ip}")
                 raise SSHAuthenticationError(self.ip, original_error=e)

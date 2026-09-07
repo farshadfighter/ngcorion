@@ -51,6 +51,28 @@ from typing import Any, Dict, List, Optional, Tuple, Set, Iterable
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoAuthenticationException, NetmikoTimeoutException
 
+
+# ── SSH host-key verification ────────────────────────────────────────────────
+# netmiko trusts any host key unless told otherwise, which would let anyone on
+# the path between this script and the FortiGate capture the admin credentials
+# it sends. When this script runs from inside the product checkout it reuses the
+# application's shared trust store (trust-on-first-use + pinning). Run truly
+# standalone (the "pip install netmiko jinja2" case in the header), it falls
+# back to the operator's own ~/.ssh/known_hosts with unknown hosts rejected —
+# so `ssh admin@<fortigate>` once, verify the fingerprint, and this script will
+# then connect. Never silently accepts an unknown or changed key either way.
+try:
+    from app.core.ssh_host_keys import (  # type: ignore
+        ensure_host_key_trusted as _ensure_host_key_trusted,
+        netmiko_host_key_kwargs as _host_key_kwargs,
+    )
+except Exception:  # noqa: BLE001 - standalone execution without the app package
+    def _ensure_host_key_trusted(host: str, port: int = 22, timeout: float = 15.0) -> None:
+        return None
+
+    def _host_key_kwargs() -> Dict[str, Any]:
+        return {"ssh_strict": True, "system_host_keys": True}
+
 # Optional dependencies
 try:
     import yaml  # type: ignore
@@ -188,8 +210,10 @@ class ConnectionPool:
 
     def _create_connection(self) -> ConnectHandler:
         """Create new connection"""
+        _ensure_host_key_trusted(self.host, self.port)
         base = dict(host=self.host, username=self.username, password=self.password,
-                   port=self.port, fast_cli=False, global_delay_factor=1)
+                   port=self.port, fast_cli=False, global_delay_factor=1,
+                   **_host_key_kwargs())
         for dt in ("fortinet", "fortigate"):
             try:
                 params = dict(base)
@@ -250,8 +274,10 @@ class FortiGateAdapter(DeviceAdapter):
         self._cache_ttl = 300  # 5 minutes
 
     def connect(self, host: str, username: str, password: str, port: int) -> ConnectHandler:
+        _ensure_host_key_trusted(host, port)
         base = dict(host=host, username=username, password=password, port=port,
-                   fast_cli=False, global_delay_factor=1)
+                   fast_cli=False, global_delay_factor=1,
+                   **_host_key_kwargs())
         last = None
         for dt in ("fortinet", "fortigate"):
             try:

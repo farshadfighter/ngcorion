@@ -26,7 +26,8 @@ import time
 
 import paramiko
 
-from app.core.ssh_exceptions import map_ssh_exception
+from app.core.ssh_exceptions import SSHConnectionError, map_ssh_exception
+from app.core.ssh_host_keys import VerifyingHostKeyPolicy
 from app.modules.linux.common.ssh_client import parse_os_release
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,12 @@ class HardeningSSHRunner:
         last_exception: Optional[Exception] = None
         for attempt in range(1, self.max_retries + 1):
             client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            # No host keys are loaded into the client on purpose: paramiko only
+            # consults the policy for hosts it does not already know, so an
+            # empty store routes EVERY connection through VerifyingHostKeyPolicy
+            # and the match/mismatch/unknown decision stays in one audited place
+            # (app.core.ssh_host_keys) with precise exception types.
+            client.set_missing_host_key_policy(VerifyingHostKeyPolicy(port=self.port))
             try:
                 client.connect(
                     hostname=self.ip,
@@ -107,6 +113,13 @@ class HardeningSSHRunner:
                 self._client = client
                 logger.info(f"Connected to {self.ip} for hardening (fast exec)")
                 return
+            except SSHConnectionError:
+                # Raised by VerifyingHostKeyPolicy (unknown/mismatched host key).
+                # Already precisely typed, and retrying cannot change the
+                # device's key — fail immediately instead of burning retries and
+                # re-wrapping it into a generic error.
+                self._safe_close(client)
+                raise
             except paramiko.AuthenticationException as e:
                 # Credentials are wrong — retrying won't help.
                 self._safe_close(client)

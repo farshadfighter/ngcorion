@@ -42,6 +42,11 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError,
     map_ssh_exception
 )
+from app.core.ssh_host_keys import (
+    classify_netmiko_auth_failure,
+    ensure_host_key_trusted,
+    netmiko_host_key_kwargs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +128,12 @@ class LinuxSSHClient:
         """
         last_exception = None
 
+        # Verify (and, under the tofu policy, pin) the device's host key before
+        # any credential is sent. Raises SSHHostKeyError on an unknown host in
+        # strict mode; netmiko's own RejectPolicy + this store then re-checks the
+        # key on the real connection below.
+        ensure_host_key_trusted(self.ip, self.port, timeout=self.timeout)
+
         for attempt in range(1, self.max_retries + 1):
             try:
                 logger.debug(f"SSH connection attempt {attempt}/{self.max_retries} to {self.ip}")
@@ -142,13 +153,21 @@ class LinuxSSHClient:
                     # read_timeout_override is the only lever that reaches them.
                     read_timeout_override=self.READ_TIMEOUT,
                     banner_timeout=20,
-                    auth_timeout=20
+                    auth_timeout=20,
+                    **netmiko_host_key_kwargs(),
                 )
 
                 logger.info(f"Successfully connected to {self.ip}")
                 return
 
             except NetmikoAuthenticationException as e:
+                # netmiko funnels every paramiko SSHException — including
+                # BadHostKeyException and RejectPolicy's "not found in
+                # known_hosts" — through this one exception type, so a MITM
+                # would otherwise be reported as a wrong password.
+                host_key_error = classify_netmiko_auth_failure(e, self.ip)
+                if host_key_error:
+                    raise host_key_error
                 logger.error(f"Authentication failed for {self.ip}")
                 raise SSHAuthenticationError(self.ip, original_error=e)
 

@@ -21,6 +21,13 @@ from typing import Optional, Dict
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
 
+from app.core.ssh_exceptions import SSHConnectionError, SSHHostKeyError
+from app.core.ssh_host_keys import (
+    classify_netmiko_auth_failure,
+    ensure_host_key_trusted,
+    netmiko_host_key_kwargs,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,6 +115,16 @@ class MongoDBSSHClient:
 
     def _connect(self):
         logger.info(f"SSH connecting to {self.ip}:{self.ssh_port}")
+        # Verify (and, under the tofu policy, pin) the host key before any
+        # credential is sent. Surfaced as ConnectionError — not PermissionError —
+        # because a rejected host key is a trust problem, not a bad password.
+        try:
+            ensure_host_key_trusted(self.ip, self.ssh_port, timeout=self.timeout)
+        except SSHHostKeyError as exc:
+            raise ConnectionError(f"SSH host key verification failed for {self.ip}: {exc}")
+        except SSHConnectionError as exc:
+            # Probe could not reach the device (down / refused / timed out).
+            raise ConnectionError(f"SSH connection failed to {self.ip}: {exc}")
         try:
             self._conn = ConnectHandler(
                 device_type="linux",
@@ -124,11 +141,18 @@ class MongoDBSSHClient:
                 # raises "Pattern not detected" on slow-prompting hosts.
                 # read_timeout_override is the only lever that reaches them.
                 read_timeout_override=self.COMMAND_TIMEOUT,
+                **netmiko_host_key_kwargs(),
             )
             logger.info(f"SSH connection established to {self.ip}")
         except NetmikoTimeoutException as exc:
             raise ConnectionError(f"SSH connection timed out to {self.ip}: {exc}")
         except NetmikoAuthenticationException as exc:
+            # netmiko reports a rejected/changed host key as an auth failure.
+            host_key_error = classify_netmiko_auth_failure(exc, self.ip)
+            if host_key_error:
+                raise ConnectionError(
+                    f"SSH host key verification failed for {self.ip}: {host_key_error}"
+                )
             raise PermissionError(f"SSH authentication failed for {self.ip}: {exc}")
         except Exception as exc:
             raise ConnectionError(f"SSH connection failed to {self.ip}: {exc}")

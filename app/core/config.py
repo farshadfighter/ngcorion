@@ -51,6 +51,22 @@ class Settings(BaseSettings):
                 return [self.BACKEND_CORS_ORIGINS]
         return self.BACKEND_CORS_ORIGINS
 
+    # SSH host-key verification (all managed-device connections)
+    # "tofu"   — trust on first use: the first connection to a host pins its key
+    #            (logged with the fingerprint) and every later connection must
+    #            present the same key. Existing devices keep working; a changed
+    #            or spoofed key is refused.
+    # "strict" — only hosts already present in the known-hosts store may be
+    #            reached. Nothing is pinned automatically.
+    # There is deliberately no "off": a legitimately reinstalled device is
+    # handled by removing that one host's entry from the store, not by
+    # disabling verification. See docs/SSH_HOST_KEY_VERIFICATION.md.
+    SSH_HOST_KEY_POLICY: str = "tofu"
+    # Known-hosts store (OpenSSH format). Empty = auto-detect: /etc/ngcorion/
+    # known_hosts when that directory is writable (it is bind-mounted into the
+    # container, so pinned keys survive recreation), else ~/.ngcorion/known_hosts.
+    SSH_KNOWN_HOSTS_FILE: str = ""
+
     # WinRM (Windows audit + hardening)
     # Validate the target's WinRM HTTPS certificate. Defaults to False because
     # Windows ships a self-signed WinRM listener; set WINRM_VERIFY_SSL=true once

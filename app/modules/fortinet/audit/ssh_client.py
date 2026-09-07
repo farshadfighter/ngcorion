@@ -62,6 +62,11 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError,
     map_ssh_exception,
 )
+from app.core.ssh_host_keys import (
+    classify_netmiko_auth_failure,
+    ensure_host_key_trusted,
+    netmiko_host_key_kwargs,
+)
 
 # ── Per-command read timing ─────────────────────────────────────────────────
 # netmiko's send_command_timing returns once the channel has been SILENT for
@@ -78,6 +83,9 @@ CMD_READ_TIMEOUT = 120.0   # hard cap per command (long outputs: config backups)
 DRAIN_LAST_READ = 1.0      # silence window per prompt-drain read
 DRAIN_READ_TIMEOUT = 15.0  # hard cap per prompt-drain read (max 8 drains)
 PROMPT_READ_TIMEOUT = 30.0 # hard cap for netmiko's own find_prompt() read
+# Cap for the KEX-only host-key probe (first contact with a device only; see
+# app.core.ssh_host_keys.ensure_host_key_trusted).
+HOST_KEY_PROBE_TIMEOUT = 15.0
 
 # Scope constants (kept in sync with rules.FortiGateControl.scope)
 SCOPE_GLOBAL = "global"
@@ -183,11 +191,18 @@ class FortiGateSSHClient:
         # the only ones left on netmiko's 10s default are its internal prompt
         # reads — those get a scoped budget in _current_prompt() instead.
 
+        # Verify (and, under the tofu policy, pin) the device's host key before
+        # any credential is sent. Done once, outside the device_type fallback
+        # loop, since the host key is a property of the host, not of the netmiko
+        # platform driver.
+        ensure_host_key_trusted(self.host, self.port, timeout=HOST_KEY_PROBE_TIMEOUT)
+
         last_error = None
         for device_type in ("fortinet", "fortigate"):
             try:
                 params = dict(base)
                 params["device_type"] = device_type
+                params.update(netmiko_host_key_kwargs())
                 self._connection = ConnectHandler(**params)
                 t_conn = time.perf_counter()
                 self._prime_session()
@@ -195,7 +210,16 @@ class FortiGateSSHClient:
                             t_conn - t0, time.perf_counter() - t_conn, self.host)
                 return
 
+            except SSHConnectionError:
+                # Host-key verification failure raised by our own layer: precise
+                # already, and the second device_type would hit the same key.
+                raise
             except NetmikoAuthenticationException as e:
+                # netmiko reports a rejected/changed host key as an auth failure;
+                # separate that out so a MITM is never shown as a bad password.
+                host_key_error = classify_netmiko_auth_failure(e, self.host)
+                if host_key_error:
+                    raise host_key_error
                 raise SSHAuthenticationError(self.host, original_error=e)
             except IncompatiblePeer as e:
                 raise SSHAlgorithmMismatchError(self.host, original_error=e)

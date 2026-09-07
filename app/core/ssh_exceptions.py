@@ -239,6 +239,13 @@ def map_ssh_exception(error: Exception, device_ip: str) -> SSHConnectionError:
     Returns:
         Appropriate SSHConnectionError subclass
     """
+    # Already one of ours (e.g. raised by the host-key verification policy in
+    # app.core.ssh_host_keys). Re-wrapping would downgrade a precise
+    # SSHHostKeyMismatchError into a generic connection error and lose the
+    # operator-facing guidance attached to it.
+    if isinstance(error, SSHConnectionError):
+        return error
+
     error_str = str(error).lower()
     error_type = type(error).__name__
 

@@ -209,7 +209,71 @@ verifiable and revertible.
 - **Acceptance criteria**: Leaked key material is confirmed non-functional against
   the license server, and a documented decision (rewrite vs. accepted exposure) is
   recorded in this checklist or a linked ticket.
-- **Status**: [ ]
+- **Status**: [ ] — Investigated and prepared 2026-09-07; **not closeable yet**,
+  see below.
+  - **Confirmed exposure**: `f8e140d` ("tar") added `license_data.tar.gz`; decrypted
+    it (key + ciphertext are both in the same archive) and confirmed it is a real,
+    non-dummy `~/.license` snapshot: `license_key` (format `WVOI-####-####-LGJ0`),
+    `organization_token` (64-char hex — the HMAC-SHA256 shared secret
+    `license_server/app/routers/licenses.py:verify_request_signature` checks
+    against `license.organization_token`), `vm_fingerprint` (64-char hex, a
+    server-side equality check, not independently verified), `plan_type: unlimited`.
+    Together these three values are **sufficient on their own** to forge signed
+    `/validate` and `/heartbeat` requests indefinitely — no additional secret or
+    real hardware needed. `activate_license` binds `vm_fingerprint` on first use,
+    so the license can't be hijacked onto a new machine, but ongoing
+    validate/heartbeat/consume traffic can be forged. Removed from the working
+    tree in `8f5f909`, but still fully retrievable from history
+    (`git show f8e140d:license_data.tar.gz`) and present on `origin/main` (GitHub).
+  - **Scope confirmed via full-history search**: this is the *only* occurrence —
+    no other commit/branch/path ever contained `.license.key`/`.license.dat`/
+    `.state.dat`/`license_data*`, and the decrypted `license_key` string appears
+    nowhere else in history (`git log --all -S`). Current working tree, `.env.example`,
+    and all app code are clean; `_ensure_key()` always generates a fresh random
+    Fernet key per machine, never a fixed default — the leaked key is not
+    hardcoded or reused anywhere in the codebase.
+  - **`.gitignore` hardened**: added `*.tar`/`*.tgz` and explicit patterns for the
+    raw (un-archived) SecureStorage filenames — `.license/`, `.license.key`,
+    `.license.dat`, `.state.dat`, `license_data*` — since the existing `*.tar.gz`/
+    `*.zip` rules alone wouldn't stop someone committing the raw files directly.
+    Verified via `git check-ignore -v` against 9 variants, and confirmed no
+    currently-tracked file is caught by the new patterns.
+  - **Rotation — NOT performed, requires the license server admin**: the license
+    server has no "regenerate token" endpoint; the only path is
+    revoke/deactivate the `WVOI-3...LGJ0` record (`DELETE /api/admin/licenses/
+    {license_key}`) and, if it's a live customer, issue a replacement (fresh
+    `license_key`/`organization_token` are `secrets.token_hex`-generated per
+    `create_license`). This repo has no network access to the actual deployed
+    license server, so I could not check whether the record is still active or
+    perform the rotation — per instruction, did not invent or silently rotate
+    production credentials. **This is the step that actually neutralizes the
+    leak** and is the reason this item stays unchecked.
+  - **History rewrite — prepared and rehearsed, NOT executed**: validated
+    `git filter-repo --path license_data.tar.gz --invert-paths --force` in an
+    isolated local mirror clone (never touched the real repo or GitHub).
+    Measured impact: 45 commits on `main` get new SHAs (`f8e140d` + its 44
+    descendants); the 909 commits before it are byte-identical; `front-end`
+    is completely unaffected (never merged the offending commit); the
+    rewritten `main` HEAD has the identical tree hash to the real repo's
+    current HEAD (no working-tree content changes, only historical commit
+    identity from `f8e140d` onward). `origin` is a real GitHub remote —
+    completing the purge requires a force-push of `main`, which rewrites
+    shared history (anyone else with a clone must re-clone/hard-reset, open
+    PRs against old commits break) and GitHub may retain old objects for a
+    time regardless (fork/cache retention). Not run against the real repo or
+    pushed anywhere — awaiting explicit authorization per instruction.
+  - **Decision recorded 2026-09-07**: asked the user whether to run the
+    rehearsed rewrite now; chose **"do nothing yet — wait for rotation
+    first"** — correct sequencing, since rotation is what actually stops the
+    leaked credential from being usable, while the history purge is hygiene
+    (prevents *new* clones from finding it) and can follow once rotation is
+    confirmed. No history rewrite was performed; nothing pushed or forced.
+  - **Remaining actions (manual/production, outside this session's authority)**:
+    (1) look up and revoke/reissue license `WVOI-3...LGJ0` on the license
+    server — do this first; (2) once confirmed, re-run this item (or a
+    follow-up session) to execute the already-rehearsed `git filter-repo`
+    rewrite and decide on force-pushing; (3) if pushed, everyone with a
+    clone must re-clone or hard-reset to the new history.
 
 ### 1.3 — SSH host keys never verified (MITM on every managed connection)
 
@@ -245,7 +309,79 @@ verifiable and revertible.
 - **Acceptance criteria**: No SSH client in the codebase uses `AutoAddPolicy()` (or
   netmiko's unauthenticated equivalent) without an explicit, documented
   risk-accepted exception; host-key mismatches are detectable and blockable.
-- **Status**: [ ]
+- **Status**: [x] — Implemented and verified 2026-09-07.
+  - **Shared layer**: `app/core/ssh_host_keys.py` — one policy, one store, for
+    every SSH path. Modes via `SSH_HOST_KEY_POLICY`: `tofu` (default — pin on
+    first sight with a WARNING carrying the SHA256 fingerprint, reject any later
+    change) and `strict` (only pre-provisioned hosts). There is deliberately **no**
+    "off" mode; a legitimately re-keyed device is handled per-host via
+    `ssh-keygen -R` / `forget_host()`, so no global bypass can be left switched
+    on. Store is standard OpenSSH `known_hosts` format at
+    `SSH_KNOWN_HOSTS_FILE`, defaulting to `/etc/ngcorion/known_hosts` (already
+    bind-mounted in docker-compose.yml, so pins survive container recreation)
+    with a `~/.ngcorion/known_hosts` fallback for bare-metal/dev — no manual
+    configuration needed in either case. Writes are `flock`-guarded and atomic
+    because production runs `uvicorn --workers 4`.
+  - **SSH paths found and fixed (7 connection sites, 5 in-app + 2 in a script)**:
+    | Path | Client | Before | After |
+    |---|---|---|---|
+    | Linux + Apache + MongoDB **hardening** | `linux/common/fast_ssh_runner.py` (paramiko) | explicit `AutoAddPolicy()` | `VerifyingHostKeyPolicy` on a deliberately empty in-client store, so *every* connection is evaluated |
+    | Linux + Apache **audit** | `linux/common/ssh_client.py` (netmiko) | netmiko default = AutoAdd | pre-flight + `ssh_strict=True` + our store |
+    | Cisco audit + hardening | `cisco/audit/ssh_client.py` | netmiko default | same |
+    | FortiGate audit + hardening | `fortinet/audit/ssh_client.py` | netmiko default | same (pre-flight hoisted outside the two-`device_type` fallback loop) |
+    | MongoDB audit | `mongodb/audit/mongo_client.py` | netmiko default | same |
+    | `scripts/fortinet_audit_cli.py` (×2 sites) | standalone netmiko CLI | netmiko default | uses the app store when importable, else `ssh_strict=True` + operator's `~/.ssh/known_hosts` — stays runnable standalone, never trusts blindly |
+  - **Why the split enforcement**: paramiko lets us install a policy, so that
+    path decides unknown/match/mismatch itself with precise exceptions and no
+    extra round trip. netmiko owns its `SSHClient` and only exposes
+    `ssh_strict`/`alt_key_file`, so it gets `ensure_host_key_trusted()` first
+    (which touches the network *only* when the host is unknown, to learn the key
+    for pinning) plus `RejectPolicy` against the same file.
+  - **netmiko error-mangling fixed**: netmiko funnels every paramiko
+    `SSHException` — `BadHostKeyException` and `RejectPolicy`'s "not found in
+    known_hosts" included — into `NetmikoAuthenticationException`, so a MITM
+    would have been reported to the operator as a wrong password.
+    `classify_netmiko_auth_failure()` reclassifies those in all four netmiko
+    clients. New errors `SSHHostKeyUnknownError`/`SSHHostKeyMismatchError`
+    subclass the existing `SSHHostKeyError`, so the routers that already handled
+    host-key failures keep working with no router changes.
+  - **Bug caught in review** (now regression-tested): paramiko hands the policy
+    an already-formatted `[host]:port` name for non-default ports. Re-deriving
+    an entry name from it produced `[[host]:port]:port`, which would have looked
+    "unknown" on every connection and silently re-pinned — defeating change
+    detection on non-22 ports. Fixed with `split_entry_name()`; the test fake was
+    made faithful to paramiko so it fails without the fix.
+  - **Existing behaviour preserved**: no device needs manual provisioning under
+    the default `tofu` mode — first contact pins and connects exactly as before.
+    Password-only auth (`look_for_keys=False`, `allow_agent=False`), retry
+    budgets, timeouts and sudo wrapping are untouched; host-key failures are
+    excluded from retries (a device's key will not change between attempts) and
+    a probe against an unreachable device reports the true network/timeout error
+    rather than a trust error the operator cannot act on.
+  - **Tests**: `tests/test_ssh_host_key_verification.py` (60 tests) — unknown key
+    rejected, correct key accepted, changed key rejected (incl. on non-default
+    ports), auth/connection behaviour unaffected after verification, audit and
+    hardening paths sharing one store, and the hardening dry-run preview
+    asserted to open no SSH connection at all. Verified meaningful by mutation:
+    restoring `AutoAddPolicy` fails 11 tests, `ssh_strict=False` fails 5,
+    a no-op pre-flight fails 13, reverting the bracket fix fails 2.
+  - **Verification run**: full suite → 1048 passed / 68 failed / 47 skipped; the
+    68 failures are byte-for-byte identical (`diff`'d) to the pre-change baseline
+    (pre-existing live-Postgres-dependent tests). Targeted SSH + hardening +
+    module suites: 595 passed, 47 skipped.
+  - **Repo-wide sweep**: `AutoAddPolicy` now appears only in documentation and in
+    the test asserting it is *not* used; every `ConnectHandler(` site passes the
+    strict kwargs; the single `paramiko.SSHClient()` site uses the verifying
+    policy; nothing sets `ssh_strict=False`/`StrictHostKeyChecking=no`; the only
+    raw `paramiko.Transport` is the credential-free probe inside the
+    verification module itself.
+  - **Operational docs**: `docs/SSH_HOST_KEY_VERIFICATION.md` (key-change
+    remediation, pre-provisioning for `strict`, migration path, what operators
+    see) and `.env.example`.
+  - **Residual risk**: `tofu` still trusts the *first* contact with a device — an
+    attacker already in position before a device is first audited would have
+    their key pinned. Mitigation is documented: verify the logged fingerprints
+    out of band, then move the deployment to `SSH_HOST_KEY_POLICY=strict`.
 
 ---
 
