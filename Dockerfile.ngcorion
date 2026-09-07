@@ -14,6 +14,15 @@ RUN pip install --no-cache-dir uv -i https://mirror-pypi.runflare.com/simple
 # and reject every zone ("not a known zone under /usr/share/zoneinfo") --
 # there is no systemd in the container for timedatectl to reach either.
 RUN apt-get update && apt-get install -y procps nmap tzdata && rm -rf /var/lib/apt/lists/*
+
+# Unprivileged runtime account (security checklist item 2.2). A fixed numeric
+# UID/GID is deliberate: the deployment host has to chown the bind-mounted paths
+# this user writes, and that is only reproducible with a stable number.
+# The build itself still runs as root; each target drops to this user at the end.
+RUN groupadd --gid 10001 ngcorion \
+    && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/ngcorion \
+       --shell /usr/sbin/nologin ngcorion
+
 FROM base AS development
 
 COPY pyproject.toml uv.lock ./
@@ -26,6 +35,19 @@ EXPOSE 8000
 
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
+
+# Drop to the unprivileged account. Only the paths the runtime actually writes
+# are handed over: the virtualenv (`uv run` re-syncs it when the bind-mounted
+# pyproject.toml/uv.lock differ from the baked-in ones) and the working
+# directory itself. Source files stay root-owned and world-readable, so the app
+# can read but not rewrite its own code.
+ENV HOME=/home/ngcorion \
+    UV_CACHE_DIR=/home/ngcorion/.cache/uv
+RUN mkdir -p /home/ngcorion/.cache/uv \
+    && chown -R 10001:10001 /app/.venv /home/ngcorion \
+    && chown 10001:10001 /app
+USER 10001:10001
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
@@ -41,5 +63,14 @@ EXPOSE 8000
 
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
+
+# Drop to the unprivileged account — see the development target for the rationale.
+ENV HOME=/home/ngcorion \
+    UV_CACHE_DIR=/home/ngcorion/.cache/uv
+RUN mkdir -p /home/ngcorion/.cache/uv \
+    && chown -R 10001:10001 /app/.venv /home/ngcorion \
+    && chown 10001:10001 /app
+USER 10001:10001
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
