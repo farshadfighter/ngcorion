@@ -543,3 +543,40 @@
 .ov-state-error {
     color: #DC2626;
 }
+
+/* ── Risk severity chips ─────────────────────────────────────────────────────
+   The dashboard tables show Risk Score and Risk Level, and both must read as
+   the same severity. .risk-level-badge / .risk-muted live in RiskAsset.css,
+   which this page does not import, so RiskLevelBadge rendered here with its
+   inline colours but none of its pill shape. Mirrored (not imported) to keep
+   the two pages' stylesheets independent — the colours themselves come from
+   RISK_LEVEL_BADGES in riskConstants.js, so they cannot drift. */
+.risk-level-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: #E5E7EB;
+    color: #374151;
+}
+
+.risk-muted {
+    color: #9AA5B5;
+}
+
+/* The score in the same tint as its level, so a row reads as one severity.
+   Deliberately squarer and narrower than the level pill: the number is a
+   measurement, the level is a label, and they should not look interchangeable. */
+.ov-risk-score {
+    display: inline-block;
+    min-width: 38px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    background: #E5E7EB;
+    color: #374151;
+}
