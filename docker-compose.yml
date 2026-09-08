@@ -68,7 +68,23 @@ services:
       - ./front/dist:/app/front/dist:ro
       - ./pyproject.toml:/app/pyproject.toml
       - ./uv.lock:/app/uv.lock
-      - license_client_data:/root/.license
+      # License activation data (Fernet key + encrypted license/state files).
+      # Moved off /root/.license for item 2.2: the backend no longer runs as
+      # root, and /root is 0700 root-owned, so the old mount point was
+      # unreachable for UID 10001. The volume itself is unchanged — same name,
+      # same contents, new mount point — and LICENSE_STORAGE_DIR below points
+      # the app at it.
+      #
+      # MIGRATING AN EXISTING DEPLOYMENT: the files already in this volume were
+      # written by root with mode 0600, so UID 10001 cannot read them and the
+      # app would come up unlicensed. Hand them over once, on the deployment
+      # host, while the stack is down:
+      #   docker run --rm -v license_client_data:/v alpine \
+      #     chown -R 10001:10001 /v
+      # A fresh install needs no such step: Docker seeds an empty volume from
+      # the image directory, which Dockerfile.ngcorion already creates owned by
+      # 10001.
+      - license_client_data:/var/lib/ngcorion/license
       - /etc/snmp:/etc/snmp
       - /etc/rsyslog.d:/etc/rsyslog.d
       - /etc/systemd/timesyncd.conf:/etc/systemd/timesyncd.conf
@@ -95,6 +111,12 @@ services:
       # The path is inside the container; ./traefik/certs is already mounted at
       # /app/traefik/certs below, so drop license-server.crt in there.
       LICENSE_SERVER_CA_BUNDLE: ${LICENSE_SERVER_CA_BUNDLE:-}
+      # Where the license key/state files live inside the container. Set
+      # explicitly rather than left to the "~/.license" default: the backend now
+      # runs as UID 10001, whose home is /home/ngcorion, so "~" would silently
+      # resolve to a path that is NOT the mounted volume and the app would come
+      # up unlicensed. Must match the license_client_data mount point above.
+      LICENSE_STORAGE_DIR: /var/lib/ngcorion/license
     expose:
       - "8000"
     depends_on:
