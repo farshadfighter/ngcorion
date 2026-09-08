@@ -11,6 +11,7 @@ import {
     riskFromSecurityScore,
 } from "./overviewMetrics";
 import { RiskLevelBadge } from "../Risk/RiskLevelBadge";
+import { RiskScoreBadge } from "./RiskScoreBadge";
 import "../../assets/OverviewDashboard.css";
 
 const fmt = (value) =>
@@ -241,7 +242,12 @@ const TopRiskyAssets = ({ items }) => (
                             <td>{dash(row.zone_name)}</td>
                             <td>{dash(row.vendor)}</td>
                             <td>{dash(row.model)}</td>
-                            <td>{dash(row.final_risk_score)}</td>
+                            <td>
+                                <RiskScoreBadge
+                                    score={row.final_risk_score}
+                                    level={row.risk_level}
+                                />
+                            </td>
                             <td>
                                 <RiskLevelBadge level={row.risk_level} />
                             </td>
@@ -285,7 +291,12 @@ const AssetsRequiringAttention = ({ items }) => {
                         {rows.map((row) => (
                             <tr key={row.asset_id}>
                                 <td>{dash(row.asset_name)}</td>
-                                <td>{dash(row.final_risk_score)}</td>
+                                <td>
+                                <RiskScoreBadge
+                                    score={row.final_risk_score}
+                                    level={row.risk_level}
+                                />
+                            </td>
                                 <td>
                                     <RiskLevelBadge level={row.risk_level} />
                                 </td>
