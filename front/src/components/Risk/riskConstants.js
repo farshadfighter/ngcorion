@@ -40,6 +40,31 @@ export const RISK_LEVEL_BADGES = {
 export const RISK_LEVEL_ORDER = ["informational", "low", "medium", "high", "critical"];
 
 /**
+ * A raw 0-100 score -> its risk level, mirroring
+ * app/modules/risk/levels.py::risk_level_for_score and the DEFAULT_THRESHOLDS
+ * beside it (21/41/61/81, inclusive lower bounds, evaluated highest first).
+ *
+ * Used to colour the component score boxes on the asset detail page, which
+ * carry a number but no level of their own. Keep in step with the backend: it
+ * is the source of truth, and these bands are its defaults.
+ */
+export const levelForScore = (score) => {
+    const value = Number(score);
+    if (!Number.isFinite(value)) return null;
+    if (value >= 81) return "critical";
+    if (value >= 61) return "high";
+    if (value >= 41) return "medium";
+    if (value >= 21) return "low";
+    return "informational";
+};
+
+/** Badge colours for a raw score, or null when it is not a number. */
+export const badgeForScore = (score) => {
+    const level = levelForScore(score);
+    return level ? RISK_LEVEL_BADGES[level] : null;
+};
+
+/**
  * Slice colours for the charts whose categories carry no severity (zone,
  * confidentiality). Picked to stay distinguishable side by side: the previous
  * set held four near-identical teals/greens (#27E7B8, #26AD85, #35ECB5,

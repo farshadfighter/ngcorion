@@ -1,6 +1,6 @@
 import React from "react";
 
-import { orDash, titleCase } from "../riskConstants";
+import { orDash, titleCase, badgeForScore } from "../riskConstants";
 
 /**
  * "Criticality, Confidentiality & Zone": the three asset-derived inputs to the
@@ -16,6 +16,21 @@ import { orDash, titleCase } from "../riskConstants";
  * the asset field that feeds Asset Risk (AR), the 20%-weighted factor that
  * previously had nowhere on this page at all.
  */
+/* Each box holds a raw 0-100 component score, so its colour comes from the band
+   that score falls in (badgeForScore) rather than the asset's overall level —
+   a Zone scoring 80 is "high" even when the asset as a whole lands elsewhere. */
+const ScoreBox = ({ score }) => {
+    const colors = badgeForScore(score);
+    return (
+        <span
+            className="ard-score-box"
+            style={colors ? { background: colors.bg, color: colors.fg } : undefined}
+        >
+            {score ?? "-"}
+        </span>
+    );
+};
+
 const Cell = ({ heading, score, label }) => (
     <div className="ard-cz-col">
         <div className="ard-cz-head">
@@ -23,7 +38,7 @@ const Cell = ({ heading, score, label }) => (
             <span>{heading}</span>
         </div>
         <div className="ard-cz-row">
-            <span className="ard-score-box">{score ?? "-"}</span>
+            <ScoreBox score={score} />
             <span>{label ? titleCase(label) : "-"}</span>
         </div>
     </div>
@@ -51,7 +66,7 @@ export const ConfidentialityZone = ({ asset, score }) => (
                     <span>Zone</span>
                 </div>
                 <div className="ard-cz-row">
-                    <span className="ard-score-box">{score?.zone_score ?? "-"}</span>
+                    <ScoreBox score={score?.zone_score} />
                     <span>{orDash(score?.zone_name)}</span>
                 </div>
             </div>
