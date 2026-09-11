@@ -50,7 +50,7 @@ services:
     # Stated here as well as in the image so the UID is visible where the host
     # bind mounts are declared — those paths must be owned by 10001 on the
     # deployment host for the features that write them to keep working.
-    user: root
+    user: "10001:10001"
     cap_add:
       # Kept for the manual-clock apply path (`date -s` in
       # system_config/service.py). NOTE: it is currently INERT — a non-root
@@ -58,7 +58,6 @@ services:
       # the bounding set, ready for the file-capability step that has not been
       # implemented yet.
       - SYS_TIME
-      - NET_ADMIN
       # NET_ADMIN removed: it had no consumer anywhere in the codebase. Every
       # iptables/ip-link reference is a remote command string sent over SSH to
       # an audited device (app/modules/linux/audit/audit_commands.py), not a

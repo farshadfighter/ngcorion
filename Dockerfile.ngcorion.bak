@@ -19,6 +19,9 @@ RUN apt-get update && apt-get install -y procps nmap tzdata && rm -rf /var/lib/a
 # UID/GID is deliberate: the deployment host has to chown the bind-mounted paths
 # this user writes, and that is only reproducible with a stable number.
 # The build itself still runs as root; each target drops to this user at the end.
+RUN groupadd --gid 10001 ngcorion \
+    && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/ngcorion \
+       --shell /usr/sbin/nologin ngcorion
 
 FROM base AS development
 
@@ -38,7 +41,13 @@ RUN chmod +x /app/entrypoint.sh
 # pyproject.toml/uv.lock differ from the baked-in ones) and the working
 # directory itself. Source files stay root-owned and world-readable, so the app
 # can read but not rewrite its own code.
-RUN mkdir -p /var/lib/ngcorion/license
+ENV HOME=/home/ngcorion \
+    UV_CACHE_DIR=/home/ngcorion/.cache/uv
+RUN mkdir -p /home/ngcorion/.cache/uv /var/lib/ngcorion/license \
+    && chown -R 10001:10001 /app/.venv /home/ngcorion /var/lib/ngcorion \
+    && chown 10001:10001 /app
+USER 10001:10001
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
@@ -55,7 +64,13 @@ EXPOSE 8000
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
 
-RUN mkdir -p /var/lib/ngcorion/license
+# Drop to the unprivileged account — see the development target for the rationale.
+ENV HOME=/home/ngcorion \
+    UV_CACHE_DIR=/home/ngcorion/.cache/uv
+RUN mkdir -p /home/ngcorion/.cache/uv /var/lib/ngcorion/license \
+    && chown -R 10001:10001 /app/.venv /home/ngcorion /var/lib/ngcorion \
+    && chown 10001:10001 /app
+USER 10001:10001
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
