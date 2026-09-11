@@ -166,9 +166,6 @@ class SSHHostKeyMismatchError(SSHHostKeyError):
         ]
 
 
-# --------------------------------------------------------------------------- #
-#  Fingerprints and entry names                                               #
-# --------------------------------------------------------------------------- #
 
 def key_fingerprint(key: paramiko.PKey) -> str:
     """OpenSSH-style ``SHA256:...`` fingerprint, for logs and operator checks."""
@@ -206,10 +203,6 @@ def split_entry_name(name: str, default_port: int = SSH_DEFAULT_PORT) -> Tuple[s
             return host, int(port)
     return name, int(default_port)
 
-
-# --------------------------------------------------------------------------- #
-#  Store location and policy mode                                             #
-# --------------------------------------------------------------------------- #
 
 def resolve_store_path() -> Path:
     """
@@ -258,9 +251,6 @@ def policy_mode() -> HostKeyPolicyMode:
         return HostKeyPolicyMode.STRICT
 
 
-# --------------------------------------------------------------------------- #
-#  Known-hosts store                                                          #
-# --------------------------------------------------------------------------- #
 
 class VerificationResult(str, Enum):
     MATCH = "match"
@@ -282,7 +272,6 @@ class KnownHostsStore:
         self.path = Path(path)
         self._lock = threading.RLock()
 
-    # -- low-level file access -------------------------------------------- #
 
     def _load_unlocked(self) -> paramiko.HostKeys:
         keys = paramiko.HostKeys()
@@ -308,7 +297,7 @@ class KnownHostsStore:
     def _ensure_parent(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    # -- public API -------------------------------------------------------- #
+
 
     def lookup(self, host: str, port: int = SSH_DEFAULT_PORT):
         """Return the stored keys for a host, or ``None`` when unknown."""
@@ -446,9 +435,6 @@ def forget_host(host: str, port: int = SSH_DEFAULT_PORT) -> bool:
     return get_store().forget(host, port)
 
 
-# --------------------------------------------------------------------------- #
-#  Shared decision logic                                                      #
-# --------------------------------------------------------------------------- #
 
 def evaluate_host_key(host: str, port: int, key: paramiko.PKey) -> None:
     """
@@ -493,9 +479,6 @@ def evaluate_host_key(host: str, port: int, key: paramiko.PKey) -> None:
     )
 
 
-# --------------------------------------------------------------------------- #
-#  paramiko integration                                                       #
-# --------------------------------------------------------------------------- #
 
 class VerifyingHostKeyPolicy(paramiko.MissingHostKeyPolicy):
     """
@@ -519,9 +502,6 @@ class VerifyingHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         evaluate_host_key(host, port, key)
 
 
-# --------------------------------------------------------------------------- #
-#  netmiko integration                                                        #
-# --------------------------------------------------------------------------- #
 
 def netmiko_host_key_kwargs() -> dict:
     """

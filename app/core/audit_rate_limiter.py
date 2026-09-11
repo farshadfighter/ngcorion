@@ -10,14 +10,6 @@ from sqlalchemy.orm import Session
 from app.models import AuditSession
 
 class AuditRateLimiter:
-    """
-    Rate limiting service for audit and hardening operations
-
-    Implements limits to prevent:
-    1. Resource exhaustion (too many concurrent SSH connections)
-    2. API abuse (excessive audit requests)
-    3. Network flooding (too many device connections)
-    """
 
     # Configuration - can be overridden via environment variables
     MAX_CONCURRENT_AUDITS = 5  # Max concurrent audit operations per user

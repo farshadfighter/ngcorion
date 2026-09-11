@@ -9,9 +9,6 @@ from typing import Optional, List
 from app.models.user_permission import ModuleEnum
 
 
-# ====================================
-# Shared validators
-# ====================================
 
 def validate_password_strength(v: str) -> str:
     """
@@ -33,9 +30,6 @@ def validate_password_strength(v: str) -> str:
     return v
 
 
-# ====================================
-# Permission Schemas
-# ====================================
 
 class PermissionBase(BaseModel):
     """Base schema for a single permission"""
@@ -57,10 +51,6 @@ class PermissionResponse(PermissionBase):
     class Config:
         from_attributes = True
 
-
-# ====================================
-# User Schemas
-# ====================================
 
 class UserBase(BaseModel):
     """Base user schema"""
@@ -148,10 +138,6 @@ class UserListResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ====================================
-# Available Modules (for frontend)
-# ====================================
 
 class ModuleInfo(BaseModel):
     """Information about available modules"""

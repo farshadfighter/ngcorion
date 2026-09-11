@@ -20,9 +20,6 @@ import re
 from typing import List, Dict, Any, Callable
 from dataclasses import dataclass, field
 
-
-# ========================= RULE DATACLASS =========================
-
 @dataclass
 class ApacheCISRule:
     """Represents a single Apache CIS compliance check."""
@@ -40,7 +37,7 @@ class ApacheCISRule:
     manual: bool = False             # Manual controls are reported SKIPPED, never scored
 
 
-# ========================= SEVERITY WEIGHTS =========================
+
 
 SEVERITY_WEIGHT = {
     "high": 3,
@@ -50,7 +47,7 @@ SEVERITY_WEIGHT = {
 }
 
 
-# ========================= HELPER FUNCTIONS =========================
+
 
 def _get_output(data: Dict[str, str], key: str) -> str:
     """Get command output from data dict, handling errors."""

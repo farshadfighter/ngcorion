@@ -33,9 +33,6 @@ class AssetLocation(Base):
     
     __tablename__ = "asset_locations"
     
-    # ====================================
-    # Primary Key
-    # ====================================
     
     id = Column(
         Integer,
@@ -43,10 +40,7 @@ class AssetLocation(Base):
         autoincrement=True,
         comment="Unique identifier for location"
     )
-    
-    # ====================================
-    # Physical Location Information
-    # ====================================
+
     
     site_name = Column(
         String(200),
@@ -79,9 +73,6 @@ class AssetLocation(Base):
         comment="Unit number or label within the floor/room (e.g., Unit-3, Bay-12)"
     )
 
-    # ====================================
-    # Additional Information
-    # ====================================
 
     description = Column(
         Text,
@@ -89,9 +80,7 @@ class AssetLocation(Base):
         comment="Additional notes or description about this location"
     )
     
-    # ====================================
-    # Foreign Key - User Ownership
-    # ====================================
+
     
     user_id = Column(
         Integer,
@@ -101,9 +90,7 @@ class AssetLocation(Base):
         comment="Reference to users table - determines which user owns this location record"
     )
     
-    # ====================================
-    # Relationships
-    # ====================================
+
     
     user = relationship(
         "User",
@@ -113,10 +100,7 @@ class AssetLocation(Base):
     # Note: Relationship with Asset will be defined in asset.py
     # assets = relationship("Asset", backref="location")
     
-    
-    # ====================================
-    # Helper Methods
-    # ====================================
+
     
     def __repr__(self):
         return f"<AssetLocation(id={self.id}, site='{self.site_name}', rack='{self.rack_name}')>"
@@ -156,9 +140,7 @@ class AssetLocation(Base):
         return " - ".join(parts) if parts else "Unknown Location"
 
 
-# ====================================
-# Detailed Explanation:
-# ====================================
+
 """
 1. Physical vs Logical Location
    =============================

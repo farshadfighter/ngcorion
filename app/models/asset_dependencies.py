@@ -40,9 +40,6 @@ class AssetDependency(Base):
     
     __tablename__ = "asset_dependencies"
     
-    # ====================================
-    # Primary Key
-    # ====================================
     
     id = Column(
         Integer,
@@ -50,10 +47,6 @@ class AssetDependency(Base):
         autoincrement=True,
         comment="Unique identifier for dependency record"
     )
-    
-    # ====================================
-    # Foreign Keys - Asset References
-    # ====================================
     
     asset_id = Column(
         Integer,
@@ -70,10 +63,7 @@ class AssetDependency(Base):
         index=True,
         comment="The asset that is depended upon (dependency target)"
     )
-    
-    # ====================================
-    # Relationship Type
-    # ====================================
+
     
     relation_type = Column(
         Enum(RelationTypeEnum),
@@ -81,21 +71,14 @@ class AssetDependency(Base):
         index=True,
         comment="Type of relationship (network_link, app_dependency, backup_link, power_source, logical_connection)"
     )
-    
-    # ====================================
-    # Additional Information
-    # ====================================
-    
+
     description = Column(
         Text,
         nullable=True,
         comment="Additional notes or details about this dependency"
     )
     
-    # ====================================
-    # Relationships
-    # ====================================
-    
+
     # Forward relationship: dependency -> asset
     asset = relationship(
         "Asset",
@@ -110,11 +93,7 @@ class AssetDependency(Base):
         backref=backref("dependents", passive_deletes=True)
     )
     
-    
-    # ====================================
-    # Helper Methods
-    # ====================================
-    
+
     def __repr__(self):
         return f"<AssetDependency(id={self.id}, asset={self.asset_id}, depends_on={self.depends_on_id}, type={self.relation_type.value})>"
     
@@ -136,9 +115,6 @@ class AssetDependency(Base):
         return f"{asset_name} depends on {depends_name} via {self.relation_type.value}"
 
 
-# ====================================
-# Detailed Explanation:
-# ====================================
 """
 1. What is a dependency?
    =====================

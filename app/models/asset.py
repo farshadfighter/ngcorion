@@ -46,21 +46,14 @@ class Asset(Base):
     
     __tablename__ = "asset_inventory"
     
-    # ====================================
-    # Primary Key
-    # ====================================
-    
+
     id = Column(
         Integer,
         primary_key=True,
         autoincrement=True,
         comment="Unique identifier (asset_id in forms)"
     )
-    
-    # ====================================
-    # Page 1: Basic Information
-    # ====================================
-    
+
     asset_name = Column(
         String(200),
         nullable=False,
@@ -101,10 +94,7 @@ class Asset(Base):
         nullable=True,
         comment="Model name or number (e.g., Catalyst 9300, ProLiant DL380)"
     )
-    
-    # ====================================
-    # Page 2: Technical Details
-    # ====================================
+
     
     serial_number = Column(
         String(200),
@@ -141,10 +131,7 @@ class Asset(Base):
         comment="MAC address (e.g., 00:11:22:33:44:55)"
     )
     
-    # ====================================
-    # Page 3: Location & Ownership
-    # ====================================
-    
+
     location_id = Column(
         Integer,
         ForeignKey('asset_locations.id', ondelete='SET NULL'),
@@ -169,10 +156,7 @@ class Asset(Base):
         comment="Asset status (active, standby, decommissioned, unknown)"
     )
     
-    # ====================================
-    # Page 5: Security, Risk & Audit
-    # ====================================
-    
+
     confidentiality_level = Column(
         Enum(ConfidentialityLevelEnum),
         nullable=True,
@@ -217,9 +201,7 @@ class Asset(Base):
         comment="Fields populated by auto-discovery (JSON: {field_name: true})"
     )
     
-    # ====================================
-    # User Ownership (Data Isolation)
-    # ====================================
+
     
     user_id = Column(
         Integer,
@@ -228,10 +210,7 @@ class Asset(Base):
         index=True,
         comment="FK to users - determines which user owns this asset"
     )
-    
-    # ====================================
-    # Timestamps
-    # ====================================
+
     
     created_at = Column(
         DateTime,
@@ -247,10 +226,7 @@ class Asset(Base):
         nullable=False,
         comment="Last update timestamp"
     )
-    
-    # ====================================
-    # Relationships
-    # ====================================
+
     
     # Relationship to User
     user = relationship(
@@ -291,9 +267,7 @@ class Asset(Base):
     # are defined in those models using backref
     
     
-    # ====================================
-    # Helper Methods
-    # ====================================
+
     
     def __repr__(self) -> str:
         """Developer-friendly representation: <Asset(id=1, name='...', type='...')>"""
@@ -404,9 +378,6 @@ class Asset(Base):
         days_since_patch = (date.today() - self.last_patch_date).days
         return days_since_patch > days_threshold
 
-    # ====================================
-    # Validation Methods
-    # ====================================
 
     @staticmethod
     def validate_ip_address(ip_addr: str) -> bool:
@@ -439,10 +410,6 @@ class Asset(Base):
         if not self.mac_address:
             return True
         return self.validate_mac_address(self.mac_address)
-
-    # ====================================
-    # Computed Properties
-    # ====================================
 
     @property
     def full_os_string(self) -> Optional[str]:
@@ -500,9 +467,7 @@ class Asset(Base):
             return None
         return (date.today() - self.last_patch_date).days
 
-    # ====================================
-    # Discovery Helper Methods
-    # ====================================
+
 
     def mark_field_discovered(self, field_name: str) -> None:
         """Mark a field as populated by auto-discovery."""
@@ -522,9 +487,7 @@ class Asset(Base):
             return []
         return [field for field, discovered in self.discovered_fields.items() if discovered]
 
-    # ====================================
-    # Serialization Methods
-    # ====================================
+
 
     def to_dict(self, include_relationships: bool = True) -> Dict[str, Any]:
         """Convert asset to dictionary. Set include_relationships=False for IDs only."""
@@ -581,9 +544,7 @@ class Asset(Base):
             'risk_level': self.risk_level.value if self.risk_level else None,
         }
 
-    # ====================================
-    # Comparison and Utility Methods
-    # ====================================
+
 
     def __eq__(self, other: object) -> bool:
         """Compare assets by ID."""
@@ -624,41 +585,3 @@ class Asset(Base):
             'age_days': self.age_days,
         }
 
-
-# ====================================
-# Usage Guide
-# ====================================
-"""
-FOREIGN KEY STRATEGIES:
-- asset_type_id: RESTRICT (prevent deletion if assets exist)
-- location_id, owner_id: SET NULL (preserve asset if deleted)
-- user_id: CASCADE (delete user's assets with user)
-
-KEY FEATURES:
-- View methods: get_overview(), get_network_system(), get_location_ownership(), get_security_risk_audit()
-- Validation: validate_ip_address(), validate_mac_address(), is_ip_valid(), is_mac_valid()
-- Properties: full_os_string, is_high_risk, is_critical, age_days, days_since_audit, days_since_patch
-- Maintenance: needs_audit(), needs_patching(), get_maintenance_status(), get_security_summary()
-- Discovery: mark_field_discovered(), is_field_discovered(), get_discovered_fields()
-- Serialization: to_dict(), to_json_safe()
-
-BASIC USAGE:
-    # Create asset
-    asset = Asset(asset_name="Core-Switch-01", asset_type_id=3, user_id=1, ...)
-    db.add(asset)
-    db.commit()
-
-    # Query user's assets
-    assets = db.query(Asset).filter(Asset.user_id == current_user_id).all()
-
-    # Get view data
-    overview_data = [asset.get_overview() for asset in assets]
-
-    # Check maintenance
-    if asset.needs_audit() or asset.needs_patching():
-        print("Maintenance required")
-
-    # Validate and serialize
-    if asset.is_ip_valid():
-        return asset.to_json_safe()
-"""

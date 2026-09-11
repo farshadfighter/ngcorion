@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 
-# ========================= AUDIT SCHEMAS =========================
+
 
 class AuditSessionResponse(BaseModel):
     """Unified audit session response for all device types."""
@@ -45,8 +45,6 @@ class AuditResultResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ========================= HARDENING SCHEMAS =========================
 
 class HardeningPreviewResponse(BaseModel):
     """Unified hardening preview response."""
@@ -93,7 +91,7 @@ class HardeningActionResponse(BaseModel):
         from_attributes = True
 
 
-# ========================= BATCH/AUTO HARDENING SCHEMAS =========================
+
 
 class BatchExecuteResponse(BaseModel):
     """Unified batch execution response."""

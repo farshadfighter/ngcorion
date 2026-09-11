@@ -96,9 +96,6 @@ def _protocol(db) -> Protocol:
     return row
 
 
-# ======================================================================
-# The delete itself
-# ======================================================================
 
 def test_delete_removes_the_asset(db, asset):
     asset_id = asset.id

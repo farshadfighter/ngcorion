@@ -22,8 +22,6 @@ from app.models.audit import AuditSession, AuditResult, CheckStatus, DeviceType
 router = APIRouter(prefix="/api/audit", tags=["Audit - Shared"])
 
 
-# ========================= RESPONSE SCHEMAS =========================
-
 
 class SharedAuditSessionResponse(BaseModel):
     session_id: int
@@ -58,8 +56,6 @@ class SharedAuditResultResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ========================= HELPERS =========================
 
 
 def _build_session_response(db: Session, session: AuditSession) -> dict:
@@ -97,7 +93,6 @@ def _build_session_response(db: Session, session: AuditSession) -> dict:
     }
 
 
-# ========================= ENDPOINTS =========================
 
 
 @router.get("/sessions/{session_id}", response_model=SharedAuditSessionResponse)

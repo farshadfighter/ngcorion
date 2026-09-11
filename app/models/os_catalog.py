@@ -34,9 +34,7 @@ class OSCatalog(Base):
     
     __tablename__ = "os_catalog"
     
-    # ====================================
-    # Columns
-    # ====================================
+
     
     id = Column(
         Integer,
@@ -71,10 +69,7 @@ class OSCatalog(Base):
         comment="Additional information about this OS"
     )
     
-    
-    # ====================================
-    # Helper Methods
-    # ====================================
+
     
     def __repr__(self):
         return f"<OSCatalog(id={self.id}, name='{self.os_name}', version='{self.os_version}')>"
@@ -100,80 +95,3 @@ class OSCatalog(Base):
         if self.os_version:
             parts.append(self.os_version)
         return " ".join(parts)
-
-
-# ====================================
-# Detailed Explanation:
-# ====================================
-"""
-1. Why separate os_name and os_version?
-   ====================================
-   Allows flexible searching and grouping:
-   
-   Query examples:
-   - All Windows versions: filter by os_name="Windows Server"
-   - Specific version: filter by os_version="2019"
-   - By family: filter by os_family="Windows"
-
-
-2. OS Family categories:
-   =====================
-   - Windows: Windows Server, Windows 10
-   - Linux: Ubuntu, CentOS, RHEL
-   - Network OS: FortiOS, Cisco IOS, PAN-OS
-   - Unix: FreeBSD, Solaris
-   - Virtualization: VMware ESXi, Proxmox
-
-
-3. Default data to insert:
-   =======================
-   INSERT INTO os_catalog (os_name, os_version, os_family) VALUES
-   ('Windows Server', '2019', 'Windows'),
-   ('Windows Server', '2022', 'Windows'),
-   ('Ubuntu', '22.04 LTS', 'Linux'),
-   ('Ubuntu', '20.04 LTS', 'Linux'),
-   ('CentOS', '8', 'Linux'),
-   ('FortiOS', '7.2', 'Network OS'),
-   ('Cisco IOS-XE', '17.9', 'Network OS'),
-   ('PAN-OS', '11.0', 'Network OS'),
-   ('VMware ESXi', '7.0', 'Virtualization');
-
-
-4. Usage in asset_inventory:
-   ==========================
-   Two approaches:
-   
-   Approach A - Direct strings (current):
-   asset.os_name = "Windows Server"
-   asset.os_version = "2019"
-   
-   Approach B - Foreign Key (more structured):
-   asset.os_id = 1  # References os_catalog.id
-   
-   Current implementation uses direct strings for flexibility
-
-
-5. Practical example:
-   ==================
-   # Get all Linux OS
-   linux_os = db.query(OSCatalog).filter(
-       OSCatalog.os_family == 'Linux'
-   ).all()
-   
-   for os in linux_os:
-       print(os.get_full_name())
-   
-   # Output:
-   # Ubuntu 22.04 LTS
-   # Ubuntu 20.04 LTS
-   # CentOS 8
-   
-   
-   # Search for specific version
-   win2019 = db.query(OSCatalog).filter(
-       OSCatalog.os_name == 'Windows Server',
-       OSCatalog.os_version == '2019'
-   ).first()
-   
-   print(win2019)  # Windows Server 2019
-"""

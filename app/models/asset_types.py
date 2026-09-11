@@ -34,9 +34,6 @@ class AssetType(Base):
 
     __tablename__ = "asset_types"
 
-    # ====================================
-    # Columns
-    # ====================================
 
     id = Column(
         Integer,
@@ -67,9 +64,7 @@ class AssetType(Base):
     )
 
 
-    # ====================================
-    # Helper Methods for Display
-    # ====================================
+
 
     def __repr__(self):
         """Readable representation for debugging"""
