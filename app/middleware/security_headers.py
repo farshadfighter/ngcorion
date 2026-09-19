@@ -22,7 +22,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Content-Security-Policy",
             "default-src 'self'; img-src 'self' data:; "
             "style-src 'self' 'unsafe-inline'; script-src 'self'; "
-            "connect-src 'self'; frame-ancestors 'none'",
+            "connect-src 'self'; frame-ancestors 'none'; "
+            # base-uri and form-action do NOT fall back to default-src (unlike
+            # script-src/style-src/etc.) - left unset they are unrestricted, so an
+            # injected <base href> could rewrite every relative URL on the page,
+            # or an injected <form> could submit credentials to an attacker's
+            # origin. object-src 'none' closes the legacy plugin/Flash XSS vector.
+            "base-uri 'self'; form-action 'self'; object-src 'none'",
         )
 
         if request.url.scheme == "https":
@@ -30,5 +36,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "Strict-Transport-Security",
                 "max-age=63072000; includeSubDomains",
             )
+
+        # ASVS V14.4.2: sensitive API/auth responses must not be cached by
+        # browsers or intermediate proxies. Scoped to /api/ and /auth/ only -
+        # the SPA bundle and /static/ assets are hashed, static, and meant to be
+        # cached for performance.
+        path = request.url.path
+        if path.startswith("/api/") or path.startswith("/auth/"):
+            headers.setdefault("Cache-Control", "no-store")
+            headers.setdefault("Pragma", "no-cache")
 
         return response
