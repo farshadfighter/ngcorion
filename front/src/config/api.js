@@ -2,11 +2,17 @@ import axios from 'axios';
 
 const API_BASE_URL = '';
 
+// No default Content-Type header here on purpose. Axios already sets
+// 'application/json' automatically for a plain object body, and - critically -
+// only sets the correct 'multipart/form-data; boundary=...' header for a
+// FormData body when Content-Type isn't already present in the request
+// headers. A blanket 'application/json' default here silently overrode that
+// for every FormData upload (Asset List/Asset Requirement Excel import, TLS
+// certificate upload): the browser sent the file under a JSON Content-Type,
+// so the server never saw a 'file' field at all - it came back as a 422
+// "Field required".
 const api = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json'
-    }
 });
 
 // ==========================================
