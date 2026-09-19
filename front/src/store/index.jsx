@@ -14,6 +14,7 @@ import hardeningDashboardReducer from "./hardeningDashboardSlice.js";
 import systemConfigReducer from "./systemConfigSlice.js";
 import auditDashboardReducer from "./auditDashboardSlice.js";
 import overviewDashboardReducer from "./overviewDashboardSlice.js";
+import topologyReducer from "./topologySlice.jsx";
 
 
 export const store = configureStore({
@@ -33,5 +34,6 @@ export const store = configureStore({
         systemConfig: systemConfigReducer,
         auditDashboard: auditDashboardReducer,
         overviewDashboard: overviewDashboardReducer,
+        topology: topologyReducer,
     },
 });

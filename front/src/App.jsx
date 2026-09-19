@@ -27,6 +27,7 @@ import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
 import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDashboard";
 import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
 import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
+import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
 import {
     RequirePermission,
     AssetListRoute,
@@ -178,6 +179,13 @@ function AppContent() {
                         <Route path="/backup" element={
                             <RequirePermission module="backup" name="Configuration Backup">
                                 <BackupPage />
+                            </RequirePermission>
+                        } />
+
+                        {/* Network Design */}
+                        <Route path="/topology" element={
+                            <RequirePermission module="topology" name="Topology">
+                                <TopologyDashboard />
                             </RequirePermission>
                         } />
 

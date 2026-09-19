@@ -112,6 +112,15 @@ from app.models.hardening_log import (
 # Import backup model (depends on HardeningAction and Asset)
 from app.models.backup import DeviceBackup
 
+# Import topology models (depend on Asset and User)
+from app.models.topology import TopologyLink
+from app.models.topology_log import (
+    TopologyLog,
+    log_topology_link_created,
+    log_topology_link_updated,
+    log_topology_link_deleted,
+)
+
 # Import risk models (depend on User and Asset)
 from app.models.risk import (
     RiskSetting,
@@ -185,6 +194,12 @@ __all__ = [
     "HardeningAction",
     "HardeningLog",
     "DeviceBackup",
+    # Topology models
+    "TopologyLink",
+    "TopologyLog",
+    "log_topology_link_created",
+    "log_topology_link_updated",
+    "log_topology_link_deleted",
     # Risk models
     "RiskSetting",
     "RiskZone",

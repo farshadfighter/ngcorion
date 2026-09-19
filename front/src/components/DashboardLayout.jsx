@@ -25,6 +25,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/hardening/overview"))   return "hardening-overview";
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/backup"))               return "backup";
+    if (pathname.startsWith("/topology"))             return "topology";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -58,6 +59,7 @@ export const DashboardLayout = () => {
     const canReadLogs      = usePermission("logs",                 "read");
     const canReadBackup    = usePermission("backup",               "read");
     const canReadSysConfig = usePermission("system_config",        "read");
+    const canReadTopology  = usePermission("topology",             "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -112,6 +114,7 @@ export const DashboardLayout = () => {
         "risk-intelligence":   "Risk Intelligence",
         "risk-asset":          "Risk Asset",
         "backup":              "Configuration Backup",
+        "topology":            "Topology",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -205,6 +208,24 @@ export const DashboardLayout = () => {
                                  onClick={() => navigate("/hardening")} title="Operation and Device">
                                 {isSidebarCollapsed && <img src="/icons/hardening.svg" alt="" className="nav-icon-img" />}
                                 {!isSidebarCollapsed && <span>Operation & Device</span>}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── NETWORK DESIGN ── */}
+                    {canReadTopology && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "topology" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/topology")}>
+                                    <img src="/icons/topology.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">Network Design</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "topology" ? "active" : ""}`}
+                                 onClick={() => navigate("/topology")} title="Topology">
+                                {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Topology</span>}
                             </div>
                         </>
                     )}

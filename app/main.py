@@ -91,6 +91,9 @@ from app.modules.license.router import router as license_router
 # Import backup router
 from app.modules.backup.router import router as backup_router
 
+# Import topology router
+from app.modules.topology.router import router as topology_router
+
 # Import risk router
 from app.modules.risk.router import router as risk_router
 
@@ -379,6 +382,9 @@ app.include_router(license_router)
 
 # Backup routes
 app.include_router(backup_router)
+
+# Topology routes
+app.include_router(topology_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])

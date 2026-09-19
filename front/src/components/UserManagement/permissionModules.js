@@ -21,6 +21,11 @@ export const PERMISSION_MODULES = [
     { name: "system_config",        label: "System Config",     icon: "fa-solid fa-sliders" },
     { name: "logs",                 label: "System Log",        icon: "fa-solid fa-file-lines" },
     { name: "backup",               label: "Configuration Backup", icon: "fa-solid fa-database" },
+    { name: "topology",             label: "Topology",          icon: "fa-solid fa-diagram-project" },
+    { name: "architecture_validation", label: "Architecture Validation", icon: "fa-solid fa-clipboard-check" },
+    { name: "design_configuration", label: "Design & Configuration", icon: "fa-solid fa-drafting-compass" },
+    { name: "deployment",           label: "Deployment",        icon: "fa-solid fa-rocket" },
+    { name: "drift",                label: "Configuration Drift", icon: "fa-solid fa-arrows-split-up-and-left" },
 ];
 
 export default PERMISSION_MODULES;
