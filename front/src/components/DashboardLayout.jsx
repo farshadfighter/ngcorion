@@ -29,6 +29,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
     if (pathname.startsWith("/design-configuration/jobs")) return "design-configuration-jobs";
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
+    if (pathname.startsWith("/deployment"))           return "deployment";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -65,6 +66,7 @@ export const DashboardLayout = () => {
     const canReadTopology  = usePermission("topology",             "read");
     const canReadArchValidation = usePermission("architecture_validation", "read");
     const canReadDesignConfig = usePermission("design_configuration", "read");
+    const canReadDeployment = role === "admin" || role === "manager";
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -123,6 +125,7 @@ export const DashboardLayout = () => {
         "architecture-validation": "Architecture Validation",
         "design-configuration": "Design & Configuration",
         "design-configuration-jobs": "Configuration Jobs",
+        "deployment":          "Deployment",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -221,7 +224,7 @@ export const DashboardLayout = () => {
                     )}
 
                     {/* ── NETWORK DESIGN ── */}
-                    {(canReadTopology || canReadArchValidation || canReadDesignConfig) && (
+                    {(canReadTopology || canReadArchValidation || canReadDesignConfig || canReadDeployment) && (
                         <>
                             {!isSidebarCollapsed && (
                                 <div className="nav-section">
@@ -255,6 +258,13 @@ export const DashboardLayout = () => {
                                      onClick={() => navigate("/design-configuration/jobs")} title="Configuration Jobs">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Configuration Jobs</span>}
+                                </div>
+                            )}
+                            {canReadDeployment && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "deployment" ? "active" : ""}`}
+                                     onClick={() => navigate("/deployment/jobs")} title="Deployment">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Deployment</span>}
                                 </div>
                             )}
                         </>

@@ -18,6 +18,7 @@ import topologyReducer from "./topologySlice.jsx";
 import architectureValidationReducer from "./architectureValidationSlice.jsx";
 import designReducer from "./designSlice.jsx";
 import configurationReducer from "./configurationSlice.jsx";
+import deploymentReducer from "./deploymentSlice.jsx";
 
 
 export const store = configureStore({
@@ -41,5 +42,6 @@ export const store = configureStore({
         architectureValidation: architectureValidationReducer,
         design: designReducer,
         configuration: configurationReducer,
+        deployment: deploymentReducer,
     },
 });

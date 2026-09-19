@@ -136,6 +136,9 @@ from app.models.design import (
 # Import configuration models (depend on design models and Asset)
 from app.models.configuration import ConfigurationJob, ConfigurationObject
 
+# Import deployment models (depend on configuration models, Asset and DeviceBackup)
+from app.models.deployment import DeploymentJob
+
 # Import risk models (depend on User and Asset)
 from app.models.risk import (
     RiskSetting,
@@ -226,6 +229,8 @@ __all__ = [
     # Configuration models
     "ConfigurationJob",
     "ConfigurationObject",
+    # Deployment models
+    "DeploymentJob",
     # Risk models
     "RiskSetting",
     "RiskZone",

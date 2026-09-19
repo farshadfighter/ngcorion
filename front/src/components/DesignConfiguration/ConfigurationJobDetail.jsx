@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchConfigurationJobDetail, applyConfigurationObject, clearMessages } from "../../store/configurationSlice.jsx";
+import { createDeploymentJob } from "../../store/deploymentSlice.jsx";
 import "../../assets/DesignConfiguration.css";
 
 const STATUS_CLASS = { pending: "dc-status-draft", success: "dc-status-published", failed: "dc-status-failed" };
@@ -9,7 +10,10 @@ const STATUS_CLASS = { pending: "dc-status-draft", success: "dc-status-published
 export const ConfigurationJobDetail = () => {
     const { jobId } = useParams();
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { currentJob, isLoading, isApplying, error, successMessage } = useSelector((state) => state.configuration);
+    const { role } = useSelector((state) => state.auth);
+    const canDeploy = role === "admin" || role === "manager";
     const [applyingObject, setApplyingObject] = useState(null);
     const [expandedObject, setExpandedObject] = useState(null);
     const [creds, setCreds] = useState({ ssh_username: "", ssh_password: "", ssh_secret: "", ssh_port: 22 });
@@ -93,6 +97,20 @@ export const ConfigurationJobDetail = () => {
                                     >
                                         Apply
                                     </button>
+                                    {canDeploy && (
+                                        <button
+                                            className="dc-btn dc-btn-small"
+                                            onClick={() =>
+                                                dispatch(createDeploymentJob(obj.id)).then((action) => {
+                                                    if (action.payload?.id) navigate(`/deployment/jobs/${action.payload.id}`);
+                                                })
+                                            }
+                                            disabled={!["cisco", "fortinet"].includes(obj.device_type)}
+                                            title="Push with a precheck, pre-change backup and post-change verification"
+                                        >
+                                            Deploy Safely
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             {expandedObject === obj.id && <pre className="dc-config-pre">{obj.generated_config}</pre>}

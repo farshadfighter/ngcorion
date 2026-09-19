@@ -34,8 +34,11 @@ import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
 import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
 import { ConfigurationJobList } from "./components/DesignConfiguration/ConfigurationJobList";
 import { ConfigurationJobDetail } from "./components/DesignConfiguration/ConfigurationJobDetail";
+import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
+import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
 import {
     RequirePermission,
+    RequireRole,
     AssetListRoute,
     AutoDiscoveryRoute,
     HardeningRoute,
@@ -223,6 +226,16 @@ function AppContent() {
                             <RequirePermission module="design_configuration" name="Design & Configuration">
                                 <ConfigurationJobDetail />
                             </RequirePermission>
+                        } />
+                        <Route path="/deployment/jobs" element={
+                            <RequireRole roles={["admin", "manager"]} name="Deployment">
+                                <DeploymentJobList />
+                            </RequireRole>
+                        } />
+                        <Route path="/deployment/jobs/:jobId" element={
+                            <RequireRole roles={["admin", "manager"]} name="Deployment">
+                                <DeploymentJobDetail />
+                            </RequireRole>
                         } />
 
                         {/* System Settings */}
