@@ -1,0 +1,84 @@
+# Architecture Validation rules.
+#
+# Each rule's `condition` is a Python boolean expression evaluated against a
+# per-asset context (see service.py::build_asset_context for the available
+# names). A rule fires - producing a finding - when its condition is True.
+
+- code: AV-001
+  title: Asset has no IP address
+  severity: medium
+  category: inventory
+  condition: "not ip_address"
+  recommendation: "Set the asset's IP address so audits, hardening and topology can target it."
+
+- code: AV-002
+  title: Asset has no owner assigned
+  severity: low
+  category: inventory
+  condition: "not has_owner"
+  recommendation: "Assign an owner in Asset Management so there is a clear point of contact."
+
+- code: AV-003
+  title: Confidentiality level not classified
+  severity: low
+  category: inventory
+  condition: "not confidentiality_level"
+  recommendation: "Classify the asset's confidentiality level to drive risk scoring correctly."
+
+- code: AV-010
+  title: Asset has no topology links
+  severity: low
+  category: topology
+  condition: "topology_degree == 0"
+  recommendation: "Add this asset's cabling in Topology so it is represented in the network diagram."
+
+- code: AV-011
+  title: Asset has no redundant link
+  severity: medium
+  category: topology
+  condition: "topology_degree == 1"
+  recommendation: "A single link is a single point of failure - add a redundant path in Topology."
+
+- code: AV-012
+  title: Critical asset lacks redundancy
+  severity: high
+  category: topology
+  condition: "is_critical and topology_degree <= 1"
+  recommendation: "This asset is marked critical/high-risk but has no redundant link - prioritize adding one."
+
+- code: AV-020
+  title: Critical asset has no configuration backup
+  severity: high
+  category: resilience
+  condition: "is_critical and not has_backup"
+  recommendation: "Take a configuration backup for this asset (Configuration Backup) before its next change."
+
+- code: AV-021
+  title: Asset has never been audited
+  severity: medium
+  category: compliance
+  condition: "last_audit_status is None"
+  recommendation: "Run a security audit for this asset to establish a compliance baseline."
+
+- code: AV-022
+  title: Asset audit is stale
+  severity: low
+  category: compliance
+  condition: "days_since_audit is not None and days_since_audit > 90"
+  recommendation: "Re-run the audit - the last result is more than 90 days old."
+
+- code: AV-023
+  title: High-risk asset is active without a recent audit
+  severity: high
+  category: compliance
+  condition: >-
+    risk_level in ("high", "critical") and status == "active" and
+    (last_audit_status is None or (days_since_audit is not None and days_since_audit > 30))
+  recommendation: "This asset is high risk and active - audit it within 30 days."
+
+- code: AV-024
+  title: Last audit failed
+  severity: medium
+  category: compliance
+  condition: "last_audit_status == \"failed\""
+  recommendation: "The most recent audit run failed to complete - investigate and re-run it."

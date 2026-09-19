@@ -15,6 +15,7 @@ import systemConfigReducer from "./systemConfigSlice.js";
 import auditDashboardReducer from "./auditDashboardSlice.js";
 import overviewDashboardReducer from "./overviewDashboardSlice.js";
 import topologyReducer from "./topologySlice.jsx";
+import architectureValidationReducer from "./architectureValidationSlice.jsx";
 
 
 export const store = configureStore({
@@ -35,5 +36,6 @@ export const store = configureStore({
         auditDashboard: auditDashboardReducer,
         overviewDashboard: overviewDashboardReducer,
         topology: topologyReducer,
+        architectureValidation: architectureValidationReducer,
     },
 });

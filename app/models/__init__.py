@@ -121,6 +121,9 @@ from app.models.topology_log import (
     log_topology_link_deleted,
 )
 
+# Import architecture validation findings (depend on Asset and User)
+from app.models.architecture_finding import ArchitectureFinding
+
 # Import risk models (depend on User and Asset)
 from app.models.risk import (
     RiskSetting,
@@ -200,6 +203,8 @@ __all__ = [
     "log_topology_link_created",
     "log_topology_link_updated",
     "log_topology_link_deleted",
+    # Architecture Validation
+    "ArchitectureFinding",
     # Risk models
     "RiskSetting",
     "RiskZone",

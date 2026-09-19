@@ -28,6 +28,7 @@ import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDa
 import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
 import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
 import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
+import { ArchitectureValidationDashboard } from "./components/ArchitectureValidation/ArchitectureValidationDashboard";
 import {
     RequirePermission,
     AssetListRoute,
@@ -186,6 +187,11 @@ function AppContent() {
                         <Route path="/topology" element={
                             <RequirePermission module="topology" name="Topology">
                                 <TopologyDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/architecture-validation" element={
+                            <RequirePermission module="architecture_validation" name="Architecture Validation">
+                                <ArchitectureValidationDashboard />
                             </RequirePermission>
                         } />
 

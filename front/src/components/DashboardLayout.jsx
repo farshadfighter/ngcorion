@@ -26,6 +26,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/backup"))               return "backup";
     if (pathname.startsWith("/topology"))             return "topology";
+    if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -60,6 +61,7 @@ export const DashboardLayout = () => {
     const canReadBackup    = usePermission("backup",               "read");
     const canReadSysConfig = usePermission("system_config",        "read");
     const canReadTopology  = usePermission("topology",             "read");
+    const canReadArchValidation = usePermission("architecture_validation", "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -115,6 +117,7 @@ export const DashboardLayout = () => {
         "risk-asset":          "Risk Asset",
         "backup":              "Configuration Backup",
         "topology":            "Topology",
+        "architecture-validation": "Architecture Validation",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -213,20 +216,28 @@ export const DashboardLayout = () => {
                     )}
 
                     {/* ── NETWORK DESIGN ── */}
-                    {canReadTopology && (
+                    {(canReadTopology || canReadArchValidation) && (
                         <>
                             {!isSidebarCollapsed && (
-                                <div className={`nav-section nav-section-clickable ${activeMenu === "topology" ? "nav-section-active" : ""}`}
-                                     onClick={() => navigate("/topology")}>
+                                <div className="nav-section">
                                     <img src="/icons/topology.svg" alt="" className="section-icon" />
                                     <span className="nav-section-title">Network Design</span>
                                 </div>
                             )}
-                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "topology" ? "active" : ""}`}
-                                 onClick={() => navigate("/topology")} title="Topology">
-                                {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Topology</span>}
-                            </div>
+                            {canReadTopology && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "topology" ? "active" : ""}`}
+                                     onClick={() => navigate("/topology")} title="Topology">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Topology</span>}
+                                </div>
+                            )}
+                            {canReadArchValidation && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "architecture-validation" ? "active" : ""}`}
+                                     onClick={() => navigate("/architecture-validation")} title="Architecture Validation">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Architecture Validation</span>}
+                                </div>
+                            )}
                         </>
                     )}
 
