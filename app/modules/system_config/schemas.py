@@ -11,8 +11,10 @@ inject an extra directive line into those files.
 """
 import ipaddress
 import re
+import socket
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
 from zoneinfo import available_timezones
 
 from pydantic import (
@@ -39,6 +41,48 @@ def _reject_newlines(value: Optional[str]) -> Optional[str]:
     if value is not None and ("\n" in value or "\r" in value):
         raise ValueError("value must not contain line breaks")
     return value
+
+
+def reject_ssrf_target(url: str) -> str:
+    """Raise unless `url` is http(s) and every address it resolves to is a
+    public, routable address.
+
+    This app makes a server-side HTTP request to whatever a SYSTEM_CONFIG
+    "write" user configures here (the SMS provider's server_address) - without
+    this check, that's a classic SSRF: the same admin action could be pointed
+    at the cloud metadata endpoint (169.254.169.254), the license server's
+    internal address, or any other host/port this container can otherwise
+    only reach over the "app" network. Re-run right before the request is
+    actually sent (not only at config-save time) so a DNS record that
+    resolved to a public IP when saved can't be repointed at an internal one
+    later (DNS rebinding).
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("server_address must be an http:// or https:// URL")
+    if not parsed.hostname:
+        raise ValueError("server_address must include a host")
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"server_address host could not be resolved: {exc}")
+
+    for family, _type, _proto, _canonname, sockaddr in resolved:
+        addr = ipaddress.ip_address(sockaddr[0])
+        if (
+            addr.is_private
+            or addr.is_loopback
+            or addr.is_link_local
+            or addr.is_reserved
+            or addr.is_multicast
+            or addr.is_unspecified
+        ):
+            raise ValueError(
+                f"server_address resolves to a non-public address ({addr}); "
+                "internal/private targets are not allowed"
+            )
+    return url
 
 
 class _ConfigBase(BaseModel):
@@ -199,7 +243,7 @@ class SmsConfig(_ConfigBase):
         value = value.strip()
         if not value or any(char.isspace() for char in value):
             raise ValueError("server_address must be a single token without whitespace")
-        return value
+        return reject_ssrf_target(value)
 
     @field_validator("sender_number", "username")
     @classmethod

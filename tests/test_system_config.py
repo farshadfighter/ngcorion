@@ -261,6 +261,40 @@ def test_render_snmpd_conf_ignores_an_unparsable_legacy_server_ip():
 # SMS: masking, unmasking and provider normalisation
 # ----------------------------------------------------------------------
 
+# SmsConfig.server_address is SSRF-checked with a live DNS lookup (see
+# reject_ssrf_target) - unit tests must not depend on real network/DNS access,
+# so every hostname used below is stubbed to resolve to a fixed public IP
+# (93.184.216.34, IANA's reserved example.com address). Tests that exercise
+# the SSRF guard itself use literal loopback/private/link-local IPs instead,
+# which resolve locally with no DNS lookup at all.
+#
+# `schemas.socket` IS the real, process-global `socket` module (import binds
+# a name, it doesn't copy it) - patching `.getaddrinfo` as an attribute on it
+# patches DNS resolution for the ENTIRE process, including the `db` fixture's
+# own psycopg connections below, which then tried to connect to the fake
+# 93.184.216.34 and hung until the OS's TCP timeout. Patching the `socket`
+# *name* inside schemas' own module namespace instead keeps this scoped to
+# calls made through `schemas.reject_ssrf_target`.
+@pytest.fixture(autouse=True)
+def _stub_public_dns():
+    import socket as real_socket_module
+    import ipaddress as _ip
+
+    class _StubSocket:
+        @staticmethod
+        def getaddrinfo(host, *args, **kwargs):
+            try:
+                _ip.ip_address(host)
+                return real_socket_module.getaddrinfo(host, *args, **kwargs)
+            except ValueError:
+                return [(2, 1, 6, "", ("93.184.216.34", 0))]
+
+        gaierror = real_socket_module.gaierror
+
+    with mock.patch("app.modules.system_config.schemas.socket", _StubSocket):
+        yield
+
+
 def _sms_config(**overrides):
     base = {
         "provider": "kavenegar",
@@ -308,6 +342,57 @@ def test_sms_provider_blank_after_strip_is_rejected():
 def test_sms_server_address_rejects_embedded_whitespace():
     with pytest.raises(ValidationError):
         SmsConfig(**_sms_config(server_address="https://api.example.com/send now"))
+
+
+# ----------------------------------------------------------------------
+# SMS: server_address SSRF guard (reject_ssrf_target)
+# ----------------------------------------------------------------------
+# These use literal IPs, not hostnames, so they resolve locally with no DNS
+# lookup and need no mocking - covers the exact server-side-request-forgery
+# an admin-level SYSTEM_CONFIG write could otherwise use to reach the
+# license server's internal address, cloud metadata, or anything else this
+# container can reach that an outside caller can't.
+
+@pytest.mark.parametrize("target", [
+    "http://127.0.0.1/",          # loopback
+    "http://10.0.0.5/",           # RFC1918 private
+    "http://192.168.1.1/",        # RFC1918 private
+    "http://172.16.0.1/",         # RFC1918 private
+    "http://169.254.169.254/",    # link-local / cloud metadata endpoint
+    "http://0.0.0.0/",            # unspecified
+])
+def test_sms_server_address_rejects_internal_targets(target):
+    with pytest.raises(ValidationError):
+        SmsConfig(**_sms_config(server_address=target))
+
+
+def test_sms_server_address_rejects_non_http_scheme():
+    with pytest.raises(ValidationError):
+        SmsConfig(**_sms_config(server_address="file:///etc/passwd"))
+
+
+def test_sms_server_address_rejects_unresolvable_host():
+    with mock.patch(
+        "app.modules.system_config.schemas.socket.getaddrinfo",
+        side_effect=__import__("socket").gaierror("Name or service not known"),
+    ):
+        with pytest.raises(ValidationError):
+            SmsConfig(**_sms_config(server_address="https://this-host-does-not-exist.invalid/"))
+
+
+def test_sms_server_address_accepts_a_public_address():
+    config = SmsConfig(**_sms_config(server_address="https://api.kavenegar.com"))
+    assert config.server_address == "https://api.kavenegar.com"
+
+
+def test_send_test_sms_refuses_an_internal_server_address_at_send_time():
+    """Defence in depth: even if a private address somehow made it into
+    storage (a pre-existing row, direct DB write), the request is refused
+    again right before it is actually sent."""
+    config = _sms_config(server_address="http://127.0.0.1:9999/", provider="acme-sms")
+    result = service.send_test_sms(config, "09121234567")
+    assert result["success"] is False
+    assert "not allowed" in result["message"]
 
 
 def test_sms_sender_number_and_username_are_stripped_to_none_when_blank():
