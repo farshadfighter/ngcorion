@@ -7,14 +7,20 @@ import asyncio
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 
 from app.core.database import Base, engine, SessionLocal
-from app.core.config import settings, require_license_server_url, resolve_cors_origins
+from app.core.config import (
+    settings,
+    require_license_server_url,
+    require_secure_secret_key,
+    resolve_cors_origins,
+)
+from app.core.dependencies import get_current_user
 from app.modules.auth import router as auth_router
 from app.modules.logs import router as logs_router
 from app.modules.logs import clear_router as logs_clear_router
@@ -130,6 +136,11 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
 
+# Fails fast if SECRET_KEY is still the published placeholder - see
+# require_secure_secret_key()'s docstring. Checked before anything else so a
+# misconfigured deployment never issues a single forgeable token.
+require_secure_secret_key()
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -212,7 +223,12 @@ app = FastAPI(
     redirect_slashes=False,
     lifespan=lifespan,
     docs_url=None,
-    redoc_url=None
+    redoc_url=None,
+    # The auto-registered /openapi.json is unauthenticated by default - it would
+    # publish every route, parameter and model field of a security/hardening
+    # product to anyone, unauthenticated. Disabled here; a gated replacement is
+    # registered below alongside the custom /docs route.
+    openapi_url=None,
 )
 
 # Mount static files (Swagger UI assets, etc.)
@@ -283,11 +299,27 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Add license middleware (after CORS, before routes)
 app.add_middleware(LicenseMiddleware)
 
-# Custom Swagger UI endpoint
+# Authenticated OpenAPI schema. The schema lists every route, parameter and
+# model field in the application - reconnaissance material an unauthenticated
+# caller has no business getting from a security/hardening product, so this
+# requires a real bearer token rather than being served to anyone who asks.
+@app.get("/openapi.json", include_in_schema=False)
+async def get_openapi_schema(current_user=Depends(get_current_user)):
+    return JSONResponse(app.openapi())
+
+
+# Custom Swagger UI endpoint. Deliberately NOT gated the same way as
+# /openapi.json above: a plain browser navigation here never carries an
+# Authorization header (that's only ever attached by JS to API calls), so a
+# get_current_user dependency on this route would just make the page
+# permanently 401. The page itself is inert chrome with no embedded schema -
+# it fetches /openapi.json client-side, which is what actually enforces
+# auth. Swagger UI's own "Authorize" button lets a logged-in operator paste
+# their token to load the schema and try requests.
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     return get_swagger_ui_html(
-        openapi_url=app.openapi_url,
+        openapi_url="/openapi.json",
         title=app.title + " - Swagger UI",
         swagger_js_url="/static/swagger/swagger-ui-bundle.js",
         swagger_css_url="/static/swagger/swagger-ui.css",
