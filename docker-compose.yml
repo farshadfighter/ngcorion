@@ -44,7 +44,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ngcorion
-      target: development
+      # production: no dev-only Python packages in the image, and uvicorn runs
+      # multi-worker without --reload (see Dockerfile.ngcorion's two CMDs).
+      # This stack sits behind Traefik with real TLS and serves real traffic,
+      # so it should not run the development image/entrypoint.
+      target: production
     container_name: backend
     # Unprivileged runtime account baked into Dockerfile.ngcorion (item 2.2).
     # Stated here as well as in the image so the UID is visible where the host
