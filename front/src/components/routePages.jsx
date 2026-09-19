@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { usePermission } from "../hooks/usePermission";
 
 import { AssetList } from "./AssetList/AssetList";
@@ -29,6 +30,15 @@ export const ComingSoon = ({ name }) => (
 // Renders `children` when the user can read `module`, otherwise AccessDenied.
 export const RequirePermission = ({ module, name, children }) => {
     const allowed = usePermission(module, "read");
+    return allowed ? children : <AccessDenied menuName={name} />;
+};
+
+// ── Per-route role guard ──────────────────────────────────────────────────────
+// Deployment has no module permission of its own - it's gated by role
+// (admin/manager) only, matching the backend's require_admin_or_manager.
+export const RequireRole = ({ roles, name, children }) => {
+    const { role } = useSelector((state) => state.auth);
+    const allowed = roles.includes(role);
     return allowed ? children : <AccessDenied menuName={name} />;
 };
 

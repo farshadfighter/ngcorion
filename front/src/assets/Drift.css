@@ -1,0 +1,309 @@
+/* ============================================
+   CONFIGURATION DRIFT PAGE - STYLES
+   ============================================ */
+
+.drift-container {
+    padding: 32px 40px;
+    background: transparent;
+    min-height: 100vh;
+}
+
+.drift-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.drift-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.drift-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.drift-tab:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.drift-tab.active {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+    font-weight: 600;
+}
+
+.drift-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.drift-last-run {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.drift-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.drift-btn:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.drift-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.drift-btn-primary {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+}
+
+.drift-btn-primary:hover {
+    background: #16304d;
+    color: white;
+}
+
+.drift-toast {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.drift-toast-success {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.drift-toast-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.drift-table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.drift-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.drift-table thead {
+    background: #f9fafb;
+}
+
+.drift-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.drift-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.drift-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.drift-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.drift-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
+    vertical-align: top;
+}
+
+.drift-cell-strong {
+    font-weight: 600;
+    color: #111827;
+}
+
+.drift-row-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.drift-link-btn {
+    border: none;
+    background: none;
+    color: #1e3a5f;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.drift-link-btn:hover {
+    text-decoration: underline;
+}
+
+.drift-link-btn-muted {
+    color: #6b7280;
+}
+
+.drift-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.drift-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.drift-badge-low {
+    background: #eef2f7;
+    color: #1e3a5f;
+}
+
+.drift-badge-medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.drift-badge-high {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.drift-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.drift-modal {
+    background: white;
+    border-radius: 14px;
+    padding: 24px;
+    width: 380px;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.drift-modal-wide {
+    width: 640px;
+}
+
+.drift-modal h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: #111827;
+}
+
+.drift-modal-hint {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.drift-modal-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.drift-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.drift-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.drift-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.drift-field input,
+.drift-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #374151;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.drift-diff-pre {
+    margin: 0;
+    padding: 14px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-height: 420px;
+    overflow-y: auto;
+}

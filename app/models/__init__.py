@@ -112,6 +112,36 @@ from app.models.hardening_log import (
 # Import backup model (depends on HardeningAction and Asset)
 from app.models.backup import DeviceBackup
 
+# Import topology models (depend on Asset and User)
+from app.models.topology import TopologyLink
+from app.models.topology_log import (
+    TopologyLog,
+    log_topology_link_created,
+    log_topology_link_updated,
+    log_topology_link_deleted,
+)
+
+# Import architecture validation findings (depend on Asset and User)
+from app.models.architecture_finding import ArchitectureFinding
+
+# Import design models (depend on Asset and User)
+from app.models.design import (
+    ArchitectureDesign,
+    ArchitectureDesignVersion,
+    DesignComponent,
+    DesignRelationship,
+    DesignAssetMapping,
+)
+
+# Import configuration models (depend on design models and Asset)
+from app.models.configuration import ConfigurationJob, ConfigurationObject
+
+# Import deployment models (depend on configuration models, Asset and DeviceBackup)
+from app.models.deployment import DeploymentJob
+
+# Import drift models (depend on Asset, DeviceBackup and User)
+from app.models.drift import DriftRun, DriftResult
+
 # Import risk models (depend on User and Asset)
 from app.models.risk import (
     RiskSetting,
@@ -185,6 +215,28 @@ __all__ = [
     "HardeningAction",
     "HardeningLog",
     "DeviceBackup",
+    # Topology models
+    "TopologyLink",
+    "TopologyLog",
+    "log_topology_link_created",
+    "log_topology_link_updated",
+    "log_topology_link_deleted",
+    # Architecture Validation
+    "ArchitectureFinding",
+    # Design models
+    "ArchitectureDesign",
+    "ArchitectureDesignVersion",
+    "DesignComponent",
+    "DesignRelationship",
+    "DesignAssetMapping",
+    # Configuration models
+    "ConfigurationJob",
+    "ConfigurationObject",
+    # Deployment models
+    "DeploymentJob",
+    # Drift models
+    "DriftRun",
+    "DriftResult",
     # Risk models
     "RiskSetting",
     "RiskZone",

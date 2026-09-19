@@ -25,6 +25,12 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/hardening/overview"))   return "hardening-overview";
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/backup"))               return "backup";
+    if (pathname.startsWith("/topology"))             return "topology";
+    if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
+    if (pathname.startsWith("/design-configuration/jobs")) return "design-configuration-jobs";
+    if (pathname.startsWith("/design-configuration"))    return "design-configuration";
+    if (pathname.startsWith("/deployment"))           return "deployment";
+    if (pathname.startsWith("/drift"))                return "drift";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -58,6 +64,11 @@ export const DashboardLayout = () => {
     const canReadLogs      = usePermission("logs",                 "read");
     const canReadBackup    = usePermission("backup",               "read");
     const canReadSysConfig = usePermission("system_config",        "read");
+    const canReadTopology  = usePermission("topology",             "read");
+    const canReadArchValidation = usePermission("architecture_validation", "read");
+    const canReadDesignConfig = usePermission("design_configuration", "read");
+    const canReadDeployment = role === "admin" || role === "manager";
+    const canReadDrift     = usePermission("drift",                 "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -112,6 +123,12 @@ export const DashboardLayout = () => {
         "risk-intelligence":   "Risk Intelligence",
         "risk-asset":          "Risk Asset",
         "backup":              "Configuration Backup",
+        "topology":            "Topology",
+        "architecture-validation": "Architecture Validation",
+        "design-configuration": "Design & Configuration",
+        "design-configuration-jobs": "Configuration Jobs",
+        "deployment":          "Deployment",
+        "drift":               "Configuration Drift",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -206,6 +223,60 @@ export const DashboardLayout = () => {
                                 {isSidebarCollapsed && <img src="/icons/hardening.svg" alt="" className="nav-icon-img" />}
                                 {!isSidebarCollapsed && <span>Operation & Device</span>}
                             </div>
+                        </>
+                    )}
+
+                    {/* ── NETWORK DESIGN ── */}
+                    {(canReadTopology || canReadArchValidation || canReadDesignConfig || canReadDeployment || canReadDrift) && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className="nav-section">
+                                    <img src="/icons/topology.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">Network Design</span>
+                                </div>
+                            )}
+                            {canReadTopology && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "topology" ? "active" : ""}`}
+                                     onClick={() => navigate("/topology")} title="Topology">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Topology</span>}
+                                </div>
+                            )}
+                            {canReadArchValidation && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "architecture-validation" ? "active" : ""}`}
+                                     onClick={() => navigate("/architecture-validation")} title="Architecture Validation">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Architecture Validation</span>}
+                                </div>
+                            )}
+                            {canReadDesignConfig && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration" ? "active" : ""}`}
+                                     onClick={() => navigate("/design-configuration")} title="Design">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Design</span>}
+                                </div>
+                            )}
+                            {canReadDesignConfig && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration-jobs" ? "active" : ""}`}
+                                     onClick={() => navigate("/design-configuration/jobs")} title="Configuration Jobs">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Configuration Jobs</span>}
+                                </div>
+                            )}
+                            {canReadDeployment && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "deployment" ? "active" : ""}`}
+                                     onClick={() => navigate("/deployment/jobs")} title="Deployment">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Deployment</span>}
+                                </div>
+                            )}
+                            {canReadDrift && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "drift" ? "active" : ""}`}
+                                     onClick={() => navigate("/drift")} title="Configuration Drift">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Configuration Drift</span>}
+                                </div>
+                            )}
                         </>
                     )}
 

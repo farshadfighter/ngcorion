@@ -27,8 +27,19 @@ import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
 import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDashboard";
 import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
 import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
+import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
+import { ArchitectureValidationDashboard } from "./components/ArchitectureValidation/ArchitectureValidationDashboard";
+import { DesignList } from "./components/DesignConfiguration/DesignList";
+import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
+import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
+import { ConfigurationJobList } from "./components/DesignConfiguration/ConfigurationJobList";
+import { ConfigurationJobDetail } from "./components/DesignConfiguration/ConfigurationJobDetail";
+import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
+import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
+import { DriftDashboard } from "./components/Drift/DriftDashboard";
 import {
     RequirePermission,
+    RequireRole,
     AssetListRoute,
     AutoDiscoveryRoute,
     HardeningRoute,
@@ -178,6 +189,58 @@ function AppContent() {
                         <Route path="/backup" element={
                             <RequirePermission module="backup" name="Configuration Backup">
                                 <BackupPage />
+                            </RequirePermission>
+                        } />
+
+                        {/* Network Design */}
+                        <Route path="/topology" element={
+                            <RequirePermission module="topology" name="Topology">
+                                <TopologyDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/architecture-validation" element={
+                            <RequirePermission module="architecture_validation" name="Architecture Validation">
+                                <ArchitectureValidationDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <DesignList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/designs/:designId" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <DesignDetail />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/versions/:versionId" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <DesignCanvas />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/jobs" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <ConfigurationJobList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/jobs/:jobId" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <ConfigurationJobDetail />
+                            </RequirePermission>
+                        } />
+                        <Route path="/deployment/jobs" element={
+                            <RequireRole roles={["admin", "manager"]} name="Deployment">
+                                <DeploymentJobList />
+                            </RequireRole>
+                        } />
+                        <Route path="/deployment/jobs/:jobId" element={
+                            <RequireRole roles={["admin", "manager"]} name="Deployment">
+                                <DeploymentJobDetail />
+                            </RequireRole>
+                        } />
+                        <Route path="/drift" element={
+                            <RequirePermission module="drift" name="Configuration Drift">
+                                <DriftDashboard />
                             </RequirePermission>
                         } />
 

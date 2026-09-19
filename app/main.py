@@ -91,6 +91,22 @@ from app.modules.license.router import router as license_router
 # Import backup router
 from app.modules.backup.router import router as backup_router
 
+# Import topology router
+from app.modules.topology.router import router as topology_router
+
+# Import architecture validation router
+from app.modules.architecture_validation.router import router as architecture_validation_router
+
+# Import design and configuration routers
+from app.modules.design.router import router as design_router
+from app.modules.configuration.router import router as configuration_router
+
+# Import deployment router
+from app.modules.deployment.router import router as deployment_router
+
+# Import drift router
+from app.modules.drift.router import router as drift_router
+
 # Import risk router
 from app.modules.risk.router import router as risk_router
 
@@ -379,6 +395,22 @@ app.include_router(license_router)
 
 # Backup routes
 app.include_router(backup_router)
+
+# Topology routes
+app.include_router(topology_router)
+
+# Architecture Validation routes
+app.include_router(architecture_validation_router)
+
+# Design and Configuration routes
+app.include_router(design_router)
+app.include_router(configuration_router)
+
+# Deployment routes
+app.include_router(deployment_router)
+
+# Configuration Drift routes
+app.include_router(drift_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])

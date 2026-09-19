@@ -14,6 +14,12 @@ import hardeningDashboardReducer from "./hardeningDashboardSlice.js";
 import systemConfigReducer from "./systemConfigSlice.js";
 import auditDashboardReducer from "./auditDashboardSlice.js";
 import overviewDashboardReducer from "./overviewDashboardSlice.js";
+import topologyReducer from "./topologySlice.jsx";
+import architectureValidationReducer from "./architectureValidationSlice.jsx";
+import designReducer from "./designSlice.jsx";
+import configurationReducer from "./configurationSlice.jsx";
+import deploymentReducer from "./deploymentSlice.jsx";
+import driftReducer from "./driftSlice.jsx";
 
 
 export const store = configureStore({
@@ -33,5 +39,11 @@ export const store = configureStore({
         systemConfig: systemConfigReducer,
         auditDashboard: auditDashboardReducer,
         overviewDashboard: overviewDashboardReducer,
+        topology: topologyReducer,
+        architectureValidation: architectureValidationReducer,
+        design: designReducer,
+        configuration: configurationReducer,
+        deployment: deploymentReducer,
+        drift: driftReducer,
     },
 });

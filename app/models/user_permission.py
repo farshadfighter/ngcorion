@@ -48,6 +48,13 @@ class ModuleEnum(str, enum.Enum):
     LOGS = "logs"
     BACKUP = "backup"
 
+    # Network design / change-automation modules
+    TOPOLOGY = "topology"
+    ARCHITECTURE_VALIDATION = "architecture_validation"
+    DESIGN_CONFIGURATION = "design_configuration"
+    DEPLOYMENT = "deployment"
+    DRIFT = "drift"
+
 
 class UserPermission(Base):
     """

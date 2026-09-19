@@ -1,0 +1,277 @@
+/* ============================================
+   ARCHITECTURE VALIDATION PAGE - STYLES
+   ============================================ */
+
+.av-container {
+    padding: 32px 40px;
+    background: transparent;
+    min-height: 100vh;
+}
+
+.av-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.av-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.av-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.av-tab:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.av-tab.active {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+    font-weight: 600;
+}
+
+.av-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.av-last-run {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.av-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.av-btn:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.av-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.av-btn-primary {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+}
+
+.av-btn-primary:hover {
+    background: #16304d;
+    color: white;
+}
+
+.av-toast {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.av-toast-success {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.av-toast-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.av-table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.av-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.av-table thead {
+    background: #f9fafb;
+}
+
+.av-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.av-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.av-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.av-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.av-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
+    vertical-align: top;
+}
+
+.av-rule-code {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ca3af;
+    letter-spacing: 0.02em;
+}
+
+.av-rule-title {
+    font-size: 14px;
+    color: #111827;
+}
+
+.av-recommendation {
+    max-width: 360px;
+    color: #6b7280;
+}
+
+.av-row-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.av-link-btn {
+    border: none;
+    background: none;
+    color: #1e3a5f;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
+
+.av-link-btn:hover {
+    text-decoration: underline;
+}
+
+.av-link-btn-muted {
+    color: #6b7280;
+}
+
+.av-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.av-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.av-badge-low {
+    background: #eef2f7;
+    color: #1e3a5f;
+}
+
+.av-badge-medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.av-badge-high {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.av-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.av-modal {
+    background: white;
+    border-radius: 14px;
+    padding: 24px;
+    width: 380px;
+    max-width: 90vw;
+}
+
+.av-modal h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: #111827;
+}
+
+.av-modal-hint {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.av-modal-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.av-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
