@@ -375,57 +375,113 @@ def import_assets_from_excel(
 
     results = {"created": 0, "updated": 0, "skipped": 0, "errors": [], "details": []}
 
-    try:
-        # Load workbook
-        wb = load_workbook(file_content, data_only=True)
-        ws = wb.active
-
-        # Get header row
-        headers = [cell.value for cell in ws[1]]
-
-        # Map headers to field names
-        header_map = {
-            "ID": "id",
-            "Asset Name": "asset_name",
-            "Hostname": "hostname",
-            "Asset Type": "asset_type",
-            "Asset Role": "asset_role",
-            "Manufacturer": "manufacturer",
-            "Model": "model",
-            "Serial Number": "serial_number",
-            "OS Name": "os_name",
-            "OS Version": "os_version",
-            "IP Address": "ip_address",
-            "MAC Address": "mac_address",
-            "Location": "location",
-            "Owner": "owner",
+    # The template/export this import must round-trip against (ASSET_LIST_SHEETS,
+    # above) spans 4 sheets - Overview, Network & System, Location & Owner,
+    # Security & Audit - each keyed by "Asset Name" in its first column, with
+    # abbreviated headers ("Type", "Role", "Serial", "OS") that don't match a
+    # single flat header set. Reading only wb.active (as this used to) silently
+    # dropped every field except Asset Name/Hostname/Type/Role/Manufacturer/
+    # Model, so a file downloaded from "Export"/"Download Template" and
+    # re-uploaded unmodified could never successfully import - every new asset
+    # failed with "Asset type is required" because "Type" never matched the old
+    # single-sheet header map's "Asset Type" key.
+    MULTI_SHEET_FIELD_MAPS = {
+        "Overview": {
+            "Asset Name": "asset_name", "Hostname": "hostname", "Type": "asset_type",
+            "Role": "asset_role", "Manufacturer": "manufacturer", "Model": "model",
+        },
+        "Network & System": {
+            "Asset Name": "asset_name", "Serial": "serial_number", "OS": "os_name",
+            "IP Address": "ip_address", "MAC Address": "mac_address",
+        },
+        "Location & Owner": {
+            "Asset Name": "asset_name", "Location": "location", "Owner": "owner",
             "Status": "status",
+        },
+        "Security & Audit": {
+            "Asset Name": "asset_name",
             "Confidentiality Level": "confidentiality_level",
             "Risk Level": "risk_level",
             "Last Audit Date": "last_audit_date",
             "Last Patch Date": "last_patch_date",
-            "Asset Value": "asset_value",
-            "Description": "description",
-        }
+        },
+    }
+    # Legacy single-sheet layout (full header names, everything on one sheet) -
+    # kept so a hand-built or older-format file still imports.
+    LEGACY_HEADER_MAP = {
+        "ID": "id",
+        "Asset Name": "asset_name",
+        "Hostname": "hostname",
+        "Asset Type": "asset_type",
+        "Asset Role": "asset_role",
+        "Manufacturer": "manufacturer",
+        "Model": "model",
+        "Serial Number": "serial_number",
+        "OS Name": "os_name",
+        "OS Version": "os_version",
+        "IP Address": "ip_address",
+        "MAC Address": "mac_address",
+        "Location": "location",
+        "Owner": "owner",
+        "Status": "status",
+        "Confidentiality Level": "confidentiality_level",
+        "Risk Level": "risk_level",
+        "Last Audit Date": "last_audit_date",
+        "Last Patch Date": "last_patch_date",
+        "Asset Value": "asset_value",
+        "Description": "description",
+    }
 
-        # Process each row (skip header)
-        for row_idx, row in enumerate(
-            ws.iter_rows(min_row=2, values_only=True), start=2
-        ):
-            try:
-                # Build data dictionary
-                row_data = {}
-                for col_idx, value in enumerate(row):
-                    if col_idx < len(headers) and headers[col_idx] in header_map:
-                        field_name = header_map[headers[col_idx]]
-                        if value is not None and value != "":
-                            row_data[field_name] = value
+    def _extract_rows(ws, field_map):
+        headers = [cell.value for cell in ws[1]]
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            row_dict = {}
+            for col_idx, value in enumerate(row):
+                if col_idx < len(headers) and headers[col_idx] in field_map:
+                    if value is not None and value != "":
+                        row_dict[field_map[headers[col_idx]]] = value
+            yield row_idx, row_dict
 
-                # Skip empty rows
-                if not row_data or not row_data.get("asset_name"):
+    try:
+        # Load workbook
+        wb = load_workbook(file_content, data_only=True)
+
+        merged: Dict[str, Dict[str, Any]] = {}
+        asset_order: List[str] = []
+        first_row_idx: Dict[str, int] = {}
+
+        for sheet_title, field_map in MULTI_SHEET_FIELD_MAPS.items():
+            if sheet_title not in wb.sheetnames:
+                continue
+            for row_idx, row_dict in _extract_rows(wb[sheet_title], field_map):
+                name = row_dict.get("asset_name")
+                if not name:
+                    if sheet_title == "Overview":
+                        results["skipped"] += 1
+                    continue
+                if name not in merged:
+                    merged[name] = {}
+                    asset_order.append(name)
+                    first_row_idx[name] = row_idx
+                merged[name].update(row_dict)
+
+        if not merged:
+            # No known multi-sheet title present at all - fall back to the
+            # legacy single-sheet layout on the active sheet.
+            for row_idx, row_dict in _extract_rows(wb.active, LEGACY_HEADER_MAP):
+                name = row_dict.get("asset_name")
+                if not name:
                     results["skipped"] += 1
                     continue
+                merged[name] = row_dict
+                asset_order.append(name)
+                first_row_idx[name] = row_idx
 
+        # Process each merged asset record
+        for asset_name in asset_order:
+            row_data = dict(merged[asset_name])
+            row_idx = first_row_idx[asset_name]
+            try:
                 # Resolve foreign keys
                 asset_type_id = None
                 if "asset_type" in row_data:
