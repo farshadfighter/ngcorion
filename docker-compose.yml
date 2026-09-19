@@ -96,6 +96,19 @@ services:
       - /run/systemd:/run/systemd
     environment:
       DATABASE_URL: postgresql+psycopg://netease:${POSTGRES_PASSWORD:-1234}@postgres:5432/netease_db
+      # Uvicorn only trusts X-Forwarded-For/X-Forwarded-Proto from a peer in
+      # FORWARDED_ALLOW_IPS, which defaults to "127.0.0.1". Traefik reaches
+      # this container over the "app" bridge network, not loopback, so its
+      # connecting IP never matched that default: every request.client.host
+      # (and therefore every LoginLog row, and the per-IP login/password-reset
+      # rate limiters in app/core/auth_rate_limiter.py) silently fell back to
+      # Traefik's own container IP for every user, both breaking the audit
+      # trail and letting a handful of failed logins from anyone rate-limit
+      # every user. "*" is safe here specifically because this container's
+      # port 8000 is only `expose`d, never `ports`-published - nothing but
+      # another container on this compose network can reach uvicorn directly
+      # to forge the header, and Traefik is the only thing that does.
+      FORWARDED_ALLOW_IPS: "*"
       # No application code uses Redis today; the variable is kept for forward
       # compatibility. (The license server, which used DB 1 of this instance,
       # now runs on its own host with its own Redis.)

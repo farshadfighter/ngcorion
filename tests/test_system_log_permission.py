@@ -47,14 +47,25 @@ def test_every_module_has_a_description():
         assert module.description != module.name or module.name == module.name
 
 
+# Backend modules deliberately absent from the picker: they exist in
+# ModuleEnum (so require_permission-style checks *could* reference them) but
+# are gated some other way, so offering a checkbox for them would be a dead
+# control - toggling it would change nothing.
+#   deployment: gated by require_admin_or_manager (role), not per-user
+#   permission - see app/modules/deployment/router.py.
+_MODULES_INTENTIONALLY_NOT_IN_PICKER = {"deployment"}
+
+
 def test_frontend_permission_list_matches_the_backend():
     """The picker is a hardcoded list in the SPA; it drifting from ModuleEnum is
-    exactly what hid System Log."""
+    exactly what hid System Log. Modules in _MODULES_INTENTIONALLY_NOT_IN_PICKER
+    are the one allowed kind of drift - everything else must match exactly."""
     source = FRONTEND_MODULES.read_text()
     names = set(re.findall(r'\{\s*name:\s*"([a-z_]+)"', source))
-    assert names == set(get_all_modules()), (
-        f"frontend-only: {sorted(names - set(get_all_modules()))}; "
-        f"backend-only: {sorted(set(get_all_modules()) - names)}"
+    expected = set(get_all_modules()) - _MODULES_INTENTIONALLY_NOT_IN_PICKER
+    assert names == expected, (
+        f"frontend-only: {sorted(names - expected)}; "
+        f"backend-only: {sorted(expected - names)}"
     )
 
 
