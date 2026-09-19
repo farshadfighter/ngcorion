@@ -139,6 +139,9 @@ from app.models.configuration import ConfigurationJob, ConfigurationObject
 # Import deployment models (depend on configuration models, Asset and DeviceBackup)
 from app.models.deployment import DeploymentJob
 
+# Import drift models (depend on Asset, DeviceBackup and User)
+from app.models.drift import DriftRun, DriftResult
+
 # Import risk models (depend on User and Asset)
 from app.models.risk import (
     RiskSetting,
@@ -231,6 +234,9 @@ __all__ = [
     "ConfigurationObject",
     # Deployment models
     "DeploymentJob",
+    # Drift models
+    "DriftRun",
+    "DriftResult",
     # Risk models
     "RiskSetting",
     "RiskZone",

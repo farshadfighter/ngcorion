@@ -30,6 +30,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/design-configuration/jobs")) return "design-configuration-jobs";
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
     if (pathname.startsWith("/deployment"))           return "deployment";
+    if (pathname.startsWith("/drift"))                return "drift";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -67,6 +68,7 @@ export const DashboardLayout = () => {
     const canReadArchValidation = usePermission("architecture_validation", "read");
     const canReadDesignConfig = usePermission("design_configuration", "read");
     const canReadDeployment = role === "admin" || role === "manager";
+    const canReadDrift     = usePermission("drift",                 "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -126,6 +128,7 @@ export const DashboardLayout = () => {
         "design-configuration": "Design & Configuration",
         "design-configuration-jobs": "Configuration Jobs",
         "deployment":          "Deployment",
+        "drift":               "Configuration Drift",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -224,7 +227,7 @@ export const DashboardLayout = () => {
                     )}
 
                     {/* ── NETWORK DESIGN ── */}
-                    {(canReadTopology || canReadArchValidation || canReadDesignConfig || canReadDeployment) && (
+                    {(canReadTopology || canReadArchValidation || canReadDesignConfig || canReadDeployment || canReadDrift) && (
                         <>
                             {!isSidebarCollapsed && (
                                 <div className="nav-section">
@@ -265,6 +268,13 @@ export const DashboardLayout = () => {
                                      onClick={() => navigate("/deployment/jobs")} title="Deployment">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Deployment</span>}
+                                </div>
+                            )}
+                            {canReadDrift && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "drift" ? "active" : ""}`}
+                                     onClick={() => navigate("/drift")} title="Configuration Drift">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Configuration Drift</span>}
                                 </div>
                             )}
                         </>

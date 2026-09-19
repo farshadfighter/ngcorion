@@ -104,6 +104,9 @@ from app.modules.configuration.router import router as configuration_router
 # Import deployment router
 from app.modules.deployment.router import router as deployment_router
 
+# Import drift router
+from app.modules.drift.router import router as drift_router
+
 # Import risk router
 from app.modules.risk.router import router as risk_router
 
@@ -405,6 +408,9 @@ app.include_router(configuration_router)
 
 # Deployment routes
 app.include_router(deployment_router)
+
+# Configuration Drift routes
+app.include_router(drift_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])

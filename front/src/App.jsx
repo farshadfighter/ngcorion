@@ -36,6 +36,7 @@ import { ConfigurationJobList } from "./components/DesignConfiguration/Configura
 import { ConfigurationJobDetail } from "./components/DesignConfiguration/ConfigurationJobDetail";
 import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
 import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
+import { DriftDashboard } from "./components/Drift/DriftDashboard";
 import {
     RequirePermission,
     RequireRole,
@@ -236,6 +237,11 @@ function AppContent() {
                             <RequireRole roles={["admin", "manager"]} name="Deployment">
                                 <DeploymentJobDetail />
                             </RequireRole>
+                        } />
+                        <Route path="/drift" element={
+                            <RequirePermission module="drift" name="Configuration Drift">
+                                <DriftDashboard />
+                            </RequirePermission>
                         } />
 
                         {/* System Settings */}

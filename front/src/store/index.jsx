@@ -19,6 +19,7 @@ import architectureValidationReducer from "./architectureValidationSlice.jsx";
 import designReducer from "./designSlice.jsx";
 import configurationReducer from "./configurationSlice.jsx";
 import deploymentReducer from "./deploymentSlice.jsx";
+import driftReducer from "./driftSlice.jsx";
 
 
 export const store = configureStore({
@@ -43,5 +44,6 @@ export const store = configureStore({
         design: designReducer,
         configuration: configurationReducer,
         deployment: deploymentReducer,
+        drift: driftReducer,
     },
 });
