@@ -231,3 +231,69 @@ def test_route_create_writes_a_topology_log(db, asset_pair, user):
     log = db.query(TopologyLog).filter(TopologyLog.link_id == link.id).first()
     assert log is not None
     assert log.action == "create"
+
+
+# ======================================================================
+# Node position persistence
+# ======================================================================
+
+def test_new_asset_has_no_saved_position(db, asset_pair):
+    a, _ = asset_pair
+    positions = TopologyService.get_positions(db)
+    assert a.id not in positions
+
+
+def test_save_position_creates_a_row(db, asset_pair):
+    a, _ = asset_pair
+    TopologyService.save_position(db, a.id, 120.5, 340.0)
+    positions = TopologyService.get_positions(db)
+    assert positions[a.id].pos_x == 120.5
+    assert positions[a.id].pos_y == 340.0
+
+
+def test_save_position_upserts_on_a_second_drag(db, asset_pair):
+    a, _ = asset_pair
+    TopologyService.save_position(db, a.id, 10, 10)
+    TopologyService.save_position(db, a.id, 999, 888)
+    positions = TopologyService.get_positions(db)
+    assert len(positions) == 1
+    assert positions[a.id].pos_x == 999
+    assert positions[a.id].pos_y == 888
+
+
+def test_deleting_an_asset_cascades_its_saved_position(db, asset_pair):
+    a, _ = asset_pair
+    TopologyService.save_position(db, a.id, 1, 1)
+    db.delete(a)
+    db.flush()
+    assert a.id not in TopologyService.get_positions(db)
+
+
+def test_route_get_topology_includes_null_position_for_a_never_dragged_node(db, asset_pair, user):
+    from app.modules.topology.router import get_topology as route
+
+    a, b = asset_pair
+    graph = route(current_user=user, db=db)
+    node = next(n for n in graph.nodes if n.id == a.id)
+    assert node.pos_x is None
+    assert node.pos_y is None
+
+
+def test_route_get_topology_includes_saved_position(db, asset_pair, user):
+    from app.modules.topology.router import get_topology as route
+
+    a, b = asset_pair
+    TopologyService.save_position(db, a.id, 55, 66)
+    graph = route(current_user=user, db=db)
+    node = next(n for n in graph.nodes if n.id == a.id)
+    assert node.pos_x == 55
+    assert node.pos_y == 66
+
+
+def test_route_save_position_404s_for_missing_asset(db, user):
+    from app.modules.topology.router import save_node_position as route
+    from app.modules.topology.schemas import TopologyNodePositionUpdate
+
+    with pytest.raises(HTTPException) as exc_info:
+        route(asset_id=2_000_000_000, request=TopologyNodePositionUpdate(pos_x=1, pos_y=1), current_user=user, db=db)
+    assert exc_info.value.status_code == 404

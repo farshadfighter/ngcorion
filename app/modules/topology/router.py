@@ -20,6 +20,7 @@ from app.modules.topology.service import TopologyService
 from app.modules.topology.schemas import (
     TopologyGraph,
     TopologyNode,
+    TopologyNodePositionUpdate,
     TopologyLinkSummary,
     TopologyLinkCreate,
     TopologyLinkUpdate,
@@ -39,6 +40,7 @@ def get_topology(
     """Full topology graph: every asset as a node, every link between them."""
     assets = TopologyService.get_nodes(db)
     links = TopologyService.get_links(db)
+    positions = TopologyService.get_positions(db)
 
     nodes = [
         TopologyNode(
@@ -47,11 +49,28 @@ def get_topology(
             hostname=a.hostname,
             type_name=a.asset_type.type_name if a.asset_type else None,
             ip_address=a.ip_address,
+            port_count=getattr(a, "port_count", None),
+            pos_x=positions[a.id].pos_x if a.id in positions else None,
+            pos_y=positions[a.id].pos_y if a.id in positions else None,
         )
         for a in assets
     ]
 
     return TopologyGraph(nodes=nodes, links=links)
+
+
+@router.patch("/nodes/{asset_id}/position", status_code=204)
+def save_node_position(
+    asset_id: int,
+    request: TopologyNodePositionUpdate,
+    current_user: User = Depends(require_permission("topology", "write")),
+    db: Session = Depends(get_db),
+):
+    """Save where a node was dragged to on the canvas."""
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    TopologyService.save_position(db, asset_id, request.pos_x, request.pos_y)
 
 
 @router.post("/links", response_model=TopologyLinkSummary, status_code=201)

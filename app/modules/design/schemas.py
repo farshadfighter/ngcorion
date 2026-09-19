@@ -48,6 +48,7 @@ class ComponentSummary(BaseModel):
     pos_y: float
     mapped_asset_id: Optional[int] = None
     mapped_asset_name: Optional[str] = None
+    mapped_asset_port_count: Optional[int] = None
 
     class Config:
         from_attributes = True

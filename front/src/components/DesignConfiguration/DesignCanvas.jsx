@@ -71,6 +71,7 @@ export const DesignCanvas = () => {
                     label: c.label,
                     typeName: c.component_type,
                     subtitle: c.mapped_asset_name || undefined,
+                    portCount: c.mapped_asset_port_count,
                 },
             }))
         );

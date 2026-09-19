@@ -1,5 +1,5 @@
-import { useMemo, useCallback } from "react";
-import { ReactFlow, Background, Controls, MiniMap } from "@xyflow/react";
+import { useEffect, useMemo, useCallback } from "react";
+import { ReactFlow, Background, Controls, MiniMap, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
 
@@ -7,10 +7,10 @@ const GRID_COLUMNS = 5;
 const GRID_SPACING_X = 220;
 const GRID_SPACING_Y = 160;
 
-// No position is stored server-side (nodes are Asset rows, not a design
-// canvas), so nodes are laid out on a simple grid every render. Dragging a
-// node moves it on screen but isn't persisted - that's fine, the graph is
-// read again fresh from the backend on every visit.
+// A node that has never been dragged (pos_x/pos_y both null - see
+// TopologyNode schema) falls back to a simple grid slot. Once dragged, its
+// saved position (app/models/topology.py::TopologyNodePosition) is used
+// instead, and stays fixed until dragged again.
 function gridPosition(index) {
     return {
         x: (index % GRID_COLUMNS) * GRID_SPACING_X + 40,
@@ -25,21 +25,32 @@ const LINK_TYPE_COLOR = {
     logical: "#9ca3af",
 };
 
-export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick }) {
-    const flowNodes = useMemo(
-        () =>
+export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDragStop }) {
+    const [flowNodes, setFlowNodes, onNodesChange] = useNodesState([]);
+
+    // Rebuild from redux whenever the node list changes shape (assets
+    // added/removed) - live drag position is handled locally by
+    // useNodesState and only pushed back to redux (and the backend) on drag
+    // stop, same pattern as DesignCanvas.
+    useEffect(() => {
+        setFlowNodes(
             nodes.map((node, index) => ({
                 id: String(node.id),
                 type: "device",
-                position: gridPosition(index),
+                position:
+                    node.pos_x != null && node.pos_y != null
+                        ? { x: node.pos_x, y: node.pos_y }
+                        : gridPosition(index),
                 data: {
                     label: node.name,
                     typeName: node.type_name,
                     subtitle: node.ip_address || node.hostname || undefined,
+                    portCount: node.port_count,
                 },
-            })),
-        [nodes]
-    );
+            }))
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [nodes.length]);
 
     const flowEdges = useMemo(
         () =>
@@ -81,12 +92,21 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick }) {
         [onEdgeClick]
     );
 
+    const handleNodeDragStop = useCallback(
+        (_event, node) => {
+            onNodeDragStop?.(Number(node.id), node.position.x, node.position.y);
+        },
+        [onNodeDragStop]
+    );
+
     return (
         <div style={{ width: "100%", height: "100%" }}>
             <ReactFlow
                 nodes={flowNodes}
                 edges={flowEdges}
                 nodeTypes={DEVICE_NODE_TYPES}
+                onNodesChange={onNodesChange}
+                onNodeDragStop={handleNodeDragStop}
                 onConnect={handleConnect}
                 onEdgeClick={handleEdgeClick}
                 fitView

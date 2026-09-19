@@ -113,7 +113,7 @@ from app.models.hardening_log import (
 from app.models.backup import DeviceBackup
 
 # Import topology models (depend on Asset and User)
-from app.models.topology import TopologyLink
+from app.models.topology import TopologyLink, TopologyNodePosition
 from app.models.topology_log import (
     TopologyLog,
     log_topology_link_created,
@@ -217,6 +217,7 @@ __all__ = [
     "DeviceBackup",
     # Topology models
     "TopologyLink",
+    "TopologyNodePosition",
     "TopologyLog",
     "log_topology_link_created",
     "log_topology_link_updated",

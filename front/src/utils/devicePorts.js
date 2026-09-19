@@ -12,7 +12,37 @@ const PORT_RULES = [
     [/server|linux|windows|apache|mongo|mssql|sql|database|\bdb\b/, ["eth0", "eth1"]],
 ];
 
-export function defaultPortsForType(typeName) {
+// Naming style per keyword group, reused to generate a custom-length port
+// list when the asset has a real port_count (Asset.port_count) instead of
+// falling back to the keyword catalog's fixed-length default below.
+const PORT_NAME_STYLES = [
+    [/firewall|fortigate|fortinet|palo ?alto|asa/, (i) => `port${i + 1}`],
+    [/router|cisco.*ios|gateway/, (i) => `Gi0/${i}`],
+    [/switch/, (i) => `Gi0/${i + 1}`],
+    [/load ?balanc/, (i) => `Gi0/${i}`],
+    [/wireless|wifi|access point|\bap\b|wlc/, (i) => `Gi0/${i}`],
+    [/server|linux|windows|apache|mongo|mssql|sql|database|\bdb\b/, (i) => `eth${i}`],
+];
+
+function namingStyleForType(typeName) {
+    const lower = String(typeName || "").toLowerCase();
+    for (const [pattern, name] of PORT_NAME_STYLES) {
+        if (pattern.test(lower)) return name;
+    }
+    return (i) => `Port ${i + 1}`;
+}
+
+/**
+ * @param typeName - asset_type.type_name, used to keyword-match a naming style
+ * @param explicitCount - Asset.port_count, when known - overrides the
+ *   keyword catalog's fixed default length with however many ports this
+ *   specific device actually has.
+ */
+export function defaultPortsForType(typeName, explicitCount) {
+    if (explicitCount != null && explicitCount > 0) {
+        const name = namingStyleForType(typeName);
+        return Array.from({ length: explicitCount }, (_, i) => name(i));
+    }
     if (!typeName) return [];
     const lower = String(typeName).toLowerCase();
     for (const [pattern, ports] of PORT_RULES) {

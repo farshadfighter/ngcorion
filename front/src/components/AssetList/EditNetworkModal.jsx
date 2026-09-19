@@ -38,7 +38,8 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         os_name: asset.os_name ?? "",
         os_version: asset.os_version ?? "",
         ip_address: asset.ip_address ?? "",
-        mac_address: asset.mac_address ?? ""
+        mac_address: asset.mac_address ?? "",
+        port_count: asset.port_count ?? ""
     });
 
     useEffect(() => {
@@ -80,7 +81,10 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         setIsSubmitting(true);
         setError(null);
         try {
-            const submitData = { ...formData };
+            const submitData = {
+                ...formData,
+                port_count: formData.port_count === "" ? null : Number(formData.port_count),
+            };
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 
@@ -223,6 +227,22 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     style={fieldErrors.mac_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                 />
                                 {fieldErrors.mac_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.mac_address}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>Physical Port Count</label>
+                                <input
+                                    type="number"
+                                    name="port_count"
+                                    min="1"
+                                    max="512"
+                                    value={formData.port_count}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 24"
+                                    disabled={isSubmitting}
+                                />
+                                <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
+                                    How many physical ports this device has - drives the port count shown on Topology/Design.
+                                </span>
                             </div>
                         </div>
                         {error && <div className="alert alert-error" style={{ marginTop: "12px" }}>{error}</div>}

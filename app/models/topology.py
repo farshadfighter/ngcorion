@@ -2,9 +2,12 @@
 Topology Link Model
 
 Physical/logical cabling between two assets. Nodes are Asset rows directly
-(asset_inventory) - there is no separate topology-node table.
+(asset_inventory) - there is no separate topology-node table. Node canvas
+position is optional per-asset layout data (TopologyNodePosition, below),
+kept separate from Asset itself since it's presentation state, not inventory
+data.
 """
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -42,3 +45,27 @@ class TopologyLink(Base):
     source_asset = relationship("Asset", foreign_keys=[source_asset_id])
     destination_asset = relationship("Asset", foreign_keys=[destination_asset_id])
     user = relationship("User", backref="topology_links")
+
+
+class TopologyNodePosition(Base):
+    """Where an asset's node was last dragged to on the Topology canvas.
+
+    One row per asset, upserted on drag-stop (see TopologyService.save_position).
+    An asset with no row here falls back to the grid layout on the frontend.
+    """
+
+    __tablename__ = "topology_node_positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    asset_id = Column(
+        Integer,
+        ForeignKey("asset_inventory.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    pos_x = Column(Float, nullable=False)
+    pos_y = Column(Float, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    asset = relationship("Asset")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
     fetchDeploymentJobDetail,
     startDeploymentJob,
@@ -37,6 +37,7 @@ function stepState(job, stepKey) {
 
 export const DeploymentJobDetail = () => {
     const { jobId } = useParams();
+    const navigate = useNavigate();
     const dispatch = useDispatch();
     const { currentJob, isLoading, isStarting, isRollingBack, error, successMessage } = useSelector((state) => state.deployment);
     const [showCreds, setShowCreds] = useState(null); // "start" | "rollback" | null
@@ -93,6 +94,11 @@ export const DeploymentJobDetail = () => {
                     {canRollback && (
                         <button className="dep-btn dep-btn-danger" onClick={() => setShowCreds("rollback")} disabled={isRollingBack}>
                             <i className="fa-solid fa-rotate-left" /> {isRollingBack ? "Rolling back…" : "Rollback"}
+                        </button>
+                    )}
+                    {job.status === "success" && (
+                        <button className="dep-btn" onClick={() => navigate("/drift")} title="Periodically re-check this device's config against this deployment's backup to catch later manual changes">
+                            <i className="fa-solid fa-magnifying-glass" /> Check for Drift
                         </button>
                     )}
                 </div>

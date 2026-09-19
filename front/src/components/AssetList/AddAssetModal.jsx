@@ -87,7 +87,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
 
     const [formData, setFormData] = useState({
         asset_name: "", hostname: "", asset_type_id: "", asset_role: "", manufacturer: "", model: "",
-        serial_number: "", os_name: "", os_version: "", ip_address: "", mac_address: "", location_id: "",
+        serial_number: "", os_name: "", os_version: "", ip_address: "", mac_address: "", port_count: "", location_id: "",
         owner_id: "", status: "active", confidentiality_level: "", risk_level: "", last_audit_date: "",
         last_patch_date: "", asset_value: "", description: ""
     });
@@ -99,7 +99,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         setIsSubmitting(false);
         setFormData({
             asset_name: "", hostname: "", asset_type_id: "", asset_role: "", manufacturer: "", model: "",
-            serial_number: "", os_name: "", os_version: "", ip_address: "", mac_address: "", location_id: "",
+            serial_number: "", os_name: "", os_version: "", ip_address: "", mac_address: "", port_count: "", location_id: "",
             owner_id: "", status: "active", confidentiality_level: "", risk_level: "", last_audit_date: "",
             last_patch_date: "", asset_value: "", description: ""
         });
@@ -203,6 +203,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         try {
             const submitData = { ...formData };
             Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
+            if (submitData.port_count !== null) submitData.port_count = Number(submitData.port_count);
 
             const result = await dispatch(createAsset(submitData));
 
@@ -406,6 +407,22 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             style={fieldErrors.mac_address ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         />
                         {fieldErrors.mac_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.mac_address}</span>}
+                    </div>
+                    <div className="form-group">
+                        <label>Physical Port Count</label>
+                        <input
+                            type="number"
+                            name="port_count"
+                            min="1"
+                            max="512"
+                            value={formData.port_count}
+                            onChange={handleChange}
+                            placeholder="e.g. 24"
+                            disabled={isLoadingOptions}
+                        />
+                        <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
+                            How many physical ports this device has - drives the port count shown on Topology/Design.
+                        </span>
                     </div>
                 </div>
             );

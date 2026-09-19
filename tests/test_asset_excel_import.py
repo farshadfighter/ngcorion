@@ -118,6 +118,23 @@ class TestMultiSheetImport:
         assert asset.model == "ISR4321"
         assert asset.ip_address == "10.0.0.77"
         assert asset.mac_address == "AA:BB:CC:DD:EE:FF"
+        assert asset.port_count == 24
+
+    def test_port_count_from_excel_float_cell_is_coerced_to_int(self, db, user, cisco_router_type):
+        """openpyxl reads a numeric cell as float ('24.0') even for a whole
+        number typed into Excel - it must not be rejected or stored as a
+        float against an Integer column."""
+        wb = _multi_sheet_workbook({
+            "Overview": ["Float-Ports", None, cisco_router_type.type_name, None, None, None],
+            "Network & System": ["Float-Ports", None, None, None, None, 48.0],
+        })
+
+        results = import_assets_from_excel(wb, db, user)
+
+        assert results["errors"] == []
+        asset = db.query(Asset).filter(Asset.asset_name == "Float-Ports").first()
+        assert asset.port_count == 48
+        assert isinstance(asset.port_count, int)
 
     def test_asset_type_from_overview_sheet_resolves_by_name(self, db, user, cisco_router_type):
         """The historical bug: Overview's "Type" header must map to the same
