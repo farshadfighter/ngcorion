@@ -124,6 +124,18 @@ from app.models.topology_log import (
 # Import architecture validation findings (depend on Asset and User)
 from app.models.architecture_finding import ArchitectureFinding
 
+# Import design models (depend on Asset and User)
+from app.models.design import (
+    ArchitectureDesign,
+    ArchitectureDesignVersion,
+    DesignComponent,
+    DesignRelationship,
+    DesignAssetMapping,
+)
+
+# Import configuration models (depend on design models and Asset)
+from app.models.configuration import ConfigurationJob, ConfigurationObject
+
 # Import risk models (depend on User and Asset)
 from app.models.risk import (
     RiskSetting,
@@ -205,6 +217,15 @@ __all__ = [
     "log_topology_link_deleted",
     # Architecture Validation
     "ArchitectureFinding",
+    # Design models
+    "ArchitectureDesign",
+    "ArchitectureDesignVersion",
+    "DesignComponent",
+    "DesignRelationship",
+    "DesignAssetMapping",
+    # Configuration models
+    "ConfigurationJob",
+    "ConfigurationObject",
     # Risk models
     "RiskSetting",
     "RiskZone",

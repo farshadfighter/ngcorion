@@ -29,6 +29,11 @@ import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
 import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
 import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
 import { ArchitectureValidationDashboard } from "./components/ArchitectureValidation/ArchitectureValidationDashboard";
+import { DesignList } from "./components/DesignConfiguration/DesignList";
+import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
+import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
+import { ConfigurationJobList } from "./components/DesignConfiguration/ConfigurationJobList";
+import { ConfigurationJobDetail } from "./components/DesignConfiguration/ConfigurationJobDetail";
 import {
     RequirePermission,
     AssetListRoute,
@@ -192,6 +197,31 @@ function AppContent() {
                         <Route path="/architecture-validation" element={
                             <RequirePermission module="architecture_validation" name="Architecture Validation">
                                 <ArchitectureValidationDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <DesignList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/designs/:designId" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <DesignDetail />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/versions/:versionId" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <DesignCanvas />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/jobs" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <ConfigurationJobList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-configuration/jobs/:jobId" element={
+                            <RequirePermission module="design_configuration" name="Design & Configuration">
+                                <ConfigurationJobDetail />
                             </RequirePermission>
                         } />
 

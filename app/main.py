@@ -97,6 +97,10 @@ from app.modules.topology.router import router as topology_router
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
 
+# Import design and configuration routers
+from app.modules.design.router import router as design_router
+from app.modules.configuration.router import router as configuration_router
+
 # Import risk router
 from app.modules.risk.router import router as risk_router
 
@@ -391,6 +395,10 @@ app.include_router(topology_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)
+
+# Design and Configuration routes
+app.include_router(design_router)
+app.include_router(configuration_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])
