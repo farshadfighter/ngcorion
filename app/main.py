@@ -251,6 +251,21 @@ FRONTEND_DIST = Path(__file__).resolve().parent.parent / "front" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 
 # ---------------------------------------------------------------------------
+# Middleware ordering
+# ---------------------------------------------------------------------------
+# Starlette wraps user_middleware in the REVERSE of the order add_middleware()
+# is called in: the last one added ends up outermost (runs first on the way
+# in, last on the way out), the first one added ends up innermost, right next
+# to the router. So LicenseMiddleware must be added FIRST, before CORS and
+# the security headers middleware - it returns its own JSONResponse directly
+# (never calls call_next) whenever the license is invalid, and if it were
+# outermost that response would skip every middleware added after it. It used
+# to be added last, which meant every license-blocked response - the ones an
+# unauthenticated scan of an unlicensed instance would actually see - shipped
+# with no CSP/X-Frame-Options/etc. and no CORS headers at all.
+app.add_middleware(LicenseMiddleware)
+
+# ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
 # The allowlist is explicit and validated (resolve_cors_origins raises on "*",
@@ -293,11 +308,10 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
 )
 
-# Add security headers middleware (after CORS, before routes)
+# Added last so it is outermost (see the ordering note above) - every
+# response, including the ones LicenseMiddleware/CORSMiddleware short-circuit,
+# still gets these headers.
 app.add_middleware(SecurityHeadersMiddleware)
-
-# Add license middleware (after CORS, before routes)
-app.add_middleware(LicenseMiddleware)
 
 # Authenticated OpenAPI schema. The schema lists every route, parameter and
 # model field in the application - reconnaissance material an unauthenticated
