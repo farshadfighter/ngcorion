@@ -41,7 +41,7 @@ from cryptography.hazmat.primitives.serialization.pkcs12 import (
 )
 from cryptography.x509.oid import NameOID
 
-from .schemas import MASK
+from .schemas import MASK, reject_ssrf_target
 
 logger = logging.getLogger(__name__)
 
@@ -552,6 +552,15 @@ def send_test_sms(config: Dict[str, Any], phone: str) -> Dict[str, Any]:
     success=False rather than raised — a failed test is a normal result."""
     message = "NGCorion test message. If you received this, SMS is configured."
     url, kwargs = _sms_request(config, phone, message)
+    try:
+        # Re-checked here, not just at config-save time in SmsConfig: a
+        # server_address that resolved to a public IP when saved could have
+        # since been repointed (DNS rebinding) at an internal/metadata
+        # address by the time this actually fires.
+        reject_ssrf_target(url)
+    except ValueError as exc:
+        logger.warning("SMS test to %s refused: %s", phone, exc)
+        return {"success": False, "message": f"server_address is not allowed: {exc}"}
     try:
         response = requests.post(url, timeout=HTTP_TIMEOUT, **kwargs)
     except requests.RequestException as exc:
