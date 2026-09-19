@@ -209,6 +209,31 @@ def require_license_server_url() -> str:
     return url.rstrip("/")
 
 
+_INSECURE_DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production-min-32-chars"
+
+
+def require_secure_secret_key() -> str:
+    """
+    Return SECRET_KEY, or raise if it is still the published placeholder.
+
+    SECRET_KEY signs every JWT this app issues; the default value above is
+    checked into the repository and public, so leaving it in place lets
+    anyone forge a valid token for any user, admin included, with no need to
+    ever guess a password. Same fail-fast philosophy as
+    require_license_server_url() / resolve_cors_origins(): stop at startup
+    with an actionable message rather than run in a silently compromised
+    state.
+    """
+    key = settings.SECRET_KEY
+    if key == _INSECURE_DEFAULT_SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY is still the default placeholder from config.py. Generate "
+            "a real one (e.g. `openssl rand -hex 32`) and set SECRET_KEY in the "
+            "environment or .env file before starting the app."
+        )
+    return key
+
+
 class CORSConfigurationError(RuntimeError):
     """BACKEND_CORS_ORIGINS contains an unsafe or malformed value."""
 
