@@ -8,6 +8,7 @@ from app.models import (
     DesignRelationship,
     DesignAssetMapping,
 )
+from app.modules.design.templates import build_template
 
 
 class DesignService:
@@ -104,6 +105,44 @@ class DesignService:
         db.commit()
         db.refresh(new_version)
         return new_version
+
+    @staticmethod
+    def apply_template(
+        db: Session, version: ArchitectureDesignVersion, template_id: str, scale: str
+    ) -> ArchitectureDesignVersion:
+        """Populate a (normally just-created, empty) version from a standard
+        template - see app/modules/design/templates.py. Each generated
+        component/relationship is inserted exactly like a hand-drawn one; the
+        template's local "_key" references are resolved to real ids as rows
+        are created, then discarded."""
+        component_defs, relationship_defs = build_template(template_id, scale)
+
+        key_to_id: dict[str, int] = {}
+        for comp in component_defs:
+            row = DesignComponent(
+                design_version_id=version.id,
+                component_type=comp["component_type"],
+                label=comp["label"],
+                pos_x=comp["pos_x"],
+                pos_y=comp["pos_y"],
+            )
+            db.add(row)
+            db.flush()
+            key_to_id[comp["_key"]] = row.id
+
+        for rel in relationship_defs:
+            db.add(
+                DesignRelationship(
+                    design_version_id=version.id,
+                    source_component_id=key_to_id[rel["_source"]],
+                    destination_component_id=key_to_id[rel["_destination"]],
+                    link_type=rel["link_type"],
+                )
+            )
+
+        db.commit()
+        db.refresh(version)
+        return version
 
     # ==========================================
     # Components
