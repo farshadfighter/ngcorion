@@ -23,6 +23,10 @@ const LINK_TYPE_COLOR = {
     fiber: "#0891b2",
     wireless: "#7c3aed",
     logical: "#9ca3af",
+    // Computed at read time from Asset.hosted_on_asset_id, not a real
+    // TopologyLink - see TopologyService.get_hosted_edges. Always dashed,
+    // regardless of status, so it reads as logical rather than cabled.
+    hosted: "#9333ea",
 };
 
 export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDragStop }) {
@@ -64,7 +68,7 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDra
                 style: {
                     stroke: LINK_TYPE_COLOR[link.link_type] || "#1e3a5f",
                     strokeWidth: 2,
-                    strokeDasharray: link.status === "planned" ? "5 4" : undefined,
+                    strokeDasharray: link.status === "planned" || link.link_type === "hosted" ? "5 4" : undefined,
                     opacity: link.status === "down" ? 0.4 : 1,
                 },
                 data: { link },

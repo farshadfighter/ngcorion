@@ -20,6 +20,36 @@ class TopologyService:
         return db.query(TopologyLink).all()
 
     @staticmethod
+    def get_hosted_edges(db: Session) -> list[dict]:
+        """Dashed logical edges from a server to each VM/Application/Database
+        it hosts, computed at read time from Asset.hosted_on_asset_id - never
+        persisted as a TopologyLink (a real cabled link), and always
+        consistent with the asset inventory with no separate sync step.
+
+        Shaped like a TopologyLinkSummary so the frontend can treat both link
+        kinds uniformly, distinguished by link_type == "hosted"; `id` is the
+        hosted asset's own id negated, which can never collide with a real
+        TopologyLink's positive id and has nothing in the DB to edit/delete."""
+        hosted = db.query(Asset).filter(Asset.hosted_on_asset_id.isnot(None)).all()
+        return [
+            {
+                "id": -asset.id,
+                "source_asset_id": asset.hosted_on_asset_id,
+                "destination_asset_id": asset.id,
+                "source_interface": None,
+                "destination_interface": None,
+                "link_type": "hosted",
+                "speed_mbps": None,
+                "vlan": asset.hosted_vlan,
+                "subnet": None,
+                "status": "active",
+                "created_at": None,
+                "updated_at": None,
+            }
+            for asset in hosted
+        ]
+
+    @staticmethod
     def get_positions(db: Session) -> dict[int, TopologyNodePosition]:
         """asset_id -> saved position, for the assets that have been dragged
         at least once."""
@@ -90,6 +120,14 @@ class TopologyService:
         for link in links:
             degree[link.source_asset_id] += 1
             degree[link.destination_asset_id] += 1
+        # A hosted-on relationship is a real connection too (to its host),
+        # even though it isn't a cabled TopologyLink - without this, every
+        # VM/Application/Database asset would wrongly show up as an
+        # "orphan_node" the moment it's given a required host.
+        for asset in assets:
+            if asset.hosted_on_asset_id is not None:
+                degree[asset.id] += 1
+                degree[asset.hosted_on_asset_id] += 1
 
         findings: list[TopologyFinding] = []
         for asset in assets:

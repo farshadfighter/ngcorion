@@ -37,9 +37,11 @@ def get_topology(
     current_user: User = Depends(require_permission("topology", "read")),
     db: Session = Depends(get_db),
 ):
-    """Full topology graph: every asset as a node, every link between them."""
+    """Full topology graph: every asset as a node, every link between them,
+    plus a dashed logical edge for each asset hosted on another (server ->
+    VM/Application/Database)."""
     assets = TopologyService.get_nodes(db)
-    links = TopologyService.get_links(db)
+    links = list(TopologyService.get_links(db)) + TopologyService.get_hosted_edges(db)
     positions = TopologyService.get_positions(db)
 
     nodes = [

@@ -53,6 +53,8 @@ class AssetBase(BaseModel):
     port_count: Optional[int] = None
     location_id: Optional[int] = None
     owner_id: Optional[int] = None
+    hosted_on_asset_id: Optional[int] = None
+    hosted_vlan: Optional[str] = None
     status: StatusEnum = StatusEnum.ACTIVE
     confidentiality_level: Optional[ConfidentialityLevelEnum] = None
     risk_level: Optional[RiskLevelEnum] = None
@@ -130,6 +132,8 @@ class AssetUpdate(BaseModel):
     port_count: Optional[int] = None
     location_id: Optional[int] = None
     owner_id: Optional[int] = None
+    hosted_on_asset_id: Optional[int] = None
+    hosted_vlan: Optional[str] = None
     status: Optional[StatusEnum] = None
     confidentiality_level: Optional[ConfidentialityLevelEnum] = None
     risk_level: Optional[RiskLevelEnum] = None

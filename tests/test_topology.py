@@ -189,6 +189,46 @@ def test_validate_ignores_planned_links_for_redundancy(db, user):
 
 
 # ======================================================================
+# Hosted-on edges (computed, not persisted)
+# ======================================================================
+
+def test_get_hosted_edges_returns_one_entry_per_hosted_asset(db):
+    server = _make_asset(db)
+    vm = _make_asset(db)
+    vm.hosted_on_asset_id = server.id
+    vm.hosted_vlan = "110"
+    db.flush()
+
+    edges = TopologyService.get_hosted_edges(db)
+    assert len(edges) == 1
+    edge = edges[0]
+    assert edge["source_asset_id"] == server.id
+    assert edge["destination_asset_id"] == vm.id
+    assert edge["link_type"] == "hosted"
+    assert edge["vlan"] == "110"
+    assert edge["id"] == -vm.id  # never collides with a real (positive) TopologyLink id
+
+
+def test_get_hosted_edges_empty_when_no_asset_is_hosted(db):
+    _make_asset(db)
+    assert TopologyService.get_hosted_edges(db) == []
+
+
+def test_validate_does_not_flag_hosted_asset_as_orphan(db):
+    """A VM with only a hosted-on relationship (no real cabling) must not be
+    reported as a fully disconnected orphan_node - it IS connected, just not
+    by a cable."""
+    server = _make_asset(db)
+    vm = _make_asset(db)
+    vm.hosted_on_asset_id = server.id
+    db.flush()
+
+    findings = TopologyService.validate(db)
+    codes_by_asset = {f.asset_id: f.code for f in findings}
+    assert codes_by_asset.get(vm.id) != "orphan_node"
+
+
+# ======================================================================
 # Router behaviour
 # ======================================================================
 
@@ -288,6 +328,22 @@ def test_route_get_topology_includes_saved_position(db, asset_pair, user):
     node = next(n for n in graph.nodes if n.id == a.id)
     assert node.pos_x == 55
     assert node.pos_y == 66
+
+
+def test_route_get_topology_includes_hosted_edge(db, asset_pair, user):
+    from app.modules.topology.router import get_topology as route
+
+    server, vm = asset_pair
+    vm.hosted_on_asset_id = server.id
+    vm.hosted_vlan = "42"
+    db.flush()
+
+    graph = route(current_user=user, db=db)
+    hosted = [l for l in graph.links if l.link_type == "hosted"]
+    assert len(hosted) == 1
+    assert hosted[0].source_asset_id == server.id
+    assert hosted[0].destination_asset_id == vm.id
+    assert hosted[0].vlan == "42"
 
 
 def test_route_save_position_404s_for_missing_asset(db, user):
