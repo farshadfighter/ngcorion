@@ -262,28 +262,34 @@ export const DashboardLayout = () => {
                                     {!isSidebarCollapsed && <span>Architecture Validation</span>}
                                 </div>
                             )}
-                            {canReadDesignConfig && (
+                            {/* Design, Configuration Jobs, Deployment and Configuration Drift are
+                                hidden from the sidebar for now (product decision - revisit later).
+                                Routes/permissions are untouched, so a direct link (e.g. from
+                                Suggested Design's "Create this design") still works; only the
+                                sidebar entry points are removed. Flip these back to
+                                `canReadDesignConfig && ( ... )` etc. to bring them back. */}
+                            {false && canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration" ? "active" : ""}`}
                                      onClick={() => navigate("/design-configuration")} title="Design">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Design</span>}
                                 </div>
                             )}
-                            {canReadDesignConfig && (
+                            {false && canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration-jobs" ? "active" : ""}`}
                                      onClick={() => navigate("/design-configuration/jobs")} title="Configuration Jobs">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Configuration Jobs</span>}
                                 </div>
                             )}
-                            {canReadDeployment && (
+                            {false && canReadDeployment && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "deployment" ? "active" : ""}`}
                                      onClick={() => navigate("/deployment/jobs")} title="Deployment">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Deployment</span>}
                                 </div>
                             )}
-                            {canReadDrift && (
+                            {false && canReadDrift && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "drift" ? "active" : ""}`}
                                      onClick={() => navigate("/drift")} title="Configuration Drift">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
