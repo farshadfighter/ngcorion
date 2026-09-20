@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.asset import Asset
+from app.models.enums import StatusEnum
 from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface
 from app.core.snmp_crypto import encrypt_secret
 from app.modules.noc.snmp_client import poll_asset, DevicePollResult
@@ -18,6 +19,11 @@ logger = logging.getLogger(__name__)
 # sockets. Each poll is already bounded by its own per-request timeout
 # (see snmp_client.DEFAULT_TIMEOUT_SECONDS).
 MAX_CONCURRENT_POLLS = 20
+
+# Consecutive failed polls before an SNMP-monitored asset flips to INACTIVE.
+# A single dropped packet must not flip status (flapping); one success
+# immediately flips it back to ACTIVE - see _apply_auto_status below.
+NOC_INACTIVE_AFTER_FAILURES = 3
 
 
 class NocService:
@@ -90,6 +96,23 @@ class NocService:
         )
 
     @staticmethod
+    def _apply_auto_status(db: Session, asset_id: int, reachable: bool, consecutive_failures: int) -> None:
+        """Drive Asset.status from live SNMP reachability - the asset's
+        lifecycle status is otherwise fully manual, but once it has an SNMP
+        credential configured, NOC becomes the source of truth for whether
+        it's ACTIVE or INACTIVE (per product decision: "دستی ست نشه، اتوماتیک
+        از NOC مشخصاتشو دریافت کنه"). DECOMMISSIONED is left alone - an
+        explicit end-of-life marking must not be overridden by a device that
+        happens to still answer SNMP."""
+        asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        if asset is None or asset.status == StatusEnum.DECOMMISSIONED:
+            return
+        if reachable:
+            asset.status = StatusEnum.ACTIVE
+        elif consecutive_failures >= NOC_INACTIVE_AFTER_FAILURES:
+            asset.status = StatusEnum.INACTIVE
+
+    @staticmethod
     def _persist_poll_result(db: Session, asset_id: int, result: DevicePollResult) -> AssetSnmpStatus:
         status = db.query(AssetSnmpStatus).filter(AssetSnmpStatus.asset_id == asset_id).first()
         if status is None:
@@ -104,6 +127,9 @@ class NocService:
         status.sys_uptime_ticks = result.sys_uptime_ticks
         status.error_message = result.error_message
         status.last_polled_at = datetime.utcnow()
+        status.consecutive_poll_failures = 0 if result.reachable else (status.consecutive_poll_failures or 0) + 1
+
+        NocService._apply_auto_status(db, asset_id, result.reachable, status.consecutive_poll_failures)
 
         existing = {
             row.if_index: row

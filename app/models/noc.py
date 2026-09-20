@@ -74,6 +74,11 @@ class AssetSnmpStatus(Base):
     sys_uptime_ticks = Column(BigInteger, nullable=True)  # hundredths of a second, per RFC1213
     error_message = Column(Text, nullable=True)
     last_polled_at = Column(DateTime, nullable=True, index=True)
+    # Consecutive failed polls in a row (reset to 0 on any success). Drives
+    # the auto ACTIVE/INACTIVE flip on Asset.status - see
+    # app/modules/noc/service.py's NOC_INACTIVE_AFTER_FAILURES threshold.
+    # Flap-dampening: one dropped packet must not flip status.
+    consecutive_poll_failures = Column(Integer, nullable=False, default=0)
 
     asset = relationship("Asset")
 

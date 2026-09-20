@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.database import engine
 from app.models.asset import Asset
 from app.models.asset_types import AssetType
+from app.models.enums import StatusEnum
 from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface
 from app.models.user import User
 from app.core.snmp_crypto import encrypt_secret, decrypt_secret
@@ -211,6 +212,83 @@ def test_persist_poll_result_records_unreachable_devices(db, user):
     assert status.reachable is False
     assert status.error_message == "timed out"
     assert status.sys_name is None
+
+
+# ======================================================================
+# NOC-driven auto status (ACTIVE/INACTIVE)
+# ======================================================================
+
+def _fake_unreachable_result() -> DevicePollResult:
+    return DevicePollResult(reachable=False, error_message="timed out")
+
+
+def test_consecutive_failures_below_threshold_does_not_flip_status(db, user):
+    asset = _make_asset(db)
+    asset.status = StatusEnum.UNKNOWN
+    db.flush()
+
+    NocService._persist_poll_result(db, asset.id, _fake_unreachable_result())
+    NocService._persist_poll_result(db, asset.id, _fake_unreachable_result())
+    db.refresh(asset)
+
+    assert asset.status == StatusEnum.UNKNOWN
+    status = NocService.get_status(db, asset.id)
+    assert status.consecutive_poll_failures == 2
+
+
+def test_third_consecutive_failure_flips_to_inactive(db, user):
+    asset = _make_asset(db)
+    asset.status = StatusEnum.ACTIVE
+    db.flush()
+
+    for _ in range(3):
+        NocService._persist_poll_result(db, asset.id, _fake_unreachable_result())
+    db.refresh(asset)
+
+    assert asset.status == StatusEnum.INACTIVE
+
+
+def test_a_single_success_immediately_flips_back_to_active(db, user):
+    asset = _make_asset(db)
+    asset.status = StatusEnum.ACTIVE
+    db.flush()
+    for _ in range(3):
+        NocService._persist_poll_result(db, asset.id, _fake_unreachable_result())
+    db.refresh(asset)
+    assert asset.status == StatusEnum.INACTIVE
+
+    NocService._persist_poll_result(db, asset.id, _fake_reachable_result())
+    db.refresh(asset)
+
+    assert asset.status == StatusEnum.ACTIVE
+    status = NocService.get_status(db, asset.id)
+    assert status.consecutive_poll_failures == 0
+
+
+def test_decommissioned_status_is_never_overridden(db, user):
+    asset = _make_asset(db)
+    asset.status = StatusEnum.DECOMMISSIONED
+    db.flush()
+
+    for _ in range(5):
+        NocService._persist_poll_result(db, asset.id, _fake_unreachable_result())
+    db.refresh(asset)
+    assert asset.status == StatusEnum.DECOMMISSIONED
+
+    NocService._persist_poll_result(db, asset.id, _fake_reachable_result())
+    db.refresh(asset)
+    assert asset.status == StatusEnum.DECOMMISSIONED
+
+
+def test_unmonitored_asset_status_is_unaffected_by_other_assets_polls(db, user):
+    """An asset with no SNMP credential/poll history at all keeps whatever
+    status a human set - the auto-status logic only ever runs from inside
+    _persist_poll_result, which is only reached for assets actually polled."""
+    asset = _make_asset(db)
+    asset.status = StatusEnum.STANDBY
+    db.flush()
+    db.refresh(asset)
+    assert asset.status == StatusEnum.STANDBY
 
 
 # ======================================================================

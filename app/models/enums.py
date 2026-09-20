@@ -5,6 +5,11 @@ class StatusEnum(str, enum.Enum):
     STANDBY = "standby"
     DECOMMISSIONED = "decommissioned"
     UNKNOWN = "unknown"
+    # Set automatically by the NOC poller for assets with an SNMP credential
+    # configured (app/modules/noc/service.py), after several consecutive
+    # failed polls - never set by a user directly. Assets without SNMP
+    # monitoring keep their status fully manual, as before.
+    INACTIVE = "inactive"
 
 class ConfidentialityLevelEnum(str, enum.Enum):
     PUBLIC = "public"
