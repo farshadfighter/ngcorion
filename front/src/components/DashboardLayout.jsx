@@ -41,6 +41,11 @@ const menuFromPath = (pathname) => {
     return "dashboard";
 };
 
+// Design, Configuration Jobs, Deployment and Configuration Drift sidebar
+// entries are hidden for now (product decision - revisit later). Flip this
+// back to true to bring them back; routes/permissions are untouched.
+const SHOW_HIDDEN_NAV = false;
+
 export const DashboardLayout = () => {
     const { username, role } = useSelector((state) => state.auth);
     const dispatch = useDispatch();
@@ -268,28 +273,28 @@ export const DashboardLayout = () => {
                                 Suggested Design's "Create this design") still works; only the
                                 sidebar entry points are removed. Flip these back to
                                 `canReadDesignConfig && ( ... )` etc. to bring them back. */}
-                            {false && canReadDesignConfig && (
+                            {SHOW_HIDDEN_NAV && canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration" ? "active" : ""}`}
                                      onClick={() => navigate("/design-configuration")} title="Design">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Design</span>}
                                 </div>
                             )}
-                            {false && canReadDesignConfig && (
+                            {SHOW_HIDDEN_NAV && canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration-jobs" ? "active" : ""}`}
                                      onClick={() => navigate("/design-configuration/jobs")} title="Configuration Jobs">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Configuration Jobs</span>}
                                 </div>
                             )}
-                            {false && canReadDeployment && (
+                            {SHOW_HIDDEN_NAV && canReadDeployment && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "deployment" ? "active" : ""}`}
                                      onClick={() => navigate("/deployment/jobs")} title="Deployment">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Deployment</span>}
                                 </div>
                             )}
-                            {false && canReadDrift && (
+                            {SHOW_HIDDEN_NAV && canReadDrift && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "drift" ? "active" : ""}`}
                                      onClick={() => navigate("/drift")} title="Configuration Drift">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
