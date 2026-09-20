@@ -20,6 +20,22 @@ class DesignSummary(BaseModel):
 class DesignCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    # Optional: populate the auto-created version 1 from a standard template
+    # (see app/modules/design/templates.py) instead of leaving it empty.
+    template_id: Optional[str] = None
+    template_scale: str = "medium"
+
+
+class DesignTemplateInfo(BaseModel):
+    id: str
+    name: str
+    description: str
+    framework: str
+
+
+class DesignTemplateScale(BaseModel):
+    id: str
+    label: str
 
 
 class DesignVersionSummary(BaseModel):

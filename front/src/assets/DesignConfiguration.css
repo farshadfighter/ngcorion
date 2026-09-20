@@ -270,6 +270,50 @@
     width: 100%;
 }
 
+.dc-template-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.dc-template-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    background: white;
+}
+
+.dc-template-card-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.dc-template-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.dc-template-card-framework {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dc-template-card-desc {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
 /* Canvas page */
 .dc-canvas-page {
     padding: 32px 40px;

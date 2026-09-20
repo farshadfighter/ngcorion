@@ -12,10 +12,13 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models import User, Asset
 from app.modules.design.service import DesignService
+from app.modules.design.templates import list_templates, SCALES
 from app.modules.design.schemas import (
     DesignSummary,
     DesignCreate,
     DesignDetail,
+    DesignTemplateInfo,
+    DesignTemplateScale,
     DesignVersionSummary,
     DesignVersionCreate,
     DesignVersionDetail,
@@ -64,6 +67,26 @@ def list_designs(
     ]
 
 
+@router.get("/templates/list", response_model=list[DesignTemplateInfo])
+def get_design_templates(
+    current_user: User = Depends(require_permission("design_configuration", "read")),
+):
+    """Standard reference designs (Cisco SAFE, etc.) a new Design can start
+    from instead of an empty canvas."""
+    return [
+        DesignTemplateInfo(id=t.id, name=t.name, description=t.description, framework=t.framework)
+        for t in list_templates()
+    ]
+
+
+@router.get("/templates/scales", response_model=list[DesignTemplateScale])
+def get_design_template_scales(
+    current_user: User = Depends(require_permission("design_configuration", "read")),
+):
+    """Scale options for template application (controls access-layer size)."""
+    return [DesignTemplateScale(id=key, label=val["label"]) for key, val in SCALES.items()]
+
+
 @router.post("/", response_model=DesignSummary, status_code=201)
 def create_design(
     request: DesignCreate,
@@ -71,6 +94,11 @@ def create_design(
     db: Session = Depends(get_db),
 ):
     design = DesignService.create_design(db, request.name, request.description, current_user.id)
+    if request.template_id:
+        try:
+            DesignService.apply_template(db, design.versions[0], request.template_id, request.template_scale)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     return DesignSummary(
         id=design.id, name=design.name, description=design.description, status=design.status,
         created_at=design.created_at, updated_at=design.updated_at, latest_version_number=1,

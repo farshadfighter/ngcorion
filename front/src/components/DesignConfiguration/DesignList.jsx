@@ -1,19 +1,31 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchDesigns, createDesign, clearMessages } from "../../store/designSlice.jsx";
+import {
+    fetchDesigns,
+    createDesign,
+    fetchDesignTemplates,
+    fetchTemplateScales,
+    clearMessages,
+} from "../../store/designSlice.jsx";
 import "../../assets/DesignConfiguration.css";
 
 export const DesignList = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { designs, isLoading, error, successMessage } = useSelector((state) => state.design);
+    const { designs, templates, templateScales, isLoading, error, successMessage } = useSelector(
+        (state) => state.design
+    );
     const [showCreate, setShowCreate] = useState(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
+    const [templateId, setTemplateId] = useState(null); // null = blank canvas
+    const [templateScale, setTemplateScale] = useState("medium");
 
     useEffect(() => {
         dispatch(fetchDesigns());
+        dispatch(fetchDesignTemplates());
+        dispatch(fetchTemplateScales());
     }, [dispatch]);
 
     useEffect(() => {
@@ -24,11 +36,20 @@ export const DesignList = () => {
 
     const handleCreate = () => {
         if (!name.trim()) return;
-        dispatch(createDesign({ name: name.trim(), description: description.trim() || undefined })).then((action) => {
+        dispatch(
+            createDesign({
+                name: name.trim(),
+                description: description.trim() || undefined,
+                template_id: templateId || undefined,
+                template_scale: templateId ? templateScale : undefined,
+            })
+        ).then((action) => {
             if (action.payload?.id) {
                 setShowCreate(false);
                 setName("");
                 setDescription("");
+                setTemplateId(null);
+                setTemplateScale("medium");
                 navigate(`/design-configuration/designs/${action.payload.id}`);
             }
         });
@@ -94,6 +115,44 @@ export const DesignList = () => {
                             <label>Description</label>
                             <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
                         </div>
+
+                        <div className="dc-field">
+                            <label>Start from</label>
+                            <div className="dc-template-options">
+                                <button
+                                    type="button"
+                                    className={`dc-template-card${templateId === null ? " dc-template-card-selected" : ""}`}
+                                    onClick={() => setTemplateId(null)}
+                                >
+                                    <span className="dc-template-card-title">Blank canvas</span>
+                                    <span className="dc-template-card-desc">Start with an empty design and add components yourself.</span>
+                                </button>
+                                {templates.map((t) => (
+                                    <button
+                                        type="button"
+                                        key={t.id}
+                                        className={`dc-template-card${templateId === t.id ? " dc-template-card-selected" : ""}`}
+                                        onClick={() => setTemplateId(t.id)}
+                                    >
+                                        <span className="dc-template-card-framework">{t.framework}</span>
+                                        <span className="dc-template-card-title">{t.name}</span>
+                                        <span className="dc-template-card-desc">{t.description}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {templateId && (
+                            <div className="dc-field">
+                                <label>Network size</label>
+                                <select value={templateScale} onChange={(e) => setTemplateScale(e.target.value)}>
+                                    {templateScales.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         <div className="dc-modal-actions">
                             <button className="dc-btn" onClick={() => setShowCreate(false)}>Cancel</button>
                             <button className="dc-btn dc-btn-primary" onClick={handleCreate} disabled={!name.trim()}>

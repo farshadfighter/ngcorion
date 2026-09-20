@@ -29,6 +29,30 @@ export const createDesign = createAsyncThunk(
     }
 );
 
+export const fetchDesignTemplates = createAsyncThunk(
+    "design/fetchDesignTemplates",
+    async (_arg, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/design/templates/list");
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "Failed to load design templates");
+        }
+    }
+);
+
+export const fetchTemplateScales = createAsyncThunk(
+    "design/fetchTemplateScales",
+    async (_arg, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/design/templates/scales");
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "Failed to load template scales");
+        }
+    }
+);
+
 export const fetchDesignDetail = createAsyncThunk(
     "design/fetchDesignDetail",
     async (designId, { rejectWithValue }) => {
@@ -160,6 +184,8 @@ const designSlice = createSlice({
     name: "design",
     initialState: {
         designs: [],
+        templates: [],
+        templateScales: [],
         currentDesign: null,
         currentVersion: null, // { version, components, relationships }
         isLoading: false,
@@ -184,6 +210,9 @@ const designSlice = createSlice({
                 state.successMessage = "Design created!";
             })
             .addCase(createDesign.rejected, (state, action) => { state.error = action.payload; })
+
+            .addCase(fetchDesignTemplates.fulfilled, (state, action) => { state.templates = action.payload; })
+            .addCase(fetchTemplateScales.fulfilled, (state, action) => { state.templateScales = action.payload; })
 
             .addCase(fetchDesignDetail.pending, (state) => { state.isLoading = true; state.error = null; })
             .addCase(fetchDesignDetail.fulfilled, (state, action) => { state.isLoading = false; state.currentDesign = action.payload; })
