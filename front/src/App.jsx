@@ -37,6 +37,7 @@ import { ConfigurationJobDetail } from "./components/DesignConfiguration/Configu
 import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
 import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
 import { DriftDashboard } from "./components/Drift/DriftDashboard";
+import { CveFindings } from "./components/CVE/CveFindings";
 import {
     RequirePermission,
     RequireRole,
@@ -241,6 +242,13 @@ function AppContent() {
                         <Route path="/drift" element={
                             <RequirePermission module="drift" name="Configuration Drift">
                                 <DriftDashboard />
+                            </RequirePermission>
+                        } />
+
+                        {/* Vulnerability Management */}
+                        <Route path="/cve" element={
+                            <RequirePermission module="cve" name="CVE">
+                                <CveFindings />
                             </RequirePermission>
                         } />
 

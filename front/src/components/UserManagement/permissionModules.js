@@ -28,6 +28,7 @@ export const PERMISSION_MODULES = [
     // (admin/manager) only, not by a per-user module permission, so granting
     // it here would be a dead control that does nothing on the backend.
     { name: "drift",                label: "Configuration Drift", icon: "fa-solid fa-arrows-split-up-and-left" },
+    { name: "cve",                  label: "CVE",                icon: "fa-solid fa-bug" },
 ];
 
 export default PERMISSION_MODULES;
