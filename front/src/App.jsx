@@ -37,6 +37,9 @@ import { ConfigurationJobDetail } from "./components/DesignConfiguration/Configu
 import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
 import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
 import { DriftDashboard } from "./components/Drift/DriftDashboard";
+import { NocDashboard } from "./components/NOC/NocDashboard";
+import { NocHostList } from "./components/NOC/NocHostList";
+import { NocHostDetail } from "./components/NOC/NocHostDetail";
 import {
     RequirePermission,
     RequireRole,
@@ -241,6 +244,23 @@ function AppContent() {
                         <Route path="/drift" element={
                             <RequirePermission module="drift" name="Configuration Drift">
                                 <DriftDashboard />
+                            </RequirePermission>
+                        } />
+
+                        {/* NOC */}
+                        <Route path="/noc/dashboard" element={
+                            <RequirePermission module="noc" name="NOC Dashboard">
+                                <NocDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/noc/hosts" element={
+                            <RequirePermission module="noc" name="NOC Host">
+                                <NocHostList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/noc/hosts/:assetId" element={
+                            <RequirePermission module="noc" name="NOC Host">
+                                <NocHostDetail />
                             </RequirePermission>
                         } />
 
