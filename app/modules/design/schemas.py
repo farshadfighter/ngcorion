@@ -123,6 +123,41 @@ class MapAssetRequest(BaseModel):
     asset_id: int
 
 
+class SuggestedComponent(BaseModel):
+    key: str
+    component_type: str
+    label: str
+    pos_x: float
+    pos_y: float
+    suggested_asset_id: Optional[int] = None
+    suggested_asset_name: Optional[str] = None
+    suggested_asset_port_count: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SuggestedRelationship(BaseModel):
+    source_key: str
+    destination_key: str
+    link_type: str
+
+    class Config:
+        from_attributes = True
+
+
+class DesignSuggestionResponse(BaseModel):
+    scale: str
+    scale_label: str
+    total_assets: int
+    matched_assets: int
+    components: list[SuggestedComponent]
+    relationships: list[SuggestedRelationship]
+
+    class Config:
+        from_attributes = True
+
+
 class DesignVersionDetail(BaseModel):
     version: DesignVersionSummary
     components: list[ComponentSummary]
