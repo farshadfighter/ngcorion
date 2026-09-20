@@ -156,6 +156,9 @@ from app.models.risk import (
 # Import system configuration model (depends on User)
 from app.models.system_config import SystemConfigSetting, CONFIG_SECTIONS
 
+# Import scheduled jobs (depend on Asset and User)
+from app.models.scheduling import ScheduledJob, ScheduledJobRun
+
 # Export all
 __all__ = [
     "Base",
@@ -246,6 +249,9 @@ __all__ = [
     "AssetRiskScore",
     "AssetRiskHistory",
     "RiskCalculationLog",
+    # Scheduled jobs
+    "ScheduledJob",
+    "ScheduledJobRun",
     # System configuration
     "SystemConfigSetting",
     "CONFIG_SECTIONS",

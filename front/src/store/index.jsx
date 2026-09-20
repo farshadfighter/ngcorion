@@ -20,6 +20,7 @@ import designReducer from "./designSlice.jsx";
 import configurationReducer from "./configurationSlice.jsx";
 import deploymentReducer from "./deploymentSlice.jsx";
 import driftReducer from "./driftSlice.jsx";
+import schedulingReducer from "./schedulingSlice.jsx";
 
 
 export const store = configureStore({
@@ -45,5 +46,6 @@ export const store = configureStore({
         configuration: configurationReducer,
         deployment: deploymentReducer,
         drift: driftReducer,
+        scheduling: schedulingReducer,
     },
 });

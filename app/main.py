@@ -119,6 +119,10 @@ from app.modules.risk.router import router as risk_router
 # Import system configuration router
 from app.modules.system_config.router import router as system_config_router
 
+# Import scheduled jobs router
+from app.modules.scheduling.router import router as scheduling_router
+from app.modules.scheduling.scheduler import start_job_scheduler, stop_job_scheduler
+
 # Import organization-wide dashboard routers
 from app.modules.dashboard.security_score_router import router as security_score_router
 
@@ -200,6 +204,7 @@ async def lifespan(app: FastAPI):
         )
 
     start_heartbeat(client)
+    start_job_scheduler()
 
     # Seed default risk settings/zones (idempotent). Uses its own session so a
     # failure here never blocks startup.
@@ -214,6 +219,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     stop_heartbeat()
+    await stop_job_scheduler()
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -470,6 +476,9 @@ app.include_router(
 app.include_router(
     system_config_router, prefix="/api/system", tags=["System Configuration"]
 )
+
+# Scheduled Jobs routes (scheduled discovery/audit)
+app.include_router(scheduling_router)
 
 
 @app.get("/api/info", tags=["Meta"])

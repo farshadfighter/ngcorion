@@ -37,6 +37,7 @@ import { ConfigurationJobDetail } from "./components/DesignConfiguration/Configu
 import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
 import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
 import { DriftDashboard } from "./components/Drift/DriftDashboard";
+import { ScheduledJobsPage } from "./components/Scheduling/ScheduledJobsPage";
 import {
     RequirePermission,
     RequireRole,
@@ -155,6 +156,10 @@ function AppContent() {
                                 <AutoDiscoveryRoute />
                             </RequirePermission>
                         } />
+
+                        {/* Scheduled Jobs - self-guards on discovery OR auditing read,
+                            since it lists both job types */}
+                        <Route path="/scheduling" element={<ScheduledJobsPage />} />
 
                         {/* Auditing */}
                         <Route path="/audit" element={
