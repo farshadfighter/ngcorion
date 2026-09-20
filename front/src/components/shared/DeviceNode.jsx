@@ -10,8 +10,8 @@ const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f" };
 // port on one device to a specific port on another), falling back to 4 generic handles for
 // asset types with no known port catalog (see utils/devicePorts.js).
 export function DeviceNode({ data, selected }) {
-    const { label, typeName, color = "#1e3a5f", dashed = false, subtitle } = data;
-    const ports = defaultPortsForType(typeName);
+    const { label, typeName, color = "#1e3a5f", dashed = false, subtitle, portCount } = data;
+    const ports = defaultPortsForType(typeName, portCount);
     const minWidth = ports.length > 0 ? Math.max(110, ports.length * 9) : 110;
 
     return (

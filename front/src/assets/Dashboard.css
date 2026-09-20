@@ -322,6 +322,13 @@
     color: #000000;
 }
 
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 2px 0 0;
+    max-width: 640px;
+}
+
 /* Page title + decorative eye mark, kept together at the header's left edge. */
 .header-left {
     display: flex;

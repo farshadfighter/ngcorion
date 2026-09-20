@@ -188,14 +188,14 @@ ASSET_LIST_SHEETS = [
     {
         "key": "network_system",
         "title": "Network & System",
-        "columns": ["Asset Name", "Serial", "OS", "IP Address", "MAC Address", "Ports"],
+        "columns": ["Asset Name", "Serial", "OS", "IP Address", "MAC Address", "Port Count"],
         "map_row": lambda asset: [
             asset.asset_name,
-            getattr(asset, 'serial_number', getattr(asset, 'serial', '')), 
+            getattr(asset, 'serial_number', getattr(asset, 'serial', '')),
             asset.os_name if hasattr(asset, 'os_name') else (f"{asset.os.os_name} {asset.os_version}" if hasattr(asset, 'os') and asset.os else ""),
             asset.ip_address,
             asset.mac_address,
-            ", ".join([str(p) for p in asset.ports]) if hasattr(asset, 'ports') and isinstance(getattr(asset, 'ports'), list) else str(getattr(asset, "ports", "N/A")),
+            asset.port_count,
         ],
     },
     {
@@ -393,6 +393,7 @@ def import_assets_from_excel(
         "Network & System": {
             "Asset Name": "asset_name", "Serial": "serial_number", "OS": "os_name",
             "IP Address": "ip_address", "MAC Address": "mac_address",
+            "Port Count": "port_count",
         },
         "Location & Owner": {
             "Asset Name": "asset_name", "Location": "location", "Owner": "owner",
@@ -421,6 +422,7 @@ def import_assets_from_excel(
         "OS Version": "os_version",
         "IP Address": "ip_address",
         "MAC Address": "mac_address",
+        "Port Count": "port_count",
         "Location": "location",
         "Owner": "owner",
         "Status": "status",
@@ -554,6 +556,17 @@ def import_assets_from_excel(
                             ).date()
                         except ValueError:
                             del row_data[date_field]
+
+                # openpyxl reads a numeric cell as float even for a whole
+                # number ("24.0"), which doesn't fit an Integer column as-is.
+                if "port_count" in row_data:
+                    try:
+                        row_data["port_count"] = int(row_data["port_count"])
+                    except (TypeError, ValueError):
+                        results["errors"].append(
+                            f"Row {row_idx}: Invalid port count '{row_data['port_count']}'"
+                        )
+                        del row_data["port_count"]
 
                 # Add foreign keys
                 if asset_type_id:

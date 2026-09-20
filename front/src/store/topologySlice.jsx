@@ -53,6 +53,21 @@ export const deleteTopologyLink = createAsyncThunk(
     }
 );
 
+export const saveNodePosition = createAsyncThunk(
+    "topology/savePosition",
+    async ({ assetId, posX, posY }, { rejectWithValue }) => {
+        try {
+            await api.patch(`/api/topology/nodes/${assetId}/position`, { pos_x: posX, pos_y: posY });
+            return { assetId, posX, posY };
+        } catch (err) {
+            // A failed position save shouldn't interrupt the user - the node
+            // still visually stays where it was dropped for this session, it
+            // just won't be remembered on the next visit.
+            return rejectWithValue(err.response?.data?.detail || "Failed to save node position");
+        }
+    }
+);
+
 export const validateTopology = createAsyncThunk(
     "topology/validate",
     async (_arg, { rejectWithValue }) => {
@@ -116,6 +131,14 @@ const topologySlice = createSlice({
                 state.successMessage = "Link deleted successfully!";
             })
             .addCase(deleteTopologyLink.rejected, (state, action) => { state.error = action.payload; })
+
+            .addCase(saveNodePosition.fulfilled, (state, action) => {
+                const node = state.nodes.find((n) => n.id === action.payload.assetId);
+                if (node) {
+                    node.pos_x = action.payload.posX;
+                    node.pos_y = action.payload.posY;
+                }
+            })
 
             .addCase(validateTopology.pending, (state) => { state.validation.isLoading = true; state.validation.error = null; })
             .addCase(validateTopology.fulfilled, (state, action) => {

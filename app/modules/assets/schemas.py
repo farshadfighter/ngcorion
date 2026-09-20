@@ -50,6 +50,7 @@ class AssetBase(BaseModel):
     os_version: Optional[str] = None
     ip_address: Optional[str] = None
     mac_address: Optional[str] = None
+    port_count: Optional[int] = None
     location_id: Optional[int] = None
     owner_id: Optional[int] = None
     status: StatusEnum = StatusEnum.ACTIVE
@@ -107,6 +108,13 @@ class AssetCreate(AssetBase):
             raise ValueError('Asset name must be at least 2 characters')
         return v
 
+    @field_validator('port_count')
+    @classmethod
+    def validate_port_count(cls, v):
+        if v is not None and not (0 < v <= 512):
+            raise ValueError('Port count must be between 1 and 512')
+        return v
+
 class AssetUpdate(BaseModel):
     asset_name: Optional[str] = None
     hostname: Optional[str] = None
@@ -119,6 +127,7 @@ class AssetUpdate(BaseModel):
     os_version: Optional[str] = None
     ip_address: Optional[str] = None
     mac_address: Optional[str] = None
+    port_count: Optional[int] = None
     location_id: Optional[int] = None
     owner_id: Optional[int] = None
     status: Optional[StatusEnum] = None
@@ -172,6 +181,13 @@ class AssetUpdate(BaseModel):
     def validate_name(cls, v):
         if v is not None and len(v.strip()) < 2:
             raise ValueError('Asset name must be at least 2 characters')
+        return v
+
+    @field_validator('port_count')
+    @classmethod
+    def validate_port_count(cls, v):
+        if v is not None and not (0 < v <= 512):
+            raise ValueError('Port count must be between 1 and 512')
         return v
 
 class AssetResponse(AssetBase):

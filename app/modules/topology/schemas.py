@@ -11,6 +11,15 @@ class TopologyNode(BaseModel):
     hostname: Optional[str] = None
     type_name: Optional[str] = None
     ip_address: Optional[str] = None
+    port_count: Optional[int] = None
+    # None means "never dragged" - the frontend falls back to its grid layout.
+    pos_x: Optional[float] = None
+    pos_y: Optional[float] = None
+
+
+class TopologyNodePositionUpdate(BaseModel):
+    pos_x: float
+    pos_y: float
 
 
 class TopologyLinkSummary(BaseModel):

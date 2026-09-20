@@ -45,6 +45,7 @@ def _component_summary(component) -> ComponentSummary:
         pos_y=component.pos_y,
         mapped_asset_id=mapping.asset_id if mapping else None,
         mapped_asset_name=mapping.asset.asset_name if mapping and mapping.asset else None,
+        mapped_asset_port_count=mapping.asset.port_count if mapping and mapping.asset else None,
     )
 
 

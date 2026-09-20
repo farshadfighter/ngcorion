@@ -1,8 +1,9 @@
 """Topology Service - graph assembly, link CRUD, and basic validation checks."""
 from collections import defaultdict
+from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import Session
-from app.models import Asset, TopologyLink
+from app.models import Asset, TopologyLink, TopologyNodePosition
 from app.modules.topology.schemas import TopologyFinding
 
 
@@ -17,6 +18,32 @@ class TopologyService:
     @staticmethod
     def get_links(db: Session):
         return db.query(TopologyLink).all()
+
+    @staticmethod
+    def get_positions(db: Session) -> dict[int, TopologyNodePosition]:
+        """asset_id -> saved position, for the assets that have been dragged
+        at least once."""
+        rows = db.query(TopologyNodePosition).all()
+        return {row.asset_id: row for row in rows}
+
+    @staticmethod
+    def save_position(db: Session, asset_id: int, pos_x: float, pos_y: float) -> TopologyNodePosition:
+        """Upsert - one row per asset, overwritten on every drag-stop."""
+        row = (
+            db.query(TopologyNodePosition)
+            .filter(TopologyNodePosition.asset_id == asset_id)
+            .first()
+        )
+        if row:
+            row.pos_x = pos_x
+            row.pos_y = pos_y
+            row.updated_at = datetime.utcnow()
+        else:
+            row = TopologyNodePosition(asset_id=asset_id, pos_x=pos_x, pos_y=pos_y)
+            db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row
 
     @staticmethod
     def get_link(db: Session, link_id: int) -> Optional[TopologyLink]:

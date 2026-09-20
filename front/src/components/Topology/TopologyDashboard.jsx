@@ -5,6 +5,7 @@ import {
     createTopologyLink,
     updateTopologyLink,
     deleteTopologyLink,
+    saveNodePosition,
     validateTopology,
     clearMessages,
 } from "../../store/topologySlice.jsx";
@@ -41,6 +42,10 @@ export const TopologyDashboard = () => {
 
     const handleEdgeClick = (link) => {
         setSelectedLink(link);
+    };
+
+    const handleNodeDragStop = (assetId, posX, posY) => {
+        dispatch(saveNodePosition({ assetId, posX, posY }));
     };
 
     const handleUpdateSelected = (field, value) => {
@@ -110,10 +115,12 @@ export const TopologyDashboard = () => {
                             links={links}
                             onConnect={handleConnect}
                             onEdgeClick={handleEdgeClick}
+                            onNodeDragStop={handleNodeDragStop}
                         />
                     )}
                     <div className="topology-hint">
-                        Drag from a device's port to another device's port to create a link. Click a link to edit it.
+                        Drag a device to rearrange it - the layout is saved. Drag from a device's port to another
+                        device's port to create a link. Click a link to edit it.
                     </div>
                 </div>
 

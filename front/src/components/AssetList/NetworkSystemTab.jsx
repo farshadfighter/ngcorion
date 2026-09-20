@@ -52,6 +52,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                     <th onClick={() => handleSort("os_name")} style={{ cursor: "pointer" }}>OS {renderSortIcon("os_name")}</th>
                     <th onClick={() => handleSort("ip_address")} style={{ cursor: "pointer" }}>IP Address {renderSortIcon("ip_address")}</th>
                     <th onClick={() => handleSort("mac_address")} style={{ cursor: "pointer" }}>MAC Address {renderSortIcon("mac_address")}</th>
+                    <th onClick={() => handleSort("port_count")} style={{ cursor: "pointer" }}>Physical Ports {renderSortIcon("port_count")}</th>
                     <th>Ports</th>
                     <th>Actions</th>
                 </tr>
@@ -76,6 +77,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                             <td>{asset.os_name ? [asset.os_name, asset.os_version].filter(Boolean).join(" ") : "-"}</td>
                             <td>{asset.ip_address || "-"}</td>
                             <td>{asset.mac_address || "-"}</td>
+                            <td>{asset.port_count ?? "-"}</td>
                             <td>
                                 <button className="btn-icon" onClick={() => handleManagePorts(asset)}>
                                     <i className="fa-solid fa-eye"></i>

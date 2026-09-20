@@ -135,6 +135,19 @@ export const DashboardLayout = () => {
         "licence":             "License Management",
     };
 
+    // One-line explanation shown under the page title. Filled in for the
+    // network-design pipeline pages (Topology -> Design -> Configuration
+    // Jobs -> Deployment -> Drift), whose purpose and relationship to each
+    // other was not obvious from the UI alone.
+    const pageSubtitles = {
+        "topology": "The network as it actually is right now - every real asset and the cabling between them.",
+        "architecture-validation": "Automated checks against the current topology (redundancy, exposure, best practice) - not part of the design pipeline below.",
+        "design-configuration": "Step 1 of 4 - draw a planned blueprint here, even for devices that don't exist yet. Versioned; publish when ready to generate configuration.",
+        "design-configuration-jobs": "Step 2 of 4 - turns a Design version into real device CLI commands, one per component mapped to an asset.",
+        "deployment": "Step 3 of 4 - safely pushes a generated configuration to the real device: precheck, backup, apply, verify, and roll back on failure.",
+        "drift": "Step 4 of 4 - compares a device's live configuration against its last backup to catch changes made outside this pipeline.",
+    };
+
     return (
         <div className="dashboard-container">
             {/* ── SIDEBAR ── */}
@@ -387,9 +400,14 @@ export const DashboardLayout = () => {
                         <span className="header-eye" aria-hidden="true">
                             <img src="/icons/eye.png" alt="" />
                         </span>
-                        <h1 className="page-title">
-                            {pageTitles[activeMenu] || "Dashboard"}
-                        </h1>
+                        <div>
+                            <h1 className="page-title">
+                                {pageTitles[activeMenu] || "Dashboard"}
+                            </h1>
+                            {pageSubtitles[activeMenu] && (
+                                <p className="page-subtitle">{pageSubtitles[activeMenu]}</p>
+                            )}
+                        </div>
                     </div>
                     <div className="header-center" style={{ flex: 1, display: "flex", justifyContent: "center" }}>
                         {currentModule && <LicenseBadge module={currentModule} />}

@@ -130,7 +130,16 @@ class Asset(Base):
         index=True,
         comment="MAC address (e.g., 00:11:22:33:44:55)"
     )
-    
+
+    port_count = Column(
+        Integer,
+        nullable=True,
+        comment="Number of physical ports this device actually has - drives "
+                "how many port handles Topology/Design draw on its node. "
+                "Null falls back to a keyword-guessed default (see "
+                "front/src/components/shared/portCatalog.js)."
+    )
+
 
     location_id = Column(
         Integer,
