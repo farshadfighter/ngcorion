@@ -7,7 +7,10 @@ with the last poll result, and on-demand polling. The background poller
 endpoints are for reading it and for triggering an out-of-cycle poll.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timedelta
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -22,7 +25,14 @@ from app.modules.noc.schemas import (
     InterfaceInfo,
     PollNowResponse,
     PollAllResponse,
+    MetricPoint,
+    MetricSeriesResponse,
 )
+
+# What a metric name may legally be - keeps the endpoint from being used as
+# an arbitrary column-name injection point and gives callers a clear 400
+# instead of a silently-empty series for a typo'd metric name.
+VALID_METRICS = {"reachable", "if_in_octets", "if_out_octets"}
 
 logger = logging.getLogger(__name__)
 
@@ -153,3 +163,38 @@ async def poll_all_now(
 ):
     count = await NocService.poll_all(db)
     return PollAllResponse(polled_count=count)
+
+
+@router.get("/hosts/{asset_id}/metrics", response_model=MetricSeriesResponse)
+def get_host_metrics(
+    asset_id: int,
+    metric: str = Query(..., description="e.g. reachable, if_in_octets, if_out_octets"),
+    interface_id: Optional[int] = Query(None, description="Omit for a device-level metric like 'reachable'"),
+    start: Optional[datetime] = Query(None, alias="from"),
+    end: Optional[datetime] = Query(None, alias="to"),
+    current_user: User = Depends(require_permission("noc", "read")),
+    db: Session = Depends(get_db),
+):
+    """Backs the host detail page's time-range picker (1h/6h/24h/7d/30d/
+    custom): the caller just asks for a window, and NocService.get_metric_series
+    picks raw vs. the right rollup tier by how wide that window is - the
+    caller never needs to know those tiers exist."""
+    if metric not in VALID_METRICS:
+        raise HTTPException(status_code=400, detail=f"metric must be one of: {', '.join(sorted(VALID_METRICS))}")
+
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    end = end or datetime.utcnow()
+    start = start or (end - timedelta(hours=24))
+    if start >= end:
+        raise HTTPException(status_code=400, detail="'from' must be before 'to'")
+
+    granularity, points = NocService.get_metric_series(db, asset_id, metric, start, end, interface_id)
+    return MetricSeriesResponse(
+        metric=metric,
+        granularity=granularity,
+        interface_id=interface_id,
+        points=[MetricPoint(**p) for p in points],
+    )

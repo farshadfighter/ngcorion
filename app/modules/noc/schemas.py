@@ -44,6 +44,7 @@ class HostSummary(BaseModel):
 
 
 class InterfaceInfo(BaseModel):
+    id: int  # AssetSnmpInterface.id - what GET /hosts/{id}/metrics?interface_id= expects, not if_index
     if_index: int
     if_descr: Optional[str] = None
     if_type: Optional[int] = None
@@ -83,3 +84,21 @@ class PollNowResponse(BaseModel):
 
 class PollAllResponse(BaseModel):
     polled_count: int
+
+
+class MetricPoint(BaseModel):
+    """One point of a metric time series. For a raw-resolution point
+    avg == min == max and count == 1; for a rollup point they summarize
+    every raw sample in that bucket (see app/modules/noc/metrics_retention.py)."""
+    t: datetime
+    avg: float
+    min: float
+    max: float
+    count: int
+
+
+class MetricSeriesResponse(BaseModel):
+    metric: str
+    granularity: str  # "raw" | "5m" | "1h" | "1d"
+    interface_id: Optional[int] = None
+    points: list[MetricPoint]

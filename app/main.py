@@ -142,6 +142,7 @@ from app.core.license_state import (
 )
 from app.core.heartbeat import start_heartbeat, stop_heartbeat
 from app.modules.noc.poller import start_noc_poller, stop_noc_poller
+from app.modules.noc.metrics_retention import start_metrics_retention_worker, stop_metrics_retention_worker
 from app.middleware.license_middleware import LicenseMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -236,12 +237,14 @@ async def lifespan(app: FastAPI):
         db.close()
 
     start_noc_poller()
+    start_metrics_retention_worker()
 
     yield
     # Shutdown
     stop_heartbeat()
     await stop_job_scheduler()
     await stop_noc_poller()
+    await stop_metrics_retention_worker()
 
 # Initialize FastAPI application
 app = FastAPI(

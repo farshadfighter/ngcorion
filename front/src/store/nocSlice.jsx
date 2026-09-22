@@ -79,6 +79,24 @@ export const pollAllNow = createAsyncThunk(
     }
 );
 
+// Backs the History card's time-range picker (see TimeRangePicker.jsx) - the
+// server picks raw vs. the right rollup tier by how wide [from, to] is
+// (NocService.pick_granularity), so this thunk just forwards whatever range
+// the picker produced.
+export const fetchHostMetric = createAsyncThunk(
+    "noc/fetchHostMetric",
+    async ({ assetId, metric, interfaceId, from, to }, { rejectWithValue }) => {
+        try {
+            const res = await api.get(`/api/noc/hosts/${assetId}/metrics`, {
+                params: { metric, interface_id: interfaceId ?? undefined, from, to },
+            });
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "Failed to load metric history");
+        }
+    }
+);
+
 // =====================
 // Slice
 // =====================
@@ -92,6 +110,8 @@ const nocSlice = createSlice({
         isPolling: false,
         error: null,
         successMessage: null,
+        metricSeries: null,
+        isLoadingMetric: false,
     },
     reducers: {
         clearMessages: (state) => {
@@ -133,7 +153,18 @@ const nocSlice = createSlice({
                 state.isPolling = false;
                 state.successMessage = `Polled ${action.payload.polled_count} host(s).`;
             })
-            .addCase(pollAllNow.rejected, (state, action) => { state.isPolling = false; state.error = action.payload; });
+            .addCase(pollAllNow.rejected, (state, action) => { state.isPolling = false; state.error = action.payload; })
+
+            .addCase(fetchHostMetric.pending, (state) => { state.isLoadingMetric = true; })
+            .addCase(fetchHostMetric.fulfilled, (state, action) => {
+                state.isLoadingMetric = false;
+                state.metricSeries = action.payload;
+            })
+            .addCase(fetchHostMetric.rejected, (state, action) => {
+                state.isLoadingMetric = false;
+                state.metricSeries = null;
+                state.error = action.payload;
+            });
     },
 });
 

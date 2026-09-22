@@ -1,0 +1,85 @@
+// Small dependency-free SVG line chart for one metric's time series (as
+// returned by GET /api/noc/hosts/:id/metrics). No charting library in this
+// codebase yet, and one chart shape doesn't justify adding one - see
+// TimeRangePicker.jsx for the picker that feeds this component its `points`.
+const WIDTH = 640;
+const HEIGHT = 160;
+const PAD = { top: 10, right: 12, bottom: 22, left: 44 };
+
+function formatAxisTime(iso) {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+export function MetricChart({ points, color = "#1e3a5f", valueFormatter = (v) => v.toFixed(1), emptyLabel = "No data in this range yet" }) {
+    if (!points || points.length === 0) {
+        return (
+            <div style={{
+                height: HEIGHT, display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#9ca3af", fontSize: 12, border: "1px dashed #e5e7eb", borderRadius: 8,
+            }}>
+                {emptyLabel}
+            </div>
+        );
+    }
+
+    const values = points.flatMap((p) => [p.min, p.max]);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const valueSpan = maxValue - minValue || 1;
+
+    const plotW = WIDTH - PAD.left - PAD.right;
+    const plotH = HEIGHT - PAD.top - PAD.bottom;
+
+    const times = points.map((p) => new Date(p.t).getTime());
+    const minTime = times[0];
+    const maxTime = times[times.length - 1] || minTime + 1;
+    const timeSpan = maxTime - minTime || 1;
+
+    const x = (t) => PAD.left + ((t - minTime) / timeSpan) * plotW;
+    const y = (v) => PAD.top + plotH - ((v - minValue) / valueSpan) * plotH;
+
+    const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(new Date(p.t).getTime())},${y(p.avg)}`).join(" ");
+    const bandPath =
+        points.map((p, i) => `${i === 0 ? "M" : "L"}${x(new Date(p.t).getTime())},${y(p.max)}`).join(" ") +
+        " " +
+        [...points].reverse().map((p) => `L${x(new Date(p.t).getTime())},${y(p.min)}`).join(" ") +
+        " Z";
+
+    const hasBand = points.some((p) => p.min !== p.max);
+
+    return (
+        <svg width="100%" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={{ display: "block" }}>
+            {[0, 0.5, 1].map((f) => (
+                <g key={f}>
+                    <line
+                        x1={PAD.left} x2={WIDTH - PAD.right}
+                        y1={PAD.top + plotH * f} y2={PAD.top + plotH * f}
+                        stroke="#eef0f4" strokeWidth={1}
+                    />
+                    <text x={PAD.left - 6} y={PAD.top + plotH * f + 3} textAnchor="end" fontSize={9} fill="#9ca3af">
+                        {valueFormatter(maxValue - valueSpan * f)}
+                    </text>
+                </g>
+            ))}
+
+            {hasBand && <path d={bandPath} fill={color} fillOpacity={0.12} stroke="none" />}
+            <path d={linePath} fill="none" stroke={color} strokeWidth={1.75} />
+
+            {[0, points.length - 1].map((i) => (
+                <text
+                    key={i}
+                    x={x(new Date(points[i].t).getTime())}
+                    y={HEIGHT - 6}
+                    textAnchor={i === 0 ? "start" : "end"}
+                    fontSize={9.5}
+                    fill="#9ca3af"
+                >
+                    {formatAxisTime(points[i].t)}
+                </text>
+            ))}
+        </svg>
+    );
+}
+
+export default MetricChart;

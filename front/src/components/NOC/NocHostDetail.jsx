@@ -6,8 +6,11 @@ import {
     setHostCredential,
     deleteHostCredential,
     pollHostNow,
+    fetchHostMetric,
     clearMessages,
 } from "../../store/nocSlice.jsx";
+import { MetricChart } from "../shared/MetricChart.jsx";
+import { TimeRangePicker } from "../shared/TimeRangePicker.jsx";
 import "../../assets/Noc.css";
 
 function formatUptime(ticks) {
@@ -33,7 +36,15 @@ export const NocHostDetail = () => {
     const { assetId } = useParams();
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { currentHost, isPolling, error, successMessage } = useSelector((state) => state.noc);
+    const { currentHost, isPolling, error, successMessage, metricSeries, isLoadingMetric } = useSelector((state) => state.noc);
+
+    const [historyMetric, setHistoryMetric] = useState("reachable");
+    const [historyInterfaceId, setHistoryInterfaceId] = useState(null);
+    const [historyRange, setHistoryRange] = useState(() => {
+        const to = new Date();
+        const from = new Date(to.getTime() - 24 * 3600 * 1000);
+        return { from: from.toISOString(), to: to.toISOString(), label: "24h" };
+    });
 
     const [version, setVersion] = useState("v2c");
     const [port, setPort] = useState(161);
@@ -70,6 +81,22 @@ export const NocHostDetail = () => {
         const timer = setTimeout(() => dispatch(clearMessages()), 4000);
         return () => clearTimeout(timer);
     }, [error, successMessage, dispatch]);
+
+    // Derived, not stored: defaults to the first interface once they load,
+    // for the traffic metrics (device-level "reachable" needs none) - an
+    // explicit user pick in historyInterfaceId always wins.
+    const effectiveInterfaceId = historyInterfaceId ?? currentHost?.interfaces?.[0]?.id ?? null;
+
+    useEffect(() => {
+        if (historyMetric !== "reachable" && effectiveInterfaceId === null) return;
+        dispatch(fetchHostMetric({
+            assetId,
+            metric: historyMetric,
+            interfaceId: historyMetric === "reachable" ? null : effectiveInterfaceId,
+            from: historyRange.from,
+            to: historyRange.to,
+        }));
+    }, [dispatch, assetId, historyMetric, effectiveInterfaceId, historyRange]);
 
     if (!currentHost) {
         return <div className="noc-container"><div className="noc-empty">Loading…</div></div>;
@@ -139,6 +166,53 @@ export const NocHostDetail = () => {
                             <dt>sysLocation</dt><dd>{currentHost.sys_location || "—"}</dd>
                             <dt>Uptime</dt><dd>{formatUptime(currentHost.sys_uptime_ticks)}</dd>
                         </dl>
+                    </div>
+
+                    <div className="noc-card">
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                            <h3 style={{ margin: 0 }}>History</h3>
+                            <div style={{ display: "flex", gap: 6 }}>
+                                <select
+                                    value={historyMetric}
+                                    onChange={(e) => setHistoryMetric(e.target.value)}
+                                    style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12 }}
+                                >
+                                    <option value="reachable">Reachability</option>
+                                    <option value="if_in_octets">Interface — In traffic</option>
+                                    <option value="if_out_octets">Interface — Out traffic</option>
+                                </select>
+                                {historyMetric !== "reachable" && (
+                                    <select
+                                        value={effectiveInterfaceId ?? ""}
+                                        onChange={(e) => setHistoryInterfaceId(Number(e.target.value))}
+                                        style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12 }}
+                                    >
+                                        {currentHost.interfaces.map((iface) => (
+                                            <option key={iface.id} value={iface.id}>{iface.if_descr || `#${iface.if_index}`}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        </div>
+                        <div style={{ margin: "10px 0" }}>
+                            <TimeRangePicker value={historyRange} onChange={setHistoryRange} />
+                        </div>
+                        {isLoadingMetric ? (
+                            <div className="noc-empty">Loading…</div>
+                        ) : (
+                            <MetricChart
+                                points={metricSeries?.points}
+                                color={historyMetric === "reachable" ? "#10b981" : "#1e3a5f"}
+                                valueFormatter={(v) =>
+                                    historyMetric === "reachable" ? (v >= 0.5 ? "up" : "down") : formatBytes(v)
+                                }
+                            />
+                        )}
+                        {metricSeries?.granularity && metricSeries.granularity !== "raw" && (
+                            <div style={{ fontSize: 10.5, color: "#9ca3af", marginTop: 6 }}>
+                                Averaged into {metricSeries.granularity} buckets for this range.
+                            </div>
+                        )}
                     </div>
 
                     <div className="noc-card">

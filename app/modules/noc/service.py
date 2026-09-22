@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.asset import Asset
 from app.models.enums import StatusEnum
 from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface
+from app.models.noc_metrics import AssetMetricSample, AssetMetricRollup
 from app.core.snmp_crypto import encrypt_secret
 from app.modules.noc.snmp_client import poll_asset, DevicePollResult
 
@@ -140,6 +141,7 @@ class NocService:
             if row is None:
                 row = AssetSnmpInterface(asset_id=asset_id, if_index=iface.if_index)
                 db.add(row)
+                existing[iface.if_index] = row
             row.if_descr = iface.if_descr
             row.if_type = iface.if_type
             row.if_speed = iface.if_speed
@@ -149,9 +151,53 @@ class NocService:
             row.out_octets = iface.out_octets
             row.last_polled_at = status.last_polled_at
 
+        # New interface rows need an id before they can be referenced by a
+        # metric sample's interface_id FK.
+        db.flush()
+        NocService._record_metric_samples(db, asset_id, status, result, existing)
+
         db.commit()
         db.refresh(status)
         return status
+
+    @staticmethod
+    def _record_metric_samples(
+        db: Session,
+        asset_id: int,
+        status: AssetSnmpStatus,
+        result: DevicePollResult,
+        interfaces_by_index: dict,
+    ) -> None:
+        """Append one history row per metric collected this poll (see
+        app/models/noc_metrics.py). This is additive: it never reads or
+        changes the upserted "latest value" rows above, so a failure here
+        would only cost history, never current status - kept as a plain
+        insert rather than wrapped in its own try/except because a poll that
+        can't write its own history is exactly the kind of silent data loss
+        the history feature exists to catch."""
+        sampled_at = status.last_polled_at
+        samples = [
+            AssetMetricSample(
+                asset_id=asset_id, interface_id=None,
+                metric_type="reachable", value=1.0 if result.reachable else 0.0,
+                sampled_at=sampled_at,
+            )
+        ]
+        for iface in result.interfaces:
+            row = interfaces_by_index.get(iface.if_index)
+            if row is None or row.id is None:
+                continue
+            if iface.in_octets is not None:
+                samples.append(AssetMetricSample(
+                    asset_id=asset_id, interface_id=row.id,
+                    metric_type="if_in_octets", value=float(iface.in_octets), sampled_at=sampled_at,
+                ))
+            if iface.out_octets is not None:
+                samples.append(AssetMetricSample(
+                    asset_id=asset_id, interface_id=row.id,
+                    metric_type="if_out_octets", value=float(iface.out_octets), sampled_at=sampled_at,
+                ))
+        db.add_all(samples)
 
     @staticmethod
     async def poll_one(db: Session, asset_id: int) -> AssetSnmpStatus:
@@ -208,3 +254,72 @@ class NocService:
         statuses = {s.asset_id: s for s in db.query(AssetSnmpStatus).all()}
         credential_asset_ids = {row[0] for row in db.query(AssetSnmpCredential.asset_id).all()}
         return [(a, statuses.get(a.id), a.id in credential_asset_ids) for a in assets]
+
+    # ==========================================
+    # Historical metrics (time-range charts)
+    # ==========================================
+
+    @staticmethod
+    def pick_granularity(range_seconds: float) -> str:
+        """Which tier answers a query of this width, without the caller (the
+        time-range picker) needing to know about raw vs. rollups at all. A
+        short window gets full resolution; a long one gets a coarser rollup
+        so the response stays a reasonable number of points either way."""
+        if range_seconds <= 6 * 3600:
+            return "raw"
+        if range_seconds <= 7 * 86400:
+            return "5m"
+        if range_seconds <= 90 * 86400:
+            return "1h"
+        return "1d"
+
+    @staticmethod
+    def get_metric_series(
+        db: Session,
+        asset_id: int,
+        metric: str,
+        start: datetime,
+        end: datetime,
+        interface_id: Optional[int] = None,
+    ) -> tuple[str, list[dict]]:
+        """Time series for one metric over [start, end], auto-picking raw vs.
+        rollup granularity by range width (see pick_granularity). Returns
+        (granularity, points) - each point a dict with t/avg/min/max/count,
+        ready to hand to MetricSeriesResponse."""
+        granularity = NocService.pick_granularity((end - start).total_seconds())
+
+        if granularity == "raw":
+            query = (
+                db.query(AssetMetricSample.sampled_at, AssetMetricSample.value)
+                .filter(
+                    AssetMetricSample.asset_id == asset_id,
+                    AssetMetricSample.metric_type == metric,
+                    AssetMetricSample.interface_id == interface_id,
+                    AssetMetricSample.sampled_at >= start,
+                    AssetMetricSample.sampled_at <= end,
+                )
+                .order_by(AssetMetricSample.sampled_at.asc())
+            )
+            points = [
+                {"t": row.sampled_at, "avg": row.value, "min": row.value, "max": row.value, "count": 1}
+                for row in query.all()
+            ]
+            return granularity, points
+
+        query = (
+            db.query(AssetMetricRollup)
+            .filter(
+                AssetMetricRollup.asset_id == asset_id,
+                AssetMetricRollup.metric_type == metric,
+                AssetMetricRollup.interface_id == interface_id,
+                AssetMetricRollup.granularity == granularity,
+                AssetMetricRollup.bucket_start >= start,
+                AssetMetricRollup.bucket_start <= end,
+            )
+            .order_by(AssetMetricRollup.bucket_start.asc())
+        )
+        points = [
+            {"t": row.bucket_start, "avg": row.avg_value, "min": row.min_value, "max": row.max_value, "count": row.sample_count}
+            for row in query.all()
+        ]
+        return granularity, points

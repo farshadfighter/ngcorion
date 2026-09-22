@@ -120,6 +120,7 @@ from app.models.topology import TopologyLink, TopologyNodePosition
 
 # Import NOC / SNMP monitoring models (depend on Asset and User)
 from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface
+from app.models.noc_metrics import AssetMetricSample, AssetMetricRollup
 from app.models.topology_log import (
     TopologyLog,
     log_topology_link_created,

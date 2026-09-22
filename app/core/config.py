@@ -190,6 +190,24 @@ class Settings(BaseSettings):
     # SNMP credential configured (app/modules/noc/poller.py).
     NOC_POLL_INTERVAL_SECONDS: int = 60
 
+    # NOC historical metrics (app/modules/noc/metrics_retention.py): every poll
+    # appends a raw sample row per device/interface metric, in addition to the
+    # upserted "latest status" tables above. Raw rows are rolled up into 5m/1h/1d
+    # aggregates and then dropped once older than these windows, so storage stays
+    # bounded regardless of how long the product has been deployed.
+    NOC_METRICS_RAW_RETENTION_HOURS: int = 168  # 7 days
+    NOC_METRICS_5M_RETENTION_DAYS: int = 30
+    NOC_METRICS_1H_RETENTION_DAYS: int = 180
+    # 0 = keep daily rollups forever (their volume is negligible).
+    NOC_METRICS_1D_RETENTION_DAYS: int = 0
+    # Second line of defense: if the metrics tables' actual on-disk size passes
+    # this fraction of the configured budget (e.g. more assets/interfaces than
+    # planned), the retention job evicts the oldest rows tier-by-tier (raw
+    # first, then 5m, then 1h) until back under it - a wrong retention-window
+    # guess can never fill the disk.
+    NOC_METRICS_STORAGE_BUDGET_GB: float = 10.0
+    NOC_METRICS_STORAGE_EVICT_THRESHOLD: float = 0.8
+
     class Config:
         env_file = ".env"
         case_sensitive = True
