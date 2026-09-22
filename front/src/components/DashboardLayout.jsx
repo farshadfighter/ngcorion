@@ -26,6 +26,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/backup"))               return "backup";
     if (pathname.startsWith("/topology"))             return "topology";
+    if (pathname.startsWith("/design-suggestion"))    return "design-suggestion";
     if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
     if (pathname.startsWith("/design-configuration/jobs")) return "design-configuration-jobs";
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
@@ -124,6 +125,7 @@ export const DashboardLayout = () => {
         "risk-asset":          "Risk Asset",
         "backup":              "Configuration Backup",
         "topology":            "Topology",
+        "design-suggestion":   "Suggested Design",
         "architecture-validation": "Architecture Validation",
         "design-configuration": "Design & Configuration",
         "design-configuration-jobs": "Configuration Jobs",
@@ -141,6 +143,7 @@ export const DashboardLayout = () => {
     // other was not obvious from the UI alone.
     const pageSubtitles = {
         "topology": "The network as it actually is right now - every real asset and the cabling between them.",
+        "design-suggestion": "A standard Cisco SAFE campus design sized to your real asset inventory, with matching assets slotted in - review it, then turn it into a real Design.",
         "architecture-validation": "Automated checks against the current topology (redundancy, exposure, best practice) - not part of the design pipeline below.",
         "design-configuration": "Step 1 of 4 - draw a planned blueprint here, even for devices that don't exist yet. Versioned; publish when ready to generate configuration.",
         "design-configuration-jobs": "Step 2 of 4 - turns a Design version into real device CLI commands, one per component mapped to an asset.",
@@ -253,6 +256,13 @@ export const DashboardLayout = () => {
                                      onClick={() => navigate("/topology")} title="Topology">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Topology</span>}
+                                </div>
+                            )}
+                            {canReadDesignConfig && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-suggestion" ? "active" : ""}`}
+                                     onClick={() => navigate("/design-suggestion")} title="Suggested Design">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Suggested Design</span>}
                                 </div>
                             )}
                             {canReadArchValidation && (

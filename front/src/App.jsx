@@ -30,6 +30,7 @@ import { SystemConfiguration } from "./components/SystemConfig/SystemConfigurati
 import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
 import { ArchitectureValidationDashboard } from "./components/ArchitectureValidation/ArchitectureValidationDashboard";
 import { DesignList } from "./components/DesignConfiguration/DesignList";
+import { SuggestedDesign } from "./components/DesignConfiguration/SuggestedDesign";
 import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
 import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
 import { ConfigurationJobList } from "./components/DesignConfiguration/ConfigurationJobList";
@@ -196,6 +197,11 @@ function AppContent() {
                         <Route path="/topology" element={
                             <RequirePermission module="topology" name="Topology">
                                 <TopologyDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/design-suggestion" element={
+                            <RequirePermission module="design_configuration" name="Suggested Design">
+                                <SuggestedDesign />
                             </RequirePermission>
                         } />
                         <Route path="/architecture-validation" element={
