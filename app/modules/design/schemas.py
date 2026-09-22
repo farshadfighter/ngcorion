@@ -129,6 +129,7 @@ class SuggestedComponent(BaseModel):
     label: str
     pos_x: float
     pos_y: float
+    zone: str
     suggested_asset_id: Optional[int] = None
     suggested_asset_name: Optional[str] = None
     suggested_asset_port_count: Optional[int] = None

@@ -185,6 +185,28 @@ def test_suggest_design_relationships_reference_component_keys(db, user):
         assert rel.destination_key in keys
 
 
+def test_suggest_design_every_component_has_a_known_zone(db, user):
+    """Guards the zone-band rendering on the frontend (SuggestedDesign.jsx):
+    every component must carry one of the known zone ids, or a zone band
+    would silently fail to render for it."""
+    from app.modules.design.templates import ZONES
+
+    suggestion = suggest_design(db)
+    assert len(suggestion.components) > 0
+    for c in suggestion.components:
+        assert c.zone in ZONES
+
+
+def test_suggest_design_dmz_and_data_center_are_in_different_zones_from_core(db, user):
+    suggestion = suggest_design(db)
+    zones_by_key = {c.key: c.zone for c in suggestion.components}
+    assert zones_by_key["dmz_lb"] == "dmz"
+    assert zones_by_key["core_sw1"] == "core"
+    assert zones_by_key["dist_sw1"] == "distribution"
+    assert zones_by_key["dc_fw"] == "data_center"
+    assert zones_by_key["internet"] == "internet_edge"
+
+
 # ======================================================================
 # Router behaviour
 # ======================================================================
