@@ -32,6 +32,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
     if (pathname.startsWith("/deployment"))           return "deployment";
     if (pathname.startsWith("/drift"))                return "drift";
+    if (pathname.startsWith("/cve"))                  return "cve";
     if (pathname.startsWith("/noc/dashboard"))        return "noc-dashboard";
     if (pathname.startsWith("/noc/hosts"))            return "noc-hosts";
     if (pathname.startsWith("/settings/users"))       return "user-management";
@@ -77,6 +78,7 @@ export const DashboardLayout = () => {
     const canReadDesignConfig = usePermission("design_configuration", "read");
     const canReadDeployment = role === "admin" || role === "manager";
     const canReadDrift     = usePermission("drift",                 "read");
+    const canReadCve       = usePermission("cve",                   "read");
     const canReadNoc       = usePermission("noc",                   "read");
 
     useEffect(() => {
@@ -139,6 +141,7 @@ export const DashboardLayout = () => {
         "design-configuration-jobs": "Configuration Jobs",
         "deployment":          "Deployment",
         "drift":               "Configuration Drift",
+        "cve":                 "CVE Vulnerability Management",
         "noc-dashboard":       "NOC Dashboard",
         "noc-hosts":           "NOC Host",
         "user-management":     "User Management",
@@ -357,6 +360,25 @@ export const DashboardLayout = () => {
                         {isSidebarCollapsed && <img src="/icons/risk.svg" alt="" className="nav-icon-img" />}
                         {!isSidebarCollapsed && <span>Risk Asset</span>}
                     </div>
+
+                    {/* ── CVE VULNERABILITY MANAGEMENT ── */}
+                    {canReadCve && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "cve" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/cve")}>
+                                    <img src="/icons/cve.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">CVE</span>
+                                </div>
+                            )}
+                            {isSidebarCollapsed && (
+                                <div className={`nav-item ${activeMenu === "cve" ? "active" : ""}`}
+                                     onClick={() => navigate("/cve")} title="CVE Vulnerability Management">
+                                    <img src="/icons/cve.svg" alt="" className="nav-icon-img" />
+                                </div>
+                            )}
+                        </>
+                    )}
 
                     {/* ── SYSTEM ── */}
                     {!isSidebarCollapsed && (

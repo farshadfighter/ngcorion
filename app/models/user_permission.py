@@ -48,6 +48,9 @@ class ModuleEnum(str, enum.Enum):
     LOGS = "logs"
     BACKUP = "backup"
 
+    # Vulnerability management
+    CVE = "cve"
+
     # Network design / change-automation modules
     TOPOLOGY = "topology"
     ARCHITECTURE_VALIDATION = "architecture_validation"

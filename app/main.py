@@ -116,6 +116,9 @@ from app.modules.deployment.router import router as deployment_router
 # Import drift router
 from app.modules.drift.router import router as drift_router
 
+# Import CVE router
+from app.modules.cve.router import router as cve_router
+
 # Import risk router
 from app.modules.risk.router import router as risk_router
 
@@ -213,6 +216,17 @@ async def lifespan(app: FastAPI):
         seed_risk_defaults(db)
     except Exception as e:
         logger.warning(f"Risk seed skipped: {e}")
+    finally:
+        db.close()
+
+    # Seed curated CVE records (idempotent). Uses its own session so a
+    # failure here never blocks startup.
+    from app.modules.cve.seed import seed_cve_defaults
+    db = SessionLocal()
+    try:
+        seed_cve_defaults(db)
+    except Exception as e:
+        logger.warning(f"CVE seed skipped: {e}")
     finally:
         db.close()
 
@@ -468,6 +482,9 @@ app.include_router(deployment_router)
 
 # Configuration Drift routes
 app.include_router(drift_router)
+
+# CVE Vulnerability Management routes
+app.include_router(cve_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])
