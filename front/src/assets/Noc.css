@@ -1,0 +1,222 @@
+/* ============================================
+   NOC (SNMP MONITORING) - STYLES
+   ============================================ */
+
+.noc-container {
+    padding: 32px 40px;
+    background: transparent;
+    min-height: 100vh;
+}
+
+.noc-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.noc-toolbar-info {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.noc-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.noc-stat-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px 18px;
+}
+
+.noc-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.noc-stat-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.noc-stat-card.reachable .noc-stat-value { color: #059669; }
+.noc-stat-card.unreachable .noc-stat-value { color: #dc2626; }
+.noc-stat-card.unmonitored .noc-stat-value { color: #9ca3af; }
+
+.noc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.noc-btn:hover { border-color: #1e3a5f; color: #1e3a5f; }
+.noc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.noc-btn-primary {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+}
+
+.noc-btn-primary:hover { background: #16304d; color: white; }
+
+.noc-btn-danger {
+    background: white;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.noc-btn-danger:hover { background: #fef2f2; border-color: #dc2626; }
+
+.noc-table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.noc-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.noc-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6b7280;
+    padding: 10px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.noc-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+    color: #374151;
+}
+
+.noc-table tr:last-child td { border-bottom: none; }
+.noc-table tr.clickable { cursor: pointer; }
+.noc-table tr.clickable:hover { background: #f9fafb; }
+
+.noc-status-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.noc-status-dot.up { background: #10b981; }
+.noc-status-dot.down { background: #ef4444; }
+.noc-status-dot.unmonitored { background: #d1d5db; }
+
+.noc-empty {
+    padding: 40px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+}
+
+.noc-toast {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.noc-toast-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.noc-toast-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+.noc-graph-wrap {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    height: 420px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+/* ── Host detail ── */
+
+.noc-detail-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.noc-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.noc-card h3 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    color: #111827;
+}
+
+.noc-kv-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    row-gap: 10px;
+    font-size: 13px;
+}
+
+.noc-kv-grid dt { color: #6b7280; }
+.noc-kv-grid dd { margin: 0; color: #111827; word-break: break-word; }
+
+.noc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.noc-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.noc-field input,
+.noc-field select {
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #374151;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.noc-credential-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}

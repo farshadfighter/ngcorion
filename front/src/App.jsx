@@ -30,6 +30,7 @@ import { SystemConfiguration } from "./components/SystemConfig/SystemConfigurati
 import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
 import { ArchitectureValidationDashboard } from "./components/ArchitectureValidation/ArchitectureValidationDashboard";
 import { DesignList } from "./components/DesignConfiguration/DesignList";
+import { SuggestedDesign } from "./components/DesignConfiguration/SuggestedDesign";
 import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
 import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
 import { ConfigurationJobList } from "./components/DesignConfiguration/ConfigurationJobList";
@@ -38,6 +39,9 @@ import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
 import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
 import { DriftDashboard } from "./components/Drift/DriftDashboard";
 import { CveFindings } from "./components/CVE/CveFindings";
+import { NocDashboard } from "./components/NOC/NocDashboard";
+import { NocHostList } from "./components/NOC/NocHostList";
+import { NocHostDetail } from "./components/NOC/NocHostDetail";
 import {
     RequirePermission,
     RequireRole,
@@ -199,6 +203,11 @@ function AppContent() {
                                 <TopologyDashboard />
                             </RequirePermission>
                         } />
+                        <Route path="/design-suggestion" element={
+                            <RequirePermission module="design_configuration" name="Suggested Design">
+                                <SuggestedDesign />
+                            </RequirePermission>
+                        } />
                         <Route path="/architecture-validation" element={
                             <RequirePermission module="architecture_validation" name="Architecture Validation">
                                 <ArchitectureValidationDashboard />
@@ -249,6 +258,23 @@ function AppContent() {
                         <Route path="/cve" element={
                             <RequirePermission module="cve" name="CVE">
                                 <CveFindings />
+                            </RequirePermission>
+                        } />
+
+                        {/* NOC */}
+                        <Route path="/noc/dashboard" element={
+                            <RequirePermission module="noc" name="NOC Dashboard">
+                                <NocDashboard />
+                            </RequirePermission>
+                        } />
+                        <Route path="/noc/hosts" element={
+                            <RequirePermission module="noc" name="NOC Host">
+                                <NocHostList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/noc/hosts/:assetId" element={
+                            <RequirePermission module="noc" name="NOC Host">
+                                <NocHostDetail />
                             </RequirePermission>
                         } />
 

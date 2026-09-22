@@ -58,6 +58,9 @@ class ModuleEnum(str, enum.Enum):
     DEPLOYMENT = "deployment"
     DRIFT = "drift"
 
+    # NOC (SNMP monitoring)
+    NOC = "noc"
+
 
 class UserPermission(Base):
     """

@@ -29,6 +29,7 @@ export const PERMISSION_MODULES = [
     // it here would be a dead control that does nothing on the backend.
     { name: "drift",                label: "Configuration Drift", icon: "fa-solid fa-arrows-split-up-and-left" },
     { name: "cve",                  label: "CVE",                icon: "fa-solid fa-bug" },
+    { name: "noc",                  label: "NOC",                icon: "fa-solid fa-satellite-dish" },
 ];
 
 export default PERMISSION_MODULES;

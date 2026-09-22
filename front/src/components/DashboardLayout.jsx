@@ -26,12 +26,15 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/backup"))               return "backup";
     if (pathname.startsWith("/topology"))             return "topology";
+    if (pathname.startsWith("/design-suggestion"))    return "design-suggestion";
     if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
     if (pathname.startsWith("/design-configuration/jobs")) return "design-configuration-jobs";
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
     if (pathname.startsWith("/deployment"))           return "deployment";
     if (pathname.startsWith("/drift"))                return "drift";
     if (pathname.startsWith("/cve"))                  return "cve";
+    if (pathname.startsWith("/noc/dashboard"))        return "noc-dashboard";
+    if (pathname.startsWith("/noc/hosts"))            return "noc-hosts";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -41,6 +44,11 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/risk/overview"))        return "risk-intelligence";
     return "dashboard";
 };
+
+// Design, Configuration Jobs, Deployment and Configuration Drift sidebar
+// entries are hidden for now (product decision - revisit later). Flip this
+// back to true to bring them back; routes/permissions are untouched.
+const SHOW_HIDDEN_NAV = false;
 
 export const DashboardLayout = () => {
     const { username, role } = useSelector((state) => state.auth);
@@ -71,6 +79,7 @@ export const DashboardLayout = () => {
     const canReadDeployment = role === "admin" || role === "manager";
     const canReadDrift     = usePermission("drift",                 "read");
     const canReadCve       = usePermission("cve",                   "read");
+    const canReadNoc       = usePermission("noc",                   "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -126,12 +135,15 @@ export const DashboardLayout = () => {
         "risk-asset":          "Risk Asset",
         "backup":              "Configuration Backup",
         "topology":            "Topology",
+        "design-suggestion":   "Suggested Design",
         "architecture-validation": "Architecture Validation",
         "design-configuration": "Design & Configuration",
         "design-configuration-jobs": "Configuration Jobs",
         "deployment":          "Deployment",
         "drift":               "Configuration Drift",
         "cve":                 "CVE Vulnerability Management",
+        "noc-dashboard":       "NOC Dashboard",
+        "noc-hosts":           "NOC Host",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -144,11 +156,14 @@ export const DashboardLayout = () => {
     // other was not obvious from the UI alone.
     const pageSubtitles = {
         "topology": "The network as it actually is right now - every real asset and the cabling between them.",
+        "design-suggestion": "A standard Cisco SAFE campus design sized to your real asset inventory, with matching assets slotted in - review it, then turn it into a real Design.",
         "architecture-validation": "Automated checks against the current topology (redundancy, exposure, best practice) - not part of the design pipeline below.",
         "design-configuration": "Step 1 of 4 - draw a planned blueprint here, even for devices that don't exist yet. Versioned; publish when ready to generate configuration.",
         "design-configuration-jobs": "Step 2 of 4 - turns a Design version into real device CLI commands, one per component mapped to an asset.",
         "deployment": "Step 3 of 4 - safely pushes a generated configuration to the real device: precheck, backup, apply, verify, and roll back on failure.",
         "drift": "Step 4 of 4 - compares a device's live configuration against its last backup to catch changes made outside this pipeline.",
+        "noc-dashboard": "Live SNMP status for every asset, plotted on the same topology graph as Topology.",
+        "noc-hosts": "Every asset, searchable - open one to see its SNMP details and set up monitoring.",
     };
 
     return (
@@ -258,6 +273,13 @@ export const DashboardLayout = () => {
                                     {!isSidebarCollapsed && <span>Topology</span>}
                                 </div>
                             )}
+                            {canReadDesignConfig && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-suggestion" ? "active" : ""}`}
+                                     onClick={() => navigate("/design-suggestion")} title="Suggested Design">
+                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>Suggested Design</span>}
+                                </div>
+                            )}
                             {canReadArchValidation && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "architecture-validation" ? "active" : ""}`}
                                      onClick={() => navigate("/architecture-validation")} title="Architecture Validation">
@@ -265,34 +287,63 @@ export const DashboardLayout = () => {
                                     {!isSidebarCollapsed && <span>Architecture Validation</span>}
                                 </div>
                             )}
-                            {canReadDesignConfig && (
+                            {/* Design, Configuration Jobs, Deployment and Configuration Drift are
+                                hidden from the sidebar for now (product decision - revisit later).
+                                Routes/permissions are untouched, so a direct link (e.g. from
+                                Suggested Design's "Create this design") still works; only the
+                                sidebar entry points are removed. Flip these back to
+                                `canReadDesignConfig && ( ... )` etc. to bring them back. */}
+                            {SHOW_HIDDEN_NAV && canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration" ? "active" : ""}`}
                                      onClick={() => navigate("/design-configuration")} title="Design">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Design</span>}
                                 </div>
                             )}
-                            {canReadDesignConfig && (
+                            {SHOW_HIDDEN_NAV && canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration-jobs" ? "active" : ""}`}
                                      onClick={() => navigate("/design-configuration/jobs")} title="Configuration Jobs">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Configuration Jobs</span>}
                                 </div>
                             )}
-                            {canReadDeployment && (
+                            {SHOW_HIDDEN_NAV && canReadDeployment && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "deployment" ? "active" : ""}`}
                                      onClick={() => navigate("/deployment/jobs")} title="Deployment">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Deployment</span>}
                                 </div>
                             )}
-                            {canReadDrift && (
+                            {SHOW_HIDDEN_NAV && canReadDrift && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "drift" ? "active" : ""}`}
                                      onClick={() => navigate("/drift")} title="Configuration Drift">
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>Configuration Drift</span>}
                                 </div>
                             )}
+                        </>
+                    )}
+
+                    {/* ── NOC ── */}
+                    {canReadNoc && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "noc-dashboard" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/noc/dashboard")}>
+                                    <img src="/icons/topology.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">NOC</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "noc-dashboard" ? "active" : ""}`}
+                                 onClick={() => navigate("/noc/dashboard")} title="Dashboard">
+                                {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Dashboard</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "noc-hosts" ? "active" : ""}`}
+                                 onClick={() => navigate("/noc/hosts")} title="Host">
+                                {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Host</span>}
+                            </div>
                         </>
                     )}
 
