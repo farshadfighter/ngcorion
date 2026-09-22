@@ -32,6 +32,8 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
     if (pathname.startsWith("/deployment"))           return "deployment";
     if (pathname.startsWith("/drift"))                return "drift";
+    if (pathname.startsWith("/noc/dashboard"))        return "noc-dashboard";
+    if (pathname.startsWith("/noc/hosts"))            return "noc-hosts";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
@@ -75,6 +77,7 @@ export const DashboardLayout = () => {
     const canReadDesignConfig = usePermission("design_configuration", "read");
     const canReadDeployment = role === "admin" || role === "manager";
     const canReadDrift     = usePermission("drift",                 "read");
+    const canReadNoc       = usePermission("noc",                   "read");
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -136,6 +139,8 @@ export const DashboardLayout = () => {
         "design-configuration-jobs": "Configuration Jobs",
         "deployment":          "Deployment",
         "drift":               "Configuration Drift",
+        "noc-dashboard":       "NOC Dashboard",
+        "noc-hosts":           "NOC Host",
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
@@ -154,6 +159,8 @@ export const DashboardLayout = () => {
         "design-configuration-jobs": "Step 2 of 4 - turns a Design version into real device CLI commands, one per component mapped to an asset.",
         "deployment": "Step 3 of 4 - safely pushes a generated configuration to the real device: precheck, backup, apply, verify, and roll back on failure.",
         "drift": "Step 4 of 4 - compares a device's live configuration against its last backup to catch changes made outside this pipeline.",
+        "noc-dashboard": "Live SNMP status for every asset, plotted on the same topology graph as Topology.",
+        "noc-hosts": "Every asset, searchable - open one to see its SNMP details and set up monitoring.",
     };
 
     return (
@@ -311,6 +318,29 @@ export const DashboardLayout = () => {
                                     {!isSidebarCollapsed && <span>Configuration Drift</span>}
                                 </div>
                             )}
+                        </>
+                    )}
+
+                    {/* ── NOC ── */}
+                    {canReadNoc && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "noc-dashboard" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/noc/dashboard")}>
+                                    <img src="/icons/topology.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">NOC</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "noc-dashboard" ? "active" : ""}`}
+                                 onClick={() => navigate("/noc/dashboard")} title="Dashboard">
+                                {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Dashboard</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "noc-hosts" ? "active" : ""}`}
+                                 onClick={() => navigate("/noc/hosts")} title="Host">
+                                {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Host</span>}
+                            </div>
                         </>
                     )}
 

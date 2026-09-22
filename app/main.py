@@ -100,6 +100,9 @@ from app.modules.backup.router import router as backup_router
 # Import topology router
 from app.modules.topology.router import router as topology_router
 
+# Import NOC (SNMP monitoring) router
+from app.modules.noc.router import router as noc_router
+
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
 
@@ -131,6 +134,7 @@ from app.core.license_state import (
     restore_cached_state,
 )
 from app.core.heartbeat import start_heartbeat, stop_heartbeat
+from app.modules.noc.poller import start_noc_poller, stop_noc_poller
 from app.middleware.license_middleware import LicenseMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -211,9 +215,13 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Risk seed skipped: {e}")
     finally:
         db.close()
+
+    start_noc_poller()
+
     yield
     # Shutdown
     stop_heartbeat()
+    await stop_noc_poller()
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -444,6 +452,9 @@ app.include_router(backup_router)
 
 # Topology routes
 app.include_router(topology_router)
+
+# NOC (SNMP monitoring) routes
+app.include_router(noc_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)
