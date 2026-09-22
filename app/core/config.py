@@ -168,6 +168,9 @@ class Settings(BaseSettings):
     # the whole app out on the first failed call.
     LICENSE_OFFLINE_GRACE_HOURS: int = 48
 
+    # How often the background job scheduler checks for due ScheduledJobs.
+    SCHEDULER_SWEEP_INTERVAL_SECONDS: int = 60
+
     # Heartbeat cadence. On a *failed* heartbeat the loop does not wait a whole
     # interval before trying again: it backs off from RETRY_SECONDS, doubling up
     # to MAX_RETRY_SECONDS, until a heartbeat succeeds. Waiting the full hour
