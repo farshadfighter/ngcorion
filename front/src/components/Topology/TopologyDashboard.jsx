@@ -53,7 +53,7 @@ export const TopologyDashboard = () => {
     };
 
     const handleSaveSelected = () => {
-        if (!selectedLink) return;
+        if (!selectedLink || selectedLink.link_type === "hosted") return;
         const { id, source_interface, destination_interface, link_type, speed_mbps, vlan, subnet, status } =
             selectedLink;
         dispatch(
@@ -65,7 +65,7 @@ export const TopologyDashboard = () => {
     };
 
     const handleDeleteSelected = () => {
-        if (!selectedLink) return;
+        if (!selectedLink || selectedLink.link_type === "hosted") return;
         dispatch(deleteTopologyLink(selectedLink.id));
         setSelectedLink(null);
     };
@@ -127,21 +127,21 @@ export const TopologyDashboard = () => {
                 {selectedLink && (
                     <aside className="topology-panel">
                         <div className="topology-panel-header">
-                            <h3>Link details</h3>
+                            <h3>{selectedLink.link_type === "hosted" ? "Hosted-on relationship" : "Link details"}</h3>
                             <button className="topology-panel-close" onClick={() => setSelectedLink(null)}>
                                 <i className="fa-solid fa-xmark" />
                             </button>
                         </div>
                         <div className="topology-panel-body">
                             <div className="topology-field">
-                                <label>Source</label>
+                                <label>Server</label>
                                 <div className="topology-field-static">
                                     {nodeById(String(selectedLink.source_asset_id))?.name || selectedLink.source_asset_id}
                                     {selectedLink.source_interface ? ` (${selectedLink.source_interface})` : ""}
                                 </div>
                             </div>
                             <div className="topology-field">
-                                <label>Destination</label>
+                                <label>{selectedLink.link_type === "hosted" ? "Hosted asset" : "Destination"}</label>
                                 <div className="topology-field-static">
                                     {nodeById(String(selectedLink.destination_asset_id))?.name ||
                                         selectedLink.destination_asset_id}
@@ -150,74 +150,93 @@ export const TopologyDashboard = () => {
                                         : ""}
                                 </div>
                             </div>
-                            <div className="topology-field">
-                                <label>Link type</label>
-                                <select
-                                    value={selectedLink.link_type || "ethernet"}
-                                    onChange={(e) => handleUpdateSelected("link_type", e.target.value)}
-                                >
-                                    {LINK_TYPES.map((t) => (
-                                        <option key={t} value={t}>
-                                            {t}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="topology-field">
-                                <label>Status</label>
-                                <select
-                                    value={selectedLink.status || "active"}
-                                    onChange={(e) => handleUpdateSelected("status", e.target.value)}
-                                >
-                                    {LINK_STATUSES.map((s) => (
-                                        <option key={s} value={s}>
-                                            {s}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="topology-field">
-                                <label>Speed (Mbps)</label>
-                                <input
-                                    type="number"
-                                    value={selectedLink.speed_mbps ?? ""}
-                                    onChange={(e) =>
-                                        handleUpdateSelected(
-                                            "speed_mbps",
-                                            e.target.value ? Number(e.target.value) : null
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div className="topology-field">
-                                <label>VLAN</label>
-                                <input
-                                    type="text"
-                                    value={selectedLink.vlan || ""}
-                                    onChange={(e) => handleUpdateSelected("vlan", e.target.value || null)}
-                                />
-                            </div>
-                            <div className="topology-field">
-                                <label>Subnet</label>
-                                <input
-                                    type="text"
-                                    value={selectedLink.subnet || ""}
-                                    onChange={(e) => handleUpdateSelected("subnet", e.target.value || null)}
-                                />
-                            </div>
+                            {selectedLink.link_type === "hosted" ? (
+                                <>
+                                    {selectedLink.vlan && (
+                                        <div className="topology-field">
+                                            <label>VLAN</label>
+                                            <div className="topology-field-static">{selectedLink.vlan}</div>
+                                        </div>
+                                    )}
+                                    <p className="topology-panel-hint">
+                                        Set from Asset Management → the hosted asset's "Hosted on server" field, not
+                                        editable here.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="topology-field">
+                                        <label>Link type</label>
+                                        <select
+                                            value={selectedLink.link_type || "ethernet"}
+                                            onChange={(e) => handleUpdateSelected("link_type", e.target.value)}
+                                        >
+                                            {LINK_TYPES.map((t) => (
+                                                <option key={t} value={t}>
+                                                    {t}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="topology-field">
+                                        <label>Status</label>
+                                        <select
+                                            value={selectedLink.status || "active"}
+                                            onChange={(e) => handleUpdateSelected("status", e.target.value)}
+                                        >
+                                            {LINK_STATUSES.map((s) => (
+                                                <option key={s} value={s}>
+                                                    {s}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="topology-field">
+                                        <label>Speed (Mbps)</label>
+                                        <input
+                                            type="number"
+                                            value={selectedLink.speed_mbps ?? ""}
+                                            onChange={(e) =>
+                                                handleUpdateSelected(
+                                                    "speed_mbps",
+                                                    e.target.value ? Number(e.target.value) : null
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                    <div className="topology-field">
+                                        <label>VLAN</label>
+                                        <input
+                                            type="text"
+                                            value={selectedLink.vlan || ""}
+                                            onChange={(e) => handleUpdateSelected("vlan", e.target.value || null)}
+                                        />
+                                    </div>
+                                    <div className="topology-field">
+                                        <label>Subnet</label>
+                                        <input
+                                            type="text"
+                                            value={selectedLink.subnet || ""}
+                                            onChange={(e) => handleUpdateSelected("subnet", e.target.value || null)}
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
-                        <div className="topology-panel-footer">
-                            <button className="topology-btn topology-btn-danger" onClick={handleDeleteSelected}>
-                                Delete
-                            </button>
-                            <button
-                                className="topology-btn topology-btn-primary"
-                                onClick={handleSaveSelected}
-                                disabled={isMutating}
-                            >
-                                Save
-                            </button>
-                        </div>
+                        {selectedLink.link_type !== "hosted" && (
+                            <div className="topology-panel-footer">
+                                <button className="topology-btn topology-btn-danger" onClick={handleDeleteSelected}>
+                                    Delete
+                                </button>
+                                <button
+                                    className="topology-btn topology-btn-primary"
+                                    onClick={handleSaveSelected}
+                                    disabled={isMutating}
+                                >
+                                    Save
+                                </button>
+                            </div>
+                        )}
                     </aside>
                 )}
 

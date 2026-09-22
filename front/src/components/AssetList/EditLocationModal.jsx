@@ -1,18 +1,26 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { useAssetFormOptions } from "./useAssetFormOptions";
+import { requiresHosting } from "../shared/assetHosting";
 
 export const EditLocationModal = ({ asset, isOpen, onClose }) => {
     const dispatch = useDispatch();
-    const { isLoading, locations, owners, statusOptions } = useAssetFormOptions();
+    const { isLoading, locations, owners, statusOptions, assetTypes } = useAssetFormOptions();
+    const existingAssets = useSelector((state) => state.assets.assets);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [formData, setFormData] = useState({
         location_id: asset.location_id ?? "",
         owner_id: asset.owner_id ?? "",
+        hosted_on_asset_id: asset.hosted_on_asset_id ?? "",
+        hosted_vlan: asset.hosted_vlan ?? "",
         status: asset.status ?? "active"
     });
+
+    const selectedTypeName = assetTypes.find(t => String(t.id) === String(asset.asset_type_id))?.type_name;
+    const hostingRequired = requiresHosting(selectedTypeName);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -21,10 +29,19 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (hostingRequired && !formData.hosted_on_asset_id) {
+            setFieldErrors({ hosted_on_asset_id: `${selectedTypeName} must specify which server it's hosted on` });
+            return;
+        }
+        setFieldErrors({});
         setIsSubmitting(true);
         setError(null);
         try {
             const submitData = { ...formData };
+            // Empty-string selects (e.g. "Select location") mean "unset" -
+            // send null, not "", which Optional[int] fields would reject.
+            Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
+            if (submitData.hosted_on_asset_id !== null) submitData.hosted_on_asset_id = Number(submitData.hosted_on_asset_id);
 
             const result = await dispatch(updateAsset({ assetId: asset.id, assetData: submitData }));
 
@@ -97,6 +114,41 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                     <select name="status" value={formData.status} onChange={handleChange} disabled={isSubmitting}>
                                         {statusOptions.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                                     </select>
+                                </div>
+                                <div className="form-group">
+                                    <label>Hosted on server{hostingRequired && <span className="required"> *</span>}</label>
+                                    <select
+                                        name="hosted_on_asset_id"
+                                        value={formData.hosted_on_asset_id}
+                                        onChange={handleChange}
+                                        disabled={isSubmitting}
+                                        style={fieldErrors.hosted_on_asset_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
+                                    >
+                                        <option value="">Select server</option>
+                                        {existingAssets.filter((a) => a.id !== asset.id).map((a) => (
+                                            <option key={a.id} value={a.id}>{a.asset_name}</option>
+                                        ))}
+                                    </select>
+                                    {fieldErrors.hosted_on_asset_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.hosted_on_asset_id}</span>}
+                                    {hostingRequired && !fieldErrors.hosted_on_asset_id && (
+                                        <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
+                                            {selectedTypeName} runs inside a server - Topology draws a dashed line to it.
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="form-group">
+                                    <label>VLAN</label>
+                                    <input
+                                        type="text"
+                                        name="hosted_vlan"
+                                        value={formData.hosted_vlan}
+                                        onChange={handleChange}
+                                        placeholder="e.g. 110"
+                                        disabled={isSubmitting}
+                                    />
+                                    <span style={{ display: "block", color: "#6c757d", fontSize: "11px", marginTop: "3px" }}>
+                                        Shown as a label on the dashed line to the hosting server.
+                                    </span>
                                 </div>
                             </div>
                         )}

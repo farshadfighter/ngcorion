@@ -148,7 +148,27 @@ class Asset(Base):
         index=True,
         comment="FK to asset_locations (physical/logical location)"
     )
-    
+
+    hosted_on_asset_id = Column(
+        Integer,
+        ForeignKey('asset_inventory.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+        comment="FK to the physical/logical server this asset runs on. "
+                "Required (app-level, not a DB constraint) for asset types "
+                "that look like VM/Application/Database - see "
+                "app/modules/assets/hosting.py. Drives the dashed "
+                "server-to-hosted-asset edges Topology draws."
+    )
+
+    hosted_vlan = Column(
+        String(20),
+        nullable=True,
+        comment="VLAN this asset is logically reachable on relative to its "
+                "hosting server, shown as a label on Topology's dashed "
+                "hosted-on edge. Free text (e.g. '10', '110-VOICE')."
+    )
+
     owner_id = Column(
         Integer,
         ForeignKey('asset_owners.id', ondelete='SET NULL'),
@@ -259,6 +279,15 @@ class Asset(Base):
     owner = relationship(
         "AssetOwner",
         backref="assets"
+    )
+
+    # Self-referential: the server this asset (a VM/Application/Database)
+    # runs on. `hosted_assets` is the reverse - everything a server hosts.
+    hosted_on = relationship(
+        "Asset",
+        remote_side=[id],
+        foreign_keys=[hosted_on_asset_id],
+        backref="hosted_assets",
     )
 
     # Relationship to Ports

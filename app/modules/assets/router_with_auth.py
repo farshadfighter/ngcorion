@@ -174,7 +174,10 @@ def create_asset(
     # If user_id not provided, use current user
     if not asset_data.get('user_id'):
         asset_data['user_id'] = current_user.id
-    result = AssetService.create_asset(db, asset_data)
+    try:
+        result = AssetService.create_asset(db, asset_data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     log_asset_created(db, current_user.id, result.id, result.asset_name, result.ip_address)
     return result
 

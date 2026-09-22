@@ -212,6 +212,13 @@
     border-radius: 6px;
 }
 
+.topology-panel-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
 .topology-panel-footer {
     display: flex;
     justify-content: space-between;

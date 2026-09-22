@@ -14,8 +14,31 @@ from app.models import (
     AssetDependency, AssetSecurityStatus
 )
 from .schemas import AssetTypeCreate
+from .hosting import requires_hosting
 
 logger = logging.getLogger(__name__)
+
+
+def _validate_hosting(db: Session, asset_type_id: Optional[int], hosted_on_asset_id: Optional[int], asset_id: Optional[int] = None) -> None:
+    """Raises ValueError if `asset_type_id` needs a hosting server (VM/
+    Application/Database) but `hosted_on_asset_id` isn't set, if the
+    referenced host doesn't exist, or if an asset is set to host itself."""
+    if hosted_on_asset_id is not None:
+        if hosted_on_asset_id == asset_id:
+            raise ValueError("An asset cannot be hosted on itself")
+        host = db.query(Asset).filter(Asset.id == hosted_on_asset_id).first()
+        if not host:
+            raise ValueError(f"Host asset with id {hosted_on_asset_id} does not exist")
+        return
+
+    if asset_type_id is None:
+        return
+    asset_type = db.query(AssetType).filter(AssetType.id == asset_type_id).first()
+    if asset_type and requires_hosting(asset_type.type_name):
+        raise ValueError(
+            f"Asset type '{asset_type.type_name}' must specify which server "
+            f"it's hosted on (hosted_on_asset_id)"
+        )
 
 
 class AssetInUseError(Exception):
@@ -133,6 +156,8 @@ class AssetService:
         # Extract security_status if present
         security_status_data = data.pop('security_status', None)
 
+        _validate_hosting(db, data.get('asset_type_id'), data.get('hosted_on_asset_id'))
+
         # Create asset
         asset = Asset(**data)
         db.add(asset)
@@ -180,6 +205,12 @@ class AssetService:
 
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if asset:
+            # Values as they'll be *after* this update (a None in `data` is a
+            # no-op below, same as every other field on this endpoint).
+            effective_type_id = data.get('asset_type_id') or asset.asset_type_id
+            effective_hosted_on = data.get('hosted_on_asset_id') or asset.hosted_on_asset_id
+            _validate_hosting(db, effective_type_id, effective_hosted_on, asset_id=asset.id)
+
             # Update asset fields
             for key, value in data.items():
                 if value is not None:

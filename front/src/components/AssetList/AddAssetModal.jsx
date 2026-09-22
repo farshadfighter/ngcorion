@@ -9,6 +9,7 @@ import api from "../../config/api";
 // Shared with EditSecurityModal (via useAssetFormOptions) so both forms offer
 // exactly the risk tiers the scoring engine can score — see the note there.
 import { dropUnscoredRiskLevels } from "./useAssetFormOptions";
+import { requiresHosting } from "../shared/assetHosting";
 
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
@@ -69,6 +70,7 @@ const validateAssetValue = (value) => {
 export const AddAssetModal = ({ isOpen, onClose }) => {
     const dispatch = useDispatch();
     const osCatalog = useSelector((state) => state.requirements.osCatalog);
+    const existingAssets = useSelector((state) => state.assets.assets);
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isLoadingOptions, setIsLoadingOptions] = useState(false);
@@ -88,7 +90,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     const [formData, setFormData] = useState({
         asset_name: "", hostname: "", asset_type_id: "", asset_role: "", manufacturer: "", model: "",
         serial_number: "", os_name: "", os_version: "", ip_address: "", mac_address: "", port_count: "", location_id: "",
-        owner_id: "", status: "active", confidentiality_level: "", risk_level: "", last_audit_date: "",
+        owner_id: "", hosted_on_asset_id: "", hosted_vlan: "", status: "active", confidentiality_level: "", risk_level: "", last_audit_date: "",
         last_patch_date: "", asset_value: "", description: ""
     });
 
@@ -100,7 +102,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         setFormData({
             asset_name: "", hostname: "", asset_type_id: "", asset_role: "", manufacturer: "", model: "",
             serial_number: "", os_name: "", os_version: "", ip_address: "", mac_address: "", port_count: "", location_id: "",
-            owner_id: "", status: "active", confidentiality_level: "", risk_level: "", last_audit_date: "",
+            owner_id: "", hosted_on_asset_id: "", hosted_vlan: "", status: "active", confidentiality_level: "", risk_level: "", last_audit_date: "",
             last_patch_date: "", asset_value: "", description: ""
         });
     };
@@ -157,6 +159,9 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         }
     };
 
+    const selectedTypeName = assetTypes.find(t => String(t.id) === String(formData.asset_type_id))?.type_name;
+    const hostingRequired = requiresHosting(selectedTypeName);
+
     const validateCurrentStep = () => {
         const errors = {};
 
@@ -171,6 +176,12 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             if (!ipCheck.valid) errors.ip_address = ipCheck.error;
             const macCheck = validateMAC(formData.mac_address);
             if (!macCheck.valid) errors.mac_address = macCheck.error;
+        }
+
+        if (currentStep === 3) {
+            if (hostingRequired && !formData.hosted_on_asset_id) {
+                errors.hosted_on_asset_id = `${selectedTypeName} must specify which server it's hosted on`;
+            }
         }
 
         if (currentStep === 4) {
@@ -204,6 +215,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             const submitData = { ...formData };
             Object.keys(submitData).forEach(key => { if (submitData[key] === "") submitData[key] = null; });
             if (submitData.port_count !== null) submitData.port_count = Number(submitData.port_count);
+            if (submitData.hosted_on_asset_id !== null) submitData.hosted_on_asset_id = Number(submitData.hosted_on_asset_id);
 
             const result = await dispatch(createAsset(submitData));
 
@@ -447,6 +459,39 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         <select name="status" value={formData.status} onChange={handleChange} disabled={isLoadingOptions}>
                             {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Hosted on server{hostingRequired && <span className="required"> *</span>}</label>
+                        <select
+                            name="hosted_on_asset_id"
+                            value={formData.hosted_on_asset_id}
+                            onChange={handleChange}
+                            disabled={isLoadingOptions}
+                            style={fieldErrors.hosted_on_asset_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
+                        >
+                            <option value="">Select server</option>
+                            {existingAssets.map(a => <option key={a.id} value={a.id}>{a.asset_name}</option>)}
+                        </select>
+                        {fieldErrors.hosted_on_asset_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.hosted_on_asset_id}</span>}
+                        {hostingRequired && !fieldErrors.hosted_on_asset_id && (
+                            <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
+                                {selectedTypeName} runs inside a server - Topology draws a dashed line to it.
+                            </span>
+                        )}
+                    </div>
+                    <div className="form-group">
+                        <label>VLAN</label>
+                        <input
+                            type="text"
+                            name="hosted_vlan"
+                            value={formData.hosted_vlan}
+                            onChange={handleChange}
+                            placeholder="e.g. 110"
+                            disabled={isLoadingOptions}
+                        />
+                        <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
+                            Shown as a label on the dashed line to the hosting server.
+                        </span>
                     </div>
                 </div>
             );
