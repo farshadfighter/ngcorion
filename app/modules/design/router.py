@@ -13,12 +13,16 @@ from app.core.dependencies import get_current_user, require_permission
 from app.models import User, Asset
 from app.modules.design.service import DesignService
 from app.modules.design.templates import list_templates, SCALES
+from app.modules.design.suggestion import suggest_design
 from app.modules.design.schemas import (
     DesignSummary,
     DesignCreate,
     DesignDetail,
     DesignTemplateInfo,
     DesignTemplateScale,
+    DesignSuggestionResponse,
+    SuggestedComponent,
+    SuggestedRelationship,
     DesignVersionSummary,
     DesignVersionCreate,
     DesignVersionDetail,
@@ -86,6 +90,37 @@ def get_design_template_scales(
 ):
     """Scale options for template application (controls access-layer size)."""
     return [DesignTemplateScale(id=key, label=val["label"]) for key, val in SCALES.items()]
+
+
+@router.get("/suggest", response_model=DesignSuggestionResponse)
+def get_design_suggestion(
+    current_user: User = Depends(require_permission("design_configuration", "read")),
+    db: Session = Depends(get_db),
+):
+    """Read-only preview: a standard SAFE campus design sized to the real
+    asset count, with real assets slotted into matching roles wherever
+    possible. Turning it into an actual Design is a separate, explicit step
+    (POST /api/design/ with a template, then map each matched component)."""
+    suggestion = suggest_design(db)
+    return DesignSuggestionResponse(
+        scale=suggestion.scale,
+        scale_label=suggestion.scale_label,
+        total_assets=suggestion.total_assets,
+        matched_assets=suggestion.matched_assets,
+        components=[
+            SuggestedComponent(
+                key=c.key, component_type=c.component_type, label=c.label,
+                pos_x=c.pos_x, pos_y=c.pos_y,
+                suggested_asset_id=c.suggested_asset_id, suggested_asset_name=c.suggested_asset_name,
+                suggested_asset_port_count=c.suggested_asset_port_count,
+            )
+            for c in suggestion.components
+        ],
+        relationships=[
+            SuggestedRelationship(source_key=r.source_key, destination_key=r.destination_key, link_type=r.link_type)
+            for r in suggestion.relationships
+        ],
+    )
 
 
 @router.post("/", response_model=DesignSummary, status_code=201)

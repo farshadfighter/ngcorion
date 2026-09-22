@@ -186,6 +186,10 @@ class Settings(BaseSettings):
     # with an empty in-memory state.
     LICENSE_STATE_CACHE_ENABLED: bool = True
 
+    # NOC: how often the background poller sweeps every asset that has an
+    # SNMP credential configured (app/modules/noc/poller.py).
+    NOC_POLL_INTERVAL_SECONDS: int = 60
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -112,8 +112,14 @@ from app.models.hardening_log import (
 # Import backup model (depends on HardeningAction and Asset)
 from app.models.backup import DeviceBackup
 
+# Import CVE model (standalone - matched against Asset at read time, no FK)
+from app.models.cve import CveRecord
+
 # Import topology models (depend on Asset and User)
 from app.models.topology import TopologyLink, TopologyNodePosition
+
+# Import NOC / SNMP monitoring models (depend on Asset and User)
+from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface
 from app.models.topology_log import (
     TopologyLog,
     log_topology_link_created,
@@ -218,6 +224,8 @@ __all__ = [
     "HardeningAction",
     "HardeningLog",
     "DeviceBackup",
+    # CVE
+    "CveRecord",
     # Topology models
     "TopologyLink",
     "TopologyNodePosition",
@@ -225,6 +233,10 @@ __all__ = [
     "log_topology_link_created",
     "log_topology_link_updated",
     "log_topology_link_deleted",
+    # NOC / SNMP monitoring
+    "AssetSnmpCredential",
+    "AssetSnmpStatus",
+    "AssetSnmpInterface",
     # Architecture Validation
     "ArchitectureFinding",
     # Design models

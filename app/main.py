@@ -100,6 +100,9 @@ from app.modules.backup.router import router as backup_router
 # Import topology router
 from app.modules.topology.router import router as topology_router
 
+# Import NOC (SNMP monitoring) router
+from app.modules.noc.router import router as noc_router
+
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
 
@@ -112,6 +115,9 @@ from app.modules.deployment.router import router as deployment_router
 
 # Import drift router
 from app.modules.drift.router import router as drift_router
+
+# Import CVE router
+from app.modules.cve.router import router as cve_router
 
 # Import risk router
 from app.modules.risk.router import router as risk_router
@@ -135,6 +141,7 @@ from app.core.license_state import (
     restore_cached_state,
 )
 from app.core.heartbeat import start_heartbeat, stop_heartbeat
+from app.modules.noc.poller import start_noc_poller, stop_noc_poller
 from app.middleware.license_middleware import LicenseMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 
@@ -216,10 +223,25 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Risk seed skipped: {e}")
     finally:
         db.close()
+
+    # Seed curated CVE records (idempotent). Uses its own session so a
+    # failure here never blocks startup.
+    from app.modules.cve.seed import seed_cve_defaults
+    db = SessionLocal()
+    try:
+        seed_cve_defaults(db)
+    except Exception as e:
+        logger.warning(f"CVE seed skipped: {e}")
+    finally:
+        db.close()
+
+    start_noc_poller()
+
     yield
     # Shutdown
     stop_heartbeat()
     await stop_job_scheduler()
+    await stop_noc_poller()
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -451,6 +473,9 @@ app.include_router(backup_router)
 # Topology routes
 app.include_router(topology_router)
 
+# NOC (SNMP monitoring) routes
+app.include_router(noc_router)
+
 # Architecture Validation routes
 app.include_router(architecture_validation_router)
 
@@ -463,6 +488,9 @@ app.include_router(deployment_router)
 
 # Configuration Drift routes
 app.include_router(drift_router)
+
+# CVE Vulnerability Management routes
+app.include_router(cve_router)
 
 # Risk & Exposure Intelligence routes
 app.include_router(risk_router, prefix="/api/risk", tags=["Risk"])

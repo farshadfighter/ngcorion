@@ -1,0 +1,269 @@
+/* ============================================
+   CVE VULNERABILITY MANAGEMENT PAGE - STYLES
+   ============================================ */
+
+.cve-container {
+    padding: 32px 40px;
+    background: transparent;
+    min-height: 100vh;
+}
+
+.cve-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.cve-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cve-card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.cve-card-label {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.cve-card-critical .cve-card-value { color: #b91c1c; }
+.cve-card-high .cve-card-value { color: #c2410c; }
+.cve-card-medium .cve-card-value { color: #92400e; }
+.cve-card-low .cve-card-value { color: #1e3a5f; }
+
+.cve-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.cve-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.cve-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cve-tab:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.cve-tab.active {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+    font-weight: 600;
+}
+
+.cve-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cve-search {
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    min-width: 240px;
+}
+
+.cve-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cve-btn:hover {
+    border-color: #1e3a5f;
+    color: #1e3a5f;
+}
+
+.cve-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cve-btn-primary {
+    background: #1e3a5f;
+    border-color: #1e3a5f;
+    color: white;
+}
+
+.cve-btn-primary:hover {
+    background: #16304d;
+    color: white;
+}
+
+.cve-toast {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.cve-toast-success {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.cve-toast-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.cve-table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    overflow-x: auto;
+}
+
+.cve-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.cve-table thead {
+    background: #f9fafb;
+}
+
+.cve-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.cve-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.cve-sortable:hover {
+    color: #1e3a5f;
+}
+
+.cve-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.2s;
+}
+
+.cve-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.cve-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.cve-table td {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: #374151;
+    vertical-align: top;
+}
+
+.cve-cell-strong {
+    font-weight: 600;
+    color: #111827;
+}
+
+.cve-cell-recommendation {
+    max-width: 320px;
+    white-space: normal;
+    color: #4b5563;
+}
+
+.cve-link {
+    color: #1e3a5f;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.cve-link:hover {
+    text-decoration: underline;
+}
+
+.cve-empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.cve-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.cve-badge-critical {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.cve-badge-high {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.cve-badge-medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.cve-badge-low {
+    background: #eef2f7;
+    color: #1e3a5f;
+}
+
+@media (max-width: 900px) {
+    .cve-summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

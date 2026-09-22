@@ -53,6 +53,18 @@ export const fetchTemplateScales = createAsyncThunk(
     }
 );
 
+export const fetchDesignSuggestion = createAsyncThunk(
+    "design/fetchDesignSuggestion",
+    async (_arg, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/design/suggest");
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || "Failed to load design suggestion");
+        }
+    }
+);
+
 export const fetchDesignDetail = createAsyncThunk(
     "design/fetchDesignDetail",
     async (designId, { rejectWithValue }) => {
@@ -186,6 +198,7 @@ const designSlice = createSlice({
         designs: [],
         templates: [],
         templateScales: [],
+        suggestion: null,
         currentDesign: null,
         currentVersion: null, // { version, components, relationships }
         isLoading: false,
@@ -213,6 +226,10 @@ const designSlice = createSlice({
 
             .addCase(fetchDesignTemplates.fulfilled, (state, action) => { state.templates = action.payload; })
             .addCase(fetchTemplateScales.fulfilled, (state, action) => { state.templateScales = action.payload; })
+
+            .addCase(fetchDesignSuggestion.pending, (state) => { state.isLoading = true; state.error = null; })
+            .addCase(fetchDesignSuggestion.fulfilled, (state, action) => { state.isLoading = false; state.suggestion = action.payload; })
+            .addCase(fetchDesignSuggestion.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
 
             .addCase(fetchDesignDetail.pending, (state) => { state.isLoading = true; state.error = null; })
             .addCase(fetchDesignDetail.fulfilled, (state, action) => { state.isLoading = false; state.currentDesign = action.payload; })

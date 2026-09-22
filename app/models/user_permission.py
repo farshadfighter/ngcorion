@@ -48,12 +48,18 @@ class ModuleEnum(str, enum.Enum):
     LOGS = "logs"
     BACKUP = "backup"
 
+    # Vulnerability management
+    CVE = "cve"
+
     # Network design / change-automation modules
     TOPOLOGY = "topology"
     ARCHITECTURE_VALIDATION = "architecture_validation"
     DESIGN_CONFIGURATION = "design_configuration"
     DEPLOYMENT = "deployment"
     DRIFT = "drift"
+
+    # NOC (SNMP monitoring)
+    NOC = "noc"
 
 
 class UserPermission(Base):
