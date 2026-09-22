@@ -9,7 +9,7 @@ the Asset Requirement form (5 pages) and view in Asset List.
 """
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, DateTime, Text, Enum, Numeric
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional, Dict, Any, List
 import re
@@ -287,7 +287,10 @@ class Asset(Base):
         "Asset",
         remote_side=[id],
         foreign_keys=[hosted_on_asset_id],
-        backref="hosted_assets",
+        # The FK is ON DELETE SET NULL, so let the database null out
+        # hosted_on_asset_id on the hosted assets instead of SQLAlchemy
+        # loading every one of them to UPDATE it row by row.
+        backref=backref("hosted_assets", passive_deletes=True),
     )
 
     # Relationship to Ports
