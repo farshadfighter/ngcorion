@@ -155,6 +155,42 @@ def test_delete_credential_returns_false_when_none_exists(db, user):
 
 
 # ======================================================================
+# SNMP client (poll_asset)
+# ======================================================================
+
+def test_poll_asset_converts_puresnmp_timedelta_uptime_to_ticks():
+    """Regression test: puresnmp's PyWrapper decodes SNMP TimeTicks (sysUpTime)
+    into a datetime.timedelta (see puresnmp.types.TimeTicks.pythonize), not a
+    raw tick count. poll_asset used to call int() directly on that timedelta,
+    which raises TypeError outside the try/except that turns SNMP failures
+    into `reachable=False` - crashing the whole poll (500) for every real
+    device instead of reporting a friendly status."""
+    from datetime import timedelta
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.modules.noc.snmp_client import poll_asset
+
+    credential = AssetSnmpCredential(version="v2c", port=161, community_encrypted=encrypt_secret("public"))
+    uptime = timedelta(days=2, seconds=34694, microseconds=440000)
+
+    fake_client = MagicMock()
+    fake_client.multiget = AsyncMock(return_value=(b"fake sys descr", uptime, b"", b"NGFW-Taktacom", b""))
+
+    async def empty_walk(_oids):
+        return
+        yield  # pragma: no cover - makes this an async generator that yields nothing
+
+    fake_client.multiwalk = empty_walk
+
+    with patch("app.modules.noc.snmp_client.PyWrapper", return_value=fake_client):
+        result = run(poll_asset("172.16.200.20", credential))
+
+    assert result.reachable is True
+    assert result.sys_uptime_ticks == int(uptime.total_seconds() * 100)
+    assert result.sys_name == "NGFW-Taktacom"
+
+
+# ======================================================================
 # Poll result persistence
 # ======================================================================
 

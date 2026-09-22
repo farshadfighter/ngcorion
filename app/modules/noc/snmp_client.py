@@ -121,7 +121,10 @@ async def poll_asset(
     result = DevicePollResult(
         reachable=True,
         sys_descr=_decode(sys_descr),
-        sys_uptime_ticks=int(sys_uptime) if sys_uptime is not None else None,
+        # puresnmp's PyWrapper decodes TimeTicks into a datetime.timedelta
+        # (see puresnmp.types.TimeTicks.pythonize), not a raw tick count -
+        # convert back to hundredths of a second per RFC 1155.
+        sys_uptime_ticks=int(sys_uptime.total_seconds() * 100) if sys_uptime is not None else None,
         sys_contact=_decode(sys_contact),
         sys_name=_decode(sys_name),
         sys_location=_decode(sys_location),
