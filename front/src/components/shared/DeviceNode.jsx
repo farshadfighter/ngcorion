@@ -5,14 +5,21 @@ import { defaultPortsForType } from "../../utils/devicePorts.js";
 const PORT_HANDLE_STYLE = { width: 7, height: 7, background: "#1e3a5f", border: "1.5px solid #fff" };
 const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f" };
 
-// Shared React Flow node used by both the Topology and Design & Configuration canvases: one
-// real connection handle per known port (EVE-NG style - drag directly from a specific numbered
-// port on one device to a specific port on another), falling back to 4 generic handles for
-// asset types with no known port catalog (see utils/devicePorts.js).
+// Shared React Flow node used by the Topology, Design & Configuration, Suggested Design and NOC
+// canvases: one real connection handle per known port (EVE-NG style - drag directly from a
+// specific numbered port on one device to a specific port on another), falling back to 4 generic
+// handles for asset types with no known port catalog (see utils/devicePorts.js) - or, when
+// `showPortHandles` is false (Suggested Design's read-only preview, where nodesConnectable is
+// already off and individual ports can't be dragged from anyway), always the 4 generic handles.
+// A real device's port count can be large (a 48-port switch), and each port handle needs its own
+// ~9px of width, so a node showing all of them can balloon past a template's fixed column
+// spacing; skipping them where nothing can be wired keeps the box a normal size while the true
+// port count still shows as text below (see the port-count line at the bottom of this component).
 export function DeviceNode({ data, selected }) {
-    const { label, typeName, color = "#1e3a5f", dashed = false, subtitle, portCount } = data;
-    const ports = defaultPortsForType(typeName, portCount);
+    const { label, typeName, color = "#1e3a5f", dashed = false, subtitle, portCount, showPortHandles = true } = data;
+    const ports = showPortHandles ? defaultPortsForType(typeName, portCount) : [];
     const minWidth = ports.length > 0 ? Math.max(110, ports.length * 9) : 110;
+    const displayPortCount = portCount ?? ports.length;
 
     return (
         <div
@@ -54,7 +61,7 @@ export function DeviceNode({ data, selected }) {
             <DeviceIcon typeName={typeName} color={color} size={22} />
             <div style={{ fontSize: 12, fontWeight: 600, textAlign: "center", lineHeight: 1.25, color: "#1f2937" }}>{label}</div>
             {subtitle && <div style={{ fontSize: 10, color: "#6b7280" }}>{subtitle}</div>}
-            {ports.length > 0 && <div style={{ fontSize: 9, color: "#9ca3af" }}>{ports.length} ports</div>}
+            {displayPortCount > 0 && <div style={{ fontSize: 9, color: "#9ca3af" }}>{displayPortCount} ports</div>}
         </div>
     );
 }

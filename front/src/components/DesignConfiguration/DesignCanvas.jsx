@@ -83,6 +83,8 @@ export const DesignCanvas = () => {
                 sourceHandle: r.source_interface || undefined,
                 targetHandle: r.destination_interface || undefined,
                 label: r.vlan ? `VLAN ${r.vlan}` : undefined,
+                type: "smoothstep",
+                pathOptions: { borderRadius: 8 },
                 style: { stroke: "#1e3a5f", strokeWidth: 2 },
                 data: { relationship: r },
             }))

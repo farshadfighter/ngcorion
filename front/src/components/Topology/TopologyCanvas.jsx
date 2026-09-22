@@ -65,6 +65,8 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDra
                 sourceHandle: link.source_interface || undefined,
                 targetHandle: link.destination_interface || undefined,
                 label: link.vlan ? `VLAN ${link.vlan}` : undefined,
+                type: "smoothstep",
+                pathOptions: { borderRadius: 8 },
                 style: {
                     stroke: LINK_TYPE_COLOR[link.link_type] || "#1e3a5f",
                     strokeWidth: 2,

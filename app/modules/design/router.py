@@ -110,7 +110,7 @@ def get_design_suggestion(
         components=[
             SuggestedComponent(
                 key=c.key, component_type=c.component_type, label=c.label,
-                pos_x=c.pos_x, pos_y=c.pos_y,
+                pos_x=c.pos_x, pos_y=c.pos_y, zone=c.zone,
                 suggested_asset_id=c.suggested_asset_id, suggested_asset_name=c.suggested_asset_name,
                 suggested_asset_port_count=c.suggested_asset_port_count,
             )

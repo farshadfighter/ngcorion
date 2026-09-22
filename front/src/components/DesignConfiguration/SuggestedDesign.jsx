@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { ReactFlow, Background, Controls } from "@xyflow/react";
+import { ReactFlow, Background, Controls, Panel } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
+import { ZoneBandNode } from "./ZoneBandNode.jsx";
+import { ZONES } from "../shared/designZones.js";
 import {
     fetchDesignSuggestion,
     createDesign,
@@ -13,6 +15,15 @@ import {
     clearMessages,
 } from "../../store/designSlice.jsx";
 import "../../assets/DesignConfiguration.css";
+
+const NODE_TYPES = { ...DEVICE_NODE_TYPES, zoneBand: ZoneBandNode };
+
+// Generous padding around each zone's device nodes: DeviceNode's own
+// width/height varies with its port count, so this errs wide enough that
+// the dashed zone outline never clips a label or a port row.
+const ZONE_PAD_X = 90;
+const ZONE_PAD_TOP = 56;
+const ZONE_PAD_BOTTOM = 110;
 
 // Read-only preview of a standard SAFE campus design sized to the real asset
 // inventory, with real assets slotted into matching roles wherever possible
@@ -39,28 +50,71 @@ export const SuggestedDesign = () => {
 
     const { nodes, edges } = useMemo(() => {
         if (!suggestion) return { nodes: [], edges: [] };
-        return {
-            nodes: suggestion.components.map((c) => ({
-                id: c.key,
-                type: "device",
-                position: { x: c.pos_x, y: c.pos_y },
+
+        const deviceNodes = suggestion.components.map((c) => ({
+            id: c.key,
+            type: "device",
+            position: { x: c.pos_x, y: c.pos_y },
+            data: {
+                label: c.label,
+                typeName: c.component_type,
+                subtitle: c.suggested_asset_name || "no matching asset in inventory",
+                portCount: c.suggested_asset_port_count,
+                // This canvas has nodesConnectable={false} - individual port
+                // handles can't be dragged from anyway, and a real device's
+                // full port count (e.g. 48) would balloon the box far past
+                // the template's fixed column spacing. The true count still
+                // shows as text (see DeviceNode's displayPortCount).
+                showPortHandles: false,
+                dashed: !c.suggested_asset_id,
+                color: c.suggested_asset_id ? "#1e3a5f" : "#9ca3af",
+            },
+            draggable: false,
+            zIndex: 1,
+        }));
+
+        // One dashed background band per zone present, sized to the
+        // bounding box of the components it contains - drawn at a lower
+        // zIndex so device nodes always sit on top of it, not behind it.
+        const byZone = new Map();
+        suggestion.components.forEach((c) => {
+            if (!byZone.has(c.zone)) byZone.set(c.zone, []);
+            byZone.get(c.zone).push(c);
+        });
+        const zoneNodes = Array.from(byZone.entries()).map(([zoneId, comps]) => {
+            const zone = ZONES[zoneId] || { label: zoneId, color: "#f3f4f6", border: "#e5e7eb" };
+            const minX = Math.min(...comps.map((c) => c.pos_x));
+            const maxX = Math.max(...comps.map((c) => c.pos_x));
+            const minY = Math.min(...comps.map((c) => c.pos_y));
+            const maxY = Math.max(...comps.map((c) => c.pos_y));
+            return {
+                id: `zone-${zoneId}`,
+                type: "zoneBand",
+                position: { x: minX - ZONE_PAD_X, y: minY - ZONE_PAD_TOP },
                 data: {
-                    label: c.label,
-                    typeName: c.component_type,
-                    subtitle: c.suggested_asset_name || "no matching asset in inventory",
-                    portCount: c.suggested_asset_port_count,
-                    dashed: !c.suggested_asset_id,
-                    color: c.suggested_asset_id ? "#1e3a5f" : "#9ca3af",
+                    label: zone.label,
+                    color: zone.color,
+                    border: zone.border,
+                    width: maxX - minX + ZONE_PAD_X * 2,
+                    height: maxY - minY + ZONE_PAD_TOP + ZONE_PAD_BOTTOM,
                 },
                 draggable: false,
-            })),
-            edges: suggestion.relationships.map((r, i) => ({
-                id: `${r.source_key}-${r.destination_key}-${i}`,
-                source: r.source_key,
-                target: r.destination_key,
-                style: { stroke: "#1e3a5f", strokeWidth: 2 },
-            })),
-        };
+                selectable: false,
+                connectable: false,
+                zIndex: -1,
+            };
+        });
+
+        const edges = suggestion.relationships.map((r, i) => ({
+            id: `${r.source_key}-${r.destination_key}-${i}`,
+            source: r.source_key,
+            target: r.destination_key,
+            type: "smoothstep",
+            pathOptions: { borderRadius: 12 },
+            style: { stroke: "#1e3a5f", strokeWidth: 2 },
+        }));
+
+        return { nodes: [...zoneNodes, ...deviceNodes], edges };
     }, [suggestion]);
 
     const handleCreate = () => {
@@ -155,7 +209,7 @@ export const SuggestedDesign = () => {
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
-                        nodeTypes={DEVICE_NODE_TYPES}
+                        nodeTypes={NODE_TYPES}
                         nodesDraggable={false}
                         nodesConnectable={false}
                         elementsSelectable={false}
@@ -164,6 +218,25 @@ export const SuggestedDesign = () => {
                     >
                         <Background gap={20} color="#e5e7eb" />
                         <Controls showInteractive={false} />
+                        <Panel position="bottom-left">
+                            <div
+                                style={{
+                                    display: "flex", flexWrap: "wrap", gap: "6px 14px",
+                                    padding: "8px 12px", background: "rgba(255,255,255,0.94)",
+                                    border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 11, color: "#4b5563",
+                                }}
+                            >
+                                {Object.entries(ZONES).map(([id, zone]) => (
+                                    <span key={id} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                        <span style={{
+                                            width: 10, height: 10, borderRadius: 3, background: zone.color,
+                                            border: `1.5px dashed ${zone.border}`, display: "inline-block",
+                                        }} />
+                                        {zone.label}
+                                    </span>
+                                ))}
+                            </div>
+                        </Panel>
                     </ReactFlow>
                 </div>
             </div>

@@ -2,13 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchHosts, clearMessages } from "../../store/nocSlice.jsx";
+import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/Noc.css";
+// Pagination's styles live with the Logs page it was first built for (see
+// AssetList.jsx, which reuses it the same way).
+import "../../assets/LogsPage.css";
 
 export const NocHostList = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { hosts, isLoading, error, successMessage } = useSelector((state) => state.noc);
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(25);
 
     useEffect(() => {
         dispatch(fetchHosts());
@@ -30,6 +36,17 @@ export const NocHostList = () => {
                 (h.asset_type_name || "").toLowerCase().includes(q)
         );
     }, [hosts, search]);
+
+    // Client-side: /api/noc/hosts returns every asset and the search above
+    // already operates on the full list (same pattern as AssetList.jsx).
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const safePage = Math.min(page, totalPages);
+    const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+    // A search that shrinks the list can leave the current page past the end.
+    useEffect(() => {
+        if (page > totalPages) setPage(1);
+    }, [totalPages, page]);
 
     return (
         <div className="noc-container">
@@ -67,7 +84,7 @@ export const NocHostList = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((h) => {
+                            {paged.map((h) => {
                                 const statusKey = !h.has_credential ? "unmonitored" : h.reachable ? "up" : "down";
                                 return (
                                     <tr key={h.asset_id} className="clickable" onClick={() => navigate(`/noc/hosts/${h.asset_id}`)}>
@@ -84,6 +101,14 @@ export const NocHostList = () => {
                     </table>
                 )}
             </div>
+
+            <Pagination
+                page={safePage}
+                pageSize={pageSize}
+                totalItems={filtered.length}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+            />
         </div>
     );
 };
