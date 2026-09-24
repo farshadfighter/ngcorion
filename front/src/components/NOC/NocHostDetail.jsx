@@ -147,11 +147,16 @@ export const NocHostDetail = () => {
             <div className="noc-detail-grid">
                 <div>
                     <div className="noc-card">
-                        <h3><span className={`noc-status-dot ${statusKey}`} />{currentHost.asset_name}</h3>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                            <h3 style={{ margin: 0 }}>{currentHost.asset_name}</h3>
+                            <span className={`noc-status-pill ${statusKey}`}>
+                                <span className={`noc-status-dot ${statusKey}`} />
+                                {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Reachable" : "Unreachable"}
+                            </span>
+                        </div>
                         <dl className="noc-kv-grid">
                             <dt>Type</dt><dd>{currentHost.asset_type_name || "—"}</dd>
                             <dt>IP Address</dt><dd>{currentHost.ip_address || "—"}</dd>
-                            <dt>Status</dt><dd>{statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Reachable" : "Unreachable"}</dd>
                             <dt>Last Polled</dt><dd>{currentHost.last_polled_at ? new Date(currentHost.last_polled_at).toLocaleString() : "Never"}</dd>
                             {currentHost.error_message && (<><dt>Error</dt><dd>{currentHost.error_message}</dd></>)}
                         </dl>
@@ -175,7 +180,7 @@ export const NocHostDetail = () => {
                                 <select
                                     value={historyMetric}
                                     onChange={(e) => setHistoryMetric(e.target.value)}
-                                    style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12 }}
+                                    className="noc-mini-select"
                                 >
                                     <option value="reachable">Reachability</option>
                                     <option value="if_in_octets">Interface — In traffic</option>
@@ -185,7 +190,7 @@ export const NocHostDetail = () => {
                                     <select
                                         value={effectiveInterfaceId ?? ""}
                                         onChange={(e) => setHistoryInterfaceId(Number(e.target.value))}
-                                        style={{ padding: "5px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12 }}
+                                        className="noc-mini-select"
                                     >
                                         {currentHost.interfaces.map((iface) => (
                                             <option key={iface.id} value={iface.id}>{iface.if_descr || `#${iface.if_index}`}</option>
@@ -195,21 +200,22 @@ export const NocHostDetail = () => {
                             </div>
                         </div>
                         <div style={{ margin: "10px 0" }}>
-                            <TimeRangePicker value={historyRange} onChange={setHistoryRange} />
+                            <TimeRangePicker value={historyRange} onChange={setHistoryRange} dark />
                         </div>
                         {isLoadingMetric ? (
                             <div className="noc-empty">Loading…</div>
                         ) : (
                             <MetricChart
                                 points={metricSeries?.points}
-                                color={historyMetric === "reachable" ? "#10b981" : "#1e3a5f"}
+                                color={historyMetric === "reachable" ? "#34d399" : "#2dd4bf"}
                                 valueFormatter={(v) =>
                                     historyMetric === "reachable" ? (v >= 0.5 ? "up" : "down") : formatBytes(v)
                                 }
+                                dark
                             />
                         )}
                         {metricSeries?.granularity && metricSeries.granularity !== "raw" && (
-                            <div style={{ fontSize: 10.5, color: "#9ca3af", marginTop: 6 }}>
+                            <div style={{ fontSize: 10.5, color: "#5c667e", marginTop: 6 }}>
                                 Averaged into {metricSeries.granularity} buckets for this range.
                             </div>
                         )}
@@ -238,8 +244,8 @@ export const NocHostDetail = () => {
                                             <td>{iface.if_index}</td>
                                             <td>{iface.if_descr || "—"}</td>
                                             <td>{iface.if_speed ? `${(iface.if_speed / 1e6).toFixed(0)} Mbps` : "—"}</td>
-                                            <td>{iface.if_admin_status || "—"}</td>
-                                            <td>{iface.if_oper_status || "—"}</td>
+                                            <td style={{ color: iface.if_admin_status === "up" ? "#34d399" : undefined }}>{iface.if_admin_status || "—"}</td>
+                                            <td style={{ color: iface.if_oper_status === "up" ? "#34d399" : iface.if_oper_status === "down" ? "#f87171" : undefined }}>{iface.if_oper_status || "—"}</td>
                                             <td>{formatBytes(iface.in_octets)}</td>
                                             <td>{formatBytes(iface.out_octets)}</td>
                                         </tr>

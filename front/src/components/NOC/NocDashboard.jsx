@@ -22,7 +22,7 @@ function gridPosition(index) {
 // Node border color reflects live SNMP status, independent of device type
 // color (DeviceIcon already colors the glyph itself) - green/red/gray ring
 // around the same device pictogram Topology and Design use.
-const STATUS_COLOR = { up: "#10b981", down: "#ef4444", unmonitored: "#9ca3af" };
+const STATUS_COLOR = { up: "#34d399", down: "#f87171", unmonitored: "#6b7280" };
 
 export const NocDashboard = () => {
     const dispatch = useDispatch();
@@ -112,18 +112,22 @@ export const NocDashboard = () => {
 
             <div className="noc-stats">
                 <div className="noc-stat-card">
+                    <div className="noc-stat-icon"><i className="fa-solid fa-server" /></div>
                     <div className="noc-stat-value">{stats.total}</div>
                     <div className="noc-stat-label">Total Assets</div>
                 </div>
                 <div className="noc-stat-card reachable">
+                    <div className="noc-stat-icon"><i className="fa-solid fa-circle-check" /></div>
                     <div className="noc-stat-value">{stats.reachable}</div>
                     <div className="noc-stat-label">Reachable</div>
                 </div>
                 <div className="noc-stat-card unreachable">
+                    <div className="noc-stat-icon"><i className="fa-solid fa-triangle-exclamation" /></div>
                     <div className="noc-stat-value">{stats.unreachable}</div>
                     <div className="noc-stat-label">Unreachable</div>
                 </div>
                 <div className="noc-stat-card unmonitored">
+                    <div className="noc-stat-icon"><i className="fa-solid fa-circle-question" /></div>
                     <div className="noc-stat-value">{stats.unmonitored}</div>
                     <div className="noc-stat-label">Not Monitored</div>
                 </div>
@@ -140,14 +144,14 @@ export const NocDashboard = () => {
                     fitView
                     proOptions={{ hideAttribution: true }}
                 >
-                    <Background gap={20} color="#e5e7eb" />
+                    <Background gap={20} color="#1f2937" />
                     <Controls showInteractive={false} />
                     <Panel position="bottom-left">
                         <div
                             style={{
                                 display: "flex", gap: 14,
-                                padding: "8px 12px", background: "rgba(255,255,255,0.94)",
-                                border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 11, color: "#4b5563",
+                                padding: "8px 12px", background: "rgba(17,24,39,0.94)",
+                                border: "1px solid #1f2937", borderRadius: 8, fontSize: 11, color: "#8b96ac",
                             }}
                         >
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -187,7 +191,12 @@ export const NocDashboard = () => {
                                 const statusKey = !h.has_credential ? "unmonitored" : h.reachable ? "up" : "down";
                                 return (
                                     <tr key={h.asset_id} className="clickable" onClick={() => navigate(`/noc/hosts/${h.asset_id}`)}>
-                                        <td><span className={`noc-status-dot ${statusKey}`} />{statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}</td>
+                                        <td>
+                                            <span className={`noc-status-pill ${statusKey}`}>
+                                                <span className={`noc-status-dot ${statusKey}`} />
+                                                {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}
+                                            </span>
+                                        </td>
                                         <td>{h.asset_name}</td>
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>

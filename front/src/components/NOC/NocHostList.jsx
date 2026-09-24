@@ -56,7 +56,7 @@ export const NocHostList = () => {
                     placeholder="Search by name, IP or type…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    style={{ padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 13, minWidth: 260 }}
+                    style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, minWidth: 260 }}
                 />
             </div>
 
@@ -88,7 +88,12 @@ export const NocHostList = () => {
                                 const statusKey = !h.has_credential ? "unmonitored" : h.reachable ? "up" : "down";
                                 return (
                                     <tr key={h.asset_id} className="clickable" onClick={() => navigate(`/noc/hosts/${h.asset_id}`)}>
-                                        <td><span className={`noc-status-dot ${statusKey}`} />{statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}</td>
+                                        <td>
+                                            <span className={`noc-status-pill ${statusKey}`}>
+                                                <span className={`noc-status-dot ${statusKey}`} />
+                                                {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}
+                                            </span>
+                                        </td>
                                         <td>{h.asset_name}</td>
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>

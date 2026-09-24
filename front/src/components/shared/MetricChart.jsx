@@ -11,12 +11,19 @@ function formatAxisTime(iso) {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export function MetricChart({ points, color = "#1e3a5f", valueFormatter = (v) => v.toFixed(1), emptyLabel = "No data in this range yet" }) {
+export function MetricChart({
+    points, color = "#1e3a5f", valueFormatter = (v) => v.toFixed(1),
+    emptyLabel = "No data in this range yet", dark = false,
+}) {
+    const gridColor = dark ? "#1f2937" : "#eef0f4";
+    const axisTextColor = dark ? "#5c667e" : "#9ca3af";
+    const emptyBorderColor = dark ? "#1f2937" : "#e5e7eb";
+
     if (!points || points.length === 0) {
         return (
             <div style={{
                 height: HEIGHT, display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#9ca3af", fontSize: 12, border: "1px dashed #e5e7eb", borderRadius: 8,
+                color: axisTextColor, fontSize: 12, border: `1px dashed ${emptyBorderColor}`, borderRadius: 8,
             }}>
                 {emptyLabel}
             </div>
@@ -55,9 +62,9 @@ export function MetricChart({ points, color = "#1e3a5f", valueFormatter = (v) =>
                     <line
                         x1={PAD.left} x2={WIDTH - PAD.right}
                         y1={PAD.top + plotH * f} y2={PAD.top + plotH * f}
-                        stroke="#eef0f4" strokeWidth={1}
+                        stroke={gridColor} strokeWidth={1}
                     />
-                    <text x={PAD.left - 6} y={PAD.top + plotH * f + 3} textAnchor="end" fontSize={9} fill="#9ca3af">
+                    <text x={PAD.left - 6} y={PAD.top + plotH * f + 3} textAnchor="end" fontSize={9} fill={axisTextColor}>
                         {valueFormatter(maxValue - valueSpan * f)}
                     </text>
                 </g>
@@ -73,7 +80,7 @@ export function MetricChart({ points, color = "#1e3a5f", valueFormatter = (v) =>
                     y={HEIGHT - 6}
                     textAnchor={i === 0 ? "start" : "end"}
                     fontSize={9.5}
-                    fill="#9ca3af"
+                    fill={axisTextColor}
                 >
                     {formatAxisTime(points[i].t)}
                 </text>

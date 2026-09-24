@@ -12,7 +12,13 @@ const PRESETS = [
     { label: "30d", hours: 24 * 30 },
 ];
 
-export function TimeRangePicker({ value, onChange }) {
+const THEME = {
+    light: { accent: "#1e3a5f", accentInk: "#fff", border: "#e5e7eb", surface: "#fff", text: "#4b5563", textFaint: "#6b7280" },
+    dark: { accent: "#2dd4bf", accentInk: "#08221f", border: "#1f2937", surface: "#141b2b", text: "#8b96ac", textFaint: "#5c667e" },
+};
+
+export function TimeRangePicker({ value, onChange, dark = false }) {
+    const t = dark ? THEME.dark : THEME.light;
     const [customOpen, setCustomOpen] = useState(false);
     const [customFrom, setCustomFrom] = useState("");
     const [customTo, setCustomTo] = useState("");
@@ -43,9 +49,9 @@ export function TimeRangePicker({ value, onChange }) {
                         onClick={() => selectPreset(p.hours, p.label)}
                         style={{
                             padding: "5px 11px", fontSize: 12, fontWeight: 600, borderRadius: 7, cursor: "pointer",
-                            border: `1px solid ${value?.label === p.label ? "#1e3a5f" : "#e5e7eb"}`,
-                            background: value?.label === p.label ? "#1e3a5f" : "#fff",
-                            color: value?.label === p.label ? "#fff" : "#4b5563",
+                            border: `1px solid ${value?.label === p.label ? t.accent : t.border}`,
+                            background: value?.label === p.label ? t.accent : t.surface,
+                            color: value?.label === p.label ? t.accentInk : t.text,
                         }}
                     >
                         {p.label}
@@ -56,9 +62,9 @@ export function TimeRangePicker({ value, onChange }) {
                     onClick={() => setCustomOpen((v) => !v)}
                     style={{
                         padding: "5px 11px", fontSize: 12, fontWeight: 600, borderRadius: 7, cursor: "pointer",
-                        border: `1px solid ${value?.label === "Custom" ? "#1e3a5f" : "#e5e7eb"}`,
-                        background: value?.label === "Custom" ? "#1e3a5f" : "#fff",
-                        color: value?.label === "Custom" ? "#fff" : "#4b5563",
+                        border: `1px solid ${value?.label === "Custom" ? t.accent : t.border}`,
+                        background: value?.label === "Custom" ? t.accent : t.surface,
+                        color: value?.label === "Custom" ? t.accentInk : t.text,
                     }}
                 >
                     Custom
@@ -66,18 +72,18 @@ export function TimeRangePicker({ value, onChange }) {
             </div>
             {customOpen && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: "#6b7280", gap: 2 }}>
+                    <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: t.textFaint, gap: 2 }}>
                         From
                         <input type="datetime-local" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
-                            style={{ padding: "5px 7px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12 }} />
+                            style={{ padding: "5px 7px", border: `1px solid ${t.border}`, borderRadius: 6, fontSize: 12, background: t.surface, color: t.text }} />
                     </label>
-                    <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: "#6b7280", gap: 2 }}>
+                    <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: t.textFaint, gap: 2 }}>
                         To
                         <input type="datetime-local" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
-                            style={{ padding: "5px 7px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 12 }} />
+                            style={{ padding: "5px 7px", border: `1px solid ${t.border}`, borderRadius: 6, fontSize: 12, background: t.surface, color: t.text }} />
                     </label>
                     <button type="button" onClick={applyCustom}
-                        style={{ alignSelf: "flex-end", padding: "6px 12px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: "1px solid #1e3a5f", background: "#1e3a5f", color: "#fff", cursor: "pointer" }}>
+                        style={{ alignSelf: "flex-end", padding: "6px 12px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: `1px solid ${t.accent}`, background: t.accent, color: t.accentInk, cursor: "pointer" }}>
                         Apply
                     </button>
                 </div>
