@@ -32,11 +32,35 @@ function formatBytes(n) {
     return `${value.toFixed(1)} ${units[i]}`;
 }
 
+// IF-MIB ifType values (RFC 2863 / the IANAifType-MIB registry) an interface
+// reports over SNMP - a real device's ifTable is rarely just physical ports:
+// FortiGate alone routinely reports VLANs, LACP aggregates and IPsec/GRE
+// tunnels alongside the front-panel ports, often with no ifDescr set on the
+// non-physical ones. Grouping by this (not by whether ifDescr happens to be
+// blank) is what turns "47 unlabeled rows" into something a human can scan.
+const IF_TYPE_GROUPS = {
+    Physical: new Set([6, 7, 62, 69, 117, 175, 176, 237, 243, 244]), // ethernetCsmacd, gigabitEthernet, etc.
+    VLAN: new Set([135, 136]), // l2vlan, l3ipvlan
+    Aggregate: new Set([161]), // ieee8023adLag
+    Tunnel: new Set([131, 150, 23, 118]), // tunnel, mpls, ppp, gre-ish propVirtual variants
+};
+
+function classifyInterfaceType(ifType) {
+    for (const [group, codes] of Object.entries(IF_TYPE_GROUPS)) {
+        if (codes.has(ifType)) return group;
+    }
+    return "Other";
+}
+
+const INTERFACE_FILTERS = ["All", "Physical", "VLAN", "Aggregate", "Tunnel", "Other"];
+
 export const NocHostDetail = () => {
     const { assetId } = useParams();
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { currentHost, isPolling, error, successMessage, metricSeries, isLoadingMetric } = useSelector((state) => state.noc);
+
+    const [interfaceFilter, setInterfaceFilter] = useState("All");
 
     const [historyMetric, setHistoryMetric] = useState("reachable");
     const [historyInterfaceId, setHistoryInterfaceId] = useState(null);
@@ -222,37 +246,69 @@ export const NocHostDetail = () => {
                     </div>
 
                     <div className="noc-card">
-                        <h3>Interfaces ({currentHost.interfaces.length})</h3>
-                        {currentHost.interfaces.length === 0 ? (
-                            <div className="noc-empty">No interface data yet — poll this host to fetch it.</div>
-                        ) : (
-                            <table className="noc-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Description</th>
-                                        <th>Speed</th>
-                                        <th>Admin</th>
-                                        <th>Oper</th>
-                                        <th>In</th>
-                                        <th>Out</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {currentHost.interfaces.map((iface) => (
-                                        <tr key={iface.if_index}>
-                                            <td>{iface.if_index}</td>
-                                            <td>{iface.if_descr || "—"}</td>
-                                            <td>{iface.if_speed ? `${(iface.if_speed / 1e6).toFixed(0)} Mbps` : "—"}</td>
-                                            <td style={{ color: iface.if_admin_status === "up" ? "#34d399" : undefined }}>{iface.if_admin_status || "—"}</td>
-                                            <td style={{ color: iface.if_oper_status === "up" ? "#34d399" : iface.if_oper_status === "down" ? "#f87171" : undefined }}>{iface.if_oper_status || "—"}</td>
-                                            <td>{formatBytes(iface.in_octets)}</td>
-                                            <td>{formatBytes(iface.out_octets)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+                        {(() => {
+                            const grouped = currentHost.interfaces.map((iface) => ({
+                                ...iface,
+                                _group: classifyInterfaceType(iface.if_type),
+                            }));
+                            const counts = INTERFACE_FILTERS.reduce((acc, f) => {
+                                acc[f] = f === "All" ? grouped.length : grouped.filter((i) => i._group === f).length;
+                                return acc;
+                            }, {});
+                            const visible = interfaceFilter === "All" ? grouped : grouped.filter((i) => i._group === interfaceFilter);
+
+                            return (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
+                                        <h3 style={{ margin: 0 }}>Interfaces</h3>
+                                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                                            {INTERFACE_FILTERS.filter((f) => f === "All" || counts[f] > 0).map((f) => (
+                                                <button
+                                                    key={f}
+                                                    type="button"
+                                                    className={`noc-chip ${interfaceFilter === f ? "noc-chip-active" : ""}`}
+                                                    onClick={() => setInterfaceFilter(f)}
+                                                >
+                                                    {f} ({counts[f]})
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {grouped.length === 0 ? (
+                                        <div className="noc-empty">No interface data yet — poll this host to fetch it.</div>
+                                    ) : (
+                                        <table className="noc-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>Description</th>
+                                                    <th>Type</th>
+                                                    <th>Speed</th>
+                                                    <th>Admin</th>
+                                                    <th>Oper</th>
+                                                    <th>In</th>
+                                                    <th>Out</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {visible.map((iface) => (
+                                                    <tr key={iface.if_index}>
+                                                        <td>{iface.if_index}</td>
+                                                        <td>{iface.if_descr || "—"}</td>
+                                                        <td style={{ color: "#8b96ac" }}>{iface._group}</td>
+                                                        <td>{iface.if_speed ? `${(iface.if_speed / 1e6).toFixed(0)} Mbps` : "—"}</td>
+                                                        <td style={{ color: iface.if_admin_status === "up" ? "#34d399" : undefined }}>{iface.if_admin_status || "—"}</td>
+                                                        <td style={{ color: iface.if_oper_status === "up" ? "#34d399" : iface.if_oper_status === "down" ? "#f87171" : undefined }}>{iface.if_oper_status || "—"}</td>
+                                                        <td>{formatBytes(iface.in_octets)}</td>
+                                                        <td>{formatBytes(iface.out_octets)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
 

@@ -276,6 +276,25 @@
     color: var(--noc-text);
 }
 
+.noc-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 11px;
+    border-radius: 7px;
+    border: 1px solid var(--noc-border);
+    background: var(--noc-surface-alt);
+    color: var(--noc-text-dim);
+    cursor: pointer;
+}
+
+.noc-chip:hover { border-color: var(--noc-accent); color: var(--noc-accent); }
+
+.noc-chip-active {
+    background: rgba(45, 212, 191, 0.14);
+    color: var(--noc-accent);
+    border-color: rgba(45, 212, 191, 0.4);
+}
+
 .noc-kv-grid {
     display: grid;
     grid-template-columns: 140px 1fr;

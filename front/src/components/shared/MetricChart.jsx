@@ -31,9 +31,20 @@ export function MetricChart({
     }
 
     const values = points.flatMap((p) => [p.min, p.max]);
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const valueSpan = maxValue - minValue || 1;
+    let minValue = Math.min(...values);
+    let maxValue = Math.max(...values);
+    // A flat line (e.g. a down interface at a steady 0 bytes) has
+    // maxValue === minValue. Padding must go the same direction the real
+    // data can move - for these always-non-negative metrics (bytes,
+    // reachable) that's only upward, never below 0 (the old `|| 1`
+    // fallback here padded downward unconditionally, so a flat 0 line drew
+    // a nonsensical "-1 B" axis).
+    if (maxValue === minValue) {
+        const pad = maxValue !== 0 ? Math.abs(maxValue) * 0.2 : 1;
+        maxValue += pad;
+        if (minValue > 0) minValue = Math.max(0, minValue - pad);
+    }
+    const valueSpan = maxValue - minValue;
 
     const plotW = WIDTH - PAD.left - PAD.right;
     const plotH = HEIGHT - PAD.top - PAD.bottom;
