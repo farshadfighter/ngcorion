@@ -72,7 +72,15 @@ TRAEFIK_DYNAMIC_DIR = Path("/app/traefik/dynamic")
 TRAEFIK_DYNAMIC_TLS = TRAEFIK_DYNAMIC_DIR / "tls.yml"
 
 ZONEINFO_DIR = Path("/usr/share/zoneinfo")
-LOCALTIME_LINK = Path("/etc/localtime")
+# The container image points /etc/localtime at a link inside a directory the
+# unprivileged app user owns (see Dockerfile.ngcorion), so the timezone fallback
+# retargets that inner link instead of needing write access to /etc.
+LOCALTIME_LINK = Path(os.environ.get("NGCORION_LOCALTIME_LINK", "/etc/localtime"))
+
+# `date -s` needs CAP_SYS_TIME. The image ships a separate copy of `date` that
+# carries it as a file capability, so the unprivileged app user can set the
+# clock without the system `date` depending on that capability being granted.
+DATE_CMD = os.environ.get("NGCORION_DATE_CMD", "date")
 
 COMMAND_TIMEOUT = 30  # seconds, for every subprocess call
 FALLBACK_TIMEOUT = 10  # seconds, for the signal-based service fallbacks
@@ -335,7 +343,7 @@ def _set_manual_time(manual_time, tz_name: Optional[str] = None) -> Optional[str
     # The argv form means the value can never be interpreted as shell syntax.
     # Needs the SYS_TIME capability.
     stamp = manual_time.strftime("%Y-%m-%d %H:%M:%S")
-    result = try_command(["date", "-s", stamp])
+    result = try_command([DATE_CMD, "-s", stamp])
     if result is not None and result.returncode == 0:
         return None
     return (

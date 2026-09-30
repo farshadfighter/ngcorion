@@ -13,12 +13,35 @@ RUN pip install --no-cache-dir uv -i https://mirror-pypi.runflare.com/simple
 # database at all, so the Time settings fall back to the /etc/localtime symlink
 # and reject every zone ("not a known zone under /usr/share/zoneinfo") --
 # there is no systemd in the container for timedatectl to reach either.
-RUN apt-get update && apt-get install -y procps nmap tzdata && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y procps nmap tzdata libcap2-bin && rm -rf /var/lib/apt/lists/*
 
-# Unprivileged runtime account (security checklist item 2.2). A fixed numeric
-# UID/GID is deliberate: the deployment host has to chown the bind-mounted paths
-# this user writes, and that is only reproducible with a stable number.
-# The build itself still runs as root; each target drops to this user at the end.
+# Unprivileged runtime account (security checklist item 2.2). The container
+# starts as root only so entrypoint.sh can hand the paths the app writes to
+# this account, then drops to it before migrations and the server run.
+#
+# The two host operations that need privileges get exactly one capability
+# each, as file capabilities, instead of a root process:
+#   - nmap: CAP_NET_RAW for UDP discovery (in Docker's default set);
+#     NMAP_PRIVILEGED tells nmap to use it.
+#   - a dedicated copy of `date`: CAP_SYS_TIME for the manual-clock setting
+#     (needs `cap_add: SYS_TIME`). The system `date` is left untouched so it
+#     keeps working in a container started without that capability.
+# The timezone fallback retargets a link inside /var/lib/ngcorion/tz, which
+# /etc/localtime points at, so it needs no write access to /etc.
+RUN groupadd -g 10001 ngcorion \
+    && useradd -u 10001 -g 10001 -m -d /home/ngcorion -s /usr/sbin/nologin ngcorion \
+    && setcap cap_net_raw+eip /usr/bin/nmap \
+    && install -d /usr/local/lib/ngcorion \
+    && cp /usr/bin/date /usr/local/lib/ngcorion/date \
+    && setcap cap_sys_time+ep /usr/local/lib/ngcorion/date \
+    && mkdir -p /var/lib/ngcorion/license /var/lib/ngcorion/tz \
+    && ln -sf /usr/share/zoneinfo/Etc/UTC /var/lib/ngcorion/tz/localtime \
+    && ln -sf /var/lib/ngcorion/tz/localtime /etc/localtime \
+    && chown -R 10001:10001 /var/lib/ngcorion
+
+ENV NMAP_PRIVILEGED=1 \
+    NGCORION_DATE_CMD=/usr/local/lib/ngcorion/date \
+    NGCORION_LOCALTIME_LINK=/var/lib/ngcorion/tz/localtime
 
 FROM base AS development
 
@@ -33,12 +56,12 @@ EXPOSE 8000
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
 
-# Drop to the unprivileged account. Only the paths the runtime actually writes
-# are handed over: the virtualenv (`uv run` re-syncs it when the bind-mounted
-# pyproject.toml/uv.lock differ from the baked-in ones) and the working
-# directory itself. Source files stay root-owned and world-readable, so the app
-# can read but not rewrite its own code.
-RUN mkdir -p /var/lib/ngcorion/license
+# The virtualenv is the only image path the runtime writes (`uv run` re-syncs it
+# when the bind-mounted pyproject.toml/uv.lock differ from the baked-in ones).
+# Source files stay root-owned and world-readable, so the app can read but not
+# rewrite its own code.
+RUN chown -R 10001:10001 /app/.venv
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
@@ -55,7 +78,11 @@ EXPOSE 8000
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
 
-RUN mkdir -p /var/lib/ngcorion/license
+# The virtualenv is the only image path the runtime writes (`uv run` re-syncs it
+# when the bind-mounted pyproject.toml/uv.lock differ from the baked-in ones).
+# Source files stay root-owned and world-readable, so the app can read but not
+# rewrite its own code.
+RUN chown -R 10001:10001 /app/.venv
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

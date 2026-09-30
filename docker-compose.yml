@@ -50,24 +50,20 @@ services:
       # so it should not run the development image/entrypoint.
       target: production
     container_name: backend
-    # Unprivileged runtime account baked into Dockerfile.ngcorion (item 2.2).
-    # Stated here as well as in the image so the UID is visible where the host
-    # bind mounts are declared — those paths must be owned by 10001 on the
-    # deployment host for the features that write them to keep working.
-    user: root
+    # No `user:` here on purpose. The container starts as root only so
+    # entrypoint.sh can hand the paths the app writes (license volume,
+    # /etc/ngcorion, the managed snmpd/rsyslog/timesyncd files, traefik certs)
+    # to UID 10001; it then drops to that account before migrations and the
+    # server start. Setting `user: "10001:10001"` also works once those paths
+    # are already owned by 10001 on the host.
     cap_add:
-      # Kept for the manual-clock apply path (`date -s` in
-      # system_config/service.py). NOTE: it is currently INERT — a non-root
-      # process holds no effective capabilities, so this only keeps SYS_TIME in
-      # the bounding set, ready for the file-capability step that has not been
-      # implemented yet.
+      # For the manual-clock setting: a dedicated copy of `date` in the image
+      # carries CAP_SYS_TIME as a file capability, which only works while the
+      # capability is in the container's bounding set.
       - SYS_TIME
-      - NET_ADMIN
-      # NET_ADMIN removed: it had no consumer anywhere in the codebase. Every
-      # iptables/ip-link reference is a remote command string sent over SSH to
-      # an audited device (app/modules/linux/audit/audit_commands.py), not a
-      # local operation. nmap's UDP scan needs NET_RAW (a Docker default), never
-      # NET_ADMIN.
+      # No NET_ADMIN: nothing uses it. UDP discovery needs only NET_RAW (in
+      # Docker's default set), granted to nmap as a file capability; every
+      # iptables/ip-link reference is a remote command sent to an audited device.
     volumes:
       - ./app:/app/app
       - ./front/dist:/app/front/dist:ro
@@ -99,7 +95,7 @@ services:
       - /usr/bin/timedatectl:/usr/bin/timedatectl
       - /run/systemd:/run/systemd
     environment:
-      DATABASE_URL: postgresql+psycopg://netease:${POSTGRES_PASSWORD:-1234}@postgres:5432/netease_db
+      DATABASE_URL: postgresql+psycopg://netease:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - add it to .env (see .env.example)}@postgres:5432/netease_db
       # Uvicorn only trusts X-Forwarded-For/X-Forwarded-Proto from a peer in
       # FORWARDED_ALLOW_IPS, which defaults to "127.0.0.1". Traefik reaches
       # this container over the "app" bridge network, not loopback, so its
@@ -178,8 +174,10 @@ services:
     environment:
       POSTGRES_DB: netease_db
       POSTGRES_USER: netease
-      # Development default. Set POSTGRES_PASSWORD in .env for any real deployment.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-1234}
+      # Required, no default: compose refuses to start without it rather than
+      # silently running on a published password. Only read when the data
+      # volume is first initialised - see .env.example to change it later.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - add it to .env (see .env.example)}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/postgres-main/init.sql:/docker-entrypoint-initdb.d/init.sql

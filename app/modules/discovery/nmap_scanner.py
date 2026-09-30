@@ -26,7 +26,14 @@ class NmapScanner:
 
     @staticmethod
     def is_root() -> bool:
-        """Check if running as root (needed for SYN scan)"""
+        """True when raw-socket scans (UDP) are possible.
+
+        Either the process is root, or nmap itself carries CAP_NET_RAW as a file
+        capability and NMAP_PRIVILEGED tells it to use it - how the container
+        image runs discovery without a root process.
+        """
+        if os.environ.get("NMAP_PRIVILEGED"):
+            return True
         try:
             return os.geteuid() == 0
         except AttributeError:
