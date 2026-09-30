@@ -33,11 +33,6 @@ import { DesignList } from "./components/DesignConfiguration/DesignList";
 import { SuggestedDesign } from "./components/DesignConfiguration/SuggestedDesign";
 import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
 import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
-import { ConfigurationJobList } from "./components/DesignConfiguration/ConfigurationJobList";
-import { ConfigurationJobDetail } from "./components/DesignConfiguration/ConfigurationJobDetail";
-import { DeploymentJobList } from "./components/Deployment/DeploymentJobList";
-import { DeploymentJobDetail } from "./components/Deployment/DeploymentJobDetail";
-import { DriftDashboard } from "./components/Drift/DriftDashboard";
 import { ScheduledJobsPage } from "./components/Scheduling/ScheduledJobsPage";
 import { CveFindings } from "./components/CVE/CveFindings";
 import { NocDashboard } from "./components/NOC/NocDashboard";
@@ -45,7 +40,6 @@ import { NocHostList } from "./components/NOC/NocHostList";
 import { NocHostDetail } from "./components/NOC/NocHostDetail";
 import {
     RequirePermission,
-    RequireRole,
     AssetListRoute,
     AutoDiscoveryRoute,
     HardeningRoute,
@@ -241,31 +235,6 @@ function AppContent() {
                         <Route path="/design-configuration/versions/:versionId" element={
                             <RequirePermission module="design_configuration" name="Design & Configuration">
                                 <DesignCanvas />
-                            </RequirePermission>
-                        } />
-                        <Route path="/design-configuration/jobs" element={
-                            <RequirePermission module="design_configuration" name="Design & Configuration">
-                                <ConfigurationJobList />
-                            </RequirePermission>
-                        } />
-                        <Route path="/design-configuration/jobs/:jobId" element={
-                            <RequirePermission module="design_configuration" name="Design & Configuration">
-                                <ConfigurationJobDetail />
-                            </RequirePermission>
-                        } />
-                        <Route path="/deployment/jobs" element={
-                            <RequireRole roles={["admin", "manager"]} name="Deployment">
-                                <DeploymentJobList />
-                            </RequireRole>
-                        } />
-                        <Route path="/deployment/jobs/:jobId" element={
-                            <RequireRole roles={["admin", "manager"]} name="Deployment">
-                                <DeploymentJobDetail />
-                            </RequireRole>
-                        } />
-                        <Route path="/drift" element={
-                            <RequirePermission module="drift" name="Configuration Drift">
-                                <DriftDashboard />
                             </RequirePermission>
                         } />
 

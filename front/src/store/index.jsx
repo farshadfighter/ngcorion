@@ -17,9 +17,6 @@ import overviewDashboardReducer from "./overviewDashboardSlice.js";
 import topologyReducer from "./topologySlice.jsx";
 import architectureValidationReducer from "./architectureValidationSlice.jsx";
 import designReducer from "./designSlice.jsx";
-import configurationReducer from "./configurationSlice.jsx";
-import deploymentReducer from "./deploymentSlice.jsx";
-import driftReducer from "./driftSlice.jsx";
 import schedulingReducer from "./schedulingSlice.jsx";
 import cveReducer from "./cveSlice.jsx";
 import nocReducer from "./nocSlice.jsx";
@@ -45,9 +42,6 @@ export const store = configureStore({
         topology: topologyReducer,
         architectureValidation: architectureValidationReducer,
         design: designReducer,
-        configuration: configurationReducer,
-        deployment: deploymentReducer,
-        drift: driftReducer,
         scheduling: schedulingReducer,
         cve: cveReducer,
         noc: nocReducer,

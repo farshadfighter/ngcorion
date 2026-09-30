@@ -30,10 +30,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/topology"))             return "topology";
     if (pathname.startsWith("/design-suggestion"))    return "design-suggestion";
     if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
-    if (pathname.startsWith("/design-configuration/jobs")) return "design-configuration-jobs";
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
-    if (pathname.startsWith("/deployment"))           return "deployment";
-    if (pathname.startsWith("/drift"))                return "drift";
     if (pathname.startsWith("/cve"))                  return "cve";
     if (pathname.startsWith("/noc/dashboard"))        return "noc-dashboard";
     if (pathname.startsWith("/noc/hosts"))            return "noc-hosts";
@@ -47,10 +44,6 @@ const menuFromPath = (pathname) => {
     return "dashboard";
 };
 
-// Design, Configuration Jobs, Deployment and Configuration Drift sidebar
-// entries are hidden for now (product decision - revisit later). Flip this
-// back to true to bring them back; routes/permissions are untouched.
-const SHOW_HIDDEN_NAV = false;
 
 export const DashboardLayout = () => {
     const { username, role } = useSelector((state) => state.auth);
@@ -78,8 +71,6 @@ export const DashboardLayout = () => {
     const canReadTopology  = usePermission("topology",             "read");
     const canReadArchValidation = usePermission("architecture_validation", "read");
     const canReadDesignConfig = usePermission("design_configuration", "read");
-    const canReadDeployment = role === "admin" || role === "manager";
-    const canReadDrift     = usePermission("drift",                 "read");
     const canReadCve       = usePermission("cve",                   "read");
     const canReadNoc       = usePermission("noc",                   "read");
 
@@ -142,9 +133,6 @@ export const DashboardLayout = () => {
         "design-suggestion":   "Suggested Design",
         "architecture-validation": "Architecture Validation",
         "design-configuration": "Design & Configuration",
-        "design-configuration-jobs": "Configuration Jobs",
-        "deployment":          "Deployment",
-        "drift":               "Configuration Drift",
         "cve":                 "CVE Vulnerability Management",
         "noc-dashboard":       "NOC Dashboard",
         "noc-hosts":           "NOC Host",
@@ -154,18 +142,12 @@ export const DashboardLayout = () => {
         "licence":             "License Management",
     };
 
-    // One-line explanation shown under the page title. Filled in for the
-    // network-design pipeline pages (Topology -> Design -> Configuration
-    // Jobs -> Deployment -> Drift), whose purpose and relationship to each
-    // other was not obvious from the UI alone.
+    // One-line explanation shown under the page title.
     const pageSubtitles = {
         "topology": "The network as it actually is right now - every real asset and the cabling between them.",
         "design-suggestion": "A standard Cisco SAFE campus design sized to your real asset inventory, with matching assets slotted in - review it, then turn it into a real Design.",
-        "architecture-validation": "Automated checks against the current topology (redundancy, exposure, best practice) - not part of the design pipeline below.",
-        "design-configuration": "Step 1 of 4 - draw a planned blueprint here, even for devices that don't exist yet. Versioned; publish when ready to generate configuration.",
-        "design-configuration-jobs": "Step 2 of 4 - turns a Design version into real device CLI commands, one per component mapped to an asset.",
-        "deployment": "Step 3 of 4 - safely pushes a generated configuration to the real device: precheck, backup, apply, verify, and roll back on failure.",
-        "drift": "Step 4 of 4 - compares a device's live configuration against its last backup to catch changes made outside this pipeline.",
+        "architecture-validation": "Automated checks against the current topology (redundancy, exposure, best practice).",
+        "design-configuration": "Draw a planned blueprint here, even for devices that don't exist yet. Versioned, so you can compare a design's history over time.",
         "noc-dashboard": "Live SNMP status for every asset, plotted on the same topology graph as Topology.",
         "noc-hosts": "Every asset, searchable - open one to see its SNMP details and set up monitoring.",
     };
@@ -274,7 +256,7 @@ export const DashboardLayout = () => {
                     )}
 
                     {/* ── NETWORK DESIGN ── */}
-                    {(canReadTopology || canReadArchValidation || canReadDesignConfig || canReadDeployment || canReadDrift) && (
+                    {(canReadTopology || canReadArchValidation || canReadDesignConfig) && (
                         <>
                             {!isSidebarCollapsed && (
                                 <div className="nav-section">
@@ -303,40 +285,13 @@ export const DashboardLayout = () => {
                                     {!isSidebarCollapsed && <span>Architecture Validation</span>}
                                 </div>
                             )}
-                            {/* Design, Configuration Jobs, Deployment and Configuration Drift are
-                                hidden from the sidebar for now (product decision - revisit later).
-                                Routes/permissions are untouched, so a direct link (e.g. from
-                                Suggested Design's "Create this design") still works; only the
-                                sidebar entry points are removed. Flip these back to
-                                `canReadDesignConfig && ( ... )` etc. to bring them back. */}
-                            {SHOW_HIDDEN_NAV && canReadDesignConfig && (
-                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration" ? "active" : ""}`}
-                                     onClick={() => navigate("/design-configuration")} title="Design">
-                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Design</span>}
-                                </div>
-                            )}
-                            {SHOW_HIDDEN_NAV && canReadDesignConfig && (
-                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-configuration-jobs" ? "active" : ""}`}
-                                     onClick={() => navigate("/design-configuration/jobs")} title="Configuration Jobs">
-                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Configuration Jobs</span>}
-                                </div>
-                            )}
-                            {SHOW_HIDDEN_NAV && canReadDeployment && (
-                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "deployment" ? "active" : ""}`}
-                                     onClick={() => navigate("/deployment/jobs")} title="Deployment">
-                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Deployment</span>}
-                                </div>
-                            )}
-                            {SHOW_HIDDEN_NAV && canReadDrift && (
-                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "drift" ? "active" : ""}`}
-                                     onClick={() => navigate("/drift")} title="Configuration Drift">
-                                    {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Configuration Drift</span>}
-                                </div>
-                            )}
+                            {/* Design, Configuration Jobs, Deployment and Configuration Drift have
+                                no sidebar entry point (product decision). Configuration Jobs,
+                                Deployment and Drift have no code left in the app at all. Design
+                                (DesignList/DesignDetail/DesignCanvas + designSlice) is the one
+                                exception - it's kept, routable but unlisted, because Suggested
+                                Design's "Create this design" button still needs somewhere to
+                                send a newly created design. */}
                         </>
                     )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
@@ -15,7 +15,6 @@ import {
     deleteRelationship,
     clearMessages,
 } from "../../store/designSlice.jsx";
-import { generateConfigurationJob } from "../../store/configurationSlice.jsx";
 import { fetchAssets } from "../../store/assetSlice.jsx";
 import "../../assets/DesignConfiguration.css";
 
@@ -33,18 +32,14 @@ const PALETTE = [
 export const DesignCanvas = () => {
     const { versionId } = useParams();
     const dispatch = useDispatch();
-    const navigate = useNavigate();
     const { currentVersion, error, successMessage } = useSelector((state) => state.design);
     const { assets } = useSelector((state) => state.assets);
-    const { isGenerating } = useSelector((state) => state.configuration);
 
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const paletteDropCounter = useRef(0);
     const [selectedComponentId, setSelectedComponentId] = useState(null);
     const [selectedRelationshipId, setSelectedRelationshipId] = useState(null);
-    const [jobName, setJobName] = useState("");
-    const [showGenerate, setShowGenerate] = useState(false);
 
     useEffect(() => {
         dispatch(fetchVersionDetail(versionId));
@@ -156,15 +151,6 @@ export const DesignCanvas = () => {
         [currentVersion, selectedRelationshipId]
     );
 
-    const handleGenerate = () => {
-        dispatch(generateConfigurationJob({ designVersionId: Number(versionId), name: jobName || `v${currentVersion.version.version_number} config` }))
-            .then((action) => {
-                if (action.payload?.job?.id) {
-                    navigate(`/design-configuration/jobs/${action.payload.job.id}`);
-                }
-            });
-    };
-
     if (!currentVersion) {
         return <div className="dc-container"><div className="dc-empty">Loading…</div></div>;
     }
@@ -176,9 +162,6 @@ export const DesignCanvas = () => {
                     v{currentVersion.version.version_number} · {currentVersion.components.length} component(s) ·{" "}
                     {currentVersion.relationships.length} link(s)
                 </div>
-                <button className="dc-btn dc-btn-primary" onClick={() => setShowGenerate(true)} disabled={isGenerating}>
-                    <i className="fa-solid fa-gears" /> {isGenerating ? "Generating…" : "Generate Configuration"}
-                </button>
             </div>
 
             {(error || successMessage) && (
@@ -333,34 +316,6 @@ export const DesignCanvas = () => {
                     </aside>
                 )}
             </div>
-
-            {showGenerate && (
-                <div className="dc-modal-backdrop" onClick={() => setShowGenerate(false)}>
-                    <div className="dc-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Generate configuration</h3>
-                        <p className="dc-modal-hint">
-                            Generates one configuration object per component mapped to a real asset. Components with
-                            no asset mapped are skipped.
-                        </p>
-                        <div className="dc-field">
-                            <label>Job name</label>
-                            <input value={jobName} onChange={(e) => setJobName(e.target.value)} placeholder={`v${currentVersion.version.version_number} config`} />
-                        </div>
-                        <div className="dc-modal-actions">
-                            <button className="dc-btn" onClick={() => setShowGenerate(false)}>Cancel</button>
-                            <button
-                                className="dc-btn dc-btn-primary"
-                                onClick={() => {
-                                    setShowGenerate(false);
-                                    handleGenerate();
-                                }}
-                            >
-                                Generate
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

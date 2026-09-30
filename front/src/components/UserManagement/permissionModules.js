@@ -27,7 +27,9 @@ export const PERMISSION_MODULES = [
     // Deployment is intentionally NOT listed here: it is gated by role
     // (admin/manager) only, not by a per-user module permission, so granting
     // it here would be a dead control that does nothing on the backend.
-    { name: "drift",                label: "Configuration Drift", icon: "fa-solid fa-arrows-split-up-and-left" },
+    // Configuration Drift is also not listed: its frontend page was removed
+    // (product decision), so granting this permission has nothing left to
+    // gate in the UI - same reasoning as Deployment above.
     { name: "cve",                  label: "CVE",                icon: "fa-solid fa-bug" },
     { name: "noc",                  label: "NOC",                icon: "fa-solid fa-satellite-dish" },
 ];
