@@ -53,7 +53,9 @@ def test_every_module_has_a_description():
 # control - toggling it would change nothing.
 #   deployment: gated by require_admin_or_manager (role), not per-user
 #   permission - see app/modules/deployment/router.py.
-_MODULES_INTENTIONALLY_NOT_IN_PICKER = {"deployment"}
+#   drift: its frontend page was removed (product decision) - nothing in
+#   the UI reads this permission anymore, so granting it has nothing to gate.
+_MODULES_INTENTIONALLY_NOT_IN_PICKER = {"deployment", "drift"}
 
 
 def test_frontend_permission_list_matches_the_backend():
