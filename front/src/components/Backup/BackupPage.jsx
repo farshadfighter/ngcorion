@@ -1,7 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import api from '../../config/api.js';
+import { usePermission } from '../../hooks/usePermission.js';
 import BackupViewModal from './BackupViewModal.jsx';
 import NewBackupModal from './NewBackupModal.jsx';
+import RestoreWizard from './RestoreWizard.jsx';
 import { BackupAssetList } from './BackupAssetList.jsx';
 import { BackupAssetDetail } from './BackupAssetDetail.jsx';
 import '../../assets/Backup.css';
@@ -30,6 +33,15 @@ export const BackupPage = () => {
     const [afterDelete, setAfterDelete] = useState(null);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
+    // {backupId} starts a restore; {jobId} reopens one. The key remounts the
+    // wizard so "Undo" / "Review again" start from a clean state.
+    const [restore, setRestore] = useState(null);
+    const [detailRefresh, setDetailRefresh] = useState(0);
+
+    // The server enforces this too; hiding the button just avoids a 403.
+    const role = useSelector((state) => state.auth.role);
+    const canWriteBackup = usePermission('backup', 'write');
+    const canRestore = canWriteBackup && (role === 'admin' || role === 'manager');
 
     // Grouped server-side: counting client-side would be wrong past the list
     // endpoint's 500-row ceiling.
@@ -38,6 +50,12 @@ export const BackupPage = () => {
     // synchronously and cascades renders.
     const [reload, setReload] = useState(0);
     const load = useCallback(() => setReload((n) => n + 1), []);
+
+    // A restore adds a "Before restore" backup and a history row.
+    const handleRestoreChanged = useCallback(() => {
+        setDetailRefresh((n) => n + 1);
+        load();
+    }, [load]);
 
     useEffect(() => {
         let cancelled = false;
@@ -140,6 +158,10 @@ export const BackupPage = () => {
                     onBack={() => setSelected(null)}
                     onView={setViewId}
                     onDelete={requestDelete}
+                    onRestore={(id) => setRestore({ backupId: id, key: `b${id}-${Date.now()}` })}
+                    onOpenRestore={(id) => setRestore({ jobId: id, key: `j${id}` })}
+                    canRestore={canRestore}
+                    refreshKey={detailRefresh}
                 />
             ) : loading ? (
                 <div className="backup-loading">
@@ -217,6 +239,17 @@ export const BackupPage = () => {
 
             {viewId && (
                 <BackupViewModal backupId={viewId} onClose={() => setViewId(null)} />
+            )}
+
+            {restore && (
+                <RestoreWizard
+                    key={restore.key}
+                    backupId={restore.backupId}
+                    jobId={restore.jobId}
+                    onClose={() => setRestore(null)}
+                    onChanged={handleRestoreChanged}
+                    onOpenBackup={(id) => setRestore({ backupId: id, key: `b${id}-${Date.now()}` })}
+                />
             )}
 
             {showNew && (

@@ -111,6 +111,7 @@ from app.models.hardening_log import (
 
 # Import backup model (depends on HardeningAction and Asset)
 from app.models.backup import DeviceBackup
+from app.models.backup_restore import BackupRestore
 
 # Import CVE model (standalone - matched against Asset at read time, no FK)
 from app.models.cve import CveRecord
@@ -225,6 +226,7 @@ __all__ = [
     "HardeningAction",
     "HardeningLog",
     "DeviceBackup",
+    "BackupRestore",
     # CVE
     "CveRecord",
     # Topology models

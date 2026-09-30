@@ -2,14 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import api from '../../config/api.js';
 import { Pagination } from '../Logs/Pagination.jsx';
+import {
+    RESTORE_STATUS_LABELS, formatDateTime, isRestorable, sourceLabel,
+} from './restoreConstants.js';
 
-const formatDate = (ts) => {
-    if (!ts) return '-';
-    return new Date(ts).toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-};
+const formatDate = formatDateTime;
+
+const SOURCE_FILTERS = ['all', 'manual', 'hardening', 'pre_restore'];
 
 /**
  * Level two: the backups of a single asset.
@@ -17,13 +16,16 @@ const formatDate = (ts) => {
  * Fetched with ?asset_id= rather than filtered from the full list, so this
  * view is unaffected by how many backups the rest of the estate has.
  */
-export const BackupAssetDetail = ({ group, onBack, onView, onDelete }) => {
+export const BackupAssetDetail = ({
+    group, onBack, onView, onDelete, onRestore, onOpenRestore, canRestore = false, refreshKey = 0,
+}) => {
     const [backups, setBackups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sourceFilter, setSourceFilter] = useState('all');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
+    const [restores, setRestores] = useState([]);
 
     // The effect owns the fetch so state is only set from inside it.
     useEffect(() => {
@@ -47,7 +49,23 @@ export const BackupAssetDetail = ({ group, onBack, onView, onDelete }) => {
             }
         })();
         return () => { cancelled = true; };
-    }, [group.asset_id]);
+    }, [group.asset_id, refreshKey]);
+
+    // Recent restores of this asset. Failure here is not worth an error
+    // state of its own: the backups list is what the page is for.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const params = new URLSearchParams({ asset_id: group.asset_id, limit: 10 });
+                const res = await api.get(`/api/backups/restores?${params}`);
+                if (!cancelled) setRestores(res.data || []);
+            } catch {
+                if (!cancelled) setRestores([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [group.asset_id, refreshKey]);
 
     const visible = useMemo(
         () => (sourceFilter === 'all'
@@ -96,16 +114,39 @@ export const BackupAssetDetail = ({ group, onBack, onView, onDelete }) => {
             </div>
 
             <div className="backup-filters">
-                {['all', 'manual', 'hardening'].map((s) => (
+                {SOURCE_FILTERS.map((s) => (
                     <button
                         key={s}
                         onClick={() => applySource(s)}
                         className={`backup-filter-btn ${sourceFilter === s ? 'active' : ''}`}
                     >
-                        {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                        {s === 'all' ? 'All' : sourceLabel(s)}
                     </button>
                 ))}
             </div>
+
+            {restores.length > 0 && (
+                <div className="backup-restores">
+                    <div className="backup-restores-title">Restores</div>
+                    {restores.map((r) => (
+                        <div key={r.id} className="backup-restore-row">
+                            <span className={`backup-restore-status ${r.status}`}>
+                                {RESTORE_STATUS_LABELS[r.status] || r.status}
+                            </span>
+                            <span className="backup-restore-what">
+                                From backup #{r.backup_id ?? '-'}
+                                <span className="backup-restore-reason" title={r.reason}>{r.reason}</span>
+                            </span>
+                            <span className="backup-restore-meta">
+                                {r.requested_by_username || '-'} · {formatDate(r.created_at)}
+                            </span>
+                            <button className="backup-restore-open" onClick={() => onOpenRestore(r.id)}>
+                                Details
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {loading ? (
                 <div className="backup-loading">
@@ -136,7 +177,7 @@ export const BackupAssetDetail = ({ group, onBack, onView, onDelete }) => {
                                         <td>{formatDate(b.created_at)}</td>
                                         <td>
                                             <span className={`backup-source-badge ${b.source}`}>
-                                                {b.source}
+                                                {sourceLabel(b.source)}
                                             </span>
                                         </td>
                                         <td>{b.created_by_username || '-'}</td>
@@ -148,6 +189,19 @@ export const BackupAssetDetail = ({ group, onBack, onView, onDelete }) => {
                                                 >
                                                     View
                                                 </button>
+                                                {canRestore && isRestorable(b.device_type) && (
+                                                    <button
+                                                        className="btn-restore"
+                                                        onClick={() => onRestore(b.id)}
+                                                    >
+                                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                                                             stroke="currentColor" strokeWidth="2"
+                                                             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" />
+                                                        </svg>
+                                                        Restore
+                                                    </button>
+                                                )}
                                                 <button
                                                     className="btn-delete-icon"
                                                     title="Delete backup"

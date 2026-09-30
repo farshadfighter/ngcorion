@@ -236,6 +236,19 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
+    # Restores that were mid-run when the server stopped cannot resume (their
+    # SSH credentials lived only in memory); mark them so the UI stops polling.
+    from app.modules.backup.restore.service import fail_interrupted_restores
+    db = SessionLocal()
+    try:
+        interrupted = fail_interrupted_restores(db)
+        if interrupted:
+            logger.warning("[Startup] marked %d interrupted restore job(s) as failed", interrupted)
+    except Exception as e:
+        logger.warning(f"Restore job cleanup skipped: {e}")
+    finally:
+        db.close()
+
     start_noc_poller()
     start_metrics_retention_worker()
 

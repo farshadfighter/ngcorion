@@ -144,7 +144,6 @@
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
-    text-transform: capitalize;
 }
 
 .backup-source-badge.manual {
@@ -156,6 +155,93 @@
     background: #f0fdf4;
     color: #15803d;
 }
+
+.backup-source-badge.pre_restore {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* ── Restore ─────────────────────────────────────────────────────────────── */
+
+.backup-container .btn-restore {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid #1e3a5f;
+    background: #1e3a5f;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.backup-container .btn-restore:hover { background: #274b75; }
+.backup-container .btn-restore:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+.backup-restores {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+.backup-restores-title {
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+.backup-restore-row {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+    color: #374151;
+}
+.backup-restore-row:last-child { border-bottom: 0; }
+.backup-restore-what { display: flex; gap: 10px; min-width: 0; font-weight: 600; }
+.backup-restore-reason {
+    font-weight: 400;
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.backup-restore-meta { color: #6b7280; white-space: nowrap; }
+.backup-restore-open {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 7px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #1e3a5f;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.backup-restore-open:hover { border-color: #1e3a5f; }
+.backup-restore-status {
+    justify-self: start;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #e0e7ff;
+    color: #3730a3;
+}
+.backup-restore-status.succeeded { background: #dcfce7; color: #166534; }
+.backup-restore-status.reverted { background: #fef3c7; color: #92400e; }
+.backup-restore-status.failed { background: #fee2e2; color: #991b1b; }
 
 /* Action Buttons */
 .backup-actions {

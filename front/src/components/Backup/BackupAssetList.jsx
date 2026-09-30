@@ -96,6 +96,11 @@ export const BackupAssetList = ({
                                                 {g.hardening_count} hardening
                                             </span>
                                         )}
+                                        {g.pre_restore_count > 0 && (
+                                            <span className="backup-source-badge pre_restore">
+                                                {g.pre_restore_count} before restore
+                                            </span>
+                                        )}
                                     </span>
                                 </td>
                                 <td>{formatDate(g.last_backup_at)}</td>

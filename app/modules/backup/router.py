@@ -8,13 +8,17 @@ from typing import Optional, List
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
+from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, Asset, DeviceBackup
+from app.models.backup_restore import RESTORE_ACTIVE_STATUSES, BackupRestore
+from app.modules.backup.restore import service as restore_service
+from app.modules.backup.restore.drivers import SUPPORTED_FAMILIES, Credentials
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +108,7 @@ class BackupAssetGroup(BaseModel):
     backup_count: int
     manual_count: int
     hardening_count: int
+    pre_restore_count: int = 0
     last_backup_at: Optional[datetime]
 
 
@@ -132,6 +137,9 @@ def list_backups_by_asset(
         func.sum(
             case((DeviceBackup.source == "hardening", 1), else_=0)
         ).label("hardening_count"),
+        func.sum(
+            case((DeviceBackup.source == "pre_restore", 1), else_=0)
+        ).label("pre_restore_count"),
         func.max(DeviceBackup.created_at).label("last_backup_at"),
     )
 
@@ -159,10 +167,163 @@ def list_backups_by_asset(
             backup_count=int(row.backup_count or 0),
             manual_count=int(row.manual_count or 0),
             hardening_count=int(row.hardening_count or 0),
+            pre_restore_count=int(row.pre_restore_count or 0),
             last_backup_at=row.last_backup_at,
         )
         for row in rows
     ]
+
+
+# ============================================
+# Restore
+# ============================================
+# Declared before "/{backup_id}" so "/restores" is not parsed as a backup id.
+
+class RestoreConnection(BaseModel):
+    ssh_username: str = Field(..., min_length=1, max_length=255)
+    ssh_password: str = Field(..., min_length=1, max_length=255)
+    ssh_secret: Optional[str] = Field(None, max_length=255)
+    sudo_password: Optional[str] = Field(None, max_length=255)
+    ssh_port: int = Field(22, ge=1, le=65535)
+
+
+class RestoreRequest(RestoreConnection):
+    reason: str = Field(..., min_length=5, max_length=1000)
+    confirm_name: str = Field(..., max_length=255)
+    revert_minutes: int = Field(10, ge=5, le=15)
+    live_fingerprint: str = Field(..., min_length=64, max_length=64)
+    acknowledge_lockout: bool = False
+    allow_without_auto_revert: bool = False
+
+
+class RestoreJobResponse(BaseModel):
+    id: int
+    backup_id: Optional[int]
+    asset_id: int
+    asset_name: Optional[str]
+    device_ip: Optional[str]
+    device_type: str
+    status: str
+    reason: str
+    revert_minutes: int
+    auto_revert: str
+    pre_restore_backup_id: Optional[int]
+    diff_summary: Optional[dict]
+    events: list
+    error: Optional[str]
+    requested_by_username: Optional[str]
+    created_at: datetime
+    started_at: Optional[datetime]
+    finished_at: Optional[datetime]
+
+
+def _restore_job_response(job: BackupRestore) -> RestoreJobResponse:
+    return RestoreJobResponse(
+        id=job.id, backup_id=job.backup_id, asset_id=job.asset_id, asset_name=job.asset_name,
+        device_ip=job.device_ip, device_type=job.device_type, status=job.status, reason=job.reason,
+        revert_minutes=job.revert_minutes, auto_revert=job.auto_revert,
+        pre_restore_backup_id=job.pre_restore_backup_id, diff_summary=job.diff_summary,
+        events=job.events or [], error=job.error,
+        requested_by_username=job.user.username if job.user else None,
+        created_at=job.created_at, started_at=job.started_at, finished_at=job.finished_at,
+    )
+
+
+def _restorable(backup_id: int, current_user: User, db: Session):
+    """Restore rewrites a live device: Admin or Manager (with backup write) only."""
+    if current_user.role.value not in ("admin", "manager"):
+        raise HTTPException(status_code=403, detail="Only an Admin or Manager can restore a backup")
+    backup = db.query(DeviceBackup).filter(DeviceBackup.id == backup_id).first()
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup not found")
+    if (backup.device_type or "").lower() not in SUPPORTED_FAMILIES:
+        raise HTTPException(status_code=400, detail=f"Restore is not supported for '{backup.device_type}' backups")
+    asset = db.query(Asset).filter(Asset.id == backup.asset_id).first()
+    if not asset or not asset.ip_address:
+        raise HTTPException(status_code=400, detail="The backup's asset no longer exists or has no IP address")
+    return backup, asset
+
+
+def _credentials(body: RestoreConnection, asset: Asset) -> Credentials:
+    return Credentials(host=asset.ip_address, username=body.ssh_username, password=body.ssh_password,
+                       port=body.ssh_port, secret=body.ssh_secret, sudo_password=body.sudo_password)
+
+
+@router.post("/{backup_id}/restore/preview")
+def preview_restore(
+    backup_id: int,
+    body: RestoreConnection,
+    current_user: User = Depends(require_permission("backup", "write")),
+    db: Session = Depends(get_db),
+):
+    """Connect, read the live configuration and return what a restore would change.
+    Read-only: nothing is written to the device."""
+    backup, asset = _restorable(backup_id, current_user, db)
+    try:
+        result = restore_service.preview(backup, _credentials(body, asset))
+    except SSHConnectionError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.to_dict())
+    except Exception:
+        logger.exception("Restore preview failed for backup %s", backup_id)
+        raise HTTPException(status_code=502, detail="Could not read the device's configuration. See the server logs for details.")
+    return {**result, "backup_id": backup.id, "asset_id": asset.id, "asset_name": asset.asset_name,
+            "device_ip": asset.ip_address, "device_type": backup.device_type}
+
+
+@router.post("/{backup_id}/restore", response_model=RestoreJobResponse, status_code=202)
+def start_restore(
+    backup_id: int,
+    body: RestoreRequest,
+    current_user: User = Depends(require_permission("backup", "write")),
+    db: Session = Depends(get_db),
+):
+    """Start a restore in the background; poll GET /api/backups/restores/{id}."""
+    backup, asset = _restorable(backup_id, current_user, db)
+    if body.confirm_name.strip() != (asset.asset_name or "").strip():
+        raise HTTPException(status_code=400, detail="The typed asset name does not match")
+    active = db.query(BackupRestore).filter(
+        BackupRestore.asset_id == asset.id, BackupRestore.status.in_(RESTORE_ACTIVE_STATUSES)
+    ).first()
+    if active:
+        raise HTTPException(status_code=409, detail=f"Restore #{active.id} is already running on this asset")
+
+    job = BackupRestore(
+        backup_id=backup.id, asset_id=asset.id, asset_name=asset.asset_name, device_ip=asset.ip_address,
+        device_type=backup.device_type.lower(), status="queued", reason=body.reason.strip(),
+        revert_minutes=body.revert_minutes, auto_revert="unavailable", events=[],
+        requested_by=current_user.id, created_at=datetime.utcnow(),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    restore_service.start_restore(job.id, _credentials(body, asset), body.live_fingerprint,
+                                  body.acknowledge_lockout, body.allow_without_auto_revert)
+    return _restore_job_response(job)
+
+
+@router.get("/restores", response_model=List[RestoreJobResponse])
+def list_restores(
+    asset_id: Optional[int] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    current_user: User = Depends(require_permission("backup", "read")),
+    db: Session = Depends(get_db),
+):
+    query = db.query(BackupRestore)
+    if asset_id:
+        query = query.filter(BackupRestore.asset_id == asset_id)
+    return [_restore_job_response(j) for j in query.order_by(BackupRestore.created_at.desc()).limit(limit)]
+
+
+@router.get("/restores/{job_id}", response_model=RestoreJobResponse)
+def get_restore(
+    job_id: int,
+    current_user: User = Depends(require_permission("backup", "read")),
+    db: Session = Depends(get_db),
+):
+    job = db.get(BackupRestore, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Restore not found")
+    return _restore_job_response(job)
 
 
 @router.get("/{backup_id}", response_model=BackupDetail)
