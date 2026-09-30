@@ -88,27 +88,30 @@ const scheduleSummary = (job) => {
     return `Daily at ${hh}:${mm}`;
 };
 
-export const ScheduledJobsPage = () => {
+export const ScheduledJobsPage = ({ jobType }) => {
     const dispatch = useDispatch();
     const canReadDiscovery = usePermission("asset_auto_discovery", "read");
     const canReadAuditing = usePermission("auditing", "read");
     const canWriteDiscovery = usePermission("asset_auto_discovery", "write");
     const canWriteAuditing = usePermission("auditing", "write");
 
+    const canRead = jobType === "discovery" ? canReadDiscovery : canReadAuditing;
+    const canWrite = jobType === "discovery" ? canWriteDiscovery : canWriteAuditing;
+    const pageTitle = jobType === "discovery" ? "Schedule Discovery" : "Schedule Auditing";
+
     const { jobs, runsByJobId, isLoading, isSaving, error, successMessage } = useSelector((state) => state.scheduling);
     const { assets } = useSelector((state) => state.assets);
 
-    const [typeFilter, setTypeFilter] = useState("all");
     const [showCreate, setShowCreate] = useState(false);
-    const [form, setForm] = useState(emptyForm);
+    const [form, setForm] = useState({ ...emptyForm, job_type: jobType });
     const [historyJobId, setHistoryJobId] = useState(null);
 
     useEffect(() => {
-        if (canReadDiscovery || canReadAuditing) {
+        if (canRead) {
             dispatch(fetchScheduledJobs());
             dispatch(fetchAssets());
         }
-    }, [dispatch, canReadDiscovery, canReadAuditing]);
+    }, [dispatch, canRead]);
 
     useEffect(() => {
         if (!error && !successMessage) return;
@@ -116,12 +119,11 @@ export const ScheduledJobsPage = () => {
         return () => clearTimeout(timer);
     }, [error, successMessage, dispatch]);
 
-    if (!canReadDiscovery && !canReadAuditing) {
-        return <AccessDenied menuName="Scheduled Jobs" />;
+    if (!canRead) {
+        return <AccessDenied menuName={pageTitle} />;
     }
 
-    const visibleJobs = typeFilter === "all" ? jobs : jobs.filter((j) => j.job_type === typeFilter);
-    const canCreateForType = form.job_type === "discovery" ? canWriteDiscovery : canWriteAuditing;
+    const visibleJobs = jobs.filter((j) => j.job_type === jobType);
 
     const handleCreate = () => {
         const payload = { ...form };
@@ -146,7 +148,7 @@ export const ScheduledJobsPage = () => {
         if (payload.recurrence !== "weekly") payload.day_of_week = undefined;
         dispatch(createScheduledJob(payload));
         setShowCreate(false);
-        setForm(emptyForm);
+        setForm({ ...emptyForm, job_type: jobType });
     };
 
     const handleToggleEnabled = (job) => {
@@ -173,13 +175,7 @@ export const ScheduledJobsPage = () => {
     return (
         <div className="sched-container">
             <div className="sched-toolbar">
-                <div className="sched-tabs">
-                    {["all", "discovery", "audit"].map((t) => (
-                        <button key={t} className={`sched-tab ${typeFilter === t ? "active" : ""}`} onClick={() => setTypeFilter(t)}>
-                            {t === "all" ? "All" : t === "discovery" ? "Discovery" : "Audit"}
-                        </button>
-                    ))}
-                </div>
+                <h2 className="sched-page-title">{pageTitle}</h2>
                 <button className="sched-btn sched-btn-primary" onClick={() => setShowCreate(true)}>
                     <i className="fa-solid fa-plus" /> New Schedule
                 </button>
@@ -193,7 +189,11 @@ export const ScheduledJobsPage = () => {
                 {isLoading ? (
                     <div className="sched-empty">Loading scheduled jobs…</div>
                 ) : visibleJobs.length === 0 ? (
-                    <div className="sched-empty">No scheduled jobs yet. Click "New Schedule" to automate a discovery scan or an audit.</div>
+                    <div className="sched-empty">
+                        {jobType === "discovery"
+                            ? "No scheduled discovery scans yet. Click \"New Schedule\" to automate one."
+                            : "No scheduled audits yet. Click \"New Schedule\" to automate one."}
+                    </div>
                 ) : (
                     <table className="sched-table">
                         <thead>
@@ -248,19 +248,11 @@ export const ScheduledJobsPage = () => {
             {showCreate && (
                 <div className="sched-modal-backdrop" onClick={() => setShowCreate(false)}>
                     <div className="sched-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>New scheduled job</h3>
+                        <h3>{jobType === "discovery" ? "New scheduled discovery scan" : "New scheduled audit"}</h3>
 
                         <div className="sched-field">
                             <label>Job name</label>
                             <input value={form.job_name} onChange={(e) => setForm({ ...form, job_name: e.target.value })} />
-                        </div>
-
-                        <div className="sched-field">
-                            <label>Type</label>
-                            <select value={form.job_type} onChange={(e) => setForm({ ...form, job_type: e.target.value })}>
-                                <option value="discovery">Auto Discovery scan</option>
-                                <option value="audit">Audit</option>
-                            </select>
                         </div>
 
                         {form.job_type === "discovery" ? (
@@ -362,7 +354,7 @@ export const ScheduledJobsPage = () => {
                                 onClick={handleCreate}
                                 disabled={
                                     isSaving ||
-                                    !canCreateForType ||
+                                    !canWrite ||
                                     !form.job_name ||
                                     (form.job_type === "discovery" ? !form.target : !form.asset_id)
                                 }

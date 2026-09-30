@@ -17,9 +17,10 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/assets/requirements")) return "asset-requirement";
     if (pathname.startsWith("/assets/inventory"))    return "asset-list";
     if (pathname.startsWith("/assets/discovery"))     return "auto-discovery";
-    if (pathname.startsWith("/scheduling"))           return "scheduling";
+    if (pathname.startsWith("/assets/schedule-discovery")) return "schedule-discovery";
     if (pathname.startsWith("/assets"))               return "asset-management";
     if (pathname.startsWith("/audit/sessions"))       return "operation-device";
+    if (pathname.startsWith("/audit/schedule-auditing")) return "schedule-auditing";
     if (pathname.startsWith("/audit"))                return "auditing";
     // More specific first: /hardening/overview must not fall through to the
     // Operation & Device sub-item.
@@ -127,8 +128,9 @@ export const DashboardLayout = () => {
         "asset-requirement":   "Asset Requirement",
         "asset-list":          "Asset List",
         "auto-discovery":      "Auto Discovery",
-        "scheduling":          "Scheduled Jobs",
+        "schedule-discovery":  "Schedule Discovery",
         "auditing":            "Auditing",
+        "schedule-auditing":   "Schedule Auditing",
         "operation-device":    "Operation and Device",
         "hardening":           "Hardening",
         "hardening-overview":  "Hardening",
@@ -220,11 +222,11 @@ export const DashboardLayout = () => {
                                     {!isSidebarCollapsed && <span>Auto Discovery</span>}
                                 </div>
                             )}
-                            {(canReadAutoDisc || canReadAuditing) && (
-                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "scheduling" ? "active" : ""}`}
-                                     onClick={() => navigate("/scheduling")} title="Scheduled Jobs">
+                            {canReadAutoDisc && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "schedule-discovery" ? "active" : ""}`}
+                                     onClick={() => navigate("/assets/schedule-discovery")} title="Schedule Discovery">
                                     {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Scheduled Jobs</span>}
+                                    {!isSidebarCollapsed && <span>Schedule Discovery</span>}
                                 </div>
                             )}
                         </>
@@ -244,6 +246,11 @@ export const DashboardLayout = () => {
                                  onClick={() => navigate("/audit/sessions")} title="Operation & Device">
                                 {isSidebarCollapsed && <img src="/icons/auditing.svg" alt="" className="nav-icon-img" />}
                                 {!isSidebarCollapsed && <span>Operation & Device</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "schedule-auditing" ? "active" : ""}`}
+                                 onClick={() => navigate("/audit/schedule-auditing")} title="Schedule Auditing">
+                                {isSidebarCollapsed && <img src="/icons/auditing.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Schedule Auditing</span>}
                             </div>
                         </>
                     )}

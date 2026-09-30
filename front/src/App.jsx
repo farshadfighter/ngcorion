@@ -162,9 +162,14 @@ function AppContent() {
                             </RequirePermission>
                         } />
 
-                        {/* Scheduled Jobs - self-guards on discovery OR auditing read,
-                            since it lists both job types */}
-                        <Route path="/scheduling" element={<ScheduledJobsPage />} />
+                        {/* Schedule Discovery - lives under Asset Management, not a
+                            standalone section (product decision: this is a scheduled
+                            variant of Auto Discovery, not a separate feature) */}
+                        <Route path="/assets/schedule-discovery" element={
+                            <RequirePermission module="asset_auto_discovery" name="Schedule Discovery">
+                                <ScheduledJobsPage key="discovery" jobType="discovery" />
+                            </RequirePermission>
+                        } />
 
                         {/* Auditing */}
                         <Route path="/audit" element={
@@ -175,6 +180,11 @@ function AppContent() {
                         <Route path="/audit/sessions" element={
                             <RequirePermission module="auditing" name="Auditing">
                                 <AuditingList />
+                            </RequirePermission>
+                        } />
+                        <Route path="/audit/schedule-auditing" element={
+                            <RequirePermission module="auditing" name="Schedule Auditing">
+                                <ScheduledJobsPage key="audit" jobType="audit" />
                             </RequirePermission>
                         } />
                         <Route path="/audit/sessions/:sessionId" element={
