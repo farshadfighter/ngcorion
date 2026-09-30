@@ -25,7 +25,7 @@ const DescriptionModal = ({ description, assetName, onClose }) => (
     </div>
 );
 
-export const SecurityAuditTab = ({ assets, onEdit, onDelete, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
+export const SecurityAuditTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
     const [sortDirection, setSortDirection] = useState("asc");
     const [selectedDescription, setSelectedDescription] = useState(null);
@@ -113,6 +113,9 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, isNewAsset, selecte
                                 <td className="actions-cell">
                                     <button className="btn-icon" onClick={() => onEdit(asset)}>
                                         <i className="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button className="btn-icon" title="Change History" onClick={() => onViewHistory(asset)}>
+                                        <i className="fa-solid fa-clock-rotate-left"></i>
                                     </button>
                                     {canDelete && (<button className="btn-icon" onClick={() => onDelete(asset.id)}>
                                         <i className="fa-solid fa-trash"></i>

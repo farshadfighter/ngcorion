@@ -206,10 +206,10 @@ def update_asset(
     """Update asset (requires write permission)"""
     try:
         changes = data.dict(exclude_unset=True)
-        asset = AssetService.update_asset(db, asset_id, changes)
+        asset, field_changes = AssetService.update_asset(db, asset_id, changes)
         if not asset:
             raise HTTPException(status_code=404, detail="Asset not found")
-        log_asset_updated(db, current_user.id, asset.id, asset.asset_name, changes, asset.ip_address)
+        log_asset_updated(db, current_user.id, asset.id, asset.asset_name, field_changes, asset.ip_address)
         return asset
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

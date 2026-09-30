@@ -130,15 +130,21 @@ def log_asset_created(db, user_id: int, asset_id: int, asset_name: str, ip_addre
     db.commit()
 
 
-def log_asset_updated(db, user_id: int, asset_id: int, asset_name: str, changes: dict = None, ip_address: str = None):
-    """Log asset update"""
+def log_asset_updated(db, user_id: int, asset_id: int, asset_name: str, changes: list = None, ip_address: str = None):
+    """Log asset update.
+
+    `changes` is the per-field diff from
+    app.modules.assets.change_history.compute_field_changes - a list of
+    {"field", "label", "category", "old", "new"} dicts, one per field whose
+    value actually changed (not merely submitted). Stored as-is so the
+    Change History view can render it directly."""
     log = AssetLog(
         user_id=user_id,
         action="update",
         asset_id=asset_id,
         asset_name=asset_name,
         ip_address=ip_address,
-        details={"changes": list(changes.keys()) if changes else None},
+        details={"changes": changes or []},
         status="success"
     )
     db.add(log)

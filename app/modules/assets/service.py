@@ -13,6 +13,7 @@ from app.models import (
     NetworkZone, OSCatalog, VendorCatalog,
     AssetDependency, AssetSecurityStatus
 )
+from app.modules.assets.change_history import FIELD_META, compute_field_changes
 from .schemas import AssetTypeCreate
 from .hosting import requires_hosting
 
@@ -190,7 +191,12 @@ class AssetService:
     
     @staticmethod
     def update_asset(db: Session, asset_id: int, data: dict):
-        """Update asset with optional security status"""
+        """Update asset with optional security status.
+
+        Returns (asset, field_changes) - field_changes is a per-field diff
+        (see app/modules/assets/change_history.py) for the caller to record
+        as this update's AssetLog entry, powering the Change History view.
+        """
         # Auto-stamp audit date on every update
         data['last_audit_date'] = date_type.today()
 
@@ -204,6 +210,7 @@ class AssetService:
                 raise ValueError(f"Asset type with id {data['asset_type_id']} does not exist")
 
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
+        field_changes = []
         if asset:
             # Values as they'll be *after* this update (a None in `data` is a
             # no-op below, same as every other field on this endpoint).
@@ -211,12 +218,18 @@ class AssetService:
             effective_hosted_on = data.get('hosted_on_asset_id') or asset.hosted_on_asset_id
             _validate_hosting(db, effective_type_id, effective_hosted_on, asset_id=asset.id)
 
+            # Snapshot pre-update values for every field this request touches,
+            # so they can be diffed against the post-update values below.
+            old_values = {key: getattr(asset, key, None) for key in data if key in FIELD_META}
+
             # Update asset fields
             for key, value in data.items():
                 if value is not None:
                     setattr(asset, key, value)
             db.commit()
             db.refresh(asset)
+
+            field_changes = compute_field_changes(db, asset, old_values)
 
             # Update or create security status if provided
             if security_status_data:
@@ -237,8 +250,8 @@ class AssetService:
 
                 db.commit()
 
-        return asset
-    
+        return asset, field_changes
+
     @staticmethod
     def delete_asset(db: Session, asset_id: int):
         """Delete an asset and everything the database cascades with it.

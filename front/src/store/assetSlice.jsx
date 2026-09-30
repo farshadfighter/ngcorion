@@ -40,6 +40,26 @@ export const fetchAsset = createAsyncThunk(
     }
 );
 
+// Fetch one asset's field-level change history. Reuses the existing
+// asset-logs endpoint (action=update) rather than a dedicated route - each
+// log entry's details.changes already carries the per-field diff (see
+// app/modules/assets/change_history.py).
+export const fetchAssetChangeHistory = createAsyncThunk(
+    "assets/fetchChangeHistory",
+    async (assetId, { rejectWithValue }) => {
+        try {
+            const res = await api.get("/api/asset-logs/", {
+                params: { asset_id: assetId, action: "update", limit: 200 },
+            });
+            return res.data;
+        } catch (err) {
+            return rejectWithValue(
+                err.response?.data?.detail || "Failed to load change history"
+            );
+        }
+    }
+);
+
 // Fetch asset types
 export const fetchAssetTypes = createAsyncThunk(
     "assets/fetchTypes",
@@ -250,6 +270,8 @@ const assetSlice = createSlice({
         isLoading: false,
         isLoadingPorts: false,
         isDeleting: false,
+        changeHistory: [],
+        isLoadingChangeHistory: false,
         error: null,
         successMessage: null,
     },
@@ -284,6 +306,19 @@ const assetSlice = createSlice({
             // fetch single asset
             .addCase(fetchAsset.fulfilled, (state, action) => {
                 state.selectedAsset = action.payload;
+            })
+
+            // fetch change history
+            .addCase(fetchAssetChangeHistory.pending, (state) => {
+                state.isLoadingChangeHistory = true;
+            })
+            .addCase(fetchAssetChangeHistory.fulfilled, (state, action) => {
+                state.isLoadingChangeHistory = false;
+                state.changeHistory = Array.isArray(action.payload) ? action.payload : [];
+            })
+            .addCase(fetchAssetChangeHistory.rejected, (state, action) => {
+                state.isLoadingChangeHistory = false;
+                state.error = action.payload;
             })
 
             // fetch asset types

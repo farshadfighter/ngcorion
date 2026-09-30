@@ -161,7 +161,7 @@ def test_update_setting_host_on_existing_asset_succeeds(db, user):
         "hosted_on_asset_id": server.id, "user_id": user.id,
     })
     other_server = _make_asset(db, user)
-    updated = AssetService.update_asset(db, db_asset.id, {"hosted_on_asset_id": other_server.id})
+    updated, _changes = AssetService.update_asset(db, db_asset.id, {"hosted_on_asset_id": other_server.id})
     assert updated.hosted_on_asset_id == other_server.id
 
 
@@ -187,6 +187,6 @@ def test_update_keeps_existing_host_when_type_changes_between_hosted_types(db, u
         "asset_name": "vm-becomes-app", "asset_type_id": vm_type.id,
         "hosted_on_asset_id": server.id, "user_id": user.id,
     })
-    updated = AssetService.update_asset(db, asset.id, {"asset_type_id": app_type.id})
+    updated, _changes = AssetService.update_asset(db, asset.id, {"asset_type_id": app_type.id})
     assert updated.asset_type_id == app_type.id
     assert updated.hosted_on_asset_id == server.id

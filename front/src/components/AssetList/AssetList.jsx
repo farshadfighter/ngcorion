@@ -13,6 +13,7 @@ import { EditNetworkModal } from "./EditNetworkModal";
 import { EditLocationModal } from "./EditLocationModal";
 import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
+import { ChangeHistoryModal } from "./ChangeHistoryModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 
 import "../../assets/AssetList.css"
@@ -54,6 +55,7 @@ export const AssetList = () => {
     const [showEditLocationModal,  setShowEditLocationModal]  = useState(false);
     const [showEditSecurityModal,  setShowEditSecurityModal]  = useState(false);
     const [showAddModal,           setShowAddModal]           = useState(false);
+    const [showHistoryModal,       setShowHistoryModal]       = useState(false);
 
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
@@ -157,6 +159,12 @@ export const AssetList = () => {
         }
     };
 
+    // ── Change history ────────────────────────────────────────────────────────
+    const handleViewHistory = (asset) => {
+        setSelectedAsset(asset);
+        setShowHistoryModal(true);
+    };
+
     // ── Single delete ──────────────────────────────────────────────────────────
     const handleDeleteClick = (asset) => {
         const matched = typeof asset === "object" && asset
@@ -218,6 +226,7 @@ export const AssetList = () => {
         assets:          pagedAssets,
         onEdit:          handleEdit,
         onDelete:        handleDeleteClick,
+        onViewHistory:   handleViewHistory,
         canDelete,
         isNewAsset,
         selectedIds,
@@ -390,6 +399,10 @@ export const AssetList = () => {
             )}
 
             {/* ── Edit modals ──────────────────────────────────────────────────── */}
+            {showHistoryModal && selectedAsset && (
+                <ChangeHistoryModal asset={selectedAsset} isOpen={showHistoryModal}
+                                    onClose={() => { setShowHistoryModal(false); setSelectedAsset(null); }} />
+            )}
             {showEditOverviewModal && selectedAsset && (
                 <EditOverviewModal asset={selectedAsset} isOpen={showEditOverviewModal}
                                    onClose={() => { setShowEditOverviewModal(false); setSelectedAsset(null); }} />
