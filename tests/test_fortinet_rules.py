@@ -11,6 +11,8 @@ Covers:
 
 import re
 
+import pytest
+
 from app.modules.fortinet.audit.rules import (
     FortiGateRule,
     get_fortinet_controls,
@@ -34,15 +36,17 @@ VALID_SCOPES = {SCOPE_GLOBAL, SCOPE_VDOM, SCOPE_VDOM_ROOT}
 # --------------------------------------------------------------------------
 # Catalogue shape
 # --------------------------------------------------------------------------
-def test_exactly_49_controls():
-    assert len(CONTROLS) == 49
+# 49 CIS controls, minus FG-POL-001/002 (manual, VDOM-scoped) disabled per
+# client request in 539c240.
+def test_exactly_47_controls():
+    assert len(CONTROLS) == 47
 
 
 def test_automated_manual_split():
     automated = [c for c in CONTROLS if c.cis_type == "Automated"]
     manual = [c for c in CONTROLS if c.cis_type == "Manual"]
     assert len(automated) == 25
-    assert len(manual) == 24
+    assert len(manual) == 22
     assert all(c.is_manual for c in manual)
     assert not any(c.is_manual for c in automated)
 
@@ -50,8 +54,8 @@ def test_automated_manual_split():
 def test_unique_ids_and_sections():
     ids = [c.id for c in CONTROLS]
     secs = [c.cis_id for c in CONTROLS]
-    assert len(set(ids)) == 49
-    assert len(set(secs)) == 49
+    assert len(set(ids)) == 47
+    assert len(set(secs)) == 47
 
 
 def test_every_control_has_valid_scope_and_section_name():
@@ -65,7 +69,7 @@ def test_scope_distribution():
     from collections import Counter
     dist = Counter(c.scope for c in CONTROLS)
     assert dist[SCOPE_GLOBAL] == 27
-    assert dist[SCOPE_VDOM] == 22
+    assert dist[SCOPE_VDOM] == 20
     assert dist[SCOPE_VDOM_ROOT] == 0
 
 
@@ -463,8 +467,14 @@ def test_operational_commands_run_inside_config_global_on_vdom():
 
 # ---------------------------------------------------------------------------
 # FG-POL-001 (3.1): only deletion candidates appear in the evidence
+#
+# The control is disabled per client request (commit 539c240) - commented out
+# of rules.py / cis_map.py - while its evaluator (_policy_unused_report) stays
+# in service.py. These tests are kept, skipped, for when it is re-enabled.
 # ---------------------------------------------------------------------------
-_POL001_RULE = BY_ID["FG-POL-001"].rules[0]
+_pol001_disabled = pytest.mark.skipif(
+    "FG-POL-001" not in BY_ID, reason="FG-POL-001 is disabled per client request"
+)
 
 _POL001_TABLE = """config firewall policy
     edit 1
@@ -496,10 +506,11 @@ policy index=4
 
 def _pol001(table=_POL001_TABLE, stats=_POL001_STATS):
     from app.modules.fortinet.audit.service import _policy_unused_report
-    return _policy_unused_report(
-        _POL001_RULE, {_POL001_RULE.cmd: table, _POL001_RULE.aux_cmd: stats})
+    rule = BY_ID["FG-POL-001"].rules[0]
+    return _policy_unused_report(rule, {rule.cmd: table, rule.aux_cmd: stats})
 
 
+@_pol001_disabled
 def test_fg_pol_001_lists_only_disabled_or_zero_byte_policies():
     passed, evidence = _pol001()
     assert passed is False
@@ -512,6 +523,7 @@ def test_fg_pol_001_lists_only_disabled_or_zero_byte_policies():
     assert "Busy" not in evidence
 
 
+@_pol001_disabled
 def test_fg_pol_001_multiselect_offers_only_failing_policies():
     from app.modules.fortinet.hardening.manual_remediation import parse_evidence_options
     _, evidence = _pol001()
@@ -520,6 +532,7 @@ def test_fg_pol_001_multiselect_offers_only_failing_policies():
     }
 
 
+@_pol001_disabled
 def test_fg_pol_001_compliant_evidence_lists_no_policies():
     table = 'config firewall policy\n    edit 1\n        set name "Allow-Web"\n    next\nend'
     passed, evidence = _pol001(table=table)
@@ -528,6 +541,7 @@ def test_fg_pol_001_compliant_evidence_lists_no_policies():
     assert "Policy ID" not in evidence
 
 
+@_pol001_disabled
 def test_fg_pol_001_unreadable_counters_flag_only_disabled_policies():
     # bytes == 0 is not assertable without counters: enabled policies are left
     # alone rather than recommended for deletion on a failed read.

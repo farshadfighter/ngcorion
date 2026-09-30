@@ -18,11 +18,10 @@ class TestRuleCount:
         """Test total number of CIS rules."""
         # The catalog spans the shared "all"-distro rules plus the RHEL-family
         # rules and the per-version RHEL-10 / Rocky 8-9-10 supplements (each
-        # gated to its own profile). It grows as coverage expands. Keep a
-        # generous upper bound so the assertion catches an accidental catalog
-        # collapse, not growth.
+        # gated to its own profile). It grows as coverage expands, so only a
+        # floor is asserted: it catches an accidental catalog collapse, while
+        # accidental duplication is caught by test_rule_ids_unique below.
         assert len(all_cis_rules) >= 140
-        assert len(all_cis_rules) <= 480
 
     def test_rule_ids_unique(self, all_cis_rules):
         """Test all rule IDs are unique."""
