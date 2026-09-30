@@ -12,6 +12,7 @@ Supports three hardening modes:
 - Automatic Hardening: Apply all auto-fixable checks with defaults
 """
 
+from app.core.secret_redaction import redact_commands
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -1163,7 +1164,7 @@ class FortiGateHardeningService:
                         check_title=result.check_title,
                         action_type="execute",
                         status="executing",
-                        commands_json=json.dumps(final_commands),
+                        commands_json=json.dumps(redact_commands(final_commands)),
                         requires_config_mode=True,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,
@@ -1394,7 +1395,7 @@ class FortiGateHardeningService:
                         check_title=result.check_title,
                         action_type="execute",
                         status="executing",
-                        commands_json=json.dumps(final_commands),
+                        commands_json=json.dumps(redact_commands(final_commands, merged_params)),
                         requires_config_mode=True,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,

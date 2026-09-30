@@ -5,6 +5,7 @@ Handles SSH connections and command execution on Cisco IOS/IOS-XE devices.
 Based on netmiko library with "turbo" command collection strategy.
 """
 
+from app.core.secret_redaction import redact_text
 from contextlib import contextmanager
 from typing import List, Optional
 from netmiko import ConnectHandler
@@ -506,7 +507,7 @@ class CiscoSSHClient:
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
                 chunks.append(f"!! {cmd}\n<<ERROR: {type(e).__name__}: {error_msg}>>\n")
-                logger.warning(f"Command failed on {self.ip}: {cmd[:50]}... - {type(e).__name__}")
+                logger.warning(f"Command failed on {self.ip}: {redact_text(cmd)[:50]}... - {type(e).__name__}")
 
         # Log summary
         success_rate = ((total_commands - failed_commands) / total_commands) * 100 if total_commands else 0
@@ -580,7 +581,7 @@ class CiscoSSHClient:
             )
             return output
         except Exception as e:
-            logger.error(f"Command execution failed on {self.ip}: {command} - {str(e)}")
+            logger.error(f"Command execution failed on {self.ip}: {redact_text(command)} - {str(e)}")
             raise RuntimeError(f"Command execution failed: {str(e)}")
 
     # Maximum interactive questions answered for a single command; a device

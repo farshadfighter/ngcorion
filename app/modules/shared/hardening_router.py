@@ -5,6 +5,7 @@ New schema-driven API endpoints for hardening operations.
 Supports both post-audit mode (fix failed checks) and full hardening mode (all controls).
 """
 
+from app.core.secret_redaction import redact_commands
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 import json
@@ -570,7 +571,7 @@ async def execute_hardening_controls(
                             check_title=control.title,
                             action_type="execute",
                             status="executing",
-                            commands_json=json.dumps(final_commands),
+                            commands_json=json.dumps(redact_commands(final_commands, params_with_defaults)),
                             requires_config_mode=parsed.requires_config_mode,
                             credentials_provided=True,
                             backup_config=backup if not request.skip_backup else None,

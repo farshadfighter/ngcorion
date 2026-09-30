@@ -12,6 +12,7 @@ Supported distributions:
 - Red Hat Enterprise Linux 8 / 9 / 10
 """
 
+from app.core.secret_redaction import redact_text
 from typing import List, Dict, Optional, Any
 from netmiko import ConnectHandler
 from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException
@@ -267,7 +268,7 @@ class LinuxSSHClient:
                 )
             return output
         except Exception as e:
-            logger.error(f"Command execution failed on {self.ip}: {command[:50]}... - {str(e)}")
+            logger.error(f"Command execution failed on {self.ip}: {redact_text(command)[:50]}... - {str(e)}")
             raise RuntimeError(f"Command execution failed: {str(e)}")
 
     def send_commands(self, commands: List[str], use_sudo: bool = False) -> Dict[str, str]:
@@ -287,7 +288,7 @@ class LinuxSSHClient:
                 results[cmd] = self.send_command(cmd, use_sudo=use_sudo)
             except Exception as e:
                 results[cmd] = f"<<ERROR: {type(e).__name__}: {str(e)[:200]}>>"
-                logger.warning(f"Command failed on {self.ip}: {cmd[:50]}... - {type(e).__name__}")
+                logger.warning(f"Command failed on {self.ip}: {redact_text(cmd)[:50]}... - {type(e).__name__}")
         return results
 
     def detect_distro(self) -> Dict[str, str]:
@@ -348,7 +349,7 @@ class LinuxSSHClient:
                 failed_count += 1
                 error_msg = str(e)[:200] if len(str(e)) > 200 else str(e)
                 results[key] = f"<<ERROR: {type(e).__name__}: {error_msg}>>"
-                logger.warning(f"Audit command failed on {self.ip}: {cmd[:50]}... - {type(e).__name__}")
+                logger.warning(f"Audit command failed on {self.ip}: {redact_text(cmd)[:50]}... - {type(e).__name__}")
                 # A command that times out (e.g. a hung network call) can leave
                 # the channel mid-output with the prompt never having reappeared.
                 # Left alone, the *next* command's read starts by consuming that

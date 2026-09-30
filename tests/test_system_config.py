@@ -6,6 +6,7 @@ change) and the manual clock has to land on the right wall-clock second in that
 zone.
 """
 
+from app.modules.system_config.router import _load, _unseal
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -577,10 +578,10 @@ def test_snmp_legacy_row_without_server_ip_does_not_break_get_or_rendering(db, s
     db.flush()
 
     fetched = get_snmp_config(_current_user=sc_user, db=db)
-    assert fetched["config"]["v2_community"] == "public"
+    assert fetched["config"]["v2_community"] == MASK
     assert "server_ip" not in fetched["config"]
 
-    conf = service.render_snmpd_conf(fetched["config"])
+    conf = service.render_snmpd_conf(_load(db, SECTION_SNMP))
     assert "agentAddress udp:161" in conf.splitlines()
 
 
@@ -594,8 +595,9 @@ def test_sms_masked_secrets_survive_a_round_trip_without_ever_storing_the_mask(d
         current_user=sc_user, db=db,
     )
     row = _stored_row(db, SECTION_SMS)
-    assert row.config_json["api_key"] == "realkey123"
-    assert row.config_json["password"] == "realpass456"
+    assert "realkey123" not in str(row.config_json)
+    assert _unseal(row.config_json)["api_key"] == "realkey123"
+    assert _unseal(row.config_json)["password"] == "realpass456"
     assert row.config_json["provider"] == "Kavenegar"
     assert row.config_json["sender_number"] == "10008663"
 
@@ -616,8 +618,8 @@ def test_sms_masked_secrets_survive_a_round_trip_without_ever_storing_the_mask(d
         current_user=sc_user, db=db,
     )
     row = _stored_row(db, SECTION_SMS)
-    assert row.config_json["api_key"] == "realkey123"
-    assert row.config_json["password"] == "realpass456"
-    assert row.config_json["api_key"] != MASK
-    assert row.config_json["password"] != MASK
+    assert _unseal(row.config_json)["api_key"] == "realkey123"
+    assert _unseal(row.config_json)["password"] == "realpass456"
+    assert _unseal(row.config_json)["api_key"] != MASK
+    assert _unseal(row.config_json)["password"] != MASK
     assert row.config_json["sender_number"] == "10009999"

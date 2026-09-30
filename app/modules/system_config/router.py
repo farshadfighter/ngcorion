@@ -33,6 +33,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.credential_crypto import PURPOSE_SYSTEM_CONFIG, decrypt, encrypt
 from app.core.dependencies import require_permission
 from app.models import User, log_action
 from app.models.system_config import (
@@ -67,6 +68,31 @@ MODULE = "system_config"
 # Helpers
 # ======================================================================
 
+# Fields holding credentials. They are encrypted inside config_json; the rest of
+# the payload stays plain JSON. Values without the marker are rows written
+# before encryption was introduced and are read as-is until next saved.
+_SECRET_FIELDS = ("v2_community", "v3_auth_password", "v3_priv_password", "api_key", "password")
+_ENC_PREFIX = "enc:v1:"
+
+
+def _seal(payload: Dict[str, Any]) -> Dict[str, Any]:
+    sealed = dict(payload)
+    for field in _SECRET_FIELDS:
+        value = sealed.get(field)
+        if isinstance(value, str) and value and not value.startswith(_ENC_PREFIX):
+            sealed[field] = _ENC_PREFIX + encrypt(value, PURPOSE_SYSTEM_CONFIG)
+    return sealed
+
+
+def _unseal(payload: Dict[str, Any]) -> Dict[str, Any]:
+    opened = dict(payload)
+    for field in _SECRET_FIELDS:
+        value = opened.get(field)
+        if isinstance(value, str) and value.startswith(_ENC_PREFIX):
+            opened[field] = decrypt(value[len(_ENC_PREFIX):], PURPOSE_SYSTEM_CONFIG)
+    return opened
+
+
 def _load(db: Session, section: str) -> Dict[str, Any]:
     """Stored payload for a section ({} when never configured)."""
     row = (
@@ -74,7 +100,7 @@ def _load(db: Session, section: str) -> Dict[str, Any]:
         .filter(SystemConfigSetting.section == section)
         .first()
     )
-    return dict(row.config_json or {}) if row else {}
+    return _unseal(row.config_json or {}) if row else {}
 
 
 def _save(
@@ -89,7 +115,7 @@ def _save(
     if row is None:
         row = SystemConfigSetting(section=section)
         db.add(row)
-    row.config_json = payload
+    row.config_json = _seal(payload)
     row.updated_by = user.id
     db.commit()
     db.refresh(row)
@@ -216,6 +242,9 @@ def update_snmp_config(
     """
     stored = _load(db, SECTION_SNMP)
     payload = data.model_dump(mode="json")
+    payload["v2_community"] = service.unmask(
+        payload.get("v2_community"), stored.get("v2_community")
+    )
     payload["v3_auth_password"] = service.unmask(
         payload.get("v3_auth_password"), stored.get("v3_auth_password")
     )

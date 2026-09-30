@@ -189,8 +189,9 @@ def create_asset(
     """Create asset (requires write permission). Not license-gated — Asset
     Management has no quota/entitlement of its own."""
     asset_data = data.model_dump()
-    # If user_id not provided, use current user
-    if not asset_data.get('user_id'):
+    # Only an admin may assign an asset to another user; for everyone else a
+    # client-supplied user_id is ignored rather than trusted.
+    if not asset_data.get('user_id') or current_user.role.value != "admin":
         asset_data['user_id'] = current_user.id
     try:
         result = AssetService.create_asset(db, asset_data)

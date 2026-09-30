@@ -449,6 +449,7 @@ def apply_snmp_config(config: Dict[str, Any]) -> List[str]:
 
 def mask_snmp(config: Dict[str, Any]) -> Dict[str, Any]:
     masked = dict(config)
+    masked["v2_community"] = _masked(config.get("v2_community"))
     masked["v3_auth_password"] = _masked(config.get("v3_auth_password"))
     masked["v3_priv_password"] = _masked(config.get("v3_priv_password"))
     return masked

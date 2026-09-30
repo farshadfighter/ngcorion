@@ -17,6 +17,7 @@ It is used ONLY by the hardening executors. The audit ``LinuxSSHClient`` is left
 untouched, so audits cannot regress.
 """
 
+from app.core.secret_redaction import redact_text
 from typing import Dict, Optional
 import logging
 import re
@@ -200,7 +201,7 @@ class HardeningSSHRunner:
         except socket.timeout:
             raise RuntimeError(f"Command timed out after {timeout}s: {command[:60]}...")
         except Exception as e:
-            logger.error(f"Command execution failed on {self.ip}: {command[:50]}... - {e}")
+            logger.error(f"Command execution failed on {self.ip}: {redact_text(command)[:50]}... - {e}")
             raise RuntimeError(f"Command execution failed: {e}")
 
         # Merge stderr into the result the way a shared shell session would, so

@@ -5,6 +5,7 @@ Executes hardening commands on remote servers via SSH.
 Uses the paramiko exec_command HardeningSSHRunner since Apache runs on Linux.
 """
 
+from app.core.secret_redaction import redact_text
 from typing import Dict, List, Any, Optional
 import logging
 import shlex
@@ -252,11 +253,11 @@ class ApacheSSHExecutor:
                 try:
                     output = self.execute_command(cmd, use_sudo=True)
                     result.command_outputs[cmd] = output or "(no output)"
-                    logger.info(f"Executed: {cmd[:80]}... on {self.ip}")
+                    logger.info(f"Executed: {redact_text(cmd)[:80]}... on {self.ip}")
                 except Exception as e:
                     result.error_message = f"Command failed: {str(e)}"
                     result.command_outputs[cmd] = f"ERROR: {str(e)}"
-                    logger.error(f"Command failed on {self.ip}: {cmd[:80]}... - {e}")
+                    logger.error(f"Command failed on {self.ip}: {redact_text(cmd)[:80]}... - {e}")
                     return result
 
             # Restart Apache service if template requires it

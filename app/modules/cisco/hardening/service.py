@@ -7,6 +7,7 @@ Orchestrates the complete hardening workflow:
 3. History - Track all hardening attempts
 """
 
+from app.core.secret_redaction import redact_commands
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -864,7 +865,7 @@ class HardeningService:
                         check_title=audit_result.check_title,
                         action_type="execute",
                         status="executing",
-                        commands_json=json.dumps(final_commands),
+                        commands_json=json.dumps(redact_commands(final_commands, params_with_defaults)),
                         requires_config_mode=parsed.requires_config_mode,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,
@@ -1490,7 +1491,7 @@ class HardeningService:
                         check_title=result.check_title,
                         action_type="execute",
                         status="executing",
-                        commands_json=json.dumps(final_commands),
+                        commands_json=json.dumps(redact_commands(final_commands, apply_defaults({}, defaults))),
                         requires_config_mode=parsed.requires_config_mode,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,
@@ -1748,7 +1749,7 @@ class HardeningService:
                         check_title=result.check_title,
                         action_type="execute",
                         status="executing",
-                        commands_json=json.dumps(final_commands),
+                        commands_json=json.dumps(redact_commands(final_commands, merged_params)),
                         requires_config_mode=parsed.requires_config_mode,
                         credentials_provided=True,
                         backup_config=backup if not skip_backup else None,

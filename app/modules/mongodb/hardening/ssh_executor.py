@@ -6,6 +6,7 @@ Uses the paramiko exec_command HardeningSSHRunner (the audit path keeps using
 netmiko); commands are sudo-wrapped at the call site.
 """
 
+from app.core.secret_redaction import redact_text
 import logging
 import shlex
 import time
@@ -154,7 +155,7 @@ class MongoDBSSHExecutor:
             output = self._conn.run(cmd, timeout=COMMAND_TIMEOUT)
             return (output or "").strip()
         except Exception as exc:
-            logger.debug(f"Command failed [{cmd[:80]}]: {exc}")
+            logger.debug(f"Command failed [{redact_text(cmd)[:80]}]: {exc}")
             return ""
 
     def backup_config(self) -> str:
@@ -228,11 +229,11 @@ class MongoDBSSHExecutor:
                     output = self._run(cmd, use_sudo=True)
                     result.commands_executed.append(cmd)
                     result.command_outputs[cmd] = output
-                    logger.debug(f"  [{check_id}] cmd executed: {cmd[:70]}")
+                    logger.debug(f"  [{check_id}] cmd executed: {redact_text(cmd)[:70]}")
                 except Exception as exc:
                     error_msg = f"ERROR: {str(exc)}"
                     result.command_outputs[cmd] = error_msg
-                    logger.error(f"  [{check_id}] cmd failed: {cmd[:70]} — {exc}")
+                    logger.error(f"  [{check_id}] cmd failed: {redact_text(cmd)[:70]} — {exc}")
 
             result.requires_service_restart = template.requires_service_restart
 

@@ -36,6 +36,8 @@ from app.models.enums import (
 # GET never overwrites a real password with asterisks.
 MASK = "********"
 
+_SNMPD_TOKEN_RE = re.compile(r"[!$%&()*+,\-./0-9:;<=>?@A-Z\[\]^_`a-z{|}~]+")
+
 
 def _reject_newlines(value: Optional[str]) -> Optional[str]:
     if value is not None and ("\n" in value or "\r" in value):
@@ -130,6 +132,18 @@ class TimeConfig(_ConfigBase):
             )
         return value
 
+    @field_validator("ntp_server")
+    @classmethod
+    def _check_ntp_server(cls, value: Optional[str]) -> Optional[str]:
+        # Written as `NTP=<value>` into timesyncd.conf: a space-separated list
+        # of hostnames/IPs is valid there, a newline would add directives.
+        if value is None or not value.strip():
+            return value
+        value = value.strip()
+        if not re.fullmatch(r"[A-Za-z0-9.:\-\[\]]+( [A-Za-z0-9.:\-\[\]]+)*", value):
+            raise ValueError("ntp_server must be hostnames or IP addresses separated by spaces")
+        return value
+
     @model_validator(mode="after")
     def _check_mode(self):
         if not self.use_ntp and self.manual_time is None:
@@ -165,6 +179,22 @@ class SnmpConfig(_ConfigBase):
         except ValueError:
             raise ValueError(
                 "server_ip must be a valid IPv4 or IPv6 address, e.g. '10.0.0.25'"
+            )
+        return value
+
+    # These values are written as whitespace-separated tokens into snmpd.conf,
+    # which snmpd reads as root. A space would shift the tokens of the
+    # directive; a newline would start a new one - and `extend`/`pass`
+    # directives execute arbitrary programs. So: one token, printable, no quotes.
+    @field_validator("v2_community", "v3_username", "v3_auth_password", "v3_priv_password")
+    @classmethod
+    def _single_config_token(cls, value: Optional[str]) -> Optional[str]:
+        if value is None or value == MASK:
+            return value
+        if not _SNMPD_TOKEN_RE.fullmatch(value):
+            raise ValueError(
+                "must be a single token of printable characters "
+                "(no spaces, quotes, '#' or control characters)"
             )
         return value
 

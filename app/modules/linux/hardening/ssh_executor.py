@@ -5,6 +5,7 @@ Executes hardening commands on Linux servers with sudo support.
 Includes pre/post verification and detailed logging.
 """
 
+from app.core.secret_redaction import redact_text
 from typing import Dict, List, Optional, Any
 import logging
 import re
@@ -310,7 +311,7 @@ class LinuxSSHExecutor:
                         logger.error(error_msg)
                         command_errors.append(error_msg)
                     else:
-                        logger.debug(f"Command executed: {cmd[:60]}...")
+                        logger.debug(f"Command executed: {redact_text(cmd)[:60]}...")
                 except Exception as e:
                     error_msg = f"Command failed: {cmd[:60]}... Error: {str(e)}"
                     logger.error(error_msg)

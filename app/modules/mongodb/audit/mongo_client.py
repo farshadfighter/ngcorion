@@ -13,6 +13,7 @@ All data is combined into a single structured dump string with section
 markers, which rules.py then evaluates using regex patterns.
 """
 
+from app.core.secret_redaction import redact_text
 import re
 import shlex
 import logging
@@ -186,7 +187,7 @@ class MongoDBSSHClient:
             )
             return (output or "").strip()
         except Exception as exc:
-            logger.debug(f"Command failed [{cmd[:60]}]: {exc}")
+            logger.debug(f"Command failed [{redact_text(cmd)[:60]}]: {exc}")
             return ""
 
     def _mongosh_eval(self, js_expr: str) -> str:

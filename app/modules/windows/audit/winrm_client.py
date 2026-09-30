@@ -14,6 +14,7 @@ This mirrors the pattern of mssql/audit/mssql_client.py but uses WinRM
 instead of pymssql for connectivity.
 """
 
+from app.core.secret_redaction import redact_text
 import re
 import logging
 import time
@@ -291,7 +292,7 @@ class WindowsWinRMClient:
             stdout = result.std_out.decode("utf-8", errors="replace").strip()
             return stdout if stdout else "(no output)"
         except Exception as exc:
-            logger.debug(f"CMD failed [{command[:80]}]: {exc}")
+            logger.debug(f"CMD failed [{redact_text(command)[:80]}]: {exc}")
             return f"CMD_ERROR: {str(exc)[:200]}"
 
     # ------------------------------------------------------------------ #

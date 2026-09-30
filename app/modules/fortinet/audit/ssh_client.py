@@ -23,6 +23,7 @@ Features retained from the previous client:
   - per (scope, vdom, command) output caching.
 """
 
+from app.core.secret_redaction import redact_text
 import logging
 import re
 import time
@@ -375,7 +376,7 @@ class FortiGateSSHClient:
                 )
         except Exception:
             logger.error("FG command send failed: %r on %s",
-                         command, self.host, exc_info=True)
+                         redact_text(command), self.host, exc_info=True)
             raise
         # Defensive: drain any pager prompt that slipped through.
         guard = 0
@@ -417,13 +418,13 @@ class FortiGateSSHClient:
         if output and not _ends_with_prompt(output):
             logger.warning(
                 "Command %r output may be truncated (%d chars, no trailing prompt "
-                "after %d drain attempts)", command, len(output), settle,
+                "after %d drain attempts)", redact_text(command), len(output), settle,
             )
         # Per-command timing: the profiling signal for hardening slowness. With
         # timing-based reads every command pays ~CMD_LAST_READ of silence on top
         # of the device's own output time — this log shows exactly where.
         logger.info("FG timing: cmd=%r %.2fs (mode=%s, %d chars, drains=%d, complete=%s)",
-                    command, time.perf_counter() - t0, read_mode, len(output or ""),
+                    redact_text(command), time.perf_counter() - t0, read_mode, len(output or ""),
                     settle, _ends_with_prompt(output or ""))
         return output or ""
 
@@ -893,9 +894,9 @@ class FortiGateSSHClient:
                             errors.append(line.strip())
                 except Exception as e:  # noqa: BLE001
                     logger.error("FG config command failed: %r (scope=%s vdom=%s) on %s",
-                                 cmd, scope, vdom, self.host, exc_info=True)
-                    errors.append(f"Command '{cmd}' failed: {e}")
-                    outputs.append(f"# {cmd}\nERROR: {e}")
+                                 redact_text(cmd), scope, vdom, self.host, exc_info=True)
+                    errors.append(f"Command '{redact_text(cmd)}' failed: {e}")
+                    outputs.append(f"# {redact_text(cmd)}\nERROR: {e}")
 
         logger.info("FG timing: run_config %d cmd(s) scope=%s vdom=%s -> %.2fs "
                     "(errors=%d)", len(commands), scope, vdom,
