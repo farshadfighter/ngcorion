@@ -190,6 +190,46 @@ def test_poll_asset_converts_puresnmp_timedelta_uptime_to_ticks():
     assert result.sys_name == "NGFW-Taktacom"
 
 
+def test_poll_asset_collects_ifname_and_ifalias_from_ifxtable():
+    """ifDescr alone is frequently blank or unhelpful on real devices
+    (FortiGate leaves it empty for VLANs/aggregates/tunnels) - ifName and
+    ifAlias come from the separate IF-MIB ifXTable and must be walked and
+    matched to the right if_index alongside the older ifTable columns,
+    without colliding with them (both tables are walked together)."""
+    from datetime import timedelta
+    from unittest.mock import AsyncMock, MagicMock
+    from puresnmp.pdu import VarBind
+
+    from app.modules.noc.snmp_client import poll_asset
+
+    credential = AssetSnmpCredential(version="v2c", port=161, community_encrypted=encrypt_secret("public"))
+
+    fake_client = MagicMock()
+    fake_client.multiget = AsyncMock(return_value=(b"desc", timedelta(seconds=1), b"", b"host", b""))
+
+    varbinds = [
+        VarBind("1.3.6.1.2.1.2.2.1.2.1", b""),  # ifDescr - blank, as seen on real FortiGate VLANs
+        VarBind("1.3.6.1.2.1.2.2.1.3.1", 135),  # ifType = l2vlan
+        VarBind("1.3.6.1.2.1.31.1.1.1.1.1", b"vlan10"),  # ifName
+        VarBind("1.3.6.1.2.1.31.1.1.1.18.1", b"Servers VLAN"),  # ifAlias
+    ]
+
+    async def fake_walk(_oids):
+        for vb in varbinds:
+            yield vb
+
+    fake_client.multiwalk = fake_walk
+
+    with patch("app.modules.noc.snmp_client.PyWrapper", return_value=fake_client):
+        result = run(poll_asset("172.16.200.20", credential))
+
+    assert len(result.interfaces) == 1
+    iface = result.interfaces[0]
+    assert iface.if_descr == ""
+    assert iface.if_name == "vlan10"
+    assert iface.if_alias == "Servers VLAN"
+
+
 # ======================================================================
 # Poll result persistence
 # ======================================================================
@@ -204,7 +244,8 @@ def _fake_reachable_result() -> DevicePollResult:
         sys_uptime_ticks=123456,
         interfaces=[
             InterfacePollResult(
-                if_index=1, if_descr="GigabitEthernet0/1", if_type=6, if_speed=1000000000,
+                if_index=1, if_descr="GigabitEthernet0/1", if_name="Gi0/1", if_alias="Uplink to core",
+                if_type=6, if_speed=1000000000,
                 if_admin_status="up", if_oper_status="up", in_octets=1000, out_octets=2000,
             ),
         ],
@@ -222,6 +263,8 @@ def test_persist_poll_result_creates_status_and_interface_rows(db, user):
     interfaces = db.query(AssetSnmpInterface).filter(AssetSnmpInterface.asset_id == asset.id).all()
     assert len(interfaces) == 1
     assert interfaces[0].if_descr == "GigabitEthernet0/1"
+    assert interfaces[0].if_name == "Gi0/1"
+    assert interfaces[0].if_alias == "Uplink to core"
     assert interfaces[0].in_octets == 1000
 
 

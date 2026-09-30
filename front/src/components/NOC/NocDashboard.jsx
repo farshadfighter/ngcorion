@@ -33,6 +33,10 @@ export const NocDashboard = () => {
     useEffect(() => {
         dispatch(fetchHosts());
         dispatch(fetchTopology());
+        // Live status/reachability only - topology (links/layout) doesn't
+        // change on its own, so it's fetched once, not on this interval.
+        const timer = setInterval(() => dispatch(fetchHosts()), 30_000);
+        return () => clearInterval(timer);
     }, [dispatch]);
 
     useEffect(() => {

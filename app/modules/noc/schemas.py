@@ -47,6 +47,8 @@ class InterfaceInfo(BaseModel):
     id: int  # AssetSnmpInterface.id - what GET /hosts/{id}/metrics?interface_id= expects, not if_index
     if_index: int
     if_descr: Optional[str] = None
+    if_name: Optional[str] = None
+    if_alias: Optional[str] = None
     if_type: Optional[int] = None
     if_speed: Optional[int] = None
     if_admin_status: Optional[str] = None

@@ -18,6 +18,11 @@ export const NocHostList = () => {
 
     useEffect(() => {
         dispatch(fetchHosts());
+        // Keep the list current while the page is open, without a manual
+        // reload - matches the background poller's ~60s cadence (see
+        // AUTO_REFRESH_MS in NocHostDetail.jsx for the same reasoning).
+        const timer = setInterval(() => dispatch(fetchHosts()), 30_000);
+        return () => clearInterval(timer);
     }, [dispatch]);
 
     useEffect(() => {
@@ -67,7 +72,7 @@ export const NocHostList = () => {
             )}
 
             <div className="noc-table-container">
-                {isLoading ? (
+                {isLoading && hosts.length === 0 ? (
                     <div className="noc-empty">Loading…</div>
                 ) : filtered.length === 0 ? (
                     <div className="noc-empty">No matching assets.</div>

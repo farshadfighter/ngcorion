@@ -54,6 +54,22 @@ function classifyInterfaceType(ifType) {
 
 const INTERFACE_FILTERS = ["All", "Physical", "VLAN", "Aggregate", "Tunnel", "Other"];
 
+// ifDescr is frequently blank or unhelpful on real devices (FortiGate
+// leaves it empty for VLANs/aggregates/tunnels; even set, it's often a
+// low-level driver name). ifAlias (the admin-set description) and ifName
+// (the short interface name) are what a human actually recognizes - prefer
+// them, and only fall back to "<Type> #<index>" when the device gave us
+// nothing at all rather than showing a bare "—".
+function interfaceDisplayName(iface) {
+    return iface.if_alias || iface.if_name || iface.if_descr || `${classifyInterfaceType(iface.if_type)} #${iface.if_index}`;
+}
+
+// How often the page re-fetches while open, so it reflects the background
+// poller's latest result without a manual reload - half the poller's
+// default 60s cadence (NOC_POLL_INTERVAL_SECONDS) keeps data at most ~30s
+// stale, which reads as "live" without hammering the API.
+const AUTO_REFRESH_MS = 30_000;
+
 export const NocHostDetail = () => {
     const { assetId } = useParams();
     const dispatch = useDispatch();
@@ -81,12 +97,15 @@ export const NocHostDetail = () => {
 
     // Pre-fill the form from the fetched credential. Adjusted during render
     // (not in an effect - see https://react.dev/learn/you-might-not-need-an-effect)
-    // by tracking the last credential object this component reacted to, so a
-    // genuinely new fetch result (new object reference from redux) updates
-    // the form exactly once instead of looping through an extra render.
+    // by tracking the last credential *content* this component reacted to
+    // (not object reference - the page now auto-refetches every
+    // AUTO_REFRESH_MS, which hands back a new object each time even when
+    // nothing changed, and resetting the form on every tick would wipe out
+    // whatever the user is mid-typing in the credential fields below).
+    const credentialKey = currentHost?.credential !== undefined ? JSON.stringify(currentHost.credential) : undefined;
     const [seenCredential, setSeenCredential] = useState(undefined);
-    if (currentHost?.credential !== undefined && currentHost.credential !== seenCredential) {
-        setSeenCredential(currentHost.credential);
+    if (credentialKey !== undefined && credentialKey !== seenCredential) {
+        setSeenCredential(credentialKey);
         if (currentHost.credential) {
             setVersion(currentHost.credential.version);
             setPort(currentHost.credential.port);
@@ -98,6 +117,8 @@ export const NocHostDetail = () => {
 
     useEffect(() => {
         dispatch(fetchHostDetail(assetId));
+        const timer = setInterval(() => dispatch(fetchHostDetail(assetId)), AUTO_REFRESH_MS);
+        return () => clearInterval(timer);
     }, [dispatch, assetId]);
 
     useEffect(() => {
@@ -181,20 +202,30 @@ export const NocHostDetail = () => {
                         <dl className="noc-kv-grid">
                             <dt>Type</dt><dd>{currentHost.asset_type_name || "—"}</dd>
                             <dt>IP Address</dt><dd>{currentHost.ip_address || "—"}</dd>
+                            {currentHost.sys_name && currentHost.sys_name !== currentHost.asset_name && (
+                                <><dt>Hostname</dt><dd>{currentHost.sys_name}</dd></>
+                            )}
                             <dt>Last Polled</dt><dd>{currentHost.last_polled_at ? new Date(currentHost.last_polled_at).toLocaleString() : "Never"}</dd>
                             {currentHost.error_message && (<><dt>Error</dt><dd>{currentHost.error_message}</dd></>)}
                         </dl>
                     </div>
 
                     <div className="noc-card">
-                        <h3>SNMP System Info</h3>
+                        <h3>System Info</h3>
                         <dl className="noc-kv-grid">
-                            <dt>sysDescr</dt><dd>{currentHost.sys_descr || "—"}</dd>
-                            <dt>sysName</dt><dd>{currentHost.sys_name || "—"}</dd>
-                            <dt>sysContact</dt><dd>{currentHost.sys_contact || "—"}</dd>
-                            <dt>sysLocation</dt><dd>{currentHost.sys_location || "—"}</dd>
+                            <dt>Hostname</dt><dd>{currentHost.sys_name || "—"}</dd>
+                            <dt>OS / Firmware</dt><dd>{currentHost.sys_descr || "—"}</dd>
                             <dt>Uptime</dt><dd>{formatUptime(currentHost.sys_uptime_ticks)}</dd>
+                            <dt>Contact</dt><dd>{currentHost.sys_contact || "—"}</dd>
+                            <dt>Location</dt><dd>{currentHost.sys_location || "—"}</dd>
                         </dl>
+                        {!currentHost.sys_name && !currentHost.sys_descr && (
+                            <div style={{ marginTop: 10, fontSize: 11.5, color: "#5c667e" }}>
+                                {currentHost.credential
+                                    ? "Device hasn't returned this yet — try Poll Now, or it doesn't expose the MIB-2 system group over SNMP."
+                                    : "Configure an SNMP credential to start collecting this."}
+                            </div>
+                        )}
                     </div>
 
                     <div className="noc-card">
@@ -217,7 +248,7 @@ export const NocHostDetail = () => {
                                         className="noc-mini-select"
                                     >
                                         {currentHost.interfaces.map((iface) => (
-                                            <option key={iface.id} value={iface.id}>{iface.if_descr || `#${iface.if_index}`}</option>
+                                            <option key={iface.id} value={iface.id}>{interfaceDisplayName(iface)}</option>
                                         ))}
                                     </select>
                                 )}
@@ -294,7 +325,7 @@ export const NocHostDetail = () => {
                                                 {visible.map((iface) => (
                                                     <tr key={iface.if_index}>
                                                         <td>{iface.if_index}</td>
-                                                        <td>{iface.if_descr || "—"}</td>
+                                                        <td>{interfaceDisplayName(iface)}</td>
                                                         <td style={{ color: "#8b96ac" }}>{iface._group}</td>
                                                         <td>{iface.if_speed ? `${(iface.if_speed / 1e6).toFixed(0)} Mbps` : "—"}</td>
                                                         <td style={{ color: iface.if_admin_status === "up" ? "#34d399" : undefined }}>{iface.if_admin_status || "—"}</td>

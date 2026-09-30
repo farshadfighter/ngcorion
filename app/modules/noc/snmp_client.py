@@ -26,6 +26,14 @@ OID_SYS_LOCATION = "1.3.6.1.2.1.1.6.0"
 # IF-MIB ifTable columns (RFC 2863) - base OID + column number, walked
 # together and joined by their shared trailing if_index.
 IF_TABLE_BASE = "1.3.6.1.2.1.2.2.1"
+# IF-MIB ifXTable (RFC 2863) - the newer sibling table, walked alongside
+# ifTable. ifDescr alone is frequently blank or unhelpful on real devices
+# (FortiGate in particular leaves it empty for VLANs/aggregates/tunnels,
+# and even populated values are often a low-level driver name); ifName is
+# the short interface name ("port1", "wan1") and ifAlias is the
+# admin-configured description - both are what a human actually recognizes,
+# so both are collected and the frontend picks the best available one.
+IFX_TABLE_BASE = "1.3.6.1.2.1.31.1.1.1"
 IF_COLUMNS = {
     "if_descr": f"{IF_TABLE_BASE}.2",
     "if_type": f"{IF_TABLE_BASE}.3",
@@ -34,6 +42,8 @@ IF_COLUMNS = {
     "if_oper_status": f"{IF_TABLE_BASE}.8",
     "in_octets": f"{IF_TABLE_BASE}.10",
     "out_octets": f"{IF_TABLE_BASE}.16",
+    "if_name": f"{IFX_TABLE_BASE}.1",
+    "if_alias": f"{IFX_TABLE_BASE}.18",
 }
 IF_STATUS_NAMES = {1: "up", 2: "down", 3: "testing"}
 
@@ -44,6 +54,8 @@ DEFAULT_TIMEOUT_SECONDS = 3.0
 class InterfacePollResult:
     if_index: int
     if_descr: str | None = None
+    if_name: str | None = None
+    if_alias: str | None = None
     if_type: int | None = None
     if_speed: int | None = None
     if_admin_status: str | None = None
@@ -147,6 +159,8 @@ async def poll_asset(
                 InterfacePollResult(
                     if_index=if_index,
                     if_descr=_decode(fields.get("if_descr")),
+                    if_name=_decode(fields.get("if_name")),
+                    if_alias=_decode(fields.get("if_alias")),
                     if_type=fields.get("if_type"),
                     if_speed=fields.get("if_speed"),
                     if_admin_status=IF_STATUS_NAMES.get(fields.get("if_admin_status")),

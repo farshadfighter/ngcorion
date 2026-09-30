@@ -143,6 +143,8 @@ class NocService:
                 db.add(row)
                 existing[iface.if_index] = row
             row.if_descr = iface.if_descr
+            row.if_name = iface.if_name
+            row.if_alias = iface.if_alias
             row.if_type = iface.if_type
             row.if_speed = iface.if_speed
             row.if_admin_status = iface.if_admin_status

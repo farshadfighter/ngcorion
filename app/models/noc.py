@@ -101,6 +101,10 @@ class AssetSnmpInterface(Base):
     )
     if_index = Column(Integer, nullable=False)
     if_descr = Column(String(255), nullable=True)
+    # IF-MIB ifXTable (RFC 2863) - see snmp_client.py's IFX_TABLE_BASE comment
+    # for why these are collected alongside if_descr rather than instead of it.
+    if_name = Column(String(255), nullable=True)
+    if_alias = Column(String(255), nullable=True)
     if_type = Column(Integer, nullable=True)
     if_speed = Column(BigInteger, nullable=True)  # bits/sec
     if_admin_status = Column(String(20), nullable=True)  # up | down | testing
