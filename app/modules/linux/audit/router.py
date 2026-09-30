@@ -8,6 +8,7 @@ Supports:
   Rocky:      8, 9, 10
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -224,9 +225,10 @@ def execute_linux_audit(
             result="failed",
             detail=f"Asset Name: {asset_name}, IP: {target_ip}, Profile: {audit_request.profile}. Error: {str(e)}"
         )
+        logging.getLogger(__name__).exception("Audit execution failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Audit execution failed: {str(e)}"
+            detail="Audit execution failed. See the server logs for details."
         )
 
 
@@ -388,9 +390,10 @@ def delete_linux_session(
 
         return {"message": f"Audit session {session_id} deleted successfully"}
     except Exception as e:
+        logging.getLogger(__name__).exception("Failed to delete audit session")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete audit session: {str(e)}"
+            detail="Failed to delete audit session. See the server logs for details."
         )
 
 

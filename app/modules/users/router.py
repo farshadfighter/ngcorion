@@ -161,7 +161,7 @@ def create_user(
     check_user_management_permission(current_user, "write", db)
     
     service = UserService(db)
-    new_user = service.create_user(user_data)
+    new_user = service.create_user(user_data, actor=current_user)
     return new_user
 
 

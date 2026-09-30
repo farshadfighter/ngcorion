@@ -38,7 +38,48 @@ class UserService:
         
         return user
     
-    def create_user(self, user_data: UserCreate) -> User:
+    # ==========================================
+    # Delegation guards
+    # ==========================================
+    # Holding user_management.write/delete must not let a non-admin reach a
+    # privilege level they do not themselves have: otherwise "create a user with
+    # role=admin", "change the admin's email then use forgot-password", or
+    # "grant myself-by-proxy hardening.write" are all one request away.
+
+    _ROLE_RANK = {
+        UserRole.GUEST: 0,
+        UserRole.USER: 1,
+        UserRole.MANAGER: 2,
+        UserRole.ADMIN: 3,
+    }
+
+    def _assert_role_within_reach(self, actor: Optional[User], role: UserRole, verb: str):
+        if actor is None or actor.role == UserRole.ADMIN:
+            return
+        if role == UserRole.ADMIN or self._ROLE_RANK[role] > self._ROLE_RANK[actor.role]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You cannot {verb} a user with the '{role.value}' role",
+            )
+
+    def _assert_can_grant(self, actor: Optional[User], permissions_data: Optional[List]):
+        if actor is None or actor.role == UserRole.ADMIN or not permissions_data:
+            return
+        held = {p.module.value if hasattr(p.module, "value") else p.module: p
+                for p in self.get_user_permissions(actor.id)}
+        for perm in permissions_data:
+            mine = held.get(perm.module)
+            for flag in ("can_read", "can_write", "can_delete"):
+                if getattr(perm, flag) and not (mine and getattr(mine, flag)):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=(
+                            f"You cannot grant '{flag.removeprefix('can_')}' on "
+                            f"'{perm.module}' because you do not hold it yourself"
+                        ),
+                    )
+
+    def create_user(self, user_data: UserCreate, actor: Optional[User] = None) -> User:
         """
         Create new user with permissions
         
@@ -77,7 +118,11 @@ class UserService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid role '{user_data.role}'. Valid roles: admin, manager, user, guest"
             )
-        
+
+        self._assert_role_within_reach(actor, user_role, "create")
+        if user_role != UserRole.ADMIN:
+            self._assert_can_grant(actor, user_data.permissions)
+
         # Create user
         new_user = User(
             username=user_data.username,
@@ -98,7 +143,7 @@ class UserService:
         self.db.refresh(new_user)
         
         # Audit log
-        log_user_action(self.db, None, "user.create", new_user.id, 
+        log_user_action(self.db, actor, "user.create", new_user.id,
                        detail=f"Created user '{new_user.username}' with role '{new_user.role.value}'")
         
         print(f"[+] User created: {new_user.username} ({new_user.role.value})")
@@ -113,7 +158,11 @@ class UserService:
         current_user = None
         if current_user_id:
             current_user = self.db.query(User).filter(User.id == current_user_id).first()
-        
+
+        if current_user_id != user_id:
+            self._assert_role_within_reach(current_user, user.role, "modify")
+        self._assert_can_grant(current_user, user_data.permissions)
+
         # Update username
         if user_data.username is not None:
             existing = self.db.query(User).filter(
@@ -205,6 +254,17 @@ class UserService:
         
         # Update is_active
         if user_data.is_active is not None:
+            if user_data.is_active is False and user.is_active:
+                if current_user_id == user_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="You cannot deactivate your own account",
+                    )
+                if user.role == UserRole.ADMIN and self._active_admin_count() <= 1:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Cannot deactivate the last active admin user",
+                    )
             user.is_active = user_data.is_active
         
         # Update permissions (if provided and user is not admin)
@@ -258,14 +318,14 @@ class UserService:
                 detail="You cannot delete yourself"
             )
 
+        current_user = None
+        if current_user_id:
+            current_user = self.db.query(User).filter(User.id == current_user_id).first()
+        self._assert_role_within_reach(current_user, user.role, "delete")
+
         # Prevent deleting the last admin user
         if user.role == UserRole.ADMIN:
-            admin_count = self.db.query(User).filter(
-                User.role == UserRole.ADMIN,
-                User.is_active == True
-            ).count()
-
-            if admin_count <= 1:
+            if self._active_admin_count() <= 1:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Cannot delete the last admin user. Create another admin first."
@@ -273,9 +333,6 @@ class UserService:
 
         self.db.delete(user)
         self.db.commit()
-        current_user = None
-        if current_user_id:
-            current_user = self.db.query(User).filter(User.id == current_user_id).first()
         # Audit log
         log_user_action(self.db, current_user, "user.delete", user_id,
                 detail=f"Deleted user '{username}' with role '{user.role.value}'")
@@ -287,6 +344,12 @@ class UserService:
             "message": f"User '{username}' deleted successfully"
         }
     
+    def _active_admin_count(self) -> int:
+        return self.db.query(User).filter(
+            User.role == UserRole.ADMIN,
+            User.is_active == True,  # noqa: E712
+        ).count()
+
     def search_users(self, query: str) -> List[User]:
         """Search users by username or email"""
         return self.db.query(User).filter(

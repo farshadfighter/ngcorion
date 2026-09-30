@@ -163,8 +163,8 @@ export const CveFindings = () => {
                                         </span>
                                     </td>
                                     <td>
-                                        {f.cve.reference_url ? (
-                                            <a href={f.cve.reference_url} target="_blank" rel="noreferrer" className="cve-link">
+                                        {/^https?:\/\//i.test(f.cve.reference_url || "") ? (
+                                            <a href={f.cve.reference_url} target="_blank" rel="noopener noreferrer" className="cve-link">
                                                 {f.cve.cve_id}
                                             </a>
                                         ) : (

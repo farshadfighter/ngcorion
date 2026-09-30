@@ -662,9 +662,10 @@ async def execute_hardening_controls(
 
     except Exception as e:
         logger.error(f"Connection error to {device_ip}: {str(e)}")
+        logging.getLogger(__name__).exception("Failed to connect to device")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to connect to device: {str(e)}"
+            detail="Failed to connect to device. See the server logs for details."
         )
 
     # Risk recalculation trigger

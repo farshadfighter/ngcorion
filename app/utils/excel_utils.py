@@ -12,6 +12,23 @@ from typing import List, Dict, Any
 from io import BytesIO
 
 
+_FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def neutralize_formula(value):
+    """
+    Stop spreadsheet apps from executing an exported string as a formula.
+
+    Asset names/hostnames can originate from network discovery, i.e. from the
+    scanned hosts themselves, so a value like '=HYPERLINK(...)' must reach the
+    operator's spreadsheet as text. Prefixing a quote is the OWASP-recommended
+    CSV/formula-injection defence; numbers and dates pass through untouched.
+    """
+    if isinstance(value, str) and value.startswith(_FORMULA_TRIGGERS):
+        return "'" + value
+    return value
+
+
 def create_styled_workbook(title: str) -> Workbook:
     """Create a new workbook with basic styling"""
     wb = Workbook()
@@ -289,7 +306,7 @@ def _ensure_asset_sheet(wb: Workbook, title: str, columns: List[str]):
         if include_data and assets:
             for row_idx, asset in enumerate(assets, 2):
                 for col_idx, value in enumerate(_build_asset_row(asset), start=1):
-                    ws.cell(row=row_idx, column=col_idx, value=value)
+                    ws.cell(row=row_idx, column=col_idx, value=neutralize_formula(value))
 
         # Save to BytesIO
         output = BytesIO()
@@ -330,8 +347,7 @@ def export_assets_to_excel_grouped(assets: List[Any]) -> BytesIO:
         ws = _ensure_asset_sheet(wb, sheet_def["title"], sheet_def["columns"])
         map_row_func = sheet_def["map_row"]
         for asset in assets:
-            row_data = map_row_func(asset)
-            ws.append(row_data)
+            ws.append([neutralize_formula(v) for v in map_row_func(asset)])
 
     output = BytesIO()
     wb.save(output)
@@ -691,7 +707,7 @@ def export_asset_requirements_to_excel(data_dict: Dict[str, List[Any]]) -> Bytes
         for row_idx, item in enumerate(rows, start=2):
             row_values = sheet["map_row"](item)
             for col_idx, value in enumerate(row_values, start=1):
-                ws.cell(row=row_idx, column=col_idx, value=value)
+                ws.cell(row=row_idx, column=col_idx, value=neutralize_formula(value))
 
     # Save to BytesIO
     output = BytesIO()

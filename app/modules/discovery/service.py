@@ -122,11 +122,15 @@ class DiscoveryService:
     @staticmethod
     def get_all_scans(
         db: Session,
-        limit: int = 100
+        limit: int = 100,
+        user_id: Optional[int] = None,
     ) -> List[DiscoveryScan]:
-        """Get all scans (admin only, most recent first)"""
+        """Most recent scans first; user_id=None (admins) means every user's."""
+        query = db.query(DiscoveryScan)
+        if user_id is not None:
+            query = query.filter(DiscoveryScan.user_id == user_id)
         return (
-            db.query(DiscoveryScan)
+            query
             .order_by(DiscoveryScan.started_at.desc())
             .limit(limit)
             .all()

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.security import create_access_token
+from app.core.security import create_access_token, password_fingerprint
 from app.core.auth_rate_limiter import (
     check_login_rate_limit,
     check_password_reset_rate_limit,
@@ -216,7 +216,11 @@ def login(
     
     # Create JWT token
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role.value}
+        data={
+            "sub": user.username,
+            "role": user.role.value,
+            "pwv": password_fingerprint(user.hashed_password),
+        }
     )
     
     # Get user permissions
@@ -264,10 +268,10 @@ def forgot_password(
     """
     Request a password reset OTP code.
 
-    Returns 404 if no active account matches the email. NOTE: this lets callers
-    discover which emails are registered (account enumeration). The rate limiter
-    still caps bulk probing.
+    Always answers with the same message whether or not the email belongs to an
+    active account, so the endpoint cannot be used to enumerate accounts.
     """
+    generic = {"message": "If an account exists for this email, a password reset code has been sent."}
     client_ip = request.client.host
     email = payload.email
 
@@ -278,7 +282,6 @@ def forgot_password(
     result = auth_service.create_password_reset_otp(email, ip_address=client_ip)
 
     if result is None:
-        # No active account for this email — surface an error to the caller.
         log_action(
             db=db,
             username=email,
@@ -288,10 +291,7 @@ def forgot_password(
             result="failed",
             detail="No active account for email",
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No account found with this email address.",
-        )
+        return generic
 
     otp, user = result
     background_tasks.add_task(send_password_reset_otp, user.email, otp)
@@ -307,7 +307,7 @@ def forgot_password(
         detail="Password reset code generated",
     )
 
-    return {"message": "A password reset code has been sent to your email."}
+    return generic
 
 
 @router.post("/reset-password", response_model=MessageResponse)

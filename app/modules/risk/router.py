@@ -10,6 +10,7 @@ require_permission(module, type) pattern:
 Admins bypass permission checks as everywhere else.
 """
 import csv
+from app.utils.excel_utils import neutralize_formula
 import io
 import logging
 from datetime import datetime
@@ -1389,7 +1390,7 @@ def export_csv(
     writer = csv.writer(buffer)
     writer.writerow(CSV_COLUMNS)
     for score, asset, rank in rows:
-        writer.writerow([
+        writer.writerow(neutralize_formula(v) for v in [
             rank,
             asset.asset_name,
             asset.ip_address,
@@ -1421,6 +1422,7 @@ def export_csv(
             score.incomplete_data,
         ])
     buffer.seek(0)
+
 
     filename = f"risk_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
     return StreamingResponse(

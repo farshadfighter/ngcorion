@@ -445,9 +445,10 @@ async def preview_hardening(
         )
     except Exception as e:
         _fail(e)
+        logging.getLogger(__name__).exception("Preview failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Preview failed: {str(e)}"
+            detail="Preview failed. See the server logs for details."
         )
 
 
@@ -583,9 +584,10 @@ def execute_hardening(
         )
     except Exception as e:
         _fail(e)
+        logging.getLogger(__name__).exception("Execution failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Execution failed: {str(e)}"
+            detail="Execution failed. See the server logs for details."
         )
 
 
@@ -717,9 +719,10 @@ def delete_hardening_action(
             detail=str(e)
         )
     except Exception as e:
+        logging.getLogger(__name__).exception("Failed to delete action")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete action: {str(e)}"
+            detail="Failed to delete action. See the server logs for details."
         )
 
 
@@ -805,9 +808,10 @@ def auto_audit_device(
             detail=str(e)
         )
     except Exception as e:
+        logging.getLogger(__name__).exception("Auto-audit failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Auto-audit failed: {str(e)}"
+            detail="Auto-audit failed. See the server logs for details."
         )
 
 
@@ -900,7 +904,8 @@ def auto_fix_all_failures(
             detail=str(e)
         )
     except Exception as e:
+        logging.getLogger(__name__).exception("Auto-fix failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Auto-fix failed: {str(e)}"
+            detail="Auto-fix failed. See the server logs for details."
         )

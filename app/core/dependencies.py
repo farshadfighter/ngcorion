@@ -15,6 +15,7 @@ from jose import JWTError, ExpiredSignatureError, jwt
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import password_fingerprint
 from app.core.license_client import LicenseServerError, LicenseServerUnreachable
 from app.models import User
 
@@ -85,18 +86,19 @@ def get_current_user(
             detail="Token has expired. Please login again.",
             headers={"WWW-Authenticate": "Bearer"}
         )
-    except JWTError as e:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}",
+            detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
     user = db.query(User).filter(User.username == username).first()
-    if user is None:
+    if user is None or payload.get("pwv") != password_fingerprint(user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            detail="Session is no longer valid. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"}
         )
 
     # Check if user is active

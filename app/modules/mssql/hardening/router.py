@@ -5,6 +5,7 @@ RESTful endpoints for SQL Server CIS hardening operations.
 Credentials connect directly to SQL Server via T-SQL (not SSH).
 """
 
+import logging
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -177,9 +178,10 @@ async def execute_single_fix(
             user_id=user_id, check_ids=[request.check_id],
             failed_count=1, error=str(exc),
         )
+        logging.getLogger(__name__).exception("Single fix failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Single fix failed: {str(exc)}",
+            detail="Single fix failed. See the server logs for details.",
         )
 
 

@@ -470,9 +470,10 @@ async def execute_fortinet_manual_remediation(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         _fail(e)
+        logging.getLogger(__name__).exception("Manual execution failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Manual execution failed: {str(e)}",
+            detail="Manual execution failed. See the server logs for details.",
         )
 
 
@@ -543,9 +544,10 @@ def get_fortinet_device_options(
     ) as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=e.to_dict())
     except Exception as e:
+        logging.getLogger(__name__).exception("Device option fetch failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Device option fetch failed: {str(e)}",
+            detail="Device option fetch failed. See the server logs for details.",
         )
 
 
@@ -604,9 +606,10 @@ def discover_fortinet_vdoms(
             detail=f"VDOM discovery failed: {str(e)}",
         )
     except Exception as e:
+        logging.getLogger(__name__).exception("VDOM discovery failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"VDOM discovery failed: {str(e)}",
+            detail="VDOM discovery failed. See the server logs for details.",
         )
 
 
@@ -673,9 +676,10 @@ def preview_fortinet_hardening(
         )
     except Exception as e:
         _fail(e)
+        logging.getLogger(__name__).exception("Preview failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Preview failed: {str(e)}"
+            detail="Preview failed. See the server logs for details."
         )
 
 
@@ -806,9 +810,10 @@ async def execute_fortinet_hardening(
         )
     except Exception as e:
         _fail(e)
+        logging.getLogger(__name__).exception("Execution failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Execution failed: {str(e)}"
+            detail="Execution failed. See the server logs for details."
         )
 
 

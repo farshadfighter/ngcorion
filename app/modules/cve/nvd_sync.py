@@ -63,8 +63,14 @@ def _severity_and_score(cve_data: dict) -> tuple[Optional[str], Optional[float]]
 
 
 def _reference_url(cve_data: dict) -> Optional[str]:
-    refs = cve_data.get("references", [])
-    return refs[0]["url"] if refs and "url" in refs[0] else None
+    # Rendered as a clickable link in the UI, so only http(s) is accepted: a
+    # javascript:/data: URL in an upstream record would run in the operator's
+    # session on click.
+    for ref in cve_data.get("references", []):
+        url = str(ref.get("url") or "").strip()
+        if url.lower().startswith(("https://", "http://")) and len(url) <= 500:
+            return url
+    return None
 
 
 def _published_date(cve_data: dict) -> Optional[datetime]:

@@ -4,6 +4,7 @@ Linux Hardening API Router
 RESTful endpoints for Linux CIS hardening operations.
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any
@@ -192,9 +193,10 @@ async def execute_single_fix(
             user_id=user_id, check_ids=[request.check_id],
             failed_count=1, error=str(e),
         )
+        logging.getLogger(__name__).exception("Single fix failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Single fix failed: {str(e)}"
+            detail="Single fix failed. See the server logs for details."
         )
 
 

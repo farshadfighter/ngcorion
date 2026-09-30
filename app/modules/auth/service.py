@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.models import User, PasswordResetToken
-from app.core.security import verify_password, get_password_hash
+from app.core.security import verify_password, get_password_hash, burn_password_check_time
 from app.core.config import settings
 
 
@@ -43,6 +43,7 @@ class AuthService:
         """
         user = self.db.query(User).filter(User.username == username).first()
         if not user:
+            burn_password_check_time(password)
             return False
         if not verify_password(password, user.hashed_password):
             return False

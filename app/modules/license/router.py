@@ -4,15 +4,18 @@ License Router
 Endpoints for license activation and status checking.
 Frontend talks to these endpoints instead of directly to the license server.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 import logging
 import requests
 
 from app.core.license_state import get_license_state, refresh_license_state
-from app.core.dependencies import license_error_detail
+from app.core.database import get_db
+from app.core.dependencies import get_current_user, license_error_detail, require_admin
 from app.core.license_client import LicenseServerError, LicenseServerUnreachable
 from app.core.heartbeat import start_heartbeat
 
@@ -26,6 +29,8 @@ STATUS_REFRESH_TTL_SECONDS = 10
 
 
 router = APIRouter(prefix="/api/license", tags=["License"])
+
+_optional_bearer = HTTPBearer(auto_error=False)
 
 
 class LicenseActivateRequest(BaseModel):
@@ -98,7 +103,30 @@ def get_license_status(request: Request):
 
 
 @router.post("/activate", response_model=LicenseStatusResponse)
-def activate_license(data: LicenseActivateRequest, request: Request):
+def activate_license(
+    data: LicenseActivateRequest,
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
+    db: Session = Depends(get_db),
+):
+    """
+    Unauthenticated only while no valid license is active - that is the
+    first-run / expired-license screen, shown before anyone can log in. Once a
+    license is valid, replacing it is an admin action; otherwise anyone who can
+    reach the server could swap the installed key out from under the operator.
+    """
+    if get_license_state().valid:
+        if credentials is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Administrator login is required to replace an active license",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        require_admin(get_current_user(credentials, db))
+    return _activate(data, request)
+
+
+def _activate(data: LicenseActivateRequest, request: Request):
     """
     Activate a license key
     

@@ -13,7 +13,7 @@ from typing import List, Dict, Any
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, owner_scope
 
 from app.models.user import User, UserRole
 from app.models.asset import Asset
@@ -120,9 +120,10 @@ def start_scan(
         return scan_response
 
     except Exception as e:
+        logging.getLogger(__name__).exception("Failed to start scan")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to start scan: {str(e)}"
+            detail="Failed to start scan. See the server logs for details."
         )
 
 
@@ -138,10 +139,26 @@ async def get_scan_status(
     Poll this endpoint to check scan progress.
     When `status` is `completed`, the `hosts` array contains results.
     """
+    check_discovery_permission(current_user, "read", db)
+    _assert_scan_access(db, scan_id, current_user)
     scan = DiscoveryService.get_scan_status(db, scan_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return scan
+
+
+def _assert_scan_access(db: Session, scan_id: str, current_user: User) -> None:
+    """
+    Non-admins may only reach their own scans - a scan's results are a map of
+    live hosts and open ports. 404 (not 403) so other users' scan ids are not
+    confirmed to exist. Same rule the /pending listing already applies.
+    """
+    from app.models.discovery import DiscoveryScan
+    scan = db.query(DiscoveryScan).filter(DiscoveryScan.scan_id == scan_id).first()
+    if scan is None or (
+        current_user.role != UserRole.ADMIN and scan.user_id != current_user.id
+    ):
+        raise HTTPException(status_code=404, detail="Scan not found")
 
 
 @router.get("/scans", response_model=List[ScanListItem])
@@ -157,7 +174,7 @@ async def get_all_scans(
     **Permissions:** Requires read permission for asset_auto_discovery module
     """
     check_discovery_permission(current_user, "read", db)
-    scans = DiscoveryService.get_all_scans(db)
+    scans = DiscoveryService.get_all_scans(db, user_id=owner_scope(current_user))
     return [
         {
             "scan_id": scan.scan_id,
@@ -189,6 +206,7 @@ async def cancel_scan(
     **Permissions:** Requires write permission for asset_auto_discovery module
     """
     check_discovery_permission(current_user, "write", db)
+    _assert_scan_access(db, scan_id, current_user)
 
     result = DiscoveryService.cancel_scan(db, scan_id)
 
@@ -223,6 +241,7 @@ async def delete_scan(
     **Permissions:** Requires delete permission for asset_auto_discovery module
     """
     check_discovery_permission(current_user, "delete", db)
+    _assert_scan_access(db, scan_id, current_user)
 
     # Get scan info before deletion for logging
     scan_target = ""
@@ -671,6 +690,8 @@ async def find_matching_asset(
     - `empty_fields`: Fields that can be filled by discovery
     - `current_values`: Current values in asset
     """
+    check_discovery_permission(current_user, "read", db)
+
     # Check user's assets only
     query = db.query(Asset).filter(Asset.ip_address == ip_address)
     

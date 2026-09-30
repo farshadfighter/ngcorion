@@ -67,9 +67,10 @@ def get_harden_all_plan(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         logger.exception("Harden All plan failed for session %s", session_id)
+        logging.getLogger(__name__).exception("Failed to build hardening plan")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to build hardening plan: {e}",
+            detail="Failed to build hardening plan. See the server logs for details.",
         )
 
 
@@ -139,7 +140,8 @@ def execute_harden_all(
     except Exception as e:
         logger.exception("Harden All execution failed for session %s", request.session_id)
         _log(failed=1, error=str(e))
+        logging.getLogger(__name__).exception("Hardening failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Hardening failed: {e}",
+            detail="Hardening failed. See the server logs for details.",
         )

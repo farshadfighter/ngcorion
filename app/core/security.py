@@ -7,6 +7,7 @@ for user authentication.
 NOTE: For user authentication dependency, use `get_current_user` from
 `app.core.dependencies` instead.
 """
+import hashlib
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
@@ -57,6 +58,26 @@ def get_password_hash(password: str) -> str:
         )
 
     return pwd_context.hash(password)
+
+
+def password_fingerprint(hashed_password: str) -> str:
+    """
+    Short digest of the stored password hash, embedded in every JWT.
+
+    Changing or resetting a password changes the hash, so every token issued
+    before that moment stops validating - a stolen token does not outlive the
+    password change meant to lock the thief out.
+    """
+    return hashlib.sha256((hashed_password or "").encode("utf-8")).hexdigest()[:16]
+
+
+# Verified against when the username does not exist, so a failed login costs one
+# bcrypt round either way and response timing does not reveal valid usernames.
+_DUMMY_PASSWORD_HASH = pwd_context.hash("timing-equaliser-not-a-real-password")
+
+
+def burn_password_check_time(plain_password: str) -> None:
+    pwd_context.verify(plain_password, _DUMMY_PASSWORD_HASH)
 
 
 def create_access_token(data: dict) -> str:

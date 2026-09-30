@@ -5,6 +5,24 @@ Admin-only routes are protected with require_admin dependency
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
+import logging
+
+_logger = logging.getLogger(__name__)
+
+# An .xlsx is a zip: a small upload can inflate enormously in openpyxl, and
+# file.read() with no bound let any caller push arbitrarily large bodies into
+# memory. Real asset/requirement workbooks are far below this.
+MAX_IMPORT_BYTES = 10 * 1024 * 1024
+
+
+async def _read_capped_upload(file: UploadFile) -> bytes:
+    content = await file.read(MAX_IMPORT_BYTES + 1)
+    if len(content) > MAX_IMPORT_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large (max {MAX_IMPORT_BYTES // (1024 * 1024)} MB)",
+        )
+    return content
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
@@ -358,11 +376,8 @@ async def import_assets_excel_upload(
             detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
         )
 
+    file_buffer = BytesIO(await _read_capped_upload(file))
     try:
-        # Read file content
-        content = await file.read()
-        file_buffer = BytesIO(content)
-
         # Import assets
         results = import_assets_from_excel(file_buffer, db, current_user)
 
@@ -379,10 +394,11 @@ async def import_assets_excel_upload(
             "message": f"Import completed: {results['created']} created, {results['updated']} updated, {results['skipped']} skipped, {len(results['errors'])} errors"
         }
 
-    except Exception as e:
+    except Exception:
+        _logger.exception("Excel import failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Import failed: {str(e)}"
+            detail="Import failed: the file could not be processed. Check the server log for details."
         )
 
 
@@ -972,11 +988,8 @@ async def import_requirements_excel(
             detail="Invalid file type. Please upload an Excel file (.xlsx or .xls)"
         )
 
+    file_buffer = BytesIO(await _read_capped_upload(file))
     try:
-        # Read file content
-        content = await file.read()
-        file_buffer = BytesIO(content)
-
         # Import requirements
         results = import_asset_requirements_from_excel(file_buffer, db, current_user)
 
@@ -1001,8 +1014,9 @@ async def import_requirements_excel(
             "message": f"Import completed: {total_created} created, {total_updated} updated, {total_skipped} skipped, {total_errors} errors"
         }
 
-    except Exception as e:
+    except Exception:
+        _logger.exception("Excel import failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Import failed: {str(e)}"
+            detail="Import failed: the file could not be processed. Check the server log for details."
         )
