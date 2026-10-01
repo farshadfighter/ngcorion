@@ -20,27 +20,35 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
     const [selectedMode, setSelectedMode] = useState(null);
 
     // For create_new mode
-    const [assetName, setAssetName] = useState('');
+    const defaultName = (h) => h.hostname || `Host-${h.ip_address}`;
+    const [assetName, setAssetName] = useState(() => defaultName(host));
     const [assetTypeId, setAssetTypeId] = useState('');
     const [errors, setErrors] = useState({});
 
     // Load matches on mount
     useEffect(() => {
         dispatch(checkHostMatches(host.id));
-        setAssetName(host.hostname || `Host-${host.ip_address}`);
     }, [dispatch, host]);
 
+    // State that follows the host and the loaded matches is adjusted during
+    // render rather than in effects.
+    const [shownHost, setShownHost] = useState(host);
+    if (host !== shownHost) {
+        setShownHost(host);
+        setAssetName(defaultName(host));
+    }
+
     // Update step when matches are loaded
-    useEffect(() => {
-        if (matchResults) {
-            if (matchResults.matches && matchResults.matches.length > 0) {
-                setStep('select_target');
-            } else {
-                // No matches - go directly to create new
-                setStep('create_new');
-            }
+    const [seenMatches, setSeenMatches] = useState(null);
+    if (matchResults && matchResults !== seenMatches) {
+        setSeenMatches(matchResults);
+        if (matchResults.matches && matchResults.matches.length > 0) {
+            setStep('select_target');
+        } else {
+            // No matches - go directly to create new
+            setStep('create_new');
         }
-    }, [matchResults]);
+    }
 
     // Load preview when asset is selected
     useEffect(() => {

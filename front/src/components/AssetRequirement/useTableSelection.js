@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * Paging + row selection for the Asset Requirement tabs.
@@ -24,9 +24,7 @@ export const useTableSelection = (rows) => {
     const paged = list.slice((safePage - 1) * pageSize, safePage * pageSize);
 
     // A search or a delete can shrink the list past the current page.
-    useEffect(() => {
-        if (page > totalPages) setPage(1);
-    }, [totalPages, page]);
+    if (page > totalPages) setPage(1);
 
     // Rows removed elsewhere must not stay selected, or the delete count and
     // the "select all" tick would both be wrong.
@@ -35,7 +33,9 @@ export const useTableSelection = (rows) => {
     // with [...data].sort(), so the array identity changes on every render
     // while its contents usually do not.
     const idKey = list.map((r) => r.id).join(",");
-    useEffect(() => {
+    const [prevIdKey, setPrevIdKey] = useState(idKey);
+    if (idKey !== prevIdKey) {
+        setPrevIdKey(idKey);
         setSelectedIds((prev) => {
             if (prev.size === 0) return prev;
             const live = new Set(idKey ? idKey.split(",") : []);
@@ -44,7 +44,7 @@ export const useTableSelection = (rows) => {
             );
             return next.size === prev.size ? prev : next;
         });
-    }, [idKey]);
+    }
 
     // Scoped to the visible page: ticking rows the user cannot see would make
     // the delete count a surprise.

@@ -73,7 +73,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     const existingAssets = useSelector((state) => state.assets.assets);
 
     const [currentStep, setCurrentStep] = useState(1);
-    const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+    const [isLoadingOptions, setIsLoadingOptions] = useState(isOpen);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -107,35 +107,44 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         });
     };
 
-    const loadDropdownOptions = async () => {
-        setIsLoadingOptions(true);
-        setError(null);
-        try {
-            const [typesRes, locsRes, ownersRes, zonesRes, vendorsRes, statusRes, confRes, riskRes] = await Promise.allSettled([
-                api.get("/api/asset-types/"), api.get("/api/locations/"), api.get("/api/owners/"),
-                api.get("/api/zones/"), api.get("/api/vendors/"), api.get("/api/enums/status"),
-                api.get("/api/enums/confidentiality"), api.get("/api/enums/risk")
-            ]);
-            setAssetTypes(typesRes.status === "fulfilled" && Array.isArray(typesRes.value.data) ? typesRes.value.data : []);
-            setLocations(locsRes.status === "fulfilled" && Array.isArray(locsRes.value.data) ? locsRes.value.data : []);
-            setOwners(ownersRes.status === "fulfilled" && Array.isArray(ownersRes.value.data) ? ownersRes.value.data : []);
-            setZones(zonesRes.status === "fulfilled" && Array.isArray(zonesRes.value.data) ? zonesRes.value.data : []);
-            setVendors(vendorsRes.status === "fulfilled" && Array.isArray(vendorsRes.value.data) ? vendorsRes.value.data : []);
-            setStatusOptions(mapEnumOptions(statusRes.status === "fulfilled" ? statusRes.value.data : null, STATUS_FALLBACK));
-            setConfidentialityOptions(mapEnumOptions(confRes.status === "fulfilled" ? confRes.value.data : null, CONFIDENTIALITY_FALLBACK));
-            setRiskOptions(dropUnscoredRiskLevels(mapEnumOptions(riskRes.status === "fulfilled" ? riskRes.value.data : null, RISK_FALLBACK)));
-        } catch (err) {
-            setError("Failed to load form options.");
-        } finally {
-            setIsLoadingOptions(false);
-        }
+    // isLoadingOptions / error are reset when the modal opens (below); state
+    // is set in the promise callbacks, not synchronously in the effect.
+    const applyDropdownOptions = ([typesRes, locsRes, ownersRes, zonesRes, vendorsRes, statusRes, confRes, riskRes]) => {
+        setAssetTypes(typesRes.status === "fulfilled" && Array.isArray(typesRes.value.data) ? typesRes.value.data : []);
+        setLocations(locsRes.status === "fulfilled" && Array.isArray(locsRes.value.data) ? locsRes.value.data : []);
+        setOwners(ownersRes.status === "fulfilled" && Array.isArray(ownersRes.value.data) ? ownersRes.value.data : []);
+        setZones(zonesRes.status === "fulfilled" && Array.isArray(zonesRes.value.data) ? zonesRes.value.data : []);
+        setVendors(vendorsRes.status === "fulfilled" && Array.isArray(vendorsRes.value.data) ? vendorsRes.value.data : []);
+        setStatusOptions(mapEnumOptions(statusRes.status === "fulfilled" ? statusRes.value.data : null, STATUS_FALLBACK));
+        setConfidentialityOptions(mapEnumOptions(confRes.status === "fulfilled" ? confRes.value.data : null, CONFIDENTIALITY_FALLBACK));
+        setRiskOptions(dropUnscoredRiskLevels(mapEnumOptions(riskRes.status === "fulfilled" ? riskRes.value.data : null, RISK_FALLBACK)));
     };
 
-    // Placed after loadDropdownOptions: `const` is not hoisted, so calling it
+    // Placed after applyDropdownOptions: `const` is not hoisted, so calling it
     // from an effect declared above hits the temporal dead zone.
+    // Opening shows the options loading; closing resets the form (adjusted
+    // during render, not in the effect).
+    const [wasOpen, setWasOpen] = useState(isOpen);
+    if (isOpen !== wasOpen) {
+        setWasOpen(isOpen);
+        if (isOpen) {
+            setIsLoadingOptions(true);
+            setError(null);
+        } else {
+            resetModal();
+        }
+    }
+
     useEffect(() => {
-        if (!isOpen) { resetModal(); return; }
-        loadDropdownOptions();
+        if (!isOpen) return;
+        Promise.allSettled([
+            api.get("/api/asset-types/"), api.get("/api/locations/"), api.get("/api/owners/"),
+            api.get("/api/zones/"), api.get("/api/vendors/"), api.get("/api/enums/status"),
+            api.get("/api/enums/confidentiality"), api.get("/api/enums/risk"),
+        ])
+            .then(applyDropdownOptions)
+            .catch(() => setError("Failed to load form options."))
+            .finally(() => setIsLoadingOptions(false));
         if (osCatalog.length === 0) {
             dispatch(fetchOSCatalog());
         }

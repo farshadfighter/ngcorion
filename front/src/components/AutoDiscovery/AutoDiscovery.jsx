@@ -152,10 +152,6 @@ const AutoDiscovery = () => {
         setDeleteModal((prev) => ({ ...prev, isOpen: false }));
     }, [deleteModal, dispatch, scanHistory]);
 
-    const handleApproveHost = useCallback((host) => {
-        setSelectedHostForApproval(host);
-        setShowApproveModal(true);
-    }, []);
 
     const handleRefresh = useCallback(() => {
         dispatch(fetchScanHistory());

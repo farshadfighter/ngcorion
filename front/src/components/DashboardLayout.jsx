@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../store/authSlice";
 import { getLicenseStatusThunk } from "../store/licenseSlice";
@@ -492,7 +492,10 @@ export const DashboardLayout = () => {
                 </header>
 
                 {/* Active route renders here */}
-                <Outlet />
+                {/* Pages are loaded on first visit; the layout stays while one loads. */}
+                <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">Loading…</div>}>
+                    <Outlet />
+                </Suspense>
             </main>
 
             {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}

@@ -56,10 +56,18 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     const [executing, setExecuting] = useState(false);
     const [result, setResult] = useState(null);
 
-    useEffect(() => {
-        let active = true;
+    // Another check: show loading again (state adjusted during render, not
+    // in the effect - see react.dev "You might not need an effect").
+    const checkKey = `${checkId}:${resultId}`;
+    const [loadedKey, setLoadedKey] = useState(checkKey);
+    if (checkKey !== loadedKey) {
+        setLoadedKey(checkKey);
         setLoading(true);
         setError(null);
+    }
+
+    useEffect(() => {
+        let active = true;
         dispatch(fetchFortinetManualGuidance({ checkId, resultId }))
             .unwrap()
             .then((data) => {

@@ -144,6 +144,13 @@ services:
       CVE_MAX_PACKAGE_MB: ${CVE_MAX_PACKAGE_MB:-2048}
     expose:
       - "8000"
+    # /health answers 503 when the database is unreachable (app/modules/system_health.py).
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy

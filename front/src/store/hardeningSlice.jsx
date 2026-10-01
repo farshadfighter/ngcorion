@@ -870,7 +870,7 @@ const hardeningSlice = createSlice({
                 state.error       = null;
                 state.successMessage = null;
             })
-            .addCase(executeHardenCheck.fulfilled, (state, action) => {
+            .addCase(executeHardenCheck.fulfilled, (state) => {
                 state.isExecuting    = false;
                 state.successMessage = "Check hardened successfully!";
             })

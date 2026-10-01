@@ -40,7 +40,7 @@ export const OwnerModal = ({ onClose }) => {
 
         // Remove empty strings to avoid validation errors
         const cleanedData = Object.fromEntries(
-            Object.entries(formData).filter(([_, value]) => value.trim() !== "")
+            Object.entries(formData).filter(([, value]) => value.trim() !== "")
         );
 
         try {

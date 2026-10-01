@@ -24,9 +24,12 @@ export const Login = () => {
         }
     }, [token, navigate, location]);
 
-    useEffect(() => {
-        if (error) setShowErrorDialog(true);
-    }, [error]);
+    // A new error opens the dialog (adjusted during render, not in an effect).
+    const [shownError, setShownError] = useState(null);
+    if (error && error !== shownError) {
+        setShownError(error);
+        setShowErrorDialog(true);
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();

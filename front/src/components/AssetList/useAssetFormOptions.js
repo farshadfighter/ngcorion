@@ -79,89 +79,76 @@ export const useAssetFormOptions = () => {
         () => dropUnscoredRiskLevels(mapEnumOptions(null, RISK_FALLBACK))
     );
 
-    const loadOptions = async () => {
-        setIsLoading(true);
-
-        try {
-            const [
-                typesRes,
-                locsRes,
-                ownersRes,
-                zonesRes,
-                vendorsRes,
-                osCatalogRes,
-                statusRes,
-                confRes,
-                riskRes
-            ] = await Promise.allSettled([
-                api.get("/api/asset-types/"),
-                api.get("/api/locations/"),
-                api.get("/api/owners/"),
-                api.get("/api/zones/"),
-                api.get("/api/vendors/"),
-                api.get("/api/os-catalog/"),
-                api.get("/api/enums/status"),
-                api.get("/api/enums/confidentiality"),
-                api.get("/api/enums/risk")
-            ]);
-
-            if (typesRes.status === "fulfilled" && Array.isArray(typesRes.value.data)) {
-                setAssetTypes(typesRes.value.data);
-            }
-
-            if (locsRes.status === "fulfilled" && Array.isArray(locsRes.value.data)) {
-                setLocations(locsRes.value.data);
-            }
-
-            if (ownersRes.status === "fulfilled" && Array.isArray(ownersRes.value.data)) {
-                setOwners(ownersRes.value.data);
-            }
-
-            if (zonesRes.status === "fulfilled" && Array.isArray(zonesRes.value.data)) {
-                setZones(zonesRes.value.data);
-            }
-
-            if (vendorsRes.status === "fulfilled" && Array.isArray(vendorsRes.value.data)) {
-                setVendors(vendorsRes.value.data);
-            }
-
-            if (osCatalogRes.status === "fulfilled" && Array.isArray(osCatalogRes.value.data)) {
-                setOSCatalog(osCatalogRes.value.data);
-            }
-
-            let statusRaw = null;
-            if (statusRes.status === "fulfilled") {
-                statusRaw = statusRes.value.data;
-            }
-            setStatusOptions(mapEnumOptions(statusRaw, STATUS_FALLBACK));
-
-            let confRaw = null;
-            if (confRes.status === "fulfilled") {
-                confRaw = confRes.value.data;
-            }
-            setConfidentialityOptions(
-                mapEnumOptions(confRaw, CONFIDENTIALITY_FALLBACK)
-            );
-
-            let riskRaw = null;
-            if (riskRes.status === "fulfilled") {
-                riskRaw = riskRes.value.data;
-            }
-            setRiskOptions(
-                dropUnscoredRiskLevels(mapEnumOptions(riskRaw, RISK_FALLBACK))
-            );
-
-        } catch (err) {
-            console.error("Failed to load dropdown options:", err);
-        } finally {
-            setIsLoading(false);
+    // Loaded once, on mount (isLoading starts true). State is set in the
+    // promise callbacks, not synchronously in the effect.
+    const applyOptions = ([
+        typesRes, locsRes, ownersRes, zonesRes, vendorsRes,
+        osCatalogRes, statusRes, confRes, riskRes,
+    ]) => {
+        if (typesRes.status === "fulfilled" && Array.isArray(typesRes.value.data)) {
+            setAssetTypes(typesRes.value.data);
         }
+
+        if (locsRes.status === "fulfilled" && Array.isArray(locsRes.value.data)) {
+            setLocations(locsRes.value.data);
+        }
+
+        if (ownersRes.status === "fulfilled" && Array.isArray(ownersRes.value.data)) {
+            setOwners(ownersRes.value.data);
+        }
+
+        if (zonesRes.status === "fulfilled" && Array.isArray(zonesRes.value.data)) {
+            setZones(zonesRes.value.data);
+        }
+
+        if (vendorsRes.status === "fulfilled" && Array.isArray(vendorsRes.value.data)) {
+            setVendors(vendorsRes.value.data);
+        }
+
+        if (osCatalogRes.status === "fulfilled" && Array.isArray(osCatalogRes.value.data)) {
+            setOSCatalog(osCatalogRes.value.data);
+        }
+
+        let statusRaw = null;
+        if (statusRes.status === "fulfilled") {
+            statusRaw = statusRes.value.data;
+        }
+        setStatusOptions(mapEnumOptions(statusRaw, STATUS_FALLBACK));
+
+        let confRaw = null;
+        if (confRes.status === "fulfilled") {
+            confRaw = confRes.value.data;
+        }
+        setConfidentialityOptions(
+            mapEnumOptions(confRaw, CONFIDENTIALITY_FALLBACK)
+        );
+
+        let riskRaw = null;
+        if (riskRes.status === "fulfilled") {
+            riskRaw = riskRes.value.data;
+        }
+        setRiskOptions(
+            dropUnscoredRiskLevels(mapEnumOptions(riskRaw, RISK_FALLBACK))
+        );
     };
 
-    // Declared after loadOptions on purpose: `const` is not hoisted, so an
-    // effect placed above it referenced the binding before initialisation.
     useEffect(() => {
-        loadOptions();
+        let alive = true;
+        Promise.allSettled([
+            api.get("/api/asset-types/"),
+            api.get("/api/locations/"),
+            api.get("/api/owners/"),
+            api.get("/api/zones/"),
+            api.get("/api/vendors/"),
+            api.get("/api/os-catalog/"),
+            api.get("/api/enums/status"),
+            api.get("/api/enums/confidentiality"),
+            api.get("/api/enums/risk"),
+        ])
+            .then((results) => { if (alive) applyOptions(results); })
+            .catch((err) => console.error("Failed to load dropdown options:", err))
+            .finally(() => { if (alive) setIsLoading(false); });
+        return () => { alive = false; };
     }, []);
 
     return {

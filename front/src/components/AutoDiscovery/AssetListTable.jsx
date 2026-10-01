@@ -21,7 +21,7 @@ const AssetListTable = () => {
 
     const [activeTab, setActiveTab] = useState('overview');
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState('');
+    const [filterType] = useState('');
 
     // Load assets
     useEffect(() => {

@@ -260,6 +260,7 @@ async def lifespan(app: FastAPI):
     ]
     for task in singletons:
         task.start()
+    app.state.singletons = singletons
 
     yield
     # Shutdown
@@ -540,15 +541,11 @@ def app_info():
     }
 
 
-@app.get("/health")
-def health_check():
-    """
-    Health check endpoint for monitoring.
-
-    Returns basic health status. For production, consider adding
-    database connectivity check.
-    """
-    return {"status": "ok", "version": settings.VERSION}
+# Health: public /health (liveness + database) and the admin detail at
+# /api/system/health - app/modules/system_health.py.
+from app.modules.system_health import public_router as health_public_router, router as health_router
+app.include_router(health_public_router)
+app.include_router(health_router)
 
 
 # --- SPA catch-all ----------------------------------------------------------

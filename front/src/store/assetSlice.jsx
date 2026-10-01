@@ -245,7 +245,7 @@ export const updateAssetPort = createAsyncThunk(
 // Delete asset port
 export const deleteAssetPort = createAsyncThunk(
     "assets/deletePort",
-    async ({ assetId, portId }, { rejectWithValue }) => {
+    async ({ portId }, { rejectWithValue }) => {
         try {
             await api.delete(`/api/discovery/ports/${portId}`);
             return portId;

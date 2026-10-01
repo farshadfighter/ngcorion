@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrors.jsx';
+import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrorText.js';
 
 const ACTION_LABELS = {
     scan_started: 'Scan Started',

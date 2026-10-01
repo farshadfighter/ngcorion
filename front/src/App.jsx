@@ -13,34 +13,35 @@ import { LicenseActivationScreen } from "./components/License/LicenseActivationS
 import QuotaExhaustedModal from './components/License/QuotaExhaustedModal';
 import {PermissionToast} from "./components/UserManagement/Permissiontoast.jsx";
 
-import { AssetRequirement } from "./components/AssetRequirement/AssetRequirement";
-import { AssetManagementDashboard } from "./components/AssetManagement/AssetManagementDashboard";
-import { AuditingDashboard } from "./components/Auditing/AuditingDashboard";
-import { AuditingList } from "./components/Auditing/AuditingList";
-import { UserManagement } from "./components/UserManagement/UserManagement";
-import { LogsPage } from "./components/Logs/LogsPage";
-import BackupPage from "./components/Backup/BackupPage";
-import { BackupOverview } from "./components/Backup/BackupOverview";
-import { RestoreHistory } from "./components/Backup/RestoreHistory";
-import { License } from "./components/License/License";
-import { RiskAsset } from "./components/Risk/RiskAsset";
-import { RiskIntelDashboard } from "./components/Risk/RiskIntelDashboard";
-import { AssetRiskDetail } from "./components/Risk/detail/AssetRiskDetail";
-import { HardeningDashboard } from "./components/Hardening/dashboard/HardeningDashboard";
-import { OverviewDashboard } from "./components/Overview/OverviewDashboard";
-import { SystemConfiguration } from "./components/SystemConfig/SystemConfiguration";
-import { TopologyDashboard } from "./components/Topology/TopologyDashboard";
-import { ArchitectureValidationDashboard } from "./components/ArchitectureValidation/ArchitectureValidationDashboard";
-import { DesignList } from "./components/DesignConfiguration/DesignList";
-import { SuggestedDesign } from "./components/DesignConfiguration/SuggestedDesign";
-import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
-import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
-import { ScheduledJobsPage } from "./components/Scheduling/ScheduledJobsPage";
-import { CveFindings } from "./components/CVE/CveFindings";
-import { CveDatabase } from "./components/CVE/CveDatabase";
-import { NocDashboard } from "./components/NOC/NocDashboard";
-import { NocHostList } from "./components/NOC/NocHostList";
-import { NocHostDetail } from "./components/NOC/NocHostDetail";
+// Pages load on first visit (code splitting); the shell above loads at once.
+const AssetRequirement = lazy(() => import("./components/AssetRequirement/AssetRequirement").then((m) => ({ default: m.AssetRequirement })));
+const AssetManagementDashboard = lazy(() => import("./components/AssetManagement/AssetManagementDashboard").then((m) => ({ default: m.AssetManagementDashboard })));
+const AuditingDashboard = lazy(() => import("./components/Auditing/AuditingDashboard").then((m) => ({ default: m.AuditingDashboard })));
+const AuditingList = lazy(() => import("./components/Auditing/AuditingList").then((m) => ({ default: m.AuditingList })));
+const UserManagement = lazy(() => import("./components/UserManagement/UserManagement").then((m) => ({ default: m.UserManagement })));
+const LogsPage = lazy(() => import("./components/Logs/LogsPage").then((m) => ({ default: m.LogsPage })));
+const BackupPage = lazy(() => import("./components/Backup/BackupPage"));
+const BackupOverview = lazy(() => import("./components/Backup/BackupOverview").then((m) => ({ default: m.BackupOverview })));
+const RestoreHistory = lazy(() => import("./components/Backup/RestoreHistory").then((m) => ({ default: m.RestoreHistory })));
+const License = lazy(() => import("./components/License/License").then((m) => ({ default: m.License })));
+const RiskAsset = lazy(() => import("./components/Risk/RiskAsset").then((m) => ({ default: m.RiskAsset })));
+const RiskIntelDashboard = lazy(() => import("./components/Risk/RiskIntelDashboard").then((m) => ({ default: m.RiskIntelDashboard })));
+const AssetRiskDetail = lazy(() => import("./components/Risk/detail/AssetRiskDetail").then((m) => ({ default: m.AssetRiskDetail })));
+const HardeningDashboard = lazy(() => import("./components/Hardening/dashboard/HardeningDashboard").then((m) => ({ default: m.HardeningDashboard })));
+const OverviewDashboard = lazy(() => import("./components/Overview/OverviewDashboard").then((m) => ({ default: m.OverviewDashboard })));
+const SystemConfiguration = lazy(() => import("./components/SystemConfig/SystemConfiguration").then((m) => ({ default: m.SystemConfiguration })));
+const TopologyDashboard = lazy(() => import("./components/Topology/TopologyDashboard").then((m) => ({ default: m.TopologyDashboard })));
+const ArchitectureValidationDashboard = lazy(() => import("./components/ArchitectureValidation/ArchitectureValidationDashboard").then((m) => ({ default: m.ArchitectureValidationDashboard })));
+const DesignList = lazy(() => import("./components/DesignConfiguration/DesignList").then((m) => ({ default: m.DesignList })));
+const SuggestedDesign = lazy(() => import("./components/DesignConfiguration/SuggestedDesign").then((m) => ({ default: m.SuggestedDesign })));
+const DesignDetail = lazy(() => import("./components/DesignConfiguration/DesignDetail").then((m) => ({ default: m.DesignDetail })));
+const DesignCanvas = lazy(() => import("./components/DesignConfiguration/DesignCanvas").then((m) => ({ default: m.DesignCanvas })));
+const ScheduledJobsPage = lazy(() => import("./components/Scheduling/ScheduledJobsPage").then((m) => ({ default: m.ScheduledJobsPage })));
+const CveFindings = lazy(() => import("./components/CVE/CveFindings").then((m) => ({ default: m.CveFindings })));
+const CveDatabase = lazy(() => import("./components/CVE/CveDatabase").then((m) => ({ default: m.CveDatabase })));
+const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m) => ({ default: m.NocDashboard })));
+const NocHostList = lazy(() => import("./components/NOC/NocHostList").then((m) => ({ default: m.NocHostList })));
+const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
     RequirePermission,
     AssetListRoute,
@@ -49,13 +50,13 @@ import {
 } from "./components/routePages.jsx";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./store/index";
-import { useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import { getLicenseStatusThunk } from "./store/licenseSlice";
 import { verifyToken } from "./store/authSlice";
 
 function AppContent() {
     const dispatch = useDispatch();
-    const { isValid, isValidating } = useSelector((state) => state.license);
+    const { isValid } = useSelector((state) => state.license);
     const { authChecked } = useSelector((state) => state.auth);
     const [licenseChecked, setLicenseChecked] = useState(false);
 

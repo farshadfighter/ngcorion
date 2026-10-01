@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrors.jsx';
+import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrorText.js';
 
 const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // Format date

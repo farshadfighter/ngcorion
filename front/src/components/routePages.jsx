@@ -1,10 +1,10 @@
-import React from "react";
+import React, { lazy } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermission } from "../hooks/usePermission";
 
-import { AssetList } from "./AssetList/AssetList";
-import AutoDiscovery from "./AutoDiscovery/AutoDiscovery";
-import { HardeningMain } from "./Hardening/HardeningMain";
+const AssetList = lazy(() => import("./AssetList/AssetList").then((m) => ({ default: m.AssetList })));
+const AutoDiscovery = lazy(() => import("./AutoDiscovery/AutoDiscovery"));
+const HardeningMain = lazy(() => import("./Hardening/HardeningMain").then((m) => ({ default: m.HardeningMain })));
 
 // ── Access denied (shown when a user lacks read permission for a section) ──────
 export const AccessDenied = ({ menuName }) => (

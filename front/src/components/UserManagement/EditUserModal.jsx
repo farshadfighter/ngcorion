@@ -296,7 +296,7 @@ const styles = {
     },
 };
 
-const FocusInput = ({ style, errorStyle, hasError, ...props }) => {
+const FocusInput = ({ style, errorStyle: _errorStyle, hasError, ...props }) => {
     const [focused, setFocused] = useState(false);
     return (
         <input

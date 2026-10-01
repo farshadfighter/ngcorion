@@ -7,9 +7,7 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
     const { currentSession } = useSelector((state) => state.audit);
     const pollIntervalRef = useRef(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isPending, setIsPending] = useState(
-        !sessionData.session_id || sessionData.session_id === "pending"
-    );
+    const isPending = !sessionData.session_id || sessionData.session_id === "pending";
 
     const startPolling = useCallback((sessionId) => {
         if (!sessionId || sessionId === "pending") return;
@@ -29,10 +27,7 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
     // ✅ وقتی session_id از "pending" به مقدار واقعی تغییر کرد
     useEffect(() => {
         if (sessionData.session_id && sessionData.session_id !== "pending") {
-            setIsPending(false);
             startPolling(sessionData.session_id);
-        } else {
-            setIsPending(true);
         }
 
         return () => {

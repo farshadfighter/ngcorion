@@ -18,15 +18,18 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
         dispatch(fetchAuditSessions());
     }, [dispatch]);
 
-    // Auto-select session when opened from audit results
-    useEffect(() => {
-        if (!preselectedSessionId || !auditSessions?.length) return;
+    // Auto-select the session when opened from audit results, once the list
+    // holding it has loaded (adjusted during render, not in an effect).
+    const [preselected, setPreselected] = useState(null);
+    if (preselectedSessionId && preselected !== preselectedSessionId && auditSessions?.length) {
         const session = auditSessions.find(s => s.session_id === preselectedSessionId);
-        if (!session) return;
-        setFormData(prev => ({ ...prev, session_id: String(preselectedSessionId) }));
-        setSelectedSession(session);
-        setDeviceType(preselectedDeviceType || session.sub_device_type || session.device_type || null);
-    }, [auditSessions, preselectedSessionId, preselectedDeviceType]);
+        if (session) {
+            setPreselected(preselectedSessionId);
+            setFormData(prev => ({ ...prev, session_id: String(preselectedSessionId) }));
+            setSelectedSession(session);
+            setDeviceType(preselectedDeviceType || session.sub_device_type || session.device_type || null);
+        }
+    }
 
     // Only sessions that are completed AND have failed checks
     const failedAuditSessions = (auditSessions || []).filter(

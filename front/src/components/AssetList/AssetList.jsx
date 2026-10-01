@@ -35,7 +35,7 @@ export const AssetList = () => {
 
     const [activeTab, setActiveTab]           = useState("overview");
     const [searchQuery, setSearchQuery]       = useState("");
-    const [sortDir, setSortDir]               = useState("asc");
+    const [sortDir]                           = useState("asc");
     const [page, setPage]                     = useState(1);
     const [pageSize, setPageSize]             = useState(25);
     const [selectedAsset, setSelectedAsset]   = useState(null);
@@ -120,9 +120,7 @@ export const AssetList = () => {
     );
 
     // A search that shrinks the list can leave the current page past the end.
-    useEffect(() => {
-        if (page > totalPages) setPage(1);
-    }, [totalPages, page]);
+    if (page > totalPages) setPage(1);
 
     // ── Selection helpers ──────────────────────────────────────────────────────
     // Scoped to the visible page: "select all" ticking rows the user cannot

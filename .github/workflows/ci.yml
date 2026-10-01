@@ -1,0 +1,72 @@
+# Runs on every push and pull request: backend tests against a real Postgres
+# (with every Alembic migration applied), and the frontend's lint, tests and
+# production build. A red check here means the change is not ready to merge.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: netease
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: netease_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U netease -d netease_db"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://netease:ci-only-password@localhost:5432/netease_db
+      SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+      - name: Check there is a single migration head
+        run: test "$(uv run alembic heads | wc -l)" -eq 1
+      - name: Run tests
+        run: uv run pytest -q -p no:warnings
+
+  frontend:
+    name: Frontend (lint, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: front
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: front/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Tests
+        run: npm test
+      - name: Production build
+        run: npm run build

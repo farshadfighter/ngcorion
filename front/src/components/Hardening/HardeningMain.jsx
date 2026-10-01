@@ -32,9 +32,6 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
         dispatch(getLicenseStatusThunk()); // ✅
     };
 
-    const handleLicenseLimitReached = () => {
-        setShowLicenseModal(true);
-    };
 
     const handleLicenseModalClose = () => {
         setShowLicenseModal(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAssetPort, updateAssetPort, fetchAssetPorts } from "../../store/assetSlice";
 
@@ -11,14 +11,15 @@ export const PortModal = ({ asset, port, onClose }) => {
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (port) {
-            setFormData({
-                protocol: port.protocol,
-                port_number: port.port_number,
-            });
-        }
-    }, [port]);
+    // Editing another port: load its values (adjusted during render).
+    const [shownPort, setShownPort] = useState(null);
+    if (port && port !== shownPort) {
+        setShownPort(port);
+        setFormData({
+            protocol: port.protocol,
+            port_number: port.port_number,
+        });
+    }
 
     const validateForm = () => {
         const newErrors = {};
