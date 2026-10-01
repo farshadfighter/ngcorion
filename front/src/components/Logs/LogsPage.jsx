@@ -7,15 +7,17 @@ import {
 } from "../../store/logsSlice.js";
 import { Pagination } from "./Pagination.jsx";
 import "../../assets/LogsPage.css";
+import { t, uiLocale, n } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 /* DELETE /api/logs/clear keys -> the Section names this page shows, so the
    summary line matches the table's own labels. */
 const SECTION_LABELS = {
-    login: "Login",
-    asset: "Asset Management",
-    asset_requirement: "Asset Requirement",
-    discovery: "Auto Discovery",
-    hardening: "Hardening",
+    login: t("Login"),
+    asset: t("Asset Management"),
+    asset_requirement: t("Asset Requirement"),
+    discovery: t("Auto Discovery"),
+    hardening: t("Hardening"),
 };
 
 export const LogsPage = () => {
@@ -37,12 +39,9 @@ export const LogsPage = () => {
     // so those rows stay on screen afterwards and otherwise look like a failure.
     const handleClearHistory = () => {
         const ok = window.confirm(
-            "Permanently delete all Login, Asset Management, Asset Requirement, " +
-            "Auto Discovery and Hardening log entries?\n\n" +
-            "This cannot be undone.\n\n" +
-            "Entries in the Auditing section are NOT deleted — they are the " +
-            "security audit trail and are kept on purpose, so they will still " +
-            "be listed after this."
+            t("Permanently delete all Login, Asset Management, Asset Requirement, Auto Discovery and Hardening log entries?") +
+            "\n\n" + t("This cannot be undone.") + "\n\n" +
+            t("Entries in the Auditing section are NOT deleted — they are the security audit trail and are kept on purpose, so they will still be listed after this.")
         );
         if (ok) dispatch(clearLogs());
     };
@@ -73,7 +72,7 @@ export const LogsPage = () => {
     const formatTimestamp = (ts) => {
         if (!ts) return "-";
         const d = new Date(ts);
-        return d.toLocaleString("en-US", {
+        return d.toLocaleString(uiLocale(),  {
             year: "numeric",
             month: "short",
             day: "2-digit",
@@ -92,14 +91,14 @@ export const LogsPage = () => {
     };
 
     const getStatusLabel = (status) => {
-        if (status === "success") return "Successful";
-        if (status === "partial") return "Partial";
-        if (status === "failed" || status === "failure") return "Fail";
-        return "Unknown";
+        if (status === "success") return t("Successful");
+        if (status === "partial") return t("Partial");
+        if (status === "failed" || status === "failure") return t("Fail");
+        return t("Unknown");
     };
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     return (
@@ -113,14 +112,14 @@ export const LogsPage = () => {
                     disabled={isClearing}
                 >
                     <i className="fa-solid fa-trash"></i>
-                    {isClearing ? "Clearing…" : "Clear History"}
+                    {isClearing ? t("Clearing…") : t("Clear History")}
                 </button>
 
                 {/* Refresh used to appear only after a "clear"; it is useful on
                     every visit, since the feed is a point-in-time snapshot. */}
                 <button className="logs-btn-refresh" onClick={handleRefresh}>
                     <i className="fa-solid fa-rotate-right"></i>
-                    Refresh
+                    {t("Refresh")}
                 </button>
 
                 <button className="logs-btn-sort" onClick={handleSort}>
@@ -129,7 +128,7 @@ export const LogsPage = () => {
                             ? "fa-solid fa-arrow-down-wide-short"
                             : "fa-solid fa-arrow-up-wide-short"
                     } />
-                    Sort by
+                    {t("Sort by")}
                 </button>
             </div>
 
@@ -142,13 +141,12 @@ export const LogsPage = () => {
                         type="button"
                         className="logs-clear-notice-close"
                         onClick={() => dispatch(dismissClearResult())}
-                        aria-label="Dismiss"
+                        aria-label={t("Dismiss")}
                     >
                         ×
                     </button>
                     <strong>
-                        Cleared {clearResult.total_deleted ?? 0} log{" "}
-                        {clearResult.total_deleted === 1 ? "entry" : "entries"}.
+                        {t("Cleared {{count}} log entries.", { count: clearResult.total_deleted ?? 0 })}
                     </strong>
                     {clearResult.deleted && (
                         <span className="logs-clear-notice-detail">
@@ -159,9 +157,7 @@ export const LogsPage = () => {
                         </span>
                     )}
                     <div className="logs-clear-notice-detail">
-                        Entries in the <strong>Auditing</strong> section are the
-                        security audit trail and are kept on purpose — they are
-                        still listed below.
+                        {tx("Entries in the {{section}} section are the security audit trail and are kept on purpose — they are still listed below.", { section: <strong>{t("Auditing")}</strong> })}
                     </div>
                 </div>
             )}
@@ -169,7 +165,7 @@ export const LogsPage = () => {
             {/* A failed clear must not look like a successful one. */}
             {clearError && (
                 <p className="logs-clear-error" role="alert">
-                    Could not clear logs: {clearError}
+                    {t("Could not clear logs: {{clearError}}", { clearError })}
                 </p>
             )}
 
@@ -178,31 +174,31 @@ export const LogsPage = () => {
                 <table className="requirement-table">
                     <thead>
                     <tr>
-                        <th>Number</th>
-                        <th>User Name</th>
-                        <th>Action</th>
-                        <th>Asset Name</th>
-                        <th>Section</th>
-                        <th>Status</th>
-                        <th>Timestamp</th>
+                        <th>{t("Number")}</th>
+                        <th>{t("User Name")}</th>
+                        <th>{t("Action")}</th>
+                        <th>{t("Asset Name")}</th>
+                        <th>{t("Section")}</th>
+                        <th>{t("Status")}</th>
+                        <th>{t("Timestamp")}</th>
                     </tr>
                     </thead>
                     <tbody>
                     {sortedItems.length === 0 ? (
                         <tr>
                             <td colSpan="7" className="no-data">
-                                No logs found
+                                {t("No logs found")}
                             </td>
                         </tr>
                     ) : (
                         pageItems.map((item, index) => (
                             <tr key={item.id}>
                                 {/* Keep numbering continuous across pages. */}
-                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
+                                <td>{n((currentPage - 1) * pageSize + index + 1)}</td>
                                 <td>{item.username || "-"}</td>
                                 <td>{item.action || "-"}</td>
                                 <td>{item.asset_name || "-"}</td>
-                                <td>{item.section}</td>
+                                <td>{t(item.section)}</td>
                                 <td>
                                     <span className={`logs-status-badge ${getStatusClass(item.status)}`}>
                                         {getStatusLabel(item.status)}

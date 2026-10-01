@@ -4,13 +4,14 @@
 
 import React from 'react';
 import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrorText.js';
+import { t, uiLocale } from "../../i18n";
 
 const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // Format date
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString(uiLocale(),  {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -21,9 +22,9 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // Get scan type label
   const getScanTypeLabel = (type) => {
     const labels = {
-      all_ports: 'All Ports (1-65535)',
-      well_known_ports: 'Well-Known (1-1024)',
-      custom_ports: 'Custom Ports',
+      all_ports: t("All Ports (1-65535)"),
+      well_known_ports: t("Well-Known (1-1024)"),
+      custom_ports: t("Custom Ports"),
     };
     return labels[type] || type;
   };
@@ -33,13 +34,13 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
     if (scan.status === 'failed') {
       if (isNmapMissing(scan.error)) return 'nmap Missing';
       const err = (scan.error || '').toLowerCase();
-      if (err.includes('timed out') || err.includes('timeout')) return 'Timed Out';
-      return 'Failed';
+      if (err.includes('timed out') || err.includes('timeout')) return t("Timed Out");
+      return t("Failed");
     }
-    if (scan.status === 'cancelled') return 'Cancelled';
-    if (scan.status === 'completed') return 'Completed';
-    if (scan.status === 'running') return 'Running';
-    if (scan.status === 'pending') return 'Pending';
+    if (scan.status === 'cancelled') return t("Cancelled");
+    if (scan.status === 'completed') return t("Completed");
+    if (scan.status === 'running') return t("Running");
+    if (scan.status === 'pending') return t("Pending");
     return scan.status;
   };
 
@@ -47,7 +48,7 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // unactionable, so surface the install command instead.
   const getStatusTitle = (scan) => {
     if (isNmapMissing(scan.error)) {
-      return `nmap روی سرور نصب نیست — ${NMAP_INSTALL_COMMAND}`;
+      return `${t("nmap is not installed on the server")} — ${NMAP_INSTALL_COMMAND}`;
     }
     return scan.error || undefined;
   };
@@ -91,7 +92,7 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
     return (
       <div className="table-loading">
         <div className="spinner-lg" />
-        <p>Loading scan history...</p>
+        <p>{t("Loading scan history...")}</p>
       </div>
     );
   }
@@ -105,8 +106,8 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
             <path d="M21 21l-4.35-4.35" />
           </svg>
         </div>
-        <h3>No Scans Yet</h3>
-        <p>Start your first network scan to discover assets on your network.</p>
+        <h3>{t("No Scans Yet")}</h3>
+        <p>{t("Start your first network scan to discover assets on your network.")}</p>
       </div>
     );
   }
@@ -116,13 +117,13 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
       <table className="data-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Target</th>
-            <th>Scan Type</th>
-            <th>Status</th>
-            <th>Hosts Found</th>
-            <th>Started</th>
-            <th className="col-actions">Actions</th>
+            <th>{t("Name")}</th>
+            <th>{t("Target")}</th>
+            <th>{t("Scan Type")}</th>
+            <th>{t("Status")}</th>
+            <th>{t("Hosts Found")}</th>
+            <th>{t("Started")}</th>
+            <th className="col-actions">{t("Actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -130,7 +131,7 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
             <tr key={scan.scan_id}>
               <td>
                 <div className="scan-name">
-                  <span className="name">{scan.job_name || `Scan ${scan.scan_id.slice(0, 8)}`}</span>
+                  <span className="name">{scan.job_name || t("Scan {{slice}}", { slice: scan.scan_id.slice(0, 8) })}</span>
                   <code className="scan-id">{scan.scan_id.slice(0, 8)}</code>
                 </div>
               </td>
@@ -171,19 +172,19 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
                     <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => onViewResults(scan)}
-                      title={scan.status === 'completed' ? 'View results' : 'View error details'}
+                      title={scan.status === 'completed' ? t("View results") : t("View error details")}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
                       </svg>
-                      View
+                      {t("View")}
                     </button>
                   )}
                   <button
                     className="btn btn-sm btn-ghost btn-danger"
                     onClick={() => onDelete(scan.scan_id)}
-                    title="Delete scan"
+                    title={t("Delete scan")}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />

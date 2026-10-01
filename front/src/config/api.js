@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { t } from "../i18n";
 
 const API_BASE_URL = '';
 
@@ -121,7 +122,7 @@ api.interceptors.response.use(
             // بک‌اند 403 برگردونده ولی نه به خاطر لایسنس
             window.dispatchEvent(new CustomEvent('permission-denied', {
                 detail: {
-                    message: data.detail || 'You do not have permission to perform this action.',
+                    message: data.detail || t("You do not have permission to perform this action."),
                     url: error.config?.url,
                 }
             }));

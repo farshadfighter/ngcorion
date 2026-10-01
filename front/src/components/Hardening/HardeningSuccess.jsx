@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 export const HardeningSuccess = ({ sessionData, onNext }) => {
     return (
         <div className="auditing-success-container">
@@ -8,16 +9,16 @@ export const HardeningSuccess = ({ sessionData, onNext }) => {
 
             {/* Success Message */}
             <div className="success-message">
-                <div className="success-text">The Connection was Successful</div>
+                <div className="success-text">{t("The Connection was Successful")}</div>
             </div>
 
             {/* Session Info */}
             <div className="success-info">
                 <p>
-                    <strong>Asset:</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
+                    <strong>{t("Asset:")}</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
                 </p>
                 <p>
-                    <strong>Status:</strong> Ready to harden
+                    <strong>{t("Status:")}</strong> {" "}{t("Ready to harden")}
                 </p>
             </div>
 
@@ -38,7 +39,7 @@ export const HardeningSuccess = ({ sessionData, onNext }) => {
                         transition: 'all 0.2s'
                     }}
                 >
-                    Next
+                    {t("Next")}
                 </button>
             </div>
         </div>

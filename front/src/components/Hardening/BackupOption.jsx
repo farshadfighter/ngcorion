@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from "../../i18n";
 
 // Optional configuration backup toggle for Cisco/Fortinet hardening.
 // Taking a backup connects to the device and pulls the running config before
@@ -26,9 +27,9 @@ const BackupOption = ({ checked, onChange }) => (
             style={{ marginTop: '2px', cursor: 'pointer' }}
         />
         <span style={{ fontSize: '13px', color: '#1f2937', lineHeight: '1.5' }}>
-            <strong>Back up device configuration before hardening</strong>
+            <strong>{t("Back up device configuration before hardening")}</strong>
             <span style={{ display: 'block', color: '#6b7280', fontSize: '12px', marginTop: '2px' }}>
-                Recommended for rollback. Leave unchecked to skip the backup and run faster.
+                {t("Recommended for rollback. Leave unchecked to skip the backup and run faster.")}
             </span>
         </span>
     </label>

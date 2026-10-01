@@ -4,6 +4,8 @@ import { fetchUsers, deleteUser, clearMessages } from "../../store/userSlice";
 import { AddUserModal } from "./AddUserModal";
 import { EditUserModal } from "./EditUserModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { t } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 
 export const UserManagement = () => {
     const dispatch = useDispatch();
@@ -45,9 +47,9 @@ export const UserManagement = () => {
     return (
         <div className="user-management-container">
             <div className="um-header">
-                <h2 className="um-title">User Management</h2>
+                <h2 className="um-title">{t("User Management")}</h2>
                 <button className="btn-add-user" onClick={() => setShowAddModal(true)}>
-                    + Add User
+                   {t("+ Add User")}
                 </button>
             </div>
 
@@ -60,7 +62,7 @@ export const UserManagement = () => {
             )}
 
             {/* Loading State */}
-            {isLoading && <div className="loading-spinner">Loading...</div>}
+            {isLoading && <div className="loading-spinner">{t("Loading...")}</div>}
 
             {/* Users Table */}
             {!isLoading && (
@@ -68,11 +70,11 @@ export const UserManagement = () => {
                     <table className="users-table">
                         <thead>
                         <tr>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th>{t("Username")}</th>
+                            <th>{t("Email")}</th>
+                            <th>{t("Role")}</th>
+                            <th>{t("Status")}</th>
+                            <th>{t("Actions")}</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -82,26 +84,26 @@ export const UserManagement = () => {
                                 <td>{user.email}</td>
                                 <td>
                                         <span className={`badge badge-${user.role}`}>
-                                            {user.role}
+                                            {tv(user.role)}
                                         </span>
                                 </td>
                                 <td>
                                         <span className={`badge badge-${user.is_active ? 'active' : 'inactive'}`}>
-                                            {user.is_active ? 'Active' : 'Inactive'}
+                                            {user.is_active ? t("Active") : t("Inactive")}
                                         </span>
                                 </td>
                                 <td>
                                     <button
                                         className="btn-icon btn-edit"
                                         onClick={() => handleEdit(user)}
-                                        title="Edit"
+                                        title={t("Edit")}
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
                                     <button
                                         className="btn-icon btn-delete"
                                         onClick={() => handleDeleteClick(user)}
-                                        title="Delete"
+                                        title={t("Delete")}
                                     >
                                         <i className="fa-solid fa-trash"></i>
                                     </button>
@@ -112,7 +114,7 @@ export const UserManagement = () => {
                     </table>
 
                     {users.length === 0 && (
-                        <div className="no-data">No users found</div>
+                        <div className="no-data">{t("No users found")}</div>
                     )}
                 </div>
             )}

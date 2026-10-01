@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUser } from "../../store/userSlice";
 import { PERMISSION_MODULES as MODULES } from "./permissionModules";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 const styles = {
     overlay: {
@@ -23,7 +25,7 @@ const styles = {
         background: "#ffffff",
         borderRadius: "20px",
         boxShadow: "0 24px 60px rgba(10,20,40,0.18), 0 4px 16px rgba(10,20,40,0.08)",
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+        fontFamily: "var(--font-sans)",
     },
     header: {
         padding: "24px 32px 20px",
@@ -152,7 +154,7 @@ const styles = {
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231e3a5f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,
         backgroundRepeat: "no-repeat",
         backgroundPosition: "right 14px center",
-        paddingRight: "36px",
+        paddingInlineEnd: "36px",
     },
     errorText: {
         fontSize: "12px",
@@ -235,7 +237,7 @@ const styles = {
     },
     permTh: {
         padding: "11px 16px",
-        textAlign: "left",
+        textAlign: "start",
         color: "rgba(255,255,255,0.9)",
         fontSize: "11px",
         fontWeight: 700,
@@ -400,12 +402,12 @@ export const EditUserModal = ({ user, onClose }) => {
         setPasswordError(null);
 
         if (formData.password && formData.password !== formData.confirm_password) {
-            setPasswordError("Passwords do not match.");
+            setPasswordError(t("Passwords do not match."));
             return;
         }
 
         if (formData.password && !formData.current_password) {
-            setPasswordError("Current password is required to set a new password.");
+            setPasswordError(t("Current password is required to set a new password."));
             return;
         }
 
@@ -433,7 +435,7 @@ export const EditUserModal = ({ user, onClose }) => {
 
         if (result.error) {
             const msg = result.payload;
-            if (msg?.includes("Current password is required") || msg?.includes("Current password is incorrect")) {
+            if (msg?.includes(t("Current password is required")) || msg?.includes(t("Current password is incorrect"))) {
                 setPasswordError(msg);
                 setFormData(prev => ({ ...prev, current_password: "" }));
                 return;
@@ -455,7 +457,7 @@ export const EditUserModal = ({ user, onClose }) => {
                     <div style={styles.headerLeft}>
                         <div style={styles.headerAvatar}>{initials}</div>
                         <div>
-                            <h3 style={styles.headerTitle}>Edit User</h3>
+                            <h3 style={styles.headerTitle}>{t("Edit User")}</h3>
                             <p style={styles.headerSub}>@{user.username}</p>
                         </div>
                     </div>
@@ -467,13 +469,13 @@ export const EditUserModal = ({ user, onClose }) => {
 
                         {/* ── Account Info ── */}
                         <div style={styles.sectionLabel}>
-                            Account Info
+                            {t("Account Info")}
                             <span style={styles.sectionLine} />
                         </div>
 
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>Username *</label>
+                                <label style={styles.label}>{t("Username *")}</label>
                                 <FocusInput
                                     type="text"
                                     name="username"
@@ -485,7 +487,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                 />
                             </div>
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>Email *</label>
+                                <label style={styles.label}>{t("Email *")}</label>
                                 <FocusInput
                                     type="email"
                                     name="email"
@@ -499,7 +501,7 @@ export const EditUserModal = ({ user, onClose }) => {
 
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>Mobile number</label>
+                                <label style={styles.label}>{t("Mobile number")}</label>
                                 <FocusInput
                                     type="tel"
                                     name="phone"
@@ -507,7 +509,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                     onChange={handleChange}
                                     inputMode="tel"
                                     maxLength={20}
-                                    placeholder="For SMS alerts, e.g. 09121234567"
+                                    placeholder={t("For SMS alerts, e.g. 09121234567")}
                                     style={styles.input}
                                 />
                             </div>
@@ -515,20 +517,20 @@ export const EditUserModal = ({ user, onClose }) => {
 
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>Role *</label>
+                                <label style={styles.label}>{t("Role *")}</label>
                                 <FocusSelect
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
                                 >
-                                    <option value="user">User</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="admin">Admin</option>
-                                    <option value="guest">Guest</option>
+                                    <option value="user">{t("User")}</option>
+                                    <option value="manager">{t("Manager")}</option>
+                                    <option value="admin">{t("Admin")}</option>
+                                    <option value="guest">{t("Guest")}</option>
                                 </FocusSelect>
                             </div>
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>Status</label>
+                                <label style={styles.label}>{t("Status")}</label>
                                 <div style={{ marginTop: "4px" }}>
                                     <button
                                         type="button"
@@ -572,7 +574,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                                 transform: formData.is_active ? "translateX(16px)" : "translateX(0)",
                                             }} />
                                         </span>
-                                        <span>{formData.is_active ? "Active" : "Inactive"}</span>
+                                        <span>{formData.is_active ? t("Active") : t("Inactive")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -582,7 +584,7 @@ export const EditUserModal = ({ user, onClose }) => {
 
                         {/* ── Password Change ── */}
                         <div style={styles.sectionLabel}>
-                            Change Password
+                            {t("Change Password")}
                             <span style={styles.sectionLine} />
                         </div>
 
@@ -596,35 +598,35 @@ export const EditUserModal = ({ user, onClose }) => {
                                 fontSize: "12.5px",
                                 color: "#1d4ed8",
                             }}>
-                                ℹ️ To change this user's password, their current password is also required for security.
+                                {t("ℹ️ To change this user's password, their current password is also required for security.")}
                             </div>
                         )}
 
                         <div style={styles.formRow}>
                             <div style={styles.formGroup}>
-                                <label style={styles.label}>New Password</label>
+                                <label style={styles.label}>{t("New Password")}</label>
                                 <FocusInput
                                     type="password"
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
-                                    placeholder="Leave empty to keep current"
+                                    placeholder={t("Leave empty to keep current")}
                                     style={styles.input}
                                 />
                                 <span style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}>
-                                    Minimum 8 characters
+                                    {t("Minimum 8 characters")}
                                 </span>
                             </div>
 
                             {showCurrentPasswordField && (
                                 <div style={styles.formGroup}>
-                                    <label style={styles.label}>Confirm New Password *</label>
+                                    <label style={styles.label}>{t("Confirm New Password *")}</label>
                                     <FocusInput
                                         type="password"
                                         name="confirm_password"
                                         value={formData.confirm_password}
                                         onChange={handleChange}
-                                        placeholder="Re-enter new password"
+                                        placeholder={t("Re-enter new password")}
                                         style={styles.input}
                                         hasError={!!(passwordError && passwordError.includes("match"))}
                                     />
@@ -636,7 +638,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             {showCurrentPasswordField && (
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>
-                                        {isSelfEdit ? "Current Password *" : "User's Current Password *"}
+                                        {isSelfEdit ? t("Current Password *") : t("User's Current Password *")}
                                     </label>
                                     <FocusInput
                                         type="password"
@@ -644,8 +646,8 @@ export const EditUserModal = ({ user, onClose }) => {
                                         value={formData.current_password}
                                         onChange={handleChange}
                                         placeholder={isSelfEdit
-                                            ? "Enter your current password"
-                                            : "Enter this user's current password"}
+                                            ? t("Enter your current password")
+                                            : t("Enter this user's current password")}
                                         required
                                         style={styles.input}
                                         hasError={!!passwordError}
@@ -663,7 +665,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             <div style={styles.passwordWarning}>
                                 <span style={styles.warningIcon}>🔒</span>
                                 <p style={styles.warningText}>
-                                    To change the password, you must provide the <strong>current password</strong> for verification.
+                                    {tx("To change the password, you must provide the {{current}} for verification.", { current: <strong>{t("current password")}</strong> })}
                                 </p>
                             </div>
                         )}
@@ -672,23 +674,23 @@ export const EditUserModal = ({ user, onClose }) => {
 
                         {/* ── Permissions ── */}
                         <div style={styles.sectionLabel}>
-                            Permissions
+                            {t("Permissions")}
                             <span style={styles.sectionLine} />
                         </div>
                         <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "14px", marginTop: "-8px" }}>
-                            Set module-level access for this user
+                            {t("Set module-level access for this user")}
                         </p>
 
                         {loadingPermissions ? (
-                            <div style={styles.loadingBox}>Loading permissions…</div>
+                            <div style={styles.loadingBox}>{t("Loading permissions…")}</div>
                         ) : (
                             <table style={styles.permTable}>
                                 <thead style={styles.permThead}>
                                 <tr>
-                                    <th style={styles.permTh}>Module</th>
-                                    <th style={{ ...styles.permTh, textAlign: "center" }}>Read</th>
-                                    <th style={{ ...styles.permTh, textAlign: "center" }}>Write</th>
-                                    <th style={{ ...styles.permTh, textAlign: "center" }}>Delete</th>
+                                    <th style={styles.permTh}>{t("Module")}</th>
+                                    <th style={{ ...styles.permTh, textAlign: "center" }}>{t("Read")}</th>
+                                    <th style={{ ...styles.permTh, textAlign: "center" }}>{t("Write")}</th>
+                                    <th style={{ ...styles.permTh, textAlign: "center" }}>{t("Delete")}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -730,7 +732,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             onMouseEnter={e => e.target.style.background = "#eef1f6"}
                             onMouseLeave={e => e.target.style.background = "#f8fafd"}
                         >
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button
                             type="submit"
@@ -738,7 +740,7 @@ export const EditUserModal = ({ user, onClose }) => {
                             onMouseEnter={e => e.target.style.opacity = "0.88"}
                             onMouseLeave={e => e.target.style.opacity = "1"}
                         >
-                            Save Changes
+                            {t("Save Changes")}
                         </button>
                     </div>
 

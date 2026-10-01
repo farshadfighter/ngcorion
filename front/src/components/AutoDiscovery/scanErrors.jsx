@@ -12,13 +12,14 @@
 import React from 'react';
 
 import { NMAP_INSTALL_COMMAND, errorToText, isNmapMissing } from './scanErrorText.js';
+import { t } from "../../i18n";
 
-/** Persian, RTL. The shell command stays LTR inside its own element. */
+/** The shell command stays LTR inside its own element. */
 export const NmapMissingNotice = () => (
-    <div className="nmap-missing" dir="rtl">
-        <strong className="nmap-missing-title">nmap روی سرور نصب نیست</strong>
+    <div className="nmap-missing">
+        <strong className="nmap-missing-title">{t("nmap is not installed on the server")}</strong>
         <span className="nmap-missing-hint">
-            برای فعال شدن اسکن شبکه، دستور زیر را روی سرور اجرا کنید:
+            {t("To enable network scanning, run this command on the server:")}
         </span>
         <code className="nmap-missing-cmd" dir="ltr">{NMAP_INSTALL_COMMAND}</code>
     </div>
@@ -54,7 +55,7 @@ export const ScanErrorAlert = ({ error, onClose }) => {
             {missing ? <WarningIcon /> : <ErrorIcon />}
             {missing ? <NmapMissingNotice /> : <span>{text}</span>}
             {onClose && (
-                <button className="alert-close" onClick={onClose} type="button" aria-label="Dismiss">
+                <button className="alert-close" onClick={onClose} type="button" aria-label={t("Dismiss")}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M18 6L6 18M6 6l12 12" />
                     </svg>

@@ -1,3 +1,4 @@
+import { lazy, useEffect, useState } from "react";
 import "./assets/Login.css";
 import "./assets/Dashboard.css";
 import "./assets/UserManagement.css";
@@ -52,9 +53,9 @@ import {
 } from "./components/routePages.jsx";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { store } from "./store/index";
-import { lazy, useEffect, useState } from "react";
 import { getLicenseStatusThunk } from "./store/licenseSlice";
 import { verifyToken } from "./store/authSlice";
+import { t } from "./i18n";
 
 function AppContent() {
     const dispatch = useDispatch();
@@ -103,7 +104,7 @@ function AppContent() {
                         }}
                     />
                     <div style={{ fontSize: "14px", color: "#6B7280" }}>
-                        Checking license...
+                        {t("Checking license...")}
                     </div>
                 </div>
                 <style>{`

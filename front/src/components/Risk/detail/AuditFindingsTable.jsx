@@ -1,16 +1,17 @@
 import React from "react";
 import { orDash, titleCase, formatDate } from "../riskConstants";
+import { t } from "../../../i18n";
 
 const COLUMNS = [
-    "Check ID",
-    "Check Title",
-    "Severity",
-    "Level",
-    "Vdom",
-    "Actual Value",
-    "Hardening Status",
-    "Verification Status",
-    "Last Update",
+    t("Check ID"),
+    t("Check Title"),
+    t("Severity"),
+    t("Level"),
+    t("Vdom"),
+    t("Actual Value"),
+    t("Hardening Status"),
+    t("Verification Status"),
+    t("Last Update"),
 ];
 
 /**
@@ -26,7 +27,7 @@ const COLUMNS = [
  */
 export const AuditFindingsTable = ({ findings, error }) => (
     <section className="ard-card">
-        <h3 className="ard-card-title">Audit Findings</h3>
+        <h3 className="ard-card-title">{t("Audit Findings")}</h3>
         {error ? (
             <p className="ard-notice">{error}</p>
         ) : (
@@ -43,7 +44,7 @@ export const AuditFindingsTable = ({ findings, error }) => (
                         {findings.length === 0 && (
                             <tr>
                                 <td colSpan={COLUMNS.length} className="ard-table-empty">
-                                    No audit findings for this asset.
+                                    {t("No audit findings for this asset.")}
                                 </td>
                             </tr>
                         )}

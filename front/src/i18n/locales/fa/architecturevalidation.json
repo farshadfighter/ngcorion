@@ -1,0 +1,23 @@
+{
+  "Accept": "پذیرش",
+  "Accepted": "پذیرفته‌شده",
+  "All": "همه",
+  "Analyzing…": "در حال تحلیل…",
+  "Asset": "دارایی",
+  "Cancel": "انصراف",
+  "Category": "دسته‌بندی",
+  "Ignore": "نادیده گرفتن",
+  "Ignore finding": "نادیده گرفتن یافته",
+  "Ignored": "نادیده‌گرفته‌شده",
+  "Last run: {{findingCount}} finding(s) / {{assetCount}} asset(s)": "آخرین اجرا: {{findingCount}} یافته / {{assetCount}} دارایی",
+  "Loading findings…": "در حال بارگذاری یافته‌ها…",
+  "No accepted findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافتهٔ پذیرفته‌شده‌ای نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
+  "No findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافته‌ای نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
+  "No ignored findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافتهٔ نادیده‌گرفته‌شده‌ای نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
+  "No open findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافتهٔ بازی نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
+  "Optionally explain why this finding doesn't apply.": "در صورت تمایل توضیح دهید چرا این یافته صدق نمی‌کند.",
+  "Reason (optional)": "دلیل (اختیاری)",
+  "Recommendation": "توصیه",
+  "Rule": "قاعده",
+  "Run Analysis": "اجرای تحلیل"
+}

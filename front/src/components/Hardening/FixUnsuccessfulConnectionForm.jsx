@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditSessions, getDeviceName } from "../../store/hardeningSlice";
+import { t, uiLocale } from "../../i18n";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
 
     const validate = () => {
         const errs = {};
-        if (!formData.session_id) errs.session_id = "Please select an audit job";
+        if (!formData.session_id) errs.session_id = t("Please select an audit job");
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
@@ -81,7 +82,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
 
         const sessionId = parseInt(formData.session_id);
         if (isNaN(sessionId) || !selectedSession) {
-            setErrors({ session_id: "Please select a valid audit job" });
+            setErrors({ session_id: t("Please select a valid audit job") });
             return;
         }
 
@@ -100,7 +101,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                     {/* ── Audit Job Dropdown ───────────────────────────────── */}
                     <div className="form-group form-group-full">
                         <label htmlFor="session_id">
-                            Audit Job Name
+                            {t("Audit Job Name")}
                             <span className="required" style={{ color: "#ef4444" }}>*</span>
                         </label>
 
@@ -113,7 +114,7 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                                 fontSize: "13px",
                                 color: "#6b7280",
                             }}>
-                                Loading sessions…
+                                {t("Loading sessions…")}
                             </div>
                         ) : (
                             <select
@@ -123,17 +124,16 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                                 onChange={handleChange}
                                 className={errors.session_id ? "error" : ""}
                             >
-                                <option value="">Select an audit job</option>
+                                <option value="">{t("Select an audit job")}</option>
                                 {failedAuditSessions.map((session) => (
                                     <option key={session.session_id} value={session.session_id}>
                                         {session.job_name || session.asset_name} | {session.target_ip} —{" "}
                                         {session.completed_at
-                                            ? new Date(session.completed_at).toLocaleDateString()
+                                            ? new Date(session.completed_at).toLocaleDateString(uiLocale())
                                             : session.started_at
-                                                ? new Date(session.started_at).toLocaleDateString()
+                                                ? new Date(session.started_at).toLocaleDateString(uiLocale())
                                                 : "N/A"
-                                        }{" "}
-                                        ({getFailedCount(session)} Failed)
+                                        }{t(" ({{getFailedCount}} Failed)", { getFailedCount: getFailedCount(session) })}
                                     </option>
                                 ))}
                             </select>
@@ -152,10 +152,10 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                                 borderRadius: "8px",
                             }}>
                                 <p style={{ margin: "0 0 4px 0", fontWeight: "600", fontSize: "13px", color: "#92400e" }}>
-                                    ⚠️ No failed audit sessions found
+                                    {t("⚠️ No failed audit sessions found")}
                                 </p>
                                 <p style={{ margin: 0, fontSize: "12px", color: "#78350f" }}>
-                                    Please run an audit first. Only completed audits with failed checks appear here.
+                                    {t("Please run an audit first. Only completed audits with failed checks appear here.")}
                                 </p>
                             </div>
                         )}
@@ -165,33 +165,33 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                     {selectedSession && (
                         <div className="form-group form-group-full" style={{
                             background: "#eff6ff",
-                            borderLeft: "4px solid #3b82f6",
+                            borderInlineStart: "4px solid #3b82f6",
                             padding: "12px 16px",
                             borderRadius: "6px",
                         }}>
                             <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
-                                <strong>Asset:</strong> {selectedSession.asset_name || "N/A"}
+                                <strong>{t("Asset:")}</strong> {selectedSession.asset_name || "N/A"}
                             </p>
                             <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
-                                <strong>IP Address:</strong> {selectedSession.target_ip || "N/A"}
+                                <strong>{t("IP Address:")}</strong> {selectedSession.target_ip || "N/A"}
                             </p>
                             <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
-                                <strong>Device Type:</strong> {getDeviceName(deviceType)}
+                                <strong>{t("Device Type:")}</strong> {getDeviceName(deviceType)}
                             </p>
                             <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
-                                <strong>Status:</strong> {selectedSession.status}
+                                <strong>{t("Status:")}</strong> {selectedSession.status}
                             </p>
                             {selectedSession.compliance && (
                                 <>
                                     <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
-                                        <strong>Total Checks:</strong>{" "}
+                                        <strong>{t("Total Checks:")}</strong>{" "}
                                         {selectedSession.compliance.total_checks || selectedSession.compliance.total || 0}
                                     </p>
                                     <p style={{ margin: "4px 0", fontSize: "13px", color: "#dc2626" }}>
-                                        <strong>Failed Checks:</strong> {getFailedCount(selectedSession)}
+                                        <strong>{t("Failed Checks:")}</strong> {getFailedCount(selectedSession)}
                                     </p>
                                     <p style={{ margin: "4px 0", fontSize: "13px", color: "#059669" }}>
-                                        <strong>Passed Checks:</strong>{" "}
+                                        <strong>{t("Passed Checks:")}</strong>{" "}
                                         {selectedSession.compliance.passed_checks || selectedSession.compliance.passed || 0}
                                     </p>
                                 </>
@@ -209,14 +209,14 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                         className="btn-cancel"
                         disabled={isLoading}
                     >
-                        Cancel
+                        {t("Cancel")}
                     </button>
                     <button
                         type="submit"
                         className="btn-see-result"
                         disabled={isLoading || failedAuditSessions.length === 0}
                     >
-                        Next
+                        {t("Next")}
                     </button>
                 </div>
             </form>

@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 export const FixUnsuccessfulSuccess = ({ sessionData, onNext }) => {
     return (
         <div className="auditing-success-container">
@@ -8,19 +9,19 @@ export const FixUnsuccessfulSuccess = ({ sessionData, onNext }) => {
 
             {/* Success Message */}
             <div className="success-message">
-                <div className="success-text">Audit Results Loaded Successfully</div>
+                <div className="success-text">{t("Audit Results Loaded Successfully")}</div>
             </div>
 
             {/* Session Info */}
             <div className="success-info">
                 <p>
-                    <strong>Asset:</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
+                    <strong>{t("Asset:")}</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
                 </p>
                 <p>
-                    <strong>Audit Session:</strong> #{sessionData.session_id || "N/A"}
+                    <strong>{t("Audit Session:")}</strong> #{sessionData.session_id || "N/A"}
                 </p>
                 <p>
-                    <strong>Status:</strong> Ready to fix unsuccessful checks
+                    <strong>{t("Status:")}</strong> {" "}{t("Ready to fix unsuccessful checks")}
                 </p>
             </div>
 
@@ -41,7 +42,7 @@ export const FixUnsuccessfulSuccess = ({ sessionData, onNext }) => {
                         transition: 'all 0.2s'
                     }}
                 >
-                    Next
+                    {t("Next")}
                 </button>
             </div>
         </div>

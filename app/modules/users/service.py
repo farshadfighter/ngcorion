@@ -196,6 +196,9 @@ class UserService:
 
         if user_data.phone is not None:
             user.phone = user_data.phone or None
+
+        if user_data.language is not None:
+            user.language = user_data.language or None
         
         # Update password
         if user_data.password is not None:

@@ -13,55 +13,56 @@ import { fetchAssets } from "../../store/assetSlice.jsx";
 import { usePermission } from "../../hooks/usePermission";
 import { AccessDenied } from "../routePages.jsx";
 import "../../assets/Scheduling.css";
+import { t as tr, uiLocale } from "../../i18n";
 
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_NAMES = [tr("Monday"), tr("Tuesday"), tr("Wednesday"), tr("Thursday"), tr("Friday"), tr("Saturday"), tr("Sunday")];
 
 const TECH_FIELDS = {
     cisco: [
-        { key: "ssh_username", label: "SSH Username", type: "text", required: true },
-        { key: "ssh_password", label: "SSH Password", type: "password", required: true },
-        { key: "ssh_secret", label: "Enable Secret (optional)", type: "password" },
-        { key: "ssh_port", label: "SSH Port", type: "number", default: 22 },
+        { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
+        { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
+        { key: "ssh_secret", label: tr("Enable Secret (optional)"), type: "password" },
+        { key: "ssh_port", label: tr("SSH Port"), type: "number", default: 22 },
     ],
     fortinet: [
-        { key: "ssh_username", label: "SSH Username", type: "text", required: true },
-        { key: "ssh_password", label: "SSH Password", type: "password", required: true },
-        { key: "vdom", label: "VDOM (optional)", type: "text" },
-        { key: "ssh_port", label: "SSH Port", type: "number", default: 22 },
+        { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
+        { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
+        { key: "vdom", label: tr("VDOM (optional)"), type: "text" },
+        { key: "ssh_port", label: tr("SSH Port"), type: "number", default: 22 },
     ],
     linux: [
-        { key: "ssh_username", label: "SSH Username", type: "text", required: true },
-        { key: "ssh_password", label: "SSH Password", type: "password", required: true },
-        { key: "sudo_password", label: "Sudo Password (optional)", type: "password" },
-        { key: "ssh_port", label: "SSH Port", type: "number", default: 22 },
+        { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
+        { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
+        { key: "sudo_password", label: tr("Sudo Password (optional)"), type: "password" },
+        { key: "ssh_port", label: tr("SSH Port"), type: "number", default: 22 },
     ],
     apache: [
-        { key: "ssh_username", label: "SSH Username", type: "text", required: true },
-        { key: "ssh_password", label: "SSH Password", type: "password", required: true },
-        { key: "sudo_password", label: "Sudo Password (optional)", type: "password" },
-        { key: "ssh_port", label: "SSH Port", type: "number", default: 22 },
+        { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
+        { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
+        { key: "sudo_password", label: tr("Sudo Password (optional)"), type: "password" },
+        { key: "ssh_port", label: tr("SSH Port"), type: "number", default: 22 },
     ],
     mongodb: [
-        { key: "ssh_username", label: "SSH Username", type: "text", required: true },
-        { key: "ssh_password", label: "SSH Password", type: "password", required: true },
-        { key: "sudo_password", label: "Sudo Password (optional)", type: "password" },
-        { key: "mongo_username", label: "MongoDB Username (optional)", type: "text" },
-        { key: "mongo_password", label: "MongoDB Password (optional)", type: "password" },
-        { key: "ssh_port", label: "SSH Port", type: "number", default: 22 },
+        { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
+        { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
+        { key: "sudo_password", label: tr("Sudo Password (optional)"), type: "password" },
+        { key: "mongo_username", label: tr("MongoDB Username (optional)"), type: "text" },
+        { key: "mongo_password", label: tr("MongoDB Password (optional)"), type: "password" },
+        { key: "ssh_port", label: tr("SSH Port"), type: "number", default: 22 },
     ],
     mssql: [
-        { key: "mssql_username", label: "SQL Server Login", type: "text", required: true },
-        { key: "mssql_password", label: "SQL Server Password", type: "password", required: true },
-        { key: "mssql_port", label: "Port", type: "number", default: 1433 },
+        { key: "mssql_username", label: tr("SQL Server Login"), type: "text", required: true },
+        { key: "mssql_password", label: tr("SQL Server Password"), type: "password", required: true },
+        { key: "mssql_port", label: tr("Port"), type: "number", default: 1433 },
     ],
     windows: [
-        { key: "windows_username", label: "Windows Username", type: "text", required: true },
-        { key: "windows_password", label: "Windows Password", type: "password", required: true },
-        { key: "winrm_port", label: "WinRM Port", type: "number", default: 5985 },
+        { key: "windows_username", label: tr("Windows Username"), type: "text", required: true },
+        { key: "windows_password", label: tr("Windows Password"), type: "password", required: true },
+        { key: "winrm_port", label: tr("WinRM Port"), type: "number", default: 5985 },
     ],
 };
 
-const RECURRENCE_LABELS = { once: "Once", hourly: "Hourly", daily: "Daily", weekly: "Weekly" };
+const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 
 const emptyForm = {
     job_name: "",
@@ -82,10 +83,10 @@ const emptyForm = {
 const scheduleSummary = (job) => {
     const hh = String(job.hour ?? 0).padStart(2, "0");
     const mm = String(job.minute ?? 0).padStart(2, "0");
-    if (job.recurrence === "hourly") return `Every hour at :${mm}`;
-    if (job.recurrence === "weekly") return `Weekly on ${DAY_NAMES[job.day_of_week ?? 0]} at ${hh}:${mm}`;
-    if (job.recurrence === "once") return `Once at ${hh}:${mm}`;
-    return `Daily at ${hh}:${mm}`;
+    if (job.recurrence === "hourly") return tr("Every hour at :{{mm}}", { mm });
+    if (job.recurrence === "weekly") return tr("Weekly on {{value}} at {{hh}}:{{mm}}", { value: DAY_NAMES[job.day_of_week ?? 0], hh, mm });
+    if (job.recurrence === "once") return tr("Once at {{hh}}:{{mm}}", { hh, mm });
+    return tr("Daily at {{hh}}:{{mm}}", { hh, mm });
 };
 
 export const ScheduledJobsPage = ({ jobType }) => {
@@ -97,7 +98,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
 
     const canRead = jobType === "discovery" ? canReadDiscovery : canReadAuditing;
     const canWrite = jobType === "discovery" ? canWriteDiscovery : canWriteAuditing;
-    const pageTitle = jobType === "discovery" ? "Schedule Discovery" : "Schedule Auditing";
+    const pageTitle = jobType === "discovery" ? tr("Schedule Discovery") : tr("Schedule Auditing");
 
     const { jobs, runsByJobId, isLoading, isSaving, error, successMessage } = useSelector((state) => state.scheduling);
     const { assets } = useSelector((state) => state.assets);
@@ -156,7 +157,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
     };
 
     const handleDelete = (job) => {
-        if (window.confirm(`Delete scheduled job "${job.job_name}"?`)) {
+        if (window.confirm(tr("Delete scheduled job \"{{job_name}}\"?", { job_name: job.job_name }))) {
             dispatch(deleteScheduledJob(job.id));
         }
     };
@@ -177,7 +178,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
             <div className="sched-toolbar">
                 <h2 className="sched-page-title">{pageTitle}</h2>
                 <button className="sched-btn sched-btn-primary" onClick={() => setShowCreate(true)}>
-                    <i className="fa-solid fa-plus" /> New Schedule
+                    <i className="fa-solid fa-plus" /> {" "}{tr("New Schedule")}
                 </button>
             </div>
 
@@ -187,24 +188,24 @@ export const ScheduledJobsPage = ({ jobType }) => {
 
             <div className="sched-table-container">
                 {isLoading ? (
-                    <div className="sched-empty">Loading scheduled jobs…</div>
+                    <div className="sched-empty">{tr("Loading scheduled jobs…")}</div>
                 ) : visibleJobs.length === 0 ? (
                     <div className="sched-empty">
                         {jobType === "discovery"
-                            ? "No scheduled discovery scans yet. Click \"New Schedule\" to automate one."
-                            : "No scheduled audits yet. Click \"New Schedule\" to automate one."}
+                            ? tr("No scheduled discovery scans yet. Click \"New Schedule\" to automate one.")
+                            : tr("No scheduled audits yet. Click \"New Schedule\" to automate one.")}
                     </div>
                 ) : (
                     <table className="sched-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Schedule</th>
-                                <th>Next run</th>
-                                <th>Last run</th>
-                                <th>Enabled</th>
-                                <th>Actions</th>
+                                <th>{tr("Name")}</th>
+                                <th>{tr("Type")}</th>
+                                <th>{tr("Schedule")}</th>
+                                <th>{tr("Next run")}</th>
+                                <th>{tr("Last run")}</th>
+                                <th>{tr("Enabled")}</th>
+                                <th>{tr("Actions")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -212,17 +213,17 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                 <tr key={job.id}>
                                     <td className="sched-cell-strong">{job.job_name}</td>
                                     <td>
-                                        {job.job_type === "discovery" ? "Discovery" : `Audit (${job.technology}${job.asset_name ? ` — ${job.asset_name}` : ""})`}
+                                        {job.job_type === "discovery" ? tr("Discovery") : tr("Audit ({{technology}}{{value}})", { technology: job.technology, value: job.asset_name ? ` — ${job.asset_name}` : "" })}
                                     </td>
                                     <td>{scheduleSummary(job)}</td>
-                                    <td>{new Date(job.next_run_at).toLocaleString()}</td>
+                                    <td>{new Date(job.next_run_at).toLocaleString(uiLocale())}</td>
                                     <td>
                                         {job.last_run_at ? (
                                             <span className={`sched-badge ${job.last_run_status === "success" ? "sched-badge-success" : "sched-badge-failed"}`}>
                                                 {job.last_run_status}
                                             </span>
                                         ) : (
-                                            "Never"
+                                            tr("Never")
                                         )}
                                     </td>
                                     <td>
@@ -233,9 +234,9 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                     </td>
                                     <td>
                                         <div className="sched-row-actions">
-                                            <button className="sched-link-btn" onClick={() => handleRunNow(job)}>Run now</button>
-                                            <button className="sched-link-btn" onClick={() => handleViewHistory(job)}>History</button>
-                                            <button className="sched-link-btn sched-link-btn-muted" onClick={() => handleDelete(job)}>Delete</button>
+                                            <button className="sched-link-btn" onClick={() => handleRunNow(job)}>{tr("Run now")}</button>
+                                            <button className="sched-link-btn" onClick={() => handleViewHistory(job)}>{tr("History")}</button>
+                                            <button className="sched-link-btn sched-link-btn-muted" onClick={() => handleDelete(job)}>{tr("Delete")}</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -248,30 +249,30 @@ export const ScheduledJobsPage = ({ jobType }) => {
             {showCreate && (
                 <div className="sched-modal-backdrop" onClick={() => setShowCreate(false)}>
                     <div className="sched-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>{jobType === "discovery" ? "New scheduled discovery scan" : "New scheduled audit"}</h3>
+                        <h3>{jobType === "discovery" ? tr("New scheduled discovery scan") : tr("New scheduled audit")}</h3>
 
                         <div className="sched-field">
-                            <label>Job name</label>
+                            <label>{tr("Job name")}</label>
                             <input value={form.job_name} onChange={(e) => setForm({ ...form, job_name: e.target.value })} />
                         </div>
 
                         {form.job_type === "discovery" ? (
                             <>
                                 <div className="sched-field">
-                                    <label>Target (IP / CIDR / range)</label>
+                                    <label>{tr("Target (IP / CIDR / range)")}</label>
                                     <input placeholder="192.168.1.0/24" value={form.target} onChange={(e) => setForm({ ...form, target: e.target.value })} />
                                 </div>
                                 <div className="sched-field">
-                                    <label>Scan type</label>
+                                    <label>{tr("Scan type")}</label>
                                     <select value={form.scan_type} onChange={(e) => setForm({ ...form, scan_type: e.target.value })}>
-                                        <option value="well_known_ports">Well-known ports</option>
-                                        <option value="all_ports">All ports</option>
-                                        <option value="custom_ports">Custom ports</option>
+                                        <option value="well_known_ports">{tr("Well-known ports")}</option>
+                                        <option value="all_ports">{tr("All ports")}</option>
+                                        <option value="custom_ports">{tr("Custom ports")}</option>
                                     </select>
                                 </div>
                                 {form.scan_type === "custom_ports" && (
                                     <div className="sched-field">
-                                        <label>Ports</label>
+                                        <label>{tr("Ports")}</label>
                                         <input placeholder="80,443,8080" value={form.ports} onChange={(e) => setForm({ ...form, ports: e.target.value })} />
                                     </div>
                                 )}
@@ -279,7 +280,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                         ) : (
                             <>
                                 <div className="sched-field">
-                                    <label>Technology</label>
+                                    <label>{tr("Technology")}</label>
                                     <select
                                         value={form.technology}
                                         onChange={(e) => setForm({ ...form, technology: e.target.value, audit_params: {} })}
@@ -290,9 +291,9 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                     </select>
                                 </div>
                                 <div className="sched-field">
-                                    <label>Asset</label>
+                                    <label>{tr("Asset")}</label>
                                     <select value={form.asset_id} onChange={(e) => setForm({ ...form, asset_id: e.target.value })}>
-                                        <option value="">— Select an asset —</option>
+                                        <option value="">{tr("— Select an asset —")}</option>
                                         {assets.map((a) => (
                                             <option key={a.id} value={a.id}>{a.asset_name}</option>
                                         ))}
@@ -312,14 +313,13 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                     </div>
                                 ))}
                                 <p className="sched-modal-hint">
-                                    Credentials are stored encrypted at rest so this job can run unattended - the one exception to
-                                    this app's usual "never stored" rule, same as NOC's SNMP credentials.
+                                    {tr("Credentials are stored encrypted at rest so this job can run unattended - the one exception to this app's usual \"never stored\" rule, same as NOC's SNMP credentials.")}
                                 </p>
                             </>
                         )}
 
                         <div className="sched-field">
-                            <label>Recurrence</label>
+                            <label>{tr("Recurrence")}</label>
                             <select value={form.recurrence} onChange={(e) => setForm({ ...form, recurrence: e.target.value })}>
                                 {Object.entries(RECURRENCE_LABELS).map(([k, v]) => (
                                     <option key={k} value={k}>{v}</option>
@@ -328,17 +328,17 @@ export const ScheduledJobsPage = ({ jobType }) => {
                         </div>
                         {form.recurrence !== "hourly" && (
                             <div className="sched-field">
-                                <label>Time of day (hour)</label>
+                                <label>{tr("Time of day (hour)")}</label>
                                 <input type="number" min={0} max={23} value={form.hour} onChange={(e) => setForm({ ...form, hour: Number(e.target.value) })} />
                             </div>
                         )}
                         <div className="sched-field">
-                            <label>Minute</label>
+                            <label>{tr("Minute")}</label>
                             <input type="number" min={0} max={59} value={form.minute} onChange={(e) => setForm({ ...form, minute: Number(e.target.value) })} />
                         </div>
                         {form.recurrence === "weekly" && (
                             <div className="sched-field">
-                                <label>Day of week</label>
+                                <label>{tr("Day of week")}</label>
                                 <select value={form.day_of_week} onChange={(e) => setForm({ ...form, day_of_week: Number(e.target.value) })}>
                                     {DAY_NAMES.map((d, i) => (
                                         <option key={d} value={i}>{d}</option>
@@ -348,7 +348,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                         )}
 
                         <div className="sched-modal-actions">
-                            <button className="sched-btn" onClick={() => setShowCreate(false)}>Cancel</button>
+                            <button className="sched-btn" onClick={() => setShowCreate(false)}>{tr("Cancel")}</button>
                             <button
                                 className="sched-btn sched-btn-primary"
                                 onClick={handleCreate}
@@ -359,7 +359,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                     (form.job_type === "discovery" ? !form.target : !form.asset_id)
                                 }
                             >
-                                Create
+                                {tr("Create")}
                             </button>
                         </div>
                     </div>
@@ -369,22 +369,22 @@ export const ScheduledJobsPage = ({ jobType }) => {
             {historyJobId !== null && (
                 <div className="sched-modal-backdrop" onClick={() => setHistoryJobId(null)}>
                     <div className="sched-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Run history</h3>
+                        <h3>{tr("Run history")}</h3>
                         {(runsByJobId[historyJobId] || []).length === 0 ? (
-                            <div className="sched-empty">No runs yet.</div>
+                            <div className="sched-empty">{tr("No runs yet.")}</div>
                         ) : (
                             <table className="sched-table">
                                 <thead>
                                     <tr>
-                                        <th>Started</th>
-                                        <th>Status</th>
-                                        <th>Message</th>
+                                        <th>{tr("Started")}</th>
+                                        <th>{tr("Status")}</th>
+                                        <th>{tr("Message")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {(runsByJobId[historyJobId] || []).map((r) => (
                                         <tr key={r.id}>
-                                            <td>{r.started_at ? new Date(r.started_at).toLocaleString() : "—"}</td>
+                                            <td>{r.started_at ? new Date(r.started_at).toLocaleString(uiLocale()) : "—"}</td>
                                             <td>
                                                 <span className={`sched-badge ${r.status === "success" ? "sched-badge-success" : "sched-badge-failed"}`}>
                                                     {r.status}
@@ -397,7 +397,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                             </table>
                         )}
                         <div className="sched-modal-actions">
-                            <button className="sched-btn" onClick={() => setHistoryJobId(null)}>Close</button>
+                            <button className="sched-btn" onClick={() => setHistoryJobId(null)}>{tr("Close")}</button>
                         </div>
                     </div>
                 </div>

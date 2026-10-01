@@ -108,7 +108,7 @@
 
 .search-box svg {
     position: absolute;
-    left: 12px;
+    inset-inline-start: 12px;
     top: 50%;
     transform: translateY(-50%);
     color: #9ca3af;
@@ -117,7 +117,7 @@
 
 .search-input {
     width: 100%;
-    padding: 10px 12px 10px 40px;
+    padding-block: 10px 10px; padding-inline: 40px 12px;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     font-size: 14px;
@@ -148,7 +148,7 @@
     color: #374151;
     cursor: pointer;
     transition: all 0.2s;
-    margin-left: auto;
+    margin-inline-start: auto;
 }
 
 .btn-sort:hover {
@@ -176,7 +176,7 @@
 }
 .assets-table th {
     padding: 14px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 13px;
     font-weight: 600;
     color: #6b7280;
@@ -341,8 +341,8 @@
 .modal-overlay {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
@@ -597,7 +597,7 @@
 /* REQUIRED INDICATOR */
 .required {
     color: #E74C3C;
-    margin-left: 3px;
+    margin-inline-start: 3px;
 }
 
 /* ============================================
@@ -631,7 +631,7 @@
     }
 
     .btn-sort {
-        margin-left: 0;
+        margin-inline-start: 0;
         width: 100%;
     }
 
@@ -715,7 +715,7 @@
 
 /* Actions column - راست‌چین */
 .ports-table td:last-child {
-    text-align: right;
+    text-align: end;
 }
 
 /* Small Icon Buttons */
@@ -954,19 +954,19 @@
 
 .ports-table th {
     padding: 12px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 13px;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid #e5e7eb;
-    border-right: 1px solid #e5e7eb;
+    border-inline-end: 1px solid #e5e7eb;
 }
 
 .ports-table th:last-child {
-    text-align: right;
-    border-right: none;
+    text-align: end;
+    border-inline-end: none;
 }
 
 .ports-table tbody tr {
@@ -986,12 +986,12 @@
     padding: 14px 16px;
     font-size: 14px;
     color: #374151;
-    border-right: 1px solid #e5e7eb;
+    border-inline-end: 1px solid #e5e7eb;
 }
 
 .ports-table td:last-child {
-    text-align: right;
-    border-right: none;
+    text-align: end;
+    border-inline-end: none;
 }
 
 .ports-table td:first-child {
@@ -1016,7 +1016,7 @@ td.completeness-indicator {
     min-width: 4px;
     max-width: 4px;
     padding: 0 !important;
-    border-right: none !important;
+    border-inline-end: none !important;
     border-radius: 4px 0 0 4px;
     transition: background-color 0.2s ease;
 }

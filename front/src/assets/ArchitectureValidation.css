@@ -130,7 +130,7 @@
 
 .av-table th {
     padding: 14px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 13px;
     font-weight: 600;
     color: #6b7280;

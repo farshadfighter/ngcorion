@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuditStatus } from "../../store/auditSlice";
+import { t } from "../../i18n";
 
 export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) => {
     const dispatch = useDispatch();
@@ -60,7 +61,7 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
             const errorMsg =
                 currentSession.error_message ||
                 currentSession.error ||
-                "Audit failed. Please check your credentials and try again.";
+                t("Audit failed. Please check your credentials and try again.");
             setTimeout(() => onError(errorMsg), 1000);
         }
     }, [currentSession, sessionData.session_id, onComplete, onError]);
@@ -85,22 +86,22 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
             <div className="process-message">
                 <div className="message-icon">ℹ️</div>
                 {isPending ? (
-                    <p>Connecting to server, please wait...</p>
+                    <p>{t("Connecting to server, please wait...")}</p>
                 ) : (
-                    <p>Be patient, auditing is being processed, it may take a few minutes.</p>
+                    <p>{t("Be patient, auditing is being processed, it may take a few minutes.")}</p>
                 )}
             </div>
 
             <div className="process-info">
                 <p>
-                    <strong>job name :</strong> {jobName || `job number${sessionData?.session_id || ''}`}
+                    <strong>{t("job name :")}</strong> {jobName || t("job number {{id}}", { id: sessionData?.session_id || '' })}
                 </p>
                 <p>
-                    <strong>Asset :</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
+                    <strong>{t("Asset :")}</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
                 </p>
                 {!isPending && (
                     <p>
-                        <strong>Session ID :</strong> #{sessionData.session_id}
+                        <strong>{t("Session ID :")}</strong> #{sessionData.session_id}
                     </p>
                 )}
             </div>
@@ -121,7 +122,7 @@ export const AuditingProcess = ({ sessionData, jobName, onComplete, onError }) =
                     onClick={handleRefresh}
                     disabled={isRefreshing || isPending}
                 >
-                    {isRefreshing ? "Refreshing..." : "Refresh"}
+                    {isRefreshing ? t("Refreshing...") : t("Refresh")}
                 </button>
             </div>
         </div>

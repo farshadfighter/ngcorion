@@ -9,8 +9,8 @@
 .asset-list-modal-overlay {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;
@@ -196,7 +196,7 @@
 
 .search-box svg {
     position: absolute;
-    left: 12px;
+    inset-inline-start: 12px;
     top: 50%;
     transform: translateY(-50%);
     width: 16px;
@@ -207,7 +207,7 @@
 
 .search-input {
     width: 100%;
-    padding: 8px 12px 8px 36px;
+    padding-block: 8px 8px; padding-inline: 36px 12px;
     border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 13px;
@@ -254,7 +254,7 @@
 
 .asset-table th {
     padding: 12px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 12px;
     font-weight: 600;
     color: #374151;
@@ -264,7 +264,7 @@
 }
 
 .asset-table th:first-child {
-    padding-left: 24px;
+    padding-inline-start: 24px;
 }
 
 /* Table Body */
@@ -278,7 +278,7 @@
 .asset-table tbody tr::before {
     content: '';
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 0;
     bottom: 0;
     width: 3px;
@@ -309,7 +309,7 @@
 }
 
 .asset-table td:first-child {
-    padding-left: 24px;
+    padding-inline-start: 24px;
 }
 
 /* ============================================
@@ -336,8 +336,8 @@
 
 .col-actions {
     width: 100px;
-    text-align: right;
-    padding-right: 24px;
+    text-align: end;
+    padding-inline-end: 24px;
 }
 
 .text-muted {

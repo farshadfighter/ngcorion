@@ -19,6 +19,8 @@ import { useAssetFormOptions } from "./useAssetFormOptions";
 import "../../assets/AssetList.css"
 // Pagination's styles live with the Logs page it was first built for.
 import "../../assets/LogsPage.css"
+import { t as tr, n } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 const PRIMARY = "#1e3a5f";
 
@@ -208,7 +210,7 @@ export const AssetList = () => {
         const failed = outcomes.filter(o => o.status === "rejected").length;
         if (failed) {
             setBulkError(
-                `${failed} of ${outcomes.length} assets could not be deleted.`
+                tr("{{failed}} of {{length}} assets could not be deleted.", { failed, length: outcomes.length })
             );
         }
         dispatch(fetchAssets());
@@ -237,10 +239,10 @@ export const AssetList = () => {
         <div className="asset-list-container main-asset-list">
             {/* Header */}
             <div className="asset-list-header">
-                <h1 className="page-title">Asset List</h1>
+                <h1 className="page-title">{tr("Asset List")}</h1>
                 <div className="header-actions">
                     <button className="btn-header" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                        {uploading ? "⏳ Importing..." : "⬇ Import"}
+                        {uploading ? tr("⏳ Importing...") : tr("⬇ Import")}
                     </button>
                     <button className="btn-header" onClick={async () => {
                         const res = await api.get("/api/assets/export/excel", { responseType: "blob" });
@@ -249,7 +251,7 @@ export const AssetList = () => {
                         link.href = url; link.setAttribute("download", `assets-${Date.now()}.xlsx`);
                         document.body.appendChild(link); link.click(); link.remove();
                         window.URL.revokeObjectURL(url);
-                    }}>⬆ Export</button>
+                    }}>{tr("⬆ Export")}</button>
                     <button className="btn-header" onClick={async () => {
                         const res = await api.get("/api/assets/export/template", { responseType: "blob" });
                         const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -257,9 +259,9 @@ export const AssetList = () => {
                         link.href = url; link.setAttribute("download", "asset-template.xlsx");
                         document.body.appendChild(link); link.click(); link.remove();
                         window.URL.revokeObjectURL(url);
-                    }}><i className="fa-solid fa-download"></i> Download Template</button>
+                    }}><i className="fa-solid fa-download"></i> {" "}{tr("Download Template")}</button>
                     <button className="btn-header btn-primary" onClick={() => setShowAddModal(true)}>
-                        + Add Asset
+                        {tr("+ Add Asset")}
                     </button>
                 </div>
             </div>
@@ -273,7 +275,7 @@ export const AssetList = () => {
                            await api.post("/api/assets/import/excel/upload", formData);
                            await dispatch(fetchAssets());
                        } catch (err) {
-                           setBulkError("Import failed: " + (err.response?.data?.detail || err.message));
+                           setBulkError(tr("Import failed: {{error}}", { error: err.response?.data?.detail || err.message }));
                        } finally {
                            setUploading(false); e.target.value = "";
                        }
@@ -287,10 +289,10 @@ export const AssetList = () => {
             {/* Tabs */}
             <div className="asset-tabs">
                 {[
-                    { id: "overview",  label: "Overview" },
-                    { id: "network",   label: "Network & System" },
-                    { id: "location",  label: "Location & Owner" },
-                    { id: "security",  label: "Security & Audit" },
+                    { id: "overview",  label: tr("Overview") },
+                    { id: "network",   label: tr("Network & System") },
+                    { id: "location",  label: tr("Location & Owner") },
+                    { id: "security",  label: tr("Security & Audit") },
                 ].map((tab) => (
                     <button key={tab.id} className={`asset-tab ${activeTab === tab.id ? "active" : ""}`}
                             onClick={() => setActiveTab(tab.id)}>
@@ -305,7 +307,7 @@ export const AssetList = () => {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                     </svg>
-                    <input className="search-input" placeholder="Search Asset"
+                    <input className="search-input" placeholder={tr("Search Asset")}
                            value={searchQuery}
                            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} />
                 </div>
@@ -322,12 +324,12 @@ export const AssetList = () => {
                         }}
                     >
                         <i className="fa-solid fa-trash"></i>
-                        Delete Selected ({selectedIds.size})
+                        {tr("Delete Selected ({{size}})", { size: selectedIds.size })}
                     </button>
                 )}
             </div>
 
-            {isLoading && <div className="loading-spinner">Loading assets...</div>}
+            {isLoading && <div className="loading-spinner">{tr("Loading assets...")}</div>}
 
             {!isLoading && activeTab === "overview"  && <OverviewTab      {...tabProps} />}
             {!isLoading && activeTab === "network"   && <NetworkSystemTab {...tabProps} />}
@@ -349,16 +351,16 @@ export const AssetList = () => {
                 <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Confirm Delete</h3>
+                            <h3>{tr("Confirm Delete")}</h3>
                             <button className="modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to delete "{selectedAsset?.asset_name || `ID: ${resolveAssetId(selectedAsset)}`}"?</p>
-                            <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>This action cannot be undone.</p>
+                            <p>{tr("Are you sure you want to delete \"{{name}}\"?", { name: selectedAsset?.asset_name || tr("ID: {{resolveAssetId}}", { resolveAssetId: resolveAssetId(selectedAsset) }) })}</p>
+                            <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>{tr("This action cannot be undone.")}</p>
                         </div>
                         <div className="modal-actions">
-                            <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>Cancel</button>
-                            <button className="btn-delete2" onClick={handleDeleteConfirm}>Delete</button>
+                            <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>{tr("Cancel")}</button>
+                            <button className="btn-delete2" onClick={handleDeleteConfirm}>{tr("Delete")}</button>
                         </div>
                     </div>
                 </div>
@@ -369,16 +371,18 @@ export const AssetList = () => {
                 <div className="modal-overlay" onClick={() => !isDeletingSelected && setShowDeleteSelectedModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header" style={{ borderBottom: `3px solid ${PRIMARY}` }}>
-                            <h3 style={{ color: PRIMARY }}>Delete Selected Assets</h3>
+                            <h3 style={{ color: PRIMARY }}>{tr("Delete Selected Assets")}</h3>
                             <button className="modal-close" onClick={() => setShowDeleteSelectedModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to delete <strong>{selectedIds.size}</strong> selected asset{selectedIds.size !== 1 ? "s" : ""}?</p>
-                            <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>This action cannot be undone.</p>
+                            <p>{selectedIds.size === 1
+                                ? tx("Are you sure you want to delete {{count}} selected asset?", { count: <strong>{n(selectedIds.size)}</strong> })
+                                : tx("Are you sure you want to delete {{count}} selected assets?", { count: <strong>{n(selectedIds.size)}</strong> })}</p>
+                            <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>{tr("This action cannot be undone.")}</p>
                         </div>
                         <div className="modal-actions">
                             <button className="btn-cancel" onClick={() => setShowDeleteSelectedModal(false)}
-                                    disabled={isDeletingSelected}>Cancel</button>
+                                    disabled={isDeletingSelected}>{tr("Cancel")}</button>
                             <button
                                 onClick={handleDeleteSelectedConfirm}
                                 disabled={isDeletingSelected}
@@ -389,7 +393,7 @@ export const AssetList = () => {
                                     opacity: isDeletingSelected ? 0.7 : 1,
                                 }}
                             >
-                                {isDeletingSelected ? "Deleting..." : `Yes, Delete ${selectedIds.size}`}
+                                {isDeletingSelected ? tr("Deleting...") : tr("Yes, Delete {{size}}", { size: selectedIds.size })}
                             </button>
                         </div>
                     </div>

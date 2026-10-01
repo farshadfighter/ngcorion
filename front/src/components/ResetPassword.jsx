@@ -3,15 +3,16 @@ import { useNavigate, useLocation } from "react-router-dom";
 import api from "../config/api";
 import LockIcon from "../assets/LockIcon.jsx";
 import UserIcon from "../assets/UserIcon.jsx";
+import { t } from "../i18n";
 
 // Mirror of the backend password rules, so the user gets immediate feedback.
 const validatePassword = (pwd) => {
-    if (pwd.length < 8) return "Password must be at least 8 characters long";
-    if (!/[A-Z]/.test(pwd)) return "Password must contain at least one uppercase letter";
-    if (!/[a-z]/.test(pwd)) return "Password must contain at least one lowercase letter";
-    if (!/\d/.test(pwd)) return "Password must contain at least one digit";
+    if (pwd.length < 8) return t("Password must be at least 8 characters long");
+    if (!/[A-Z]/.test(pwd)) return t("Password must contain at least one uppercase letter");
+    if (!/[a-z]/.test(pwd)) return t("Password must contain at least one lowercase letter");
+    if (!/\d/.test(pwd)) return t("Password must contain at least one digit");
     if (!/[!@#$%^&*()_+=\-[\]{};':"\\|,.<>/?]/.test(pwd))
-        return "Password must contain at least one special character";
+        return t("Password must contain at least one special character");
     return null;
 };
 
@@ -34,11 +35,11 @@ export const ResetPassword = () => {
         setError("");
 
         if (!email.trim()) {
-            setError("Please enter your email.");
+            setError(t("Please enter your email."));
             return;
         }
         if (!/^\d{6}$/.test(otp)) {
-            setError("Enter the 6-digit code from your email.");
+            setError(t("Enter the 6-digit code from your email."));
             return;
         }
         const pwdError = validatePassword(password);
@@ -47,7 +48,7 @@ export const ResetPassword = () => {
             return;
         }
         if (password !== confirm) {
-            setError("Passwords do not match.");
+            setError(t("Passwords do not match."));
             return;
         }
 
@@ -65,7 +66,7 @@ export const ResetPassword = () => {
             setError(
                 typeof detail === "string"
                     ? detail
-                    : "Could not reset your password. The code may be invalid or expired."
+                    : t("Could not reset your password. The code may be invalid or expired.")
             );
         } finally {
             setIsLoading(false);
@@ -79,25 +80,25 @@ export const ResetPassword = () => {
                     <img className="log-logo" src="/logo2.png" alt="logo" />
                 </div>
 
-                <h1 className="login-heading">Reset password</h1>
+                <h1 className="login-heading">{t("Reset password")}</h1>
 
                 {done ? (
                     <>
                         <p className="login-message">
-                            Your password has been reset. Redirecting to login...
+                            {t("Your password has been reset. Redirecting to login...")}
                         </p>
                         <button
                             type="button"
                             className="login-link"
                             onClick={() => navigate("/")}
                         >
-                            Go to login
+                            {t("Go to login")}
                         </button>
                     </>
                 ) : (
                     <>
                         <p className="login-subtext">
-                            Enter the code we emailed you, then choose a new password.
+                            {t("Enter the code we emailed you, then choose a new password.")}
                         </p>
 
                         <div className="input-wrapper">
@@ -105,7 +106,7 @@ export const ResetPassword = () => {
                             <input
                                 type="email"
                                 className="user-input"
-                                placeholder="Email"
+                                placeholder={t("Email")}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isLoading}
@@ -119,7 +120,7 @@ export const ResetPassword = () => {
                                 inputMode="numeric"
                                 maxLength={6}
                                 className="user-input"
-                                placeholder="6-digit code"
+                                placeholder={t("6-digit code")}
                                 value={otp}
                                 onChange={(e) =>
                                     setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
@@ -133,7 +134,7 @@ export const ResetPassword = () => {
                             <input
                                 type="password"
                                 className="password-input"
-                                placeholder="New password"
+                                placeholder={t("New password")}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 disabled={isLoading}
@@ -145,7 +146,7 @@ export const ResetPassword = () => {
                             <input
                                 type="password"
                                 className="password-input"
-                                placeholder="Confirm new password"
+                                placeholder={t("Confirm new password")}
                                 value={confirm}
                                 onChange={(e) => setConfirm(e.target.value)}
                                 disabled={isLoading}
@@ -155,7 +156,7 @@ export const ResetPassword = () => {
                         {error && <p className="login-field-error">{error}</p>}
 
                         <button type="submit" className="log-button" disabled={isLoading}>
-                            {isLoading ? "Resetting..." : "Reset password"}
+                            {isLoading ? t("Resetting...") : t("Reset password")}
                         </button>
 
                         <button
@@ -163,7 +164,7 @@ export const ResetPassword = () => {
                             className="login-link"
                             onClick={() => navigate("/")}
                         >
-                            Back to login
+                            {t("Back to login")}
                         </button>
                     </>
                 )}

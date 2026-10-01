@@ -3,6 +3,7 @@ import api from "../../config/api.js";
 import { AssetIcon } from "../shared/AssetIcon.jsx";
 import { num } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
+import { t as tr } from "../../i18n";
 
 const PAGE = 50;
 const pretty = (s) => (s || "").replace(/_/g, " ");
@@ -31,16 +32,16 @@ export function CveAssetProducts({ assets, search, canWrite, onChanged }) {
         <div className="cvx-col">
             <div className="cvx-assets-bar">
                 <span className="cvx-muted cvx-small">
-                    Products are read from each asset&apos;s OS, version and model. Add software the inventory does not describe (web servers, databases, agents).
+                    {tr("Products are read from each asset's OS, version and model. Add software the inventory does not describe (web servers, databases, agents).")}
                 </span>
                 {missing > 0 && (
                     <label className="cvx-check cvx-small">
                         <input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} />
-                        Only assets with no recognised product ({num(missing)})
+                        {tr("Only assets with no recognised product ({{num}})", { num: num(missing) })}
                     </label>
                 )}
             </div>
-            {!rows.length && <div className="cvx-card cvx-empty"><b>No assets match</b></div>}
+            {!rows.length && <div className="cvx-card cvx-empty"><b>{tr("No assets match")}</b></div>}
             {rows.length > 0 && (
                 <div className="cvx-card cvx-card-flush">
                     {rows.slice(0, limit).map((a) => (
@@ -51,7 +52,7 @@ export function CveAssetProducts({ assets, search, canWrite, onChanged }) {
             )}
             {rows.length > limit && (
                 <div className="cvx-more">
-                    <button type="button" className="cvx-btn" onClick={() => setLimit(limit + PAGE)}>Show more ({num(rows.length - limit)} left)</button>
+                    <button type="button" className="cvx-btn" onClick={() => setLimit(limit + PAGE)}>{tr("Show more ({{num}} left)", { num: num(rows.length - limit) })}</button>
                 </div>
             )}
         </div>
@@ -67,7 +68,7 @@ function AssetRow({ asset, canWrite, open, onToggle, onChanged }) {
             await api.delete(`/api/cve/assets/${asset.asset_id}/software/${p.software_id}`);
             onChanged();
         } catch (err) {
-            setError(err.response?.data?.detail || "Could not remove");
+            setError(err.response?.data?.detail || tr("Could not remove"));
         }
     };
 
@@ -79,14 +80,14 @@ function AssetRow({ asset, canWrite, open, onToggle, onChanged }) {
                     <span><b>{asset.asset_name}</b>{asset.ip_address && <span className="cvx-sub cvx-mono">{asset.ip_address}</span>}</span>
                 </span>
                 <div className="cvx-chips">
-                    {asset.products.length === 0 && <span className="cvx-muted cvx-small">No recognised product</span>}
+                    {asset.products.length === 0 && <span className="cvx-muted cvx-small">{tr("No recognised product")}</span>}
                     {asset.products.map((p) => (
                         <span key={`${p.vendor}:${p.product}:${p.version}`} className={`cvx-chip ${p.source === "manual" ? "is-manual" : ""}`}
                               title={`${p.vendor}:${p.product} · ${p.source === "manual" ? "added by hand" : "detected from the asset's fields"}`}>
                             {p.label}
-                            <span className="cvx-mono">{p.version || "version unknown"}</span>
+                            <span className="cvx-mono">{p.version || tr("version unknown")}</span>
                             {p.source === "manual" && canWrite && (
-                                <button type="button" className="cvx-chip-x" aria-label={`Remove ${p.label}`} onClick={() => remove(p)}>
+                                <button type="button" className="cvx-chip-x" aria-label={tr("Remove {{label}}", { label: p.label })} onClick={() => remove(p)}>
                                     <Icon name="x" size={12} width={2.4} />
                                 </button>
                             )}
@@ -94,16 +95,16 @@ function AssetRow({ asset, canWrite, open, onToggle, onChanged }) {
                     ))}
                 </div>
                 <span className={`cvx-pill ${asset.findings ? "cvx-pill-bad" : "cvx-pill-muted"}`}>
-                    {asset.findings ? `${num(asset.findings)} finding${asset.findings === 1 ? "" : "s"}` : "No findings"}
+                    {asset.findings ? tr("{{count}} findings", { count: asset.findings }) : tr("No findings")}
                 </span>
                 {canWrite && (
                     <button type="button" className="cvx-btn cvx-btn-sm" onClick={onToggle} aria-expanded={open}>
-                        <Icon name="plus" size={14} /> Software
+                        <Icon name="plus" size={14} /> {" "}{tr("Software")}
                     </button>
                 )}
             </div>
             {asset.products.some((p) => !p.version) && (
-                <div className="cvx-hint cvx-indent">A product without a version is only matched against CVEs that affect every version. Set the version on the asset to get exact matches.</div>
+                <div className="cvx-hint cvx-indent">{tr("A product without a version is only matched against CVEs that affect every version. Set the version on the asset to get exact matches.")}</div>
             )}
             {error && <div className="cvx-note cvx-note-error cvx-indent">{error}</div>}
             {open && <AddSoftware assetId={asset.asset_id} onDone={() => { onToggle(); onChanged(); }} onCancel={onToggle} />}
@@ -147,7 +148,7 @@ function AddSoftware({ assetId, onDone, onCancel }) {
             onDone();
         } catch (err) {
             const d = err.response?.data?.detail;
-            setError(Array.isArray(d) ? d[0]?.msg : d || "Could not add");
+            setError(Array.isArray(d) ? d[0]?.msg : d || tr("Could not add"));
             setSaving(false);
         }
     };
@@ -156,34 +157,34 @@ function AddSoftware({ assetId, onDone, onCancel }) {
         <form className="cvx-add-sw" onSubmit={save}>
             <div className="cvx-ac">
                 <label className="cvx-field">
-                    <span>Product</span>
-                    <input className="cvx-input" placeholder="Search, e.g. openssh, http server, mysql" value={query} autoFocus
+                    <span>{tr("Product")}</span>
+                    <input className="cvx-input" placeholder={tr("Search, e.g. openssh, http server, mysql")} value={query} autoFocus
                            onChange={(e) => { setQuery(e.target.value); setPicked(null); }} />
                 </label>
                 {!picked && suggestions.length > 0 && (
-                    <ul className="cvx-ac-list" role="listbox" aria-label="Products">
+                    <ul className="cvx-ac-list" role="listbox" aria-label={tr("Products")}>
                         {suggestions.map((s) => (
                             <li key={`${s.vendor}:${s.product}`}>
                                 <button type="button" onClick={() => choose(s)}>
                                     <span><b>{pretty(s.product)}</b> <span className="cvx-muted">{pretty(s.vendor)}</span></span>
-                                    <span className="cvx-muted cvx-small">{num(s.cves)} CVEs</span>
+                                    <span className="cvx-muted cvx-small">{tr("{{num}} CVEs", { num: num(s.cves) })}</span>
                                 </button>
                             </li>
                         ))}
                     </ul>
                 )}
                 {!picked && query.trim().length >= 2 && suggestions.length === 0 && (
-                    <div className="cvx-hint">No product with that name in the CVE database.</div>
+                    <div className="cvx-hint">{tr("No product with that name in the CVE database.")}</div>
                 )}
             </div>
             <label className="cvx-field cvx-field-sm">
-                <span>Version</span>
+                <span>{tr("Version")}</span>
                 <input ref={versionRef} className="cvx-input cvx-mono" placeholder="e.g. 2.4.52" value={version} maxLength={80}
                        onChange={(e) => setVersion(e.target.value)} />
             </label>
             <div className="cvx-add-actions">
-                <button type="submit" className="cvx-btn cvx-btn-primary cvx-btn-sm" disabled={!picked || !version.trim() || saving}>Add</button>
-                <button type="button" className="cvx-btn cvx-btn-sm" onClick={onCancel}>Cancel</button>
+                <button type="submit" className="cvx-btn cvx-btn-primary cvx-btn-sm" disabled={!picked || !version.trim() || saving}>{tr("Add")}</button>
+                <button type="button" className="cvx-btn cvx-btn-sm" onClick={onCancel}>{tr("Cancel")}</button>
             </div>
             {error && <div className="cvx-note cvx-note-error cvx-full">{String(error)}</div>}
         </form>

@@ -1,5 +1,6 @@
 import { LICENSE_TYPES, API_FIELD_MAP } from "./licenseConfig";
 
+import { uiLocale } from "../../i18n";
 // چک کردن آیا محدودیت رسیده یا نه
 export const isLimitReached = (licenseType, module, currentUsage) => {
     const license = LICENSE_TYPES[licenseType];
@@ -73,7 +74,7 @@ export const isLicenseExpired = (expiresAt) => {
 // فرمت تاریخ انقضا
 export const formatExpiryDate = (expiresAt) => {
     if (!expiresAt) return "—";
-    return new Date(expiresAt).toLocaleDateString("en-US", {
+    return new Date(expiresAt).toLocaleDateString(uiLocale(),  {
         year: "numeric",
         month: "long",
         day: "numeric",

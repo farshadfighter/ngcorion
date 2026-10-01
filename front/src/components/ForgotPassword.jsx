@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../config/api";
 import UserIcon from "../assets/UserIcon.jsx";
+import { t } from "../i18n";
 
 export const ForgotPassword = () => {
     const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ export const ForgotPassword = () => {
             setError(
                 typeof detail === "string"
                     ? detail
-                    : "Could not send a reset code. Please try again."
+                    : t("Could not send a reset code. Please try again.")
             );
         } finally {
             setIsLoading(false);
@@ -38,10 +39,10 @@ export const ForgotPassword = () => {
                     <img className="log-logo" src="/logo2.png" alt="logo" />
                 </div>
 
-                <h1 className="login-heading">Forgot password</h1>
+                <h1 className="login-heading">{t("Forgot password")}</h1>
 
                 <p className="login-subtext">
-                    Enter your email and we'll send you a code to reset your password.
+                    {t("Enter your email and we'll send you a code to reset your password.")}
                 </p>
 
                 <div className="input-wrapper">
@@ -49,7 +50,7 @@ export const ForgotPassword = () => {
                     <input
                         type="email"
                         className="user-input"
-                        placeholder="Enter your email"
+                        placeholder={t("Enter your email")}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={isLoading}
@@ -59,7 +60,7 @@ export const ForgotPassword = () => {
                 {error && <p className="login-field-error">{error}</p>}
 
                 <button type="submit" className="log-button" disabled={isLoading}>
-                    {isLoading ? "Sending..." : "Send code"}
+                    {isLoading ? t("Sending...") : t("Send code")}
                 </button>
 
                 <button
@@ -67,7 +68,7 @@ export const ForgotPassword = () => {
                     className="login-link"
                     onClick={() => navigate("/")}
                 >
-                    Back to login
+                    {t("Back to login")}
                 </button>
             </form>
         </div>

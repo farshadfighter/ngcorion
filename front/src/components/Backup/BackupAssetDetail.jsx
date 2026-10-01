@@ -6,6 +6,7 @@ import AssetIcon from '../shared/AssetIcon.jsx';
 import {
     RESTORE_STATUS_LABELS, formatDateTime, isRestorable, sourceLabel,
 } from './restoreConstants.js';
+import { t } from "../../i18n";
 
 const formatDate = formatDateTime;
 
@@ -43,7 +44,7 @@ export const BackupAssetDetail = ({
                 if (!cancelled) setBackups(res.data || []);
             } catch (e) {
                 if (!cancelled) {
-                    setError(e.response?.data?.detail || 'Failed to load backups');
+                    setError(e.response?.data?.detail || t("Failed to load backups"));
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -104,12 +105,12 @@ export const BackupAssetDetail = ({
                          strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 18l-6-6 6-6" />
                     </svg>
-                    All Assets
+                    {t("All Assets")}
                 </button>
                 <div className="backup-detail-title">
                     <AssetIcon icon={group.icon} size={32} />
                     <span className="backup-asset-name">
-                        {group.asset_name || `Asset #${group.asset_id}`}
+                        {group.asset_name || t("Asset #{{asset_id}}", { asset_id: group.asset_id })}
                     </span>
                     <code className="backup-ip">{group.device_ip || '-'}</code>
                 </div>
@@ -122,28 +123,28 @@ export const BackupAssetDetail = ({
                         onClick={() => applySource(s)}
                         className={`backup-filter-btn ${sourceFilter === s ? 'active' : ''}`}
                     >
-                        {s === 'all' ? 'All' : sourceLabel(s)}
+                        {s === 'all' ? t("All") : sourceLabel(s)}
                     </button>
                 ))}
             </div>
 
             {restores.length > 0 && (
                 <div className="backup-restores">
-                    <div className="backup-restores-title">Restores</div>
+                    <div className="backup-restores-title">{t("Restores")}</div>
                     {restores.map((r) => (
                         <div key={r.id} className="backup-restore-row">
                             <span className={`backup-restore-status ${r.status}`}>
                                 {RESTORE_STATUS_LABELS[r.status] || r.status}
                             </span>
                             <span className="backup-restore-what">
-                                From backup #{r.backup_id ?? '-'}
+                                {t("From backup #{{id}}", { id: r.backup_id ?? "-" })}
                                 <span className="backup-restore-reason" title={r.reason}>{r.reason}</span>
                             </span>
                             <span className="backup-restore-meta">
                                 {r.requested_by_username || '-'} · {formatDate(r.created_at)}
                             </span>
                             <button className="backup-restore-open" onClick={() => onOpenRestore(r.id)}>
-                                Details
+                                {t("Details")}
                             </button>
                         </div>
                     ))}
@@ -153,13 +154,13 @@ export const BackupAssetDetail = ({
             {loading ? (
                 <div className="backup-loading">
                     <div className="spinner-lg" />
-                    <p>Loading backups…</p>
+                    <p>{t("Loading backups…")}</p>
                 </div>
             ) : error ? (
                 <div className="backup-empty"><p>{error}</p></div>
             ) : visible.length === 0 ? (
                 <div className="backup-empty">
-                    <p>No backups match this filter.</p>
+                    <p>{t("No backups match this filter.")}</p>
                 </div>
             ) : (
                 <>
@@ -167,10 +168,10 @@ export const BackupAssetDetail = ({
                         <table className="requirement-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Source</th>
-                                    <th>Created By</th>
-                                    <th>Actions</th>
+                                    <th>{t("Date")}</th>
+                                    <th>{t("Source")}</th>
+                                    <th>{t("Created By")}</th>
+                                    <th>{t("Actions")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -189,7 +190,7 @@ export const BackupAssetDetail = ({
                                                     className="btn-see-result"
                                                     onClick={() => onView(b.id)}
                                                 >
-                                                    View
+                                                    {t("View")}
                                                 </button>
                                                 {canRestore && isRestorable(b.device_type) && (
                                                     <button
@@ -201,12 +202,12 @@ export const BackupAssetDetail = ({
                                                              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                                             <path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" />
                                                         </svg>
-                                                        Restore
+                                                        {t("Restore")}
                                                     </button>
                                                 )}
                                                 <button
                                                     className="btn-delete-icon"
-                                                    title="Delete backup"
+                                                    title={t("Delete backup")}
                                                     onClick={() => onDelete(b.id, removeLocal)}
                                                 >
                                                     <svg width="16" height="16" viewBox="0 0 24 24"

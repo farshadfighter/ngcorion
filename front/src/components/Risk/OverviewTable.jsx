@@ -4,6 +4,7 @@ import { RiskRowActions } from "./RiskRowActions";
 import { RiskLevelBadge } from "./RiskLevelBadge";
 import { SortableHeader } from "./SortableHeader";
 import { orDash, titleCase, formatDate } from "./riskConstants";
+import { t } from "../../i18n";
 
 /**
  * Open Ports and Zone are deliberately absent: the client asked for them to be
@@ -17,15 +18,15 @@ import { orDash, titleCase, formatDate } from "./riskConstants";
  * score yields exactly the severity order.
  */
 const COLUMNS = [
-    { label: "Risk Score", key: "final_risk_score" },
-    "Rank",
-    { label: "Asset Name", key: "asset_name" },
+    { label: t("Risk Score"), key: "final_risk_score" },
+    t("Rank"),
+    { label: t("Asset Name"), key: "asset_name" },
     "IP Address",
-    "Vendor",
-    { label: "Risk Level", key: "final_risk_score" },
-    "Confidentiality Level",
-    { label: "Last Calculated", key: "calculated_at" },
-    "Actions",
+    t("Vendor"),
+    { label: t("Risk Level"), key: "final_risk_score" },
+    t("Confidentiality Level"),
+    { label: t("Last Calculated"), key: "calculated_at" },
+    t("Actions"),
 ];
 
 export const OverviewTable = ({ rows, onRowClick, sortBy, sortOrder, onSort }) => (
@@ -41,7 +42,7 @@ export const OverviewTable = ({ rows, onRowClick, sortBy, sortOrder, onSort }) =
                 {rows.length === 0 && (
                     <tr>
                         <td colSpan={COLUMNS.length} className="risk-table-empty">
-                            No assets match this view.
+                            {t("No assets match this view.")}
                         </td>
                     </tr>
                 )}

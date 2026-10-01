@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createUser, fetchUsers } from "../../store/userSlice";
 import { PERMISSION_MODULES as MODULES } from "./permissionModules";
+import { t } from "../../i18n";
 
 const validatePassword = (password) => {
-    if (password.length < 8) return "At least 8 characters required";
-    if (!/[A-Z]/.test(password)) return "Must contain at least one uppercase letter";
-    if (!/[a-z]/.test(password)) return "Must contain at least one lowercase letter";
-    if (!/[0-9]/.test(password)) return "Must contain at least one number";
-    if (!/[@$!%*?&_#]/.test(password)) return "Must contain at least one special character (@$!%*?&_#)";
+    if (password.length < 8) return t("At least 8 characters required");
+    if (!/[A-Z]/.test(password)) return t("Must contain at least one uppercase letter");
+    if (!/[a-z]/.test(password)) return t("Must contain at least one lowercase letter");
+    if (!/[0-9]/.test(password)) return t("Must contain at least one number");
+    if (!/[@$!%*?&_#]/.test(password)) return t("Must contain at least one special character (@$!%*?&_#)");
     return "";
 };
 
@@ -67,7 +68,7 @@ export const AddUserModal = ({ onClose }) => {
         }
 
         if (formData.password !== formData.confirmPassword) {
-            setPasswordError("Passwords do not match");
+            setPasswordError(t("Passwords do not match"));
             return;
         }
 
@@ -85,7 +86,7 @@ export const AddUserModal = ({ onClose }) => {
             dispatch(fetchUsers());
             onClose();
         } else {
-            setSubmitError(result.payload || "Failed to create user");
+            setSubmitError(result.payload || t("Failed to create user"));
         }
     };
 
@@ -93,7 +94,7 @@ export const AddUserModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Add User</h3>
+                    <h3>{t("Add User")}</h3>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
 
@@ -117,7 +118,7 @@ export const AddUserModal = ({ onClose }) => {
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Username *</label>
+                                <label>{t("Username *")}</label>
                                 <input
                                     type="text"
                                     name="username"
@@ -125,26 +126,26 @@ export const AddUserModal = ({ onClose }) => {
                                     onChange={handleChange}
                                     required
                                     minLength={3}
-                                    placeholder="Enter username"
+                                    placeholder={t("Enter username")}
                                 />
                             </div>
 
                             <div className="form-group">
-                                <label>Email *</label>
+                                <label>{t("Email *")}</label>
                                 <input
                                     type="email"
                                     name="email"
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
-                                    placeholder="Enter email"
+                                    placeholder={t("Enter email")}
                                 />
                             </div>
                         </div>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Mobile number</label>
+                                <label>{t("Mobile number")}</label>
                                 <input
                                     type="tel"
                                     name="phone"
@@ -152,21 +153,21 @@ export const AddUserModal = ({ onClose }) => {
                                     onChange={handleChange}
                                     inputMode="tel"
                                     maxLength={20}
-                                    placeholder="For SMS alerts, e.g. 09121234567"
+                                    placeholder={t("For SMS alerts, e.g. 09121234567")}
                                 />
                             </div>
                         </div>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Password *</label>
+                                <label>{t("Password *")}</label>
                                 <input
                                     type="password"
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
-                                    placeholder="Enter password"
+                                    placeholder={t("Enter password")}
                                 />
                                 {passwordError ? (
                                     <small style={{ color: "#EF4444", fontSize: "11px" }}>
@@ -174,36 +175,36 @@ export const AddUserModal = ({ onClose }) => {
                                     </small>
                                 ) : (
                                     <small style={{ color: "#6B7280", fontSize: "11px" }}>
-                                        Min 8 chars, uppercase, lowercase, number, special (@$!%*?&_#)
+                                        {t("Min 8 chars, uppercase, lowercase, number, special (@$!%*?&_#)")}
                                     </small>
                                 )}
                             </div>
 
                             <div className="form-group">
-                                <label>Confirm Password *</label>
+                                <label>{t("Confirm Password *")}</label>
                                 <input
                                     type="password"
                                     name="confirmPassword"
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
                                     required
-                                    placeholder="Re-enter password"
+                                    placeholder={t("Re-enter password")}
                                 />
                             </div>
                         </div>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Role *</label>
+                                <label>{t("Role *")}</label>
                                 <select
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
                                 >
-                                    <option value="user">user</option>
-                                    <option value="manager">manager</option>
-                                    <option value="admin">admin</option>
-                                    <option value="guest">guest</option>
+                                    <option value="user">{t("user")}</option>
+                                    <option value="manager">{t("manager")}</option>
+                                    <option value="admin">{t("admin")}</option>
+                                    <option value="guest">{t("guest")}</option>
                                 </select>
                             </div>
                         </div>
@@ -211,7 +212,7 @@ export const AddUserModal = ({ onClose }) => {
                         {/* Active Status Toggle */}
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Status</label>
+                                <label>{t("Status")}</label>
                                 <div className="active-toggle-container">
                                     <button
                                         type="button"
@@ -219,7 +220,7 @@ export const AddUserModal = ({ onClose }) => {
                                         onClick={handleActiveToggle}
                                     >
                                         <span className="toggle-label">
-                                            {formData.is_active ? 'Active' : 'Inactive'}
+                                            {formData.is_active ? t("Active") : t("Inactive")}
                                         </span>
                                         <span className={`toggle-switch ${formData.is_active ? 'active' : 'inactive'}`}>
                                             <span className="toggle-slider"></span>
@@ -231,16 +232,16 @@ export const AddUserModal = ({ onClose }) => {
 
                         {/* Permissions Section */}
                         <div className="permissions-section">
-                            <h4 className="permissions-title">Permissions</h4>
-                            <p className="permissions-subtitle">Set access permissions for each module</p>
+                            <h4 className="permissions-title">{t("Permissions")}</h4>
+                            <p className="permissions-subtitle">{t("Set access permissions for each module")}</p>
 
                             <table className="permissions-table">
                                 <thead>
                                 <tr>
-                                    <th>Module</th>
-                                    <th>Read</th>
-                                    <th>Write</th>
-                                    <th>Delete</th>
+                                    <th>{t("Module")}</th>
+                                    <th>{t("Read")}</th>
+                                    <th>{t("Write")}</th>
+                                    <th>{t("Delete")}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -277,10 +278,10 @@ export const AddUserModal = ({ onClose }) => {
 
                     <div className="modal-actions">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit">
-                            Create
+                            {t("Create")}
                         </button>
                     </div>
                 </form>

@@ -7,11 +7,12 @@ import { formatDate, formatWhen, relativeDays } from "../../utils/dates.js";
 import NewBackupModal from "./NewBackupModal.jsx";
 import { Changes, RestoreDetailDrawer, RestoreResult } from "./RestoreDetailDrawer.jsx";
 import "../../assets/BackupModule.css";
+import { t, uiLocale } from "../../i18n";
 
 const FAMILY_LABEL = { cisco: "Cisco", fortinet: "Fortinet", linux: "Linux", apache: "Apache", mongodb: "MongoDB" };
 const ATTENTION_ROWS = 8;
 
-const num = (n) => (n == null ? "—" : Number(n).toLocaleString());
+const num = (n) => (n == null ? "—" : Number(n).toLocaleString(uiLocale()));
 
 
 /** Backup & Restore › Overview. */
@@ -30,7 +31,7 @@ export function BackupOverview() {
         let alive = true;
         api.get("/api/backups/overview")
             .then(({ data: d }) => { if (alive) { setData(d); setError(null); } })
-            .catch((e) => alive && setError(e.response?.data?.detail || "Could not load the backup overview"));
+            .catch((e) => alive && setError(e.response?.data?.detail || t("Could not load the backup overview")));
         return () => { alive = false; };
     }, [reload]);
 
@@ -41,52 +42,52 @@ export function BackupOverview() {
         <div className="bkm-page">
             <div className="bkm-head">
                 <div>
-                    <h1>Backup &amp; Restore</h1>
-                    <p>Is every device&apos;s configuration saved, and what was restored recently.</p>
+                    <h1>{t("Backup & Restore")}</h1>
+                    <p>{t("Is every device's configuration saved, and what was restored recently.")}</p>
                 </div>
                 <div className="bkm-actions">
-                    <button type="button" className="bkm-btn" onClick={() => navigate("/backup/restores")}>Restore history</button>
+                    <button type="button" className="bkm-btn" onClick={() => navigate("/backup/restores")}>{t("Restore history")}</button>
                     {canWrite && (
                         <button type="button" className="bkm-btn bkm-btn-primary" onClick={() => setBackupFor({})}>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-                            New backup
+                            {t("New backup")}
                         </button>
                     )}
                 </div>
             </div>
 
             {error && <div className="bkm-note bkm-note-error">{error}</div>}
-            {!data && !error && <div className="bkm-card bkm-empty">Loading…</div>}
+            {!data && !error && <div className="bkm-card bkm-empty">{t("Loading…")}</div>}
 
             {data && (
                 <>
                     <div className="bkm-stats">
                         <div className="bkm-stat">
-                            <span>Backup coverage</span>
+                            <span>{t("Backup coverage")}</span>
                             <b className="bkm-navy">{data.supported ? `${coverage}%` : "—"}</b>
                             <div className="bkm-meter"><span style={{ width: `${coverage}%` }} /></div>
-                            <small>{num(data.fresh)} of {num(data.supported)} supported devices</small>
+                            <small>{t("{{num}} of {{num2}} supported devices", { num: num(data.fresh), num2: num(data.supported) })}</small>
                         </div>
                         <div className={`bkm-stat ${data.never ? "bkm-stat-warn" : ""}`}>
-                            <span>Never backed up</span>
+                            <span>{t("Never backed up")}</span>
                             <b className={data.never ? "bkm-orange" : ""}>{num(data.never)}</b>
-                            <small>No saved configuration at all</small>
+                            <small>{t("No saved configuration at all")}</small>
                         </div>
                         <div className="bkm-stat">
-                            <span>Older than {data.stale_days} days</span>
+                            <span>{t("Older than {{stale_days}} days", { stale_days: data.stale_days })}</span>
                             <b className={data.stale ? "bkm-amber" : ""}>{num(data.stale)}</b>
-                            <small>No backup since {formatDate(data.stale_before)}</small>
+                            <small>{t("No backup since {{stale_before}}", { stale_before: formatDate(data.stale_before) })}</small>
                         </div>
                         <div className="bkm-stat">
-                            <span>Backups · last 30 days</span>
+                            <span>{t("Backups · last 30 days")}</span>
                             <b>{num(data.backups_30d.total)}</b>
-                            <small>{num(data.backups_30d.manual)} manual · {num(data.backups_30d.hardening)} before hardening · {num(data.backups_30d.pre_restore)} before restore</small>
+                            <small>{t("{{num}} manual · {{num2}} before hardening · {{num3}} before restore", { num: num(data.backups_30d.manual), num2: num(data.backups_30d.hardening), num3: num(data.backups_30d.pre_restore) })}</small>
                         </div>
                         <div className="bkm-stat">
-                            <span>Restores · last 30 days</span>
+                            <span>{t("Restores · last 30 days")}</span>
                             <b>{num(data.restores_30d.total)}</b>
                             <small>
-                                {num(data.restores_30d.succeeded)} succeeded · {num(data.restores_30d.reverted)} auto-reverted · {num(data.restores_30d.failed)} failed
+                                {t("{{num}} succeeded · {{num2}} auto-reverted · {{num3}} failed", { num: num(data.restores_30d.succeeded), num2: num(data.restores_30d.reverted), num3: num(data.restores_30d.failed) })}
                             </small>
                         </div>
                     </div>
@@ -95,19 +96,19 @@ export function BackupOverview() {
                         <section className="bkm-card bkm-flush">
                             <div className="bkm-card-head">
                                 <div>
-                                    <h2>Needs a backup</h2>
-                                    <p>Supported devices with no backup, or none in the last {data.stale_days} days</p>
+                                    <h2>{t("Needs a backup")}</h2>
+                                    <p>{t("Supported devices with no backup, or none in the last {{stale_days}} days", { stale_days: data.stale_days })}</p>
                                 </div>
-                                {data.attention_total > 0 && <span className="bkm-muted bkm-strong">{num(data.attention_total)} device{data.attention_total === 1 ? "" : "s"}</span>}
+                                {data.attention_total > 0 && <span className="bkm-muted bkm-strong">{t("{{count}} devices", { count: data.attention_total })}</span>}
                             </div>
                             {data.attention.length === 0 ? (
                                 <div className="bkm-empty">
-                                    <b>Every supported device has a recent backup.</b>
-                                    {data.supported === 0 && <span>No device a backup can be taken from was found in the inventory.</span>}
+                                    <b>{t("Every supported device has a recent backup.")}</b>
+                                    {data.supported === 0 && <span>{t("No device a backup can be taken from was found in the inventory.")}</span>}
                                 </div>
                             ) : (
                                 <table className="bkm-table">
-                                    <thead><tr><th>Device</th><th>Type</th><th>Last backup</th><th aria-label="Actions" /></tr></thead>
+                                    <thead><tr><th>{t("Device")}</th><th>{t("Type")}</th><th>{t("Last backup")}</th><th aria-label={t("Actions")} /></tr></thead>
                                     <tbody>
                                         {data.attention.slice(0, showAll ? data.attention.length : ATTENTION_ROWS).map((d) => (
                                             <tr key={d.asset_id}>
@@ -121,12 +122,12 @@ export function BackupOverview() {
                                                 <td>
                                                     <span className={`bkm-pill ${d.state === "never" ? "bkm-pill-orange" : "bkm-pill-amber"}`}
                                                           title={d.last_backup_at ? formatWhen(d.last_backup_at) : undefined}>
-                                                        {d.state === "never" ? "Never" : relativeDays(d.last_backup_at)}
+                                                        {d.state === "never" ? t("Never") : relativeDays(d.last_backup_at)}
                                                     </span>
                                                 </td>
                                                 <td className="bkm-right">
                                                     {canWrite && (
-                                                        <button type="button" className="bkm-btn bkm-btn-sm" onClick={() => setBackupFor({ asset: d })}>Back up now</button>
+                                                        <button type="button" className="bkm-btn bkm-btn-sm" onClick={() => setBackupFor({ asset: d })}>{t("Back up now")}</button>
                                                     )}
                                                 </td>
                                             </tr>
@@ -137,10 +138,10 @@ export function BackupOverview() {
                             {data.attention_total > ATTENTION_ROWS && (
                                 <div className="bkm-card-foot">
                                     {showAll
-                                        ? `Showing ${num(data.attention.length)} of ${num(data.attention_total)}`
-                                        : `Showing ${ATTENTION_ROWS} of ${num(data.attention_total)}`}{" · "}
+                                        ? t("Showing {{num}} of {{num2}}", { num: num(data.attention.length), num2: num(data.attention_total) })
+                                        : t("Showing {{ATTENTION_ROWS}} of {{num}}", { ATTENTION_ROWS, num: num(data.attention_total) })}{" · "}
                                     <button type="button" className="bkm-link" onClick={() => setShowAll(!showAll)}>
-                                        {showAll ? "Show fewer" : "Show all"}
+                                        {showAll ? t("Show fewer") : t("Show all")}
                                     </button>
                                 </div>
                             )}
@@ -148,10 +149,10 @@ export function BackupOverview() {
 
                         <div className="bkm-col">
                             <section className="bkm-card bkm-pad">
-                                <h2>Coverage by device type</h2>
-                                <p className="bkm-card-sub">Devices with a backup in the last {data.stale_days} days</p>
+                                <h2>{t("Coverage by device type")}</h2>
+                                <p className="bkm-card-sub">{t("Devices with a backup in the last {{stale_days}} days", { stale_days: data.stale_days })}</p>
                                 <div className="bkm-bars">
-                                    {data.by_family.length === 0 && <span className="bkm-muted">No supported devices yet.</span>}
+                                    {data.by_family.length === 0 && <span className="bkm-muted">{t("No supported devices yet.")}</span>}
                                     {data.by_family.map((f) => {
                                         const ratio = f.total ? f.fresh / f.total : 0;
                                         return (
@@ -169,21 +170,21 @@ export function BackupOverview() {
 
                             <section className="bkm-card bkm-pad">
                                 <div className="bkm-row-between">
-                                    <h2>Backups per day</h2>
-                                    <span className="bkm-muted bkm-small">last 30 days</span>
+                                    <h2>{t("Backups per day")}</h2>
+                                    <span className="bkm-muted bkm-small">{t("last 30 days")}</span>
                                 </div>
                                 <div className="bkm-chart" role="img"
-                                     aria-label={`Backups per day over the last 30 days, ${num(data.backups_30d.total)} in total`}>
+                                     aria-label={t("Backups per day over the last 30 days, {{num}} in total", { num: num(data.backups_30d.total) })}>
                                     {data.daily.map((d) => (
-                                        <div key={d.date} className="bkm-day" title={`${formatDate(d.date)}: ${d.manual} manual, ${d.automatic} automatic`}>
+                                        <div key={d.date} className="bkm-day" title={t("{{date}}: {{manual}} manual, {{automatic}} automatic", { date: formatDate(d.date), manual: d.manual, automatic: d.automatic })}>
                                             <span className="bkm-day-auto" style={{ height: `${(d.automatic / maxDay) * 100}%` }} />
                                             <span className="bkm-day-manual" style={{ height: `${(d.manual / maxDay) * 100}%` }} />
                                         </div>
                                     ))}
                                 </div>
                                 <div className="bkm-legend">
-                                    <span><i style={{ background: "#1e3a5f" }} />Manual</span>
-                                    <span><i style={{ background: "#93b4d8" }} />Automatic (before hardening / restore)</span>
+                                    <span><i style={{ background: "#1e3a5f" }} />{t("Manual")}</span>
+                                    <span><i style={{ background: "#93b4d8" }} />{t("Automatic (before hardening / restore)")}</span>
                                 </div>
                             </section>
                         </div>
@@ -191,21 +192,21 @@ export function BackupOverview() {
 
                     <section className="bkm-card bkm-flush">
                         <div className="bkm-card-head">
-                            <h2>Recent restores</h2>
-                            <button type="button" className="bkm-link" onClick={() => navigate("/backup/restores")}>View all →</button>
+                            <h2>{t("Recent restores")}</h2>
+                            <button type="button" className="bkm-link" onClick={() => navigate("/backup/restores")}>{t("View all →")}</button>
                         </div>
                         {data.recent_restores.length === 0 ? (
-                            <div className="bkm-empty"><span>No restores yet.</span></div>
+                            <div className="bkm-empty"><span>{t("No restores yet.")}</span></div>
                         ) : (
                             <table className="bkm-table">
-                                <thead><tr><th>When</th><th>Device</th><th>Restored backup</th><th>Changes</th><th>By</th><th>Result</th></tr></thead>
+                                <thead><tr><th>{t("When")}</th><th>{t("Device")}</th><th>{t("Restored backup")}</th><th>{t("Changes")}</th><th>{t("By")}</th><th>{t("Result")}</th></tr></thead>
                                 <tbody>
                                     {data.recent_restores.map((r) => (
                                         <tr key={r.id} className="bkm-row-click" tabIndex={0} onClick={() => setRestoreId(r.id)}
                                             onKeyDown={(e) => e.key === "Enter" && setRestoreId(r.id)}>
                                             <td className="bkm-nowrap">{formatWhen(r.created_at)}</td>
                                             <td><b className="bkm-strong">{r.asset_name}</b></td>
-                                            <td>{r.backup_id ? <span className="bkm-mono">#{r.backup_id}</span> : <span className="bkm-muted">deleted</span>}</td>
+                                            <td>{r.backup_id ? <span className="bkm-mono">#{r.backup_id}</span> : <span className="bkm-muted">{t("deleted")}</span>}</td>
                                             <td><Changes diff={r.diff_summary} /></td>
                                             <td>{r.requested_by_username || "—"}</td>
                                             <td><RestoreResult status={r.status} /></td>

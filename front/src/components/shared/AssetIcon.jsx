@@ -1,4 +1,5 @@
 import { ASSET_ICONS, iconColor, iconKey } from "./assetIcons.js";
+import { t } from "../../i18n";
 
 const STATUS_DOT = { up: "#22c55e", down: "#ef4444" };
 
@@ -44,7 +45,7 @@ export function AssetIcon({ icon, size = 44, planned = false, status, risk, titl
             </svg>
             {dot && (
                 <span
-                    aria-label={status === "down" ? "Unreachable" : "Reachable"}
+                    aria-label={status === "down" ? t("Unreachable") : t("Reachable")}
                     style={{
                         position: "absolute", right: -4, top: -4, width: 12, height: 12,
                         borderRadius: "50%", background: dot, border: "2px solid #fff",
@@ -71,7 +72,7 @@ export function AssetIcon({ icon, size = 44, planned = false, status, risk, titl
                         fontSize: 9, fontWeight: 700, lineHeight: "12px", boxSizing: "border-box",
                     }}
                 >
-                    {risk === "critical" ? "CRIT" : "HIGH"}
+                    {risk === "critical" ? t("CRIT") : t("HIGH")}
                 </span>
             )}
         </span>

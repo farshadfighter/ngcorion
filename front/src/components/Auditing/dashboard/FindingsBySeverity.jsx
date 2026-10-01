@@ -1,5 +1,7 @@
 import React from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { t, n } from "../../../i18n";
+import { tv } from "../../../i18n/backendText";
 
 /** Same severity palette the result table and audit dashboard already use. */
 const SEVERITY_COLORS = {
@@ -11,7 +13,7 @@ const SEVERITY_COLORS = {
     unspecified: "#a0aec0",
 };
 
-const label = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const label = (s) => { const known = tv(s); return known !== s ? known : s.charAt(0).toUpperCase() + s.slice(1); };
 
 /** "Findings By Severity" donut — failed checks grouped by severity. */
 export const FindingsBySeverity = ({ items }) => {
@@ -19,9 +21,9 @@ export const FindingsBySeverity = ({ items }) => {
 
     return (
         <div className="aud-card">
-            <div className="aud-card-title">Findings By Severity</div>
+            <div className="aud-card-title">{t("Findings By Severity")}</div>
             {data.length === 0 ? (
-                <div className="aud-empty">No failed checks recorded yet.</div>
+                <div className="aud-empty">{t("No failed checks recorded yet.")}</div>
             ) : (
                 <>
                     <ResponsiveContainer width="100%" height={220}>
@@ -57,7 +59,7 @@ export const FindingsBySeverity = ({ items }) => {
                                             SEVERITY_COLORS.unspecified,
                                     }}
                                 />
-                                {label(entry.severity)}: <b>{entry.count}</b>
+                                {label(entry.severity)}: <b>{n(entry.count)}</b>
                             </span>
                         ))}
                     </div>

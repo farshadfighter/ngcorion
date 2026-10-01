@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../config/api";
+import api from "../config/api";
+import { t } from "../i18n";
 
 // ==========================================
 // Helper - تبدیل ارور بک‌اند به string
@@ -7,7 +8,7 @@ import api from "../config/api";
 const parseError = (err) => {
     const detail = err.response?.data?.detail;
     if (Array.isArray(detail)) return detail.map(e => e.msg).join(", ");
-    return detail || "An error occurred";
+    return detail || t("An error occurred");
 };
 
 // ==========================================
@@ -141,7 +142,7 @@ const userSlice = createSlice({
             .addCase(createUser.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.users.push(action.payload);
-                state.successMessage = "User created successfully!";
+                state.successMessage = t("User created successfully!");
             })
             .addCase(createUser.rejected, (state, action) => {
                 state.isLoading = false;
@@ -158,7 +159,7 @@ const userSlice = createSlice({
                 if (index !== -1) {
                     state.users[index] = action.payload;
                 }
-                state.successMessage = "User updated successfully!";
+                state.successMessage = t("User updated successfully!");
             })
             .addCase(updateUser.rejected, (state, action) => {
                 state.isLoading = false;
@@ -172,7 +173,7 @@ const userSlice = createSlice({
             .addCase(deleteUser.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.users = state.users.filter(u => u.id !== action.payload);
-                state.successMessage = "User deleted successfully!";
+                state.successMessage = t("User deleted successfully!");
             })
             .addCase(deleteUser.rejected, (state, action) => {
                 state.isLoading = false;

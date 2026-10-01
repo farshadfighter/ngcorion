@@ -1,5 +1,6 @@
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { t } from "../../../i18n";
 
 /**
  * "Hardening Impact": before/after donuts of critical & high findings.
@@ -43,7 +44,7 @@ const Donut = ({ title, data }) => {
                             </Pie>
                         </PieChart>
                     </ResponsiveContainer>
-                    <p className="hd-impact-total">{total} findings</p>
+                    <p className="hd-impact-total">{t("{{total}} findings", { total })}</p>
                     <div className="hd-impact-legend">
                         {(data || []).map((entry, i) => (
                             <span key={entry.label}>
@@ -59,7 +60,7 @@ const Donut = ({ title, data }) => {
             ) : (
                 /* An empty "after" ring is the good outcome, not missing data. */
                 <p className="hd-empty">
-                    {data ? "No critical or high findings remaining" : "No data"}
+                    {data ? t("No critical or high findings remaining") : t("No data")}
                 </p>
             )}
         </div>
@@ -70,15 +71,14 @@ export const HardeningImpact = ({
     before, after, resolved, reductionPercent, message,
 }) => (
     <div className="hd-impact">
-        <Donut title="Before Hardening" data={before} />
-        <Donut title="After Hardening" data={after} />
+        <Donut title={t("Before Hardening")} data={before} />
+        <Donut title={t("After Hardening")} data={after} />
         {message ? (
             <p className="hd-impact-note">{message}</p>
         ) : (
             resolved > 0 && (
                 <p className="hd-impact-note">
-                    {resolved} critical/high finding{resolved === 1 ? "" : "s"} resolved
-                    by hardening ({reductionPercent}% reduction).
+                    {t("{{count}} critical/high findings resolved by hardening ({{reductionPercent}}% reduction).", { count: resolved, reductionPercent })}
                 </p>
             )
         )}

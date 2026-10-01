@@ -9,15 +9,17 @@ import {
 } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
 import { SecretField } from "./SecretField";
+import { t as tr } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 const SECTION = "smtp";
 
 /** Transport modes. use_tls and use_ssl are mutually exclusive server-side, so
  *  they are one choice here rather than two independent checkboxes. */
 const TRANSPORTS = [
-    { key: "starttls", label: "STARTTLS", port: 587, use_tls: true, use_ssl: false },
-    { key: "ssl", label: "SSL/TLS", port: 465, use_tls: false, use_ssl: true },
-    { key: "none", label: "None", port: 25, use_tls: false, use_ssl: false },
+    { key: "starttls", label: tr("STARTTLS"), port: 587, use_tls: true, use_ssl: false },
+    { key: "ssl", label: tr("SSL/TLS"), port: 465, use_tls: false, use_ssl: true },
+    { key: "none", label: tr("None"), port: 25, use_tls: false, use_ssl: false },
 ];
 
 const transportOf = (config) => {
@@ -73,15 +75,15 @@ const SmtpForm = ({ stored, onClose }) => {
     };
 
     const validate = () => {
-        if (!host.trim()) return "Enter the SMTP server host.";
+        if (!host.trim()) return tr("Enter the SMTP server host.");
         const portNumber = Number(port);
         if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
-            return "Port must be between 1 and 65535.";
+            return tr("Port must be between 1 and 65535.");
         }
-        if (!fromEmail.trim()) return "Enter the sender email address.";
+        if (!fromEmail.trim()) return tr("Enter the sender email address.");
         // The backend validates with EmailStr; catch the obvious case here.
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail.trim())) {
-            return "Sender email address is not valid.";
+            return tr("Sender email address is not valid.");
         }
         return null;
     };
@@ -104,11 +106,11 @@ const SmtpForm = ({ stored, onClose }) => {
         dispatch(clearTestResult(SECTION));
 
         if (!testTo.trim()) {
-            setLocalError("Enter an address to send the test to.");
+            setLocalError(tr("Enter an address to send the test to."));
             return;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testTo.trim())) {
-            setLocalError("Test recipient address is not valid.");
+            setLocalError(tr("Test recipient address is not valid."));
             return;
         }
 
@@ -119,7 +121,7 @@ const SmtpForm = ({ stored, onClose }) => {
 
     return (
         <ConfigModal
-            title="SMTP Configurations"
+            title={tr("SMTP Configurations")}
             onClose={onClose}
             onSave={handleSave}
             isSaving={!!saving[SECTION]}
@@ -127,7 +129,7 @@ const SmtpForm = ({ stored, onClose }) => {
             warning={warnings[SECTION]}
         >
             <label className="sc-field">
-                <span>SMTP Host</span>
+                <span>{tr("SMTP Host")}</span>
                 <input
                     type="text"
                     value={host}
@@ -139,7 +141,7 @@ const SmtpForm = ({ stored, onClose }) => {
 
             <div className="sc-row">
                 <label className="sc-field">
-                    <span>Port</span>
+                    <span>{tr("Port")}</span>
                     <input
                         type="number"
                         min={1}
@@ -149,7 +151,7 @@ const SmtpForm = ({ stored, onClose }) => {
                     />
                 </label>
                 <label className="sc-field">
-                    <span>Encryption</span>
+                    <span>{tr("Encryption")}</span>
                     <select
                         value={transport}
                         onChange={(e) => handleTransportChange(e.target.value)}
@@ -165,7 +167,7 @@ const SmtpForm = ({ stored, onClose }) => {
 
             <div className="sc-row">
                 <label className="sc-field">
-                    <span>Username</span>
+                    <span>{tr("Username")}</span>
                     <input
                         type="text"
                         value={username}
@@ -175,7 +177,7 @@ const SmtpForm = ({ stored, onClose }) => {
                     />
                 </label>
                 <SecretField
-                    label="Password"
+                    label={tr("Password")}
                     value={password}
                     onChange={setPassword}
                 />
@@ -183,17 +185,17 @@ const SmtpForm = ({ stored, onClose }) => {
 
             <div className="sc-row">
                 <label className="sc-field">
-                    <span>From Email</span>
+                    <span>{tr("From Email")}</span>
                     <input
                         type="email"
                         value={fromEmail}
                         onChange={(e) => setFromEmail(e.target.value)}
-                        placeholder="ngcorion@example.com"
+                        placeholder={tr("ngcorion@example.com")}
                     />
                 </label>
                 <label className="sc-field">
                     <span>
-                        From Name <em>(optional)</em>
+                        {tr("From Name")}{" "} <em>{tr("(optional)")}</em>
                     </span>
                     <input
                         type="text"
@@ -205,17 +207,16 @@ const SmtpForm = ({ stored, onClose }) => {
             </div>
 
             <div className="sc-test">
-                <p className="sc-test-title">Send a test email</p>
+                <p className="sc-test-title">{tr("Send a test email")}</p>
                 <p className="sc-test-note">
-                    The test uses the <strong>saved</strong> settings — save
-                    first if you have just changed anything.
+                    {tx("The test uses the {{saved}} settings — save first if you have just changed anything.", { saved: <strong>{tr("saved")}</strong> })}
                 </p>
                 <div className="sc-test-row">
                     <input
                         type="email"
                         value={testTo}
                         onChange={(e) => setTestTo(e.target.value)}
-                        placeholder="you@example.com"
+                        placeholder={tr("you@example.com")}
                         disabled={!hasStoredConfig}
                     />
                     <button
@@ -226,16 +227,16 @@ const SmtpForm = ({ stored, onClose }) => {
                     >
                         {testing[SECTION] ? (
                             <>
-                                <i className="fa-solid fa-spinner fa-spin" /> Sending…
+                                <i className="fa-solid fa-spinner fa-spin" /> {" "}{tr("Sending…")}
                             </>
                         ) : (
-                            "Send test"
+                            tr("Send test")
                         )}
                     </button>
                 </div>
                 {!hasStoredConfig && (
                     <p className="sc-test-note">
-                        Save the settings before sending a test.
+                        {tr("Save the settings before sending a test.")}
                     </p>
                 )}
                 {testResult && (
@@ -281,7 +282,7 @@ export const SmtpConfigModal = ({ onClose }) => {
     if (!stored) {
         return (
             <ConfigModal
-                title="SMTP Configurations"
+                title={tr("SMTP Configurations")}
                 onClose={onClose}
                 onSave={onClose}
                 isLoading={!!loading[SECTION]}

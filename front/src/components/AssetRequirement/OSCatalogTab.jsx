@@ -9,6 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
+import { t } from "../../i18n";
 
 export const OSCatalogTab = () => {
     const dispatch = useDispatch();
@@ -102,7 +103,7 @@ export const OSCatalogTab = () => {
     };
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     return (
@@ -111,7 +112,7 @@ export const OSCatalogTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-                        placeholder="Search OS..."
+                        placeholder={t("Search OS...")}
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -127,7 +128,7 @@ export const OSCatalogTab = () => {
                     />
                 </div>
                 <button className="btn-add" onClick={handleAdd}>
-                    + Add OS
+                    {t("+ Add OS")}
                 </button>
             </div>
 
@@ -149,23 +150,23 @@ export const OSCatalogTab = () => {
                                 type="checkbox"
                                 checked={allSelected}
                                 onChange={toggleAll}
-                                aria-label="Select all rows on this page"
+                                aria-label={t("Select all rows on this page")}
                             />
                         </th>
                         <th onClick={() => handleSort("os_name")} style={{ cursor: "pointer" }}>
-                            OS Name{renderSortIcon("os_name")}
+                            {t("OS Name")}{renderSortIcon("os_name")}
                         </th>
                         <th onClick={() => handleSort("os_version")} style={{ cursor: "pointer" }}>
-                            OS Version{renderSortIcon("os_version")}
+                            {t("OS Version")}{renderSortIcon("os_version")}
                         </th>
-                        <th>Actions</th>
+                        <th>{t("Actions")}</th>
                     </tr>
                     </thead>
                     <tbody>
                     {paged.length === 0 ? (
                         <tr>
                             <td colSpan="4" className="no-data">
-                                No OS found
+                                {t("No OS found")}
                             </td>
                         </tr>
                     ) : (
@@ -176,7 +177,7 @@ export const OSCatalogTab = () => {
                                         type="checkbox"
                                         checked={selectedIds.has(item.id)}
                                         onChange={() => toggleOne(item.id)}
-                                        aria-label={`Select ${item.os_name || item.id}`}
+                                        aria-label={t("Select {{value}}", { value: item.os_name || item.id })}
                                     />
                                 </td>
                                 <td>{item.os_name}</td>
@@ -185,7 +186,7 @@ export const OSCatalogTab = () => {
                                     <button
                                         className="btn-icon"
                                         onClick={() => setEditItem(item)}
-                                        title="Edit"
+                                        title={t("Edit")}
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
@@ -221,8 +222,8 @@ export const OSCatalogTab = () => {
 
             {showBulkConfirm && (
                 <DeleteConfirmModal
-                    title="Delete OS Entries"
-                    message={`Are you sure you want to delete ${selectedCount} item${selectedCount === 1 ? "" : "s"}?`}
+                    title={t("Delete OS Entries")}
+                    message={t("Are you sure you want to delete {{count}} items?", { count: selectedCount })}
                     onConfirm={confirmBulkDelete}
                     onCancel={() => setShowBulkConfirm(false)}
                 />
@@ -236,8 +237,8 @@ export const OSCatalogTab = () => {
 
             {showDeleteModal && (
                 <DeleteConfirmModal
-                    title="Delete OS"
-                    message={`Are you sure you want to delete "${selectedItem?.os_name}"?`}
+                    title={t("Delete OS")}
+                    message={t("Are you sure you want to delete \"{{os_name}}\"?", { os_name: selectedItem?.os_name })}
                     onConfirm={confirmDelete}
                     onCancel={() => {
                         setShowDeleteModal(false);

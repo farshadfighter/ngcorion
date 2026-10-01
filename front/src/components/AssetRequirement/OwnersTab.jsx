@@ -9,6 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
+import { t } from "../../i18n";
 
 export const OwnersTab = () => {
     const dispatch = useDispatch();
@@ -116,7 +117,7 @@ export const OwnersTab = () => {
     };
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     return (
@@ -126,7 +127,7 @@ export const OwnersTab = () => {
                     <input
                         type="text"
 
-                        placeholder="Search asset types..."
+                        placeholder={t("Search asset types...")}
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -142,7 +143,7 @@ export const OwnersTab = () => {
                     />
                 </div>
                 <button className="btn-add" onClick={handleAdd}>
-                    + Add Owner
+                    {t("+ Add Owner")}
                 </button>
             </div>
 
@@ -164,34 +165,34 @@ export const OwnersTab = () => {
                                 type="checkbox"
                                 checked={allSelected}
                                 onChange={toggleAll}
-                                aria-label="Select all rows on this page"
+                                aria-label={t("Select all rows on this page")}
                             />
                         </th>
-                        <th>Number</th>
+                        <th>{t("Number")}</th>
 
                         <th onClick={() => handleSort("full_name")} style={{ cursor: "pointer" }}>
-                            Full Name{renderSortIcon("full_name")}
+                            {t("Full Name")}{renderSortIcon("full_name")}
                         </th>
                         <th onClick={() => handleSort("department")} style={{ cursor: "pointer" }}>
-                            Department{renderSortIcon("department")}
+                            {t("Department")}{renderSortIcon("department")}
                         </th>
                         <th onClick={() => handleSort("role")} style={{ cursor: "pointer" }}>
-                            Role{renderSortIcon("role")}
+                            {t("Role")}{renderSortIcon("role")}
                         </th>
                         <th onClick={() => handleSort("email")} style={{ cursor: "pointer" }}>
-                            Email{renderSortIcon("email")}
+                            {t("Email")}{renderSortIcon("email")}
                         </th>
                         <th onClick={() => handleSort("phone")} style={{ cursor: "pointer" }}>
-                            Phone{renderSortIcon("phone")}
+                            {t("Phone")}{renderSortIcon("phone")}
                         </th>
-                        <th>Actions</th>
+                        <th>{t("Actions")}</th>
                     </tr>
                     </thead>
                     <tbody>
                     {paged.length === 0 ? (
                         <tr>
                             <td colSpan="8" className="no-data">
-                                No owners found
+                                {t("No owners found")}
                             </td>
                         </tr>
                     ) : (
@@ -205,7 +206,7 @@ export const OwnersTab = () => {
                                         type="checkbox"
                                         checked={selectedIds.has(item.id)}
                                         onChange={() => toggleOne(item.id)}
-                                        aria-label={`Select ${item.full_name}`}
+                                        aria-label={t("Select {{full_name}}", { full_name: item.full_name })}
                                     />
                                 </td>
                                 {/* Continues across pages rather than restarting at 1. */}
@@ -219,7 +220,7 @@ export const OwnersTab = () => {
                                     <button
                                         className="btn-icon"
                                         onClick={() => setEditItem(item)}
-                                        title="Edit"
+                                        title={t("Edit")}
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
@@ -262,8 +263,8 @@ export const OwnersTab = () => {
 
             {showBulkConfirm && (
                 <DeleteConfirmModal
-                    title="Delete Owners"
-                    message={`Are you sure you want to delete ${selectedCount} owner${selectedCount === 1 ? "" : "s"}?`}
+                    title={t("Delete Owners")}
+                    message={t("Are you sure you want to delete {{count}} owners?", { count: selectedCount })}
                     onConfirm={confirmBulkDelete}
                     onCancel={() => setShowBulkConfirm(false)}
                 />
@@ -271,8 +272,8 @@ export const OwnersTab = () => {
 
             {showDeleteModal && (
                 <DeleteConfirmModal
-                    title="Delete Owner"
-                    message={`Are you sure you want to delete "${selectedItem?.full_name}"?`}
+                    title={t("Delete Owner")}
+                    message={t("Are you sure you want to delete \"{{full_name}}\"?", { full_name: selectedItem?.full_name })}
                     onConfirm={confirmDelete}
                     onCancel={() => {
                         setShowDeleteModal(false);

@@ -1,0 +1,19 @@
+{
+  "{{length}} assets": "{{length}} دارایی",
+  "{{length}} links": "{{length}} اتصال",
+  "Checking…": "در حال بررسی…",
+  "Destination": "مقصد",
+  "Drag a device to rearrange it - the layout is saved. Drag from a device's port to another device's port to create a link. Click a link to edit it.": "برای جابه‌جایی، دستگاه را بکشید - چیدمان ذخیره می‌شود. برای ایجاد اتصال، از پورت یک دستگاه به پورت دستگاه دیگر بکشید. برای ویرایش اتصال روی آن کلیک کنید.",
+  "Hosted asset": "دارایی میزبانی‌شده",
+  "Hosted-on relationship": "رابطهٔ میزبانی",
+  "Link details": "جزئیات اتصال",
+  "Link type": "نوع اتصال",
+  "Loading topology…": "در حال بارگذاری توپولوژی…",
+  "No assets yet. Add assets in Asset Management to see them here.": "هنوز دارایی‌ای نیست. دارایی‌ها را در مدیریت دارایی‌ها اضافه کنید تا اینجا نمایش داده شوند.",
+  "No structural issues found.": "مشکل ساختاری‌ای پیدا نشد.",
+  "Server": "سرور",
+  "Set from Asset Management → the hosted asset's \"Hosted on server\" field, not editable here.": "از مدیریت دارایی‌ها ← فیلد «میزبانی‌شده روی سرور» دارایی تنظیم می‌شود و اینجا قابل ویرایش نیست.",
+  "Speed (Mbps)": "سرعت (Mbps)",
+  "Validate": "اعتبارسنجی",
+  "Validation": "اعتبارسنجی"
+}

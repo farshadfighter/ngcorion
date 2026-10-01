@@ -1,5 +1,6 @@
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 import { getModuleLimit, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
+import { t } from "../../i18n";
 
 export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onActivate }) => {
     const license = LICENSE_TYPES[licenseType];
@@ -44,13 +45,13 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             <div style={{ fontSize: "12px", color: expired ? "#EF4444" : "#6B7280", marginTop: "2px" }}>
                                 {expired ? (
                                     <>
-                                        <i className="fa-solid fa-ban" style={{ marginRight: "4px" }} />
-                                        Expired
+                                        <i className="fa-solid fa-ban" style={{ marginInlineEnd: "4px" }} />
+                                        {t("Expired")}
                                     </>
                                 ) : (
                                     <>
-                                        <i className="fa-solid fa-circle-check" style={{ marginRight: "4px", color: "#10B981" }} />
-                                        Expires: {formatExpiryDate(apiData.expires_at)}
+                                        <i className="fa-solid fa-circle-check" style={{ marginInlineEnd: "4px", color: "#10B981" }} />
+                                        {t("Expires: {{expires_at}}", { expires_at: formatExpiryDate(apiData.expires_at) })}
                                     </>
                                 )}
                             </div>
@@ -72,7 +73,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                         }}
                     >
                         <i className="fa-regular fa-clock" />
-                        <span>licence time: {license.duration}</span>
+                        <span>{t("licence time: {{duration}}", { duration: license.duration })}</span>
                     </div>
 
                     {isActive && (
@@ -91,7 +92,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             }}
                         >
                             <i className="fa-solid fa-circle-check" />
-                            Active
+                            {t("Active")}
                         </div>
                     )}
                 </div>
@@ -121,7 +122,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                         >
                             <i className={`fa-solid ${MODULE_ICONS[module]}`} style={{ color: license.borderColor }} />
                             <span>{MODULE_LABELS[module]}</span>
-                            <span style={{ fontWeight: "700", color: license.borderColor, marginLeft: "4px" }}>
+                            <span style={{ fontWeight: "700", color: license.borderColor, marginInlineStart: "4px" }}>
                                 {usedValue !== null ? `${usedValue}/` : ""}{limit}
                             </span>
                         </div>
@@ -145,7 +146,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             cursor: "pointer",
                         }}
                     >
-                        Activate
+                        {t("Activate")}
                     </button>
                 </div>
             )}

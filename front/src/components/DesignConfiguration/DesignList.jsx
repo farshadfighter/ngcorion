@@ -9,6 +9,7 @@ import {
     clearMessages,
 } from "../../store/designSlice.jsx";
 import "../../assets/DesignConfiguration.css";
+import { t as tr, uiLocale } from "../../i18n";
 
 export const DesignList = () => {
     const dispatch = useDispatch();
@@ -58,9 +59,9 @@ export const DesignList = () => {
     return (
         <div className="dc-container">
             <div className="dc-toolbar">
-                <div className="dc-toolbar-info">{designs.length} design(s)</div>
+                <div className="dc-toolbar-info">{tr("{{length}} design(s)", { length: designs.length })}</div>
                 <button className="dc-btn dc-btn-primary" onClick={() => setShowCreate(true)}>
-                    <i className="fa-solid fa-plus" /> New Design
+                    <i className="fa-solid fa-plus" /> {" "}{tr("New Design")}
                 </button>
             </div>
 
@@ -72,18 +73,18 @@ export const DesignList = () => {
 
             <div className="dc-table-container">
                 {isLoading ? (
-                    <div className="dc-empty">Loading designs…</div>
+                    <div className="dc-empty">{tr("Loading designs…")}</div>
                 ) : designs.length === 0 ? (
-                    <div className="dc-empty">No designs yet. Click "New Design" to start one.</div>
+                    <div className="dc-empty">{tr("No designs yet. Click \"New Design\" to start one.")}</div>
                 ) : (
                     <table className="dc-table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th>Status</th>
-                                <th>Latest version</th>
-                                <th>Updated</th>
+                                <th>{tr("Name")}</th>
+                                <th>{tr("Description")}</th>
+                                <th>{tr("Status")}</th>
+                                <th>{tr("Latest version")}</th>
+                                <th>{tr("Updated")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -95,7 +96,7 @@ export const DesignList = () => {
                                         <span className={`dc-status dc-status-${d.status}`}>{d.status}</span>
                                     </td>
                                     <td>v{d.latest_version_number ?? 1}</td>
-                                    <td>{d.updated_at ? new Date(d.updated_at).toLocaleString() : "—"}</td>
+                                    <td>{d.updated_at ? new Date(d.updated_at).toLocaleString(uiLocale()) : "—"}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -106,26 +107,26 @@ export const DesignList = () => {
             {showCreate && (
                 <div className="dc-modal-backdrop" onClick={() => setShowCreate(false)}>
                     <div className="dc-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>New design</h3>
+                        <h3>{tr("New design")}</h3>
                         <div className="dc-field">
-                            <label>Name</label>
-                            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Branch Office Refresh" />
+                            <label>{tr("Name")}</label>
+                            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={tr("e.g. Branch Office Refresh")} />
                         </div>
                         <div className="dc-field">
-                            <label>Description</label>
+                            <label>{tr("Description")}</label>
                             <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
                         </div>
 
                         <div className="dc-field">
-                            <label>Start from</label>
+                            <label>{tr("Start from")}</label>
                             <div className="dc-template-options">
                                 <button
                                     type="button"
                                     className={`dc-template-card${templateId === null ? " dc-template-card-selected" : ""}`}
                                     onClick={() => setTemplateId(null)}
                                 >
-                                    <span className="dc-template-card-title">Blank canvas</span>
-                                    <span className="dc-template-card-desc">Start with an empty design and add components yourself.</span>
+                                    <span className="dc-template-card-title">{tr("Blank canvas")}</span>
+                                    <span className="dc-template-card-desc">{tr("Start with an empty design and add components yourself.")}</span>
                                 </button>
                                 {templates.map((t) => (
                                     <button
@@ -144,7 +145,7 @@ export const DesignList = () => {
 
                         {templateId && (
                             <div className="dc-field">
-                                <label>Network size</label>
+                                <label>{tr("Network size")}</label>
                                 <select value={templateScale} onChange={(e) => setTemplateScale(e.target.value)}>
                                     {templateScales.map((s) => (
                                         <option key={s.id} value={s.id}>{s.label}</option>
@@ -154,9 +155,9 @@ export const DesignList = () => {
                         )}
 
                         <div className="dc-modal-actions">
-                            <button className="dc-btn" onClick={() => setShowCreate(false)}>Cancel</button>
+                            <button className="dc-btn" onClick={() => setShowCreate(false)}>{tr("Cancel")}</button>
                             <button className="dc-btn dc-btn-primary" onClick={handleCreate} disabled={!name.trim()}>
-                                Create
+                                {tr("Create")}
                             </button>
                         </div>
                     </div>

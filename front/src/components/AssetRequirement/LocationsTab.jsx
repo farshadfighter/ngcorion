@@ -9,6 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
+import { t } from "../../i18n";
 
 export const LocationsTab = () => {
     const dispatch = useDispatch();
@@ -105,7 +106,7 @@ export const LocationsTab = () => {
     };
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     return (
@@ -114,7 +115,7 @@ export const LocationsTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-                        placeholder="Search asset types..."
+                        placeholder={t("Search asset types...")}
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -130,7 +131,7 @@ export const LocationsTab = () => {
                     />
                 </div>
                 <button className="btn-add" onClick={handleAdd}>
-                    + Add Location
+                    {t("+ Add Location")}
                 </button>
             </div>
 
@@ -152,34 +153,34 @@ export const LocationsTab = () => {
                                 type="checkbox"
                                 checked={allSelected}
                                 onChange={toggleAll}
-                                aria-label="Select all rows on this page"
+                                aria-label={t("Select all rows on this page")}
                             />
                         </th>
-                        <th>Number</th>
+                        <th>{t("Number")}</th>
 
                         <th onClick={() => handleSort("site_name")} style={{ cursor: "pointer" }}>
-                            Site Name{renderSortIcon("site_name")}
+                            {t("Site Name")}{renderSortIcon("site_name")}
                         </th>
                         <th onClick={() => handleSort("rack_name")} style={{ cursor: "pointer" }}>
-                            Rack{renderSortIcon("rack_name")}
+                            {t("Rack")}{renderSortIcon("rack_name")}
                         </th>
                         <th onClick={() => handleSort("room")} style={{ cursor: "pointer" }}>
-                            Room{renderSortIcon("room")}
+                            {t("Room")}{renderSortIcon("room")}
                         </th>
                         <th onClick={() => handleSort("floor")} style={{ cursor: "pointer" }}>
-                            Floor{renderSortIcon("floor")}
+                            {t("Floor")}{renderSortIcon("floor")}
                         </th>
                         <th onClick={() => handleSort("unit")} style={{ cursor: "pointer" }}>
-                            Unit{renderSortIcon("unit")}
+                            {t("Unit")}{renderSortIcon("unit")}
                         </th>
-                        <th>Actions</th>
+                        <th>{t("Actions")}</th>
                     </tr>
                     </thead>
                     <tbody>
                     {paged.length === 0 ? (
                         <tr>
                             <td colSpan="8" className="no-data">
-                                No locations found
+                                {t("No locations found")}
                             </td>
                         </tr>
                     ) : (
@@ -190,7 +191,7 @@ export const LocationsTab = () => {
                                         type="checkbox"
                                         checked={selectedIds.has(item.id)}
                                         onChange={() => toggleOne(item.id)}
-                                        aria-label={`Select ${item.site_name || item.id}`}
+                                        aria-label={t("Select {{value}}", { value: item.site_name || item.id })}
                                     />
                                 </td>
                                 <td>{(page - 1) * pageSize + index + 1}</td>
@@ -202,7 +203,7 @@ export const LocationsTab = () => {
                                 <td className="actions">
                                     <button className="btn-icon"
                                             onClick={() => setEditItem(item)}
-                                            title="Edit"
+                                            title={t("Edit")}
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
@@ -237,8 +238,8 @@ export const LocationsTab = () => {
 
             {showBulkConfirm && (
                 <DeleteConfirmModal
-                    title="Delete Locations"
-                    message={`Are you sure you want to delete ${selectedCount} item${selectedCount === 1 ? "" : "s"}?`}
+                    title={t("Delete Locations")}
+                    message={t("Are you sure you want to delete {{count}} items?", { count: selectedCount })}
                     onConfirm={confirmBulkDelete}
                     onCancel={() => setShowBulkConfirm(false)}
                 />
@@ -252,8 +253,8 @@ export const LocationsTab = () => {
 
             {showDeleteModal && (
                 <DeleteConfirmModal
-                    title="Delete Location"
-                    message={`Are you sure you want to delete "${selectedItem?.site_name}"?`}
+                    title={t("Delete Location")}
+                    message={t("Are you sure you want to delete \"{{site_name}}\"?", { site_name: selectedItem?.site_name })}
                     onConfirm={confirmDelete}
                     onCancel={() => {
                         setShowDeleteModal(false);

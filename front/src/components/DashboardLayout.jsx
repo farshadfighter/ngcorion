@@ -12,6 +12,9 @@ import { useAlertSummary } from "./Alerts/useAlertSummary";
 import "../assets/Alerts.css";
 
 import "../assets/Dashboard.css";
+import api from "../config/api";
+import { currentLanguage, hasStoredLanguage, isRtl, LANGUAGES, n, setLanguage, t, uiLocale } from "../i18n";
+import { formatLongDate } from "../utils/dates";
 
 // Map the current URL path to a stable menu key. That key drives the sidebar
 // active state, the header title and the license badge — reusing the same keys
@@ -103,10 +106,28 @@ export const DashboardLayout = () => {
         dispatch(getLicenseStatusThunk());
     }, [dispatch]);
 
-    const currentDate = currentTime.toLocaleDateString("en-US", {
-        weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
-    const currentTimeString = currentTime.toLocaleTimeString("en-US", {
+    // Follow the language saved on the account. A user who never picked one
+    // keeps the language chosen on the sign-in page, and it is saved for them.
+    const { language: accountLanguage, languageChosen } = useSelector((state) => state.auth);
+    useEffect(() => {
+        if (!accountLanguage || accountLanguage === currentLanguage()) return;
+        if (!languageChosen && hasStoredLanguage()) {
+            api.put("/auth/me/language", { language: currentLanguage() }).catch(() => {});
+        } else {
+            setLanguage(accountLanguage);
+        }
+    }, [accountLanguage, languageChosen]);
+
+    const chooseLanguage = (code) => {
+        setShowDropdown(false);
+        if (code === currentLanguage()) return;
+        api.put("/auth/me/language", { language: code })
+            .catch(() => {})
+            .finally(() => setLanguage(code));
+    };
+
+    const currentDate = formatLongDate(currentTime);
+    const currentTimeString = currentTime.toLocaleTimeString(uiLocale(),  {
         hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
 
@@ -124,47 +145,47 @@ export const DashboardLayout = () => {
     };
 
     const pageTitles = {
-        "dashboard":           "Dashboard",
-        "asset-management":    "Asset Management",
-        "asset-requirement":   "Asset Requirement",
-        "asset-list":          "Asset List",
-        "auto-discovery":      "Auto Discovery",
-        "schedule-discovery":  "Schedule Discovery",
-        "auditing":            "Auditing",
-        "schedule-auditing":   "Schedule Auditing",
-        "operation-device":    "Operation and Device",
-        "hardening":           "Hardening",
-        "hardening-overview":  "Hardening",
-        "hardening-operation": "Operation and Device",
-        "risk-intelligence":   "Risk Intelligence",
-        "risk-asset":          "Risk Asset",
-        "backup-overview":     "Backup & Restore",
-        "backup":              "Device Backups",
-        "backup-restores":     "Restore History",
-        "topology":            "Topology",
-        "design-suggestion":   "Suggested Design",
-        "architecture-validation": "Architecture Validation",
-        "design-configuration": "Design & Configuration",
-        "cve":                 "CVE Findings",
-        "cve-database":        "CVE Database",
-        "noc-dashboard":       "NOC Dashboard",
-        "noc-hosts":           "NOC Host",
-        "user-management":     "User Management",
-        "system-logs":         "System Logs",
-        "system-configuration": "System Configuration",
-        "notifications":       "Notifications",
-        "alerts":              "Alerts",
-        "licence":             "License Management",
+        "dashboard":           t("Dashboard"),
+        "asset-management":    t("Asset Management"),
+        "asset-requirement":   t("Asset Requirement"),
+        "asset-list":          t("Asset List"),
+        "auto-discovery":      t("Auto Discovery"),
+        "schedule-discovery":  t("Schedule Discovery"),
+        "auditing":            t("Auditing"),
+        "schedule-auditing":   t("Schedule Auditing"),
+        "operation-device":    t("Operation and Device"),
+        "hardening":           t("Hardening"),
+        "hardening-overview":  t("Hardening"),
+        "hardening-operation": t("Operation and Device"),
+        "risk-intelligence":   t("Risk Intelligence"),
+        "risk-asset":          t("Risk Asset"),
+        "backup-overview":     t("Backup & Restore"),
+        "backup":              t("Device Backups"),
+        "backup-restores":     t("Restore History"),
+        "topology":            t("Topology"),
+        "design-suggestion":   t("Suggested Design"),
+        "architecture-validation": t("Architecture Validation"),
+        "design-configuration": t("Design & Configuration"),
+        "cve":                 t("CVE Findings"),
+        "cve-database":        t("CVE Database"),
+        "noc-dashboard":       t("NOC Dashboard"),
+        "noc-hosts":           t("NOC Host"),
+        "user-management":     t("User Management"),
+        "system-logs":         t("System Logs"),
+        "system-configuration": t("System Configuration"),
+        "notifications":       t("Notifications"),
+        "alerts":              t("Alerts"),
+        "licence":             t("License Management"),
     };
 
     // One-line explanation shown under the page title.
     const pageSubtitles = {
-        "topology": "The network as it actually is right now - every real asset and the cabling between them.",
-        "design-suggestion": "A standard Cisco SAFE campus design sized to your real asset inventory, with matching assets slotted in - review it, then turn it into a real Design.",
-        "architecture-validation": "Automated checks against the current topology (redundancy, exposure, best practice).",
-        "design-configuration": "Draw a planned blueprint here, even for devices that don't exist yet. Versioned, so you can compare a design's history over time.",
-        "noc-dashboard": "Live SNMP status for every asset, plotted on the same topology graph as Topology.",
-        "noc-hosts": "Every asset, searchable - open one to see its SNMP details and set up monitoring.",
+        "topology": t("The network as it actually is right now - every real asset and the cabling between them."),
+        "design-suggestion": t("A standard Cisco SAFE campus design sized to your real asset inventory, with matching assets slotted in - review it, then turn it into a real Design."),
+        "architecture-validation": t("Automated checks against the current topology (redundancy, exposure, best practice)."),
+        "design-configuration": t("Draw a planned blueprint here, even for devices that don't exist yet. Versioned, so you can compare a design's history over time."),
+        "noc-dashboard": t("Live SNMP status for every asset, plotted on the same topology graph as Topology."),
+        "noc-hosts": t("Every asset, searchable - open one to see its SNMP details and set up monitoring."),
     };
 
     return (
@@ -175,7 +196,7 @@ export const DashboardLayout = () => {
                     {!isSidebarCollapsed && <img src="/logowhite.png" alt="logo" className="sidebar-logo" />}
                     {isSidebarCollapsed  && <img src="/logowhite.png" alt="logo" className="sidebar-logo-small" />}
                     <button className="toggle-sidebar-btn" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
-                        {isSidebarCollapsed ? "›" : "‹"}
+                        {isSidebarCollapsed === isRtl() ? "‹" : "›"}
                     </button>
                 </div>
 
@@ -183,21 +204,21 @@ export const DashboardLayout = () => {
 
                     {/* ── Dashboard ── */}
                     <div className={`nav-item ${activeMenu === "dashboard" ? "active" : ""}`}
-                         onClick={() => navigate("/overview")} title="Dashboard">
+                         onClick={() => navigate("/overview")} title={t("Dashboard")}>
                         <img src="/icons/dashboard.svg" alt="" className="nav-icon-img" />
-                        {!isSidebarCollapsed && <span>Dashboard</span>}
+                        {!isSidebarCollapsed && <span>{t("Dashboard")}</span>}
                     </div>
 
                     {/* ── Alerts ── */}
                     <div className={`nav-item ${activeMenu === "alerts" ? "active" : ""}`}
                          onClick={() => navigate("/alerts")}
-                         title={unacknowledged ? `Alerts - ${unacknowledged} not acknowledged` : "Alerts"}>
+                         title={unacknowledged ? t("Alerts - {{unacknowledged}} not acknowledged", { unacknowledged }) : t("Alerts")}>
                         <img src="/icons/alerts.svg" alt="" className="nav-icon-img" />
-                        {!isSidebarCollapsed && <span>Alerts</span>}
+                        {!isSidebarCollapsed && <span>{t("Alerts")}</span>}
                         {!isSidebarCollapsed && unacknowledged > 0 && (
                             <span className={`alr-nav-badge ${alertSummary?.critical ? "" : "is-calm"}`}
-                                  aria-label={`${unacknowledged} not acknowledged`}>
-                                {unacknowledged > 99 ? "99+" : unacknowledged}
+                                  aria-label={t("{{unacknowledged}} not acknowledged", { unacknowledged })}>
+                                {unacknowledged > 99 ? n("99+") : n(unacknowledged)}
                             </span>
                         )}
                     </div>
@@ -209,35 +230,35 @@ export const DashboardLayout = () => {
                                 <div className={`nav-section nav-section-clickable ${activeMenu === "asset-management" ? "nav-section-active" : ""}`}
                                      onClick={() => navigate("/assets")}>
                                     <img src="/icons/asset-management.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">Asset Management</span>
+                                    <span className="nav-section-title">{t("Asset Management")}</span>
                                 </div>
                             )}
                             {canReadAssetReq && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "asset-requirement" ? "active" : ""}`}
-                                     onClick={() => navigate("/assets/requirements")} title="Asset Requirement">
+                                     onClick={() => navigate("/assets/requirements")} title={t("Asset Requirement")}>
                                     {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Asset Requirement</span>}
+                                    {!isSidebarCollapsed && <span>{t("Asset Requirement")}</span>}
                                 </div>
                             )}
                             {canReadAssetList && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "asset-list" ? "active" : ""}`}
-                                     onClick={() => navigate("/assets/inventory")} title="Asset List">
+                                     onClick={() => navigate("/assets/inventory")} title={t("Asset List")}>
                                     {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Asset List</span>}
+                                    {!isSidebarCollapsed && <span>{t("Asset List")}</span>}
                                 </div>
                             )}
                             {canReadAutoDisc && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "auto-discovery" ? "active" : ""}`}
-                                     onClick={() => navigate("/assets/discovery")} title="Auto Discovery">
+                                     onClick={() => navigate("/assets/discovery")} title={t("Auto Discovery")}>
                                     {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Auto Discovery</span>}
+                                    {!isSidebarCollapsed && <span>{t("Auto Discovery")}</span>}
                                 </div>
                             )}
                             {canReadAutoDisc && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "schedule-discovery" ? "active" : ""}`}
-                                     onClick={() => navigate("/assets/schedule-discovery")} title="Schedule Discovery">
+                                     onClick={() => navigate("/assets/schedule-discovery")} title={t("Schedule Discovery")}>
                                     {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Schedule Discovery</span>}
+                                    {!isSidebarCollapsed && <span>{t("Schedule Discovery")}</span>}
                                 </div>
                             )}
                         </>
@@ -250,18 +271,18 @@ export const DashboardLayout = () => {
                                 <div className={`nav-section nav-section-clickable ${activeMenu === "auditing" ? "nav-section-active" : ""}`}
                                      onClick={() => navigate("/audit")}>
                                     <img src="/icons/auditing.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">Auditing</span>
+                                    <span className="nav-section-title">{t("Auditing")}</span>
                                 </div>
                             )}
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "operation-device" ? "active" : ""}`}
-                                 onClick={() => navigate("/audit/sessions")} title="Operation & Device">
+                                 onClick={() => navigate("/audit/sessions")} title={t("Operation & Device")}>
                                 {isSidebarCollapsed && <img src="/icons/auditing.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Operation & Device</span>}
+                                {!isSidebarCollapsed && <span>{t("Operation & Device")}</span>}
                             </div>
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "schedule-auditing" ? "active" : ""}`}
-                                 onClick={() => navigate("/audit/schedule-auditing")} title="Schedule Auditing">
+                                 onClick={() => navigate("/audit/schedule-auditing")} title={t("Schedule Auditing")}>
                                 {isSidebarCollapsed && <img src="/icons/auditing.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Schedule Auditing</span>}
+                                {!isSidebarCollapsed && <span>{t("Schedule Auditing")}</span>}
                             </div>
                         </>
                     )}
@@ -273,13 +294,13 @@ export const DashboardLayout = () => {
                                 <div className={`nav-section nav-section-clickable ${activeMenu === "hardening-overview" ? "nav-section-active" : ""}`}
                                      onClick={() => navigate("/hardening/overview")}>
                                     <img src="/icons/hardening.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">Hardening</span>
+                                    <span className="nav-section-title">{t("Hardening")}</span>
                                 </div>
                             )}
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "hardening" ? "active" : ""}`}
-                                 onClick={() => navigate("/hardening")} title="Operation and Device">
+                                 onClick={() => navigate("/hardening")} title={t("Operation and Device")}>
                                 {isSidebarCollapsed && <img src="/icons/hardening.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Operation & Device</span>}
+                                {!isSidebarCollapsed && <span>{t("Operation & Device")}</span>}
                             </div>
                         </>
                     )}
@@ -291,23 +312,23 @@ export const DashboardLayout = () => {
                                 <div className={`nav-section nav-section-clickable ${activeMenu === "backup-overview" ? "nav-section-active" : ""}`}
                                      onClick={() => navigate("/backup/overview")}>
                                     <img src="/icons/backup.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">Backup &amp; Restore</span>
+                                    <span className="nav-section-title">{t("Backup & Restore")}</span>
                                 </div>
                             )}
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup-overview" ? "active" : ""}`}
-                                 onClick={() => navigate("/backup/overview")} title="Backup Overview">
+                                 onClick={() => navigate("/backup/overview")} title={t("Backup Overview")}>
                                 {isSidebarCollapsed && <img src="/icons/backup.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Overview</span>}
+                                {!isSidebarCollapsed && <span>{t("Overview")}</span>}
                             </div>
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup" ? "active" : ""}`}
-                                 onClick={() => navigate("/backup")} title="Device Backups">
+                                 onClick={() => navigate("/backup")} title={t("Device Backups")}>
                                 {isSidebarCollapsed && <img src="/icons/backup.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Device Backups</span>}
+                                {!isSidebarCollapsed && <span>{t("Device Backups")}</span>}
                             </div>
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup-restores" ? "active" : ""}`}
-                                 onClick={() => navigate("/backup/restores")} title="Restore History">
+                                 onClick={() => navigate("/backup/restores")} title={t("Restore History")}>
                                 {isSidebarCollapsed && <img src="/icons/backup.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Restore History</span>}
+                                {!isSidebarCollapsed && <span>{t("Restore History")}</span>}
                             </div>
                         </>
                     )}
@@ -318,28 +339,28 @@ export const DashboardLayout = () => {
                             {!isSidebarCollapsed && (
                                 <div className="nav-section">
                                     <img src="/icons/topology.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">Network Design</span>
+                                    <span className="nav-section-title">{t("Network Design")}</span>
                                 </div>
                             )}
                             {canReadTopology && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "topology" ? "active" : ""}`}
-                                     onClick={() => navigate("/topology")} title="Topology">
+                                     onClick={() => navigate("/topology")} title={t("Topology")}>
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Topology</span>}
+                                    {!isSidebarCollapsed && <span>{t("Topology")}</span>}
                                 </div>
                             )}
                             {canReadDesignConfig && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "design-suggestion" ? "active" : ""}`}
-                                     onClick={() => navigate("/design-suggestion")} title="Suggested Design">
+                                     onClick={() => navigate("/design-suggestion")} title={t("Suggested Design")}>
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Suggested Design</span>}
+                                    {!isSidebarCollapsed && <span>{t("Suggested Design")}</span>}
                                 </div>
                             )}
                             {canReadArchValidation && (
                                 <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "architecture-validation" ? "active" : ""}`}
-                                     onClick={() => navigate("/architecture-validation")} title="Architecture Validation">
+                                     onClick={() => navigate("/architecture-validation")} title={t("Architecture Validation")}>
                                     {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                    {!isSidebarCollapsed && <span>Architecture Validation</span>}
+                                    {!isSidebarCollapsed && <span>{t("Architecture Validation")}</span>}
                                 </div>
                             )}
                             {/* Design, Configuration Jobs, Deployment and Configuration Drift have
@@ -359,18 +380,18 @@ export const DashboardLayout = () => {
                                 <div className={`nav-section nav-section-clickable ${activeMenu === "noc-dashboard" ? "nav-section-active" : ""}`}
                                      onClick={() => navigate("/noc/dashboard")}>
                                     <img src="/icons/topology.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">NOC</span>
+                                    <span className="nav-section-title">{t("NOC")}</span>
                                 </div>
                             )}
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "noc-dashboard" ? "active" : ""}`}
-                                 onClick={() => navigate("/noc/dashboard")} title="Dashboard">
+                                 onClick={() => navigate("/noc/dashboard")} title={t("Dashboard")}>
                                 {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Dashboard</span>}
+                                {!isSidebarCollapsed && <span>{t("Dashboard")}</span>}
                             </div>
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "noc-hosts" ? "active" : ""}`}
-                                 onClick={() => navigate("/noc/hosts")} title="Host">
+                                 onClick={() => navigate("/noc/hosts")} title={t("Host")}>
                                 {isSidebarCollapsed && <img src="/icons/topology.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Host</span>}
+                                {!isSidebarCollapsed && <span>{t("Host")}</span>}
                             </div>
                         </>
                     )}
@@ -380,13 +401,13 @@ export const DashboardLayout = () => {
                         <div className={`nav-section nav-section-clickable ${activeMenu === "risk-intelligence" ? "nav-section-active" : ""}`}
                              onClick={() => navigate("/risk/overview")}>
                             <img src="/icons/risk.svg" alt="" className="section-icon" />
-                            <span className="nav-section-title">Risk Intelligence</span>
+                            <span className="nav-section-title">{t("Risk Intelligence")}</span>
                         </div>
                     )}
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "risk-asset" ? "active" : ""}`}
-                         onClick={() => navigate("/risk/assets")} title="Risk Asset">
+                         onClick={() => navigate("/risk/assets")} title={t("Risk Asset")}>
                         {isSidebarCollapsed && <img src="/icons/risk.svg" alt="" className="nav-icon-img" />}
-                        {!isSidebarCollapsed && <span>Risk Asset</span>}
+                        {!isSidebarCollapsed && <span>{t("Risk Asset")}</span>}
                     </div>
 
                     {/* ── CVE VULNERABILITY MANAGEMENT ── */}
@@ -396,18 +417,18 @@ export const DashboardLayout = () => {
                                 <div className={`nav-section nav-section-clickable ${activeMenu === "cve" ? "nav-section-active" : ""}`}
                                      onClick={() => navigate("/cve")}>
                                     <img src="/icons/cve.svg" alt="" className="section-icon" />
-                                    <span className="nav-section-title">CVE</span>
+                                    <span className="nav-section-title">{t("CVE")}</span>
                                 </div>
                             )}
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "cve" ? "active" : ""}`}
-                                 onClick={() => navigate("/cve")} title="CVE Findings">
+                                 onClick={() => navigate("/cve")} title={t("CVE Findings")}>
                                 {isSidebarCollapsed && <img src="/icons/cve.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Findings</span>}
+                                {!isSidebarCollapsed && <span>{t("Findings")}</span>}
                             </div>
                             <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "cve-database" ? "active" : ""}`}
-                                 onClick={() => navigate("/cve/database")} title="CVE Database">
+                                 onClick={() => navigate("/cve/database")} title={t("CVE Database")}>
                                 {isSidebarCollapsed && <img src="/icons/cve.svg" alt="" className="nav-icon-img" />}
-                                {!isSidebarCollapsed && <span>Database</span>}
+                                {!isSidebarCollapsed && <span>{t("Database")}</span>}
                             </div>
                         </>
                     )}
@@ -416,40 +437,40 @@ export const DashboardLayout = () => {
                     {!isSidebarCollapsed && (
                         <div className="nav-section">
                             <img src="/icons/administration.svg" alt="" className="section-icon" />
-                            <span className="nav-section-title">System</span>
+                            <span className="nav-section-title">{t("System")}</span>
                         </div>
                     )}
                     {canReadSysConfig && (
                         <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "system-configuration" ? "active" : ""}`}
-                             onClick={() => navigate("/settings/system")} title="System Configuration">
+                             onClick={() => navigate("/settings/system")} title={t("System Configuration")}>
                             {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
-                            {!isSidebarCollapsed && <span>System Configuration</span>}
+                            {!isSidebarCollapsed && <span>{t("System Configuration")}</span>}
                         </div>
                     )}
                     {canReadSysConfig && (
                         <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "notifications" ? "active" : ""}`}
-                             onClick={() => navigate("/settings/notifications")} title="Notifications">
+                             onClick={() => navigate("/settings/notifications")} title={t("Notifications")}>
                             {isSidebarCollapsed && <img src="/icons/alerts.svg" alt="" className="nav-icon-img" />}
-                            {!isSidebarCollapsed && <span>Notifications</span>}
+                            {!isSidebarCollapsed && <span>{t("Notifications")}</span>}
                         </div>
                     )}
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}
-                         onClick={() => navigate("/settings/license")} title="License management">
+                         onClick={() => navigate("/settings/license")} title={t("License management")}>
                         {isSidebarCollapsed && <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />}
-                        {!isSidebarCollapsed && <span>License management</span>}
+                        {!isSidebarCollapsed && <span>{t("License management")}</span>}
                     </div>
                     {canReadUserMgmt && (
                         <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "user-management" ? "active" : ""}`}
-                             onClick={() => navigate("/settings/users")} title="User Management">
+                             onClick={() => navigate("/settings/users")} title={t("User Management")}>
                             {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
-                            {!isSidebarCollapsed && <span>User Management</span>}
+                            {!isSidebarCollapsed && <span>{t("User Management")}</span>}
                         </div>
                     )}
                     {canReadLogs && (
                         <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "system-logs" ? "active" : ""}`}
-                             onClick={() => navigate("/settings/logs")} title="Logs">
+                             onClick={() => navigate("/settings/logs")} title={t("Logs")}>
                             {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
-                            {!isSidebarCollapsed && <span>Logs</span>}
+                            {!isSidebarCollapsed && <span>{t("Logs")}</span>}
                         </div>
                     )}
 
@@ -472,10 +493,22 @@ export const DashboardLayout = () => {
                                     <div className="user-menu-dropdown-container">
                                         <button className="user-menu-dropdown-btn action-primary"
                                                 onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}>
-                                            <i className="fa-solid fa-key"></i> Change Password
+                                            <i className="fa-solid fa-key"></i> {" "}{t("Change Password")}
                                         </button>
+                                        <div className="user-menu-lang" role="group" aria-label={t("Language")}>
+                                            <span className="user-menu-lang-label">{t("Language")}</span>
+                                            {LANGUAGES.map((l) => (
+                                                <button key={l.code} type="button" lang={l.code} dir={l.dir}
+                                                        aria-pressed={currentLanguage() === l.code}
+                                                        className={`user-menu-dropdown-btn user-menu-lang-btn ${currentLanguage() === l.code ? "is-on" : ""}`}
+                                                        onClick={() => chooseLanguage(l.code)}>
+                                                    {l.label}
+                                                    {currentLanguage() === l.code && <i className="fa-solid fa-check" aria-hidden="true"></i>}
+                                                </button>
+                                            ))}
+                                        </div>
                                         <button className="user-menu-dropdown-btn action-danger" onClick={handleLogout}>
-                                            <i className="fa-solid fa-right-from-bracket"></i> Logout
+                                            <i className="fa-solid fa-right-from-bracket"></i> {" "}{t("Logout")}
                                         </button>
                                     </div>
                                 )}
@@ -500,7 +533,7 @@ export const DashboardLayout = () => {
                         </span>
                         <div>
                             <h1 className="page-title">
-                                {pageTitles[activeMenu] || "Dashboard"}
+                                {pageTitles[activeMenu] || t("Dashboard")}
                             </h1>
                             {pageSubtitles[activeMenu] && (
                                 <p className="page-subtitle">{pageSubtitles[activeMenu]}</p>
@@ -514,7 +547,7 @@ export const DashboardLayout = () => {
                         <AlertBell summary={alertSummary} onChanged={refreshAlerts} />
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
-                            <div className="current-time" style={{ paddingLeft: "25px" }}>
+                            <div className="current-time" style={{ paddingInlineStart: "25px" }}>
                                 <img src="/icons/watch.png" style={{ width: "15px", height: "15px", margin: "15px 8px -1px 1px" }} alt="clock" />
                                 {currentTimeString}
                             </div>
@@ -524,7 +557,7 @@ export const DashboardLayout = () => {
 
                 {/* Active route renders here */}
                 {/* Pages are loaded on first visit; the layout stays while one loads. */}
-                <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">Loading…</div>}>
+                <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">{t("Loading…")}</div>}>
                     <Outlet />
                 </Suspense>
             </main>

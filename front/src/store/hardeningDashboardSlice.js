@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 /**
  * Hardening KPI dashboard data.
@@ -60,7 +61,7 @@ export const fetchHardeningDashboard = createAsyncThunk(
             // Every panel failing means the whole request failed, not one panel.
             if (failed.length === keys.length) {
                 const first = results[0];
-                throw first.reason || new Error("Hardening dashboard unavailable");
+                throw first.reason || new Error(t("Hardening dashboard unavailable"));
             }
             return { data, failed };
         } catch (err) {

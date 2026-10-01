@@ -2,21 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import api from "../../config/api.js";
 import { ACTIVE, KIND_LABEL, STEP_LABEL, formatBytes, formatWhen, num } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
+import { t } from "../../i18n";
 
 const POLL_MS = 1500;
 
 const TITLES = {
-    online: ["Updating the CVE database…", "CVE database updated", "Update failed", "Update cancelled"],
-    full: ["Downloading the full CVE database…", "CVE database downloaded", "Download failed", "Download cancelled"],
-    offline: ["Importing the package…", "Package imported", "Import failed", "Import cancelled"],
-    bundle: ["Loading the bundled CVE database…", "CVE database loaded", "Loading failed", "Loading cancelled"],
-    export: ["Creating the update package…", "Package ready", "Export failed", "Export cancelled"],
+    online: [t("Updating the CVE database…"), "CVE database updated", t("Update failed"), t("Update cancelled")],
+    full: [t("Downloading the full CVE database…"), "CVE database downloaded", t("Download failed"), t("Download cancelled")],
+    offline: [t("Importing the package…"), t("Package imported"), t("Import failed"), t("Import cancelled")],
+    bundle: [t("Loading the bundled CVE database…"), "CVE database loaded", t("Loading failed"), t("Loading cancelled")],
+    export: [t("Creating the update package…"), t("Package ready"), t("Export failed"), t("Export cancelled")],
 };
 
 const SUBTITLES = {
-    online: "Downloads only what changed since the last update, then applies it in one step.",
-    full: "Downloads every published CVE again. Without an NVD API key this takes about 20 minutes.",
-    bundle: "The snapshot of the CVE database shipped with this release.",
+    online: t("Downloads only what changed since the last update, then applies it in one step."),
+    full: t("Downloads every published CVE again. Without an NVD API key this takes about 20 minutes."),
+    bundle: t("The snapshot of the CVE database shipped with this release."),
     export: "A signed package of this database, to carry to a server without internet access.",
 };
 
@@ -25,14 +26,14 @@ function stepText(step, progress, job) {
     switch (step) {
         case "connect": return "services.nvd.nist.gov";
         case "download":
-            if (done == null) return "Waiting for the first page";
+            if (done == null) return t("Waiting for the first page");
             return total ? `${num(Math.min(done, total))} of ${num(total)} CVEs` : `${num(done)} CVEs`;
-        case "kev": return "One small file";
-        case "epss": return "Daily scores for every CVE";
+        case "kev": return t("One small file");
+        case "epss": return t("Daily scores for every CVE");
         case "apply":
             if (done != null && total) return `${num(Math.min(done, total))} of ${num(total)} records`;
-            return "Written in one step - the database changes only when all of it is applied";
-        case "verify": return "Signature, integrity and fit with this database";
+            return t("Written in one step - the database changes only when all of it is applied");
+        case "verify": return t("Signature, integrity and fit with this database");
         case "export": return done != null && total ? `${num(done)} of ${num(total)} CVEs` : job.kind === "export" ? "CVEs, KEV list and EPSS scores" : "";
         default: return "";
     }
@@ -60,7 +61,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                 setJob(data);
                 if (ACTIVE.includes(data.status)) timer.current = setTimeout(poll, POLL_MS);
             } catch (err) {
-                if (alive) setError(err.response?.data?.detail || "Could not read the job status");
+                if (alive) setError(err.response?.data?.detail || t("Could not read the job status"));
             }
         };
         poll();
@@ -74,7 +75,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
         try {
             await api.post(`/api/cve/db/jobs/${jobId}/cancel`);
         } catch (err) {
-            setError(err.response?.data?.detail || "Could not cancel");
+            setError(err.response?.data?.detail || t("Could not cancel"));
         }
     };
 
@@ -89,7 +90,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
             a.click();
             URL.revokeObjectURL(url);
         } catch {
-            setError("The package is no longer available - create it again.");
+            setError(t("The package is no longer available - create it again."));
         } finally {
             setDownloading(false);
         }
@@ -113,7 +114,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                 </header>
 
                 <div className="cvx-modal-body">
-                    {!job && !error && <div className="cvx-muted">Starting…</div>}
+                    {!job && !error && <div className="cvx-muted">{t("Starting…")}</div>}
                     {job && (
                         <ol className="cvx-steps">
                             {steps.map((step, i) => {
@@ -141,12 +142,12 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                         <div className="cvx-result cvx-result-ok">
                             <Icon name="check" size={18} />
                             <div>
-                                <b>{num(stats.new || 0)} new · {num(stats.changed || 0)} updated{stats.removed ? ` · ${num(stats.removed)} removed` : ""}</b>
+                                <b>{t("{{num}} new · {{num2}} updated", { num: num(stats.new || 0), num2: num(stats.changed || 0) })}{stats.removed ? t(" · {{num}} removed", { num: num(stats.removed) }) : ""}</b>
                                 <span>
-                                    {stats.kev != null && `${num(stats.kev)} known exploited · `}
-                                    {stats.epss != null && `${num(stats.epss)} EPSS scores · `}
-                                    finished {formatWhen(job.finished_at)}
-                                    {stats.signer && ` · signed by ${stats.signer}`}
+                                    {stats.kev != null && t("{{num}} known exploited · ", { num: num(stats.kev) })}
+                                    {stats.epss != null && t("{{num}} EPSS scores · ", { num: num(stats.epss) })}
+                                    {t("finished {{finished_at}}", { finished_at: formatWhen(job.finished_at) })}
+                                    {stats.signer && t(" · signed by {{signer}}", { signer: stats.signer })}
                                 </span>
                             </div>
                         </div>
@@ -156,7 +157,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                             <Icon name="package" size={18} />
                             <div>
                                 <b className="cvx-mono">{job.file_name}</b>
-                                <span>{num(stats.cves)} CVEs · {formatBytes(stats.size)} · {stats.kind === "delta" ? `changes since ${formatWhen(stats.since)}` : "the whole database"}</span>
+                                <span>{t("{{num}} CVEs · {{size}} ·", { num: num(stats.cves), size: formatBytes(stats.size) })}{" "} {stats.kind === "delta" ? t("changes since {{since}}", { since: formatWhen(stats.since) }) : t("the whole database")}</span>
                             </div>
                         </div>
                     )}
@@ -165,30 +166,30 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                     ))}
                     {job && ["failed", "cancelled"].includes(job.status) && (
                         <div className="cvx-note cvx-note-error">
-                            {job.error || "The job did not finish."} {job.kind !== "export" && "The database was not changed."}
+                            {job.error || t("The job did not finish.")} {job.kind !== "export" && t("The database was not changed.")}
                         </div>
                     )}
                     {error && <div className="cvx-note cvx-note-error">{error}</div>}
                     {active && job && (
                         <div className="cvx-note">
-                            You can leave this page - the job continues in the background. If it stops, nothing changes; running it again starts from the same point.
+                            {t("You can leave this page - the job continues in the background. If it stops, nothing changes; running it again starts from the same point.")}
                         </div>
                     )}
                     {job?.started_at && active && (
-                        <div className="cvx-muted cvx-small">Started {formatWhen(job.started_at)}{job.requested_by_name ? ` by ${job.requested_by_name}` : job.trigger === "automatic" ? " automatically" : ""}</div>
+                        <div className="cvx-muted cvx-small">{t("Started {{started_at}}", { started_at: formatWhen(job.started_at) })}{job.requested_by_name ? ` by ${job.requested_by_name}` : job.trigger === "automatic" ? " automatically" : ""}</div>
                     )}
                 </div>
 
                 <footer className="cvx-modal-foot">
-                    <button type="button" className="cvx-btn" onClick={close}>{active ? "Run in background" : "Close"}</button>
+                    <button type="button" className="cvx-btn" onClick={close}>{active ? t("Run in background") : t("Close")}</button>
                     {active && isAdmin && (
                         <button type="button" className="cvx-btn cvx-btn-danger" onClick={cancel} disabled={cancelling || !job}>
-                            {cancelling ? "Cancelling…" : `Cancel ${(KIND_LABEL[kind] || "job").toLowerCase()}`}
+                            {cancelling ? t("Cancelling…") : t("Cancel")}
                         </button>
                     )}
                     {job?.status === "succeeded" && kind === "export" && (
                         <button type="button" className="cvx-btn cvx-btn-primary" onClick={download} disabled={downloading}>
-                            <Icon name="download" size={16} /> {downloading ? "Downloading…" : "Download package"}
+                            <Icon name="download" size={16} /> {downloading ? t("Downloading…") : t("Download package")}
                         </button>
                     )}
                 </footer>

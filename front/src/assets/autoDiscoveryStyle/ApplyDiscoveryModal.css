@@ -302,7 +302,7 @@
     background: white;
     cursor: pointer;
     transition: all 0.2s ease;
-    text-align: left;
+    text-align: start;
     width: 100%;
 }
 
@@ -505,15 +505,15 @@
     background: white;
     border-radius: var(--radius-sm, 6px);
     font-size: 13px;
-    border-left: 3px solid transparent;
+    border-inline-start: 3px solid transparent;
 }
 
 .change-item.replace {
-    border-left-color: var(--warning, #f59e0b);
+    border-inline-start-color: var(--warning, #f59e0b);
 }
 
 .change-item.add {
-    border-left-color: var(--success, #22c55e);
+    border-inline-start-color: var(--success, #22c55e);
 }
 
 .field-name {
@@ -594,14 +594,14 @@
 .auto-fill-info li {
     font-size: 13px;
     color: #1e40af;
-    padding-left: 20px;
+    padding-inline-start: 20px;
     position: relative;
 }
 
 .auto-fill-info li::before {
     content: "✓";
     position: absolute;
-    left: 4px;
+    inset-inline-start: 4px;
     font-weight: bold;
     color: #22c55e;
 }

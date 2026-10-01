@@ -1,6 +1,7 @@
 import React from "react";
 
 import { orDash, titleCase, badgeForScore } from "../riskConstants";
+import { t } from "../../../i18n";
 
 /**
  * "Criticality, Confidentiality & Zone": the three asset-derived inputs to the
@@ -34,7 +35,7 @@ const ScoreBox = ({ score }) => {
 const Cell = ({ heading, score, label }) => (
     <div className="ard-cz-col">
         <div className="ard-cz-head">
-            <span>{heading} Score</span>
+            <span>{t("{{heading}} Score", { heading })}</span>
             <span>{heading}</span>
         </div>
         <div className="ard-cz-row">
@@ -46,24 +47,24 @@ const Cell = ({ heading, score, label }) => (
 
 export const ConfidentialityZone = ({ asset, score }) => (
     <section className="ard-card">
-        <h3 className="ard-card-title">Criticality, Confidentiality &amp; Zone</h3>
+        <h3 className="ard-card-title">{t("Criticality, Confidentiality & Zone")}</h3>
         <div className="ard-cz-grid">
             <Cell
-                heading="Criticality"
+                heading={t("Criticality")}
                 score={score?.criticality_score}
                 label={score?.criticality_level}
             />
             {/* AR — the asset's own risk level, 20% of the score. Its weighted
                 value is asset_risk_score; the raw classification is the label. */}
             <Cell
-                heading="Asset Risk"
+                heading={t("Asset Risk")}
                 score={score?.asset_risk_score}
                 label={score?.asset_risk_level || asset?.risk_level}
             />
             <div className="ard-cz-col">
                 <div className="ard-cz-head">
-                    <span>Zone Score</span>
-                    <span>Zone</span>
+                    <span>{t("Zone Score")}</span>
+                    <span>{t("Zone")}</span>
                 </div>
                 <div className="ard-cz-row">
                     <ScoreBox score={score?.zone_score} />
@@ -74,12 +75,12 @@ export const ConfidentialityZone = ({ asset, score }) => (
 
         {asset?.confidentiality_level && (
             <p className="ard-cz-sub">
-                Confidentiality: {titleCase(asset.confidentiality_level)}
+                {t("Confidentiality: {{titleCase}}", { titleCase: titleCase(asset.confidentiality_level) })}
             </p>
         )}
 
         <p className="ard-cz-sub">
-            These values come from Asset List and are not editable here.
+            {t("These values come from Asset List and are not editable here.")}
         </p>
     </section>
 );

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 /**
  * System Configuration sections (/api/system/*).
@@ -149,7 +150,7 @@ const systemConfigSlice = createSlice({
                 if (data && typeof data === "object" && !Array.isArray(data)) {
                     state.sections[section] = data;
                 } else {
-                    state.errors[section] = "Unexpected response from server.";
+                    state.errors[section] = t("Unexpected response from server.");
                 }
             })
             .addCase(fetchSection.rejected, (state, action) => {

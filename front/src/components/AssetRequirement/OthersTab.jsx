@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchEnums } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 export const OthersTab = () => {
     const dispatch = useDispatch();
@@ -11,7 +12,7 @@ export const OthersTab = () => {
     }, [dispatch]);
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     // Extract values
@@ -43,26 +44,26 @@ export const OthersTab = () => {
     return (
         <div className="tab-content">
             <div className="enum-info">
-                <p>ℹ️ These are system-defined values. They cannot be modified.</p>
+                <p>{t("ℹ️ These are system-defined values. They cannot be modified.")}</p>
             </div>
 
             {/* Status Section */}
             <div className="others-section">
-                <h3 className="section-title">Status</h3>
+                <h3 className="section-title">{t("Status")}</h3>
                 <div className="table-container">
                     <table className="requirement-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Value</th>
-                            <th>Display Name</th>
+                            <th>{t("ID")}</th>
+                            <th>{t("Value")}</th>
+                            <th>{t("Display Name")}</th>
                         </tr>
                         </thead>
                         <tbody>
                         {statusValues.length === 0 ? (
                             <tr>
                                 <td colSpan="3" className="no-data">
-                                    No status values found
+                                   {t("No status values found")}
                                 </td>
                             </tr>
                         ) : (
@@ -81,21 +82,21 @@ export const OthersTab = () => {
 
             {/* Confidentiality Section */}
             <div className="others-section">
-                <h3 className="section-title">Confidentiality Levels</h3>
+                <h3 className="section-title">{t("Confidentiality Levels")}</h3>
                 <div className="table-container">
                     <table className="requirement-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Value</th>
-                            <th>Display Name</th>
+                            <th>{t("ID")}</th>
+                            <th>{t("Value")}</th>
+                            <th>{t("Display Name")}</th>
                         </tr>
                         </thead>
                         <tbody>
                         {confidentialityValues.length === 0 ? (
                             <tr>
                                 <td colSpan="3" className="no-data">
-                                    No confidentiality levels found
+                                   {t("No confidentiality levels found")}
                                 </td>
                             </tr>
                         ) : (
@@ -114,21 +115,21 @@ export const OthersTab = () => {
 
             {/* Risk Levels Section */}
             <div className="others-section">
-                <h3 className="section-title">Risk Levels</h3>
+                <h3 className="section-title">{t("Risk Levels")}</h3>
                 <div className="table-container">
                     <table className="requirement-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Value</th>
-                            <th>Display Name</th>
+                            <th>{t("ID")}</th>
+                            <th>{t("Value")}</th>
+                            <th>{t("Display Name")}</th>
                         </tr>
                         </thead>
                         <tbody>
                         {riskValues.length === 0 ? (
                             <tr>
                                 <td colSpan="3" className="no-data">
-                                    No risk levels found
+                                   {t("No risk levels found")}
                                 </td>
                             </tr>
                         ) : (

@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n";
 
 /**
  * Appears only once rows are ticked, so the toolbar stays quiet in the normal
@@ -10,7 +11,7 @@ export const BulkDeleteBar = ({ count, onDelete, onClear, isDeleting }) => {
     return (
         <div className="bulk-bar">
             <span className="bulk-bar-count">
-                {count} selected
+                {t("{{count}} selected", { count })}
             </span>
             <div className="bulk-bar-actions">
                 <button
@@ -19,7 +20,7 @@ export const BulkDeleteBar = ({ count, onDelete, onClear, isDeleting }) => {
                     onClick={onClear}
                     disabled={isDeleting}
                 >
-                    Clear
+                    {t("Clear")}
                 </button>
                 <button
                     type="button"
@@ -29,11 +30,11 @@ export const BulkDeleteBar = ({ count, onDelete, onClear, isDeleting }) => {
                 >
                     {isDeleting ? (
                         <>
-                            <i className="fa-solid fa-spinner fa-spin" /> Deleting…
+                            <i className="fa-solid fa-spinner fa-spin" /> {" "}{t("Deleting…")}
                         </>
                     ) : (
                         <>
-                            <i className="fa-solid fa-trash" /> Delete selected
+                            <i className="fa-solid fa-trash" /> {" "}{t("Delete selected")}
                         </>
                     )}
                 </button>

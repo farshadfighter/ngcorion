@@ -5,18 +5,19 @@ import {
 
 import { RiskLevelBadge } from "../RiskLevelBadge";
 import { formatDate } from "../riskConstants";
+import { t, uiLocale } from "../../../i18n";
 
 /** trigger_type values written by risk_calculation_service.calculate(). */
 const TRIGGER_LABELS = {
-    asset_created: "Asset created",
-    audit_completed: "Audit completed",
-    hardening_verified: "Hardening verified",
-    manual: "Manual recalculation",
-    bulk_recalculation: "Bulk recalculation",
-    port_scan_updated: "Port scan updated",
-    port_updated: "Ports changed",
-    profile_updated: "Profile changed",
-    zone_updated: "Zone changed",
+    asset_created: t("Asset created"),
+    audit_completed: t("Audit completed"),
+    hardening_verified: t("Hardening verified"),
+    manual: t("Manual recalculation"),
+    bulk_recalculation: t("Bulk recalculation"),
+    port_scan_updated: t("Port scan updated"),
+    port_updated: t("Ports changed"),
+    profile_updated: t("Profile changed"),
+    zone_updated: t("Zone changed"),
 };
 
 const triggerLabel = (reason) =>
@@ -27,7 +28,7 @@ const shortDate = (value) => {
     const d = new Date(value);
     return Number.isNaN(d.getTime())
         ? ""
-        : d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+        : d.toLocaleDateString(uiLocale(),  { month: "short", day: "2-digit" });
 };
 
 /**
@@ -43,8 +44,8 @@ export const RiskHistory = ({ history, isLoading, error }) => {
     if (isLoading) {
         return (
             <section className="ard-card">
-                <h3 className="ard-card-title">Risk History</h3>
-                <p className="ard-empty">Loading history…</p>
+                <h3 className="ard-card-title">{t("Risk History")}</h3>
+                <p className="ard-empty">{t("Loading history…")}</p>
             </section>
         );
     }
@@ -52,7 +53,7 @@ export const RiskHistory = ({ history, isLoading, error }) => {
     if (error) {
         return (
             <section className="ard-card">
-                <h3 className="ard-card-title">Risk History</h3>
+                <h3 className="ard-card-title">{t("Risk History")}</h3>
                 <p className="ard-empty">{error}</p>
             </section>
         );
@@ -61,9 +62,9 @@ export const RiskHistory = ({ history, isLoading, error }) => {
     if (!history || history.length === 0) {
         return (
             <section className="ard-card">
-                <h3 className="ard-card-title">Risk History</h3>
+                <h3 className="ard-card-title">{t("Risk History")}</h3>
                 <p className="ard-empty">
-                    No recalculations recorded for this asset yet.
+                    {t("No recalculations recorded for this asset yet.")}
                 </p>
             </section>
         );
@@ -81,7 +82,7 @@ export const RiskHistory = ({ history, isLoading, error }) => {
 
     return (
         <section className="ard-card">
-            <h3 className="ard-card-title">Risk History</h3>
+            <h3 className="ard-card-title">{t("Risk History")}</h3>
 
             {chartData.length > 1 && (
                 <ResponsiveContainer width="100%" height={200}>
@@ -106,7 +107,7 @@ export const RiskHistory = ({ history, isLoading, error }) => {
                         <Tooltip
                             formatter={(value, _n, entry) => [
                                 `${value} (${entry.payload.reason})`,
-                                "Risk score",
+                                t("Risk score"),
                             ]}
                         />
                         <Line
@@ -124,11 +125,11 @@ export const RiskHistory = ({ history, isLoading, error }) => {
                 <table className="ard-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Trigger</th>
-                            <th>Audit</th>
-                            <th>Score</th>
-                            <th>Level</th>
+                            <th>{t("Date")}</th>
+                            <th>{t("Trigger")}</th>
+                            <th>{t("Audit")}</th>
+                            <th>{t("Score")}</th>
+                            <th>{t("Level")}</th>
                         </tr>
                     </thead>
                     <tbody>

@@ -9,30 +9,32 @@ import { CveJobModal } from "./CveJobModal.jsx";
 import { CvePackageImport } from "./CvePackageImport.jsx";
 import { CveExportModal } from "./CveExportModal.jsx";
 import "../../assets/Cve.css";
+import { t as tr } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
 
 const RESULT = {
-    succeeded: { label: "Succeeded", cls: "cvx-pill-ok" },
-    failed: { label: "Failed", cls: "cvx-pill-bad" },
-    cancelled: { label: "Cancelled", cls: "cvx-pill-muted" },
-    running: { label: "Running", cls: "cvx-pill-run" },
-    queued: { label: "Queued", cls: "cvx-pill-run" },
+    succeeded: { label: tr("Succeeded"), cls: "cvx-pill-ok" },
+    failed: { label: tr("Failed"), cls: "cvx-pill-bad" },
+    cancelled: { label: tr("Cancelled"), cls: "cvx-pill-muted" },
+    running: { label: tr("Running"), cls: "cvx-pill-run" },
+    queued: { label: tr("Queued"), cls: "cvx-pill-run" },
 };
 
 const host = (url) => { try { return new URL(url).host; } catch { return url; } };
 
 function nextRun(auto) {
-    if (!auto?.enabled) return "Off";
+    if (!auto?.enabled) return tr("Off");
     const [h, m] = auto.time.split(":").map(Number);
     const now = new Date();
     const passed = now.getHours() * 60 + now.getMinutes() >= h * 60 + m;
-    return `${passed ? "Tomorrow" : "Today"} ${auto.time}`;
+    return `${passed ? tr("Tomorrow") : tr("Today")} ${auto.time}`;
 }
 
 function methodLabel(job) {
     const base = KIND_LABEL[job.kind] || job.kind;
-    if (job.kind === "online") return job.trigger === "automatic" ? "Online · automatic" : "Online · manual";
+    if (job.kind === "online") return job.trigger === "automatic" ? tr("Online · automatic") : tr("Online · manual");
     return base;
 }
 
@@ -63,13 +65,13 @@ export function CveDatabase() {
     const busy = !!running;
 
     const startUpdate = async (full) => {
-        if (full && !window.confirm("Download every CVE again? The current data stays in use until the download finishes. Without an NVD API key this takes about 20 minutes.")) return;
+        if (full && !window.confirm(tr("Download every CVE again? The current data stays in use until the download finishes. Without an NVD API key this takes about 20 minutes."))) return;
         setMessage(null);
         try {
             const { data } = await api.post("/api/cve/db/update", { full });
             setJobId(data.id);
         } catch (err) {
-            setMessage({ type: "error", text: err.response?.data?.detail || "The update could not be started" });
+            setMessage({ type: "error", text: err.response?.data?.detail || tr("The update could not be started") });
         }
     };
 
@@ -79,7 +81,7 @@ export function CveDatabase() {
         return (
             <div className="cvx-page">
                 <PageHead />
-                {statusError ? <div className="cvx-note cvx-note-error">{statusError}</div> : <div className="cvx-muted">Loading…</div>}
+                {statusError ? <div className="cvx-note cvx-note-error">{statusError}</div> : <div className="cvx-muted">{tr("Loading…")}</div>}
             </div>
         );
     }
@@ -94,8 +96,8 @@ export function CveDatabase() {
             {running && !jobId && (
                 <div className="cvx-banner">
                     <span className="cvx-spin" />
-                    <span><b>{KIND_LABEL[running.kind]} in progress</b>{running.trigger === "automatic" ? " · automatic" : running.requested_by_name ? ` · started by ${running.requested_by_name}` : ""}</span>
-                    <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => setJobId(running.id)}>View progress</button>
+                    <span><b>{tr("{{value}} in progress", { value: KIND_LABEL[running.kind] })}</b>{running.trigger === "automatic" ? tr(" · automatic") : running.requested_by_name ? tr(" · started by {{requested_by_name}}", { requested_by_name: running.requested_by_name }) : ""}</span>
+                    <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => setJobId(running.id)}>{tr("View progress")}</button>
                 </div>
             )}
             {message && <div className={`cvx-note ${message.type === "error" ? "cvx-note-error" : "cvx-note-ok"}`}>{message.text}</div>}
@@ -103,28 +105,28 @@ export function CveDatabase() {
             <div className="cvx-stats cvx-stats-4">
                 <div className="cvx-stat">
                     <b>{num(status.cves)}</b>
-                    <span>CVE records</span>
-                    <small>{status.loaded ? `${num(status.with_cpe)} with product data · source NVD` : "Not loaded yet"}</small>
+                    <span>{tr("CVE records")}</span>
+                    <small>{status.loaded ? tr("{{num}} with product data · source NVD", { num: num(status.with_cpe) }) : tr("Not loaded yet")}</small>
                 </div>
                 <div className="cvx-stat">
                     <b>{num(status.kev)}</b>
-                    <span>Known exploited (CISA KEV)</span>
-                    <small>{status.kev_released ? `List of ${formatDate(status.kev_released)}` : "—"}</small>
+                    <span>{tr("Known exploited (CISA KEV)")}</span>
+                    <small>{status.kev_released ? tr("List of {{kev_released}}", { kev_released: formatDate(status.kev_released) }) : "—"}</small>
                 </div>
                 <div className="cvx-stat">
-                    <b className={status.loaded ? "cvx-good" : ""}>{status.watermark ? formatWhen(status.watermark) : "Never"}</b>
-                    <span>Up to date as of</span>
-                    <small>{lastOk ? `${methodLabel(lastOk)} · +${num(lastOk.stats?.new || 0)} new · ${num(lastOk.stats?.changed || 0)} changed` : "No update yet"}</small>
+                    <b className={status.loaded ? "cvx-good" : ""}>{status.watermark ? formatWhen(status.watermark) : tr("Never")}</b>
+                    <span>{tr("Up to date as of")}</span>
+                    <small>{lastOk ? tr("{{methodLabel}} · +{{num}} new · {{num2}} changed", { methodLabel: methodLabel(lastOk), num: num(lastOk.stats?.new || 0), num2: num(lastOk.stats?.changed || 0) }) : tr("No update yet")}</small>
                 </div>
                 <div className="cvx-stat">
                     <b>{formatBytes(status.size_bytes)}</b>
-                    <span>Database size</span>
-                    <small>{status.epss_date ? `EPSS scores of ${formatDate(status.epss_date)}` : "No EPSS scores yet"}</small>
+                    <span>{tr("Database size")}</span>
+                    <small>{status.epss_date ? tr("EPSS scores of {{epss_date}}", { epss_date: formatDate(status.epss_date) }) : tr("No EPSS scores yet")}</small>
                 </div>
             </div>
 
             {!isAdmin && (
-                <div className="cvx-note">Only administrators can update the CVE database. Findings use the copy shown here.</div>
+                <div className="cvx-note">{tr("Only administrators can update the CVE database. Findings use the copy shown here.")}</div>
             )}
 
             {isAdmin && (
@@ -137,14 +139,14 @@ export function CveDatabase() {
             {isAdmin && <TrustedKeys />}
 
             <section className="cvx-card cvx-card-flush">
-                <div className="cvx-card-title">Update history</div>
+                <div className="cvx-card-title">{tr("Update history")}</div>
                 {jobs.length === 0 ? (
-                    <div className="cvx-empty-row">No updates yet.</div>
+                    <div className="cvx-empty-row">{tr("No updates yet.")}</div>
                 ) : (
                     <div className="cvx-table-wrap">
                         <table className="cvx-table">
                             <thead>
-                                <tr><th>When</th><th>Method</th><th className="cvx-num">New</th><th className="cvx-num">Changed</th><th className="cvx-num">KEV</th><th>By</th><th>Result</th></tr>
+                                <tr><th>{tr("When")}</th><th>{tr("Method")}</th><th className="cvx-num">{tr("New")}</th><th className="cvx-num">{tr("Changed")}</th><th className="cvx-num">{tr("KEV")}</th><th>{tr("By")}</th><th>{tr("Result")}</th></tr>
                             </thead>
                             <tbody>
                                 {jobs.map((j) => {
@@ -162,7 +164,7 @@ export function CveDatabase() {
                                             <td className="cvx-num">{export_ || j.status !== "succeeded" ? "—" : num(j.stats?.new || 0)}</td>
                                             <td className="cvx-num">{export_ || j.status !== "succeeded" ? "—" : num(j.stats?.changed || 0)}</td>
                                             <td className="cvx-num">{j.status === "succeeded" && j.stats?.kev != null ? num(j.stats.kev) : "—"}</td>
-                                            <td>{j.requested_by_name || (j.trigger === "automatic" ? "Automatic" : "—")}</td>
+                                            <td>{j.requested_by_name || (j.trigger === "automatic" ? tr("Automatic") : "—")}</td>
                                             <td>
                                                 <span className={`cvx-pill ${r.cls}`} title={j.error || undefined}>{r.label}</span>
                                                 {j.status === "failed" && j.error && <div className="cvx-sub cvx-clip" title={j.error}>{j.error}</div>}
@@ -176,7 +178,7 @@ export function CveDatabase() {
                 )}
             </section>
             {last && last.status === "failed" && !running && (
-                <div className="cvx-muted cvx-small">The last update failed; the database still holds the data from before it.</div>
+                <div className="cvx-muted cvx-small">{tr("The last update failed; the database still holds the data from before it.")}</div>
             )}
 
             {jobId && <CveJobModal jobId={jobId} isAdmin={isAdmin} onClose={closeJob} />}
@@ -196,9 +198,9 @@ function PageHead() {
     return (
         <div className="cvx-head">
             <div>
-                <div className="cvx-crumb"><Link to="/cve">CVE</Link> › Database</div>
-                <h1>CVE Database</h1>
-                <p>A local copy of every published CVE, so matching works without internet. Update it online, or with a package on air-gapped networks.</p>
+                <div className="cvx-crumb"><Link to="/cve">{tr("CVE")}</Link> {" "}{tr("› Database")}</div>
+                <h1>{tr("CVE Database")}</h1>
+                <p>{tr("A local copy of every published CVE, so matching works without internet. Update it online, or with a package on air-gapped networks.")}</p>
             </div>
         </div>
     );
@@ -222,7 +224,7 @@ function OnlineCard({ status, busy, onUpdate, onSaved }) {
             setKey("");
             onSaved();
         } catch (err) {
-            setError(err.response?.data?.detail || "Could not save");
+            setError(err.response?.data?.detail || tr("Could not save"));
         } finally {
             setSaving(false);
         }
@@ -234,7 +236,7 @@ function OnlineCard({ status, busy, onUpdate, onSaved }) {
         try {
             setConn((await api.post("/api/cve/db/test-connection", {}, { timeout: 0 })).data);
         } catch (err) {
-            setConn({ ok: false, checks: [{ name: "NGCorion", ok: false, detail: err.response?.data?.detail || "The test could not run" }] });
+            setConn({ ok: false, checks: [{ name: "NGCorion", ok: false, detail: err.response?.data?.detail || tr("The test could not run") }] });
         } finally {
             setTesting(false);
         }
@@ -245,41 +247,41 @@ function OnlineCard({ status, busy, onUpdate, onSaved }) {
             <div className="cvx-card-head">
                 <span className="cvx-tile" style={{ background: "#1d4ed8" }}><Icon name="cloud" size={22} stroke="#fff" width={1.8} /></span>
                 <div>
-                    <h2>Update online</h2>
-                    <p>{status.loaded ? "Downloads only what changed since the last update." : "Downloads every published CVE, then keeps it current."}</p>
+                    <h2>{tr("Update online")}</h2>
+                    <p>{status.loaded ? tr("Downloads only what changed since the last update.") : tr("Downloads every published CVE, then keeps it current.")}</p>
                 </div>
             </div>
             <div>
-                <div className="cvx-row"><span>Sources</span><b>NVD · CISA KEV · FIRST EPSS</b></div>
+                <div className="cvx-row"><span>{tr("Sources")}</span><b>{tr("NVD · CISA KEV · FIRST EPSS")}</b></div>
                 <div className="cvx-row">
-                    <span>NVD API key</span>
+                    <span>{tr("NVD API key")}</span>
                     {!editingKey ? (
                         <b className={status.api_key_configured ? "cvx-good" : "cvx-warn"}>
-                            {status.api_key_configured ? "Configured" : "Not set · updates are slower"}
-                            <button type="button" className="cvx-link" onClick={() => setEditingKey(true)}>{status.api_key_configured ? "Change" : "Add"}</button>
+                            {status.api_key_configured ? tr("Configured") : tr("Not set · updates are slower")}
+                            <button type="button" className="cvx-link" onClick={() => setEditingKey(true)}>{status.api_key_configured ? tr("Change") : tr("Add")}</button>
                             {status.api_key_configured && (
-                                <button type="button" className="cvx-link cvx-link-danger" disabled={saving} onClick={() => save({ clear_api_key: true })}>Remove</button>
+                                <button type="button" className="cvx-link cvx-link-danger" disabled={saving} onClick={() => save({ clear_api_key: true })}>{tr("Remove")}</button>
                             )}
                         </b>
                     ) : (
                         <form className="cvx-inline-form" onSubmit={(e) => { e.preventDefault(); if (key.trim()) save({ nvd_api_key: key.trim() }); }}>
-                            <input className="cvx-input" type="password" autoComplete="off" placeholder="Paste the API key" aria-label="NVD API key"
+                            <input className="cvx-input" type="password" autoComplete="off" placeholder={tr("Paste the API key")} aria-label={tr("NVD API key")}
                                    value={key} onChange={(e) => setKey(e.target.value)} maxLength={64} />
-                            <button type="submit" className="cvx-btn cvx-btn-sm cvx-btn-primary" disabled={saving || !key.trim()}>Save</button>
-                            <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => { setEditingKey(false); setKey(""); }}>Cancel</button>
+                            <button type="submit" className="cvx-btn cvx-btn-sm cvx-btn-primary" disabled={saving || !key.trim()}>{tr("Save")}</button>
+                            <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => { setEditingKey(false); setKey(""); }}>{tr("Cancel")}</button>
                         </form>
                     )}
                 </div>
                 {editingKey && (
-                    <div className="cvx-hint">Free from <a href="https://nvd.nist.gov/developers/request-an-api-key" target="_blank" rel="noreferrer">nvd.nist.gov</a>. Stored encrypted; never shown again.</div>
+                    <div className="cvx-hint">{tx("Free from {{site}}. Stored encrypted; never shown again.", { site: <a href="https://nvd.nist.gov/developers/request-an-api-key" target="_blank" rel="noreferrer">nvd.nist.gov</a> })}</div>
                 )}
                 <div className="cvx-row">
-                    <span>Connection</span>
+                    <span>{tr("Connection")}</span>
                     <b>
                         {conn ? (
-                            <span className={conn.ok ? "cvx-good" : "cvx-bad"}>{conn.ok ? `${host(status.sources.nvd)} reachable` : "Not reachable"}</span>
-                        ) : <span className="cvx-muted">Not tested</span>}
-                        <button type="button" className="cvx-link" onClick={test} disabled={testing}>{testing ? "Testing…" : "Test"}</button>
+                            <span className={conn.ok ? "cvx-good" : "cvx-bad"}>{conn.ok ? `${host(status.sources.nvd)} reachable` : tr("Not reachable")}</span>
+                        ) : <span className="cvx-muted">{tr("Not tested")}</span>}
+                        <button type="button" className="cvx-link" onClick={test} disabled={testing}>{testing ? tr("Testing…") : tr("Test")}</button>
                     </b>
                 </div>
                 {conn && (
@@ -289,25 +291,25 @@ function OnlineCard({ status, busy, onUpdate, onSaved }) {
                         ))}
                     </ul>
                 )}
-                <div className="cvx-row cvx-row-last"><span>Next automatic update</span><b>{status.loaded ? nextRun(auto) : "After the first load"}</b></div>
+                <div className="cvx-row cvx-row-last"><span>{tr("Next automatic update")}</span><b>{status.loaded ? nextRun(auto) : tr("After the first load")}</b></div>
             </div>
             <label className="cvx-check">
                 <input type="checkbox" checked={auto.enabled} disabled={saving}
                        onChange={(e) => save({ auto_update_enabled: e.target.checked })} />
-                Update automatically every day at
-                <select className="cvx-select" aria-label="Automatic update time" value={auto.time} disabled={saving}
+                {tr("Update automatically every day at")}
+                <select className="cvx-select" aria-label={tr("Automatic update time")} value={auto.time} disabled={saving}
                         onChange={(e) => save({ auto_update_time: e.target.value })}>
                     {(TIMES.includes(auto.time) ? TIMES : [auto.time, ...TIMES]).map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <span className="cvx-muted cvx-small">server time</span>
+                <span className="cvx-muted cvx-small">{tr("server time")}</span>
             </label>
             {error && <div className="cvx-note cvx-note-error">{error}</div>}
             <div className="cvx-actions">
                 <button type="button" className="cvx-btn cvx-btn-primary" disabled={busy} onClick={() => onUpdate(false)}>
-                    <Icon name="refresh" size={16} /> {status.loaded ? "Update now" : "Download the database"}
+                    <Icon name="refresh" size={16} /> {status.loaded ? tr("Update now") : tr("Download the database")}
                 </button>
                 {status.loaded && (
-                    <button type="button" className="cvx-link" disabled={busy} onClick={() => onUpdate(true)}>Download everything again</button>
+                    <button type="button" className="cvx-link" disabled={busy} onClick={() => onUpdate(true)}>{tr("Download everything again")}</button>
                 )}
             </div>
         </section>
@@ -328,8 +330,8 @@ function OfflineCard({ busy, onFile, onExport, loaded }) {
             <div className="cvx-card-head">
                 <span className="cvx-tile" style={{ background: "#334155" }}><Icon name="package" size={22} stroke="#fff" width={1.8} /></span>
                 <div>
-                    <h2>Update offline</h2>
-                    <p>For servers without internet access.</p>
+                    <h2>{tr("Update offline")}</h2>
+                    <p>{tr("For servers without internet access.")}</p>
                 </div>
             </div>
             <label className={`cvx-drop ${over ? "is-over" : ""} ${busy ? "is-disabled" : ""}`}
@@ -339,13 +341,13 @@ function OfflineCard({ busy, onFile, onExport, loaded }) {
                 <input ref={input} type="file" accept=".ngcve" className="cvx-sr" disabled={busy}
                        onChange={(e) => { pick(e.target.files); e.target.value = ""; }} />
                 <Icon name="upload" size={26} stroke="#1e3a5f" width={1.8} />
-                <b>Drop an update package here, or browse</b>
-                <span>.ngcve file · signed packages only · checked before anything is imported</span>
+                <b>{tr("Drop an update package here, or browse")}</b>
+                <span>{tr(".ngcve file · signed packages only · checked before anything is imported")}</span>
             </label>
             <div className="cvx-callout">
-                <div><b>Have a second NGCorion online?</b><br />Export a package there and carry it over.</div>
+                <div><b>{tr("Have a second NGCorion online?")}</b><br />{tr("Export a package there and carry it over.")}</div>
                 <button type="button" className="cvx-btn cvx-btn-sm" onClick={onExport} disabled={busy || !loaded}
-                        title={loaded ? undefined : "Load the database first"}>Create package</button>
+                        title={loaded ? undefined : tr("Load the database first")}>{tr("Create package")}</button>
             </div>
         </section>
     );
@@ -372,12 +374,12 @@ function TrustedKeys() {
             setName(""); setPub(""); setAdding(false);
             load();
         } catch (err) {
-            setError(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || "The key could not be added");
+            setError(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || tr("The key could not be added"));
         }
     };
 
     const remove = async (k) => {
-        if (!window.confirm(`Stop trusting packages signed by "${k.name}"?`)) return;
+        if (!window.confirm(tr("Stop trusting packages signed by \"{{name}}\"?", { name: k.name }))) return;
         await api.delete(`/api/cve/db/keys/${k.id}`).catch(() => {});
         load();
     };
@@ -388,7 +390,7 @@ function TrustedKeys() {
             setCopied(k.fingerprint);
             setTimeout(() => setCopied(null), 2000);
         } catch {
-            window.prompt("Public key", k.public_key);
+            window.prompt(tr("Public key"), k.public_key);
         }
     };
 
@@ -396,36 +398,36 @@ function TrustedKeys() {
         <section className="cvx-card cvx-card-flush">
             <div className="cvx-card-title cvx-card-title-row">
                 <div>
-                    Trusted keys
-                    <div className="cvx-sub">Packages are imported only when signed by one of these.</div>
+                    {tr("Trusted keys")}
+                    <div className="cvx-sub">{tr("Packages are imported only when signed by one of these.")}</div>
                 </div>
-                {!adding && <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => setAdding(true)}><Icon name="plus" size={15} /> Add key</button>}
+                {!adding && <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => setAdding(true)}><Icon name="plus" size={15} /> {" "}{tr("Add key")}</button>}
             </div>
             {adding && (
                 <form className="cvx-key-form" onSubmit={add}>
-                    <input className="cvx-input" placeholder="Name, e.g. HQ NGCorion" aria-label="Key name" value={name} maxLength={120}
+                    <input className="cvx-input" placeholder={tr("Name, e.g. HQ NGCorion")} aria-label={tr("Key name")} value={name} maxLength={120}
                            onChange={(e) => setName(e.target.value)} />
-                    <input className="cvx-input cvx-mono" placeholder="Public key (base64), from the exporting server's Trusted keys" aria-label="Public key"
+                    <input className="cvx-input cvx-mono" placeholder={tr("Public key (base64), from the exporting server's Trusted keys")} aria-label={tr("Public key")}
                            value={pub} maxLength={100} onChange={(e) => setPub(e.target.value)} />
-                    <button type="submit" className="cvx-btn cvx-btn-sm cvx-btn-primary" disabled={!name.trim() || !pub.trim()}>Add</button>
-                    <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => { setAdding(false); setError(null); }}>Cancel</button>
+                    <button type="submit" className="cvx-btn cvx-btn-sm cvx-btn-primary" disabled={!name.trim() || !pub.trim()}>{tr("Add")}</button>
+                    <button type="button" className="cvx-btn cvx-btn-sm" onClick={() => { setAdding(false); setError(null); }}>{tr("Cancel")}</button>
                 </form>
             )}
             {error && <div className="cvx-note cvx-note-error cvx-m">{String(error)}</div>}
             <div className="cvx-table-wrap">
                 <table className="cvx-table">
-                    <thead><tr><th>Name</th><th>Fingerprint</th><th>Type</th><th aria-label="Actions" /></tr></thead>
+                    <thead><tr><th>{tr("Name")}</th><th>{tr("Fingerprint")}</th><th>{tr("Type")}</th><th aria-label={tr("Actions")} /></tr></thead>
                     <tbody>
                         {keys.map((k) => (
                             <tr key={k.fingerprint}>
                                 <td><span className="cvx-keyname"><Icon name="key" size={15} stroke="#475569" />{k.name}</span></td>
                                 <td className="cvx-mono" title={k.fingerprint}>{k.fingerprint.slice(0, 32).match(/.{4}/g).join(" ")}…</td>
-                                <td>{k.builtin ? <span className="cvx-pill cvx-pill-muted">Built in</span> : <span className="cvx-pill cvx-pill-blue">Added</span>}</td>
+                                <td>{k.builtin ? <span className="cvx-pill cvx-pill-muted">{tr("Built in")}</span> : <span className="cvx-pill cvx-pill-blue">{tr("Added")}</span>}</td>
                                 <td className="cvx-right">
                                     <button type="button" className="cvx-link" onClick={() => copy(k)}>
-                                        {copied === k.fingerprint ? "Copied" : "Copy public key"}
+                                        {copied === k.fingerprint ? tr("Copied") : tr("Copy public key")}
                                     </button>
-                                    {!k.builtin && <button type="button" className="cvx-link cvx-link-danger" onClick={() => remove(k)}>Remove</button>}
+                                    {!k.builtin && <button type="button" className="cvx-link cvx-link-danger" onClick={() => remove(k)}>{tr("Remove")}</button>}
                                 </td>
                             </tr>
                         ))}

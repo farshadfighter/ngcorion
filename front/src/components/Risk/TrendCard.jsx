@@ -9,11 +9,12 @@ import {
     CartesianGrid,
 } from "recharts";
 import { TREND_BAR_COLOR } from "./riskConstants";
+import { t } from "../../i18n";
 
 /** "2026-06" -> "Jun" — the Figma axis shows short month names. */
 const MONTH_LABELS = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    t("Jan"), t("Feb"), t("Mar"), t("Apr"), t("May"), t("Jun"),
+    t("Jul"), t("Aug"), t("Sep"), t("Oct"), t("Nov"), t("Dec"),
 ];
 
 const toLabel = (period) => {
@@ -36,11 +37,11 @@ export const TrendCard = ({ points, message }) => {
 
     return (
         <section className="risk-card risk-chart-card">
-            <h3 className="risk-card-title">Average Risk Score Trend</h3>
+            <h3 className="risk-card-title">{t("Average Risk Score Trend")}</h3>
             <div className="risk-chart-body">
                 {data.length === 0 ? (
                     <p className="risk-chart-empty">
-                        {message || "No historical data yet."}
+                        {message || t("No historical data yet.")}
                     </p>
                 ) : (
                     <ResponsiveContainer width="100%" height={260}>
@@ -65,7 +66,7 @@ export const TrendCard = ({ points, message }) => {
                             <Tooltip
                                 formatter={(value, _name, entry) => [
                                     `${value} (${entry.payload.assets} assets)`,
-                                    "Avg score",
+                                    t("Avg score"),
                                 ]}
                                 labelFormatter={(_label, payload) =>
                                     payload?.[0]?.payload.period || ""

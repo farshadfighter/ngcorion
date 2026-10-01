@@ -10,6 +10,7 @@ import { groupChecksByScope } from "./vdomScope";
 // bundle so it renders either way, but the dependency is real — import it so
 // the styles cannot disappear if that ever changes.
 import "../../assets/Auditing.css";
+import { t, uiLocale, n } from "../../i18n";
 
 export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing }) => {
     const dispatch = useDispatch();
@@ -87,10 +88,10 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     // "Unknown" only when the row genuinely has no status.
     const getStatusBadge = (status) => {
         const s = status?.toString().toUpperCase();
-        if (s === 'PASS' || s === 'PASSED') return <span className="result-badge result-success">Successful</span>;
-        if (s === 'FAIL' || s === 'FAILED') return <span className="result-badge result-fail">Failed</span>;
-        if (s === 'ERROR')                  return <span className="result-badge result-error">Error</span>;
-        return <span className="result-badge result-unknown">Unknown</span>;
+        if (s === 'PASS' || s === 'PASSED') return <span className="result-badge result-success">{t("Successful")}</span>;
+        if (s === 'FAIL' || s === 'FAILED') return <span className="result-badge result-fail">{t("Failed")}</span>;
+        if (s === 'ERROR')                  return <span className="result-badge result-error">{t("Error")}</span>;
+        return <span className="result-badge result-unknown">{t("Unknown")}</span>;
     };
 
     // Show the "audit your asset" hint only when no row carries a real status.
@@ -132,7 +133,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
     const fmtDate = (value) => {
         if (!value) return '—';
         const d = new Date(value);
-        return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+        return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString(uiLocale());
     };
 
     // Split into Global vs per-VDOM groups (FortiGate multi-VDOM devices tag
@@ -147,7 +148,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                 {/* Header */}
                 <div className="result-modal-header">
                     <button className="result-back-btn" onClick={onClose}>
-                        ← Hardening Result
+                        {t("← Hardening Result")}
                     </button>
                 </div>
 
@@ -159,57 +160,57 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     <div className="result-stats-summary">
                         <div className="result-card result-card-success">
                             <div className="card-percent">{conformityPercent}%</div>
-                            <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
-                            <div className="card-label">Conformity</div>
+                            <div className="card-sub">{t("{{passedChecks}} of {{totalChecks}} checks", { passedChecks, totalChecks })}</div>
+                            <div className="card-label">{t("Conformity")}</div>
                         </div>
 
                         <div className="result-card result-card-danger">
                             <div className="card-percent">{nonConformityPercent}%</div>
-                            <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
-                            <div className="card-label">Non-Conformity</div>
+                            <div className="card-sub">{t("{{failedChecks}} of {{totalChecks}} checks", { failedChecks, totalChecks })}</div>
+                            <div className="card-label">{t("Non-Conformity")}</div>
                         </div>
 
                         <div className="result-card result-card-total">
-                            <div className="card-number">{totalChecks}</div>
-                            <div className="card-label">Total Conditions</div>
+                            <div className="card-number">{n(totalChecks)}</div>
+                            <div className="card-label">{t("Total Conditions")}</div>
                         </div>
                     </div>
 
                     <div className="result-stats-container">
                         <div className="result-card result-card-info">
-                            <div className="card-label">Benchmark</div>
+                            <div className="card-label">{t("Benchmark")}</div>
                             <div className="card-value">
-                                {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)} CIS
+                                {t("{{getDeviceLabel}} CIS", { getDeviceLabel: getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type) })}
                             </div>
                         </div>
 
                         <div className="result-card result-card-info">
-                            <div className="card-label">Asset</div>
+                            <div className="card-label">{t("Asset")}</div>
                             <div className="card-value">{sessionData?.asset_name || 'N/A'}</div>
                         </div>
 
                         <div className="result-card result-card-info">
-                            <div className="card-label">IP Address</div>
+                            <div className="card-label">{t("IP Address")}</div>
                             <div className="card-value">{sessionData?.target_ip || 'N/A'}</div>
                         </div>
 
                         <div className="result-card result-card-info">
-                            <div className="card-label">Audit Date</div>
+                            <div className="card-label">{t("Audit Date")}</div>
                             <div className="card-value">
                                 {fmtDate(sessionData?.completed_at || sessionData?.started_at)}
                             </div>
                         </div>
 
                         <div className="result-card result-card-info">
-                            <div className="card-label">Device Type</div>
+                            <div className="card-label">{t("Device Type")}</div>
                             <div className="card-value">
                                 {getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)}
                             </div>
                         </div>
 
                         <div className="result-card result-card-info">
-                            <div className="card-label">Status</div>
-                            <div className="card-value">{sessionData?.status || 'Completed'}</div>
+                            <div className="card-label">{t("Status")}</div>
+                            <div className="card-value">{sessionData?.status || t("Completed")}</div>
                         </div>
                     </div>
                     </div>
@@ -223,8 +224,8 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                 <i className="fa-solid fa-circle-info" aria-hidden="true" />
                                 <span>
                                     {hasKnownStatus
-                                        ? 'After hardening, audit your asset again to get to know the status of your assets'
-                                        : 'Status of CIS Benchmark section is unknown, audit your asset to specify status'}
+                                        ? t("After hardening, audit your asset again to get to know the status of your assets")
+                                        : t("Status of CIS Benchmark section is unknown, audit your asset to specify status")}
                                 </span>
                             </div>
                         </div>
@@ -234,21 +235,21 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                         on the left, Go to Auditing + Harden All on the right. */}
                     <div className="result-toolbar">
                         <div className="result-toolbar-left">
-                            <span className="result-toolbar-title">Audit Result</span>
+                            <span className="result-toolbar-title">{t("Audit Result")}</span>
                         </div>
                         <div className="result-toolbar-right">
                             <button
                                 className="result-toolbar-btn result-toolbar-btn-outline"
                                 onClick={handleAuditingClick}
                             >
-                                <i className="fa-solid fa-magnifying-glass" /> Go to Auditing
+                                <i className="fa-solid fa-magnifying-glass" /> {" "}{t("Go to Auditing")}
                             </button>
                             <button
                                 className="result-toolbar-btn result-toolbar-btn-primary"
                                 onClick={handleHardenAll}
                                 disabled={totalChecks === 0}
                             >
-                                <i className="fa-solid fa-shield-halved" /> Harden All
+                                <i className="fa-solid fa-shield-halved" /> {" "}{t("Harden All")}
                             </button>
                         </div>
                     </div>
@@ -256,17 +257,17 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     {/* Table */}
                     <div className="result-table-wrapper">
                         {isLoading ? (
-                            <div className="loading-spinner">Loading results...</div>
+                            <div className="loading-spinner">{t("Loading results...")}</div>
                         ) : (
                             <table className="result-table">
                                 <thead>
                                 <tr>
-                                    <th>Section</th>
-                                    {hasVdom && <th>VDOM</th>}
-                                    <th>Recommendation</th>
-                                    <th>Risk Level</th>
-                                    <th>Result</th>
-                                    <th style={{ width: '120px' }}>Action</th>
+                                    <th>{t("Section")}</th>
+                                    {hasVdom && <th>{t("VDOM")}</th>}
+                                    <th>{t("Recommendation")}</th>
+                                    <th>{t("Risk Level")}</th>
+                                    <th>{t("Result")}</th>
+                                    <th style={{ width: '120px' }}>{t("Action")}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -278,7 +279,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                     <td colSpan={colCount}>
                                                         {group.label}
                                                         <span className="scope-group-count">
-                                                            {group.checks.length} check{group.checks.length !== 1 ? 's' : ''}
+                                                            {t("{{count}} checks", { count: group.checks.length })}
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -306,15 +307,15 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                                 className="hr-btn hr-btn-row"
                                                                 onClick={() => handleHardenSingle(check)}
                                                             >
-                                                                <img src="/icons/audit.svg" alt="" className="btn-icon" /> Harden
+                                                                <img src="/icons/audit.svg" alt="" className="btn-icon" /> {" "}{t("Harden")}
                                                             </button>
                                                         ) : (
                                                             <button
                                                                 className="hr-btn hr-btn-outline"
                                                                 onClick={() => setViewFixCheck(check)}
-                                                                title="No automated fix — view the manual remediation commands"
+                                                                title={t("No automated fix — view the manual remediation commands")}
                                                             >
-                                                                <i className="fa-solid fa-clipboard" /> View Fix
+                                                                <i className="fa-solid fa-clipboard" /> {" "}{t("View Fix")}
                                                             </button>
                                                         )}
                                                     </td>
@@ -325,7 +326,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                 ) : (
                                     <tr>
                                         <td colSpan={colCount} style={{ textAlign: 'center', padding: '40px' }}>
-                                            No checks available
+                                            {t("No checks available")}
                                         </td>
                                     </tr>
                                 )}

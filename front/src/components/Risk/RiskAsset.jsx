@@ -9,6 +9,7 @@ import {
 } from "../../store/riskSlice";
 import { RiskAssetTable } from "./RiskAssetTable";
 import "../../assets/RiskAsset.css";
+import { t } from "../../i18n";
 
 /**
  * Risk Asset screen: the hint bar plus the Overview / Audit Risk tabbed table.
@@ -44,7 +45,7 @@ export const RiskAsset = () => {
     if (isLoading && items.length === 0) {
         return (
             <div className="risk-page">
-                <p className="risk-state">Loading risk data…</p>
+                <p className="risk-state">{t("Loading risk data…")}</p>
             </div>
         );
     }
@@ -53,7 +54,7 @@ export const RiskAsset = () => {
         return (
             <div className="risk-page">
                 <p className="risk-state risk-state-error">
-                    Failed to load risk data: {error}
+                    {t("Failed to load risk data: {{error}}", { error })}
                 </p>
             </div>
         );
@@ -66,8 +67,7 @@ export const RiskAsset = () => {
         return (
             <div className="risk-page">
                 <p className="risk-state">
-                    No risk scores have been calculated yet. Once assets are
-                    scored they appear here, ranked by risk.
+                    {t("No risk scores have been calculated yet. Once assets are scored they appear here, ranked by risk.")}
                 </p>
             </div>
         );

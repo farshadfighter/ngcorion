@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { fetchDesignDetail, createDesignVersion, clearMessages } from "../../store/designSlice.jsx";
 import "../../assets/DesignConfiguration.css";
+import { t, uiLocale } from "../../i18n";
 
 export const DesignDetail = () => {
     const { designId } = useParams();
@@ -41,7 +42,7 @@ export const DesignDetail = () => {
     };
 
     if (isLoading || !currentDesign) {
-        return <div className="dc-container"><div className="dc-empty">Loading…</div></div>;
+        return <div className="dc-container"><div className="dc-empty">{t("Loading…")}</div></div>;
     }
 
     const { design, versions } = currentDesign;
@@ -54,7 +55,7 @@ export const DesignDetail = () => {
                     {design.description && <p className="dc-page-subtitle">{design.description}</p>}
                 </div>
                 <button className="dc-btn dc-btn-primary" onClick={() => setShowNewVersion(true)}>
-                    <i className="fa-solid fa-code-branch" /> New Version
+                    <i className="fa-solid fa-code-branch" /> {" "}{t("New Version")}
                 </button>
             </div>
 
@@ -68,9 +69,9 @@ export const DesignDetail = () => {
                 <table className="dc-table">
                     <thead>
                         <tr>
-                            <th>Version</th>
-                            <th>Notes</th>
-                            <th>Created</th>
+                            <th>{t("Version")}</th>
+                            <th>{t("Notes")}</th>
+                            <th>{t("Created")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -78,7 +79,7 @@ export const DesignDetail = () => {
                             <tr key={v.id} onClick={() => navigate(`/design-configuration/versions/${v.id}`)}>
                                 <td className="dc-cell-strong">v{v.version_number}</td>
                                 <td>{v.notes || "—"}</td>
-                                <td>{v.created_at ? new Date(v.created_at).toLocaleString() : "—"}</td>
+                                <td>{v.created_at ? new Date(v.created_at).toLocaleString(uiLocale()) : "—"}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -88,23 +89,23 @@ export const DesignDetail = () => {
             {showNewVersion && (
                 <div className="dc-modal-backdrop" onClick={() => setShowNewVersion(false)}>
                     <div className="dc-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>New version</h3>
+                        <h3>{t("New version")}</h3>
                         <div className="dc-field">
-                            <label>Clone from</label>
+                            <label>{t("Clone from")}</label>
                             <select value={cloneFrom} onChange={(e) => setCloneFrom(e.target.value)}>
-                                <option value="">Start empty</option>
+                                <option value="">{t("Start empty")}</option>
                                 {versions.map((v) => (
                                     <option key={v.id} value={v.id}>v{v.version_number}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="dc-field">
-                            <label>Notes</label>
+                            <label>{t("Notes")}</label>
                             <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
                         </div>
                         <div className="dc-modal-actions">
-                            <button className="dc-btn" onClick={() => setShowNewVersion(false)}>Cancel</button>
-                            <button className="dc-btn dc-btn-primary" onClick={handleCreateVersion}>Create</button>
+                            <button className="dc-btn" onClick={() => setShowNewVersion(false)}>{t("Cancel")}</button>
+                            <button className="dc-btn dc-btn-primary" onClick={handleCreateVersion}>{t("Create")}</button>
                         </div>
                     </div>
                 </div>

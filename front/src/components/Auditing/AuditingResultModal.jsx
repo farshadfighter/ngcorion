@@ -4,6 +4,7 @@ import { fetchAuditResults, fetchAuditSession } from "../../store/auditSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
 import { ResultHardeningBar } from "./ResultHardeningBar";
+import { t, uiLocale, n } from "../../i18n";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-");
 
@@ -44,7 +45,7 @@ const isManualCheck = (result) => {
 
 const scopeBadgeStyle = (scope) => ({
     display: "inline-block",
-    marginLeft: "6px",
+    marginInlineStart: "6px",
     padding: "1px 7px",
     borderRadius: "10px",
     fontSize: "10px",
@@ -57,7 +58,7 @@ const scopeBadgeStyle = (scope) => ({
 
 const manualBadgeStyle = {
     display: "inline-block",
-    marginLeft: "6px",
+    marginInlineStart: "6px",
     padding: "1px 7px",
     borderRadius: "10px",
     fontSize: "10px",
@@ -153,8 +154,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
     let serverRole = null;
     if (isWindowsSession && Array.isArray(results)) {
         const scopes = new Set(results.map((r) => winScope(r.check_number)).filter(Boolean));
-        if (scopes.has("DC")) serverRole = "Domain Controller";
-        else if (scopes.has("MS")) serverRole = "Member Server";
+        if (scopes.has("DC")) serverRole = t("Domain Controller");
+        else if (scopes.has("MS")) serverRole = t("Member Server");
     }
 
     /* Per-control risk level. The backend already sends `severity` on every
@@ -173,15 +174,15 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
         const normalizedStatus = status?.toString().toUpperCase();
 
         if (normalizedStatus === "PASS" || normalizedStatus === "PASSED") {
-            return <span className="result-badge result-success">Successful</span>;
+            return <span className="result-badge result-success">{t("Successful")}</span>;
         } else if (normalizedStatus === "FAIL" || normalizedStatus === "FAILED") {
-            return <span className="result-badge result-fail">Failed</span>;
+            return <span className="result-badge result-fail">{t("Failed")}</span>;
         } else if (normalizedStatus === "RUNNING") {
-            return <span className="result-badge result-running">Running</span>;
+            return <span className="result-badge result-running">{t("Running")}</span>;
         } else if (normalizedStatus === "ERROR") {
-            return <span className="result-badge result-error">Error</span>;
+            return <span className="result-badge result-error">{t("Error")}</span>;
         } else {
-            return <span className="result-badge result-unknown">{titleCase(status) === "-" ? "Unknown" : titleCase(status)}</span>;
+            return <span className="result-badge result-unknown">{titleCase(status) === "-" ? t("Unknown") : titleCase(status)}</span>;
         }
     };
 
@@ -192,7 +193,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 {/* Header */}
                 <div className="result-modal-header">
                     <button className="result-back-btn" onClick={onClose}>
-                        ← Audit Result
+                        {t("← Audit Result")}
                     </button>
                 </div>
 
@@ -201,26 +202,26 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 <div className="result-stats-panel">
                 <div className="result-stats-container">
                     <div className="result-card result-card-info">
-                        <div className="card-label">Asset</div>
+                        <div className="card-label">{t("Asset")}</div>
                         <div className="card-value">{sessionDetails?.asset_name || "-"}</div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">IP Address</div>
+                        <div className="card-label">{t("IP Address")}</div>
                         <div className="card-value">{sessionDetails?.target_ip || "-"}</div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Audit Date</div>
+                        <div className="card-label">{t("Audit Date")}</div>
                         <div className="card-value">
                             {sessionDetails?.started_at
-                                ? new Date(sessionDetails.started_at).toLocaleDateString()
+                                ? new Date(sessionDetails.started_at).toLocaleDateString(uiLocale())
                                 : "-"}
                         </div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Device Type</div>
+                        <div className="card-label">{t("Device Type")}</div>
                         <div className="card-value">
                             {sessionDetails?.device_type
                                 ? getDeviceName(sessionDetails.sub_device_type || sessionDetails.device_type)
@@ -229,13 +230,13 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Status</div>
+                        <div className="card-label">{t("Status")}</div>
                         <div className="card-value">{titleCase(sessionDetails?.status)}</div>
                     </div>
 
                     {isWindowsSession && serverRole && (
                         <div className="result-card result-card-info">
-                            <div className="card-label">Server Role</div>
+                            <div className="card-label">{t("Server Role")}</div>
                             <div className="card-value">
                                 <span
                                     style={{
@@ -258,23 +259,23 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 <div className="result-stats-summary">
                     <div className="result-card result-card-success">
                         <div className="card-percent">{conformityPercent}%</div>
-                        <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
-                        <div className="card-label">Conformity</div>
+                        <div className="card-sub">{t("{{passedChecks}} of {{totalChecks}} checks", { passedChecks, totalChecks })}</div>
+                        <div className="card-label">{t("Conformity")}</div>
                     </div>
 
                     <div className="result-card result-card-danger">
                         <div className="card-percent">{nonConformityPercent}%</div>
-                        <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
-                        <div className="card-label">Non-Conformity</div>
+                        <div className="card-sub">{t("{{failedChecks}} of {{totalChecks}} checks", { failedChecks, totalChecks })}</div>
+                        <div className="card-label">{t("Non-Conformity")}</div>
                     </div>
 
                     <div className="result-card result-card-total">
-                        <div className="card-number">{totalChecks}</div>
+                        <div className="card-number">{n(totalChecks)}</div>
                         <div className="card-label">
-                            Total Conditions
+                            {t("Total Conditions")}
                             {otherChecks > 0 && (
                                 <span style={{ display: 'block', fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                                    ({otherChecks} error / other)
+                                    {t("({{otherChecks}} error / other)", { otherChecks })}
                                 </span>
                             )}
                         </div>
@@ -290,17 +291,17 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                 {/* Results Table */}
                 <div className="result-table-wrapper">
                     {isLoadingResults ? (
-                        <div className="loading-spinner">Loading results...</div>
+                        <div className="loading-spinner">{t("Loading results...")}</div>
                     ) : (
                         <table className="result-table">
                             <thead>
                             <tr>
-                                <th>Section</th>
-                                {hasVdom && <th>VDOM</th>}
-                                <th>Recommendation</th>
-                                <th>Risk Level</th>
-                                <th>Result</th>
-                                <th>Details</th>
+                                <th>{t("Section")}</th>
+                                {hasVdom && <th>{t("VDOM")}</th>}
+                                <th>{t("Recommendation")}</th>
+                                <th>{t("Risk Level")}</th>
+                                <th>{t("Result")}</th>
+                                <th>{t("Details")}</th>
                             </tr>
                             </thead>
                             <tbody>
@@ -319,8 +320,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                         </span>
                                                     )}
                                                     {isWindowsSession && isManualCheck(result) && (
-                                                        <span style={manualBadgeStyle} title="Manual control — no automated fix (per-user / GPO-only).">
-                                                            Manual
+                                                        <span style={manualBadgeStyle} title={t("Manual control — no automated fix (per-user / GPO-only).")}>
+                                                            {t("Manual")}
                                                         </span>
                                                     )}
                                                 </td>
@@ -341,7 +342,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                     {getResultBadge(result.status)}
                                                     {result.needs_review && (
                                                         <span
-                                                            title="Heuristic check — this PASS/FAIL is indicative only and must be verified manually."
+                                                            title={t("Heuristic check — this PASS/FAIL is indicative only and must be verified manually.")}
                                                             style={{
                                                                 display: "inline-block",
                                                                 marginTop: "4px",
@@ -355,7 +356,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                                 whiteSpace: "nowrap",
                                                             }}
                                                         >
-                                                            ⚠ Manual review
+                                                            {t("⚠ Manual review")}
                                                         </span>
                                                     )}
                                                 </td>
@@ -377,7 +378,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                                 whiteSpace: "nowrap",
                                                             }}
                                                         >
-                                                            {isExpanded ? "▼ Hide" : "▶ Details"}
+                                                            {isExpanded ? t("▼ Hide") : t("▶ Details")}
                                                         </button>
                                                     ) : (
                                                         <span style={{ color: "#9ca3af" }}>—</span>
@@ -395,7 +396,7 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                             letterSpacing: "0.04em",
                                                             marginBottom: "6px",
                                                         }}>
-                                                            Evidence / Remediation
+                                                            {t("Evidence / Remediation")}
                                                         </div>
                                                         <pre style={{
                                                             margin: 0,
@@ -424,8 +425,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                 <tr>
                                     <td colSpan={colCount} style={{ textAlign: "center", padding: "40px" }}>
                                         {totalChecks > 0
-                                            ? `Total: ${totalChecks} checks (${passedChecks} passed, ${failedChecks} failed)`
-                                            : "No results available"}
+                                            ? t("Total: {{totalChecks}} checks ({{passedChecks}} passed, {{failedChecks}} failed)", { totalChecks, passedChecks, failedChecks })
+                                            : t("No results available")}
                                     </td>
                                 </tr>
                             )}

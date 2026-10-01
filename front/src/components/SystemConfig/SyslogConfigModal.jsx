@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { fetchSection, saveSection } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
+import { t } from "../../i18n";
 
 const SECTION = "syslog";
 
@@ -37,19 +38,19 @@ const SyslogForm = ({ stored, onClose }) => {
 
         const host = serverIp.trim();
         if (!host) {
-            setLocalError("Enter the syslog server address.");
+            setLocalError(t("Enter the syslog server address."));
             return;
         }
         // The backend rejects any whitespace inside the value, so catch it here
         // rather than round-tripping for a 422.
         if (/\s/.test(host)) {
-            setLocalError("Server address must not contain spaces.");
+            setLocalError(t("Server address must not contain spaces."));
             return;
         }
 
         const portNumber = Number(port);
         if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
-            setLocalError("Port must be between 1 and 65535.");
+            setLocalError(t("Port must be between 1 and 65535."));
             return;
         }
 
@@ -68,7 +69,7 @@ const SyslogForm = ({ stored, onClose }) => {
 
     return (
         <ConfigModal
-            title="Syslog Configurations"
+            title={t("Syslog Configurations")}
             onClose={onClose}
             onSave={handleSave}
             isSaving={!!saving[SECTION]}
@@ -76,7 +77,7 @@ const SyslogForm = ({ stored, onClose }) => {
             warning={warnings[SECTION]}
         >
             <label className="sc-field">
-                <span>Server IP Address</span>
+                <span>{t("Server IP Address")}</span>
                 <input
                     type="text"
                     value={serverIp}
@@ -88,7 +89,7 @@ const SyslogForm = ({ stored, onClose }) => {
 
             <div className="sc-row">
                 <label className="sc-field">
-                    <span>Port</span>
+                    <span>{t("Port")}</span>
                     <input
                         type="number"
                         min={1}
@@ -98,7 +99,7 @@ const SyslogForm = ({ stored, onClose }) => {
                     />
                 </label>
                 <label className="sc-field">
-                    <span>Protocol</span>
+                    <span>{t("Protocol")}</span>
                     <select
                         value={protocol}
                         onChange={(e) => setProtocol(e.target.value)}
@@ -113,7 +114,7 @@ const SyslogForm = ({ stored, onClose }) => {
             </div>
 
             <label className="sc-field">
-                <span>Facility</span>
+                <span>{t("Facility")}</span>
                 <select
                     value={facility}
                     onChange={(e) => setFacility(e.target.value)}
@@ -149,7 +150,7 @@ export const SyslogConfigModal = ({ onClose }) => {
     if (!stored) {
         return (
             <ConfigModal
-                title="Syslog Configurations"
+                title={t("Syslog Configurations")}
                 onClose={onClose}
                 onSave={onClose}
                 isLoading={!!loading[SECTION]}

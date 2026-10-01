@@ -158,7 +158,7 @@
 }
 
 .noc-table th {
-    text-align: left;
+    text-align: start;
     font-size: 11.5px;
     font-weight: 600;
     text-transform: uppercase;

@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 export const AuditingFailed = ({ sessionData, jobName, errorMessage, onBackToHome }) => {
     return (
         <div className="auditing-failed-container">
@@ -8,13 +9,13 @@ export const AuditingFailed = ({ sessionData, jobName, errorMessage, onBackToHom
 
             {/* Failed Message */}
             <div className="failed-message">
-                <div className="failed-text">The auditing was failed</div>
+                <div className="failed-text">{t("The auditing was failed")}</div>
             </div>
 
             {/* Error Message (if provided) */}
             {errorMessage && (
-                <div className="alert alert-error" style={{ margin: "20px 0", textAlign: "left" }}>
-                    <strong>Error:</strong> {errorMessage}
+                <div className="alert alert-error" style={{ margin: "20px 0", textAlign: "start" }}>
+                    <strong>{t("Error:")}</strong> {errorMessage}
                 </div>
             )}
 
@@ -22,13 +23,13 @@ export const AuditingFailed = ({ sessionData, jobName, errorMessage, onBackToHom
             <div className="failed-info">
                 <div className="failed-info-icon">ℹ️</div>
                 <div className="failed-info-text">
-                    <p>It can be caused by the following factors</p>
+                    <p>{t("It can be caused by the following factors")}</p>
                     <ul>
-                        <li>(Incorrect IP address)</li>
-                        <li>(Incorrect username)</li>
-                        <li>(Incorrect password)</li>
-                        <li>(Internet connection)</li>
-                        <li>(Incorrect device selection)</li>
+                        <li>{t("(Incorrect IP address)")}</li>
+                        <li>{t("(Incorrect username)")}</li>
+                        <li>{t("(Incorrect password)")}</li>
+                        <li>{t("(Internet connection)")}</li>
+                        <li>{t("(Incorrect device selection)")}</li>
                     </ul>
                 </div>
             </div>
@@ -36,17 +37,17 @@ export const AuditingFailed = ({ sessionData, jobName, errorMessage, onBackToHom
             {/* Job Info */}
             <div className="failed-details">
                 <p>
-                    <strong>job name :</strong> {jobName || `job number${sessionData?.session_id || ''}`}
+                    <strong>{t("job name :")}</strong> {jobName || t("job number {{id}}", { id: sessionData?.session_id || '' })}
                 </p>
                 <p>
-                    <strong>Asset :</strong> {sessionData?.asset_name || "N/A"} ({sessionData?.target_ip || "N/A"})
+                    <strong>{t("Asset :")}</strong> {sessionData?.asset_name || "N/A"} ({sessionData?.target_ip || "N/A"})
                 </p>
             </div>
 
             {/* Action */}
             <div className="failed-actions">
                 <button className="btn-back-home" onClick={onBackToHome}>
-                    Back to Homepage
+                    {t("Back to Homepage")}
                 </button>
             </div>
         </div>

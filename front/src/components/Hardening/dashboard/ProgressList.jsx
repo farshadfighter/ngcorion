@@ -1,4 +1,5 @@
 import React from "react";
+import { n } from "../../../i18n";
 
 /**
  * Labelled percentage bars — used by Coverage By Asset Type, Policy Compliance
@@ -21,7 +22,7 @@ export const ProgressList = ({ items, emptyMessage }) => {
                                 style={{ width: `${Math.min(100, item.percent)}%` }}
                             />
                         </span>
-                        <span className="hd-progress-value">{item.percent}%</span>
+                        <span className="hd-progress-value">{n(`${item.percent}%`)}</span>
                     </span>
                 </li>
             ))}

@@ -7,13 +7,14 @@ import {
     deleteCertificate,
 } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
+import { t, uiLocale } from "../../i18n";
 
 const SECTION = "certificate";
 
 const formatDate = (value) => {
     if (!value) return "—";
     const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+    return Number.isNaN(d.getTime()) ? value : d.toLocaleString(uiLocale());
 };
 
 /** Days until expiry, or null when there is no usable date. */
@@ -58,14 +59,14 @@ const CertificateForm = ({ info, onClose }) => {
         const form = new FormData();
         if (mode === "pfx") {
             if (!pfxFile) {
-                setLocalError("Choose a .pfx bundle to upload.");
+                setLocalError(t("Choose a .pfx bundle to upload."));
                 return;
             }
             form.append("pfx_file", pfxFile);
             if (pfxPassword) form.append("pfx_password", pfxPassword);
         } else {
             if (!certFile) {
-                setLocalError("Choose a certificate file to upload.");
+                setLocalError(t("Choose a certificate file to upload."));
                 return;
             }
             form.append("cert_file", certFile);
@@ -93,7 +94,7 @@ const CertificateForm = ({ info, onClose }) => {
 
     return (
         <ConfigModal
-            title="Certificate Configurations"
+            title={t("Certificate Configurations")}
             onClose={onClose}
             onSave={handleUpload}
             isSaving={isBusy}
@@ -104,15 +105,15 @@ const CertificateForm = ({ info, onClose }) => {
             {info?.has_cert ? (
                 <div className="sc-cert-info">
                     <p className="sc-cert-row">
-                        <span>Issued to</span>
+                        <span>{t("Issued to")}</span>
                         <strong>{info.issued_to || "—"}</strong>
                     </p>
                     <p className="sc-cert-row">
-                        <span>Issued by</span>
+                        <span>{t("Issued by")}</span>
                         <strong>{info.issued_by || "—"}</strong>
                     </p>
                     <p className="sc-cert-row">
-                        <span>Expires</span>
+                        <span>{t("Expires")}</span>
                         <strong>
                             {formatDate(info.expires_at)}
                             {expiry !== null && (
@@ -126,21 +127,20 @@ const CertificateForm = ({ info, onClose }) => {
                                     }
                                 >
                                     {expiry < 0
-                                        ? ` expired ${-expiry} days ago`
-                                        : ` ${expiry} days left`}
+                                        ? t(" expired {{value}} days ago", { value: -expiry })
+                                        : t(" {{expiry}} days left", { expiry })}
                                 </em>
                             )}
                         </strong>
                     </p>
                     <p className="sc-cert-row">
-                        <span>Private key</span>
-                        <strong>{info.has_key ? "Installed" : "Not installed"}</strong>
+                        <span>{t("Private key")}</span>
+                        <strong>{info.has_key ? t("Installed") : t("Not installed")}</strong>
                     </p>
                 </div>
             ) : (
                 <p className="sc-hint">
-                    No certificate is installed. Upload one below to serve the
-                    web interface over your own TLS certificate.
+                    {t("No certificate is installed. Upload one below to serve the web interface over your own TLS certificate.")}
                 </p>
             )}
 
@@ -150,14 +150,14 @@ const CertificateForm = ({ info, onClose }) => {
                     className={`sc-tab${mode === "pem" ? " is-active" : ""}`}
                     onClick={() => setMode("pem")}
                 >
-                    Certificate + Key
+                    {t("Certificate + Key")}
                 </button>
                 <button
                     type="button"
                     className={`sc-tab${mode === "pfx" ? " is-active" : ""}`}
                     onClick={() => setMode("pfx")}
                 >
-                    PFX Bundle
+                    {t("PFX Bundle")}
                 </button>
             </div>
 
@@ -167,7 +167,7 @@ const CertificateForm = ({ info, onClose }) => {
             {mode === "pem" ? (
                 <React.Fragment key="pem">
                     <label className="sc-field">
-                        <span>Certificate file (.cer / .crt / .pem)</span>
+                        <span>{t("Certificate file (.cer / .crt / .pem)")}</span>
                         <input
                             ref={certInput}
                             type="file"
@@ -177,7 +177,7 @@ const CertificateForm = ({ info, onClose }) => {
                     </label>
                     <label className="sc-field">
                         <span>
-                            Private key <em>(optional, PEM)</em>
+                            {t("Private key")}{" "} <em>{t("(optional, PEM)")}</em>
                         </span>
                         <input
                             ref={keyInput}
@@ -190,7 +190,7 @@ const CertificateForm = ({ info, onClose }) => {
             ) : (
                 <React.Fragment key="pfx">
                     <label className="sc-field">
-                        <span>PKCS#12 bundle (.pfx / .p12)</span>
+                        <span>{t("PKCS#12 bundle (.pfx / .p12)")}</span>
                         <input
                             ref={pfxInput}
                             type="file"
@@ -200,7 +200,7 @@ const CertificateForm = ({ info, onClose }) => {
                     </label>
                     <label className="sc-field">
                         <span>
-                            Bundle password <em>(if protected)</em>
+                            {t("Bundle password")}{" "} <em>{t("(if protected)")}</em>
                         </span>
                         <input
                             type="password"
@@ -217,9 +217,7 @@ const CertificateForm = ({ info, onClose }) => {
                     {confirmingDelete ? (
                         <>
                             <p className="sc-test-note">
-                                Remove the installed certificate? Traefik keeps
-                                serving its published copy, so HTTPS stays up
-                                until you upload a replacement.
+                                {t("Remove the installed certificate? Traefik keeps serving its published copy, so HTTPS stays up until you upload a replacement.")}
                             </p>
                             <div className="sc-test-row">
                                 <button
@@ -228,7 +226,7 @@ const CertificateForm = ({ info, onClose }) => {
                                     onClick={() => setConfirmingDelete(false)}
                                     disabled={isBusy}
                                 >
-                                    Keep it
+                                    {t("Keep it")}
                                 </button>
                                 <button
                                     type="button"
@@ -236,7 +234,7 @@ const CertificateForm = ({ info, onClose }) => {
                                     onClick={handleDelete}
                                     disabled={isBusy}
                                 >
-                                    Remove certificate
+                                    {t("Remove certificate")}
                                 </button>
                             </div>
                         </>
@@ -247,8 +245,7 @@ const CertificateForm = ({ info, onClose }) => {
                             onClick={() => setConfirmingDelete(true)}
                             disabled={isBusy}
                         >
-                            <i className="fa-solid fa-trash" /> Remove installed
-                            certificate
+                            <i className="fa-solid fa-trash" /> {" "}{t("Remove installed certificate")}
                         </button>
                     )}
                 </div>
@@ -278,7 +275,7 @@ export const CertificateConfigModal = ({ onClose }) => {
     if (!info) {
         return (
             <ConfigModal
-                title="Certificate Configurations"
+                title={t("Certificate Configurations")}
                 onClose={onClose}
                 onSave={onClose}
                 isLoading={!!loading[SECTION]}

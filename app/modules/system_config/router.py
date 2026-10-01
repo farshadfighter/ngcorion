@@ -20,7 +20,7 @@ that would hide the fact that the settings were stored. The audit log still
 records those as result=failed.
 """
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from fastapi import (
     APIRouter,
@@ -31,12 +31,14 @@ from fastapi import (
     UploadFile,
 )
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.credential_crypto import PURPOSE_SYSTEM_CONFIG, decrypt, encrypt
 from app.core.dependencies import require_permission
 from app.models import User, log_action
 from app.models.system_config import (
+    SECTION_LOCALE,
     SECTION_SMS,
     SECTION_SMTP,
     SECTION_SNMP,
@@ -442,6 +444,37 @@ def test_smtp(
          detail=f"Test email to {data.to}: {result['message']}",
          result="success" if result["success"] else "failed")
     return result
+
+
+# ======================================================================
+# Language (default for users who have not picked one)
+# ======================================================================
+
+class LocaleConfig(BaseModel):
+    default_language: Literal["en", "fa"] = "en"
+
+
+@router.get("/locale")
+def get_locale_config(
+    _current_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")),
+    db: Session = Depends(get_db),
+):
+    stored = _load(db, SECTION_LOCALE)
+    return {"config": stored or {"default_language": "en"}, "updated_at": _updated_at(db, SECTION_LOCALE)}
+
+
+@router.put("/locale")
+def update_locale_config(
+    data: LocaleConfig,
+    current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
+    db: Session = Depends(get_db),
+):
+    user_id, username = current_user.id, current_user.username
+    payload = data.model_dump()
+    _save(db, SECTION_LOCALE, payload, current_user)
+    _log(db, user_id, username, "system_config.locale.update",
+         detail=f"Default language set to {payload['default_language']}")
+    return {"success": True, "warning": None, "config": payload, "updated_at": _updated_at(db, SECTION_LOCALE)}
 
 
 # ======================================================================

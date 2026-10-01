@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import '../../assets/autoDiscoveryStyle/NewScanModal.css';
+import { t } from "../../i18n";
 
 const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
     const [formData, setFormData] = useState({
@@ -74,13 +75,13 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         const newErrors = {};
 
         if (!formData.target.trim()) {
-            newErrors.target = 'Target IP or range is required';
+            newErrors.target = t("Target IP or range is required");
         } else if (!validateTarget(formData.target.trim())) {
-            newErrors.target = 'Invalid format. Use: 192.168.1.1, 192.168.1.0/24, or 192.168.1.1-254';
+            newErrors.target = t("Invalid format. Use: 192.168.1.1, 192.168.1.0/24, or 192.168.1.1-254");
         }
 
         if (formData.scan_type === 'custom_ports' && !formData.ports.trim()) {
-            newErrors.ports = 'Custom ports are required';
+            newErrors.ports = t("Custom ports are required");
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -111,17 +112,17 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         const details = [];
 
         if (formData.scan_type === 'well_known_ports') {
-            details.push('Ports: 1-1024 + common database/app ports');
+            details.push(t("Ports: 1-1024 + common database/app ports"));
         } else if (formData.scan_type === 'all_ports') {
-            details.push('Ports: 1-65535 (full scan, slowest)');
+            details.push(t("Ports: 1-65535 (full scan, slowest)"));
         } else {
             details.push(`Ports: ${formData.ports || 'specify below'}`);
         }
 
-        details.push(`Protocol: ${formData.protocol} connect scan (-sT)`);
-        details.push('Skip host discovery (-Pn), no DNS (-n)');
+        details.push(t("Protocol: {{protocol}} connect scan (-sT)", { protocol: formData.protocol }));
+        details.push(t("Skip host discovery (-Pn), no DNS (-n)"));
         if (formData.version_detection) {
-            details.push('Service version detection enabled (-sV) — slower');
+            details.push(t("Service version detection enabled (-sV) — slower"));
         }
 
         const flags = ['-sT', '-Pn', '-n'];
@@ -135,7 +136,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="new-scan-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>New Network Scan</h2>
+                    <h2>{t("New Network Scan")}</h2>
                     <button className="modal-close" onClick={onClose}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M18 6L6 18M6 6l12 12" />
@@ -151,7 +152,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
                             {/* Scan Name */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label htmlFor="job_name">Scan Name</label>
+                                <label htmlFor="job_name">{t("Scan Name")}</label>
                                 <input
                                     type="text"
                                     id="job_name"
@@ -165,7 +166,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                             {/* Target */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label htmlFor="target">
-                                    Target IP or Range <span className="required">*</span>
+                                   {t("Target IP or Range")}{" "} <span className="required">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -181,7 +182,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
                             {/* Scan Type */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label htmlFor="scan_type">Scan Type</label>
+                                <label htmlFor="scan_type">{t("Scan Type")}</label>
                                 <select
                                     id="scan_type"
                                     name="scan_type"
@@ -189,15 +190,15 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                     onChange={handleChange}
                                     className="form-select"
                                 >
-                                    <option value="well_known_ports">Well-Known Ports (1-1024)</option>
-                                    <option value="all_ports">All Ports (1-65535)</option>
-                                    <option value="custom_ports">Custom Ports</option>
+                                    <option value="well_known_ports">{t("Well-Known Ports (1-1024)")}</option>
+                                    <option value="all_ports">{t("All Ports (1-65535)")}</option>
+                                    <option value="custom_ports">{t("Custom Ports")}</option>
                                 </select>
                             </div>
 
                             {/* Protocol */}
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label htmlFor="protocol">Protocol</label>
+                                <label htmlFor="protocol">{t("Protocol")}</label>
                                 <select
                                     id="protocol"
                                     name="protocol"
@@ -205,9 +206,9 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                     onChange={handleChange}
                                     className="form-select"
                                 >
-                                    <option value="TCP">TCP</option>
-                                    <option value="UDP">UDP</option>
-                                    <option value="BOTH">Both TCP & UDP</option>
+                                    <option value="TCP">{t("TCP")}</option>
+                                    <option value="UDP">{t("UDP")}</option>
+                                    <option value="BOTH">{t("Both TCP & UDP")}</option>
                                 </select>
                             </div>
 
@@ -215,7 +216,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                             {formData.scan_type === 'custom_ports' && (
                                 <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
                                     <label htmlFor="ports">
-                                        Custom Ports <span className="required">*</span>
+                                       {t("Custom Ports")}{" "} <span className="required">*</span>
                                     </label>
                                     <input
                                         type="text"
@@ -241,11 +242,11 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
                                         style={{ width: '18px', height: '18px', cursor: 'pointer', margin: 0, flexShrink: 0 }}
                                     />
                                     <label style={{ margin: 0, cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-                                        Enable Service Version Detection (-sV)
+                                       {t("Enable Service Version Detection (-sV)")}
                                     </label>
                                 </div>
                                 <p className="form-hint" style={{ color: '#f59e0b', marginTop: '4px' }}>
-                                    ⚠️ Version detection is slower but provides detailed service information
+                                   {t("⚠️ Version detection is slower but provides detailed service information")}
                                 </p>
                             </div>
 
@@ -253,7 +254,7 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
                         {/* Scan Details Box - full width */}
                         <div className="scan-details-box">
-                            <h4>Scan Details</h4>
+                            <h4>{t("Scan Details")}</h4>
                             <ul>
                                 {getScanDetails().map((detail, index) => (
                                     <li key={index}>{detail}</li>
@@ -265,10 +266,10 @@ const NewScanModal = ({ onClose, onSubmit, isLoading }) => {
 
                     <div className="modal-footer">
                         <button type="button" className="btn btn-cancel" onClick={onClose} disabled={isLoading}>
-                            Cancel
+                           {t("Cancel")}
                         </button>
                         <button type="submit" className="btn btn-start-scan" disabled={isLoading}>
-                            {isLoading ? 'Starting...' : 'Start Scan'}
+                            {isLoading ? t("Starting...") : t("Start Scan")}
                         </button>
                     </div>
                 </form>

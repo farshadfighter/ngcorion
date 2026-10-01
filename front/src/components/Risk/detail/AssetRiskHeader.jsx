@@ -1,6 +1,7 @@
 import React from "react";
 import { RISK_LEVEL_LABELS } from "../../../store/riskSlice";
 import { titleCase, formatDate, orDash, RISK_LEVEL_BADGES } from "../riskConstants";
+import { t } from "../../../i18n";
 
 /**
  * The four summary tiles at the top of the asset risk detail page.
@@ -38,38 +39,38 @@ export const AssetRiskHeader = ({ asset, score, incompleteData }) => {
                     variant={levelColors ? undefined : "dark"}
                     colors={levelColors}
                     value={score?.final_risk_score ?? "-"}
-                    label="Risk Score"
+                    label={t("Risk Score")}
                 />
                 <Tile
                     colors={levelColors}
                     value={level ? RISK_LEVEL_LABELS[level] || titleCase(level) : "-"}
-                    label="Risk Level"
+                    label={t("Risk Level")}
                 />
                 <Tile
                     value={formatDate(score?.calculated_at)}
-                    label="Last Calculated"
+                    label={t("Last Calculated")}
                 />
                 <Tile
-                    value={incompleteData ? "Incomplete" : "Complete"}
-                    label="Data Completeness Status"
+                    value={incompleteData ? t("Incomplete") : t("Complete")}
+                    label={t("Data Completeness Status")}
                 />
             </div>
 
             <dl className="ard-facts">
                 <div>
-                    <dt>Asset</dt>
+                    <dt>{t("Asset")}</dt>
                     <dd>{orDash(asset?.name)}</dd>
                 </div>
                 <div>
-                    <dt>IP Address</dt>
+                    <dt>{t("IP Address")}</dt>
                     <dd>{orDash(asset?.ip_address)}</dd>
                 </div>
                 <div>
-                    <dt>Vendor</dt>
+                    <dt>{t("Vendor")}</dt>
                     <dd>{orDash(asset?.vendor)}</dd>
                 </div>
                 <div>
-                    <dt>Product</dt>
+                    <dt>{t("Product")}</dt>
                     <dd>{orDash(asset?.product)}</dd>
                 </div>
             </dl>

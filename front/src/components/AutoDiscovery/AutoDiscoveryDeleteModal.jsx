@@ -1,5 +1,6 @@
 import React from 'react';
 import '../../assets/autoDiscoveryStyle/AutoDiscoveryDeleteModal.css';
+import { t } from "../../i18n";
 
 const AutoDiscoveryDeleteModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
     if (!isOpen) return null;
@@ -11,10 +12,10 @@ const AutoDiscoveryDeleteModal = ({ isOpen, title, message, onConfirm, onCancel 
                 <p className="ad-del-modal-text">{message}</p>
                 <div className="ad-del-modal-actions">
                     <button className="ad-del-modal-btn-cancel" onClick={onCancel}>
-                        Cancel
+                        {t("Cancel")}
                     </button>
                     <button className="ad-del-modal-btn-danger" onClick={onConfirm}>
-                        Delete
+                        {t("Delete")}
                     </button>
                 </div>
             </div>

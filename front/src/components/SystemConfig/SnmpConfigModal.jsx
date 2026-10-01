@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchSection, saveSection } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
 import { SecretField } from "./SecretField";
+import { t } from "../../i18n";
 
 const SECTION = "snmp";
 
@@ -46,18 +47,18 @@ const SnmpForm = ({ stored, onClose }) => {
 
         const ip = serverIp.trim();
         if (!ip) {
-            setLocalError("Enter the SNMP server IP address.");
+            setLocalError(t("Enter the SNMP server IP address."));
             return;
         }
         // Shape check only — the backend is the source of truth (ipaddress.ip_address).
         if (!/^[0-9a-fA-F.:]+$/.test(ip)) {
-            setLocalError("Server IP must be a valid IPv4 or IPv6 address.");
+            setLocalError(t("Server IP must be a valid IPv4 or IPv6 address."));
             return;
         }
 
         const port = Number(isV3 ? v3Port : v2Port);
         if (!Number.isInteger(port) || port < 1 || port > 65535) {
-            setLocalError("Port must be between 1 and 65535.");
+            setLocalError(t("Port must be between 1 and 65535."));
             return;
         }
 
@@ -68,7 +69,7 @@ const SnmpForm = ({ stored, onClose }) => {
             if (!authPassword) missing.push("auth password");
             if (!privPassword) missing.push("privacy password");
             if (missing.length) {
-                setLocalError(`Required for SNMP v3: ${missing.join(", ")}.`);
+                setLocalError(t("Required for SNMP v3: {{join}}.", { join: missing.join(", ") }));
                 return;
             }
             payload.v3_username = v3Username.trim();
@@ -79,7 +80,7 @@ const SnmpForm = ({ stored, onClose }) => {
             payload.v3_port = port;
         } else {
             if (!v2Community.trim()) {
-                setLocalError("Community string is required for SNMP v2c.");
+                setLocalError(t("Community string is required for SNMP v2c."));
                 return;
             }
             payload.v2_community = v2Community.trim();
@@ -94,7 +95,7 @@ const SnmpForm = ({ stored, onClose }) => {
 
     return (
         <ConfigModal
-            title="SNMP Configurations"
+            title={t("SNMP Configurations")}
             onClose={onClose}
             onSave={handleSave}
             isSaving={!!saving[SECTION]}
@@ -107,19 +108,19 @@ const SnmpForm = ({ stored, onClose }) => {
                     className={`sc-tab${!isV3 ? " is-active" : ""}`}
                     onClick={() => setVersion("v2c")}
                 >
-                    SNMP v2c
+                    {t("SNMP v2c")}
                 </button>
                 <button
                     type="button"
                     className={`sc-tab${isV3 ? " is-active" : ""}`}
                     onClick={() => setVersion("v3")}
                 >
-                    SNMP v3
+                    {t("SNMP v3")}
                 </button>
             </div>
 
             <label className="sc-field">
-                <span>Server IP Address</span>
+                <span>{t("Server IP Address")}</span>
                 <input
                     type="text"
                     value={serverIp}
@@ -132,7 +133,7 @@ const SnmpForm = ({ stored, onClose }) => {
             {isV3 ? (
                 <>
                     <label className="sc-field">
-                        <span>Username</span>
+                        <span>{t("Username")}</span>
                         <input
                             type="text"
                             value={v3Username}
@@ -143,7 +144,7 @@ const SnmpForm = ({ stored, onClose }) => {
 
                     <div className="sc-row">
                         <label className="sc-field">
-                            <span>Auth Protocol</span>
+                            <span>{t("Auth Protocol")}</span>
                             <select
                                 value={authProtocol}
                                 onChange={(e) => setAuthProtocol(e.target.value)}
@@ -156,7 +157,7 @@ const SnmpForm = ({ stored, onClose }) => {
                             </select>
                         </label>
                         <SecretField
-                            label="Auth Password"
+                            label={t("Auth Password")}
                             value={authPassword}
                             onChange={setAuthPassword}
                         />
@@ -164,7 +165,7 @@ const SnmpForm = ({ stored, onClose }) => {
 
                     <div className="sc-row">
                         <label className="sc-field">
-                            <span>Privacy Protocol</span>
+                            <span>{t("Privacy Protocol")}</span>
                             <select
                                 value={privProtocol}
                                 onChange={(e) => setPrivProtocol(e.target.value)}
@@ -177,14 +178,14 @@ const SnmpForm = ({ stored, onClose }) => {
                             </select>
                         </label>
                         <SecretField
-                            label="Privacy Password"
+                            label={t("Privacy Password")}
                             value={privPassword}
                             onChange={setPrivPassword}
                         />
                     </div>
 
                     <label className="sc-field">
-                        <span>Port</span>
+                        <span>{t("Port")}</span>
                         <input
                             type="number"
                             min={1}
@@ -197,7 +198,7 @@ const SnmpForm = ({ stored, onClose }) => {
             ) : (
                 <>
                     <label className="sc-field">
-                        <span>Community String</span>
+                        <span>{t("Community String")}</span>
                         <input
                             type="text"
                             value={v2Community}
@@ -207,7 +208,7 @@ const SnmpForm = ({ stored, onClose }) => {
                         />
                     </label>
                     <label className="sc-field">
-                        <span>Port</span>
+                        <span>{t("Port")}</span>
                         <input
                             type="number"
                             min={1}
@@ -243,7 +244,7 @@ export const SnmpConfigModal = ({ onClose }) => {
     if (!stored) {
         return (
             <ConfigModal
-                title="SNMP Configurations"
+                title={t("SNMP Configurations")}
                 onClose={onClose}
                 onSave={onClose}
                 isLoading={!!loading[SECTION]}

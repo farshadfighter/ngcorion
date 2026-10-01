@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 /**
  * Turns the four module payloads into the numbers the dashboard cards show.
  *
@@ -81,12 +82,12 @@ export const hardeningScore = (hardeningOverview) =>
  * it, so it is shown rather than silently dropped.
  */
 export const SUB_SCORE_LABELS = {
-    asset_health: "Asset Health",
-    audit_compliance: "Audit Compliance",
-    hardening: "Hardening",
-    risk_intelligence: "Risk Intelligence",
-    exposure_intelligence: "Exposure Intelligence",
-    vulnerability: "Vulnerability",
+    asset_health: t("Asset Health"),
+    audit_compliance: t("Audit Compliance"),
+    hardening: t("Hardening"),
+    risk_intelligence: t("Risk Intelligence"),
+    exposure_intelligence: t("Exposure Intelligence"),
+    vulnerability: t("Vulnerability"),
 };
 
 /** sub_scores object -> ordered rows for the breakdown table.
@@ -120,32 +121,32 @@ export const moduleCards = ({
 }) => [
     {
         key: "assets",
-        title: "Asset Management",
+        title: t("Asset Management"),
         value: totalAssets(riskSummary),
-        unit: "Asset",
+        unit: t("Asset"),
         to: "/assets",
     },
     {
         key: "auditing",
-        title: "Auditing",
+        title: t("Auditing"),
         value: complianceScore(auditOverview),
-        unit: "Compliance",
+        unit: t("Compliance"),
         suffix: "%",
         to: "/audit",
     },
     {
         key: "hardening",
-        title: "Hardening",
+        title: t("Hardening"),
         value: hardeningScore(hardeningOverview),
-        unit: "Hardened",
+        unit: t("Hardened"),
         suffix: "%",
         to: "/hardening/overview",
     },
     {
         key: "risk",
-        title: "Risk Intelligence",
+        title: t("Risk Intelligence"),
         value: criticalRisks(riskSummary),
-        unit: "Critical Risk Assets",
+        unit: t("Critical Risk Assets"),
         to: "/risk/overview",
     },
 ];
@@ -160,13 +161,13 @@ export const headlineMetrics = ({
     {
         // Risk, not health: higher is worse, matching the gauge below.
         key: "security_score",
-        label: "Security Risk Score",
+        label: t("Security Risk Score"),
         value: riskFromSecurityScore(securityScore?.security_score),
         suffix: "/100",
     },
     {
         key: "total_assets",
-        label: "Total Assets",
+        label: t("Total Assets"),
         value: totalAssets(riskSummary),
     },
     {
@@ -174,23 +175,23 @@ export const headlineMetrics = ({
         // calculated level is critical, and the bare wording was read as the
         // Asset List classification of the same name.
         key: "critical_risks",
-        label: "Critical Risk Assets",
+        label: t("Critical Risk Assets"),
         value: criticalRisks(riskSummary),
     },
     {
         key: "exposed_assets",
-        label: "Internet Exposed Assets",
+        label: t("Internet Exposed Assets"),
         value: exposedAssets(riskSummary),
     },
     {
         key: "compliance_score",
-        label: "Compliance Score",
+        label: t("Compliance Score"),
         value: complianceScore(auditOverview),
         suffix: "%",
     },
     {
         key: "hardening_score",
-        label: "Hardening Score",
+        label: t("Hardening Score"),
         value: hardeningScore(hardeningOverview),
         suffix: "%",
     },

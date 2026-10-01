@@ -1,16 +1,17 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 // The backend emits five levels (router.py::_RISK_LEVEL_ORDER), matching the
 // NGCorion Risk Score spec's bands (app/modules/risk/levels.py).
 export const RISK_LEVELS = ["informational", "low", "medium", "high", "critical"];
 
 export const RISK_LEVEL_LABELS = {
-    informational: "Informational",
-    low: "Low",
-    medium: "Medium",
-    high: "High",
-    critical: "Critical",
+    informational: t("Informational"),
+    low: t("Low"),
+    medium: t("Medium"),
+    high: t("High"),
+    critical: t("Critical"),
 };
 
 // Backend caps page_size at 100; the table shows the highest-risk assets first.
@@ -63,7 +64,7 @@ export const fetchRiskDashboard = createAsyncThunk(
         if (listRes.status === "rejected") {
             const err = listRes.reason;
             return rejectWithValue(
-                err?.response?.data?.detail || err?.message || "Risk data unavailable"
+                err?.response?.data?.detail || err?.message || t("Risk data unavailable")
             );
         }
 
@@ -178,7 +179,7 @@ const riskSlice = createSlice({
             })
             .addCase(recalculateAssetRisk.rejected, (state, action) => {
                 state.recalculatingId = null;
-                state.recalcError = action.payload?.message || "Recalculation failed";
+                state.recalcError = action.payload?.message || t("Recalculation failed");
             });
     },
 });

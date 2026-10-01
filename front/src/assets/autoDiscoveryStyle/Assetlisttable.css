@@ -78,7 +78,7 @@
 
 .discovery-assets-table th {
     padding: 16px;
-    text-align: left;
+    text-align: start;
     font-weight: 600;
     font-size: 13px;
     color: #2C3E50;

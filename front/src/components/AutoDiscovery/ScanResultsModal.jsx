@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import ManagePortsModal from './ManagePortsModal';
 import ScanErrorAlert from './scanErrors.jsx';
 import "../../assets/autoDiscoveryStyle/ScanResultsModal.css"
+import { t, uiLocale, n } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 
 const ScanResultsModal = ({ scan, onClose }) => {
     const [selectedHost, setSelectedHost] = useState(null);
@@ -31,7 +33,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
     // Format date
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleString('en-US', {
+        return new Date(dateStr).toLocaleString(uiLocale(),  {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -56,7 +58,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
     const renderPorts = (ports) => {
         const allPorts = ports || [];
         if (allPorts.length === 0) {
-            return <span className="text-muted">No ports found</span>;
+            return <span className="text-muted">{t("No ports found")}</span>;
         }
 
         const openPorts = allPorts.filter(p => p.state === 'open' || !p.state);
@@ -101,10 +103,10 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     </span>
                 ))}
                 {remaining > 0 && (
-                    <span className="port-more">+{remaining} more</span>
+                    <span className="port-more">{t("+{{remaining}} more", { remaining })}</span>
                 )}
                 {closedPorts.length > 0 && (
-                    <span className="port-state-label closed">{closedPorts.length} closed</span>
+                    <span className="port-state-label closed">{t("{{length}} closed", { length: closedPorts.length })}</span>
                 )}
             </div>
         );
@@ -115,9 +117,9 @@ const ScanResultsModal = ({ scan, onClose }) => {
             <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <div className="modal-title-group">
-                        <h2>Scan Results</h2>
+                        <h2>{t("Scan Results")}</h2>
                         <span className="modal-subtitle">
-              Scan: {scan.job_name || scan.scan_id} - {scan.target}
+              {t("Scan:")}{" "} {scan.job_name || scan.scan_id} - {scan.target}
             </span>
                     </div>
                     <button className="modal-close" onClick={onClose}>
@@ -131,16 +133,16 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     {/* Summary Stats - 3 cards only */}
                     <div className="results-summary">
                         <div className="summary-stat">
-                            <span className="stat-value">{scan.hosts_discovered || hosts.length}</span>
-                            <span className="stat-label">Discovered</span>
+                            <span className="stat-value">{n(scan.hosts_discovered || hosts.length)}</span>
+                            <span className="stat-label">{t("Discovered")}</span>
                         </div>
                         <div className="summary-stat">
                             <span className="stat-value">{getDuration()}</span>
-                            <span className="stat-label">Duration</span>
+                            <span className="stat-label">{t("Duration")}</span>
                         </div>
                         <div className="summary-stat">
                             <span className={`stat-value status-text-${scan.status}`}>{scan.status}</span>
-                            <span className="stat-label">Status</span>
+                            <span className="stat-label">{t("Status")}</span>
                         </div>
                     </div>
 
@@ -150,23 +152,23 @@ const ScanResultsModal = ({ scan, onClose }) => {
                     {/* Hosts Table */}
                     {hosts.length === 0 ? (
                         <div className="empty-state small">
-                            <p>No hosts were discovered in this scan.</p>
-                            <p className="text-muted">The target may be offline or not responding to scans.</p>
+                            <p>{t("No hosts were discovered in this scan.")}</p>
+                            <p className="text-muted">{t("The target may be offline or not responding to scans.")}</p>
                         </div>
                     ) : (
                         <div className="results-table-container">
                             <div className="port-legend">
-                                <span className="port-badge port-state-open" style={{pointerEvents:'none'}}>open</span>
-                                <span className="port-badge port-state-closed" style={{pointerEvents:'none'}}>closed</span>
-                                <span className="port-badge port-state-filtered" style={{pointerEvents:'none'}}>filtered</span>
+                                <span className="port-badge port-state-open" style={{pointerEvents:'none'}}>{t("open")}</span>
+                                <span className="port-badge port-state-closed" style={{pointerEvents:'none'}}>{t("closed")}</span>
+                                <span className="port-badge port-state-filtered" style={{pointerEvents:'none'}}>{t("filtered")}</span>
                             </div>
                             <table className="data-table">
                                 <thead>
                                 <tr>
-                                    <th>IP Address</th>
-                                    <th>OS Info</th>
-                                    <th>Ports</th>
-                                    <th>Actions</th>
+                                    <th>{t("IP Address")}</th>
+                                    <th>{t("OS Info")}</th>
+                                    <th>{t("Ports")}</th>
+                                    <th>{t("Actions")}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -184,7 +186,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
                                                     )}
                                                 </div>
                                             ) : (
-                                                <span className="text-muted">Unknown</span>
+                                                <span className="text-muted">{t("Unknown")}</span>
                                             )}
                                         </td>
                                         <td>{renderPorts(host.ports)}</td>
@@ -193,9 +195,9 @@ const ScanResultsModal = ({ scan, onClose }) => {
                                                 <button
                                                     className="btn btn-sm btn-primary"
                                                     onClick={() => handleManagePorts(host)}
-                                                    title="Manage ports for this host"
+                                                    title={t("Manage ports for this host")}
                                                 >
-                                                    Manage Asset
+                                                    {t("Manage Asset")}
                                                 </button>
 
                                             </div>
@@ -209,30 +211,30 @@ const ScanResultsModal = ({ scan, onClose }) => {
 
                     {/* Scan Details */}
                     <div className="scan-details">
-                        <h4>Scan Details</h4>
+                        <h4>{t("Scan Details")}</h4>
                         <div className="details-grid">
                             <div className="detail-item">
-                                <span className="detail-label">Scan Name</span>
+                                <span className="detail-label">{t("Scan Name")}</span>
                                 <span className="detail-value">{scan.job_name || scan.scan_id}</span>
                             </div>
                             <div className="detail-item">
-                                <span className="detail-label">Target</span>
+                                <span className="detail-label">{t("Target")}</span>
                                 <span className="detail-value">{scan.target}</span>
                             </div>
                             <div className="detail-item">
-                                <span className="detail-label">Scan Type</span>
-                                <span className="detail-value">{scan.scan_type}</span>
+                                <span className="detail-label">{t("Scan Type")}</span>
+                                <span className="detail-value">{tv(scan.scan_type)}</span>
                             </div>
                             <div className="detail-item">
-                                <span className="detail-label">Protocol</span>
-                                <span className="detail-value">{scan.protocol || 'TCP'}</span>
+                                <span className="detail-label">{t("Protocol")}</span>
+                                <span className="detail-value">{scan.protocol || t("TCP")}</span>
                             </div>
                             <div className="detail-item">
-                                <span className="detail-label">Started</span>
+                                <span className="detail-label">{t("Started")}</span>
                                 <span className="detail-value">{formatDate(scan.started_at)}</span>
                             </div>
                             <div className="detail-item">
-                                <span className="detail-label">Completed</span>
+                                <span className="detail-label">{t("Completed")}</span>
                                 <span className="detail-value">{formatDate(scan.completed_at)}</span>
                             </div>
                         </div>
@@ -241,7 +243,7 @@ const ScanResultsModal = ({ scan, onClose }) => {
 
                 <div className="modal-footer">
                     <button className="btn btn-ok" onClick={onClose}>
-                        OK
+                        {t("OK")}
                     </button>
                 </div>
             </div>

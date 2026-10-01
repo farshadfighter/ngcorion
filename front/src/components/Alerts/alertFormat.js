@@ -1,38 +1,39 @@
+import { t } from "../../i18n";
 // Shared labels and helpers for alerts and notifications.
 
 export const SEVERITY = {
-    critical: { label: "Critical", pill: "alr-sev-critical", dot: "#b91c1c" },
-    warning: { label: "Warning", pill: "alr-sev-warning", dot: "#c2410c" },
-    info: { label: "Info", pill: "alr-sev-info", dot: "#1e3a5f" },
+    critical: { label: t("Critical"), pill: "alr-sev-critical", dot: "#b91c1c" },
+    warning: { label: t("Warning"), pill: "alr-sev-warning", dot: "#c2410c" },
+    info: { label: t("Info"), pill: "alr-sev-info", dot: "#1e3a5f" },
 };
 
 export const MODULES = {
     noc: "NOC",
     cve: "CVE",
-    audit: "Audit",
-    backup: "Backup",
-    system: "System",
+    audit: t("Audit"),
+    backup: t("Backup"),
+    system: t("System"),
 };
 
 export const CHANNEL_LABEL = {
-    email: "Email",
+    email: t("Email"),
     sms: "SMS",
-    syslog: "Syslog",
-    webhook: "Webhook",
+    syslog: t("Syslog"),
+    webhook: t("Webhook"),
 };
 
 /** What the alert's action button opens. */
 export function actionLabel(alert) {
     const link = alert.link || "";
-    if (link.startsWith("/noc/hosts")) return "Open host";
-    if (link.startsWith("/cve/database")) return "Open database";
-    if (link.startsWith("/cve")) return "Open findings";
-    if (link.startsWith("/backup/restores")) return "Open restore";
-    if (link.startsWith("/backup")) return "Open list";
-    if (link.startsWith("/audit/sessions")) return "Open audit";
-    if (link.startsWith("/audit") || link.startsWith("/assets/schedule")) return "Open job";
-    if (link.startsWith("/settings/license")) return "Open license";
-    return "Open";
+    if (link.startsWith("/noc/hosts")) return t("Open host");
+    if (link.startsWith("/cve/database")) return t("Open database");
+    if (link.startsWith("/cve")) return t("Open findings");
+    if (link.startsWith("/backup/restores")) return t("Open restore");
+    if (link.startsWith("/backup")) return t("Open list");
+    if (link.startsWith("/audit/sessions")) return t("Open audit");
+    if (link.startsWith("/audit") || link.startsWith("/assets/schedule")) return t("Open job");
+    if (link.startsWith("/settings/license")) return t("Open license");
+    return t("Open");
 }
 
 /** Notify the bell and the sidebar badge that alerts changed here. */

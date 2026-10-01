@@ -13,6 +13,7 @@ import { MetricChart } from "../shared/MetricChart.jsx";
 import { TimeRangePicker } from "../shared/TimeRangePicker.jsx";
 import "../../assets/Noc.css";
 import AssetIcon from "../shared/AssetIcon.jsx";
+import { t, uiLocale } from "../../i18n";
 
 function formatUptime(ticks) {
     if (ticks == null) return "—";
@@ -20,17 +21,20 @@ function formatUptime(ticks) {
     const days = Math.floor(totalSeconds / 86400);
     const hours = Math.floor((totalSeconds % 86400) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${days}d ${hours}h ${minutes}m`;
+    return t("{{days}}d {{hours}}h {{minutes}}m", { days, hours, minutes });
 }
 
 function formatBytes(n) {
     if (n == null) return "—";
-    if (n < 1024) return `${n} B`;
-    const units = ["KB", "MB", "GB", "TB"];
+    if (n < 1024) return t("{{value}} B", { value: n });
+    const units = [
+        (value) => t("{{value}} KB", { value }), (value) => t("{{value}} MB", { value }),
+        (value) => t("{{value}} GB", { value }), (value) => t("{{value}} TB", { value }),
+    ];
     let value = n / 1024;
     let i = 0;
     while (value >= 1024 && i < units.length - 1) { value /= 1024; i += 1; }
-    return `${value.toFixed(1)} ${units[i]}`;
+    return units[i](Number(value.toFixed(1)));
 }
 
 // IF-MIB ifType values (RFC 2863 / the IANAifType-MIB registry) an interface
@@ -50,10 +54,10 @@ function classifyInterfaceType(ifType) {
     for (const [group, codes] of Object.entries(IF_TYPE_GROUPS)) {
         if (codes.has(ifType)) return group;
     }
-    return "Other";
+    return t("Other");
 }
 
-const INTERFACE_FILTERS = ["All", "Physical", "VLAN", "Aggregate", "Tunnel", "Other"];
+const INTERFACE_FILTERS = [t("All"), t("Physical"), "VLAN", t("Aggregate"), t("Tunnel"), t("Other")];
 
 // ifDescr is frequently blank or unhelpful on real devices (FortiGate
 // leaves it empty for VLANs/aggregates/tunnels; even set, it's often a
@@ -77,7 +81,7 @@ export const NocHostDetail = () => {
     const navigate = useNavigate();
     const { currentHost, isPolling, error, successMessage, metricSeries, isLoadingMetric } = useSelector((state) => state.noc);
 
-    const [interfaceFilter, setInterfaceFilter] = useState("All");
+    const [interfaceFilter, setInterfaceFilter] = useState(t("All"));
 
     const [historyMetric, setHistoryMetric] = useState("reachable");
     const [historyInterfaceId, setHistoryInterfaceId] = useState(null);
@@ -145,7 +149,7 @@ export const NocHostDetail = () => {
     }, [dispatch, assetId, historyMetric, effectiveInterfaceId, historyRange]);
 
     if (!currentHost) {
-        return <div className="noc-container"><div className="noc-empty">Loading…</div></div>;
+        return <div className="noc-container"><div className="noc-empty">{t("Loading…")}</div></div>;
     }
 
     const handleSaveCredential = () => {
@@ -172,15 +176,15 @@ export const NocHostDetail = () => {
         <div className="noc-container">
             <div className="noc-toolbar">
                 <button className="noc-btn" onClick={() => navigate("/noc/hosts")}>
-                    <i className="fa-solid fa-arrow-left" /> Back to hosts
+                    <i className="fa-solid fa-arrow-left" /> {" "}{t("Back to hosts")}
                 </button>
                 <button
                     className="noc-btn noc-btn-primary"
                     onClick={() => dispatch(pollHostNow(assetId))}
                     disabled={isPolling || !currentHost.credential}
-                    title={!currentHost.credential ? "Configure an SNMP credential first" : undefined}
+                    title={!currentHost.credential ? t("Configure an SNMP credential first") : undefined}
                 >
-                    <i className="fa-solid fa-arrows-rotate" /> {isPolling ? "Polling…" : "Poll Now"}
+                    <i className="fa-solid fa-arrows-rotate" /> {isPolling ? t("Polling…") : t("Poll Now")}
                 </button>
             </div>
 
@@ -198,50 +202,50 @@ export const NocHostDetail = () => {
                             <h3 style={{ margin: 0 }}>{currentHost.asset_name}</h3>
                             <span className={`noc-status-pill ${statusKey}`}>
                                 <span className={`noc-status-dot ${statusKey}`} />
-                                {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Reachable" : "Unreachable"}
+                                {statusKey === "unmonitored" ? t("Not monitored") : statusKey === "up" ? t("Reachable") : t("Unreachable")}
                             </span>
                         </div>
                         <dl className="noc-kv-grid">
-                            <dt>Type</dt><dd>{currentHost.asset_type_name || "—"}</dd>
-                            <dt>IP Address</dt><dd>{currentHost.ip_address || "—"}</dd>
+                            <dt>{t("Type")}</dt><dd>{currentHost.asset_type_name || "—"}</dd>
+                            <dt>{t("IP Address")}</dt><dd>{currentHost.ip_address || "—"}</dd>
                             {currentHost.sys_name && currentHost.sys_name !== currentHost.asset_name && (
-                                <><dt>Hostname</dt><dd>{currentHost.sys_name}</dd></>
+                                <><dt>{t("Hostname")}</dt><dd>{currentHost.sys_name}</dd></>
                             )}
-                            <dt>Last Polled</dt><dd>{currentHost.last_polled_at ? new Date(currentHost.last_polled_at).toLocaleString() : "Never"}</dd>
-                            {currentHost.error_message && (<><dt>Error</dt><dd>{currentHost.error_message}</dd></>)}
+                            <dt>{t("Last Polled")}</dt><dd>{currentHost.last_polled_at ? new Date(currentHost.last_polled_at).toLocaleString(uiLocale()) : t("Never")}</dd>
+                            {currentHost.error_message && (<><dt>{t("Error")}</dt><dd>{currentHost.error_message}</dd></>)}
                         </dl>
                     </div>
 
                     <div className="noc-card">
-                        <h3>System Info</h3>
+                        <h3>{t("System Info")}</h3>
                         <dl className="noc-kv-grid">
-                            <dt>Hostname</dt><dd>{currentHost.sys_name || "—"}</dd>
-                            <dt>OS / Firmware</dt><dd>{currentHost.sys_descr || "—"}</dd>
-                            <dt>Uptime</dt><dd>{formatUptime(currentHost.sys_uptime_ticks)}</dd>
-                            <dt>Contact</dt><dd>{currentHost.sys_contact || "—"}</dd>
-                            <dt>Location</dt><dd>{currentHost.sys_location || "—"}</dd>
+                            <dt>{t("Hostname")}</dt><dd>{currentHost.sys_name || "—"}</dd>
+                            <dt>{t("OS / Firmware")}</dt><dd>{currentHost.sys_descr || "—"}</dd>
+                            <dt>{t("Uptime")}</dt><dd>{formatUptime(currentHost.sys_uptime_ticks)}</dd>
+                            <dt>{t("Contact")}</dt><dd>{currentHost.sys_contact || "—"}</dd>
+                            <dt>{t("Location")}</dt><dd>{currentHost.sys_location || "—"}</dd>
                         </dl>
                         {!currentHost.sys_name && !currentHost.sys_descr && (
                             <div style={{ marginTop: 10, fontSize: 11.5, color: "#6b7280" }}>
                                 {currentHost.credential
-                                    ? "Device hasn't returned this yet — try Poll Now, or it doesn't expose the MIB-2 system group over SNMP."
-                                    : "Configure an SNMP credential to start collecting this."}
+                                    ? t("Device hasn't returned this yet — try Poll Now, or it doesn't expose the MIB-2 system group over SNMP.")
+                                    : t("Configure an SNMP credential to start collecting this.")}
                             </div>
                         )}
                     </div>
 
                     <div className="noc-card">
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                            <h3 style={{ margin: 0 }}>History</h3>
+                            <h3 style={{ margin: 0 }}>{t("History")}</h3>
                             <div style={{ display: "flex", gap: 6 }}>
                                 <select
                                     value={historyMetric}
                                     onChange={(e) => setHistoryMetric(e.target.value)}
                                     className="noc-mini-select"
                                 >
-                                    <option value="reachable">Reachability</option>
-                                    <option value="if_in_octets">Interface — In traffic</option>
-                                    <option value="if_out_octets">Interface — Out traffic</option>
+                                    <option value="reachable">{t("Reachability")}</option>
+                                    <option value="if_in_octets">{t("Interface — In traffic")}</option>
+                                    <option value="if_out_octets">{t("Interface — Out traffic")}</option>
                                 </select>
                                 {historyMetric !== "reachable" && (
                                     <select
@@ -260,7 +264,7 @@ export const NocHostDetail = () => {
                             <TimeRangePicker value={historyRange} onChange={setHistoryRange} />
                         </div>
                         {isLoadingMetric ? (
-                            <div className="noc-empty">Loading…</div>
+                            <div className="noc-empty">{t("Loading…")}</div>
                         ) : (
                             <MetricChart
                                 points={metricSeries?.points}
@@ -272,7 +276,7 @@ export const NocHostDetail = () => {
                         )}
                         {metricSeries?.granularity && metricSeries.granularity !== "raw" && (
                             <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                                Averaged into {metricSeries.granularity} buckets for this range.
+                                {t("Averaged into {{granularity}} buckets for this range.", { granularity: metricSeries.granularity })}
                             </div>
                         )}
                     </div>
@@ -292,7 +296,7 @@ export const NocHostDetail = () => {
                             return (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-                                        <h3 style={{ margin: 0 }}>Interfaces</h3>
+                                        <h3 style={{ margin: 0 }}>{t("Interfaces")}</h3>
                                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                                             {INTERFACE_FILTERS.filter((f) => f === "All" || counts[f] > 0).map((f) => (
                                                 <button
@@ -307,19 +311,19 @@ export const NocHostDetail = () => {
                                         </div>
                                     </div>
                                     {grouped.length === 0 ? (
-                                        <div className="noc-empty">No interface data yet — poll this host to fetch it.</div>
+                                        <div className="noc-empty">{t("No interface data yet — poll this host to fetch it.")}</div>
                                     ) : (
                                         <table className="noc-table">
                                             <thead>
                                                 <tr>
                                                     <th>#</th>
-                                                    <th>Description</th>
-                                                    <th>Type</th>
-                                                    <th>Speed</th>
-                                                    <th>Admin</th>
-                                                    <th>Oper</th>
-                                                    <th>In</th>
-                                                    <th>Out</th>
+                                                    <th>{t("Description")}</th>
+                                                    <th>{t("Type")}</th>
+                                                    <th>{t("Speed")}</th>
+                                                    <th>{t("Admin")}</th>
+                                                    <th>{t("Oper")}</th>
+                                                    <th>{t("In")}</th>
+                                                    <th>{t("Out")}</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -328,7 +332,7 @@ export const NocHostDetail = () => {
                                                         <td>{iface.if_index}</td>
                                                         <td>{interfaceDisplayName(iface)}</td>
                                                         <td style={{ color: "#6b7280" }}>{iface._group}</td>
-                                                        <td>{iface.if_speed ? `${(iface.if_speed / 1e6).toFixed(0)} Mbps` : "—"}</td>
+                                                        <td>{iface.if_speed ? t("{{toFixed}} Mbps", { toFixed: (iface.if_speed / 1e6).toFixed(0) }) : "—"}</td>
                                                         <td style={{ color: iface.if_admin_status === "up" ? "#15803d" : undefined }}>{iface.if_admin_status || "—"}</td>
                                                         <td style={{ color: iface.if_oper_status === "up" ? "#15803d" : iface.if_oper_status === "down" ? "#b91c1c" : undefined }}>{iface.if_oper_status || "—"}</td>
                                                         <td>{formatBytes(iface.in_octets)}</td>
@@ -345,75 +349,75 @@ export const NocHostDetail = () => {
                 </div>
 
                 <div className="noc-card">
-                    <h3>SNMP Credential</h3>
+                    <h3>{t("SNMP Credential")}</h3>
                     <div className="noc-field">
-                        <label>Version</label>
+                        <label>{t("Version")}</label>
                         <select value={version} onChange={(e) => setVersion(e.target.value)}>
                             <option value="v2c">v2c</option>
                             <option value="v3">v3</option>
                         </select>
                     </div>
                     <div className="noc-field">
-                        <label>Port</label>
+                        <label>{t("Port")}</label>
                         <input type="number" value={port} onChange={(e) => setPort(e.target.value)} />
                     </div>
 
                     {version === "v2c" ? (
                         <div className="noc-field">
-                            <label>Community String</label>
+                            <label>{t("Community String")}</label>
                             <input
                                 type="password"
                                 value={community}
                                 onChange={(e) => setCommunity(e.target.value)}
-                                placeholder={currentHost.credential?.has_community ? "•••••••• (set — enter to replace)" : "e.g. public"}
+                                placeholder={currentHost.credential?.has_community ? t("•••••••• (set — enter to replace)") : t("e.g. public")}
                             />
                         </div>
                     ) : (
                         <>
                             <div className="noc-field">
-                                <label>Username</label>
+                                <label>{t("Username")}</label>
                                 <input value={username} onChange={(e) => setUsername(e.target.value)} />
                             </div>
                             <div className="noc-field">
-                                <label>Auth Protocol</label>
+                                <label>{t("Auth Protocol")}</label>
                                 <select value={authProtocol} onChange={(e) => setAuthProtocol(e.target.value)}>
-                                    <option value="SHA">SHA</option>
-                                    <option value="MD5">MD5</option>
+                                    <option value="SHA">{t("SHA")}</option>
+                                    <option value="MD5">{t("MD5")}</option>
                                 </select>
                             </div>
                             <div className="noc-field">
-                                <label>Auth Key</label>
+                                <label>{t("Auth Key")}</label>
                                 <input
                                     type="password"
                                     value={authKey}
                                     onChange={(e) => setAuthKey(e.target.value)}
-                                    placeholder={currentHost.credential?.has_auth_key ? "•••••••• (set — enter to replace)" : ""}
+                                    placeholder={currentHost.credential?.has_auth_key ? t("•••••••• (set — enter to replace)") : ""}
                                 />
                             </div>
                             <div className="noc-field">
-                                <label>Priv Protocol</label>
+                                <label>{t("Priv Protocol")}</label>
                                 <select value={privProtocol} onChange={(e) => setPrivProtocol(e.target.value)}>
-                                    <option value="AES">AES</option>
-                                    <option value="DES">DES</option>
+                                    <option value="AES">{t("AES")}</option>
+                                    <option value="DES">{t("DES")}</option>
                                 </select>
                             </div>
                             <div className="noc-field">
-                                <label>Priv Key</label>
+                                <label>{t("Priv Key")}</label>
                                 <input
                                     type="password"
                                     value={privKey}
                                     onChange={(e) => setPrivKey(e.target.value)}
-                                    placeholder={currentHost.credential?.has_priv_key ? "•••••••• (set — enter to replace)" : ""}
+                                    placeholder={currentHost.credential?.has_priv_key ? t("•••••••• (set — enter to replace)") : ""}
                                 />
                             </div>
                         </>
                     )}
 
                     <div className="noc-credential-actions">
-                        <button className="noc-btn noc-btn-primary" onClick={handleSaveCredential}>Save</button>
+                        <button className="noc-btn noc-btn-primary" onClick={handleSaveCredential}>{t("Save")}</button>
                         {currentHost.credential && (
                             <button className="noc-btn noc-btn-danger" onClick={() => dispatch(deleteHostCredential(assetId))}>
-                                Remove
+                                {t("Remove")}
                             </button>
                         )}
                     </div>

@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n";
 
 /**
  * Page bar for client-side paginated tables.
@@ -39,7 +40,7 @@ export const Pagination = ({
     return (
         <div className="pagination">
             <span className="pagination-info">
-                {firstRow}–{lastRow} of {totalItems}
+                {t("{{firstRow}}–{{lastRow}} of {{totalItems}}", { firstRow, lastRow, totalItems })}
             </span>
 
             <div className="pagination-pages">
@@ -48,7 +49,7 @@ export const Pagination = ({
                     className="pagination-btn"
                     onClick={() => onPageChange(page - 1)}
                     disabled={page <= 1}
-                    aria-label="Previous page"
+                    aria-label={t("Previous page")}
                 >
                     ‹
                 </button>
@@ -76,7 +77,7 @@ export const Pagination = ({
                     className="pagination-btn"
                     onClick={() => onPageChange(page + 1)}
                     disabled={page >= totalPages}
-                    aria-label="Next page"
+                    aria-label={t("Next page")}
                 >
                     ›
                 </button>
@@ -84,7 +85,7 @@ export const Pagination = ({
 
             {onPageSizeChange && (
                 <label className="pagination-size">
-                    Rows
+                    {t("Rows")}
                     <select
                         value={pageSize}
                         onChange={(e) => onPageSizeChange(Number(e.target.value))}

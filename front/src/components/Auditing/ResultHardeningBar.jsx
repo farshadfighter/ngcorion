@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 /**
  * "Go to Hardening to fix Unsuccessful Section" bar, sitting between the
  * summary cards and the results table (Figma: 1229x180 card, rx 30, with a
@@ -10,7 +11,7 @@ export const ResultHardeningBar = ({ onHarden, disabled }) => (
     <div className="result-harden-bar">
         <div className="result-harden-title">
             <i className="fa-solid fa-circle-exclamation" aria-hidden="true"></i>
-            <span>Go to Hardening to fix Unsuccessful Section</span>
+            <span>{t("Go to Hardening to fix Unsuccessful Section")}</span>
         </div>
         <button
             type="button"
@@ -19,12 +20,12 @@ export const ResultHardeningBar = ({ onHarden, disabled }) => (
             disabled={disabled}
             title={
                 disabled
-                    ? "No unsuccessful checks to fix"
-                    : "Harden the failed checks from this audit"
+                    ? t("No unsuccessful checks to fix")
+                    : t("Harden the failed checks from this audit")
             }
         >
             <i className="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i>
-            Hardening
+            {t("Hardening")}
         </button>
     </div>
 );

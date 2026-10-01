@@ -64,6 +64,8 @@ class Token(BaseModel):
     username: str
     role: str
     permissions: Dict[str, PermissionDetail]
+    language: str = "en"
+    language_chosen: bool = False
 
 
 class TokenData(BaseModel):

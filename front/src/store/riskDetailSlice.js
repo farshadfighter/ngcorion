@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 /**
  * Per-asset risk detail: GET /api/risk/assets/{id}, plus the audit findings
@@ -34,7 +35,7 @@ export const fetchAssetRiskDetail = createAsyncThunk(
                     findings: [],
                     findingsError:
                         status === 403
-                            ? "Audit findings need the Auditing module permission."
+                            ? t("Audit findings need the Auditing module permission.")
                             : err.response?.data?.detail || err.message,
                 };
             }

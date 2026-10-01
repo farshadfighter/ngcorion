@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { fetchOSCatalog } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 // Validation functions
 const validateIP = (ip) => {
     if (!ip || ip.trim() === '') return { valid: true };
     const pattern = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
     if (!pattern.test(ip)) {
-        return { valid: false, error: 'Invalid IP address format (e.g., 192.168.1.1)' };
+        return { valid: false, error: t("Invalid IP address format (e.g., 192.168.1.1)") };
     }
     return { valid: true };
 };
@@ -21,7 +22,7 @@ const validateMAC = (mac) => {
         /^[0-9A-Fa-f]{12}$/
     ];
     if (!patterns.some(pattern => pattern.test(mac))) {
-        return { valid: false, error: 'Invalid MAC format. Use: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX' };
+        return { valid: false, error: t("Invalid MAC format. Use: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX") };
     }
     return { valid: true };
 };
@@ -92,20 +93,20 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                 await dispatch(fetchAssets());
                 onClose();
             } else {
-                let errorMessage = "Failed to update asset";
+                let errorMessage = t("Failed to update asset");
 
                 if (result.payload) {
                     if (typeof result.payload === 'string') {
                         if (result.payload.includes('duplicate key') || result.payload.includes('UniqueViolation')) {
                             if (result.payload.includes('serial_number')) {
-                                errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
-                                setFieldErrors({ serial_number: 'This serial number is already in use' });
+                                errorMessage = t("Serial Number \"{{serial_number}}\" already exists. Please use a different serial number.", { serial_number: formData.serial_number });
+                                setFieldErrors({ serial_number: t("This serial number is already in use") });
                             } else if (result.payload.includes('ip_address')) {
-                                errorMessage = `IP Address "${formData.ip_address}" already exists. Please use a different IP address.`;
-                                setFieldErrors({ ip_address: 'This IP address is already in use' });
+                                errorMessage = t("IP Address \"{{ip_address}}\" already exists. Please use a different IP address.", { ip_address: formData.ip_address });
+                                setFieldErrors({ ip_address: t("This IP address is already in use") });
                             } else if (result.payload.includes('mac_address')) {
-                                errorMessage = `MAC Address "${formData.mac_address}" already exists. Please use a different MAC address.`;
-                                setFieldErrors({ mac_address: 'This MAC address is already in use' });
+                                errorMessage = t("MAC Address \"{{mac_address}}\" already exists. Please use a different MAC address.", { mac_address: formData.mac_address });
+                                setFieldErrors({ mac_address: t("This MAC address is already in use") });
                             } else {
                                 errorMessage = 'A duplicate value was detected. Please check your inputs.';
                             }
@@ -118,14 +119,14 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                         const detail = result.payload.detail;
                         if (typeof detail === 'string' && (detail.includes('duplicate key') || detail.includes('UniqueViolation'))) {
                             if (detail.includes('serial_number')) {
-                                errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
-                                setFieldErrors({ serial_number: 'This serial number is already in use' });
+                                errorMessage = t("Serial Number \"{{serial_number}}\" already exists. Please use a different serial number.", { serial_number: formData.serial_number });
+                                setFieldErrors({ serial_number: t("This serial number is already in use") });
                             } else if (detail.includes('ip_address')) {
-                                errorMessage = `IP Address "${formData.ip_address}" already exists. Please use a different IP address.`;
-                                setFieldErrors({ ip_address: 'This IP address is already in use' });
+                                errorMessage = t("IP Address \"{{ip_address}}\" already exists. Please use a different IP address.", { ip_address: formData.ip_address });
+                                setFieldErrors({ ip_address: t("This IP address is already in use") });
                             } else if (detail.includes('mac_address')) {
-                                errorMessage = `MAC Address "${formData.mac_address}" already exists. Please use a different MAC address.`;
-                                setFieldErrors({ mac_address: 'This MAC address is already in use' });
+                                errorMessage = t("MAC Address \"{{mac_address}}\" already exists. Please use a different MAC address.", { mac_address: formData.mac_address });
+                                setFieldErrors({ mac_address: t("This MAC address is already in use") });
                             } else {
                                 errorMessage = detail;
                             }
@@ -141,7 +142,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                 setError(errorMessage);
             }
         } catch (err) {
-            setError(err.message || "An unexpected error occurred");
+            setError(err.message || t("An unexpected error occurred"));
         } finally {
             setIsSubmitting(false);
         }
@@ -152,48 +153,48 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content2 modal-large" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Edit Network - {asset.asset_name}</h3>
+                    <h3>{t("Edit Network - {{asset_name}}", { asset_name: asset.asset_name })}</h3>
                     <button className="modal-close" onClick={onClose} disabled={isSubmitting}>✕</button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         <div className="form-grid">
                             <div className="form-group">
-                                <label>Serial Number</label>
+                                <label>{t("Serial Number")}</label>
                                 <input
                                     type="text"
                                     name="serial_number"
                                     value={formData.serial_number}
                                     onChange={handleChange}
-                                    placeholder="e.g. SN123456789"
+                                    placeholder={t("e.g. SN123456789")}
                                     disabled={isSubmitting}
                                     style={fieldErrors.serial_number ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                 />
                                 {fieldErrors.serial_number && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.serial_number}</span>}
                             </div>
                             <div className="form-group">
-                                <label>Operating System</label>
+                                <label>{t("Operating System")}</label>
                                 <select
                                     name="os_name"
                                     value={formData.os_name}
                                     onChange={handleChange}
                                     disabled={isSubmitting}
                                 >
-                                    <option value="">Select OS</option>
+                                    <option value="">{t("Select OS")}</option>
                                     {[...new Map(osCatalog.map(os => [os.os_name, os])).values()].map(os => (
                                         <option key={os.id} value={os.os_name}>{os.os_name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label>OS Version</label>
+                                <label>{t("OS Version")}</label>
                                 <select
                                     name="os_version"
                                     value={formData.os_version}
                                     onChange={handleChange}
                                     disabled={isSubmitting || !formData.os_name}
                                 >
-                                    <option value="">Select version</option>
+                                    <option value="">{t("Select version")}</option>
                                     {osCatalog
                                         .filter(os => os.os_name === formData.os_name && os.os_version)
                                         .map(os => (
@@ -203,7 +204,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label>IP Address</label>
+                                <label>{t("IP Address")}</label>
                                 <input
                                     type="text"
                                     name="ip_address"
@@ -216,7 +217,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                 {fieldErrors.ip_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.ip_address}</span>}
                             </div>
                             <div className="form-group">
-                                <label>MAC Address</label>
+                                <label>{t("MAC Address")}</label>
                                 <input
                                     type="text"
                                     name="mac_address"
@@ -229,7 +230,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                 {fieldErrors.mac_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.mac_address}</span>}
                             </div>
                             <div className="form-group">
-                                <label>Physical Port Count</label>
+                                <label>{t("Physical Port Count")}</label>
                                 <input
                                     type="number"
                                     name="port_count"
@@ -241,15 +242,15 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
                                     disabled={isSubmitting}
                                 />
                                 <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                                    How many physical ports this device has - drives the port count shown on Topology/Design.
+                                    {t("How many physical ports this device has - drives the port count shown on Topology/Design.")}
                                 </span>
                             </div>
                         </div>
                         {error && <div className="alert alert-error" style={{ marginTop: "12px" }}>{error}</div>}
                     </div>
                     <div className="modal-actions">
-                        <button type="button" className="btn-cancel" onClick={onClose} disabled={isSubmitting}>Cancel</button>
-                        <button type="submit" className="btn-submit" disabled={isSubmitting}>{isSubmitting ? "Updating..." : "Update"}</button>
+                        <button type="button" className="btn-cancel" onClick={onClose} disabled={isSubmitting}>{t("Cancel")}</button>
+                        <button type="submit" className="btn-submit" disabled={isSubmitting}>{isSubmitting ? t("Updating...") : t("Update")}</button>
                     </div>
                 </form>
             </div>

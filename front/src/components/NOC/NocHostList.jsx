@@ -8,6 +8,7 @@ import "../../assets/Noc.css";
 // Pagination's styles live with the Logs page it was first built for (see
 // AssetList.jsx, which reuses it the same way).
 import "../../assets/LogsPage.css";
+import { t, uiLocale } from "../../i18n";
 
 export const NocHostList = () => {
     const dispatch = useDispatch();
@@ -52,9 +53,9 @@ export const NocHostList = () => {
     return (
         <div className="noc-container">
             <div className="noc-toolbar">
-                <div className="noc-toolbar-info">{filtered.length} of {hosts.length} asset(s)</div>
+                <div className="noc-toolbar-info">{t("{{length}} of {{length2}} asset(s)", { length: filtered.length, length2: hosts.length })}</div>
                 <input
-                    placeholder="Search by name, IP or type…"
+                    placeholder={t("Search by name, IP or type…")}
                     value={search}
                     onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, minWidth: 260 }}
@@ -69,19 +70,19 @@ export const NocHostList = () => {
 
             <div className="noc-table-container">
                 {isLoading && hosts.length === 0 ? (
-                    <div className="noc-empty">Loading…</div>
+                    <div className="noc-empty">{t("Loading…")}</div>
                 ) : filtered.length === 0 ? (
-                    <div className="noc-empty">No matching assets.</div>
+                    <div className="noc-empty">{t("No matching assets.")}</div>
                 ) : (
                     <table className="noc-table">
                         <thead>
                             <tr>
-                                <th>Status</th>
-                                <th>Asset</th>
-                                <th>Type</th>
-                                <th>IP Address</th>
-                                <th>SNMP Monitoring</th>
-                                <th>Last Polled</th>
+                                <th>{t("Status")}</th>
+                                <th>{t("Asset")}</th>
+                                <th>{t("Type")}</th>
+                                <th>{t("IP Address")}</th>
+                                <th>{t("SNMP Monitoring")}</th>
+                                <th>{t("Last Polled")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -92,7 +93,7 @@ export const NocHostList = () => {
                                         <td>
                                             <span className={`noc-status-pill ${statusKey}`}>
                                                 <span className={`noc-status-dot ${statusKey}`} />
-                                                {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}
+                                                {statusKey === "unmonitored" ? t("Not monitored") : statusKey === "up" ? t("Up") : t("Down")}
                                             </span>
                                         </td>
                                         <td>
@@ -103,8 +104,8 @@ export const NocHostList = () => {
                                         </td>
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>
-                                        <td>{h.has_credential ? "Configured" : "Not configured"}</td>
-                                        <td>{h.last_polled_at ? new Date(h.last_polled_at).toLocaleString() : "—"}</td>
+                                        <td>{h.has_credential ? t("Configured") : t("Not configured")}</td>
+                                        <td>{h.last_polled_at ? new Date(h.last_polled_at).toLocaleString(uiLocale()) : "—"}</td>
                                     </tr>
                                 );
                             })}

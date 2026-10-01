@@ -194,7 +194,7 @@
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 0%;
     height: 100%;
     background: #1e3a5f;
@@ -429,7 +429,7 @@
     margin: 8px 0;
     font-size: 14px;
     color: #374151;
-    text-align: left;
+    text-align: start;
 }
 
 .process-info strong {
@@ -519,7 +519,7 @@
     margin: 8px 0;
     font-size: 14px;
     color: #374151;
-    text-align: left;
+    text-align: start;
 }
 
 .success-info strong {
@@ -661,7 +661,7 @@
 
 .hardening-results-table th {
     padding: 15px;
-    text-align: left;
+    text-align: start;
     font-size: 14px;
     font-weight: 600;
     color: #2c3e50;

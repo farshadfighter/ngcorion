@@ -9,6 +9,8 @@ import {
 } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
 import { SecretField } from "./SecretField";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 const SECTION = "sms";
 
@@ -19,8 +21,8 @@ const SECTION = "sms";
  * Matching is case-insensitive on the backend.
  */
 const KNOWN_PROVIDERS = [
-    { value: "kavenegar", label: "Kavenegar", base: "https://api.kavenegar.com" },
-    { value: "ghasedak", label: "Ghasedak", base: "https://api.ghasedak.me" },
+    { value: "kavenegar", label: t("Kavenegar"), base: "https://api.kavenegar.com" },
+    { value: "ghasedak", label: t("Ghasedak"), base: "https://api.ghasedak.me" },
 ];
 
 const OTHER = "__other__";
@@ -74,9 +76,9 @@ const SmsForm = ({ stored, onClose }) => {
         : providerChoice;
 
     const validate = () => {
-        if (!resolvedProvider) return "Enter the provider name.";
-        if (!serverAddress.trim()) return "Enter the provider server address.";
-        if (!apiKey) return "Enter the API key.";
+        if (!resolvedProvider) return t("Enter the provider name.");
+        if (!serverAddress.trim()) return t("Enter the provider server address.");
+        if (!apiKey) return t("Enter the API key.");
         return null;
     };
 
@@ -106,12 +108,12 @@ const SmsForm = ({ stored, onClose }) => {
 
         const phone = testPhone.trim();
         if (!phone) {
-            setLocalError("Enter a phone number to send the test to.");
+            setLocalError(t("Enter a phone number to send the test to."));
             return;
         }
         // The backend accepts digits with an optional leading +.
         if (!/^\+?\d{3,}$/.test(phone)) {
-            setLocalError("Phone number must be digits, optionally starting +.");
+            setLocalError(t("Phone number must be digits, optionally starting +."));
             return;
         }
 
@@ -120,7 +122,7 @@ const SmsForm = ({ stored, onClose }) => {
 
     return (
         <ConfigModal
-            title="SMS Configurations"
+            title={t("SMS Configurations")}
             onClose={onClose}
             onSave={handleSave}
             isSaving={!!saving[SECTION]}
@@ -129,7 +131,7 @@ const SmsForm = ({ stored, onClose }) => {
         >
             <div className="sc-row">
                 <label className="sc-field">
-                    <span>Provider</span>
+                    <span>{t("Provider")}</span>
                     <select
                         value={providerChoice}
                         onChange={(e) => handleProviderChange(e.target.value)}
@@ -139,12 +141,12 @@ const SmsForm = ({ stored, onClose }) => {
                                 {p.label}
                             </option>
                         ))}
-                        <option value={OTHER}>Other…</option>
+                        <option value={OTHER}>{t("Other…")}</option>
                     </select>
                 </label>
                 {isOther ? (
                     <label className="sc-field">
-                        <span>Provider Name</span>
+                        <span>{t("Provider Name")}</span>
                         <input
                             type="text"
                             value={customProvider}
@@ -156,7 +158,7 @@ const SmsForm = ({ stored, onClose }) => {
                 ) : (
                     <label className="sc-field">
                         <span>
-                            Sender Number <em>(optional)</em>
+                            {t("Sender Number")}{" "} <em>{t("(optional)")}</em>
                         </span>
                         <input
                             type="text"
@@ -170,7 +172,7 @@ const SmsForm = ({ stored, onClose }) => {
             </div>
 
             <label className="sc-field">
-                <span>Server Address</span>
+                <span>{t("Server Address")}</span>
                 <input
                     type="text"
                     value={serverAddress}
@@ -180,13 +182,13 @@ const SmsForm = ({ stored, onClose }) => {
                 />
             </label>
 
-            <SecretField label="API Key" value={apiKey} onChange={setApiKey} maxLength={500} />
+            <SecretField label={t("API Key")} value={apiKey} onChange={setApiKey} maxLength={500} />
 
             {isOther && (
                 <>
                     <label className="sc-field">
                         <span>
-                            Sender Number <em>(optional)</em>
+                            {t("Sender Number")}{" "} <em>{t("(optional)")}</em>
                         </span>
                         <input
                             type="text"
@@ -200,7 +202,7 @@ const SmsForm = ({ stored, onClose }) => {
                     <div className="sc-row">
                         <label className="sc-field">
                             <span>
-                                Username <em>(optional)</em>
+                                {t("Username")}{" "} <em>{t("(optional)")}</em>
                             </span>
                             <input
                                 type="text"
@@ -211,7 +213,7 @@ const SmsForm = ({ stored, onClose }) => {
                             />
                         </label>
                         <SecretField
-                            label="Password (optional)"
+                            label={t("Password (optional)")}
                             value={password}
                             onChange={setPassword}
                         />
@@ -220,10 +222,9 @@ const SmsForm = ({ stored, onClose }) => {
             )}
 
             <div className="sc-test">
-                <p className="sc-test-title">Send a test SMS</p>
+                <p className="sc-test-title">{t("Send a test SMS")}</p>
                 <p className="sc-test-note">
-                    The test uses the <strong>saved</strong> settings — save
-                    first if you have just changed anything.
+                    {tx("The test uses the {{saved}} settings — save first if you have just changed anything.", { saved: <strong>{t("saved")}</strong> })}
                 </p>
                 <div className="sc-test-row">
                     <input
@@ -241,16 +242,16 @@ const SmsForm = ({ stored, onClose }) => {
                     >
                         {testing[SECTION] ? (
                             <>
-                                <i className="fa-solid fa-spinner fa-spin" /> Sending…
+                                <i className="fa-solid fa-spinner fa-spin" /> {" "}{t("Sending…")}
                             </>
                         ) : (
-                            "Send test"
+                            t("Send test")
                         )}
                     </button>
                 </div>
                 {!hasStoredConfig && (
                     <p className="sc-test-note">
-                        Save the settings before sending a test.
+                        {t("Save the settings before sending a test.")}
                     </p>
                 )}
                 {testResult && (
@@ -297,7 +298,7 @@ export const SmsConfigModal = ({ onClose }) => {
     if (!stored) {
         return (
             <ConfigModal
-                title="SMS Configurations"
+                title={t("SMS Configurations")}
                 onClose={onClose}
                 onSave={onClose}
                 isLoading={!!loading[SECTION]}

@@ -108,8 +108,8 @@ textarea {
     content: "";
     position: absolute;
     bottom: -17px;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     height: 3px;
     background: #0A234E;
 }
@@ -150,7 +150,7 @@ textarea {
 /* REQUIRED INDICATOR */
 .required {
     color: #E74C3C;
-    margin-left: 3px;
+    margin-inline-start: 3px;
 }
 
 /* SEARCH BOX */
@@ -193,7 +193,7 @@ textarea {
 
 .assets-table th {
     padding: 16px;
-    text-align: left;
+    text-align: start;
     font-weight: 600;
     font-size: 13px;
     color: #2C3E50;

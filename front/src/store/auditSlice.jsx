@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { t } from "../i18n";
 
 // =====================
 // HELPER FUNCTION
@@ -51,13 +52,13 @@ export const executeAudit = createAsyncThunk(
         } catch (err) {
             // Extract error message from various possible formats
             const detail = err.response?.data?.detail;
-            let errorMessage = "Failed to start audit";
+            let errorMessage = t("Failed to start audit");
             
             if (typeof detail === "string") {
                 errorMessage = detail;
             } else if (detail && typeof detail === "object") {
                 // Handle structured error objects from SSH/device errors
-                errorMessage = detail.message || detail.error_type || "Authentication failed";
+                errorMessage = detail.message || detail.error_type || t("Authentication failed");
             } else if (err.message) {
                 errorMessage = err.message;
             }
@@ -88,7 +89,7 @@ export const fetchAuditSessions = createAsyncThunk(
             });
             return allSessions;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to fetch audit sessions");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit sessions"));
         }
     }
 );
@@ -100,7 +101,7 @@ export const fetchAuditSession = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to fetch audit session");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit session"));
         }
     }
 );
@@ -112,7 +113,7 @@ export const fetchAuditResults = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}/results`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to fetch audit results");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit results"));
         }
     }
 );
@@ -124,7 +125,7 @@ export const deleteAuditSession = createAsyncThunk(
             await api.delete(`/api/audit/sessions/${sessionId}`);
             return sessionId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to delete audit session");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to delete audit session"));
         }
     }
 );
@@ -161,7 +162,7 @@ export const clearAllAuditSessions = createAsyncThunk(
 
             return true;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to clear history");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to clear history"));
         }
     }
 );
@@ -173,7 +174,7 @@ export const fetchFortinetBenchmark = createAsyncThunk(
             const res = await api.get("/api/audit/fortinet/benchmark");
             return res.data; // { version, total, automated, manual, controls: [...] }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load CIS benchmark");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load CIS benchmark"));
         }
     }
 );
@@ -185,7 +186,7 @@ export const checkAuditStatus = createAsyncThunk(
             const res = await api.get(`/api/audit/sessions/${sessionId}`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to check audit status");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to check audit status"));
         }
     }
 );
@@ -223,7 +224,7 @@ const auditSlice = createSlice({
             .addCase(executeAudit.fulfilled,  (state, action) => {
                 state.isExecuting    = false;
                 state.currentSession = action.payload;
-                state.successMessage = "Audit started successfully!";
+                state.successMessage = t("Audit started successfully!");
             })
             .addCase(executeAudit.rejected,   (state, action) => { state.isExecuting = false; state.error = action.payload; })
 
@@ -240,7 +241,7 @@ const auditSlice = createSlice({
 
             .addCase(deleteAuditSession.fulfilled, (state, action) => {
                 state.sessions = state.sessions.filter((s) => s.session_id !== action.payload);
-                state.successMessage = "Audit session deleted successfully!";
+                state.successMessage = t("Audit session deleted successfully!");
             })
             .addCase(deleteAuditSession.rejected,  (state, action) => { state.error = action.payload; })
 
@@ -248,7 +249,7 @@ const auditSlice = createSlice({
             .addCase(clearAllAuditSessions.fulfilled, (state) => {
                 state.isClearing     = false;
                 state.sessions       = [];
-                state.successMessage = "History cleared successfully!";
+                state.successMessage = t("History cleared successfully!");
             })
             .addCase(clearAllAuditSessions.rejected,  (state, action) => { state.isClearing = false; state.error = action.payload; })
 

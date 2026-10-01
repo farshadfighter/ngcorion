@@ -8,6 +8,7 @@ import AssetIcon from "../shared/AssetIcon.jsx";
 import { fetchHosts, pollAllNow, clearMessages } from "../../store/nocSlice.jsx";
 import { fetchTopology } from "../../store/topologySlice.jsx";
 import "../../assets/Noc.css";
+import { t, uiLocale, n } from "../../i18n";
 
 const GRID_COLUMNS = 6;
 const GRID_SPACING_X = 200;
@@ -104,9 +105,9 @@ export const NocDashboard = () => {
     return (
         <div className="noc-container">
             <div className="noc-toolbar">
-                <div className="noc-toolbar-info">SNMP status across every asset, and the same topology graph as Topology.</div>
+                <div className="noc-toolbar-info">{t("SNMP status across every asset, and the same topology graph as Topology.")}</div>
                 <button className="noc-btn noc-btn-primary" onClick={() => dispatch(pollAllNow())} disabled={isPolling}>
-                    <i className="fa-solid fa-arrows-rotate" /> {isPolling ? "Polling…" : "Poll All Now"}
+                    <i className="fa-solid fa-arrows-rotate" /> {isPolling ? t("Polling…") : t("Poll All Now")}
                 </button>
             </div>
 
@@ -119,23 +120,23 @@ export const NocDashboard = () => {
             <div className="noc-stats">
                 <div className="noc-stat-card">
                     <div className="noc-stat-icon"><i className="fa-solid fa-server" /></div>
-                    <div className="noc-stat-value">{stats.total}</div>
-                    <div className="noc-stat-label">Total Assets</div>
+                    <div className="noc-stat-value">{n(stats.total)}</div>
+                    <div className="noc-stat-label">{t("Total Assets")}</div>
                 </div>
                 <div className="noc-stat-card reachable">
                     <div className="noc-stat-icon"><i className="fa-solid fa-circle-check" /></div>
-                    <div className="noc-stat-value">{stats.reachable}</div>
-                    <div className="noc-stat-label">Reachable</div>
+                    <div className="noc-stat-value">{n(stats.reachable)}</div>
+                    <div className="noc-stat-label">{t("Reachable")}</div>
                 </div>
                 <div className="noc-stat-card unreachable">
                     <div className="noc-stat-icon"><i className="fa-solid fa-triangle-exclamation" /></div>
-                    <div className="noc-stat-value">{stats.unreachable}</div>
-                    <div className="noc-stat-label">Unreachable</div>
+                    <div className="noc-stat-value">{n(stats.unreachable)}</div>
+                    <div className="noc-stat-label">{t("Unreachable")}</div>
                 </div>
                 <div className="noc-stat-card unmonitored">
                     <div className="noc-stat-icon"><i className="fa-solid fa-circle-question" /></div>
-                    <div className="noc-stat-value">{stats.unmonitored}</div>
-                    <div className="noc-stat-label">Not Monitored</div>
+                    <div className="noc-stat-value">{n(stats.unmonitored)}</div>
+                    <div className="noc-stat-label">{t("Not Monitored")}</div>
                 </div>
             </div>
 
@@ -162,15 +163,15 @@ export const NocDashboard = () => {
                         >
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: STATUS_COLOR.up, display: "inline-block" }} />
-                                Reachable
+                                {t("Reachable")}
                             </span>
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: STATUS_COLOR.down, display: "inline-block" }} />
-                                Unreachable
+                                {t("Unreachable")}
                             </span>
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                 <span style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${STATUS_COLOR.unmonitored}`, display: "inline-block" }} />
-                                Not monitored
+                                {t("Not monitored")}
                             </span>
                         </div>
                     </Panel>
@@ -179,17 +180,17 @@ export const NocDashboard = () => {
 
             <div className="noc-table-container">
                 {hosts.length === 0 ? (
-                    <div className="noc-empty">No assets yet.</div>
+                    <div className="noc-empty">{t("No assets yet.")}</div>
                 ) : (
                     <table className="noc-table">
                         <thead>
                             <tr>
-                                <th>Status</th>
-                                <th>Asset</th>
-                                <th>Type</th>
-                                <th>IP Address</th>
-                                <th>SNMP sysName</th>
-                                <th>Last Polled</th>
+                                <th>{t("Status")}</th>
+                                <th>{t("Asset")}</th>
+                                <th>{t("Type")}</th>
+                                <th>{t("IP Address")}</th>
+                                <th>{t("SNMP sysName")}</th>
+                                <th>{t("Last Polled")}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -200,7 +201,7 @@ export const NocDashboard = () => {
                                         <td>
                                             <span className={`noc-status-pill ${statusKey}`}>
                                                 <span className={`noc-status-dot ${statusKey}`} />
-                                                {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}
+                                                {statusKey === "unmonitored" ? t("Not monitored") : statusKey === "up" ? t("Up") : t("Down")}
                                             </span>
                                         </td>
                                         <td>
@@ -212,7 +213,7 @@ export const NocDashboard = () => {
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>
                                         <td>{h.sys_name || "—"}</td>
-                                        <td>{h.last_polled_at ? new Date(h.last_polled_at).toLocaleString() : "—"}</td>
+                                        <td>{h.last_polled_at ? new Date(h.last_polled_at).toLocaleString(uiLocale()) : "—"}</td>
                                     </tr>
                                 );
                             })}

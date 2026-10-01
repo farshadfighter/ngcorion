@@ -16,6 +16,8 @@ import {
     clearMessages,
 } from "../../store/designSlice.jsx";
 import "../../assets/DesignConfiguration.css";
+import { t } from "../../i18n";
+import { tb } from "../../i18n/backendText";
 
 const NODE_TYPES = { ...DEVICE_NODE_TYPES, zoneBand: ZoneBandNode };
 
@@ -57,10 +59,10 @@ export const SuggestedDesign = () => {
             type: "device",
             position: { x: c.pos_x, y: c.pos_y },
             data: {
-                label: c.label,
+                label: tb(c.label),
                 icon: c.suggested_asset_icon || c.component_type,
                 typeName: c.component_type,
-                subtitle: c.suggested_asset_name || "no matching asset in inventory",
+                subtitle: c.suggested_asset_name || t("no matching asset in inventory"),
                 badge: c.suggested_asset_badge || undefined,
                 portCount: c.suggested_asset_port_count,
                 // This canvas has nodesConnectable={false} - individual port
@@ -167,7 +169,7 @@ export const SuggestedDesign = () => {
     };
 
     if (isLoading && !suggestion) {
-        return <div className="dc-container"><div className="dc-empty">Loading suggestion…</div></div>;
+        return <div className="dc-container"><div className="dc-empty">{t("Loading suggestion…")}</div></div>;
     }
 
     return (
@@ -176,14 +178,13 @@ export const SuggestedDesign = () => {
                 <div className="dc-toolbar-info">
                     {suggestion && (
                         <>
-                            {suggestion.scale_label} · {suggestion.total_assets} asset(s) in inventory ·{" "}
-                            {suggestion.matched_assets} matched to a slot below
+                            {t("{{scale_label}} · {{total_assets}} asset(s) in inventory · {{matched_assets}} matched to a slot below", { scale_label: tb(suggestion.scale_label), total_assets: suggestion.total_assets, matched_assets: suggestion.matched_assets })}
                         </>
                     )}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <input
-                        placeholder="Design name"
+                        placeholder={t("Design name")}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         style={{ padding: "8px 10px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13 }}
@@ -193,7 +194,7 @@ export const SuggestedDesign = () => {
                         onClick={handleCreate}
                         disabled={!name.trim() || isCreating || !suggestion}
                     >
-                        <i className="fa-solid fa-wand-magic-sparkles" /> {isCreating ? "Creating…" : "Create this design"}
+                        <i className="fa-solid fa-wand-magic-sparkles" /> {isCreating ? t("Creating…") : t("Create this design")}
                     </button>
                 </div>
             </div>
@@ -201,9 +202,7 @@ export const SuggestedDesign = () => {
             {error && <div className="dc-toast dc-toast-error">{error}</div>}
 
             <p className="dc-modal-hint" style={{ margin: "0 0 12px" }}>
-                A standard Cisco SAFE campus design sized to your real asset count. Solid boxes are matched to a real
-                asset already in your inventory; dashed gray boxes have no matching asset yet and will be created as
-                placeholders you can map later.
+                {t("A standard Cisco SAFE campus design sized to your real asset count. Solid boxes are matched to a real asset already in your inventory; dashed gray boxes have no matching asset yet and will be created as placeholders you can map later.")}
             </p>
 
             <div className="dc-canvas-body">

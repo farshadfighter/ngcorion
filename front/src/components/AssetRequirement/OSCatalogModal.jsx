@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createOS } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 export const OSCatalogModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -50,7 +51,7 @@ export const OSCatalogModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Add OS</h2>
+                    <h2>{t("Add OS")}</h2>
                     <button className="modal-close" onClick={onClose}>
                         ×
                     </button>
@@ -59,14 +60,14 @@ export const OSCatalogModal = ({ onClose }) => {
                 <form onSubmit={handleSubmit} className="modal-body">
                     <div className="form-group">
                         <label>
-                            OS Name <span className="required">*</span>
+                           {t("OS Name")}{" "} <span className="required">*</span>
                         </label>
                         <input
                             type="text"
                             name="os_name"
                             value={formData.os_name}
                             onChange={handleChange}
-                            placeholder="e.g., Ubuntu, Windows Server, FortiOS"
+                            placeholder={t("e.g., Ubuntu, Windows Server, FortiOS")}
                             className={errors.os_name ? "error" : ""}
                         />
                         {errors.os_name && (
@@ -75,7 +76,7 @@ export const OSCatalogModal = ({ onClose }) => {
                     </div>
 
                     <div className="form-group">
-                        <label>OS Version</label>
+                        <label>{t("OS Version")}</label>
                         <input
                             type="text"
                             name="os_version"
@@ -87,10 +88,10 @@ export const OSCatalogModal = ({ onClose }) => {
 
                     <div className="modal-footer">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            Cancel
+                           {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit">
-                            Create
+                           {t("Create")}
                         </button>
                     </div>
                 </form>

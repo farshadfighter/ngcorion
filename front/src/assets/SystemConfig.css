@@ -297,7 +297,7 @@
 
 .sc-cert-row > strong {
     color: #14213D;
-    text-align: right;
+    text-align: end;
     overflow-wrap: anywhere;
 }
 

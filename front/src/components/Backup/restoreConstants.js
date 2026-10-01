@@ -1,3 +1,4 @@
+import { uiLocale, t } from "../../i18n";
 /* Shared by the backup list and the restore wizard. Kept out of the .jsx
    files so they only export components (react-refresh). */
 
@@ -14,12 +15,12 @@ export const isRestorable = (deviceType) =>
     Object.prototype.hasOwnProperty.call(FAMILY_LABELS, (deviceType || '').toLowerCase());
 
 export const familyLabel = (deviceType) =>
-    FAMILY_LABELS[(deviceType || '').toLowerCase()] || deviceType || 'Unknown';
+    FAMILY_LABELS[(deviceType || '').toLowerCase()] || deviceType || t("Unknown");
 
 export const SOURCE_LABELS = {
-    manual: 'Manual',
-    hardening: 'Before hardening',
-    pre_restore: 'Before restore',
+    manual: t("Manual"),
+    hardening: t("Before hardening"),
+    pre_restore: t("Before restore"),
 };
 
 export const sourceLabel = (source) => SOURCE_LABELS[source] || source || '-';
@@ -30,30 +31,25 @@ export const ACTIVE_RESTORE_STATUSES = [
 ];
 
 export const RESTORE_STATUS_LABELS = {
-    queued: 'Queued',
-    connecting: 'Connecting',
-    backing_up: 'Backing up',
-    applying: 'Applying',
-    verifying: 'Verifying',
-    saving: 'Saving',
-    reverting: 'Reverting',
-    succeeded: 'Succeeded',
-    reverted: 'Reverted',
-    failed: 'Failed',
+    queued: t("Queued"),
+    connecting: t("Connecting"),
+    backing_up: t("Backing up"),
+    applying: t("Applying"),
+    verifying: t("Verifying"),
+    saving: t("Saving"),
+    reverting: t("Reverting"),
+    succeeded: t("Succeeded"),
+    reverted: t("Reverted"),
+    failed: t("Failed"),
 };
 
 // How each family reverts on its own if NGCorion loses the device.
 export const AUTO_REVERT_TEXT = {
-    cisco: 'IOS applies the changes under a revert timer (configure terminal revert timer). '
-        + 'If NGCorion cannot reconnect and confirm in time, the device rolls back to its current configuration.',
-    fortinet: 'FortiGate applies the changes in revert mode without saving them. If NGCorion cannot '
-        + 'reconnect over SSH and confirm within the timer, the device returns to its current configuration on its own.',
-    linux: 'The current files are snapshotted on the host and a timer restores them unless NGCorion '
-        + 'reconnects and confirms in time.',
-    apache: 'The current files are snapshotted on the host and a timer restores them unless NGCorion '
-        + 'reconnects and confirms in time.',
-    mongodb: 'The current files are snapshotted on the host and a timer restores them unless NGCorion '
-        + 'reconnects and confirms in time.',
+    cisco: t("IOS applies the changes under a revert timer (configure terminal revert timer). If NGCorion cannot reconnect and confirm in time, the device rolls back to its current configuration."),
+    fortinet: t("FortiGate applies the changes in revert mode without saving them. If NGCorion cannot reconnect over SSH and confirm within the timer, the device returns to its current configuration on its own."),
+    linux: t("The current files are snapshotted on the host and a timer restores them unless NGCorion reconnects and confirms in time."),
+    apache: t("The current files are snapshotted on the host and a timer restores them unless NGCorion reconnects and confirms in time."),
+    mongodb: t("The current files are snapshotted on the host and a timer restores them unless NGCorion reconnects and confirms in time."),
 };
 
 /* FastAPI errors arrive as a string, an SSH error object
@@ -73,7 +69,7 @@ export const errorText = (err, fallback) => {
 
 export const formatDateTime = (ts) => {
     if (!ts) return '-';
-    return new Date(ts).toLocaleString('en-US', {
+    return new Date(ts).toLocaleString(uiLocale(),  {
         month: 'short', day: 'numeric', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: false,
     });
@@ -81,5 +77,5 @@ export const formatDateTime = (ts) => {
 
 export const formatTime = (ts) => {
     if (!ts) return '';
-    return new Date(ts).toLocaleTimeString('en-GB', { hour12: false });
+    return new Date(ts).toLocaleTimeString(uiLocale(),  { hour12: false });
 };

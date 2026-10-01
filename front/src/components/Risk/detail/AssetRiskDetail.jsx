@@ -15,6 +15,7 @@ import { AuditFindingsTable } from "./AuditFindingsTable";
 import { HardeningImpact } from "./HardeningImpact";
 import { RiskHistory } from "./RiskHistory";
 import "../../../assets/AssetRiskDetail.css";
+import { t } from "../../../i18n";
 
 /** Full risk breakdown for one asset, reached by clicking a row in Risk Asset. */
 export const AssetRiskDetail = () => {
@@ -39,7 +40,7 @@ export const AssetRiskDetail = () => {
     if (isLoading && !detail) {
         return (
             <div className="ard-page">
-                <p className="ard-state">Loading asset risk…</p>
+                <p className="ard-state">{t("Loading asset risk…")}</p>
             </div>
         );
     }
@@ -48,7 +49,7 @@ export const AssetRiskDetail = () => {
         return (
             <div className="ard-page">
                 <p className="ard-state ard-state-error">
-                    Failed to load asset risk: {error}
+                    {t("Failed to load asset risk: {{error}}", { error })}
                 </p>
             </div>
         );
@@ -65,8 +66,7 @@ export const AssetRiskDetail = () => {
                 className="ard-back"
                 onClick={() => navigate("/risk/assets")}
             >
-                <i className="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to
-                Risk Asset
+                <i className="fa-solid fa-arrow-left" aria-hidden="true"></i> {" "}{t("Back to Risk Asset")}
             </button>
 
             <AssetRiskHeader

@@ -7,6 +7,7 @@ import {
     needsSudo,
 } from "./hardeningCredentials";
 import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
+import { t } from "../../i18n";
 
 // Shared credentials form used by HardenAllModal and FixSingleModal.
 //
@@ -52,27 +53,27 @@ export default function CredentialsForm({
         return (
             <div className="hardening-ssh-form">
                 <div className="hardening-form-group">
-                    <label>Windows Username<span className="hardening-required">*</span></label>
-                    <input type="text" name="windows_username" value={value.windows_username} onChange={onChange} placeholder="Administrator or DOMAIN\user" autoComplete="username" style={inputStyle} />
+                    <label>{t("Windows Username")}<span className="hardening-required">*</span></label>
+                    <input type="text" name="windows_username" value={value.windows_username} onChange={onChange} placeholder={t("Administrator or DOMAIN\\user")} autoComplete="username" style={inputStyle} />
                     <FieldError message={errors.windows_username} />
                 </div>
                 <div className="hardening-form-group">
-                    <label>Windows Password<span className="hardening-required">*</span></label>
-                    <input type="password" name="windows_password" value={value.windows_password} onChange={onChange} placeholder="Windows admin password" autoComplete="current-password" style={inputStyle} />
+                    <label>{t("Windows Password")}<span className="hardening-required">*</span></label>
+                    <input type="password" name="windows_password" value={value.windows_password} onChange={onChange} placeholder={t("Windows admin password")} autoComplete="current-password" style={inputStyle} />
                     <FieldError message={errors.windows_password} />
                 </div>
                 <div className="hardening-form-group">
-                    <label>WinRM Port</label>
+                    <label>{t("WinRM Port")}</label>
                     <input type="number" name="winrm_port" value={value.winrm_port} onChange={onChange} placeholder={DEFAULT_WINRM_PORT} autoComplete="off" style={inputStyle} />
-                    <span style={hintStyle}>Default: {DEFAULT_WINRM_PORT} (HTTP); use 5986 for HTTPS</span>
+                    <span style={hintStyle}>{t("Default: {{DEFAULT_WINRM_PORT}} (HTTP); use 5986 for HTTPS", { DEFAULT_WINRM_PORT })}</span>
                 </div>
                 <div className="hardening-form-group">
-                    <label>Transport</label>
+                    <label>{t("Transport")}</label>
                     <select name="transport" value={value.transport} onChange={onChange} style={inputStyle}>
-                        <option value="ntlm">NTLM</option>
-                        <option value="kerberos">Kerberos</option>
-                        <option value="credssp">CredSSP</option>
-                        <option value="basic">Basic</option>
+                        <option value="ntlm">{t("NTLM")}</option>
+                        <option value="kerberos">{t("Kerberos")}</option>
+                        <option value="credssp">{t("CredSSP")}</option>
+                        <option value="basic">{t("Basic")}</option>
                     </select>
                 </div>
             </div>
@@ -84,17 +85,17 @@ export default function CredentialsForm({
         return (
             <div className="hardening-ssh-form">
                 <div className="hardening-form-group">
-                    <label>SQL Server Username<span className="hardening-required">*</span></label>
-                    <input type="text" name="mssql_username" value={value.mssql_username} onChange={onChange} placeholder="sa or sysadmin account" autoComplete="username" style={inputStyle} />
+                    <label>{t("SQL Server Username")}<span className="hardening-required">*</span></label>
+                    <input type="text" name="mssql_username" value={value.mssql_username} onChange={onChange} placeholder={t("sa or sysadmin account")} autoComplete="username" style={inputStyle} />
                     <FieldError message={errors.mssql_username} />
                 </div>
                 <div className="hardening-form-group">
-                    <label>SQL Server Password<span className="hardening-required">*</span></label>
-                    <input type="password" name="mssql_password" value={value.mssql_password} onChange={onChange} placeholder="SQL Server password" autoComplete="current-password" style={inputStyle} />
+                    <label>{t("SQL Server Password")}<span className="hardening-required">*</span></label>
+                    <input type="password" name="mssql_password" value={value.mssql_password} onChange={onChange} placeholder={t("SQL Server password")} autoComplete="current-password" style={inputStyle} />
                     <FieldError message={errors.mssql_password} />
                 </div>
                 <div className="hardening-form-group">
-                    <label>SQL Server Port</label>
+                    <label>{t("SQL Server Port")}</label>
                     <input type="number" name="mssql_port" value={value.mssql_port} onChange={onChange} placeholder="1433" autoComplete="off" style={inputStyle} />
                 </div>
             </div>
@@ -105,26 +106,26 @@ export default function CredentialsForm({
     return (
         <div className="hardening-ssh-form">
             <div className="hardening-form-group">
-                <label>SSH Username<span className="hardening-required">*</span></label>
-                <input type="text" name="ssh_username" value={value.ssh_username} onChange={onChange} placeholder="Enter SSH username" autoComplete="username" style={inputStyle} />
+                <label>{t("SSH Username")}<span className="hardening-required">*</span></label>
+                <input type="text" name="ssh_username" value={value.ssh_username} onChange={onChange} placeholder={t("Enter SSH username")} autoComplete="username" style={inputStyle} />
                 <FieldError message={errors.ssh_username} />
             </div>
             <div className="hardening-form-group">
-                <label>SSH Password<span className="hardening-required">*</span></label>
-                <input type="password" name="ssh_password" value={value.ssh_password} onChange={onChange} placeholder="Enter SSH password" autoComplete="current-password" style={inputStyle} />
+                <label>{t("SSH Password")}<span className="hardening-required">*</span></label>
+                <input type="password" name="ssh_password" value={value.ssh_password} onChange={onChange} placeholder={t("Enter SSH password")} autoComplete="current-password" style={inputStyle} />
                 <FieldError message={errors.ssh_password} />
             </div>
             <div className="hardening-form-group">
-                <label>SSH Port</label>
+                <label>{t("SSH Port")}</label>
                 <input type="number" name="ssh_port" value={value.ssh_port} onChange={onChange} placeholder="22" min="1" max="65535" autoComplete="off" style={inputStyle} />
             </div>
 
             {/* Cisco: Enable Secret */}
             {isCisco(deviceType) && (
                 <div className="hardening-form-group">
-                    <label>Enable Password</label>
-                    <input type="password" name="ssh_secret" value={value.ssh_secret} onChange={onChange} placeholder="Enter enable secret (optional)" autoComplete="off" style={inputStyle} />
-                    <span style={hintStyle}>Required for privileged commands</span>
+                    <label>{t("Enable Password")}</label>
+                    <input type="password" name="ssh_secret" value={value.ssh_secret} onChange={onChange} placeholder={t("Enter enable secret (optional)")} autoComplete="off" style={inputStyle} />
+                    <span style={hintStyle}>{t("Required for privileged commands")}</span>
                 </div>
             )}
 
@@ -138,7 +139,7 @@ export default function CredentialsForm({
                             onChange={(e) => onVdomEnabledChange?.(e.target.checked)}
                             style={{ width: "16px", height: "16px", cursor: "pointer" }}
                         />
-                        This FortiGate uses VDOMs
+                        {t("This FortiGate uses VDOMs")}
                     </label>
 
                     {vdomEnabled && (
@@ -155,7 +156,7 @@ export default function CredentialsForm({
                                         opacity: (vdomDiscovery?.isDiscovering || !canDetectVdoms) ? 0.5 : 1,
                                     }}
                                 >
-                                    {vdomDiscovery?.isDiscovering ? "Detecting…" : "Show VDOMs"}
+                                    {vdomDiscovery?.isDiscovering ? t("Detecting…") : t("Show VDOMs")}
                                 </button>
                                 {vdomDiscovery?.vdoms !== null && vdomDiscovery?.vdoms !== undefined && !vdomDiscovery?.isDiscovering && (
                                     <span style={{
@@ -165,8 +166,8 @@ export default function CredentialsForm({
                                         border: `1px solid ${vdomDiscovery.vdoms.length > 0 ? "#6ee7b7" : "#d1d5db"}`,
                                     }}>
                                         {vdomDiscovery.vdoms.length > 0
-                                            ? `✓ VDOM Enabled (${vdomDiscovery.vdoms.length})`
-                                            : "No VDOMs found"}
+                                            ? t("✓ VDOM Enabled ({{length}})", { length: vdomDiscovery.vdoms.length })
+                                            : t("No VDOMs found")}
                                     </span>
                                 )}
                             </div>
@@ -177,15 +178,15 @@ export default function CredentialsForm({
                             )}
                             {vdomDiscovery?.vdoms?.length > 0 ? (
                                 <select name="vdom" value={value.vdom} onChange={onChange} style={inputStyle}>
-                                    <option value="">Select VDOM (default: root)</option>
+                                    <option value="">{t("Select VDOM (default: root)")}</option>
                                     {vdomDiscovery.vdoms.map((v) => (
                                         <option key={v} value={v}>{v}</option>
                                     ))}
                                 </select>
                             ) : (
-                                <input type="text" name="vdom" value={value.vdom} onChange={onChange} placeholder="VDOM name (e.g. root)" autoComplete="off" style={inputStyle} />
+                                <input type="text" name="vdom" value={value.vdom} onChange={onChange} placeholder={t("VDOM name (e.g. root)")} autoComplete="off" style={inputStyle} />
                             )}
-                            <span style={hintStyle}>Click "Show VDOMs" to list virtual domains, then pick the target VDOM.</span>
+                            <span style={hintStyle}>{t("Click \"Show VDOMs\" to list virtual domains, then pick the target VDOM.")}</span>
                         </div>
                     )}
                 </div>
@@ -194,9 +195,9 @@ export default function CredentialsForm({
             {/* Linux / Apache / MongoDB: Sudo Password */}
             {needsSudo(deviceType) && (
                 <div className="hardening-form-group">
-                    <label>Sudo Password</label>
-                    <input type="password" name="sudo_password" value={value.sudo_password} onChange={onChange} placeholder="Sudo password (optional)" autoComplete="off" style={inputStyle} />
-                    <span style={hintStyle}>Required for root access (defaults to SSH password)</span>
+                    <label>{t("Sudo Password")}</label>
+                    <input type="password" name="sudo_password" value={value.sudo_password} onChange={onChange} placeholder={t("Sudo password (optional)")} autoComplete="off" style={inputStyle} />
+                    <span style={hintStyle}>{t("Required for root access (defaults to SSH password)")}</span>
                 </div>
             )}
 
@@ -204,15 +205,15 @@ export default function CredentialsForm({
             {isMongo(deviceType) && (
                 <>
                     <div className="hardening-form-group">
-                        <label>MongoDB Username</label>
-                        <input type="text" name="mongo_username" value={value.mongo_username} onChange={onChange} placeholder="admin (optional)" autoComplete="off" style={inputStyle} />
+                        <label>{t("MongoDB Username")}</label>
+                        <input type="text" name="mongo_username" value={value.mongo_username} onChange={onChange} placeholder={t("admin (optional)")} autoComplete="off" style={inputStyle} />
                     </div>
                     <div className="hardening-form-group">
-                        <label>MongoDB Password</label>
-                        <input type="password" name="mongo_password" value={value.mongo_password} onChange={onChange} placeholder="MongoDB password (optional)" autoComplete="off" style={inputStyle} />
+                        <label>{t("MongoDB Password")}</label>
+                        <input type="password" name="mongo_password" value={value.mongo_password} onChange={onChange} placeholder={t("MongoDB password (optional)")} autoComplete="off" style={inputStyle} />
                     </div>
                     <div className="hardening-form-group">
-                        <label>MongoDB Port</label>
+                        <label>{t("MongoDB Port")}</label>
                         <input type="number" name="mongo_port" value={value.mongo_port} onChange={onChange} placeholder="27017" autoComplete="off" style={inputStyle} />
                     </div>
                 </>

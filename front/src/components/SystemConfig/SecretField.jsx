@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n";
 
 /** What the backend returns in place of a stored secret. Sending it back
  *  unchanged keeps the stored value (the routers call service.unmask). */
@@ -33,7 +34,7 @@ export const SecretField = ({ label, value, onChange, maxLength = 255 }) => {
                         className="sc-secret-btn"
                         onClick={() => onChange("")}
                     >
-                        Change
+                        {t("Change")}
                     </button>
                 )}
             </div>

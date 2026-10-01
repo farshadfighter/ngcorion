@@ -1,15 +1,16 @@
 import React, { useRef, useEffect } from 'react';
 import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrorText.js';
+import { t, uiLocale } from "../../i18n";
 
 const ACTION_LABELS = {
-    scan_started: 'Scan Started',
-    scan_completed: 'Scan Completed',
-    scan_failed: 'Scan Failed',
-    scan_cancelled: 'Scan Cancelled',
-    host_discovered: 'Host Discovered',
-    port_scanned: 'Port Scanned',
-    discovery_applied: 'Discovery Applied',
-    asset_created_from_discovery: 'Asset Created',
+    scan_started: t("Scan Started"),
+    scan_completed: t("Scan Completed"),
+    scan_failed: t("Scan Failed"),
+    scan_cancelled: t("Scan Cancelled"),
+    host_discovered: t("Host Discovered"),
+    port_scanned: t("Port Scanned"),
+    discovery_applied: t("Discovery Applied"),
+    asset_created_from_discovery: t("Asset Created"),
 };
 
 // The nmap-missing failure reaches the log stream verbatim; replace it there
@@ -18,7 +19,7 @@ const logDetail = (entry) => {
     const detail = entry.error_message || entry.details?.message;
     if (!detail) return null;
     if (isNmapMissing(detail)) {
-        return `nmap روی سرور نصب نیست — ${NMAP_INSTALL_COMMAND}`;
+        return `${t("nmap is not installed on the server")} — ${NMAP_INSTALL_COMMAND}`;
     }
     return detail;
 };
@@ -33,7 +34,7 @@ const ScanLogPanel = ({ logs }) => {
     if (!logs || logs.length === 0) {
         return (
             <div className="scan-log-panel scan-log-empty">
-                Waiting for scan events…
+                {t("Waiting for scan events…")}
             </div>
         );
     }
@@ -45,7 +46,7 @@ const ScanLogPanel = ({ logs }) => {
                     <span className="log-dot" />
                     <span className="log-time">
                         {entry.timestamp
-                            ? new Date(entry.timestamp).toLocaleTimeString('en-US', { hour12: false })
+                            ? new Date(entry.timestamp).toLocaleTimeString(uiLocale(),  { hour12: false })
                             : '--:--:--'}
                     </span>
                     <span className="log-action">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { t } from "../../i18n";
 
 const QuotaExhaustedModal = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -19,7 +20,7 @@ const QuotaExhaustedModal = () => {
 
     useEffect(() => {
         const handleQuotaExhausted = (event) => {
-            setMessage(event.detail?.message || 'You have reached your quota limit.');
+            setMessage(event.detail?.message || t("You have reached your quota limit."));
             setIsOpen(true);
             setIsClosing(false);
         };
@@ -100,7 +101,7 @@ const QuotaExhaustedModal = () => {
         } catch (error) {
             console.error('Failed to navigate to upgrade page:', error);
             // Show user-friendly error instead of alert
-            setMessage('Unable to navigate to upgrade page. Please try again.');
+            setMessage(t("Unable to navigate to upgrade page. Please try again."));
         }
     };
 
@@ -146,7 +147,7 @@ const QuotaExhaustedModal = () => {
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <h2 id="modal-title">Quota Limit Reached</h2>
+                <h2 id="modal-title">{t("Quota Limit Reached")}</h2>
 
                 <p id="modal-description">
                     {message}
@@ -157,14 +158,14 @@ const QuotaExhaustedModal = () => {
                         ref={closeButtonRef}
                         onClick={handleClose}
                     >
-                        Close
+                        {t("Close")}
                     </button>
 
                     <button
                         ref={upgradeButtonRef}
                         onClick={handleUpgrade}
                     >
-                        Upgrade Plan
+                        {t("Upgrade Plan")}
                     </button>
                 </div>
             </div>

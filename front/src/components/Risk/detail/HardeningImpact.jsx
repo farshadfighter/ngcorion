@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../../i18n";
 
 /**
  * "Hardening Impact": three before/after comparisons, each with a progress bar.
@@ -41,10 +42,10 @@ const Row = ({ label, value, priorLabel, priorValue }) => {
 
 export const HardeningImpact = ({ score, auditSummary, impact }) => (
     <section className="ard-card">
-        <h3 className="ard-card-title">Hardening Impact</h3>
+        <h3 className="ard-card-title">{t("Hardening Impact")}</h3>
 
         <Row
-            label="Number of Fixed Findings"
+            label={t("Number of Fixed Findings")}
             value={
                 auditSummary?.resolved_by_hardening ??
                 score?.resolved_by_hardening_count ??
@@ -54,13 +55,13 @@ export const HardeningImpact = ({ score, auditSummary, impact }) => (
             priorValue={null}
         />
         <Row
-            label="Current Audit Risk"
+            label={t("Current Audit Risk")}
             value={score?.audit_risk_score ?? null}
             priorLabel="Audit Risk Prior to Hardening"
             priorValue={null}
         />
         <Row
-            label="Current Risk Score"
+            label={t("Current Risk Score")}
             value={impact?.current_score ?? score?.final_risk_score ?? null}
             priorLabel="Risk Score Before Hardening"
             priorValue={impact?.baseline_score ?? null}
@@ -69,8 +70,7 @@ export const HardeningImpact = ({ score, auditSummary, impact }) => (
         {/* GET /api/risk/assets/{id} baselines the risk score only; findings
             and audit-risk have no pre-hardening snapshot yet. */}
         <p className="ard-notice ard-notice-inline">
-            Findings and audit-risk comparisons still need a pre-hardening
-            baseline from the backend.
+            {t("Findings and audit-risk comparisons still need a pre-hardening baseline from the backend.")}
         </p>
     </section>
 );

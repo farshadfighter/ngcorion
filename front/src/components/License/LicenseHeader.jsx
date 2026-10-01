@@ -1,5 +1,6 @@
 import { MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 import { getLicenseInfo, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
+import { t } from "../../i18n";
 
 export const LicenseHeader = ({ licenseType, apiData = null }) => {
     const license = getLicenseInfo(licenseType);
@@ -15,7 +16,7 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                 justifyContent: "space-between",
                 backgroundColor: "#ffffff",
                 border: "1px solid #E5E7EB",
-                borderLeft: `4px solid ${license.borderColor}`,
+                borderInlineStart: `4px solid ${license.borderColor}`,
                 borderRadius: "10px",
                 padding: "10px 20px",
                 marginBottom: "24px",
@@ -41,7 +42,7 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                     <i className="fa-solid fa-certificate" style={{ color: "#14213D" }} />
                 </div>
                 <div>
-                    <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Active Licence</div>
+                    <div style={{ fontSize: "11px", color: "#9CA3AF" }}>{t("Active Licence")}</div>
                     <div style={{ fontSize: "14px", fontWeight: "600", color: "#111827" }}>
                         {license.name}
                     </div>
@@ -50,10 +51,10 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                             {expired ? (
                                 <>
                                     <i className="fa-solid fa-circle-exclamation"
-                                       style={{ marginRight: "5px" }} />
-                                    Expired
+                                       style={{ marginInlineEnd: "5px" }} />
+                                    {t("Expired")}
                                 </>
-                            ) : `Expires: ${formatExpiryDate(apiData.expires_at)}`}
+                            ) : t("Expires: {{expires_at}}", { expires_at: formatExpiryDate(apiData.expires_at) })}
                         </div>
                     )}
                 </div>

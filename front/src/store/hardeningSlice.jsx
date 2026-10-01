@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { DEFAULT_WINRM_PORT } from "../components/Hardening/winrmDefaults";
+import { t } from "../i18n";
 
 // ===========================
 // ERROR NORMALIZATION
@@ -102,18 +103,18 @@ export const getDeviceName = (deviceType) => {
         "linux-rocky-8":    "Rocky Linux 8",
 
         // Bare-type fallbacks for sessions with no sub_device_type
-        "linux":            "Linux Server",
+        "linux":            t("Linux Server"),
         "mssql":            "SQL Server",
-        "windows":          "Windows Server",
+        "windows":          t("Windows Server"),
 
         // Cisco
-        "cisco":            "Cisco Router/Switch",
+        "cisco":            t("Cisco Router/Switch"),
 
         // Fortinet
-        "fortinet":         "FortiGate Firewall",
+        "fortinet":         t("FortiGate Firewall"),
 
         // Apache
-        "apache":           "Apache Web Server",
+        "apache":           t("Apache Web Server"),
 
         // MongoDB
         "mongodb":          "MongoDB",
@@ -128,7 +129,7 @@ export const getDeviceName = (deviceType) => {
         "windows-2022":     "Windows Server 2022",
         "windows-2025":     "Windows Server 2025",
     };
-    return names[deviceType] || deviceType || "Unknown Device";
+    return names[deviceType] || deviceType || t("Unknown Device");
 };
 
 // ===========================
@@ -249,7 +250,7 @@ export const executeAuditWithDevice = createAsyncThunk(
             return { ...response.data, device_type: deviceType };
         } catch (error) {
             return rejectWithValue(
-                getErrorMessage(error, "Failed to start audit")
+                getErrorMessage(error, t("Failed to start audit"))
             );
         }
     }
@@ -270,7 +271,7 @@ export const checkHardeningSessionStatus = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                getErrorMessage(error, "Failed to check session status")
+                getErrorMessage(error, t("Failed to check session status"))
             );
         }
     }
@@ -311,7 +312,7 @@ export const fetchAuditSessions = createAsyncThunk(
             return allSessions;
         } catch (error) {
             return rejectWithValue(
-                getErrorMessage(error, "Failed to fetch audit sessions")
+                getErrorMessage(error, t("Failed to fetch audit sessions"))
             );
         }
     }
@@ -332,7 +333,7 @@ export const fetchAuditResults = createAsyncThunk(
             return response.data;
         } catch (error) {
             return rejectWithValue(
-                getErrorMessage(error, "Failed to fetch audit results")
+                getErrorMessage(error, t("Failed to fetch audit results"))
             );
         }
     }
@@ -358,7 +359,7 @@ export const previewHardenCheck = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                getErrorMessage(err, "Failed to preview hardening")
+                getErrorMessage(err, t("Failed to preview hardening"))
             );
         }
     }
@@ -409,7 +410,7 @@ export const executeHardenCheck = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                getErrorMessage(err, "Failed to execute hardening")
+                getErrorMessage(err, t("Failed to execute hardening"))
             );
         }
     }
@@ -450,7 +451,7 @@ export const fetchFortinetTemplatedChecks = createAsyncThunk(
             return res.data; // string[] of check numbers
         } catch (err) {
             return rejectWithValue(
-                getErrorMessage(err, "Failed to fetch auto-fixable checks")
+                getErrorMessage(err, t("Failed to fetch auto-fixable checks"))
             );
         }
     }
@@ -475,7 +476,7 @@ export const fetchFortinetManualGuidance = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                getErrorMessage(err, "Failed to load remediation guidance")
+                getErrorMessage(err, t("Failed to load remediation guidance"))
             );
         }
     }
@@ -504,7 +505,7 @@ export const fetchFortinetDeviceOptions = createAsyncThunk(
             return res.data; // { option_type, options: string[] }
         } catch (err) {
             return rejectWithValue(
-                getErrorMessage(err, "Failed to load options from the device")
+                getErrorMessage(err, t("Failed to load options from the device"))
             );
         }
     }
@@ -531,7 +532,7 @@ export const executeFortinetManualFix = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                getErrorMessage(err, "Failed to execute manual remediation")
+                getErrorMessage(err, t("Failed to execute manual remediation"))
             );
         }
     }
@@ -557,7 +558,7 @@ export const fetchHardenAllPlan = createAsyncThunk(
             const res = await api.get(`/api/hardening/harden-all/session/${sessionId}/plan`);
             return res.data;
         } catch (error) {
-            return rejectWithValue(getErrorMessage(error, "Failed to load the hardening plan"));
+            return rejectWithValue(getErrorMessage(error, t("Failed to load the hardening plan")));
         }
     }
 );
@@ -582,7 +583,7 @@ export const executeHardenAll = createAsyncThunk(
             });
             return res.data;
         } catch (error) {
-            return rejectWithValue(getErrorMessage(error, "Hardening failed"));
+            return rejectWithValue(getErrorMessage(error, t("Hardening failed")));
         }
     }
 );
@@ -764,7 +765,7 @@ const hardeningSlice = createSlice({
                 state.deviceType     = action.payload.device_type;
                 state.sessionStatus  = action.payload.status || null;
                 state.pollingActive  = true;
-                state.message        = "Audit started successfully.";
+                state.message        = t("Audit started successfully.");
             })
             .addCase(executeAuditWithDevice.rejected, (state, action) => {
                 state.isLoading     = false;
@@ -872,7 +873,7 @@ const hardeningSlice = createSlice({
             })
             .addCase(executeHardenCheck.fulfilled, (state) => {
                 state.isExecuting    = false;
-                state.successMessage = "Check hardened successfully!";
+                state.successMessage = t("Check hardened successfully!");
             })
             .addCase(executeHardenCheck.rejected, (state, action) => {
                 state.isExecuting = false;

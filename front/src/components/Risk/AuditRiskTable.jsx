@@ -4,20 +4,21 @@ import { RiskRowActions } from "./RiskRowActions";
 import { RiskLevelBadge } from "./RiskLevelBadge";
 import { SortableHeader } from "./SortableHeader";
 import { orDash } from "./riskConstants";
+import { t } from "../../i18n";
 
 /* The first column is the score box, so it is labelled as the score; the
    separate "Risk Level" column holds the badge. Both sort by final_risk_score —
    see the note in OverviewTable on why not by risk_level. */
 const COLUMNS = [
-    { label: "Risk Score", key: "final_risk_score" },
-    "Rank",
-    { label: "Asset Name", key: "asset_name" },
-    { label: "Risk Level", key: "final_risk_score" },
-    "Critical Findings",
-    "High Findings",
-    "Medium Findings",
-    "Low Findings",
-    "Actions",
+    { label: t("Risk Score"), key: "final_risk_score" },
+    t("Rank"),
+    { label: t("Asset Name"), key: "asset_name" },
+    { label: t("Risk Level"), key: "final_risk_score" },
+    t("Critical Findings"),
+    t("High Findings"),
+    t("Medium Findings"),
+    t("Low Findings"),
+    t("Actions"),
 ];
 
 /** "Audit Risk" tab: per-asset breakdown of active findings by severity. */
@@ -34,7 +35,7 @@ export const AuditRiskTable = ({ rows, onRowClick, sortBy, sortOrder, onSort }) 
                 {rows.length === 0 && (
                     <tr>
                         <td colSpan={COLUMNS.length} className="risk-table-empty">
-                            No assets match this view.
+                            {t("No assets match this view.")}
                         </td>
                     </tr>
                 )}

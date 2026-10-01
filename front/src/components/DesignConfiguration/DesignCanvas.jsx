@@ -20,6 +20,7 @@ import {
 } from "../../store/designSlice.jsx";
 import { fetchAssets } from "../../store/assetSlice.jsx";
 import "../../assets/DesignConfiguration.css";
+import { t } from "../../i18n";
 
 // Every icon except the catch-all can be placed as a device type.
 const PALETTE_GROUPS = ICON_GROUPS.filter((g) => g.family !== "other");
@@ -80,7 +81,7 @@ export const DesignCanvas = () => {
                 target: String(r.destination_component_id),
                 sourceHandle: r.source_interface || undefined,
                 targetHandle: r.destination_interface || undefined,
-                label: r.vlan ? `VLAN ${r.vlan}` : undefined,
+                label: r.vlan ? t("VLAN {{vlan}}", { vlan: r.vlan }) : undefined,
                 type: "smoothstep",
                 pathOptions: { borderRadius: 8 },
                 style: { stroke: "#1e3a5f", strokeWidth: 2 },
@@ -171,15 +172,14 @@ export const DesignCanvas = () => {
     );
 
     if (!currentVersion) {
-        return <div className="dc-container"><div className="dc-empty">Loading…</div></div>;
+        return <div className="dc-container"><div className="dc-empty">{t("Loading…")}</div></div>;
     }
 
     return (
         <div className="dc-canvas-page">
             <div className="dc-canvas-toolbar">
                 <div className="dc-toolbar-info">
-                    v{currentVersion.version.version_number} · {currentVersion.components.length} component(s) ·{" "}
-                    {currentVersion.relationships.length} link(s)
+                    {t("v{{version_number}} · {{length}} component(s) · {{length2}} link(s)", { version_number: currentVersion.version.version_number, length: currentVersion.components.length, length2: currentVersion.relationships.length })}
                 </div>
             </div>
 
@@ -190,8 +190,8 @@ export const DesignCanvas = () => {
             )}
 
             <div className="dc-canvas-body">
-                <aside className="dc-palette" aria-label="Add a device">
-                    <h4>Add device</h4>
+                <aside className="dc-palette" aria-label={t("Add a device")}>
+                    <h4>{t("Add device")}</h4>
                     {PALETTE_GROUPS.map((g) => (
                         <div key={g.family} className="dc-palette-group">
                             <div className="dc-palette-family">
@@ -201,7 +201,7 @@ export const DesignCanvas = () => {
                             <div className="dc-palette-grid">
                                 {g.icons.map((k) => (
                                     <button key={k} className="dc-palette-btn" onClick={() => handleAddComponent(k)}
-                                            title={`Add a ${ASSET_ICONS[k].label}`}>
+                                            title={t("Add a {{label}}", { label: ASSET_ICONS[k].label })}>
                                         <AssetIcon icon={k} size={28} />
                                         <span>{ASSET_ICONS[k].label}</span>
                                     </button>
@@ -236,7 +236,7 @@ export const DesignCanvas = () => {
                 {selectedComponent && (
                     <aside className="dc-panel">
                         <div className="dc-panel-header">
-                            <h3>Component</h3>
+                            <h3>{t("Component")}</h3>
                             <button className="dc-panel-close" onClick={() => setSelectedComponentId(null)}>
                                 <i className="fa-solid fa-xmark" />
                             </button>
@@ -258,11 +258,11 @@ export const DesignCanvas = () => {
                             </div>
                             <p className="dc-panel-note">
                                 {selectedComponent.mapped_asset_id
-                                    ? "Drawn with the mapped asset's icon. Change it on the asset or its Asset Type."
-                                    : "Planned device (dashed). Map it to an asset to draw it with that asset's icon."}
+                                    ? t("Drawn with the mapped asset's icon. Change it on the asset or its Asset Type.")
+                                    : t("Planned device (dashed). Map it to an asset to draw it with that asset's icon.")}
                             </p>
                             <div className="dc-field">
-                                <label>Label</label>
+                                <label>{t("Label")}</label>
                                 <input
                                     value={selectedComponent.label}
                                     onChange={(e) =>
@@ -271,7 +271,7 @@ export const DesignCanvas = () => {
                                 />
                             </div>
                             <div className="dc-field">
-                                <label>Type</label>
+                                <label>{t("Type")}</label>
                                 <select
                                     value={iconKey(selectedComponent.component_type)}
                                     onChange={(e) =>
@@ -290,7 +290,7 @@ export const DesignCanvas = () => {
                                 </select>
                             </div>
                             <div className="dc-field">
-                                <label>Mapped asset</label>
+                                <label>{t("Mapped asset")}</label>
                                 <select
                                     value={selectedComponent.mapped_asset_id || ""}
                                     onChange={(e) =>
@@ -300,7 +300,7 @@ export const DesignCanvas = () => {
                                         )
                                     }
                                 >
-                                    <option value="">— Not mapped —</option>
+                                    <option value="">{t("— Not mapped —")}</option>
                                     {assets.map((a) => (
                                         <option key={a.id} value={a.id}>{a.asset_name}</option>
                                     ))}
@@ -315,7 +315,7 @@ export const DesignCanvas = () => {
                                     setSelectedComponentId(null);
                                 }}
                             >
-                                Delete
+                                {t("Delete")}
                             </button>
                         </div>
                     </aside>
@@ -324,14 +324,14 @@ export const DesignCanvas = () => {
                 {selectedRelationship && (
                     <aside className="dc-panel">
                         <div className="dc-panel-header">
-                            <h3>Link</h3>
+                            <h3>{t("Link")}</h3>
                             <button className="dc-panel-close" onClick={() => setSelectedRelationshipId(null)}>
                                 <i className="fa-solid fa-xmark" />
                             </button>
                         </div>
                         <div className="dc-panel-body">
                             <div className="dc-field">
-                                <label>VLAN</label>
+                                <label>{t("VLAN")}</label>
                                 <input
                                     value={selectedRelationship.vlan || ""}
                                     onChange={(e) =>
@@ -345,7 +345,7 @@ export const DesignCanvas = () => {
                                 />
                             </div>
                             <div className="dc-field">
-                                <label>Subnet</label>
+                                <label>{t("Subnet")}</label>
                                 <input
                                     value={selectedRelationship.subnet || ""}
                                     onChange={(e) =>
@@ -367,7 +367,7 @@ export const DesignCanvas = () => {
                                     setSelectedRelationshipId(null);
                                 }}
                             >
-                                Delete
+                                {t("Delete")}
                             </button>
                         </div>
                     </aside>

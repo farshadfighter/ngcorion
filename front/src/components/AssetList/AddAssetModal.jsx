@@ -10,6 +10,7 @@ import api from "../../config/api";
 // exactly the risk tiers the scoring engine can score — see the note there.
 import { dropUnscoredRiskLevels } from "./useAssetFormOptions";
 import { requiresHosting } from "../shared/assetHosting";
+import { t as tr } from "../../i18n";
 
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
@@ -35,7 +36,7 @@ const validateIP = (ip) => {
     if (!ip || ip.trim() === '') return { valid: true };
     const pattern = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
     if (!pattern.test(ip)) {
-        return { valid: false, error: 'Invalid IP address format (e.g., 192.168.1.1)' };
+        return { valid: false, error: tr("Invalid IP address format (e.g., 192.168.1.1)") };
     }
     return { valid: true };
 };
@@ -48,21 +49,21 @@ const validateMAC = (mac) => {
         /^[0-9A-Fa-f]{12}$/
     ];
     if (!patterns.some(pattern => pattern.test(mac))) {
-        return { valid: false, error: 'Invalid MAC format. Use: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX' };
+        return { valid: false, error: tr("Invalid MAC format. Use: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX, or XXXXXXXXXXXX") };
     }
     return { valid: true };
 };
 
 const validateAssetName = (name) => {
     if (!name || name.trim().length < 2) {
-        return { valid: false, error: 'Asset name must be at least 2 characters' };
+        return { valid: false, error: tr("Asset name must be at least 2 characters") };
     }
     return { valid: true };
 };
 
 const validateAssetValue = (value) => {
     if (value !== null && value !== '' && parseFloat(value) < 0) {
-        return { valid: false, error: 'Asset value must be positive' };
+        return { valid: false, error: tr("Asset value must be positive") };
     }
     return { valid: true };
 };
@@ -143,7 +144,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             api.get("/api/enums/confidentiality"), api.get("/api/enums/risk"),
         ])
             .then(applyDropdownOptions)
-            .catch(() => setError("Failed to load form options."))
+            .catch(() => setError(tr("Failed to load form options.")))
             .finally(() => setIsLoadingOptions(false));
         if (osCatalog.length === 0) {
             dispatch(fetchOSCatalog());
@@ -177,7 +178,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
         if (currentStep === 1) {
             const nameCheck = validateAssetName(formData.asset_name);
             if (!nameCheck.valid) errors.asset_name = nameCheck.error;
-            if (!formData.asset_type_id) errors.asset_type_id = "Asset Type is required";
+            if (!formData.asset_type_id) errors.asset_type_id = tr("Asset Type is required");
         }
 
         if (currentStep === 2) {
@@ -189,7 +190,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
 
         if (currentStep === 3) {
             if (hostingRequired && !formData.hosted_on_asset_id) {
-                errors.hosted_on_asset_id = `${selectedTypeName} must specify which server it's hosted on`;
+                errors.hosted_on_asset_id = tr("{{selectedTypeName}} must specify which server it's hosted on", { selectedTypeName });
             }
         }
 
@@ -233,7 +234,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 await dispatch(getLicenseStatusThunk());
                 onClose();
             } else {
-                let errorMessage = "Failed to create asset";
+                let errorMessage = tr("Failed to create asset");
 
                 if (result.payload) {
                     if (Array.isArray(result.payload)) {
@@ -241,16 +242,16 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                     } else if (typeof result.payload === 'string') {
                         if (result.payload.includes('duplicate key') || result.payload.includes('UniqueViolation')) {
                             if (result.payload.includes('serial_number')) {
-                                errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
-                                setFieldErrors({ serial_number: 'This serial number is already in use' });
+                                errorMessage = tr("Serial Number \"{{serial_number}}\" already exists. Please use a different serial number.", { serial_number: formData.serial_number });
+                                setFieldErrors({ serial_number: tr("This serial number is already in use") });
                                 setCurrentStep(2);
                             } else if (result.payload.includes('ip_address')) {
-                                errorMessage = `IP Address "${formData.ip_address}" already exists. Please use a different IP address.`;
-                                setFieldErrors({ ip_address: 'This IP address is already in use' });
+                                errorMessage = tr("IP Address \"{{ip_address}}\" already exists. Please use a different IP address.", { ip_address: formData.ip_address });
+                                setFieldErrors({ ip_address: tr("This IP address is already in use") });
                                 setCurrentStep(2);
                             } else if (result.payload.includes('mac_address')) {
-                                errorMessage = `MAC Address "${formData.mac_address}" already exists. Please use a different MAC address.`;
-                                setFieldErrors({ mac_address: 'This MAC address is already in use' });
+                                errorMessage = tr("MAC Address \"{{mac_address}}\" already exists. Please use a different MAC address.", { mac_address: formData.mac_address });
+                                setFieldErrors({ mac_address: tr("This MAC address is already in use") });
                                 setCurrentStep(2);
                             } else {
                                 errorMessage = 'A field with this value already exists. Please check your inputs.';
@@ -262,16 +263,16 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         const detail = result.payload.detail;
                         if (typeof detail === 'string' && (detail.includes('duplicate key') || detail.includes('UniqueViolation'))) {
                             if (detail.includes('serial_number')) {
-                                errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
-                                setFieldErrors({ serial_number: 'This serial number is already in use' });
+                                errorMessage = tr("Serial Number \"{{serial_number}}\" already exists. Please use a different serial number.", { serial_number: formData.serial_number });
+                                setFieldErrors({ serial_number: tr("This serial number is already in use") });
                                 setCurrentStep(2);
                             } else if (detail.includes('ip_address')) {
-                                errorMessage = `IP Address "${formData.ip_address}" already exists. Please use a different IP address.`;
-                                setFieldErrors({ ip_address: 'This IP address is already in use' });
+                                errorMessage = tr("IP Address \"{{ip_address}}\" already exists. Please use a different IP address.", { ip_address: formData.ip_address });
+                                setFieldErrors({ ip_address: tr("This IP address is already in use") });
                                 setCurrentStep(2);
                             } else if (detail.includes('mac_address')) {
-                                errorMessage = `MAC Address "${formData.mac_address}" already exists. Please use a different MAC address.`;
-                                setFieldErrors({ mac_address: 'This MAC address is already in use' });
+                                errorMessage = tr("MAC Address \"{{mac_address}}\" already exists. Please use a different MAC address.", { mac_address: formData.mac_address });
+                                setFieldErrors({ mac_address: tr("This MAC address is already in use") });
                                 setCurrentStep(2);
                             } else {
                                 errorMessage = detail;
@@ -289,12 +290,12 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                 setError(errorMessage);
             }
         } catch (err) {
-            let errorMessage = "An unexpected error occurred";
+            let errorMessage = tr("An unexpected error occurred");
             if (err.message) {
                 if (err.message.includes('duplicate key') || err.message.includes('UniqueViolation')) {
                     if (err.message.includes('serial_number')) {
-                        errorMessage = `Serial Number "${formData.serial_number}" already exists. Please use a different serial number.`;
-                        setFieldErrors({ serial_number: 'This serial number is already in use' });
+                        errorMessage = tr("Serial Number \"{{serial_number}}\" already exists. Please use a different serial number.", { serial_number: formData.serial_number });
+                        setFieldErrors({ serial_number: tr("This serial number is already in use") });
                         setCurrentStep(2);
                     } else {
                         errorMessage = 'A duplicate value was detected. Please check your inputs.';
@@ -314,13 +315,13 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             case 1: return (
                 <div className="form-grid">
                     <div className="form-group">
-                        <label>Asset Name <span className="required">*</span></label>
+                        <label>{tr("Asset Name")}{" "} <span className="required">*</span></label>
                         <input
                             type="text"
                             name="asset_name"
                             value={formData.asset_name}
                             onChange={handleChange}
-                            placeholder="e.g. Web Server 01"
+                            placeholder={tr("e.g. Web Server 01")}
                             required
                             disabled={isLoadingOptions}
                             style={fieldErrors.asset_name ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
@@ -328,11 +329,11 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         {fieldErrors.asset_name && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.asset_name}</span>}
                     </div>
                     <div className="form-group">
-                        <label>Hostname</label>
-                        <input type="text" name="hostname" value={formData.hostname} onChange={handleChange} placeholder="e.g. web01.local" disabled={isLoadingOptions} />
+                        <label>{tr("Hostname")}</label>
+                        <input type="text" name="hostname" value={formData.hostname} onChange={handleChange} placeholder={tr("e.g. web01.local")} disabled={isLoadingOptions} />
                     </div>
                     <div className="form-group">
-                        <label>Asset Type <span className="required">*</span></label>
+                        <label>{tr("Asset Type")}{" "} <span className="required">*</span></label>
                         <select
                             name="asset_type_id"
                             value={formData.asset_type_id}
@@ -341,27 +342,27 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             disabled={isLoadingOptions}
                             style={fieldErrors.asset_type_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         >
-                            <option value="">Select type</option>
+                            <option value="">{tr("Select type")}</option>
                             {assetTypes.map(t => <option key={t.id} value={t.id}>{t.type_name}</option>)}
                         </select>
                         {fieldErrors.asset_type_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.asset_type_id}</span>}
                     </div>
                     <div className="form-group">
-                        <label>Network Zone</label>
+                        <label>{tr("Network Zone")}</label>
                         <select name="asset_role" value={formData.asset_role} onChange={handleChange} disabled={isLoadingOptions}>
-                            <option value="">Select zone</option>
+                            <option value="">{tr("Select zone")}</option>
                             {zones.map(z => <option key={z.id} value={z.zone_name}>{z.zone_name}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Vendor</label>
+                        <label>{tr("Vendor")}</label>
                         <select name="manufacturer" value={formData.manufacturer} onChange={handleChange} disabled={isLoadingOptions}>
-                            <option value="">Select vendor</option>
+                            <option value="">{tr("Select vendor")}</option>
                             {vendors.map(v => <option key={v.id} value={v.vendor_name}>{v.vendor_name}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Model</label>
+                        <label>{tr("Model")}</label>
                         <input type="text" name="model" value={formData.model} onChange={handleChange} placeholder="e.g. R740" disabled={isLoadingOptions} />
                     </div>
                 </div>
@@ -369,32 +370,32 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             case 2: return (
                 <div className="form-grid">
                     <div className="form-group">
-                        <label>Serial Number</label>
-                        <input type="text" name="serial_number" value={formData.serial_number} onChange={handleChange} placeholder="e.g. SN123" disabled={isLoadingOptions} />
+                        <label>{tr("Serial Number")}</label>
+                        <input type="text" name="serial_number" value={formData.serial_number} onChange={handleChange} placeholder={tr("e.g. SN123")} disabled={isLoadingOptions} />
                     </div>
                     <div className="form-group">
-                        <label>Operating System</label>
+                        <label>{tr("Operating System")}</label>
                         <select
                             name="os_name"
                             value={formData.os_name}
                             onChange={handleChange}
                             disabled={isLoadingOptions}
                         >
-                            <option value="">Select OS</option>
+                            <option value="">{tr("Select OS")}</option>
                             {[...new Map(osCatalog.map(os => [os.os_name, os])).values()].map(os => (
                                 <option key={os.id} value={os.os_name}>{os.os_name}</option>
                             ))}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>OS Version</label>
+                        <label>{tr("OS Version")}</label>
                         <select
                             name="os_version"
                             value={formData.os_version}
                             onChange={handleChange}
                             disabled={isLoadingOptions || !formData.os_name}
                         >
-                            <option value="">Select version</option>
+                            <option value="">{tr("Select version")}</option>
                             {osCatalog
                                 .filter(os => os.os_name === formData.os_name && os.os_version)
                                 .map(os => (
@@ -404,7 +405,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>IP Address</label>
+                        <label>{tr("IP Address")}</label>
                         <input
                             type="text"
                             name="ip_address"
@@ -417,7 +418,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         {fieldErrors.ip_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.ip_address}</span>}
                     </div>
                     <div className="form-group">
-                        <label>MAC Address</label>
+                        <label>{tr("MAC Address")}</label>
                         <input
                             type="text"
                             name="mac_address"
@@ -430,7 +431,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         {fieldErrors.mac_address && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.mac_address}</span>}
                     </div>
                     <div className="form-group">
-                        <label>Physical Port Count</label>
+                        <label>{tr("Physical Port Count")}</label>
                         <input
                             type="number"
                             name="port_count"
@@ -442,7 +443,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             disabled={isLoadingOptions}
                         />
                         <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                            How many physical ports this device has - drives the port count shown on Topology/Design.
+                            {tr("How many physical ports this device has - drives the port count shown on Topology/Design.")}
                         </span>
                     </div>
                 </div>
@@ -450,27 +451,27 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             case 3: return (
                 <div className="form-grid">
                     <div className="form-group">
-                        <label>Location</label>
+                        <label>{tr("Location")}</label>
                         <select name="location_id" value={formData.location_id} onChange={handleChange} disabled={isLoadingOptions}>
-                            <option value="">Select location</option>
-                            {locations.map(l => <option key={l.id} value={l.id}>{l.site_name || l.location_name || `Location ${l.id}`}</option>)}
+                            <option value="">{tr("Select location")}</option>
+                            {locations.map(l => <option key={l.id} value={l.id}>{l.site_name || l.location_name || tr("Location {{id}}", { id: l.id })}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Owner</label>
+                        <label>{tr("Owner")}</label>
                         <select name="owner_id" value={formData.owner_id} onChange={handleChange} disabled={isLoadingOptions}>
-                            <option value="">Select owner</option>
+                            <option value="">{tr("Select owner")}</option>
                             {owners.map(o => <option key={o.id} value={o.id}>{o.full_name}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Status</label>
+                        <label>{tr("Status")}</label>
                         <select name="status" value={formData.status} onChange={handleChange} disabled={isLoadingOptions}>
                             {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Hosted on server{hostingRequired && <span className="required"> *</span>}</label>
+                        <label>{tr("Hosted on server")}{hostingRequired && <span className="required"> *</span>}</label>
                         <select
                             name="hosted_on_asset_id"
                             value={formData.hosted_on_asset_id}
@@ -478,18 +479,18 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             disabled={isLoadingOptions}
                             style={fieldErrors.hosted_on_asset_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                         >
-                            <option value="">Select server</option>
+                            <option value="">{tr("Select server")}</option>
                             {existingAssets.map(a => <option key={a.id} value={a.id}>{a.asset_name}</option>)}
                         </select>
                         {fieldErrors.hosted_on_asset_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.hosted_on_asset_id}</span>}
                         {hostingRequired && !fieldErrors.hosted_on_asset_id && (
                             <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                                {selectedTypeName} runs inside a server - Topology draws a dashed line to it.
+                                {tr("{{selectedTypeName}} runs inside a server - Topology draws a dashed line to it.", { selectedTypeName })}
                             </span>
                         )}
                     </div>
                     <div className="form-group">
-                        <label>VLAN</label>
+                        <label>{tr("VLAN")}</label>
                         <input
                             type="text"
                             name="hosted_vlan"
@@ -499,7 +500,7 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                             disabled={isLoadingOptions}
                         />
                         <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                            Shown as a label on the dashed line to the hosting server.
+                            {tr("Shown as a label on the dashed line to the hosting server.")}
                         </span>
                     </div>
                 </div>
@@ -507,29 +508,29 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             case 4: return (
                 <div className="form-grid">
                     <div className="form-group">
-                        <label>Confidentiality Level</label>
+                        <label>{tr("Confidentiality Level")}</label>
                         <select name="confidentiality_level" value={formData.confidentiality_level} onChange={handleChange} disabled={isLoadingOptions}>
-                            <option value="">Select level</option>
+                            <option value="">{tr("Select level")}</option>
                             {confidentialityOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Risk Level</label>
+                        <label>{tr("Risk Level")}</label>
                         <select name="risk_level" value={formData.risk_level} onChange={handleChange} disabled={isLoadingOptions}>
-                            <option value="">Select level</option>
+                            <option value="">{tr("Select level")}</option>
                             {riskOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Last Audit Date</label>
+                        <label>{tr("Last Audit Date")}</label>
                         <input type="date" name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isLoadingOptions} />
                     </div>
                     <div className="form-group">
-                        <label>Last Patch Date</label>
+                        <label>{tr("Last Patch Date")}</label>
                         <input type="date" name="last_patch_date" value={formData.last_patch_date} onChange={handleChange} disabled={isLoadingOptions} />
                     </div>
                     <div className="form-group">
-                        <label>Asset Value (USD)</label>
+                        <label>{tr("Asset Value (USD)")}</label>
                         <div className="input-with-icon">
                             <span className="input-icon">$</span>
                             <input
@@ -548,8 +549,8 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                         {fieldErrors.asset_value && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.asset_value}</span>}
                     </div>
                     <div className="form-group full-width">
-                        <label>Description</label>
-                        <textarea name="description" value={formData.description} onChange={handleChange} rows="3" placeholder="Optional notes" disabled={isLoadingOptions} />
+                        <label>{tr("Description")}</label>
+                        <textarea name="description" value={formData.description} onChange={handleChange} rows="3" placeholder={tr("Optional notes")} disabled={isLoadingOptions} />
                     </div>
                 </div>
             );
@@ -561,23 +562,23 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
     return (
         <div className="modal-overlay" onClick={handleClose}>
             <div className="modal-content2 modal-large" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header"><h3>Add New Asset</h3><button className="modal-close" onClick={handleClose} disabled={isSubmitting}>✕</button></div>
+                <div className="modal-header"><h3>{tr("Add New Asset")}</h3><button className="modal-close" onClick={handleClose} disabled={isSubmitting}>✕</button></div>
                 <div className="modal-body">
                     <div className="step-indicator">
-                        <div className={`step ${currentStep >= 1 ? "active" : ""}`}>1. Basic Info</div>
-                        <div className={`step ${currentStep >= 2 ? "active" : ""}`}>2. System</div>
-                        <div className={`step ${currentStep >= 3 ? "active" : ""}`}>3. Location</div>
-                        <div className={`step ${currentStep >= 4 ? "active" : ""}`}>4. Security</div>
+                        <div className={`step ${currentStep >= 1 ? "active" : ""}`}>{tr("1. Basic Info")}</div>
+                        <div className={`step ${currentStep >= 2 ? "active" : ""}`}>{tr("2. System")}</div>
+                        <div className={`step ${currentStep >= 3 ? "active" : ""}`}>{tr("3. Location")}</div>
+                        <div className={`step ${currentStep >= 4 ? "active" : ""}`}>{tr("4. Security")}</div>
                     </div>
-                    {isLoadingOptions && <div className="loading-spinner">Loading...</div>}
+                    {isLoadingOptions && <div className="loading-spinner">{tr("Loading...")}</div>}
                     {!isLoadingOptions && renderStepContent()}
                     {error && <div className="alert alert-error" style={{ marginTop: "12px" }}>{error}</div>}
                 </div>
                 <div className="modal-actions">
-                    <button className="btn-cancel" onClick={handleClose} disabled={isSubmitting}>Cancel</button>
-                    {currentStep > 1 && <button className="btn-secondary" onClick={handleBack} disabled={isSubmitting || isLoadingOptions}>Back</button>}
-                    {currentStep < 4 && <button className="btn-submit" onClick={handleNext} disabled={isSubmitting || isLoadingOptions}>Next</button>}
-                    {currentStep === 4 && <button className="btn-submit" onClick={handleSubmit} disabled={isSubmitting || isLoadingOptions}>{isSubmitting ? "Creating..." : "Create Asset"}</button>}
+                    <button className="btn-cancel" onClick={handleClose} disabled={isSubmitting}>{tr("Cancel")}</button>
+                    {currentStep > 1 && <button className="btn-secondary" onClick={handleBack} disabled={isSubmitting || isLoadingOptions}>{tr("Back")}</button>}
+                    {currentStep < 4 && <button className="btn-submit" onClick={handleNext} disabled={isSubmitting || isLoadingOptions}>{tr("Next")}</button>}
+                    {currentStep === 4 && <button className="btn-submit" onClick={handleSubmit} disabled={isSubmitting || isLoadingOptions}>{isSubmitting ? tr("Creating...") : tr("Create Asset")}</button>}
                 </div>
             </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
+import { t } from "../../i18n";
 
 export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
@@ -40,16 +41,16 @@ export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsse
                     <th style={{ width: "4px", padding: 0 }}></th>
                     <th style={{ width: "40px" }}>
                         <input type="checkbox" checked={allSelected} onChange={onToggleAll}
-                               title="Select all" style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
+                               title={t("Select all")} style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                     </th>
-                    <th>Number</th>
-                    <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>Asset Name {renderSortIcon("asset_name")}</th>
-                    <th onClick={() => handleSort("hostname")} style={{ cursor: "pointer" }}>Hostname {renderSortIcon("hostname")}</th>
-                    <th onClick={() => handleSort("asset_type_name")} style={{ cursor: "pointer" }}>Type {renderSortIcon("asset_type_name")}</th>
-                    <th onClick={() => handleSort("asset_role")} style={{ cursor: "pointer" }}>Zone {renderSortIcon("asset_role")}</th>
-                    <th onClick={() => handleSort("manufacturer")} style={{ cursor: "pointer" }}>Manufacturer {renderSortIcon("manufacturer")}</th>
-                    <th onClick={() => handleSort("model")} style={{ cursor: "pointer" }}>Model {renderSortIcon("model")}</th>
-                    <th>Actions</th>
+                    <th>{t("Number")}</th>
+                    <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>{t("Asset Name")}{renderSortIcon("asset_name")}</th>
+                    <th onClick={() => handleSort("hostname")} style={{ cursor: "pointer" }}>{t("Hostname")}{renderSortIcon("hostname")}</th>
+                    <th onClick={() => handleSort("asset_type_name")} style={{ cursor: "pointer" }}>{t("Type")}{renderSortIcon("asset_type_name")}</th>
+                    <th onClick={() => handleSort("asset_role")} style={{ cursor: "pointer" }}>{t("Zone")}{renderSortIcon("asset_role")}</th>
+                    <th onClick={() => handleSort("manufacturer")} style={{ cursor: "pointer" }}>{t("Manufacturer")}{renderSortIcon("manufacturer")}</th>
+                    <th onClick={() => handleSort("model")} style={{ cursor: "pointer" }}>{t("Model")}{renderSortIcon("model")}</th>
+                    <th>{t("Actions")}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -80,13 +81,13 @@ export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsse
                             <td>{asset.manufacturer || "-"}</td>
                             <td>{asset.model || "-"}</td>
                             <td className="actions-cell">
-                                <button className="btn-icon" title="Edit" onClick={() => onEdit(asset)}>
+                                <button className="btn-icon" title={t("Edit")} onClick={() => onEdit(asset)}>
                                     <i className="fa-solid fa-pen"></i>
                                 </button>
-                                <button className="btn-icon" title="Change History" onClick={() => onViewHistory(asset)}>
+                                <button className="btn-icon" title={t("Change History")} onClick={() => onViewHistory(asset)}>
                                     <i className="fa-solid fa-clock-rotate-left"></i>
                                 </button>
-                                {canDelete && (<button className="btn-icon" title="Delete" onClick={() => onDelete(asset.id)}>
+                                {canDelete && (<button className="btn-icon" title={t("Delete")} onClick={() => onDelete(asset.id)}>
                                     <i className="fa-solid fa-trash"></i>
                                 </button>)}
                             </td>

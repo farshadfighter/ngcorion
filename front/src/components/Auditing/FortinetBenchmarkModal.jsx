@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFortinetBenchmark } from "../../store/auditSlice";
+import { t } from "../../i18n";
 
 // Read-only viewer for the full CIS FortiGate Benchmark checklist (all 53
 // controls), served from /api/audit/fortinet/benchmark. Lets an operator see
@@ -32,7 +33,7 @@ const chipStyle = (bg, fg, border) => ({
 });
 
 const thStyle = {
-    textAlign: "left",
+    textAlign: "start",
     padding: "8px 10px",
     fontSize: "12px",
     color: "#6b7280",
@@ -78,7 +79,7 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
         const out = [];
         const idx = {};
         for (const c of filtered) {
-            const g = c.section_group || "Other";
+            const g = c.section_group || t("Other");
             if (idx[g] === undefined) { idx[g] = out.length; out.push({ name: g, items: [] }); }
             out[idx[g]].items.push(c);
         }
@@ -99,16 +100,16 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
                 <div style={{ padding: "18px 22px", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
                         <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#111827" }}>
-                            CIS FortiGate Benchmark — Audit Checklist
+                            {t("CIS FortiGate Benchmark — Audit Checklist")}
                         </h2>
                         <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "2px" }}>
-                            {data?.version || "CIS Fortinet FortiGate Benchmark"}
+                            {data?.version || t("CIS Fortinet FortiGate Benchmark")}
                         </div>
                     </div>
                     <button
                         onClick={onClose}
                         style={{ border: "none", background: "transparent", fontSize: "22px", cursor: "pointer", color: "#6b7280", lineHeight: 1 }}
-                        aria-label="Close"
+                        aria-label={t("Close")}
                     >
                         ✕
                     </button>
@@ -116,9 +117,9 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
 
                 {/* Summary + filters */}
                 <div style={{ padding: "14px 22px", borderBottom: "1px solid #f1f5f9", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={chipStyle("#eef2ff", "#3730a3", "#c7d2fe")}>Total {data?.total ?? controls.length}</span>
-                    <span style={chipStyle("#dbeafe", "#1e40af", "#93c5fd")}>Automated {data?.automated ?? "—"}</span>
-                    <span style={chipStyle("#fef3c7", "#92400e", "#fcd34d")}>Manual {data?.manual ?? "—"}</span>
+                    <span style={chipStyle("#eef2ff", "#3730a3", "#c7d2fe")}>{t("Total")}{" "} {data?.total ?? controls.length}</span>
+                    <span style={chipStyle("#dbeafe", "#1e40af", "#93c5fd")}>{t("Automated")}{" "} {data?.automated ?? "—"}</span>
+                    <span style={chipStyle("#fef3c7", "#92400e", "#fcd34d")}>{t("Manual")}{" "} {data?.manual ?? "—"}</span>
 
                     <div style={{ flex: 1 }} />
 
@@ -127,26 +128,26 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
                         onChange={(e) => setTypeFilter(e.target.value)}
                         style={{ padding: "7px 10px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "13px" }}
                     >
-                        <option value="all">All types</option>
-                        <option value="Automated">Automated</option>
-                        <option value="Manual">Manual</option>
+                        <option value="all">{t("All types")}</option>
+                        <option value="Automated">{t("Automated")}</option>
+                        <option value="Manual">{t("Manual")}</option>
                     </select>
                     <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search section, control, command…"
+                        placeholder={t("Search section, control, command…")}
                         style={{ padding: "7px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "13px", width: "260px", maxWidth: "50vw" }}
                     />
                 </div>
 
                 {/* Body */}
                 <div style={{ overflowY: "auto", padding: "8px 22px 22px" }}>
-                    {isLoading && <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>Loading checklist…</div>}
+                    {isLoading && <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>{t("Loading checklist…")}</div>}
                     {error && <div className="alert alert-error" style={{ marginTop: "12px" }}>{error}</div>}
 
                     {!isLoading && !error && groups.length === 0 && (
-                        <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>No controls match your filter.</div>
+                        <div style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}>{t("No controls match your filter.")}</div>
                     )}
 
                     {!isLoading && !error && groups.map((group) => (
@@ -158,12 +159,12 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
                             <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                 <thead>
                                     <tr>
-                                        <th style={{ ...thStyle, width: "70px" }}>CIS §</th>
-                                        <th style={thStyle}>Recommendation</th>
-                                        <th style={{ ...thStyle, width: "110px" }}>Type</th>
-                                        <th style={{ ...thStyle, width: "130px" }}>Scope</th>
-                                        <th style={{ ...thStyle, width: "120px" }}>Control ID</th>
-                                        <th style={thStyle}>Reads</th>
+                                        <th style={{ ...thStyle, width: "70px" }}>{t("CIS §")}</th>
+                                        <th style={thStyle}>{t("Recommendation")}</th>
+                                        <th style={{ ...thStyle, width: "110px" }}>{t("Type")}</th>
+                                        <th style={{ ...thStyle, width: "130px" }}>{t("Scope")}</th>
+                                        <th style={{ ...thStyle, width: "120px" }}>{t("Control ID")}</th>
+                                        <th style={thStyle}>{t("Reads")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -185,8 +186,8 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
 
                 {/* Footer */}
                 <div style={{ padding: "12px 22px", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", color: "#6b7280" }}>
-                    <span>Automated = scored from configuration · Manual = evidence-only (not scored)</span>
-                    <button className="btn-modal-secondary" onClick={onClose}>Close</button>
+                    <span>{t("Automated = scored from configuration · Manual = evidence-only (not scored)")}</span>
+                    <button className="btn-modal-secondary" onClick={onClose}>{t("Close")}</button>
                 </div>
             </div>
         </div>

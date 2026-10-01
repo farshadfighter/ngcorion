@@ -1,3 +1,11 @@
+:root {
+    --font-sans: 'Open Sans', sans-serif;
+}
+:root[lang="fa"] {
+    /* Vazirmatn carries only the Persian letters; Latin text falls through to Open Sans. */
+    --font-sans: 'Vazirmatn', 'Open Sans', sans-serif;
+}
+
 * {
-    font-family: 'Open Sans', sans-serif;
+    font-family: var(--font-sans);
 }

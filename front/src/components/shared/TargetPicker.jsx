@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import api from "../../config/api.js";
 import AssetIcon from "./AssetIcon.jsx";
 import "../../assets/TargetPicker.css";
+import { t as tr, n } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 /**
  * "What do you want to audit / harden, and on which asset?"
@@ -31,11 +33,10 @@ const CATEGORY_COLORS = {
 };
 const INVENTORY = "inventory";
 const ALL = "all";
-const VERB = { audit: "auditing", hardening: "hardening" };
 
 const errorText = (e) => {
     const d = e?.response?.data?.detail;
-    return typeof d === "string" ? d : "Could not load the list of supported targets.";
+    return typeof d === "string" ? d : tr("Could not load the list of supported targets.");
 };
 
 // The version with the most assets, so the common case needs no extra click.
@@ -115,8 +116,8 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
     }, [q, view, targets, inventoryTargets]);
 
     const rail = catalog ? [
-        { id: INVENTORY, label: "In my inventory", color: "#16a34a", count: inventoryTargets.length },
-        { id: ALL, label: "All targets", color: "#94a3b8", count: targets.length },
+        { id: INVENTORY, label: tr("In my inventory"), color: "#16a34a", count: inventoryTargets.length },
+        { id: ALL, label: tr("All targets"), color: "#94a3b8", count: targets.length },
         ...catalog.categories.map((c, i) => ({
             id: c.id, label: c.label, color: CATEGORY_COLORS[c.id] || "#6b7280",
             count: targets.filter((t) => t.category === c.id).length, divider: i === 0,
@@ -124,9 +125,9 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
     ] : [];
 
     const listTitle = q
-        ? `${shown.length} result${shown.length === 1 ? "" : "s"} for "${query.trim()}"`
-        : view === INVENTORY ? "Found in your inventory · most assets first"
-        : view === ALL ? "All supported targets" : categoryLabel(view);
+        ? tr("{{count}} results for \"{{query}}\"", { count: shown.length, query: query.trim() })
+        : view === INVENTORY ? tr("Found in your inventory · most assets first")
+        : view === ALL ? tr("All supported targets") : categoryLabel(view);
 
     // ── assets ──
     const loadingAssets = Boolean(deviceType) && assetsFor !== deviceType;
@@ -140,20 +141,20 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
     const other = [];
     visibleAssets.forEach((a) => {
         if (!selected || a.inferred_device_type !== selected.family) {
-            other.push({ asset: a, state: "other", text: "Type not detected" });
+            other.push({ asset: a, state: "other", text: tr("Type not detected") });
             return;
         }
         if (!selected.versions.length) {
-            matched.push({ asset: a, state: "match", text: `Detected ${selected.label}` });
+            matched.push({ asset: a, state: "match", text: tr("Detected {{label}}", { label: selected.label }) });
         } else if (a.inferred_device_variant === deviceType) {
-            matched.push({ asset: a, state: "match", text: `Matches ${versionText}` });
+            matched.push({ asset: a, state: "match", text: tr("Matches {{versionText}}", { versionText }) });
         } else if (!a.inferred_device_variant) {
-            matched.push({ asset: a, state: "unknown", text: "Version not detected" });
+            matched.push({ asset: a, state: "unknown", text: tr("Version not detected") });
         } else {
             const v = selected.versions.find((x) => x.device_type === a.inferred_device_variant);
             matched.push({
                 asset: a, state: "different",
-                text: v ? `${v.group ? `${v.group} ` : ""}${v.label} detected` : "Different version",
+                text: v ? `${v.group ? `${v.group} ` : ""}${v.label} detected` : tr("Different version"),
             });
         }
     });
@@ -183,7 +184,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
     };
 
     if (loadError) return <div className="tp-error" role="alert">{loadError}</div>;
-    if (!catalog) return <div className="tp-loading">Loading supported targets…</div>;
+    if (!catalog) return <div className="tp-loading">{tr("Loading supported targets…")}</div>;
 
     const versionGroups = selected
         ? [...new Set(selected.versions.map((v) => v.group || ""))].map((g) => ({
@@ -200,7 +201,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                 <span className="tp-asset-text">
                     <span className="tp-asset-name">{a.asset_name}</span>
                     <span className="tp-asset-meta">
-                        {a.ip_address || "No IP"}
+                        {a.ip_address || tr("No IP")}
                         {(a.os_name || a.os_version) && ` · ${[a.os_name, a.os_version].filter(Boolean).join(" ")}`}
                     </span>
                 </span>
@@ -214,8 +215,8 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
         <div className="target-picker">
             <section className="tp-section">
                 <div className="tp-head">
-                    <h3><span className="tp-num">1</span>What do you want to {mode === "audit" ? "audit" : "harden"}?</h3>
-                    <span className="tp-muted">{targets.length} supported targets</span>
+                    <h3><span className="tp-num">1</span>{mode === "audit" ? tr("What do you want to audit?") : tr("What do you want to harden?")}</h3>
+                    <span className="tp-muted">{tr("{{length}} supported targets", { length: targets.length })}</span>
                 </div>
                 <label className="tp-search">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -225,13 +226,13 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                         type="search"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search - e.g. Linux, FortiGate, SQL"
-                        aria-label="Search supported targets"
+                        placeholder={tr("Search - e.g. Linux, FortiGate, SQL")}
+                        aria-label={tr("Search supported targets")}
                     />
                 </label>
 
                 <div className="tp-body">
-                    <div className="tp-rail" role="tablist" aria-label="Categories">
+                    <div className="tp-rail" role="tablist" aria-label={tr("Categories")}>
                         {rail.map((r) => (
                             <div key={r.id}>
                                 {r.divider && <div className="tp-rail-divider" />}
@@ -240,7 +241,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                                         onClick={() => { setCategory(r.id); setQuery(""); }}>
                                     <span className="tp-swatch" style={{ background: r.color }} />
                                     <span className="tp-rail-label">{r.label}</span>
-                                    <span className="tp-rail-count">{r.count}</span>
+                                    <span className="tp-rail-count">{n(r.count)}</span>
                                 </button>
                             </div>
                         ))}
@@ -250,14 +251,14 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                         <div className="tp-list-title">{listTitle}</div>
                         {shown.length === 0 ? (
                             <div className="tp-empty">
-                                {q ? `Nothing matches "${query.trim()}".` : "No assets of a supported type in your inventory yet."}
+                                {q ? tr("Nothing matches \"{{trim}}\".", { trim: query.trim() }) : tr("No assets of a supported type in your inventory yet.")}
                                 {" "}
                                 <button type="button" className="tp-link" onClick={() => { setQuery(""); setCategory(ALL); }}>
-                                    Show all targets
+                                    {tr("Show all targets")}
                                 </button>
                             </div>
                         ) : (
-                            <div className="tp-grid" role="radiogroup" aria-label="Target">
+                            <div className="tp-grid" role="radiogroup" aria-label={tr("Target")}>
                                 {shown.map((t) => {
                                     const on = selected?.id === t.id;
                                     return (
@@ -269,7 +270,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                                                 <span className="tp-card-name">{t.label}</span>
                                                 <span className="tp-card-sub">{t.description}</span>
                                                 <span className={`tp-card-count ${t.asset_count ? "has" : ""}`}>
-                                                    {t.asset_count ? `${t.asset_count} in inventory` : "No assets yet"}
+                                                    {t.asset_count ? tr("{{asset_count}} in inventory", { asset_count: t.asset_count }) : tr("No assets yet")}
                                                 </span>
                                             </span>
                                         </button>
@@ -282,11 +283,11 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
 
                 {selected && (
                     <div className="tp-versions">
-                        <span className="tp-versions-label">Version</span>
+                        <span className="tp-versions-label">{tr("Version")}</span>
                         {selected.versions.length === 0 ? (
-                            <span className="tp-muted tp-versions-none">No version to choose.</span>
+                            <span className="tp-muted tp-versions-none">{tr("No version to choose.")}</span>
                         ) : (
-                            <div className="tp-version-groups" role="radiogroup" aria-label="Version">
+                            <div className="tp-version-groups" role="radiogroup" aria-label={tr("Version")}>
                                 {versionGroups.map((g) => (
                                     <div key={g.group || "v"} className="tp-version-group">
                                         {g.group && <span className="tp-version-group-label">{g.group}</span>}
@@ -296,7 +297,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                                                     className={`tp-chip ${v.device_type === deviceType ? "on" : ""}`}
                                                     onClick={() => pickVersion(v)}>
                                                 {v.label}
-                                                {v.asset_count > 0 && <span className="tp-chip-count">{v.asset_count}</span>}
+                                                {v.asset_count > 0 && <span className="tp-chip-count">{n(v.asset_count)}</span>}
                                             </button>
                                         ))}
                                     </div>
@@ -310,28 +311,28 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
 
             <section className="tp-section tp-assets">
                 <div className="tp-head">
-                    <h3><span className="tp-num">2</span>Which asset?</h3>
+                    <h3><span className="tp-num">2</span>{tr("Which asset?")}</h3>
                     {assets.length > 6 && (
                         <label className="tp-search small">
                             <input type="search" value={assetQuery} onChange={(e) => setAssetQuery(e.target.value)}
-                                   placeholder="Search name or IP" aria-label="Search assets" />
+                                   placeholder={tr("Search name or IP")} aria-label={tr("Search assets")} />
                         </label>
                     )}
                 </div>
                 {loadingAssets ? (
-                    <div className="tp-loading">Loading assets…</div>
+                    <div className="tp-loading">{tr("Loading assets…")}</div>
                 ) : matched.length === 0 && other.length === 0 ? (
                     <div className="tp-empty">
-                        No {selected ? selected.label : ""} asset in your inventory yet - add it under Asset Management first.
+                        {tr("No {{target}} asset in your inventory yet - add it under Asset Management first.", { target: selected ? selected.label : "" })}
                     </div>
                 ) : (
-                    <div className="tp-asset-list" role="radiogroup" aria-label="Asset">
+                    <div className="tp-asset-list" role="radiogroup" aria-label={tr("Asset")}>
                         {matched.map(assetRow)}
                         {other.length > 0 && (
                             <>
                                 <button type="button" className="tp-other-toggle" aria-expanded={showOther}
                                         onClick={() => setShowOther((s) => !s)}>
-                                    {showOther ? "▾" : "▸"} Other / unknown type ({other.length})
+                                    {showOther ? "▾" : "▸"} {" "}{tr("Other / unknown type ({{length}})", { length: other.length })}
                                 </button>
                                 {showOther && other.map(assetRow)}
                             </>
@@ -345,10 +346,20 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                 <div className="tp-summary" aria-live="polite">
                     <AssetIcon icon={selected.icon} size={36} color={CATEGORY_COLORS[selected.category]} monogram={selected.monogram} />
                     <div className="tp-summary-text">
-                        <span>You are {VERB[mode]} <b>{selected.label}{version ? ` ${versionText}` : ""}</b>
-                            {chosenAsset ? <> on <b>{chosenAsset.asset_name}</b> ({chosenAsset.ip_address || "no IP"})</> : " - choose an asset"}
+                        <span>{(() => {
+                            const target = <b>{selected.label}{version ? ` ${versionText}` : ""}</b>;
+                            if (!chosenAsset) {
+                                return mode === "audit"
+                                    ? tx("You are auditing {{target}} - choose an asset", { target })
+                                    : tx("You are hardening {{target}} - choose an asset", { target });
+                            }
+                            const values = { target, asset: <b>{chosenAsset.asset_name}</b>, ip: chosenAsset.ip_address || tr("no IP") };
+                            return mode === "audit"
+                                ? tx("You are auditing {{target}} on {{asset}} ({{ip}})", values)
+                                : tx("You are hardening {{target}} on {{asset}} ({{ip}})", values);
+                        })()}
                         </span>
-                        <span className="tp-muted">Connects via {selected.connects_via}</span>
+                        <span className="tp-muted">{tr("Connects via {{connects_via}}", { connects_via: selected.connects_via })}</span>
                     </div>
                 </div>
             )}

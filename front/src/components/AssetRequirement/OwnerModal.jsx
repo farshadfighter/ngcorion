@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createOwner } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 export const OwnerModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -19,14 +20,14 @@ export const OwnerModal = ({ onClose }) => {
         const newErrors = {};
 
         if (!formData.full_name.trim()) {
-            newErrors.full_name = "Full name is required";
+            newErrors.full_name = t("Full name is required");
         }
 
         if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = "Invalid email format";
+            newErrors.email = t("Invalid email format");
         }
         if (formData.phone && !/^\+?[\d\s\-()]{7,15}$/.test(formData.phone)) {
-            newErrors.phone = "Invalid phone number format";
+            newErrors.phone = t("Invalid phone number format");
         }
 
         setErrors(newErrors);
@@ -63,7 +64,7 @@ export const OwnerModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Add Owner</h2>
+                    <h2>{t("Add Owner")}</h2>
                     <button className="modal-close" onClick={onClose}>
                         ×
                     </button>
@@ -75,14 +76,14 @@ export const OwnerModal = ({ onClose }) => {
                         {/* Full Name - full width */}
                         <div className="form-group full-width">
                             <label>
-                                Full Name <span className="required">*</span>
+                                {t("Full Name")}{" "} <span className="required">*</span>
                             </label>
                             <input
                                 type="text"
                                 name="full_name"
                                 value={formData.full_name}
                                 onChange={handleChange}
-                                placeholder="Enter full name"
+                                placeholder={t("Enter full name")}
                                 className={errors.full_name ? "error" : ""}
                             />
                             {errors.full_name && (
@@ -92,37 +93,37 @@ export const OwnerModal = ({ onClose }) => {
 
                         {/* Department */}
                         <div className="form-group">
-                            <label>Department</label>
+                            <label>{t("Department")}</label>
                             <input
                                 type="text"
                                 name="department"
                                 value={formData.department}
                                 onChange={handleChange}
-                                placeholder="Enter department"
+                                placeholder={t("Enter department")}
                             />
                         </div>
 
                         {/* Role */}
                         <div className="form-group">
-                            <label>Role</label>
+                            <label>{t("Role")}</label>
                             <input
                                 type="text"
                                 name="role"
                                 value={formData.role}
                                 onChange={handleChange}
-                                placeholder="Enter role"
+                                placeholder={t("Enter role")}
                             />
                         </div>
 
                         {/* Email */}
                         <div className="form-group">
-                            <label>Email</label>
+                            <label>{t("Email")}</label>
                             <input
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                placeholder="Enter email"
+                                placeholder={t("Enter email")}
                                 className={errors.email ? "error" : ""}
                             />
                             {errors.email && (
@@ -132,7 +133,7 @@ export const OwnerModal = ({ onClose }) => {
 
                         {/* Phone */}
                         <div className="form-group">
-                            <label>Phone</label>
+                            <label>{t("Phone")}</label>
                             <input
                                 type="text"
                                 name="phone"
@@ -150,10 +151,10 @@ export const OwnerModal = ({ onClose }) => {
 
                     <div className="modal-footer">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit">
-                            Create
+                            {t("Create")}
                         </button>
                     </div>
                 </form>

@@ -250,7 +250,7 @@
     cursor: pointer;
 }
 .rw-seg button:first-child { border-radius: 8px 0 0 8px; }
-.rw-seg button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+.rw-seg button:last-child { border-radius: 0 8px 8px 0; border-inline-start: 0; }
 .rw-seg button.on { background: #1e3a5f; border-color: #1e3a5f; color: #fff; }
 
 .rw-banner {
@@ -269,7 +269,7 @@
 
 .rw-warnings {
     margin: 0;
-    padding: 10px 16px 10px 34px;
+    padding-block: 10px 10px; padding-inline: 34px 16px;
     border-radius: 10px;
     background: #fffbeb;
     border: 1px solid #fde68a;
@@ -314,7 +314,7 @@
     grid-template-columns: 26px 1fr;
     font: 13px/22px 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color: #1f2937;
-    padding-right: 12px;
+    padding-inline-end: 12px;
 }
 /* index.css sets the UI font on every element, so the spans need it too. */
 .rw-sg, .rw-code, .rw-skipped code {
@@ -329,12 +329,12 @@
 .rw-dl.ctx { color: #4b5563; }
 
 .rw-split { display: grid; grid-template-columns: 1fr 1fr; }
-.rw-split > div + div { border-left: 1px solid #e5e7eb; }
+.rw-split > div + div { border-inline-start: 1px solid #e5e7eb; }
 .rw-split-head { padding: 4px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
 
 .rw-skipped { font-size: 13px; color: #4b5563; }
 .rw-skipped summary { cursor: pointer; font-weight: 600; }
-.rw-skipped ul { margin: 8px 0 0; padding-left: 20px; }
+.rw-skipped ul { margin: 8px 0 0; padding-inline-start: 20px; }
 
 /* Step 3 */
 .rw-safe {

@@ -10,6 +10,7 @@ import { groupChecksByScope } from './vdomScope';
 // bundle so it renders either way, but the dependency is real — import it so
 // the styles cannot disappear if that ever changes.
 import '../../assets/Auditing.css';
+import { t, uiLocale, n } from "../../i18n";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : null);
 
@@ -84,7 +85,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         fontSize: '11px',
         fontWeight: 600,
         lineHeight: 1.4,
-        textAlign: 'left',
+        textAlign: 'start',
     };
 
     /* Per-control risk level, same badge as the Auditing and Hardening Result
@@ -103,10 +104,10 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
     const getStatusBadge = (check) => {
         const s = check.status?.toString().toUpperCase();
         const base =
-            s === 'PASS' ? <span className="result-badge result-success">Successful</span>
-            : s === 'FAIL' ? <span className="result-badge result-fail">Unsuccessful</span>
-            : s === 'ERROR' ? <span className="result-badge result-error">Error</span>
-            : <span className="result-badge result-unknown">Unknown</span>;
+            s === 'PASS' ? <span className="result-badge result-success">{t("Successful")}</span>
+            : s === 'FAIL' ? <span className="result-badge result-fail">{t("Unsuccessful")}</span>
+            : s === 'ERROR' ? <span className="result-badge result-error">{t("Error")}</span>
+            : <span className="result-badge result-unknown">{t("Unknown")}</span>;
         // Live feedback from this session's hardening (set by markCheckHardened —
         // no reload / re-audit needed to see it).
         const vdomSuffix = check.hardenedVdom ? ` (VDOM: ${check.hardenedVdom})` : '';
@@ -116,16 +117,16 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 {check.justHardened && (
                     <div style={{ marginTop: '4px' }}>
                         <span style={{ ...chipStyle, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}
-                              title={`Fixed and verified in this session${vdomSuffix}`}>
-                            ✓ Hardened{vdomSuffix}
+                              title={t("Fixed and verified in this session{{vdomSuffix}}", { vdomSuffix })}>
+                            {t("✓ Hardened{{vdomSuffix}}", { vdomSuffix })}
                         </span>
                     </div>
                 )}
                 {check.manualApplied && !check.justHardened && (
                     <div style={{ marginTop: '4px' }}>
                         <span style={{ ...chipStyle, background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}
-                              title={`Remediation pushed to the device${vdomSuffix}; manual checks are not auto-verified`}>
-                            <i className="fa-solid fa-screwdriver-wrench" /> Applied — re-audit to verify{vdomSuffix}
+                              title={t("Remediation pushed to the device{{vdomSuffix}}; manual checks are not auto-verified", { vdomSuffix })}>
+                            <i className="fa-solid fa-screwdriver-wrench" /> {" "}{t("Applied — re-audit to verify{{vdomSuffix}}", { vdomSuffix })}
                         </span>
                     </div>
                 )}
@@ -165,7 +166,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 {/* Header */}
                 <div className="result-modal-header">
                     <button className="result-back-btn" onClick={onClose}>
-                        ← Hardening Result
+                        {t("← Hardening Result")}
                     </button>
                 </div>
 
@@ -175,29 +176,29 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 <div className="hr-panel">
                 <div className="result-stats-container">
                     <div className="result-card result-card-info">
-                        <div className="card-label">Benchmark</div>
-                        <div className="card-value">{getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type)} CIS</div>
+                        <div className="card-label">{t("Benchmark")}</div>
+                        <div className="card-value">{t("{{getDeviceLabel}} CIS", { getDeviceLabel: getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type) })}</div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Asset</div>
+                        <div className="card-label">{t("Asset")}</div>
                         <div className="card-value">{sessionData?.asset_name || 'N/A'}</div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">IP Address</div>
+                        <div className="card-label">{t("IP Address")}</div>
                         <div className="card-value">{sessionData?.target_ip || 'N/A'}</div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Audit Date</div>
+                        <div className="card-label">{t("Audit Date")}</div>
                         <div className="card-value">
-                            {sessionData?.completed_at ? new Date(sessionData.completed_at).toLocaleDateString() : 'N/A'}
+                            {sessionData?.completed_at ? new Date(sessionData.completed_at).toLocaleDateString(uiLocale()) : 'N/A'}
                         </div>
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Device Type</div>
+                        <div className="card-label">{t("Device Type")}</div>
                         <div className="card-value">
                             {sessionData?.device_type
                                 ? getDeviceName(sessionData.sub_device_type || sessionData.device_type)
@@ -206,8 +207,8 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     </div>
 
                     <div className="result-card result-card-info">
-                        <div className="card-label">Status</div>
-                        <div className="card-value">{titleCase(sessionData?.status) || 'Completed'}</div>
+                        <div className="card-label">{t("Status")}</div>
+                        <div className="card-value">{titleCase(sessionData?.status) || t("Completed")}</div>
                     </div>
 
                 </div>
@@ -215,19 +216,19 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 <div className="result-stats-summary">
                     <div className="result-card result-card-success">
                         <div className="card-percent">{compliancePercentage}%</div>
-                        <div className="card-sub">{passedChecks} of {totalChecks} checks</div>
-                        <div className="card-label">Conformity</div>
+                        <div className="card-sub">{t("{{passedChecks}} of {{totalChecks}} checks", { passedChecks, totalChecks })}</div>
+                        <div className="card-label">{t("Conformity")}</div>
                     </div>
 
                     <div className="result-card result-card-danger">
                         <div className="card-percent">{nonCompliancePercentage}%</div>
-                        <div className="card-sub">{failedChecks} of {totalChecks} checks</div>
-                        <div className="card-label">Non-Conformity</div>
+                        <div className="card-sub">{t("{{failedChecks}} of {{totalChecks}} checks", { failedChecks, totalChecks })}</div>
+                        <div className="card-label">{t("Non-Conformity")}</div>
                     </div>
 
                     <div className="result-card result-card-total">
-                        <div className="card-number">{totalChecks}</div>
-                        <div className="card-label">Total Conditions</div>
+                        <div className="card-number">{n(totalChecks)}</div>
+                        <div className="card-label">{t("Total Conditions")}</div>
                     </div>
                 </div>
                 </div>
@@ -250,13 +251,13 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 className={`result-toolbar-tab${activeTab === 'audit' ? ' is-active' : ''}`}
                                 onClick={() => setActiveTab('audit')}
                             >
-                                Audit Result
+                                {t("Audit Result")}
                             </button>
                             <button
                                 className={`result-toolbar-tab${activeTab === 'unsuccessful' ? ' is-active' : ''}`}
                                 onClick={() => setActiveTab('unsuccessful')}
                             >
-                                Unsuccessful Section
+                                {t("Unsuccessful Section")}
                             </button>
                         </div>
                         <div className="result-toolbar-right">
@@ -265,7 +266,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                     className="result-toolbar-btn result-toolbar-btn-outline"
                                     onClick={onNavigateToAuditing}
                                 >
-                                    <i className="fa-solid fa-magnifying-glass" /> Go to Auditing
+                                    <i className="fa-solid fa-magnifying-glass" /> {" "}{t("Go to Auditing")}
                                 </button>
                             )}
                             <button
@@ -273,7 +274,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 onClick={handleHardenAll}
                                 disabled={failedChecks === 0}
                             >
-                                <i className="fa-solid fa-shield-halved" /> Harden All
+                                <i className="fa-solid fa-shield-halved" /> {" "}{t("Harden All")}
                             </button>
                         </div>
                     </div>
@@ -281,17 +282,17 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                     {/* Table */}
                     <div className="result-table-wrapper">
                         {isLoading ? (
-                            <div className="loading-spinner">Loading results...</div>
+                            <div className="loading-spinner">{t("Loading results...")}</div>
                         ) : (
                             <table className="result-table">
                                 <thead>
                                 <tr>
-                                    <th>Section</th>
-                                    {hasVdom && <th>VDOM</th>}
-                                    <th>Recommendation</th>
-                                    <th>Risk Level</th>
-                                    <th>Result</th>
-                                    <th style={{ width: '120px' }}>Action</th>
+                                    <th>{t("Section")}</th>
+                                    {hasVdom && <th>{t("VDOM")}</th>}
+                                    <th>{t("Recommendation")}</th>
+                                    <th>{t("Risk Level")}</th>
+                                    <th>{t("Result")}</th>
+                                    <th style={{ width: '120px' }}>{t("Action")}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -303,7 +304,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                     <td colSpan={colCount}>
                                                         {group.label}
                                                         <span className="scope-group-count">
-                                                            {group.checks.length} check{group.checks.length !== 1 ? 's' : ''}
+                                                            {t("{{count}} checks", { count: group.checks.length })}
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -333,15 +334,15 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                                                     onClick={() => handleHardenSingle(check)}
                                                                     style={{ padding: '8px 18px', background: '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                                                 >
-                                                                    <i className="fa-solid fa-shield-halved" />️ Harden
+                                                                    <i className="fa-solid fa-shield-halved" />{t("️ Harden")}
                                                                 </button>
                                                             ) : (
                                                                 <button
                                                                     onClick={() => handleViewFix(check)}
-                                                                    title="No automated fix — view the manual remediation commands"
+                                                                    title={t("No automated fix — view the manual remediation commands")}
                                                                     style={{ padding: '8px 16px', background: 'white', color: '#1e3a5f', border: '2px solid #1e3a5f', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                                                 >
-                                                                    <i className="fa-solid fa-clipboard" /> View Fix
+                                                                    <i className="fa-solid fa-clipboard" /> {" "}{t("View Fix")}
                                                                 </button>
                                                             )
                                                         )}
@@ -353,7 +354,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                                 ) : (
                                     <tr>
                                         <td colSpan={colCount} style={{ textAlign: 'center', padding: '40px' }}>
-                                            {activeTab === 'unsuccessful' ? 'No unsuccessful checks' : 'No results'}
+                                            {activeTab === 'unsuccessful' ? t("No unsuccessful checks") : t("No results")}
                                         </td>
                                     </tr>
                                 )}

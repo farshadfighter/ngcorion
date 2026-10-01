@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { createAssetType } from "../../store/requirementSlice";
 import IconPicker from "../shared/IconPicker.jsx";
 import { suggestIconFromName } from "../shared/assetIcons.js";
+import { t } from "../../i18n";
 
 export const AssetTypeModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -20,11 +21,11 @@ export const AssetTypeModal = ({ onClose }) => {
         const newErrors = {};
 
         if (!formData.type_name.trim()) {
-            newErrors.type_name = "Type name is required";
+            newErrors.type_name = t("Type name is required");
         }
 
         if (!formData.category.trim()) {
-            newErrors.category = "Category is required";
+            newErrors.category = t("Category is required");
         }
 
         setErrors(newErrors);
@@ -56,7 +57,7 @@ export const AssetTypeModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content modal-small" style={{ maxWidth: 680, width: "100%" }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Add Asset Type</h2>
+                    <h2>{t("Add Asset Type")}</h2>
                     <button className="modal-close" onClick={onClose}>
                         ×
                     </button>
@@ -65,14 +66,14 @@ export const AssetTypeModal = ({ onClose }) => {
                 <form onSubmit={handleSubmit} className="modal-body">
                     <div className="form-group">
                         <label>
-                            Type Name <span className="required">*</span>
+                            {t("Type Name")}{" "} <span className="required">*</span>
                         </label>
                         <input
                             type="text"
                             name="type_name"
                             value={formData.type_name}
                             onChange={handleChange}
-                            placeholder="Enter type name"
+                            placeholder={t("Enter type name")}
                             className={errors.type_name ? "error" : ""}
                         />
                         {errors.type_name && (
@@ -82,14 +83,14 @@ export const AssetTypeModal = ({ onClose }) => {
 
                     <div className="form-group">
                         <label>
-                            Category <span className="required">*</span>
+                            {t("Category")}{" "} <span className="required">*</span>
                         </label>
                         <input
                             type="text"
                             name="category"
                             value={formData.category}
                             onChange={handleChange}
-                            placeholder="Enter category"
+                            placeholder={t("Enter category")}
                             className={errors.category ? "error" : ""}
                         />
                         {errors.category && (
@@ -98,12 +99,12 @@ export const AssetTypeModal = ({ onClose }) => {
                     </div>
 
                     <div className="form-group">
-                        <label>Description</label>
+                        <label>{t("Description")}</label>
                         <textarea
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
-                            placeholder="Enter description"
+                            placeholder={t("Enter description")}
                             rows="3"
                         />
                     </div>
@@ -119,10 +120,10 @@ export const AssetTypeModal = ({ onClose }) => {
 
                     <div className="modal-footer">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit">
-                            Create
+                            {t("Create")}
                         </button>
                     </div>
                 </form>

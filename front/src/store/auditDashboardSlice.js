@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 /**
  * Auditing KPI dashboard data.
@@ -49,7 +50,7 @@ export const fetchAuditDashboard = createAsyncThunk(
 
             // Every panel failing means the request failed, not one panel.
             if (failed.length === keys.length) {
-                throw results[0].reason || new Error("Audit dashboard unavailable");
+                throw results[0].reason || new Error(t("Audit dashboard unavailable"));
             }
             return { data, failed };
         } catch (err) {

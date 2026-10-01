@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../config/api";
+import { t } from "../../i18n";
 
 export const AssetPortsTable = ({ assetId }) => {
     const [ports, setPorts] = useState([]);
@@ -36,15 +37,15 @@ export const AssetPortsTable = ({ assetId }) => {
                     padding: "12px 0",
                 }}
             >
-                Open Ports
+               {t("Open Ports")}
             </div>
 
             {loading && (
-                <div className="loading-spinner">Loading ports...</div>
+                <div className="loading-spinner">{t("Loading ports...")}</div>
             )}
 
             {!loading && ports.length === 0 && (
-                <div className="no-data">No ports detected</div>
+                <div className="no-data">{t("No ports detected")}</div>
             )}
 
             {!loading && ports.length > 0 && (
@@ -52,12 +53,12 @@ export const AssetPortsTable = ({ assetId }) => {
                     <table className="assets-table">
                         <thead>
                         <tr>
-                            <th>Port</th>
-                            <th>Protocol</th>
-                            <th>Service</th>
-                            <th>Product</th>
-                            <th>Version</th>
-                            <th>Status</th>
+                            <th>{t("Port")}</th>
+                            <th>{t("Protocol")}</th>
+                            <th>{t("Service")}</th>
+                            <th>{t("Product")}</th>
+                            <th>{t("Version")}</th>
+                            <th>{t("Status")}</th>
                         </tr>
                         </thead>
                         <tbody>

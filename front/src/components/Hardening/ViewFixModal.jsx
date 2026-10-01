@@ -16,6 +16,9 @@ import {
     buildCredentials,
 } from './hardeningCredentials';
 import '../../assets/hardening/Hardenallmodal.css';
+import { t as tr } from "../../i18n";
+import { tx } from "../../i18n/tx";
+import { tv } from "../../i18n/backendText";
 
 /**
  * "View Fix" for a manual (non-auto-fixable) FortiGate check.
@@ -81,7 +84,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 });
                 setParamValues(seed);
             })
-            .catch((err) => { if (active) setError(typeof err === 'string' ? err : 'Failed to load remediation guidance.'); })
+            .catch((err) => { if (active) setError(typeof err === 'string' ? err : tr("Failed to load remediation guidance.")); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
     }, [dispatch, checkId, resultId]);
@@ -147,7 +150,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     [t]: {
                         loading: false,
                         options: [],
-                        error: typeof err === 'string' ? err : 'Could not load options from the device.',
+                        error: typeof err === 'string' ? err : tr("Could not load options from the device."),
                     },
                 })));
         });
@@ -273,7 +276,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             })
             .map((p) => p.label);
         if (missing.length) {
-            setFormError(`Please fill in required field(s): ${missing.join(', ')}`);
+            setFormError(tr("Please fill in required field(s): {{join}}", { join: missing.join(', ') }));
             return false;
         }
         setFormError(null);
@@ -328,7 +331,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 if (onSuccess) onSuccess();
             }
         } catch (err) {
-            setFormError(typeof err === 'string' ? err : (err?.message || 'Execution failed.'));
+            setFormError(typeof err === 'string' ? err : (err?.message || tr("Execution failed.")));
             setStep(parameters.length > 0 ? 3 : 2);
         } finally {
             setExecuting(false);
@@ -341,21 +344,21 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             <div>
                 <h3 style={{ fontSize: '18px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>{title}</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {guidance.cis_id && <span style={badge}>CIS {guidance.cis_id}</span>}
+                    {guidance.cis_id && <span style={badge}>{tr("CIS {{cis_id}}", { cis_id: guidance.cis_id })}</span>}
                     {guidance.cis_section && <span style={badge}>{guidance.cis_section}</span>}
-                    {guidance.severity && <span style={badge}>{guidance.severity}</span>}
+                    {guidance.severity && <span style={badge}>{tv(guidance.severity)}</span>}
                     {guidance.scope && <span style={badge}>{guidance.scope}</span>}
-                    {executable && <span style={{ ...badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>Executable</span>}
+                    {executable && <span style={{ ...badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>{tr("Executable")}</span>}
                 </div>
             </div>
 
             {targetVdom && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderLeft: '5px solid #7c3aed', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderInlineStart: '5px solid #7c3aed', borderRadius: '10px' }}>
                     <span style={{ fontSize: '18px' }}><i className="fa-solid fa-bullseye" /></span>
                     <span style={{ fontSize: '14px', color: '#4c1d95' }}>
-                        Target VDOM: <strong>{vdomBadgeLabel(targetVdom)}</strong>
-                        <span style={{ color: '#6b7280', marginLeft: '8px', fontSize: '12px' }}>
-                            — the remediation runs inside this context on the device
+                        {tr("Target VDOM:")}{" "} <strong>{vdomBadgeLabel(targetVdom)}</strong>
+                        <span style={{ color: '#6b7280', marginInlineStart: '8px', fontSize: '12px' }}>
+                            {tr("— the remediation runs inside this context on the device")}
                         </span>
                     </span>
                 </div>
@@ -369,7 +372,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
             {(guidance.warnings ?? []).length > 0 && (
                 <div className="hardening-warnings-box">
-                    <h4>⚠️ Warnings:</h4>
+                    <h4>{tr("⚠️ Warnings:")}</h4>
                     <ul>{guidance.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
                 </div>
             )}
@@ -377,26 +380,26 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             {commands.length > 0 ? (
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 12px 0' }}>
-                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: 0, fontWeight: 700 }}>CLI Commands</h4>
+                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: 0, fontWeight: 700 }}>{tr("CLI Commands")}</h4>
                         <button onClick={handleCopy} style={{ padding: '7px 14px', background: copied ? '#059669' : '#1e3a5f', color: 'white', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                            {copied ? '✓ Copied' : ' Copy commands'}
+                            {copied ? tr("✓ Copied") : tr(" Copy commands")}
                         </button>
                     </div>
                     <pre style={preStyle}>{forDisplay(commands).join('\n')}</pre>
                     {targetVdom && (
                         <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                            The <code>config global</code> / <code>config vdom</code> wrapper shows the VDOM scope — it is added automatically when executing.
+                            {tx("The {{wrapper}} wrapper shows the VDOM scope — it is added automatically when executing.", { wrapper: <><code>config global</code> / <code>config vdom</code></> })}
                         </p>
                     )}
                     {executable && parameters.length > 0 && (
                         <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                            ℹ️ Values in <code>{'{BRACES}'}</code> are selected from real device/audit data before running.
+                            {tx("ℹ️ Values in {{braces}} are selected from real device/audit data before running.", { braces: <code>{'{BRACES}'}</code> })}
                         </p>
                     )}
                 </div>
             ) : (
                 <div className="hardening-info-box">
-                    <p style={{ margin: 0 }}>No CLI commands for this check — follow the guidance above.</p>
+                    <p style={{ margin: 0 }}>{tr("No CLI commands for this check — follow the guidance above.")}</p>
                 </div>
             )}
         </div>
@@ -430,15 +433,15 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '2px 0 6px 0' }}>
                             <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                                {selected.length} of {options.length} selected
+                                {tr("{{length}} of {{length2}} selected", { length: selected.length, length2: options.length })}
                             </span>
                             <button type="button" style={miniBtnStyle}
                                 onClick={() => setParamValues((prev) => ({ ...prev, [p.name]: [...options] }))}>
-                                Select all
+                                {tr("Select all")}
                             </button>
                             <button type="button" style={miniBtnStyle}
                                 onClick={() => setParamValues((prev) => ({ ...prev, [p.name]: [] }))}>
-                                Clear
+                                {tr("Clear")}
                             </button>
                         </div>
                         <div style={multiBoxStyle}>
@@ -449,26 +452,26 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                                         checked={selected.includes(o)}
                                         onChange={() => toggleMultiValue(p, o)}
                                     />
-                                    <span>{p.name === 'POLICY_ID' ? `Policy ${o}` : o}</span>
+                                    <span>{p.name === 'POLICY_ID' ? tr("Policy {{o}}", { o }) : o}</span>
                                 </label>
                             ))}
                         </div>
                     </>
                 ) : (
                     <p style={{ margin: '4px 0', fontSize: '12px', color: '#b45309' }}>
-                        ⚠️ No failing entries could be read from the audit evidence — enter them manually below.
+                        {tr("⚠️ No failing entries could be read from the audit evidence — enter them manually below.")}
                     </p>
                 )}
                 <input
                     type="text"
                     value={extraValues[p.name] ?? ''}
                     onChange={(e) => setExtraValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
-                    placeholder={options.length > 0 ? 'Add other values not listed (comma-separated, optional)' : `Enter ${p.label} (comma-separated)`}
+                    placeholder={options.length > 0 ? tr("Add other values not listed (comma-separated, optional)") : tr("Enter {{label}} (comma-separated)", { label: p.label })}
                     style={{ ...inputStyle, marginTop: '6px' }}
                 />
                 {selected.length + parseExtra(p).length > 1 && (
                     <span style={{ fontSize: '12px', color: '#166534', display: 'block', marginTop: '4px' }}>
-                        The command block will run once per selected entry ({[...new Set([...selected, ...parseExtra(p)])].length} blocks).
+                        {tr("The command block will run once per selected entry ({{length}} blocks).", { length: [...new Set([...selected, ...parseExtra(p)])].length })}
                     </span>
                 )}
             </>
@@ -482,7 +485,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <select disabled style={{ ...inputStyle, color: '#6b7280' }}>
-                        <option>Loading from device…</option>
+                        <option>{tr("Loading from device…")}</option>
                     </select>
                     <div className="hardening-spinner" style={{ width: '18px', height: '18px' }}></div>
                 </div>
@@ -497,11 +500,11 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                             type="text"
                             value={extraValues[p.name] ?? ''}
                             onChange={(e) => setExtraValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
-                            placeholder={`Enter ${p.label} (comma-separated)`}
+                            placeholder={tr("Enter {{label}} (comma-separated)", { label: p.label })}
                             style={inputStyle}
                         />
                         <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '4px' }}>
-                            ⚠️ {st.error || 'The device returned no entries.'} Enter the name(s) manually.
+                            ⚠️ {st.error || tr("The device returned no entries.")} {" "}{tr("Enter the name(s) manually.")}
                         </span>
                     </>
                 );
@@ -512,11 +515,11 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                         type="text"
                         value={paramValues[p.name] ?? ''}
                         onChange={(e) => handleParamChange(p.name, e.target.value)}
-                        placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : `Enter ${p.label}`)}
+                        placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : tr("Enter {{label}}", { label: p.label }))}
                         style={inputStyle}
                     />
                     <span style={{ fontSize: '12px', color: '#b45309', display: 'block', marginTop: '4px' }}>
-                        ⚠️ {st.error || 'The device returned no entries.'} Enter the name manually.
+                        ⚠️ {st.error || tr("The device returned no entries.")} {" "}{tr("Enter the name manually.")}
                     </span>
                 </>
             );
@@ -527,11 +530,11 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '2px 0 6px 0' }}>
                         <span style={{ fontSize: '12px', color: '#6b7280' }}>
-                            {selected.length} of {choices.length} selected
+                            {tr("{{length}} of {{length2}} selected", { length: selected.length, length2: choices.length })}
                         </span>
                         <button type="button" style={miniBtnStyle}
                             onClick={() => setParamValues((prev) => ({ ...prev, [p.name]: [] }))}>
-                            Clear
+                            {tr("Clear")}
                         </button>
                     </div>
                     <div style={multiBoxStyle}>
@@ -550,11 +553,11 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                         type="text"
                         value={extraValues[p.name] ?? ''}
                         onChange={(e) => setExtraValues((prev) => ({ ...prev, [p.name]: e.target.value }))}
-                        placeholder="Add other names not listed (comma-separated, optional)"
+                        placeholder={tr("Add other names not listed (comma-separated, optional)")}
                         style={{ ...inputStyle, marginTop: '6px' }}
                     />
                     <span style={{ fontSize: '12px', color: '#166534', display: 'block', marginTop: '4px' }}>
-                        Selected names are combined into one object list on the command line.
+                        {tr("Selected names are combined into one object list on the command line.")}
                     </span>
                 </>
             );
@@ -572,15 +575,15 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
     const renderParams = () => (
         <div className="hardening-params-form">
-            <h3 style={{ fontSize: '16px', color: '#1e3a5f', margin: '0 0 16px 0', fontWeight: 700 }}>Configure parameters</h3>
+            <h3 style={{ fontSize: '16px', color: '#1e3a5f', margin: '0 0 16px 0', fontWeight: 700 }}>{tr("Configure parameters")}</h3>
             {parameters.map((p) => (
                 <div key={p.name} className="hardening-form-group">
                     <label>
                         {p.label}
                         {p.required || p.multi || p.multi_join ? <span className="hardening-required">*</span>
-                                    : <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: '6px' }}>(optional)</span>}
-                        {p.source === 'audit_evidence' && <span style={{ ...sourceTag, background: '#fef3c7', color: '#92400e' }}>from audit</span>}
-                        {p.source === 'device' && <span style={{ ...sourceTag, background: '#dbeafe', color: '#1e40af' }}>from device</span>}
+                                    : <span style={{ color: '#6b7280', fontWeight: 400, marginInlineStart: '6px' }}>{tr("(optional)")}</span>}
+                        {p.source === 'audit_evidence' && <span style={{ ...sourceTag, background: '#fef3c7', color: '#92400e' }}>{tr("from audit")}</span>}
+                        {p.source === 'device' && <span style={{ ...sourceTag, background: '#dbeafe', color: '#1e40af' }}>{tr("from device")}</span>}
                     </label>
                     {p.source === 'audit_evidence' && p.multi ? renderEvidenceMultiParam(p)
                         : p.source === 'device' ? renderDeviceParam(p)
@@ -593,7 +596,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                             type={p.type === 'password' ? 'password' : (p.type === 'number' ? 'number' : 'text')}
                             value={paramValues[p.name] ?? ''}
                             onChange={(e) => handleParamChange(p.name, e.target.value)}
-                            placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : `Enter ${p.label}`)}
+                            placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : tr("Enter {{label}}", { label: p.label }))}
                             autoComplete={p.secret ? 'new-password' : 'off'}
                             style={inputStyle}
                         />
@@ -603,10 +606,10 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
             ))}
             <div style={{ marginTop: '8px' }}>
                 <h4 style={{ fontSize: '13px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>
-                    Preview
+                    {tr("Preview")}
                     {targetVdom && (
-                        <span style={{ marginLeft: '10px', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#ede9fe', color: '#4c1d95', border: '1px solid #c4b5fd' }}>
-                            <i className="fa-solid fa-bullseye" /> VDOM: {vdomBadgeLabel(targetVdom)}
+                        <span style={{ marginInlineStart: '10px', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 600, background: '#ede9fe', color: '#4c1d95', border: '1px solid #c4b5fd' }}>
+                            <i className="fa-solid fa-bullseye" /> {" "}{tr("VDOM: {{vdomBadgeLabel}}", { vdomBadgeLabel: vdomBadgeLabel(targetVdom) })}
                         </span>
                     )}
                 </h4>
@@ -618,36 +621,36 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     const renderExecuting = () => (
         <div className="hardening-modal-executing">
             <div className="hardening-spinner-large"></div>
-            <h3>Executing Fix…</h3>
-            <p>Applying the remediation on the device. Manual fixes are not auto-verified.</p>
+            <h3>{tr("Executing Fix…")}</h3>
+            <p>{tr("Applying the remediation on the device. Manual fixes are not auto-verified.")}</p>
         </div>
     );
 
     const renderResults = () => {
-        if (!result) return <div className="hardening-modal-error"><p>No results available.</p></div>;
+        if (!result) return <div className="hardening-modal-error"><p>{tr("No results available.")}</p></div>;
         const ok = result.success === true;
         const perTarget = result.per_target ?? [];
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ padding: '20px', borderRadius: '12px', borderLeft: ok ? '5px solid #1e3a5f' : '5px solid #ef4444', background: ok ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
+                <div style={{ padding: '20px', borderRadius: '12px', borderInlineStart: ok ? '5px solid #1e3a5f' : '5px solid #ef4444', background: ok ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
                     <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', fontWeight: 700, color: ok ? '#1e3a5f' : '#c0392b' }}>
-                        {ok ? '✓ Successfully applied' : '✗ Execution reported errors'}
+                        {ok ? tr("✓ Successfully applied") : tr("✗ Execution reported errors")}
                     </h3>
                     <p style={{ margin: 0, color: '#6b7280', fontSize: '13px', lineHeight: 1.6 }}>
                         {ok
-                            ? 'The device accepted the remediation. This is a manual control, so it was not automatically re-verified — re-run the audit to confirm compliance. The results list now marks this check as applied.'
-                            : 'The device returned one or more errors. Review the output below.'}
+                            ? tr("The device accepted the remediation. This is a manual control, so it was not automatically re-verified — re-run the audit to confirm compliance. The results list now marks this check as applied.")
+                            : tr("The device returned one or more errors. Review the output below.")}
                     </p>
                     {result.target_vdom && (
                         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4c1d95' }}>
-                            <i className="fa-solid fa-bullseye" /> Modified VDOM: <strong>{vdomBadgeLabel(result.target_vdom)}</strong>
+                            <i className="fa-solid fa-bullseye" /> {" "}{tr("Modified VDOM:")}{" "} <strong>{vdomBadgeLabel(result.target_vdom)}</strong>
                         </p>
                     )}
                 </div>
 
                 {perTarget.length > 0 && (
                     <div>
-                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>Per-entry result</h4>
+                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>{tr("Per-entry result")}</h4>
                         <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
                             {perTarget.map((t, i) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 14px', borderTop: i > 0 ? '1px solid #e5e7eb' : 'none', background: t.success ? '#f0fdf4' : '#fef2f2' }}>
@@ -666,28 +669,28 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
 
                 {(result.errors ?? []).length > 0 && (
                     <div className="hardening-warnings-box">
-                        <h4>Errors:</h4>
+                        <h4>{tr("Errors:")}</h4>
                         <ul>{result.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
                     </div>
                 )}
 
                 {result.commands_executed?.length > 0 && (
                     <div>
-                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>Commands executed</h4>
+                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>{tr("Commands executed")}</h4>
                         <pre style={preStyle}>{result.commands_executed.join('\n')}</pre>
                     </div>
                 )}
 
                 {result.output && (
                     <div>
-                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>Device output</h4>
+                        <h4 style={{ fontSize: '14px', color: '#1e3a5f', margin: '0 0 8px 0', fontWeight: 700 }}>{tr("Device output")}</h4>
                         <pre style={preStyle}>{result.output}</pre>
                     </div>
                 )}
 
                 {result.backup_created && (
-                    <div style={{ background: 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)', borderLeft: '5px solid #1e3a5f', padding: '14px 18px', borderRadius: '10px' }}>
-                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '13px', fontWeight: 600 }}><i className="fa-solid fa-floppy-disk" /> Configuration backup created before applying.</p>
+                    <div style={{ background: 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)', borderInlineStart: '5px solid #1e3a5f', padding: '14px 18px', borderRadius: '10px' }}>
+                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '13px', fontWeight: 600 }}><i className="fa-solid fa-floppy-disk" /> {" "}{tr("Configuration backup created before applying.")}</p>
                     </div>
                 )}
             </div>
@@ -695,10 +698,10 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
     };
 
     const infoText = () => {
-        if (step === 1) return 'Review the remediation for this manual check.'
+        if (step === 1) return tr("Review the remediation for this manual check.")
             + (executable ? ' You can apply it below.' : ' Apply the steps on the device manually — nothing is executed for guidance-only checks.');
-        if (step === 2) return 'Enter SSH credentials. They are also used to read existing profile/object names from the device for the next step.';
-        if (step === 3) return 'Pick the values for this remediation — options come from the audit evidence and the live device.';
+        if (step === 2) return tr("Enter SSH credentials. They are also used to read existing profile/object names from the device for the next step.");
+        if (step === 3) return tr("Pick the values for this remediation — options come from the audit evidence and the live device.");
         return '';
     };
 
@@ -708,7 +711,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 <div className="hardening-modal-header">
                     <div className="hardening-modal-title">
                         <span className="hardening-modal-icon"><i className="fa-solid fa-clipboard" /></span>
-                        <h2>View Fix — Manual Remediation</h2>
+                        <h2>{tr("View Fix — Manual Remediation")}</h2>
                     </div>
                     <button className="hardening-modal-close" onClick={onClose}>×</button>
                 </div>
@@ -724,7 +727,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                     {loading && (
                         <div className="hardening-modal-loading">
                             <div className="hardening-spinner"></div>
-                            <p>Loading remediation…</p>
+                            <p>{tr("Loading remediation…")}</p>
                         </div>
                     )}
                     {!loading && error && <div className="hardening-modal-error"><p>{error}</p></div>}
@@ -749,30 +752,30 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                 <div className="hardening-modal-footer">
                     {step === 1 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={onClose}>Close</button>
+                            <button className="hardening-btn-secondary" onClick={onClose}>{tr("Close")}</button>
                             {!loading && !error && executable && (
-                                <button className="hardening-btn-primary" onClick={startExecute}>⚡ Execute Fix</button>
+                                <button className="hardening-btn-primary" onClick={startExecute}>{tr("⚡ Execute Fix")}</button>
                             )}
                         </>
                     )}
                     {step === 2 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(1)}>Back</button>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(1)}>{tr("Back")}</button>
                             <button className="hardening-btn-primary" onClick={handleNextFromCredentials} disabled={executing}>
-                                {parameters.length > 0 ? 'Next' : '⚡ Execute Fix'}
+                                {parameters.length > 0 ? tr("Next") : tr("⚡ Execute Fix")}
                             </button>
                         </>
                     )}
                     {step === 3 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(2)}>Back</button>
-                            <button className="hardening-btn-primary" onClick={handleExecute} disabled={executing}>⚡ Execute Fix</button>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(2)}>{tr("Back")}</button>
+                            <button className="hardening-btn-primary" onClick={handleExecute} disabled={executing}>{tr("⚡ Execute Fix")}</button>
                         </>
                     )}
                     {step === 5 && (
                         // onSuccess already fired when execution succeeded (list is
                         // updated live); Finish only closes the modal.
-                        <button className="hardening-btn-primary" onClick={onClose}>Finish</button>
+                        <button className="hardening-btn-primary" onClick={onClose}>{tr("Finish")}</button>
                     )}
                 </div>
             </div>
@@ -793,7 +796,7 @@ const badge = {
 
 const sourceTag = {
     display: 'inline-block',
-    marginLeft: '8px',
+    marginInlineStart: '8px',
     padding: '2px 8px',
     borderRadius: '999px',
     fontSize: '11px',

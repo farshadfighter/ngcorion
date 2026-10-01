@@ -5,6 +5,8 @@ import { HardeningConnectionForm } from "./HardeningConnectionForm";
 import { HardeningProcess } from "./HardeningProcess";
 import { HardeningSuccess } from "./HardeningSuccess";
 import { HardeningResults } from "./HardeningResults";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 // ==========================================
 // کامپوننت صفحه Fail
@@ -45,7 +47,7 @@ const HardeningFailed = ({ sessionData, onRetry, onClose }) => (
                 color: "#991B1B",
                 margin: 0,
             }}>
-                Connection Failed
+                {t("Connection Failed")}
             </h2>
             <p style={{
                 fontSize: "14px",
@@ -53,10 +55,9 @@ const HardeningFailed = ({ sessionData, onRetry, onClose }) => (
                 margin: 0,
                 lineHeight: "1.6",
             }}>
-                Could not connect to <strong>{sessionData?.asset_name || "the device"}</strong>
-                {sessionData?.target_ip ? ` (${sessionData.target_ip})` : ""}.
+                {tx("Could not connect to {{device}}.", { device: <><strong>{sessionData?.asset_name || t("the device")}</strong>{sessionData?.target_ip ? <bdi>{` (${sessionData.target_ip})`}</bdi> : ""}</> })}
                 <br />
-                Please check your credentials and try again.
+                {t("Please check your credentials and try again.")}
             </p>
         </div>
 
@@ -78,7 +79,7 @@ const HardeningFailed = ({ sessionData, onRetry, onClose }) => (
                 onMouseOver={(e) => e.target.style.background = "#DC2626"}
                 onMouseOut={(e) => e.target.style.background = "#EF4444"}
             >
-                Try Again
+                {t("Try Again")}
             </button>
             <button
                 onClick={onClose}
@@ -96,7 +97,7 @@ const HardeningFailed = ({ sessionData, onRetry, onClose }) => (
                 onMouseOver={(e) => e.target.style.background = "#F9FAFB"}
                 onMouseOut={(e) => e.target.style.background = "white"}
             >
-                Close
+                {t("Close")}
             </button>
         </div>
     </div>
@@ -160,7 +161,7 @@ export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon">1</div>
                         </div>
-                        <div className="stepper-label">Connection</div>
+                        <div className="stepper-label">{t("Connection")}</div>
                     </div>
 
                     <div className={`stepper-line ${currentStep >= 2 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}></div>
@@ -170,7 +171,7 @@ export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon">2</div>
                         </div>
-                        <div className="stepper-label">Process</div>
+                        <div className="stepper-label">{t("Process")}</div>
                     </div>
 
                     <div className={`stepper-line ${currentStep >= 3 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}></div>
@@ -180,7 +181,7 @@ export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon">{hasFailed ? "✕" : "3"}</div>
                         </div>
-                        <div className="stepper-label">Result</div>
+                        <div className="stepper-label">{t("Result")}</div>
                     </div>
 
                     <div className={`stepper-line ${currentStep >= 4 ? "active" : ""}`}></div>
@@ -190,7 +191,7 @@ export const HardeningWizard = ({ isOpen, onClose, onNavigateToAuditing }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon"><i className="fa-solid fa-shield-halved" /></div>
                         </div>
-                        <div className="stepper-label">Harden</div>
+                        <div className="stepper-label">{t("Harden")}</div>
                     </div>
                 </div>
 

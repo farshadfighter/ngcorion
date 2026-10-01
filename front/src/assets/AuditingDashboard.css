@@ -220,7 +220,7 @@
 
 .aud-table th {
     padding: 12px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 13px;
     font-weight: 600;
     color: #6b7280;
@@ -312,7 +312,7 @@
     border-radius: 5px;
     transition: width 0.6s ease;
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 0;
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { activateLicenseThunk, clearMessages } from "../../store/licenseSlice";
+import { t } from "../../i18n";
 
 export const LicenseActivationScreen = () => {
     const dispatch = useDispatch();
@@ -64,10 +65,10 @@ export const LicenseActivationScreen = () => {
                             marginBottom: "8px",
                         }}
                     >
-                        Activate Your License
+                        {t("Activate Your License")}
                     </div>
                     <div style={{ fontSize: "14px", color: "#6B7280" }}>
-                        Enter the license key provided by your administrator
+                        {t("Enter the license key provided by your administrator")}
                     </div>
                 </div>
 
@@ -100,11 +101,11 @@ export const LicenseActivationScreen = () => {
                             marginBottom: "8px",
                         }}
                     >
-                        License Key
+                        {t("License Key")}
                     </label>
                     <input
                         type="text"
-                        placeholder="XXXX-XXXX-XXXX-XXXX"
+                        placeholder={t("XXXX-XXXX-XXXX-XXXX")}
                         value={licenseKey}
                         onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
                         onKeyPress={handleKeyPress}
@@ -175,10 +176,10 @@ export const LicenseActivationScreen = () => {
                                     animation: "spin 0.6s linear infinite",
                                 }}
                             />
-                            Activating...
+                            {t("Activating...")}
                         </span>
                     ) : (
-                        "Activate License"
+                        t("Activate License")
                     )}
                 </button>
 
@@ -199,9 +200,9 @@ export const LicenseActivationScreen = () => {
                             lineHeight: "1.6",
                         }}
                     >
-                        <strong style={{ color: "#374151" }}>Don't have a license key?</strong>
+                        <strong style={{ color: "#374151" }}>{t("Don't have a license key?")}</strong>
                         <br />
-                        Contact your system administrator to obtain one.
+                        {t("Contact your system administrator to obtain one.")}
                     </div>
                 </div>
             </div>

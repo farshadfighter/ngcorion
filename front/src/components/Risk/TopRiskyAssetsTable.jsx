@@ -1,23 +1,24 @@
 import React from "react";
 import { orDash } from "./riskConstants";
 import { RiskLevelBadge } from "./RiskLevelBadge";
+import { t } from "../../i18n";
 
 const COLUMNS = [
-    "Number",
-    "Asset Name",
-    "Hostname",
-    "Type",
-    "Zone",
-    "Manufacturer",
-    "Model",
-    "Risk Score",
-    "Risk Level",
+    t("Number"),
+    t("Asset Name"),
+    t("Hostname"),
+    t("Type"),
+    t("Zone"),
+    t("Manufacturer"),
+    t("Model"),
+    t("Risk Score"),
+    t("Risk Level"),
 ];
 
 /** "Top 10 Risky Assets" table on the Risk Intelligence dashboard. */
 export const TopRiskyAssetsTable = ({ rows }) => (
     <section className="risk-card risk-table-card">
-        <h3 className="risk-card-title">Top 10 Risky Assets</h3>
+        <h3 className="risk-card-title">{t("Top 10 Risky Assets")}</h3>
         <div className="risk-table-wrapper risk-table-wrapper--inset">
             <table className="risk-table">
                 <thead>
@@ -31,7 +32,7 @@ export const TopRiskyAssetsTable = ({ rows }) => (
                     {rows.length === 0 && (
                         <tr>
                             <td colSpan={COLUMNS.length} className="risk-table-empty">
-                                No risk scores calculated yet.
+                                {t("No risk scores calculated yet.")}
                             </td>
                         </tr>
                     )}

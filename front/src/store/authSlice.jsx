@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 // ==========================================
 // Async Thunks
@@ -16,15 +17,15 @@ export const loginUser = createAsyncThunk(
             return response.data;
         } catch (err) {
             if (err.response?.status === 401) {
-                return rejectWithValue("Incorrect username or password");
+                return rejectWithValue(t("Incorrect username or password"));
             }
             if (err.response?.status === 403) {
-                return rejectWithValue("Account is inactive");
+                return rejectWithValue(t("Account is inactive"));
             }
             if (err.response?.status === 429) {
                 return rejectWithValue(
                     err.response?.data?.detail ||
-                    "Too many failed login attempts. Please wait before trying again."
+                    t("Too many failed login attempts. Please wait before trying again.")
                 );
             }
             if (err.response?.data?.detail) {
@@ -32,7 +33,7 @@ export const loginUser = createAsyncThunk(
                 if (typeof detail === "string") return rejectWithValue(detail);
                 if (Array.isArray(detail)) return rejectWithValue(detail.map(e => e.msg).join(", "));
             }
-            return rejectWithValue("Failed to connect to the server");
+            return rejectWithValue(t("Failed to connect to the server"));
         }
     }
 );
@@ -116,6 +117,8 @@ const authSlice = createSlice({
                 state.username    = action.payload.username;
                 state.role        = action.payload.role;
                 state.permissions = action.payload.permissions || {};
+                state.language    = action.payload.language || null;
+                state.languageChosen = !!action.payload.language_chosen;
 
                 localStorage.setItem("token",       action.payload.access_token);
                 localStorage.setItem("username",    action.payload.username);
@@ -139,6 +142,8 @@ const authSlice = createSlice({
                 state.username    = action.payload.username;
                 state.role        = action.payload.role;
                 state.permissions = action.payload.permissions || {};
+                state.language    = action.payload.language || null;
+                state.languageChosen = !!action.payload.language_chosen;
 
                 localStorage.setItem("username",    action.payload.username);
                 localStorage.setItem("role",        action.payload.role);

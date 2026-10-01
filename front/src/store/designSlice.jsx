@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { t } from "../i18n";
 
 // =====================
 // Thunks
@@ -12,7 +13,7 @@ export const fetchDesigns = createAsyncThunk(
             const res = await api.get("/api/design/");
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load designs");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load designs"));
         }
     }
 );
@@ -24,7 +25,7 @@ export const createDesign = createAsyncThunk(
             const res = await api.post("/api/design/", payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to create design");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to create design"));
         }
     }
 );
@@ -36,7 +37,7 @@ export const fetchDesignTemplates = createAsyncThunk(
             const res = await api.get("/api/design/templates/list");
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load design templates");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load design templates"));
         }
     }
 );
@@ -48,7 +49,7 @@ export const fetchTemplateScales = createAsyncThunk(
             const res = await api.get("/api/design/templates/scales");
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load template scales");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load template scales"));
         }
     }
 );
@@ -60,7 +61,7 @@ export const fetchDesignSuggestion = createAsyncThunk(
             const res = await api.get("/api/design/suggest");
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load design suggestion");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load design suggestion"));
         }
     }
 );
@@ -72,7 +73,7 @@ export const fetchDesignDetail = createAsyncThunk(
             const res = await api.get(`/api/design/${designId}`);
             return res.data; // { design, versions }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load design");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load design"));
         }
     }
 );
@@ -87,7 +88,7 @@ export const createDesignVersion = createAsyncThunk(
             });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to create version");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to create version"));
         }
     }
 );
@@ -99,7 +100,7 @@ export const fetchVersionDetail = createAsyncThunk(
             const res = await api.get(`/api/design/versions/${versionId}`);
             return res.data; // { version, components, relationships }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load design version");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load design version"));
         }
     }
 );
@@ -111,7 +112,7 @@ export const createComponent = createAsyncThunk(
             const res = await api.post(`/api/design/versions/${versionId}/components`, payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to create component");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to create component"));
         }
     }
 );
@@ -123,7 +124,7 @@ export const updateComponent = createAsyncThunk(
             const res = await api.patch(`/api/design/components/${componentId}`, changes);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to update component");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to update component"));
         }
     }
 );
@@ -135,7 +136,7 @@ export const deleteComponent = createAsyncThunk(
             await api.delete(`/api/design/components/${componentId}`);
             return componentId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to delete component");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to delete component"));
         }
     }
 );
@@ -147,7 +148,7 @@ export const mapComponentToAsset = createAsyncThunk(
             const res = await api.post(`/api/design/components/${componentId}/map`, { asset_id: assetId });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to map component");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to map component"));
         }
     }
 );
@@ -159,7 +160,7 @@ export const createRelationship = createAsyncThunk(
             const res = await api.post(`/api/design/versions/${versionId}/relationships`, payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to create relationship");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to create relationship"));
         }
     }
 );
@@ -171,7 +172,7 @@ export const updateRelationship = createAsyncThunk(
             const res = await api.patch(`/api/design/relationships/${relationshipId}`, changes);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to update relationship");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to update relationship"));
         }
     }
 );
@@ -183,7 +184,7 @@ export const deleteRelationship = createAsyncThunk(
             await api.delete(`/api/design/relationships/${relationshipId}`);
             return relationshipId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to delete relationship");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to delete relationship"));
         }
     }
 );
@@ -220,7 +221,7 @@ const designSlice = createSlice({
 
             .addCase(createDesign.fulfilled, (state, action) => {
                 state.designs.unshift(action.payload);
-                state.successMessage = "Design created!";
+                state.successMessage = t("Design created!");
             })
             .addCase(createDesign.rejected, (state, action) => { state.error = action.payload; })
 
@@ -270,7 +271,7 @@ const designSlice = createSlice({
                 if (!state.currentVersion) return;
                 const idx = state.currentVersion.components.findIndex((c) => c.id === action.payload.id);
                 if (idx !== -1) state.currentVersion.components[idx] = action.payload;
-                state.successMessage = "Component mapped to asset.";
+                state.successMessage = t("Component mapped to asset.");
             })
             .addCase(mapComponentToAsset.rejected, (state, action) => { state.error = action.payload; })
 

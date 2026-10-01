@@ -1,3 +1,4 @@
+import { t as tr } from "../../i18n";
 // Small dependency-free SVG line chart for one metric's time series (as
 // returned by GET /api/noc/hosts/:id/metrics). No charting library in this
 // codebase yet, and one chart shape doesn't justify adding one - see
@@ -13,7 +14,7 @@ function formatAxisTime(iso) {
 
 export function MetricChart({
     points, color = "#1e3a5f", valueFormatter = (v) => v.toFixed(1),
-    emptyLabel = "No data in this range yet", dark = false,
+    emptyLabel = tr("No data in this range yet"), dark = false,
 }) {
     const gridColor = dark ? "#1f2937" : "#eef0f4";
     const axisTextColor = dark ? "#5c667e" : "#9ca3af";

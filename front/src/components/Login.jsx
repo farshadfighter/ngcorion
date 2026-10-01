@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser, clearError } from "../store/authSlice";
 import UserIcon from "../assets/UserIcon.jsx";
 import LockIcon from "../assets/LockIcon.jsx";
+import { currentLanguage, LANGUAGES, setLanguage, t } from "../i18n";
 
 export const Login = () => {
     const [username, setUsername] = useState("");
@@ -47,7 +48,7 @@ export const Login = () => {
         if (!error) return null;
         if (typeof error === "string") return error;
         if (typeof error === "object" && error.detail) return error.detail;
-        return "Invalid username or password";
+        return t("Invalid username or password");
     };
 
     const closeDialog = () => {
@@ -57,6 +58,16 @@ export const Login = () => {
 
     return (
         <div className="login-page">
+            <div className="login-lang" role="group" aria-label="Language / زبان">
+                {LANGUAGES.map((l) => (
+                    <button key={l.code} type="button" lang={l.code} dir={l.dir}
+                            aria-pressed={currentLanguage() === l.code}
+                            className={currentLanguage() === l.code ? "is-on" : ""}
+                            onClick={() => setLanguage(l.code)}>
+                        {l.label}
+                    </button>
+                ))}
+            </div>
             <form className="login-form" onSubmit={handleSubmit}>
 
                 {/* LOGO BOX */}
@@ -70,7 +81,7 @@ export const Login = () => {
                     <input
                         type="text"
                         className="user-input"
-                        placeholder="Enter your username"
+                        placeholder={t("Enter your username")}
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         disabled={isLoading}
@@ -83,7 +94,7 @@ export const Login = () => {
                     <input
                         type="password"
                         className="password-input"
-                        placeholder="Enter your password"
+                        placeholder={t("Enter your password")}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         disabled={isLoading}
@@ -96,7 +107,7 @@ export const Login = () => {
                     className="log-button"
                     disabled={isLoading}
                 >
-                    {isLoading ? "Logging in..." : "Login"}
+                    {isLoading ? t("Logging in...") : t("Login")}
                 </button>
 
                 {/* FORGOT PASSWORD */}
@@ -106,7 +117,7 @@ export const Login = () => {
                     onClick={() => navigate("/forgot-password")}
                     disabled={isLoading}
                 >
-                    Forgot password?
+                    {t("Forgot password?")}
                 </button>
             </form>
 
@@ -120,7 +131,7 @@ export const Login = () => {
                 >
                     <div className="login-dialog" onClick={(e) => e.stopPropagation()}>
                         <h2 id="login-dialog-title" className="login-dialog-title">
-                            Login failed
+                            {t("Login failed")}
                         </h2>
                         <p className="login-dialog-message">{getErrorMessage()}</p>
                         <div className="login-dialog-actions">
@@ -130,7 +141,7 @@ export const Login = () => {
                                 onClick={closeDialog}
                                 autoFocus
                             >
-                                OK
+                                {t("OK")}
                             </button>
                         </div>
                     </div>

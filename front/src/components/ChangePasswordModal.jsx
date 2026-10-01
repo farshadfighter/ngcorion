@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUsers } from "../store/userSlice.jsx";
+import { t } from "../i18n";
 
 const MessageBox = ({ type, message, onClose }) => {
     if (!message) return null;
@@ -13,7 +14,7 @@ const MessageBox = ({ type, message, onClose }) => {
             iconColor: "#065f46",
             titleColor: "#15803d",
             icon: "✓",
-            title: "Password changed successfully",
+            title: t("Password changed successfully"),
         },
         error: {
             bg: "#fef2f2",
@@ -22,7 +23,7 @@ const MessageBox = ({ type, message, onClose }) => {
             iconColor: "#991b1b",
             titleColor: "#dc2626",
             icon: "✕",
-            title: "Failed to change password",
+            title: t("Failed to change password"),
         },
     };
 
@@ -94,9 +95,9 @@ export const ChangePasswordModal = ({ onClose }) => {
 
     const validate = () => {
         const newErrors = {};
-        if (!formData.current_password) newErrors.current_password = "Required";
-        if (formData.new_password.length < 8) newErrors.new_password = "At least 8 characters";
-        if (formData.new_password !== formData.confirm_password) newErrors.confirm_password = "Passwords don't match";
+        if (!formData.current_password) newErrors.current_password = t("Required");
+        if (formData.new_password.length < 8) newErrors.new_password = t("At least 8 characters");
+        if (formData.new_password !== formData.confirm_password) newErrors.confirm_password = t("Passwords don't match");
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -107,7 +108,7 @@ export const ChangePasswordModal = ({ onClose }) => {
         if (!validate()) return;
 
         if (!currentUser?.id) {
-            setMsgBox({ type: "error", message: "User not found. Please refresh the page." });
+            setMsgBox({ type: "error", message: t("User not found. Please refresh the page.") });
             return;
         }
 
@@ -120,10 +121,10 @@ export const ChangePasswordModal = ({ onClose }) => {
         }));
 
         if (result.meta.requestStatus === "fulfilled") {
-            setMsgBox({ type: "success", message: "Your password has been updated. Use your new password next time you log in." });
+            setMsgBox({ type: "success", message: t("Your password has been updated. Use your new password next time you log in.") });
             setTimeout(onClose, 2500);
         } else {
-            setMsgBox({ type: "error", message: result.payload || "Something went wrong. Please try again." });
+            setMsgBox({ type: "error", message: result.payload || t("Something went wrong. Please try again.") });
         }
     };
 
@@ -131,7 +132,7 @@ export const ChangePasswordModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Change Password</h2>
+                    <h2>{t("Change Password")}</h2>
                     <button className="modal-close" onClick={onClose}>✕</button>
                 </div>
 
@@ -143,13 +144,13 @@ export const ChangePasswordModal = ({ onClose }) => {
                     />
 
                     <div className="form-group">
-                        <label>Current Password</label>
+                        <label>{t("Current Password")}</label>
                         <input
                             type="password"
                             name="current_password"
                             value={formData.current_password}
                             onChange={handleChange}
-                            placeholder="Enter current password"
+                            placeholder={t("Enter current password")}
                             className={errors.current_password ? "error" : ""}
                         />
                         {errors.current_password && (
@@ -158,13 +159,13 @@ export const ChangePasswordModal = ({ onClose }) => {
                     </div>
 
                     <div className="form-group">
-                        <label>New Password</label>
+                        <label>{t("New Password")}</label>
                         <input
                             type="password"
                             name="new_password"
                             value={formData.new_password}
                             onChange={handleChange}
-                            placeholder="Enter new password"
+                            placeholder={t("Enter new password")}
                             className={errors.new_password ? "error" : ""}
                         />
                         {errors.new_password && (
@@ -173,13 +174,13 @@ export const ChangePasswordModal = ({ onClose }) => {
                     </div>
 
                     <div className="form-group">
-                        <label>Confirm New Password</label>
+                        <label>{t("Confirm New Password")}</label>
                         <input
                             type="password"
                             name="confirm_password"
                             value={formData.confirm_password}
                             onChange={handleChange}
-                            placeholder="Confirm new password"
+                            placeholder={t("Confirm new password")}
                             className={errors.confirm_password ? "error" : ""}
                         />
                         {errors.confirm_password && (
@@ -188,8 +189,8 @@ export const ChangePasswordModal = ({ onClose }) => {
                     </div>
 
                     <div className="modal-footer">
-                        <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
-                        <button type="submit" className="btn-submit">Change Password</button>
+                        <button type="button" className="btn-cancel" onClick={onClose}>{t("Cancel")}</button>
+                        <button type="submit" className="btn-submit">{t("Change Password")}</button>
                     </div>
                 </form>
             </div>

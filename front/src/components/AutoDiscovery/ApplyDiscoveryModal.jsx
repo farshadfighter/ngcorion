@@ -10,6 +10,7 @@ import {
     fetchPendingHosts,
 } from '../../store/discoverySlice.jsx';
 import "../../assets/autoDiscoveryStyle/ApplyDiscoveryModal.css"
+import { t } from "../../i18n";
 const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
     const dispatch = useDispatch();
     const { matchResults, previewData, loading } = useSelector((state) => state.discovery);
@@ -85,10 +86,10 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
             // Validate
             const newErrors = {};
             if (!assetName.trim()) {
-                newErrors.assetName = 'Asset name is required';
+                newErrors.assetName = t("Asset name is required");
             }
             if (!assetTypeId) {
-                newErrors.assetTypeId = 'Asset type is required';
+                newErrors.assetTypeId = t("Asset type is required");
             }
             if (Object.keys(newErrors).length > 0) {
                 setErrors(newErrors);
@@ -140,33 +141,33 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
     // Render host info card
     const renderHostInfo = () => (
         <div className="host-info-card">
-            <h4>Discovered Host</h4>
+            <h4>{t("Discovered Host")}</h4>
             <div className="host-details-grid">
                 <div className="detail-item">
-                    <span className="label">IP Address</span>
+                    <span className="label">{t("IP Address")}</span>
                     <span className="value ip">{host.ip_address}</span>
                 </div>
                 {host.hostname && (
                     <div className="detail-item">
-                        <span className="label">Hostname</span>
+                        <span className="label">{t("Hostname")}</span>
                         <span className="value">{host.hostname}</span>
                     </div>
                 )}
                 {host.mac_address && (
                     <div className="detail-item">
-                        <span className="label">MAC Address</span>
+                        <span className="label">{t("MAC Address")}</span>
                         <code className="value">{host.mac_address}</code>
                     </div>
                 )}
                 {host.os_info && (
                     <div className="detail-item">
-                        <span className="label">OS Info</span>
+                        <span className="label">{t("OS Info")}</span>
                         <span className="value">{host.os_info}</span>
                     </div>
                 )}
                 {host.open_ports && host.open_ports.length > 0 && (
                     <div className="detail-item full-width">
-                        <span className="label">Open Ports ({host.open_ports.length})</span>
+                        <span className="label">{t("Open Ports ({{length}})", { length: host.open_ports.length })}</span>
                         <div className="ports-display">
                             {host.open_ports.slice(0, 8).map((port, i) => (
                                 <span key={i} className="port-badge">
@@ -190,10 +191,10 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 2v20M2 12h20" />
                 </svg>
-                <h4>How would you like to apply the discovery?</h4>
+                <h4>{t("How would you like to apply the discovery?")}</h4>
             </div>
             <p className="section-desc">
-                Choose how to apply the discovered data to <strong>{selectedAsset?.asset_name}</strong>
+                {t("Choose how to apply the discovered data to")}{" "} <strong>{selectedAsset?.asset_name}</strong>
             </p>
 
             <div className="mode-cards">
@@ -208,32 +209,32 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                         </svg>
                     </div>
                     <div className="mode-content">
-                        <h5>Overwrite</h5>
-                        <p>Replace all existing data with discovered data</p>
+                        <h5>{t("Overwrite")}</h5>
+                        <p>{t("Replace all existing data with discovered data")}</p>
                         <div className="mode-warning">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                                 <line x1="12" y1="9" x2="12" y2="13" />
                                 <line x1="12" y1="17" x2="12.01" y2="17" />
                             </svg>
-                            <span>Existing ports will be removed</span>
+                            <span>{t("Existing ports will be removed")}</span>
                         </div>
                     </div>
                     {previewData?.overwrite_changes && (
                         <div className="mode-preview">
                             {previewData.overwrite_changes.fields_to_replace?.length > 0 && (
                                 <span className="preview-badge warning">
-                  {previewData.overwrite_changes.fields_to_replace.length} fields replaced
+                  {t("{{length}} fields replaced", { length: previewData.overwrite_changes.fields_to_replace.length })}
                 </span>
                             )}
                             {previewData.overwrite_changes.ports_to_remove > 0 && (
                                 <span className="preview-badge danger">
-                  -{previewData.overwrite_changes.ports_to_remove} ports
+                  {t("-{{ports_to_remove}} ports", { ports_to_remove: previewData.overwrite_changes.ports_to_remove })}
                 </span>
                             )}
                             {previewData.overwrite_changes.ports_to_add > 0 && (
                                 <span className="preview-badge success">
-                  +{previewData.overwrite_changes.ports_to_add} ports
+                  {t("+{{ports_to_add}} ports", { ports_to_add: previewData.overwrite_changes.ports_to_add })}
                 </span>
                             )}
                         </div>
@@ -251,31 +252,31 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                         </svg>
                     </div>
                     <div className="mode-content">
-                        <h5>Merge / Update</h5>
-                        <p>Keep existing data and add new discovered data</p>
+                        <h5>{t("Merge / Update")}</h5>
+                        <p>{t("Keep existing data and add new discovered data")}</p>
                         <div className="mode-info">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10" />
                                 <path d="M12 16v-4M12 8h.01" />
                             </svg>
-                            <span>Only fills empty fields, adds new ports</span>
+                            <span>{t("Only fills empty fields, adds new ports")}</span>
                         </div>
                     </div>
                     {previewData?.merge_changes && (
                         <div className="mode-preview">
                             {previewData.merge_changes.fields_to_fill?.length > 0 && (
                                 <span className="preview-badge success">
-                  {previewData.merge_changes.fields_to_fill.length} fields added
+                  {t("{{length}} fields added", { length: previewData.merge_changes.fields_to_fill.length })}
                 </span>
                             )}
                             {previewData.merge_changes.ports_to_add > 0 && (
                                 <span className="preview-badge success">
-                  +{previewData.merge_changes.ports_to_add} ports
+                  {t("+{{ports_to_add}} ports", { ports_to_add: previewData.merge_changes.ports_to_add })}
                 </span>
                             )}
                             {(previewData.merge_changes.fields_to_fill?.length === 0 &&
                                 previewData.merge_changes.ports_to_add === 0) && (
-                                <span className="preview-badge neutral">No changes</span>
+                                <span className="preview-badge neutral">{t("No changes")}</span>
                             )}
                         </div>
                     )}
@@ -283,7 +284,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
             </div>
 
             <div className="divider">
-                <span>OR</span>
+                <span>{t("OR")}</span>
             </div>
 
             <button
@@ -296,7 +297,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
                 </svg>
-                Create as New Asset Instead
+                {t("Create as New Asset Instead")}
             </button>
         </div>
     );
@@ -324,31 +325,31 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                     </div>
                     <h4>
                         {isOverwrite
-                            ? 'Confirm Overwrite'
-                            : 'Confirm Merge'}
+                            ? t("Confirm Overwrite")
+                            : t("Confirm Merge")}
                     </h4>
                 </div>
 
                 <p className="confirm-text">
                     {isOverwrite
-                        ? `This will replace all existing data in "${selectedAsset?.asset_name}" with the discovered data.`
-                        : `This will add the discovered data to "${selectedAsset?.asset_name}" without removing existing data.`
+                        ? t("This will replace all existing data in \"{{asset_name}}\" with the discovered data.", { asset_name: selectedAsset?.asset_name })
+                        : t("This will add the discovered data to \"{{asset_name}}\" without removing existing data.", { asset_name: selectedAsset?.asset_name })
                     }
                 </p>
 
                 {/* Show what will change */}
                 {previewData && (
                     <div className="changes-preview">
-                        <h5>Changes to be applied:</h5>
+                        <h5>{t("Changes to be applied:")}</h5>
 
                         {isOverwrite && previewData.overwrite_changes?.fields_to_replace?.length > 0 && (
                             <div className="changes-group">
-                                <h6>Fields to be replaced:</h6>
+                                <h6>{t("Fields to be replaced:")}</h6>
                                 <div className="changes-list">
                                     {previewData.overwrite_changes.fields_to_replace.map((change, i) => (
                                         <div key={i} className="change-item replace">
                                             <span className="field-name">{change.field}</span>
-                                            <span className="old-value">{change.current || '(empty)'}</span>
+                                            <span className="old-value">{change.current || t("(empty)")}</span>
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M5 12h14M12 5l7 7-7 7" />
                                             </svg>
@@ -361,7 +362,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
 
                         {!isOverwrite && previewData.merge_changes?.fields_to_fill?.length > 0 && (
                             <div className="changes-group">
-                                <h6>Fields to be filled:</h6>
+                                <h6>{t("Fields to be filled:")}</h6>
                                 <div className="changes-list">
                                     {previewData.merge_changes.fields_to_fill.map((change, i) => (
                                         <div key={i} className="change-item add">
@@ -381,7 +382,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M5 12h14" />
                                             </svg>
-                                            {previewData.existing_ports_count} existing ports will be removed
+                                            {t("{{existing_ports_count}} existing ports will be removed", { existing_ports_count: previewData.existing_ports_count })}
                                         </div>
                                     )}
                                     {previewData.discovered_ports_count > 0 && (
@@ -389,7 +390,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <path d="M12 5v14M5 12h14" />
                                             </svg>
-                                            {previewData.discovered_ports_count} discovered ports will be added
+                                            {t("{{discovered_ports_count}} discovered ports will be added", { discovered_ports_count: previewData.discovered_ports_count })}
                                         </div>
                                     )}
                                 </>
@@ -399,7 +400,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <path d="M12 5v14M5 12h14" />
                                         </svg>
-                                        {previewData.merge_changes.ports_to_add} new ports will be added
+                                        {t("{{ports_to_add}} new ports will be added", { ports_to_add: previewData.merge_changes.ports_to_add })}
                                     </div>
                                 )
                             )}
@@ -417,17 +418,17 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
                 </svg>
-                <h4>Create New Asset</h4>
+                <h4>{t("Create New Asset")}</h4>
             </div>
             <p className="section-desc">
                 {matchResults?.matches?.length > 0
-                    ? 'Create this host as a new asset instead of updating an existing one.'
-                    : 'No matching assets found. Create a new asset from the discovered data.'}
+                    ? t("Create this host as a new asset instead of updating an existing one.")
+                    : t("No matching assets found. Create a new asset from the discovered data.")}
             </p>
 
             <div className="form-group">
                 <label htmlFor="asset-name">
-                    Asset Name <span className="required">*</span>
+                    {t("Asset Name")}{" "} <span className="required">*</span>
                 </label>
                 <input
                     type="text"
@@ -437,7 +438,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                         setAssetName(e.target.value);
                         if (errors.assetName) setErrors((p) => ({ ...p, assetName: null }));
                     }}
-                    placeholder="Enter asset name"
+                    placeholder={t("Enter asset name")}
                     className={`form-input ${errors.assetName ? 'error' : ''}`}
                 />
                 {errors.assetName && <p className="form-error">{errors.assetName}</p>}
@@ -445,7 +446,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
 
             <div className="form-group">
                 <label htmlFor="asset-type">
-                    Asset Type <span className="required">*</span>
+                    {t("Asset Type")}{" "} <span className="required">*</span>
                 </label>
                 <select
                     id="asset-type"
@@ -456,7 +457,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                     }}
                     className={`form-select ${errors.assetTypeId ? 'error' : ''}`}
                 >
-                    <option value="">Select asset type...</option>
+                    <option value="">{t("Select asset type...")}</option>
                     {assetTypes?.map((type) => (
                         <option key={type.id} value={type.id}>
                             {type.type_name}
@@ -467,13 +468,13 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
             </div>
 
             <div className="auto-fill-info">
-                <h5>Will be auto-filled from discovery:</h5>
+                <h5>{t("Will be auto-filled from discovery:")}</h5>
                 <ul>
-                    <li>IP Address: {host.ip_address}</li>
-                    {host.hostname && <li>Hostname: {host.hostname}</li>}
-                    {host.mac_address && <li>MAC Address: {host.mac_address}</li>}
-                    {host.os_info && <li>OS: {host.os_info}</li>}
-                    {host.open_ports?.length > 0 && <li>Ports: {host.open_ports.length} open ports</li>}
+                    <li>{t("IP Address: {{ip_address}}", { ip_address: host.ip_address })}</li>
+                    {host.hostname && <li>{t("Hostname: {{hostname}}", { hostname: host.hostname })}</li>}
+                    {host.mac_address && <li>{t("MAC Address: {{mac_address}}", { mac_address: host.mac_address })}</li>}
+                    {host.os_info && <li>{t("OS: {{os_info}}", { os_info: host.os_info })}</li>}
+                    {host.open_ports?.length > 0 && <li>{t("Ports: {{length}} open ports", { length: host.open_ports.length })}</li>}
                 </ul>
             </div>
         </div>
@@ -483,17 +484,17 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
     const getModalTitle = () => {
         switch (step) {
             case 'loading':
-                return 'Checking for Matches...';
+                return t("Checking for Matches...");
             case 'select_target':
-                return 'Select Target Asset';
+                return t("Select Target Asset");
             case 'select_mode':
-                return 'Select Apply Mode';
+                return t("Select Apply Mode");
             case 'confirm':
-                return selectedMode === 'overwrite' ? 'Confirm Overwrite' : 'Confirm Merge';
+                return selectedMode === 'overwrite' ? t("Confirm Overwrite") : t("Confirm Merge");
             case 'create_new':
-                return 'Create New Asset';
+                return t("Create New Asset");
             default:
-                return 'Apply Discovery';
+                return t("Apply Discovery");
         }
     };
 
@@ -504,11 +505,11 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
         }
         switch (step) {
             case 'confirm':
-                return selectedMode === 'overwrite' ? 'Overwrite Asset' : 'Merge with Asset';
+                return selectedMode === 'overwrite' ? t("Overwrite Asset") : t("Merge with Asset");
             case 'create_new':
-                return 'Create Asset';
+                return t("Create Asset");
             default:
-                return 'Apply';
+                return t("Apply");
         }
     };
 
@@ -532,7 +533,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                     {step === 'loading' && (
                         <div className="loading-state">
                             <div className="spinner-lg" />
-                            <p>Checking for matching assets...</p>
+                            <p>{t("Checking for matching assets...")}</p>
                         </div>
                     )}
 
@@ -544,11 +545,10 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                                     <circle cx="11" cy="11" r="8" />
                                     <path d="M21 21l-4.35-4.35" />
                                 </svg>
-                                <h4>Potential Matches Found</h4>
+                                <h4>{t("Potential Matches Found")}</h4>
                             </div>
                             <p className="section-desc">
-                                We found {matchResults.matches.length} existing asset(s) that match this host.
-                                Select one to update or create a new asset.
+                                {t("We found {{length}} existing asset(s) that match this host. Select one to update or create a new asset.", { length: matchResults.matches.length })}
                             </p>
 
                             <div className="matches-list">
@@ -561,30 +561,30 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                                         <div className="match-header">
                                             <div className="match-name">
                                                 <strong>{match.asset_name}</strong>
-                                                <span className="match-id">ID: {match.asset_id}</span>
+                                                <span className="match-id">{t("ID: {{asset_id}}", { asset_id: match.asset_id })}</span>
                                             </div>
                                             <span className={`confidence-badge confidence-${match.confidence}`}>
-                        {match.confidence} match
+                        {t("{{confidence}} match", { confidence: match.confidence })}
                       </span>
                                         </div>
                                         <div className="match-details">
-                                            <span>Match by: <strong>{match.match_type.replace('_', ' ')}</strong></span>
-                                            {match.asset_type && <span>Type: {match.asset_type}</span>}
+                                            <span>{t("Match by:")}{" "} <strong>{match.match_type.replace('_', ' ')}</strong></span>
+                                            {match.asset_type && <span>{t("Type: {{asset_type}}", { asset_type: match.asset_type })}</span>}
                                         </div>
                                         <div className="match-info">
-                                            {match.ip_address && <span>IP: {match.ip_address}</span>}
-                                            {match.mac_address && <span>MAC: {match.mac_address}</span>}
-                                            {match.hostname && <span>Hostname: {match.hostname}</span>}
+                                            {match.ip_address && <span>{t("IP: {{ip_address}}", { ip_address: match.ip_address })}</span>}
+                                            {match.mac_address && <span>{t("MAC: {{mac_address}}", { mac_address: match.mac_address })}</span>}
+                                            {match.hostname && <span>{t("Hostname: {{hostname}}", { hostname: match.hostname })}</span>}
                                         </div>
                                         <div className="match-select-hint">
-                                            Click to select this asset
+                                            {t("Click to select this asset")}
                                         </div>
                                     </div>
                                 ))}
                             </div>
 
                             <div className="divider">
-                                <span>OR</span>
+                                <span>{t("OR")}</span>
                             </div>
 
                             <button
@@ -594,7 +594,7 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                                     setStep('create_new');
                                 }}
                             >
-                                Create as New Asset
+                                {t("Create as New Asset")}
                             </button>
                         </div>
                     )}
@@ -614,13 +614,13 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                     {(step === 'select_mode' || step === 'confirm' ||
                         (step === 'create_new' && matchResults?.matches?.length > 0)) && (
                         <button className="btn btn-ghost" onClick={handleBack}>
-                            Back
+                            {t("Back")}
                         </button>
                     )}
 
                     <div className="footer-right">
                         <button className="btn btn-secondary" onClick={handleClose}>
-                            Cancel
+                            {t("Cancel")}
                         </button>
 
                         {/* Submit Button */}

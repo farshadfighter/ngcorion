@@ -4,6 +4,7 @@ import {
     activateLicense,
     clearLicenseFromStorage,
 } from "../components/License/licenseService";
+import { t } from "../i18n";
 
 // =====================
 // Thunks
@@ -18,7 +19,7 @@ export const getLicenseStatusThunk = createAsyncThunk(
             return data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || err.message || "Failed to get license status"
+                err.response?.data?.detail || err.message || t("Failed to get license status")
             );
         }
     }
@@ -33,7 +34,7 @@ export const activateLicenseThunk = createAsyncThunk(
             return data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || err.message || "Failed to activate license"
+                err.response?.data?.detail || err.message || t("Failed to activate license")
             );
         }
     }
@@ -122,7 +123,7 @@ const licenseSlice = createSlice({
                 state.usage = action.payload.usage;     // ✅ اضافه شد
                 state.expiresAt = action.payload.expires_at;  // ✅ اضافه شد
                 state.message = action.payload.message;
-                state.successMessage = "License activated successfully!";
+                state.successMessage = t("License activated successfully!");
                 state.isInitialized = true;
             })
             .addCase(activateLicenseThunk.rejected, (state, action) => {

@@ -110,6 +110,7 @@ class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
     phone: Optional[str] = Field(None, max_length=20, description="Mobile number; empty string clears it")
+    language: Optional[str] = Field(None, pattern="^(en|fa)?$", description="Interface language; empty = system default")
     password: Optional[str] = Field(None, min_length=8, max_length=72)
     current_password: Optional[str] = Field(
         None,
@@ -145,6 +146,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     phone: Optional[str] = None
+    language: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime

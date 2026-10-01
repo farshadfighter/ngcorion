@@ -13,6 +13,7 @@ import {
     isWindows,
     needsSudo,
 } from "../Hardening/hardeningCredentials";
+import { t } from "../../i18n";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // Device-type predicates are imported from Hardening/hardeningCredentials.js —
@@ -87,9 +88,9 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
     const handleDetectVdoms = () => {
         const newErrors = {};
-        if (!formData.asset_id) newErrors.asset_id = "Please select an asset";
-        if (!formData.ssh_username?.trim()) newErrors.ssh_username = "Username is required";
-        if (!formData.ssh_password?.trim()) newErrors.ssh_password = "Password is required";
+        if (!formData.asset_id) newErrors.asset_id = t("Please select an asset");
+        if (!formData.ssh_username?.trim()) newErrors.ssh_username = t("Username is required");
+        if (!formData.ssh_password?.trim()) newErrors.ssh_password = t("Password is required");
         if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
         dispatch(discoverFortinetVdoms({
@@ -104,20 +105,20 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const validate = () => {
         const newErrors = {};
 
-        if (!formData.device_type) newErrors.device_type = "Choose what to audit";
-        if (!formData.asset_id) newErrors.asset_id = "Please select an asset";
+        if (!formData.device_type) newErrors.device_type = t("Choose what to audit");
+        if (!formData.asset_id) newErrors.asset_id = t("Please select an asset");
         if (!formData.job_name || formData.job_name.trim().length < 2)
-            newErrors.job_name = "Job name must be at least 2 characters";
+            newErrors.job_name = t("Job name must be at least 2 characters");
 
         if (isWindows(dt)) {
-            if (!formData.windows_username?.trim()) newErrors.windows_username = "Username is required";
-            if (!formData.windows_password?.trim()) newErrors.windows_password = "Password is required";
+            if (!formData.windows_username?.trim()) newErrors.windows_username = t("Username is required");
+            if (!formData.windows_password?.trim()) newErrors.windows_password = t("Password is required");
         } else if (isMssql(dt)) {
-            if (!formData.mssql_username?.trim()) newErrors.mssql_username = "Username is required";
-            if (!formData.mssql_password?.trim()) newErrors.mssql_password = "Password is required";
+            if (!formData.mssql_username?.trim()) newErrors.mssql_username = t("Username is required");
+            if (!formData.mssql_password?.trim()) newErrors.mssql_password = t("Password is required");
         } else {
-            if (!formData.ssh_username?.trim()) newErrors.ssh_username = "Username is required";
-            if (!formData.ssh_password?.trim()) newErrors.ssh_password = "Password is required";
+            if (!formData.ssh_username?.trim()) newErrors.ssh_username = t("Username is required");
+            if (!formData.ssh_password?.trim()) newErrors.ssh_password = t("Password is required");
         }
 
         setErrors(newErrors);
@@ -130,7 +131,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
         const assetId = parseInt(formData.asset_id);
         if (isNaN(assetId)) {
-            setErrors({ asset_id: "Please select a valid asset" });
+            setErrors({ asset_id: t("Please select a valid asset") });
             return;
         }
 
@@ -172,7 +173,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             onSubmit(result, formData.job_name);
         } catch (err) {
             // Extract error message from various possible formats
-            let errorMessage = "Failed to connect to server. Please check your connection and try again.";
+            let errorMessage = t("Failed to connect to server. Please check your connection and try again.");
             
             if (typeof err === "string") {
                 errorMessage = err;
@@ -210,7 +211,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                     {/* ── Job Name ── */}
                     <div className="form-group">
                         <label>
-                            Job Name
+                            {t("Job Name")}
                             <span className="required" style={{ color: "#ef4444" }}>*</span>
                         </label>
                         <input
@@ -219,7 +220,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                             value={formData.job_name}
                             onChange={handleChange}
                             className={errors.job_name ? "error" : ""}
-                            placeholder="Enter job name"
+                            placeholder={t("Enter job name")}
                             autoComplete="off"
                         />
                         {errors.job_name && <span className="error-message">{errors.job_name}</span>}
@@ -232,7 +233,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         <>
                             <div className="form-group">
                                 <label>
-                                    SSH Username
+                                    {t("SSH Username")}
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
                                 </label>
                                 <input
@@ -241,7 +242,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.ssh_username}
                                     onChange={handleChange}
                                     className={errors.ssh_username ? "error" : ""}
-                                    placeholder="Enter SSH username"
+                                    placeholder={t("Enter SSH username")}
                                     autoComplete="username"
                                 />
                                 {errors.ssh_username && <span className="error-message">{errors.ssh_username}</span>}
@@ -249,13 +250,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
                             {isCisco(dt) && (
                                 <div className="form-group">
-                                    <label>Enable Password</label>
+                                    <label>{t("Enable Password")}</label>
                                     <input
                                         type="password"
                                         name="enable_password"
                                         value={formData.enable_password}
                                         onChange={handleChange}
-                                        placeholder="Enable password (optional)"
+                                        placeholder={t("Enable password (optional)")}
                                         autoComplete="off"
                                     />
                                 </div>
@@ -268,15 +269,15 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         className="btn-modal-secondary"
                                         onClick={() => setShowBenchmark(true)}
                                         style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
-                                        title="View the full CIS FortiGate Benchmark checklist (53 controls)"
+                                        title={t("View the full CIS FortiGate Benchmark checklist (53 controls)")}
                                     >
-                                        <i className="fa-solid fa-list-check"></i> Show CIS Benchmark
+                                        <i className="fa-solid fa-list-check"></i> {" "}{t("Show CIS Benchmark")}
                                     </button>
                                 </div>
                             )}
 
                             <div className="form-group">
-                                <label>SSH Port</label>
+                                <label>{t("SSH Port")}</label>
                                 <input
                                     type="number"
                                     name="ssh_port"
@@ -291,14 +292,14 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
                             {isFortinet(dt) && (
                                 <div className="form-group">
-                                    <label>VDOM</label>
+                                    <label>{t("VDOM")}</label>
                                     {vdomDiscovery?.vdoms?.length > 0 ? (
                                         <select
                                             name="vdom"
                                             value={formData.vdom}
                                             onChange={handleChange}
                                         >
-                                            <option value="">All VDOMs</option>
+                                            <option value="">{t("All VDOMs")}</option>
                                             {vdomDiscovery.vdoms.map((v) => (
                                                 <option key={v} value={v}>{v}</option>
                                             ))}
@@ -309,7 +310,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                             name="vdom"
                                             value={formData.vdom}
                                             onChange={handleChange}
-                                            placeholder="Leave blank to audit all VDOMs"
+                                            placeholder={t("Leave blank to audit all VDOMs")}
                                             autoComplete="off"
                                         />
                                     )}
@@ -320,26 +321,24 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                         disabled={vdomDiscovery?.isDiscovering}
                                         style={{ marginTop: "8px" }}
                                     >
-                                        {vdomDiscovery?.isDiscovering ? "Detecting VDOMs…" : "Detect VDOMs"}
+                                        {vdomDiscovery?.isDiscovering ? t("Detecting VDOMs…") : t("Detect VDOMs")}
                                     </button>
                                     {vdomDiscovery?.error && (
                                         <span className="error-message">{vdomDiscovery.error}</span>
                                     )}
                                     {vdomDiscovery?.vdoms?.length > 0 && (
                                         <small className="form-hint">
-                                            Detected {vdomDiscovery.vdoms.length} active VDOM(s):{" "}
-                                            {vdomDiscovery.vdoms.join(", ")}. Choose one, or “All VDOMs” to audit every VDOM.
+                                            {t("Detected {{length}} active VDOM(s): {{join}}. Choose one, or “All VDOMs” to audit every VDOM.", { length: vdomDiscovery.vdoms.length, join: vdomDiscovery.vdoms.join(", ") })}
                                         </small>
                                     )}
                                     {vdomDiscovery?.vdoms?.length === 0 && (
                                         <small className="form-hint">
-                                            No VDOMs detected — device is not VDOM-enabled. The audit runs against the single (root) context.
+                                            {t("No VDOMs detected — device is not VDOM-enabled. The audit runs against the single (root) context.")}
                                         </small>
                                     )}
                                     {!vdomDiscovery?.vdoms && !vdomDiscovery?.isDiscovering && (
                                         <small className="form-hint">
-                                            Enter credentials, then click “Detect VDOMs” to list active VDOMs.
-                                            Leave blank to audit every VDOM.
+                                            {t("Enter credentials, then click “Detect VDOMs” to list active VDOMs. Leave blank to audit every VDOM.")}
                                         </small>
                                     )}
                                 </div>
@@ -347,13 +346,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
                             {needsSudo(dt) && (
                                 <div className="form-group">
-                                    <label>Sudo Password</label>
+                                    <label>{t("Sudo Password")}</label>
                                     <input
                                         type="password"
                                         name="sudo_password"
                                         value={formData.sudo_password}
                                         onChange={handleChange}
-                                        placeholder="Sudo password (optional)"
+                                        placeholder={t("Sudo password (optional)")}
                                         autoComplete="off"
                                     />
                                 </div>
@@ -362,29 +361,29 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                             {isMongo(dt) && (
                                 <>
                                     <div className="form-group">
-                                        <label>MongoDB Username</label>
+                                        <label>{t("MongoDB Username")}</label>
                                         <input
                                             type="text"
                                             name="mongo_username"
                                             value={formData.mongo_username}
                                             onChange={handleChange}
-                                            placeholder="MongoDB username (optional)"
+                                            placeholder={t("MongoDB username (optional)")}
                                             autoComplete="off"
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>MongoDB Password</label>
+                                        <label>{t("MongoDB Password")}</label>
                                         <input
                                             type="password"
                                             name="mongo_password"
                                             value={formData.mongo_password}
                                             onChange={handleChange}
-                                            placeholder="MongoDB password (optional)"
+                                            placeholder={t("MongoDB password (optional)")}
                                             autoComplete="off"
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>MongoDB Port</label>
+                                        <label>{t("MongoDB Port")}</label>
                                         <input
                                             type="number"
                                             name="mongo_port"
@@ -399,7 +398,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
 
                             <div className="form-group form-group-full">
                                 <label>
-                                    SSH Password
+                                    {t("SSH Password")}
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
                                 </label>
                                 <input
@@ -408,7 +407,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.ssh_password}
                                     onChange={handleChange}
                                     className={errors.ssh_password ? "error" : ""}
-                                    placeholder="Enter SSH password"
+                                    placeholder={t("Enter SSH password")}
                                     autoComplete="current-password"
                                 />
                                 {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
@@ -423,7 +422,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         <>
                             <div className="form-group">
                                 <label>
-                                    SQL Server Username
+                                    {t("SQL Server Username")}
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
                                 </label>
                                 <input
@@ -432,14 +431,14 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.mssql_username}
                                     onChange={handleChange}
                                     className={errors.mssql_username ? "error" : ""}
-                                    placeholder="sa or sysadmin account"
+                                    placeholder={t("sa or sysadmin account")}
                                     autoComplete="username"
                                 />
                                 {errors.mssql_username && <span className="error-message">{errors.mssql_username}</span>}
                             </div>
                             <div className="form-group">
                                 <label>
-                                    SQL Server Password
+                                    {t("SQL Server Password")}
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
                                 </label>
                                 <input
@@ -448,13 +447,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.mssql_password}
                                     onChange={handleChange}
                                     className={errors.mssql_password ? "error" : ""}
-                                    placeholder="SQL Server password"
+                                    placeholder={t("SQL Server password")}
                                     autoComplete="current-password"
                                 />
                                 {errors.mssql_password && <span className="error-message">{errors.mssql_password}</span>}
                             </div>
                             <div className="form-group">
-                                <label>SQL Server Port</label>
+                                <label>{t("SQL Server Port")}</label>
                                 <input
                                     type="number"
                                     name="mssql_port"
@@ -474,7 +473,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         <>
                             <div className="form-group">
                                 <label>
-                                    Windows Username
+                                    {t("Windows Username")}
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
                                 </label>
                                 <input
@@ -483,14 +482,14 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.windows_username}
                                     onChange={handleChange}
                                     className={errors.windows_username ? "error" : ""}
-                                    placeholder="Administrator"
+                                    placeholder={t("Administrator")}
                                     autoComplete="username"
                                 />
                                 {errors.windows_username && <span className="error-message">{errors.windows_username}</span>}
                             </div>
                             <div className="form-group">
                                 <label>
-                                    Windows Password
+                                    {t("Windows Password")}
                                     <span className="required" style={{ color: "#ef4444" }}>*</span>
                                 </label>
                                 <input
@@ -499,13 +498,13 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     value={formData.windows_password}
                                     onChange={handleChange}
                                     className={errors.windows_password ? "error" : ""}
-                                    placeholder="Windows admin password"
+                                    placeholder={t("Windows admin password")}
                                     autoComplete="current-password"
                                 />
                                 {errors.windows_password && <span className="error-message">{errors.windows_password}</span>}
                             </div>
                             <div className="form-group">
-                                <label>WinRM Port</label>
+                                <label>{t("WinRM Port")}</label>
                                 <input
                                     type="number"
                                     name="winrm_port"
@@ -516,12 +515,12 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Transport</label>
+                                <label>{t("Transport")}</label>
                                 <select name="transport" value={formData.transport} onChange={handleChange}>
-                                    <option value="ntlm">NTLM</option>
-                                    <option value="kerberos">Kerberos</option>
-                                    <option value="credssp">CredSSP</option>
-                                    <option value="basic">Basic</option>
+                                    <option value="ntlm">{t("NTLM")}</option>
+                                    <option value="kerberos">{t("Kerberos")}</option>
+                                    <option value="credssp">{t("CredSSP")}</option>
+                                    <option value="basic">{t("Basic")}</option>
                                 </select>
                             </div>
                         </>
@@ -537,14 +536,14 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                         onClick={onCancel}
                         disabled={isExecuting}
                     >
-                        Cancel
+                        {t("Cancel")}
                     </button>
                     <button
                         type="submit"
                         className="btn-submit"
                         disabled={isExecuting}
                     >
-                        Next
+                        {t("Next")}
                     </button>
                 </div>
             </form>

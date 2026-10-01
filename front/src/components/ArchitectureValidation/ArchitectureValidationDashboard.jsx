@@ -8,13 +8,22 @@ import {
     clearMessages,
 } from "../../store/architectureValidationSlice.jsx";
 import "../../assets/ArchitectureValidation.css";
+import { t } from "../../i18n";
+import { tb, tv } from "../../i18n/backendText";
 
 const STATUS_TABS = [
-    { key: "open", label: "Open" },
-    { key: "accepted", label: "Accepted" },
-    { key: "ignored", label: "Ignored" },
-    { key: "", label: "All" },
+    { key: "open", label: t("Open") },
+    { key: "accepted", label: t("Accepted") },
+    { key: "ignored", label: t("Ignored") },
+    { key: "", label: t("All") },
 ];
+
+const EMPTY_TEXT = {
+    open: t("No open findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
+    accepted: t("No accepted findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
+    ignored: t("No ignored findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
+    "": t("No findings. Click \"Run Analysis\" to check every asset against the architecture rule set."),
+};
 
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 };
 const SEVERITY_CLASS = { low: "av-badge-low", medium: "av-badge-medium", high: "av-badge-high" };
@@ -71,11 +80,11 @@ export const ArchitectureValidationDashboard = () => {
                 <div className="av-toolbar-actions">
                     {lastRun && (
                         <span className="av-last-run">
-                            Last run: {lastRun.findingCount} finding(s) / {lastRun.assetCount} asset(s)
+                            {t("Last run: {{findingCount}} finding(s) / {{assetCount}} asset(s)", { findingCount: lastRun.findingCount, assetCount: lastRun.assetCount })}
                         </span>
                     )}
                     <button className="av-btn av-btn-primary" onClick={handleAnalyze} disabled={isAnalyzing}>
-                        <i className="fa-solid fa-clipboard-check" /> {isAnalyzing ? "Analyzing…" : "Run Analysis"}
+                        <i className="fa-solid fa-clipboard-check" /> {isAnalyzing ? t("Analyzing…") : t("Run Analysis")}
                     </button>
                 </div>
             </div>
@@ -88,22 +97,21 @@ export const ArchitectureValidationDashboard = () => {
 
             <div className="av-table-container">
                 {isLoading ? (
-                    <div className="av-empty">Loading findings…</div>
+                    <div className="av-empty">{t("Loading findings…")}</div>
                 ) : sortedFindings.length === 0 ? (
                     <div className="av-empty">
-                        No {statusFilter || ""} findings. Click "Run Analysis" to check every asset against the
-                        architecture rule set.
+                        {EMPTY_TEXT[statusFilter]}
                     </div>
                 ) : (
                     <table className="av-table">
                         <thead>
                             <tr>
-                                <th>Severity</th>
-                                <th>Rule</th>
-                                <th>Asset</th>
-                                <th>Category</th>
-                                <th>Recommendation</th>
-                                {statusFilter === "open" && <th>Actions</th>}
+                                <th>{t("Severity")}</th>
+                                <th>{t("Rule")}</th>
+                                <th>{t("Asset")}</th>
+                                <th>{t("Category")}</th>
+                                <th>{t("Recommendation")}</th>
+                                {statusFilter === "open" && <th>{t("Actions")}</th>}
                             </tr>
                         </thead>
                         <tbody>
@@ -111,27 +119,27 @@ export const ArchitectureValidationDashboard = () => {
                                 <tr key={f.id}>
                                     <td>
                                         <span className={`av-badge ${SEVERITY_CLASS[f.severity] || ""}`}>
-                                            {f.severity}
+                                            {tv(f.severity)}
                                         </span>
                                     </td>
                                     <td>
                                         <div className="av-rule-code">{f.rule_code}</div>
-                                        <div className="av-rule-title">{f.title}</div>
+                                        <div className="av-rule-title bidi-auto">{tb(f.title)}</div>
                                     </td>
                                     <td>{f.asset_name || "—"}</td>
-                                    <td>{f.category || "—"}</td>
-                                    <td className="av-recommendation">{f.recommendation || "—"}</td>
+                                    <td>{tv(f.category) || "—"}</td>
+                                    <td className="av-recommendation bidi-auto">{tb(f.recommendation) || "—"}</td>
                                     {statusFilter === "open" && (
                                         <td>
                                             <div className="av-row-actions">
                                                 <button className="av-link-btn" onClick={() => handleAccept(f.id)}>
-                                                    Accept
+                                                    {t("Accept")}
                                                 </button>
                                                 <button
                                                     className="av-link-btn av-link-btn-muted"
                                                     onClick={() => setIgnoringId(f.id)}
                                                 >
-                                                    Ignore
+                                                    {t("Ignore")}
                                                 </button>
                                             </div>
                                         </td>
@@ -146,21 +154,21 @@ export const ArchitectureValidationDashboard = () => {
             {ignoringId !== null && (
                 <div className="av-modal-backdrop" onClick={() => setIgnoringId(null)}>
                     <div className="av-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>Ignore finding</h3>
-                        <p className="av-modal-hint">Optionally explain why this finding doesn't apply.</p>
+                        <h3>{t("Ignore finding")}</h3>
+                        <p className="av-modal-hint">{t("Optionally explain why this finding doesn't apply.")}</p>
                         <textarea
                             className="av-modal-textarea"
                             rows={3}
                             value={ignoreReason}
                             onChange={(e) => setIgnoreReason(e.target.value)}
-                            placeholder="Reason (optional)"
+                            placeholder={t("Reason (optional)")}
                         />
                         <div className="av-modal-actions">
                             <button className="av-btn" onClick={() => setIgnoringId(null)}>
-                                Cancel
+                                {t("Cancel")}
                             </button>
                             <button className="av-btn av-btn-primary" onClick={handleIgnoreConfirm}>
-                                Ignore finding
+                                {t("Ignore finding")}
                             </button>
                         </div>
                     </div>

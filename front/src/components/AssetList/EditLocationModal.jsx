@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 import { requiresHosting } from "../shared/assetHosting";
+import { t as tr } from "../../i18n";
 
 export const EditLocationModal = ({ asset, isOpen, onClose }) => {
     const dispatch = useDispatch();
@@ -30,7 +31,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (hostingRequired && !formData.hosted_on_asset_id) {
-            setFieldErrors({ hosted_on_asset_id: `${selectedTypeName} must specify which server it's hosted on` });
+            setFieldErrors({ hosted_on_asset_id: tr("{{selectedTypeName}} must specify which server it's hosted on", { selectedTypeName }) });
             return;
         }
         setFieldErrors({});
@@ -49,7 +50,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                 await dispatch(fetchAssets());
                 onClose();
             } else {
-                let errorMessage = "Failed to update asset";
+                let errorMessage = tr("Failed to update asset");
 
                 if (result.payload) {
                     if (typeof result.payload === 'string') {
@@ -76,7 +77,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                 setError(errorMessage);
             }
         } catch (err) {
-            setError(err.message || "An unexpected error occurred");
+            setError(err.message || tr("An unexpected error occurred"));
         } finally {
             setIsSubmitting(false);
         }
@@ -87,36 +88,36 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content2 modal-large" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Edit Location - {asset.asset_name}</h3>
+                    <h3>{tr("Edit Location - {{asset_name}}", { asset_name: asset.asset_name })}</h3>
                     <button className="modal-close" onClick={onClose} disabled={isSubmitting}>✕</button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
-                        {isLoading && <div className="loading-spinner">Loading...</div>}
+                        {isLoading && <div className="loading-spinner">{tr("Loading...")}</div>}
                         {!isLoading && (
                             <div className="form-grid">
                                 <div className="form-group">
-                                    <label>Location</label>
+                                    <label>{tr("Location")}</label>
                                     <select name="location_id" value={formData.location_id} onChange={handleChange} disabled={isSubmitting}>
-                                        <option value="">Select location</option>
-                                        {locations.map((loc) => (<option key={loc.id} value={loc.id}>{loc.site_name || loc.location_name || `Location ${loc.id}`}</option>))}
+                                        <option value="">{tr("Select location")}</option>
+                                        {locations.map((loc) => (<option key={loc.id} value={loc.id}>{loc.site_name || loc.location_name || tr("Location {{id}}", { id: loc.id })}</option>))}
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Owner</label>
+                                    <label>{tr("Owner")}</label>
                                     <select name="owner_id" value={formData.owner_id} onChange={handleChange} disabled={isSubmitting}>
-                                        <option value="">Select owner</option>
+                                        <option value="">{tr("Select owner")}</option>
                                         {owners.map((owner) => (<option key={owner.id} value={owner.id}>{owner.full_name}</option>))}
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Status</label>
+                                    <label>{tr("Status")}</label>
                                     <select name="status" value={formData.status} onChange={handleChange} disabled={isSubmitting}>
                                         {statusOptions.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                                     </select>
                                 </div>
                                 <div className="form-group">
-                                    <label>Hosted on server{hostingRequired && <span className="required"> *</span>}</label>
+                                    <label>{tr("Hosted on server")}{hostingRequired && <span className="required"> *</span>}</label>
                                     <select
                                         name="hosted_on_asset_id"
                                         value={formData.hosted_on_asset_id}
@@ -124,7 +125,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                         disabled={isSubmitting}
                                         style={fieldErrors.hosted_on_asset_id ? { borderColor: '#dc3545', backgroundColor: '#fff5f5' } : {}}
                                     >
-                                        <option value="">Select server</option>
+                                        <option value="">{tr("Select server")}</option>
                                         {existingAssets.filter((a) => a.id !== asset.id).map((a) => (
                                             <option key={a.id} value={a.id}>{a.asset_name}</option>
                                         ))}
@@ -132,12 +133,12 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                     {fieldErrors.hosted_on_asset_id && <span style={{ display: 'block', color: '#dc3545', fontSize: '11px', marginTop: '3px' }}>{fieldErrors.hosted_on_asset_id}</span>}
                                     {hostingRequired && !fieldErrors.hosted_on_asset_id && (
                                         <span style={{ display: 'block', color: '#6c757d', fontSize: '11px', marginTop: '3px' }}>
-                                            {selectedTypeName} runs inside a server - Topology draws a dashed line to it.
+                                            {tr("{{selectedTypeName}} runs inside a server - Topology draws a dashed line to it.", { selectedTypeName })}
                                         </span>
                                     )}
                                 </div>
                                 <div className="form-group">
-                                    <label>VLAN</label>
+                                    <label>{tr("VLAN")}</label>
                                     <input
                                         type="text"
                                         name="hosted_vlan"
@@ -147,7 +148,7 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                                         disabled={isSubmitting}
                                     />
                                     <span style={{ display: "block", color: "#6c757d", fontSize: "11px", marginTop: "3px" }}>
-                                        Shown as a label on the dashed line to the hosting server.
+                                        {tr("Shown as a label on the dashed line to the hosting server.")}
                                     </span>
                                 </div>
                             </div>
@@ -155,8 +156,8 @@ export const EditLocationModal = ({ asset, isOpen, onClose }) => {
                         {error && <div className="alert alert-error" style={{ marginTop: "12px" }}>{error}</div>}
                     </div>
                     <div className="modal-actions">
-                        <button type="button" className="btn-cancel" onClick={onClose} disabled={isSubmitting}>Cancel</button>
-                        <button type="submit" className="btn-submit" disabled={isSubmitting || isLoading}>{isSubmitting ? "Updating..." : "Update"}</button>
+                        <button type="button" className="btn-cancel" onClick={onClose} disabled={isSubmitting}>{tr("Cancel")}</button>
+                        <button type="submit" className="btn-submit" disabled={isSubmitting || isLoading}>{isSubmitting ? tr("Updating...") : tr("Update")}</button>
                     </div>
                 </form>
             </div>

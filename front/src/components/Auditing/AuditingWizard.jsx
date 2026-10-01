@@ -6,6 +6,7 @@ import { AuditingProcess } from "./AuditingProcess";
 import { AuditingSuccess } from "./AuditingSuccess";
 import { AuditingFailed } from "./AuditingFailed";
 import { AuditingResultModal } from "./AuditingResultModal";
+import { t } from "../../i18n";
 
 export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
     const dispatch = useDispatch();
@@ -30,7 +31,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
         setHasFailed(true);
         setErrorMessage(
             message ||
-            "An error occurred. Please check your connection and try again."
+            t("An error occurred. Please check your connection and try again.")
         );
         setCurrentStep(3);
     };
@@ -73,7 +74,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon">1</div>
                         </div>
-                        <div className="stepper-label">information</div>
+                        <div className="stepper-label">{t("information")}</div>
                         <div className="stepper-number">1</div>
                     </div>
 
@@ -83,7 +84,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon">2</div>
                         </div>
-                        <div className="stepper-label">process</div>
+                        <div className="stepper-label">{t("process")}</div>
                         <div className="stepper-number">2</div>
                     </div>
 
@@ -93,7 +94,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
                         <div className="stepper-circle">
                             <div className="stepper-icon">{hasFailed && currentStep === 3 ? "✕" : "✓"}</div>
                         </div>
-                        <div className="stepper-label">result</div>
+                        <div className="stepper-label">{t("result")}</div>
                         <div className="stepper-number">3</div>
                     </div>
                 </div>

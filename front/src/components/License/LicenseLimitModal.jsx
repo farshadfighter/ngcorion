@@ -1,5 +1,7 @@
 import { LICENSE_TYPES } from "./licenseConfig";
 import { useSelector } from "react-redux";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) => {
     const { planType } = useSelector((state) => state.license);
@@ -8,8 +10,8 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
     if (!isOpen) return null;
     // Asset Management is not license-gated, so it has no entry here.
     const MODULE_LABELS = {
-        auditing: "Auditing",
-        hardening: "Hardening",
+        auditing: t("Auditing"),
+        hardening: t("Hardening"),
     };
 
     return (
@@ -29,7 +31,7 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
             <div style={{
                 position: "fixed",
                 top: "50%",
-                left: "50%",
+                left:  "50%",
                 transform: "translate(-50%, -50%)",
                 backgroundColor: "#ffffff",
                 borderRadius: "16px",
@@ -58,12 +60,12 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
 
                 {/* عنوان */}
                 <div style={{ fontSize: "18px", fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
-                    {MODULE_LABELS[module]} Limit Reached
+                    {t("{{value}} Limit Reached", { value: MODULE_LABELS[module] })}
                 </div>
 
                 {/* توضیح */}
                 <div style={{ fontSize: "14px", color: "#6B7280", marginBottom: "8px" }}>
-                    You have reached the maximum limit for <strong>{MODULE_LABELS[module]}</strong> operations on your
+                    {tx("You have reached the maximum number of {{module}} operations allowed by your license.", { module: <strong>{MODULE_LABELS[module]}</strong> })}
                 </div>
 
                 {/* نام لایسنس */}
@@ -82,13 +84,13 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
                         marginBottom: "24px",
                     }}>
                         <i className="fa-solid fa-circle-exclamation"
-                           style={{ marginRight: "8px" }} />
+                           style={{ marginInlineEnd: "8px" }} />
                         {license.name}
                     </div>
                 )}
 
                 <div style={{ fontSize: "13px", color: "#9CA3AF", marginBottom: "28px" }}>
-                    Please upgrade your licence to continue using this feature.
+                    {t("Please upgrade your licence to continue using this feature.")}
                 </div>
 
                 {/* دکمه‌ها */}
@@ -107,7 +109,7 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
                             cursor: "pointer",
                         }}
                     >
-                        Cancel
+                        {t("Cancel")}
                     </button>
                     <button
                         onClick={onGoToLicence}
@@ -123,7 +125,7 @@ export const LicenseLimitModal = ({ isOpen, module, onClose, onGoToLicence }) =>
                             cursor: "pointer",
                         }}
                     >
-                        Go to Licence
+                        {t("Go to Licence")}
                     </button>
                 </div>
             </div>

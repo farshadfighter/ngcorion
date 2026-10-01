@@ -9,6 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
+import { t } from "../../i18n";
 
 const DescriptionModal = ({ description, zoneName, onClose }) => {
     return (
@@ -48,7 +49,7 @@ const DescriptionModal = ({ description, zoneName, onClose }) => {
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <i className="fa-solid fa-circle-info" style={{ color: "#fff", fontSize: "16px" }}></i>
                         <span style={{ color: "#fff", fontWeight: "600", fontSize: "15px" }}>
-                            Description
+                            {t("Description")}
                         </span>
                     </div>
                     <button
@@ -80,9 +81,9 @@ const DescriptionModal = ({ description, zoneName, onClose }) => {
                     }}
                 >
                     <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "500" }}>
-                        Zone:
+                        {t("Zone:")}
                     </span>
-                    <span style={{ fontSize: "13px", color: "#1e3a5f", fontWeight: "600", marginLeft: "6px" }}>
+                    <span style={{ fontSize: "13px", color: "#1e3a5f", fontWeight: "600", marginInlineStart: "6px" }}>
                         {zoneName}
                     </span>
                 </div>
@@ -124,7 +125,7 @@ const DescriptionModal = ({ description, zoneName, onClose }) => {
                             cursor: "pointer",
                         }}
                     >
-                        Close
+                        {t("Close")}
                     </button>
                 </div>
             </div>
@@ -226,7 +227,7 @@ export const NetworkZoneTab = () => {
     };
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     return (
@@ -236,7 +237,7 @@ export const NetworkZoneTab = () => {
                     <div className="search-wrapper">
                         <input
                             type="text"
-                            placeholder="Search asset types..."
+                            placeholder={t("Search asset types...")}
                             className="search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -252,7 +253,7 @@ export const NetworkZoneTab = () => {
                         />
                     </div>
                     <button className="btn-add" onClick={handleAdd}>
-                        + Add Zone
+                        {t("+ Add Zone")}
                     </button>
                 </div>
 
@@ -274,23 +275,23 @@ export const NetworkZoneTab = () => {
                                     type="checkbox"
                                     checked={allSelected}
                                     onChange={toggleAll}
-                                    aria-label="Select all rows on this page"
+                                    aria-label={t("Select all rows on this page")}
                                 />
                             </th>
-                            <th>Number</th>
+                            <th>{t("Number")}</th>
 
                             <th onClick={() => handleSort("zone_name")} style={{ cursor: "pointer" }}>
-                                Zone Name{renderSortIcon("zone_name")}
+                                {t("Zone Name")}{renderSortIcon("zone_name")}
                             </th>
-                            <th>Description</th>
-                            <th>Actions</th>
+                            <th>{t("Description")}</th>
+                            <th>{t("Actions")}</th>
                         </tr>
                         </thead>
                         <tbody>
                         {paged.length === 0 ? (
                             <tr>
                                 <td colSpan="6" className="no-data">
-                                    No zones found
+                                    {t("No zones found")}
                                 </td>
                             </tr>
                         ) : (
@@ -301,20 +302,20 @@ export const NetworkZoneTab = () => {
                                         type="checkbox"
                                         checked={selectedIds.has(item.id)}
                                         onChange={() => toggleOne(item.id)}
-                                        aria-label={`Select ${item.zone_name || item.id}`}
+                                        aria-label={t("Select {{value}}", { value: item.zone_name || item.id })}
                                     />
                                 </td>
                                     <td>{(page - 1) * pageSize + index + 1}</td>
                                     <td>{item.zone_name}</td>
                                     <td>
                                         {item.description ? (
-                                            <button style={{paddingLeft:"35px",}}
+                                            <button style={{paddingInlineStart:"35px",}}
                                                 className="btn-icon"
                                                 onClick={() => {
                                                     setSelectedDescription(item.description);
                                                     setSelectedZoneName(item.zone_name);
                                                 }}
-                                                title="View description"
+                                                title={t("View description")}
                                             >
                                                 <i
                                                     className="fa-solid fa-circle-info"
@@ -327,7 +328,7 @@ export const NetworkZoneTab = () => {
                                         <button
                                             className="btn-icon"
                                             onClick={() => setEditItem(item)}
-                                            title="Edit"
+                                            title={t("Edit")}
                                         >
                                             <i className="fa-solid fa-pen"></i>
                                         </button>
@@ -363,8 +364,8 @@ export const NetworkZoneTab = () => {
 
             {showBulkConfirm && (
                 <DeleteConfirmModal
-                    title="Delete Network Zones"
-                    message={`Are you sure you want to delete ${selectedCount} item${selectedCount === 1 ? "" : "s"}?`}
+                    title={t("Delete Network Zones")}
+                    message={t("Are you sure you want to delete {{count}} items?", { count: selectedCount })}
                     onConfirm={confirmBulkDelete}
                     onCancel={() => setShowBulkConfirm(false)}
                 />
@@ -376,8 +377,8 @@ export const NetworkZoneTab = () => {
 
                 {showDeleteModal && (
                     <DeleteConfirmModal
-                        title="Delete Zone"
-                        message={`Are you sure you want to delete "${selectedItem?.zone_name}"?`}
+                        title={t("Delete Zone")}
+                        message={t("Are you sure you want to delete \"{{zone_name}}\"?", { zone_name: selectedItem?.zone_name })}
                         onConfirm={confirmDelete}
                         onCancel={() => {
                             setShowDeleteModal(false);

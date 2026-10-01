@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../config/api.js';
+import { t } from "../../i18n";
 
 const DEVICE_TYPES = [
     ['cisco', 'Cisco'], ['fortinet', 'Fortinet'], ['linux', 'Linux'], ['apache', 'Apache'], ['mongodb', 'MongoDB'],
@@ -38,7 +39,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.asset_id || !form.ssh_username || !form.ssh_password) {
-            setError('Asset, SSH username and password are required.');
+            setError(t("Asset, SSH username and password are required."));
             return;
         }
         setSubmitting(true);
@@ -55,7 +56,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
             onSuccess();
             onClose();
         } catch (err) {
-            setError(err.response?.data?.detail || 'Backup failed. Check SSH credentials and device connectivity.');
+            setError(err.response?.data?.detail || t("Backup failed. Check SSH credentials and device connectivity."));
         } finally {
             setSubmitting(false);
         }
@@ -83,8 +84,8 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
             <div className="modal" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <div className="modal-title-group">
-                        <h2>New Backup</h2>
-                        <span className="modal-subtitle">Connect to device and save running config</span>
+                        <h2>{t("New Backup")}</h2>
+                        <span className="modal-subtitle">{t("Connect to device and save running config")}</span>
                     </div>
                     <button className="modal-close" onClick={onClose}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -102,7 +103,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
                         )}
 
                         <div>
-                            <label style={labelStyle}>Asset *</label>
+                            <label style={labelStyle}>{t("Asset *")}</label>
                             <select
                                 name="asset_id"
                                 value={form.asset_id}
@@ -111,9 +112,9 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
                                 required
                                 disabled={assetsLoading}
                             >
-                                <option value="">{assetsLoading ? 'Loading assets…' : 'Select an asset'}</option>
+                                <option value="">{assetsLoading ? t("Loading assets…") : t("Select an asset")}</option>
                                 {assetId && !assets.some((a) => a.id === assetId) && (
-                                    <option value={assetId}>{assetName || `Asset #${assetId}`}</option>
+                                    <option value={assetId}>{assetName || t("Asset #{{assetId}}", { assetId })}</option>
                                 )}
                                 {assets.map((a) => (
                                     <option key={a.id} value={a.id}>
@@ -124,7 +125,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
                         </div>
 
                         <div>
-                            <label style={labelStyle}>Device Type *</label>
+                            <label style={labelStyle}>{t("Device Type *")}</label>
                             <select name="device_type" value={form.device_type} onChange={handleChange} style={inputStyle}>
                                 {DEVICE_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                             </select>
@@ -132,7 +133,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div>
-                                <label style={labelStyle}>SSH Username *</label>
+                                <label style={labelStyle}>{t("SSH Username *")}</label>
                                 <input
                                     name="ssh_username"
                                     value={form.ssh_username}
@@ -143,7 +144,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
                                 />
                             </div>
                             <div>
-                                <label style={labelStyle}>SSH Password *</label>
+                                <label style={labelStyle}>{t("SSH Password *")}</label>
                                 <input
                                     type="password"
                                     name="ssh_password"
@@ -158,7 +159,7 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
 
                         {form.device_type === 'cisco' && (
                             <div>
-                                <label style={labelStyle}>Enable Secret <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
+                                <label style={labelStyle}>{t("Enable Secret")}{" "} <span style={{ color: '#9CA3AF', fontWeight: 400 }}>{t("(optional)")}</span></label>
                                 <input
                                     type="password"
                                     name="ssh_secret"
@@ -166,13 +167,13 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
                                     onChange={handleChange}
                                     style={inputStyle}
                                     autoComplete="off"
-                                    placeholder="Cisco enable secret"
+                                    placeholder={t("Cisco enable secret")}
                                 />
                             </div>
                         )}
 
                         <div style={{ width: 120 }}>
-                            <label style={labelStyle}>SSH Port</label>
+                            <label style={labelStyle}>{t("SSH Port")}</label>
                             <input
                                 type="number"
                                 name="ssh_port"
@@ -187,10 +188,10 @@ const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) 
 
                     <div className="modal-footer">
                         <button type="button" className="btn btn-ok" onClick={onClose} disabled={submitting}>
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button type="submit" className="btn btn-primary" disabled={submitting}>
-                            {submitting ? 'Taking Backup…' : 'Take Backup'}
+                            {submitting ? t("Taking Backup…") : t("Take Backup")}
                         </button>
                     </div>
                 </form>

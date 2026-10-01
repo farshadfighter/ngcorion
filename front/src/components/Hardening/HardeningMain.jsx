@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/hardening/FixAll.css";
+import { t } from "../../i18n";
 
 export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => {
     const [showWizard, setShowWizard] = useState(false);
@@ -47,21 +48,21 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
                     <div className="hardening-option-icon" >
                         <img src="/icons/haedenIcon.svg" alt="" style={{ width: "64px", height: "64px" }} />
                     </div>
-                    <div className="hardening-option-title">Fix all section</div>
+                    <div className="hardening-option-title">{t("Fix all section")}</div>
                     <div className="hardening-option-description">
-                        Hardening all section by CIS Benchmark
+                        {t("Hardening all section by CIS Benchmark")}
                     </div>
-                    <button className="hardening-option-button">Next</button>
+                    <button className="hardening-option-button">{t("Next")}</button>
                 </div>
 
                 {/* باکس 2: Fix Unsuccessful */}
                 <div className="hardening-option-box" onClick={handleFixUnsuccessfulClick}>
                     <div className="hardening-option-icon" >    <img src="/icons/haedenIcon.svg" alt="" style={{ width: "64px", height: "64px" }} /></div>
-                    <div className="hardening-option-title">Fix Unsuccessful section</div>
+                    <div className="hardening-option-title">{t("Fix Unsuccessful section")}</div>
                     <div className="hardening-option-description">
-                        Hardening Unsuccessful section by Auditing
+                        {t("Hardening Unsuccessful section by Auditing")}
                     </div>
-                    <button className="hardening-option-button">Next</button>
+                    <button className="hardening-option-button">{t("Next")}</button>
                 </div>
             </div>
 

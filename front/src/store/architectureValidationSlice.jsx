@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { t } from "../i18n";
 
 // =====================
 // Thunks
@@ -15,7 +16,7 @@ export const fetchFindings = createAsyncThunk(
             const res = await api.get("/api/architecture-validation/findings", { params });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load findings");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load findings"));
         }
     }
 );
@@ -27,7 +28,7 @@ export const runAnalysis = createAsyncThunk(
             const res = await api.post("/api/architecture-validation/analyze");
             return res.data; // { findings, asset_count, finding_count }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to run analysis");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to run analysis"));
         }
     }
 );
@@ -39,7 +40,7 @@ export const acceptFinding = createAsyncThunk(
             const res = await api.post(`/api/architecture-validation/findings/${findingId}/accept`);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to accept finding");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to accept finding"));
         }
     }
 );
@@ -51,7 +52,7 @@ export const ignoreFinding = createAsyncThunk(
             const res = await api.post(`/api/architecture-validation/findings/${findingId}/ignore`, { reason });
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to ignore finding");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to ignore finding"));
         }
     }
 );
@@ -86,21 +87,21 @@ const architectureValidationSlice = createSlice({
             .addCase(runAnalysis.fulfilled, (state, action) => {
                 state.isAnalyzing = false;
                 state.lastRun = { assetCount: action.payload.asset_count, findingCount: action.payload.finding_count };
-                state.successMessage = `Analysis complete: ${action.payload.finding_count} finding(s) across ${action.payload.asset_count} asset(s).`;
+                state.successMessage = t("Analysis complete: {{finding_count}} finding(s) across {{asset_count}} asset(s).", { finding_count: action.payload.finding_count, asset_count: action.payload.asset_count });
             })
             .addCase(runAnalysis.rejected, (state, action) => { state.isAnalyzing = false; state.error = action.payload; })
 
             .addCase(acceptFinding.fulfilled, (state, action) => {
                 const idx = state.findings.findIndex((f) => f.id === action.payload.id);
                 if (idx !== -1) state.findings[idx] = action.payload;
-                state.successMessage = "Finding accepted.";
+                state.successMessage = t("Finding accepted.");
             })
             .addCase(acceptFinding.rejected, (state, action) => { state.error = action.payload; })
 
             .addCase(ignoreFinding.fulfilled, (state, action) => {
                 const idx = state.findings.findIndex((f) => f.id === action.payload.id);
                 if (idx !== -1) state.findings[idx] = action.payload;
-                state.successMessage = "Finding ignored.";
+                state.successMessage = t("Finding ignored.");
             })
             .addCase(ignoreFinding.rejected, (state, action) => { state.error = action.payload; });
     },

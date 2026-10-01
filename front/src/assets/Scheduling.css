@@ -98,7 +98,7 @@
 
 .sched-table th {
     padding: 14px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 13px;
     font-weight: 600;
     color: #6b7280;
@@ -207,7 +207,7 @@
     content: "";
     height: 14px;
     width: 14px;
-    left: 3px;
+    inset-inline-start: 3px;
     bottom: 3px;
     background-color: white;
     border-radius: 50%;

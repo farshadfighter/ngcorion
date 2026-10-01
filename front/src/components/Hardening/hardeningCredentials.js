@@ -1,4 +1,5 @@
 import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
+import { t } from "../../i18n";
 // Shared helpers for hardening credentials, used by HardenAllModal and
 // FixSingleModal (and anywhere else that collects device credentials for a
 // hardening run). Keeping the device-type predicates, the credential state
@@ -51,8 +52,8 @@ export const defaultCredentialsState = {
 export function validateCredentials(deviceType, creds) {
     const errors = {};
     if (isWindows(deviceType)) {
-        if (!creds.windows_username?.trim()) errors.windows_username = "Windows Username is required";
-        if (!creds.windows_password?.trim()) errors.windows_password = "Windows Password is required";
+        if (!creds.windows_username?.trim()) errors.windows_username = t("Windows Username is required");
+        if (!creds.windows_password?.trim()) errors.windows_password = t("Windows Password is required");
     } else if (isMssql(deviceType)) {
         if (!creds.mssql_username?.trim()) errors.mssql_username = "SQL Server Username is required";
         if (!creds.mssql_password?.trim()) errors.mssql_password = "SQL Server Password is required";

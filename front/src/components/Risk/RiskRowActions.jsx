@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import api from "../../config/api";
 import { usePermission } from "../../hooks/usePermission";
 import { recalculateAssetRisk } from "../../store/riskSlice";
+import { t } from "../../i18n";
 
 /**
  * The two per-row buttons from the Figma design:
@@ -56,8 +57,8 @@ export const RiskRowActions = ({ row }) => {
                 className="risk-action-btn"
                 onClick={handleExport}
                 disabled={isExporting || !assetId}
-                title="Export this asset's risk as JSON"
-                aria-label="Export asset risk"
+                title={t("Export this asset's risk as JSON")}
+                aria-label={t("Export asset risk")}
             >
                 <i
                     className={
@@ -75,10 +76,10 @@ export const RiskRowActions = ({ row }) => {
                 disabled={!canWrite || isRecalculating || !assetId}
                 title={
                     canWrite
-                        ? "Recalculate this asset's risk score"
-                        : "Recalculating requires risk write permission"
+                        ? t("Recalculate this asset's risk score")
+                        : t("Recalculating requires risk write permission")
                 }
-                aria-label="Recalculate asset risk"
+                aria-label={t("Recalculate asset risk")}
             >
                 <i
                     className={

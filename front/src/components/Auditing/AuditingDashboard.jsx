@@ -8,6 +8,7 @@ import { FindingsBySeverity } from "./dashboard/FindingsBySeverity";
 import { TopFailedControls } from "./dashboard/TopFailedControls";
 import { ComplianceTrend } from "./dashboard/ComplianceTrend";
 import "../../assets/AuditingDashboard.css";
+import { t, uiLocale, n } from "../../i18n";
 
 // ── Compliance badge colours: green >= 80, yellow 50-79, red < 50 ──────────────
 const scoreColor = (p) => (p >= 80 ? "#16a34a" : p >= 50 ? "#d97706" : "#dc2626");
@@ -47,14 +48,14 @@ const ComplianceBadge = ({ pct }) => (
 const StatCard = ({ label, value }) => (
     <div className="aud-stat-card">
         <div className="aud-stat-card-label">{label}</div>
-        <div className="aud-stat-card-value">{value}</div>
+        <div className="aud-stat-card-value">{n(value)}</div>
     </div>
 );
 
 const fmtDate = (d) => {
-    if (!d) return "Never";
+    if (!d) return t("Never");
     const dt = new Date(d);
-    return isNaN(dt.getTime()) ? "-" : dt.toLocaleString();
+    return isNaN(dt.getTime()) ? "-" : dt.toLocaleString(uiLocale());
 };
 
 export const AuditingDashboard = () => {
@@ -149,7 +150,7 @@ export const AuditingDashboard = () => {
         return (
             <div className="aud-container">
                 <div className="aud-card">
-                    <div className="loading-spinner">Loading compliance data…</div>
+                    <div className="loading-spinner">{t("Loading compliance data…")}</div>
                 </div>
             </div>
         );
@@ -168,12 +169,12 @@ export const AuditingDashboard = () => {
 
             {/* ── Remediation progress ── */}
             <div className="aud-card">
-                <div className="aud-card-title">Remediation Progress</div>
+                <div className="aud-card-title">{t("Remediation Progress")}</div>
                 <div className="aud-summary-cards">
-                    <StatCard label="Open Findings" value={remediation?.open_findings ?? "—"} />
-                    <StatCard label="Fixed This Month" value={remediation?.fixed_this_month ?? "—"} />
+                    <StatCard label={t("Open Findings")} value={remediation?.open_findings ?? "—"} />
+                    <StatCard label={t("Fixed This Month")} value={remediation?.fixed_this_month ?? "—"} />
                     <StatCard
-                        label="Resolved"
+                        label={t("Resolved")}
                         value={
                             remediation?.resolved_percent === undefined
                                 ? "—"
@@ -186,9 +187,9 @@ export const AuditingDashboard = () => {
             {/* ── Compliance by asset type + critical findings ── */}
             <div className="aud-row aud-row-split">
                 <div className="aud-card">
-                    <div className="aud-card-title">Compliance By Asset Type</div>
+                    <div className="aud-card-title">{t("Compliance By Asset Type")}</div>
                     {byType.length === 0 ? (
-                        <div className="aud-empty">No completed audits yet.</div>
+                        <div className="aud-empty">{t("No completed audits yet.")}</div>
                     ) : (
                         /* Figma shows labelled horizontal bars only — the
                            duplicate column chart that used to sit above them
@@ -198,13 +199,13 @@ export const AuditingDashboard = () => {
                                 <div key={item.family} className="aud-progress-bar-wrapper">
                                     <div className="aud-progress-label">
                                         <span>{item.name}</span>
-                                        <span className="aud-progress-value">{item.value}%</span>
+                                        <span className="aud-progress-value">{n(`${item.value}%`)}</span>
                                     </div>
                                     <div className="aud-progress-track">
                                         <div
                                             className="aud-progress-fill"
                                             style={{ width: `${item.value}%` }}
-                                            title={`${item.count} asset(s)`}
+                                            title={t("{{count}} asset(s)", { count: item.count })}
                                         />
                                     </div>
                                 </div>
@@ -216,17 +217,17 @@ export const AuditingDashboard = () => {
                 {/* Critical findings — Figma pairs this with the asset-type
                     bars, not with the executive summary. */}
                 <div className="aud-card">
-                    <div className="aud-card-title">Critical Findings Table</div>
+                    <div className="aud-card-title">{t("Critical Findings Table")}</div>
                     {(critical?.items || []).length === 0 ? (
-                        <div className="aud-empty">No unresolved critical findings.</div>
+                        <div className="aud-empty">{t("No unresolved critical findings.")}</div>
                     ) : (
                         <div className="aud-table-wrapper">
                             <table className="aud-table">
                                 <thead>
                                     <tr>
-                                        <th>Asset</th>
-                                        <th>Finding</th>
-                                        <th>Severity</th>
+                                        <th>{t("Asset")}</th>
+                                        <th>{t("Finding")}</th>
+                                        <th>{t("Severity")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -251,39 +252,39 @@ export const AuditingDashboard = () => {
             {/* ── Executive summary + audit coverage ── */}
             <div className="aud-row aud-row-split">
                 <div className="aud-card">
-                    <div className="aud-card-title">Executive Summary</div>
+                    <div className="aud-card-title">{t("Executive Summary")}</div>
                     <div className="aud-summary-cards">
                         <StatCard
-                            label="Compliance Score"
+                            label={t("Compliance Score")}
                             value={
                                 overview?.average_compliance === undefined
                                     ? "—"
                                     : `${overview.average_compliance}%`
                             }
                         />
-                        <StatCard label="Audited Assets" value={overview?.audited_assets ?? "—"} />
-                        <StatCard label="Failed Controls" value={overview?.failed_checks ?? "—"} />
-                        <StatCard label="Critical Findings" value={critical?.items?.length ?? "—"} />
-                        <StatCard label="Assets Out Of Compliance" value={summary.outOfCompliance} />
+                        <StatCard label={t("Audited Assets")} value={overview?.audited_assets ?? "—"} />
+                        <StatCard label={t("Failed Controls")} value={overview?.failed_checks ?? "—"} />
+                        <StatCard label={t("Critical Findings")} value={critical?.items?.length ?? "—"} />
+                        <StatCard label={t("Assets Out Of Compliance")} value={summary.outOfCompliance} />
                     </div>
                 </div>
 
                 <div className="aud-coverage-card">
-                    <div className="aud-card-title">Audit Coverage</div>
+                    <div className="aud-card-title">{t("Audit Coverage")}</div>
                     <div className="aud-coverage-inner">
-                        <div className="aud-coverage-total-label">Total Assets</div>
-                        <div className="aud-coverage-total-value">{totalAssets.toLocaleString()}</div>
+                        <div className="aud-coverage-total-label">{t("Total Assets")}</div>
+                        <div className="aud-coverage-total-value">{totalAssets.toLocaleString(uiLocale())}</div>
                         <div className="aud-coverage-track">
                             <div className="aud-coverage-fill" style={{ width: `${coveragePercent}%` }} />
                         </div>
                         <div className="aud-coverage-legend">
                             <div className="aud-coverage-legend-item">
                                 <div className="aud-coverage-dot" style={{ background: "#1e3a5f" }} />
-                                <span>Audited: <strong>{summary.audited.toLocaleString()}</strong></span>
+                                <span>{t("Audited:")}{" "} <strong>{summary.audited.toLocaleString(uiLocale())}</strong></span>
                             </div>
                             <div className="aud-coverage-legend-item">
                                 <div className="aud-coverage-dot" style={{ background: "#e5e7eb" }} />
-                                <span>Not Audited: <strong>{notAudited.toLocaleString()}</strong></span>
+                                <span>{t("Not Audited:")}{" "} <strong>{notAudited.toLocaleString(uiLocale())}</strong></span>
                             </div>
                         </div>
                     </div>
@@ -293,23 +294,23 @@ export const AuditingDashboard = () => {
 
             {/* ── Per-asset compliance table ── */}
             <div className="aud-table-card">
-                <div className="aud-table-header">Per-Asset Compliance</div>
+                <div className="aud-table-header">{t("Per-Asset Compliance")}</div>
                 <div className="aud-table-wrapper">
                     <table className="aud-table">
                         <thead>
                             <tr>
-                                <th>Asset</th>
-                                <th>OS / Service</th>
-                                <th>Compliance</th>
-                                <th>Checks</th>
-                                <th>Last Audit</th>
+                                <th>{t("Asset")}</th>
+                                <th>{t("OS / Service")}</th>
+                                <th>{t("Compliance")}</th>
+                                <th>{t("Checks")}</th>
+                                <th>{t("Last Audit")}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {assetRows.length === 0 ? (
                                 <tr>
                                     <td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "#6b7280" }}>
-                                        No completed audits yet. Run an audit to populate the dashboard.
+                                        {t("No completed audits yet. Run an audit to populate the dashboard.")}
                                     </td>
                                 </tr>
                             ) : (

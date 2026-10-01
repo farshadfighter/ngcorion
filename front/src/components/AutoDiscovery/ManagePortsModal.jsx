@@ -11,6 +11,7 @@ import { fetchAssets, fetchAssetTypes } from '../../store/assetSlice.jsx';
 import api from '../../config/api.js';
 import '../../assets/autoDiscoveryStyle/ManagePortsModal.css';
 import ConfirmAlert from './Confirmalert.jsx';
+import { t } from "../../i18n";
 
 const ManagePortsModal = ({ host, onClose, onSuccess }) => {
     const dispatch = useDispatch();
@@ -72,12 +73,12 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
             const payload = { hostId: host.id, mode: selectedMode };
             if (selectedMode === 'create_new') {
                 if (!assetName.trim()) {
-                    showAlert('Please enter an asset name', 'warning');
+                    showAlert(t("Please enter an asset name"), 'warning');
                     setIsApplying(false);
                     return;
                 }
                 if (!assetTypeId) {
-                    showAlert('Please select an asset type', 'warning');
+                    showAlert(t("Please select an asset type"), 'warning');
                     setIsApplying(false);
                     return;
                 }
@@ -85,7 +86,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                 payload.assetTypeId = parseInt(assetTypeId);
             } else {
                 if (!matchingAsset) {
-                    showAlert('No matching asset found', 'error');
+                    showAlert(t("No matching asset found"), 'error');
                     setIsApplying(false);
                     return;
                 }
@@ -95,7 +96,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
             if (onSuccess) onSuccess(result);
             onClose();
         } catch (error) {
-            showAlert(error || 'Failed to apply changes', 'error');
+            showAlert(error || t("Failed to apply changes"), 'error');
             setIsApplying(false);
         }
     };
@@ -105,11 +106,11 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
             const openPorts = host.ports || host.open_ports || [];
             if (selectedMode === 'create_new') {
                 if (!assetName.trim()) {
-                    showAlert('Please enter an asset name', 'warning');
+                    showAlert(t("Please enter an asset name"), 'warning');
                     return;
                 }
                 if (!assetTypeId) {
-                    showAlert('Please select an asset type', 'warning');
+                    showAlert(t("Please select an asset type"), 'warning');
                     return;
                 }
                 const assetPayload = {
@@ -136,10 +137,10 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                 }
                 if (onSuccess) onSuccess({ asset_id: newAsset.id, mode: 'create_new' });
                 // ✅ جایگزین alert
-                showAlert(`Asset "${assetName}" created successfully and added to Discovery List!`, 'success');
+                showAlert(t("Asset \"{{assetName}}\" created successfully and added to Discovery List!", { assetName }), 'success');
             } else if (selectedMode === 'overwrite' || selectedMode === 'merge') {
                 if (!matchingAsset) {
-                    showAlert('No matching asset found', 'error');
+                    showAlert(t("No matching asset found"), 'error');
                     return;
                 }
                 const ports = openPorts.map(p => ({
@@ -172,7 +173,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
             }
         } catch (error) {
             console.error('Error applying changes:', error);
-            showAlert(error.response?.data?.detail || 'Failed to apply changes', 'error');
+            showAlert(error.response?.data?.detail || t("Failed to apply changes"), 'error');
         } finally {
             setIsApplying(false);
         }
@@ -209,8 +210,8 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
 
                     {/* ── Header ── */}
                     <div className="mpm-header">
-                        <h2>Manage Asset Ports</h2>
-                        <button className="mpm-close" onClick={onClose} aria-label="Close">
+                        <h2>{t("Manage Asset Ports")}</h2>
+                        <button className="mpm-close" onClick={onClose} aria-label={t("Close")}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M18 6L6 18M6 6l12 12" />
                             </svg>
@@ -222,7 +223,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                         {checkingMatch ? (
                             <div className="mpm-loading">
                                 <div className="mpm-spinner" />
-                                <p>Checking for existing asset...</p>
+                                <p>{t("Checking for existing asset...")}</p>
                             </div>
                         ) : (
                             <>
@@ -232,7 +233,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                             <circle cx="12" cy="12" r="10" />
                                             <path d="M12 16v-4M12 8h.01" />
                                         </svg>
-                                        <span>This IP exists in the asset list. You can update or overwrite its ports.</span>
+                                        <span>{t("This IP exists in the asset list. You can update or overwrite its ports.")}</span>
                                     </div>
                                 ) : (
                                     <div className="mpm-alert mpm-alert-warning">
@@ -240,7 +241,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                             <circle cx="12" cy="12" r="10" />
                                             <path d="M12 16v-4M12 8h.01" />
                                         </svg>
-                                        <span>This IP is not in the asset list. You can add it as a new asset.</span>
+                                        <span>{t("This IP is not in the asset list. You can add it as a new asset.")}</span>
                                     </div>
                                 )}
 
@@ -253,22 +254,22 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                     </div>
                                     <div className="mpm-rows">
                                         <div className="mpm-row">
-                                            <span className="mpm-row-label">MAC Address</span>
+                                            <span className="mpm-row-label">{t("MAC Address")}</span>
                                             <span className="mpm-row-value"><code>{host.mac_address || 'N/A'}</code></span>
                                         </div>
                                         <div className="mpm-row">
-                                            <span className="mpm-row-label">OS Info</span>
-                                            <span className="mpm-row-value">{host.os_info || host.os_name || 'Unknown'}</span>
+                                            <span className="mpm-row-label">{t("OS Info")}</span>
+                                            <span className="mpm-row-value">{host.os_info || host.os_name || t("Unknown")}</span>
                                         </div>
                                         <div className="mpm-row">
-                                            <span className="mpm-row-label">State</span>
+                                            <span className="mpm-row-label">{t("State")}</span>
                                             <span className="mpm-row-value">
                                                 <span className={`mpm-state ${stateClass}`}>{host.state || 'unknown'}</span>
                                             </span>
                                         </div>
                                     </div>
                                     <div className="mpm-ports-section">
-                                        <p className="mpm-ports-title">Open Ports</p>
+                                        <p className="mpm-ports-title">{t("Open Ports")}</p>
                                         <div className="mpm-ports-list">
                                             {openPorts.length > 0 ? (
                                                 openPorts.map((port, index) => (
@@ -278,7 +279,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                                     </span>
                                                 ))
                                             ) : (
-                                                <span className="mpm-no-ports">No open ports detected</span>
+                                                <span className="mpm-no-ports">{t("No open ports detected")}</span>
                                             )}
                                         </div>
                                     </div>
@@ -287,27 +288,27 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                 {hasExistingAsset && previewData && (
                                     <div className="mpm-asset-card">
                                         <p className="mpm-asset-card-title">
-                                            Existing Asset: {matchingAsset.asset_name}
+                                           {t("Existing Asset: {{asset_name}}", { asset_name: matchingAsset.asset_name })}
                                         </p>
                                         <div className="mpm-rows">
                                             <div className="mpm-row">
-                                                <span className="mpm-row-label">Asset ID</span>
+                                                <span className="mpm-row-label">{t("Asset ID")}</span>
                                                 <span className="mpm-row-value">#{matchingAsset.id}</span>
                                             </div>
                                             <div className="mpm-row">
-                                                <span className="mpm-row-label">Type</span>
+                                                <span className="mpm-row-label">{t("Type")}</span>
                                                 <span className="mpm-row-value">{matchingAsset.asset_type?.type_name || 'N/A'}</span>
                                             </div>
                                             <div className="mpm-row">
-                                                <span className="mpm-row-label">Current Ports</span>
-                                                <span className="mpm-row-value">{previewData.existing_ports_count || 0} ports</span>
+                                                <span className="mpm-row-label">{t("Current Ports")}</span>
+                                                <span className="mpm-row-value">{previewData.existing_ports_count || 0} {" "}{t("ports")}</span>
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
                                 <div>
-                                    <p className="mpm-section-title">Select Action</p>
+                                    <p className="mpm-section-title">{t("Select Action")}</p>
                                     <div className="mpm-modes">
                                         {hasExistingAsset ? (
                                             <>
@@ -322,12 +323,12 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                                         </svg>
                                                     </div>
                                                     <div className="mpm-mode-info">
-                                                        <h5>Overwrite Ports</h5>
-                                                        <p>Replace ALL existing ports with newly discovered data</p>
+                                                        <h5>{t("Overwrite Ports")}</h5>
+                                                        <p>{t("Replace ALL existing ports with newly discovered data")}</p>
                                                         {previewData?.overwrite_changes && (
                                                             <div className="mpm-preview-stats">
-                                                                <span className="mpm-stat mpm-stat-danger">Remove {previewData.overwrite_changes.ports_to_remove}</span>
-                                                                <span className="mpm-stat mpm-stat-success">Add {previewData.overwrite_changes.ports_to_add}</span>
+                                                                <span className="mpm-stat mpm-stat-danger">{t("Remove {{ports_to_remove}}", { ports_to_remove: previewData.overwrite_changes.ports_to_remove })}</span>
+                                                                <span className="mpm-stat mpm-stat-success">{t("Add {{ports_to_add}}", { ports_to_add: previewData.overwrite_changes.ports_to_add })}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -343,12 +344,12 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                                         </svg>
                                                     </div>
                                                     <div className="mpm-mode-info">
-                                                        <h5>Update Ports</h5>
-                                                        <p>Keep existing ports and add newly discovered ones</p>
+                                                        <h5>{t("Update Ports")}</h5>
+                                                        <p>{t("Keep existing ports and add newly discovered ones")}</p>
                                                         {previewData?.merge_changes && (
                                                             <div className="mpm-preview-stats">
-                                                                <span className="mpm-stat mpm-stat-success">Add {previewData.merge_changes.ports_to_add} new</span>
-                                                                <span className="mpm-stat mpm-stat-info">Fill {previewData.merge_changes.fields_to_fill?.length || 0} fields</span>
+                                                                <span className="mpm-stat mpm-stat-success">{t("Add {{ports_to_add}} new", { ports_to_add: previewData.merge_changes.ports_to_add })}</span>
+                                                                <span className="mpm-stat mpm-stat-info">{t("Fill")}{" "} {previewData.merge_changes.fields_to_fill?.length || 0} {" "}{t("fields")}</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -367,34 +368,34 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                                         </svg>
                                                     </div>
                                                     <div className="mpm-mode-info">
-                                                        <h5>Add as New Asset</h5>
-                                                        <p>Create a new asset with all discovered data</p>
-                                                        <p className="mpm-mode-note"><i className="fa-solid fa-bullseye" /> Will be added to Discovery Asset List</p>
+                                                        <h5>{t("Add as New Asset")}</h5>
+                                                        <p>{t("Create a new asset with all discovered data")}</p>
+                                                        <p className="mpm-mode-note"><i className="fa-solid fa-bullseye" /> {" "}{t("Will be added to Discovery Asset List")}</p>
                                                     </div>
                                                 </button>
 
                                                 {selectedMode === 'create_new' && (
                                                     <div className="mpm-create-form">
                                                         <div className="mpm-field">
-                                                            <label htmlFor="mpm-asset-name">Asset Name *</label>
+                                                            <label htmlFor="mpm-asset-name">{t("Asset Name *")}</label>
                                                             <input
                                                                 id="mpm-asset-name"
                                                                 type="text"
                                                                 className="mpm-input"
-                                                                placeholder="Enter asset name"
+                                                                placeholder={t("Enter asset name")}
                                                                 value={assetName}
                                                                 onChange={(e) => setAssetName(e.target.value)}
                                                             />
                                                         </div>
                                                         <div className="mpm-field">
-                                                            <label htmlFor="mpm-asset-type">Asset Type *</label>
+                                                            <label htmlFor="mpm-asset-type">{t("Asset Type *")}</label>
                                                             <select
                                                                 id="mpm-asset-type"
                                                                 className="mpm-select"
                                                                 value={assetTypeId}
                                                                 onChange={(e) => setAssetTypeId(e.target.value)}
                                                             >
-                                                                <option value="">Select asset type</option>
+                                                                <option value="">{t("Select asset type")}</option>
                                                                 {assetTypes.map((type) => (
                                                                     <option key={type.id} value={type.id}>
                                                                         {type.type_name}
@@ -415,7 +416,7 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                     {/* ── Footer ── */}
                     <div className="mpm-footer">
                         <button className="mpm-btn mpm-btn-secondary" onClick={onClose} disabled={isApplying}>
-                            Cancel
+                           {t("Cancel")}
                         </button>
                         {selectedMode && !checkingMatch && (
                             <button
@@ -426,13 +427,13 @@ const ManagePortsModal = ({ host, onClose, onSuccess }) => {
                                 {isApplying || loading.applyMode ? (
                                     <>
                                         <span className="mpm-btn-spinner" />
-                                        Applying...
+                                       {t("Applying...")}
                                     </>
                                 ) : (
                                     <>
-                                        {selectedMode === 'create_new' && 'Add Asset'}
-                                        {selectedMode === 'overwrite' && 'Overwrite Ports'}
-                                        {selectedMode === 'merge' && 'Update Ports'}
+                                        {selectedMode === 'create_new' && t("Add Asset")}
+                                        {selectedMode === 'overwrite' && t("Overwrite Ports")}
+                                        {selectedMode === 'merge' && t("Update Ports")}
                                     </>
                                 )}
                             </button>

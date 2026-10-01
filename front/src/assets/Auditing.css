@@ -29,7 +29,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    margin-right:50px;
+    margin-inline-end:50px;
 }
 
 .btn-auditing-primary:hover {
@@ -67,7 +67,7 @@
     color: #6b7280;
     font-size: 14px;
     font-weight: 600;
-    text-align: left;
+    text-align: start;
     padding: 14px 16px;
     border-bottom: 2px solid #e5e7eb;
     position: sticky;
@@ -77,11 +77,11 @@
 }
 
 .auditing-table thead th:first-child {
-    border-top-left-radius: 8px;
+    border-start-start-radius: 8px;
 }
 
 .auditing-table thead th:last-child {
-    border-top-right-radius: 8px;
+    border-start-end-radius: 8px;
 }
 
 .auditing-table tbody td {
@@ -296,7 +296,7 @@
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
     width: 0%;
     height: 100%;
     background: #1e3a5f;
@@ -466,7 +466,7 @@ order: 1;
     margin: 0;
     font-size: 14px;
     color: #1e3a5f;
-    text-align: left;
+    text-align: start;
 }
 
 /* Process Info */
@@ -485,7 +485,7 @@ order: 1;
     margin: 0;
     font-size: 14px;
     color: #374151;
-    text-align: left;
+    text-align: start;
 }
 
 .process-info strong {
@@ -555,7 +555,7 @@ order: 1;
     margin-bottom: 30px;
     display: flex;
     gap: 12px;
-    text-align: left;
+    text-align: start;
 }
 
 .failed-info-icon {
@@ -572,7 +572,7 @@ order: 1;
 
 .failed-info-text ul {
     margin: 0;
-    padding-left: 20px;
+    padding-inline-start: 20px;
     list-style: none;
 }
 
@@ -593,7 +593,7 @@ order: 1;
     margin: 8px 0;
     font-size: 14px;
     color: #374151;
-    text-align: left;
+    text-align: start;
 }
 
 .failed-details strong {
@@ -671,7 +671,7 @@ order: 1;
     margin: 8px 0;
     font-size: 14px;
     color: #374151;
-    text-align: left;
+    text-align: start;
 }
 
 .success-info strong {
@@ -1063,7 +1063,7 @@ order: 1;
     color: #6b7280;
     font-size: 14px;
     font-weight: 600;
-    text-align: left;
+    text-align: start;
     padding: 14px 16px;
     border-bottom: 2px solid #e5e7eb;
     position: sticky;
@@ -1075,11 +1075,11 @@ order: 1;
 }
 
 .result-table thead th:first-child {
-    border-top-left-radius: 8px;
+    border-start-start-radius: 8px;
 }
 
 .result-table thead th:last-child {
-    border-top-right-radius: 8px;
+    border-start-end-radius: 8px;
 }
 
 .result-table tbody td {
@@ -1152,7 +1152,7 @@ order: 1;
     color: #6b7280;
     text-transform: none;
     letter-spacing: normal;
-    margin-left: 8px;
+    margin-inline-start: 8px;
 }
 
 .vdom-chip {

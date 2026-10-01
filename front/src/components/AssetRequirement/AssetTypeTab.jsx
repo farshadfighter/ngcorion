@@ -10,6 +10,7 @@ import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
 import AssetIcon from "../shared/AssetIcon.jsx";
+import { t } from "../../i18n";
 
 export const AssetTypeTab = () => {
     const dispatch = useDispatch();
@@ -104,7 +105,7 @@ export const AssetTypeTab = () => {
     };
 
     if (isLoading) {
-        return <div className="loading-spinner">Loading...</div>;
+        return <div className="loading-spinner">{t("Loading...")}</div>;
     }
 
     return (
@@ -113,7 +114,7 @@ export const AssetTypeTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-                        placeholder="Search asset types..."
+                        placeholder={t("Search asset types...")}
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -130,7 +131,7 @@ export const AssetTypeTab = () => {
                 </div>
 
                 <button className="btn-add" onClick={handleAdd}>
-                    + Add Asset Type
+                    {t("+ Add Asset Type")}
                 </button>
             </div>
 
@@ -152,29 +153,29 @@ export const AssetTypeTab = () => {
                                 type="checkbox"
                                 checked={allSelected}
                                 onChange={toggleAll}
-                                aria-label="Select all rows on this page"
+                                aria-label={t("Select all rows on this page")}
                             />
                         </th>
-                        <th>Number</th>
+                        <th>{t("Number")}</th>
 
-                        <th style={{ width: 56 }}>Icon</th>
+                        <th style={{ width: 56 }}>{t("Icon")}</th>
                         <th onClick={() => handleSort("type_name")} style={{ cursor: "pointer" }}>
-                            Type Name{renderSortIcon("type_name")}
+                            {t("Type Name")}{renderSortIcon("type_name")}
                         </th>
                         <th onClick={() => handleSort("category")} style={{ cursor: "pointer" }}>
-                            Category{renderSortIcon("category")}
+                            {t("Category")}{renderSortIcon("category")}
                         </th>
                         <th onClick={() => handleSort("description")} style={{ cursor: "pointer" }}>
-                            Description{renderSortIcon("description")}
+                            {t("Description")}{renderSortIcon("description")}
                         </th>
-                        <th>Actions</th>
+                        <th>{t("Actions")}</th>
                     </tr>
                     </thead>
                     <tbody>
                     {paged.length === 0 ? (
                         <tr>
                             <td colSpan="8" className="no-data">
-                                No asset types found
+                                {t("No asset types found")}
                             </td>
                         </tr>
                     ) : (
@@ -185,13 +186,13 @@ export const AssetTypeTab = () => {
                                         type="checkbox"
                                         checked={selectedIds.has(item.id)}
                                         onChange={() => toggleOne(item.id)}
-                                        aria-label={`Select ${item.type_name || item.id}`}
+                                        aria-label={t("Select {{value}}", { value: item.type_name || item.id })}
                                     />
                                 </td>
                                 <td>{(page - 1) * pageSize + index + 1}</td>
                                 <td>
                                     <AssetIcon icon={item.effective_icon || item.type_name} size={28}
-                                               title={item.icon ? undefined : "Automatic (from the name)"} />
+                                               title={item.icon ? undefined : t("Automatic (from the name)")} />
                                 </td>
                                 <td>{item.type_name}</td>
                                 <td>{item.category || "-"}</td>
@@ -200,7 +201,7 @@ export const AssetTypeTab = () => {
                                     <button
                                         className="btn-icon"
                                         onClick={() => setEditItem(item)}
-                                        title="Edit"
+                                        title={t("Edit")}
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
@@ -236,8 +237,8 @@ export const AssetTypeTab = () => {
 
             {showBulkConfirm && (
                 <DeleteConfirmModal
-                    title="Delete Asset Types"
-                    message={`Are you sure you want to delete ${selectedCount} item${selectedCount === 1 ? "" : "s"}?`}
+                    title={t("Delete Asset Types")}
+                    message={t("Are you sure you want to delete {{count}} items?", { count: selectedCount })}
                     onConfirm={confirmBulkDelete}
                     onCancel={() => setShowBulkConfirm(false)}
                 />
@@ -251,8 +252,8 @@ export const AssetTypeTab = () => {
 
             {showDeleteModal && (
                 <DeleteConfirmModal
-                    title="Delete Asset Type"
-                    message={`Are you sure you want to delete "${selectedItem?.type_name}"?`}
+                    title={t("Delete Asset Type")}
+                    message={t("Are you sure you want to delete \"{{type_name}}\"?", { type_name: selectedItem?.type_name })}
                     onConfirm={confirmDelete}
                     onCancel={() => {
                         setShowDeleteModal(false);

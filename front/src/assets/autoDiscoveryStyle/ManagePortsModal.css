@@ -189,7 +189,7 @@
 .mpm-row-value {
     font-size: 13px;
     color: var(--mpm-text);
-    text-align: right;
+    text-align: end;
     word-break: break-all;
 }
 
@@ -266,7 +266,7 @@
 .mpm-asset-card {
     background: var(--mpm-white);
     border: 1px solid var(--mpm-border);
-    border-left: 3px solid var(--mpm-navy);
+    border-inline-start: 3px solid var(--mpm-navy);
     border-radius: var(--mpm-radius);
     overflow: hidden;
 }
@@ -312,7 +312,7 @@
     border-radius: var(--mpm-radius);
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-    text-align: left;
+    text-align: start;
     width: 100%;
     box-sizing: border-box;
 }
@@ -555,5 +555,5 @@
 
     .mpm-row { flex-wrap: wrap; gap: 3px; }
     .mpm-row-label { min-width: unset; width: 100%; }
-    .mpm-row-value { text-align: left; }
+    .mpm-row-value { text-align: start; }
 }

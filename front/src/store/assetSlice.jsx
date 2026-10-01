@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { t } from "../i18n";
 
 const getAssetId = (asset) => {
     if (asset == null) return asset;
@@ -19,7 +20,7 @@ export const fetchAssets = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch assets"
+                err.response?.data?.detail || t("Failed to fetch assets")
             );
         }
     }
@@ -34,7 +35,7 @@ export const fetchAsset = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch asset"
+                err.response?.data?.detail || t("Failed to fetch asset")
             );
         }
     }
@@ -54,7 +55,7 @@ export const fetchAssetChangeHistory = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to load change history"
+                err.response?.data?.detail || t("Failed to load change history")
             );
         }
     }
@@ -69,7 +70,7 @@ export const fetchAssetTypes = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch asset types"
+                err.response?.data?.detail || t("Failed to fetch asset types")
             );
         }
     }
@@ -101,9 +102,9 @@ export const createAsset = createAsyncThunk(
                     }
                     // Fallback: check error message
                     if (err.message && err.message.includes('500')) {
-                        return rejectWithValue("Server error: Please check if the data is unique (serial number, IP, MAC)");
+                        return rejectWithValue(t("Server error: Please check if the data is unique (serial number, IP, MAC)"));
                     }
-                    return rejectWithValue("Internal server error occurred");
+                    return rejectWithValue(t("Internal server error occurred"));
                 }
 
                 // Handle 422 validation errors
@@ -124,7 +125,7 @@ export const createAsset = createAsyncThunk(
 
             // Network or other errors
             return rejectWithValue(
-                err.message || "Failed to create asset"
+                err.message || t("Failed to create asset")
             );
         }
     }
@@ -146,7 +147,7 @@ export const updateAsset = createAsyncThunk(
                     if (data && data.detail) {
                         return rejectWithValue(data.detail);
                     }
-                    return rejectWithValue("Internal server error occurred");
+                    return rejectWithValue(t("Internal server error occurred"));
                 }
 
                 if (data && data.detail) {
@@ -155,7 +156,7 @@ export const updateAsset = createAsyncThunk(
             }
 
             return rejectWithValue(
-                err.message || "Failed to update asset"
+                err.message || t("Failed to update asset")
             );
         }
     }
@@ -169,7 +170,7 @@ export const deleteAsset = createAsyncThunk(
         if (id === null || id === undefined || id === "") {
             // Without this the request goes to /api/assets/undefined, which
             // 422s, and the row silently stays put.
-            return rejectWithValue("Cannot delete: this asset has no id.");
+            return rejectWithValue(t("Cannot delete: this asset has no id."));
         }
         try {
             await api.delete(`/api/assets/${id}`);
@@ -181,7 +182,7 @@ export const deleteAsset = createAsyncThunk(
                 // React cannot render — flatten them to one line.
                 Array.isArray(detail)
                     ? detail.map((d) => d.msg || String(d)).join(", ")
-                    : detail || "Failed to delete asset"
+                    : detail || t("Failed to delete asset")
             );
         }
     }
@@ -203,7 +204,7 @@ export const fetchAssetPorts = createAsyncThunk(
             return [];
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to fetch ports"
+                err.response?.data?.detail || t("Failed to fetch ports")
             );
         }
     }
@@ -219,7 +220,7 @@ export const createAssetPort = createAsyncThunk(
             return res.data;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to create port"
+                err.response?.data?.detail || t("Failed to create port")
             );
         }
     }
@@ -236,7 +237,7 @@ export const updateAssetPort = createAsyncThunk(
             return { portId, newPort: res.data };
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to update port"
+                err.response?.data?.detail || t("Failed to update port")
             );
         }
     }
@@ -251,7 +252,7 @@ export const deleteAssetPort = createAsyncThunk(
             return portId;
         } catch (err) {
             return rejectWithValue(
-                err.response?.data?.detail || "Failed to delete port"
+                err.response?.data?.detail || t("Failed to delete port")
             );
         }
     }
@@ -337,7 +338,7 @@ const assetSlice = createSlice({
             // create
             .addCase(createAsset.fulfilled, (state, action) => {
                 state.assets.push(action.payload);
-                state.successMessage = "Asset created successfully!";
+                state.successMessage = t("Asset created successfully!");
             })
 
             // update
@@ -347,7 +348,7 @@ const assetSlice = createSlice({
                     (a) => getAssetId(a) === updatedAssetId
                 );
                 if (idx !== -1) state.assets[idx] = action.payload;
-                state.successMessage = "Asset updated successfully!";
+                state.successMessage = t("Asset updated successfully!");
             })
 
             // delete
@@ -363,14 +364,14 @@ const assetSlice = createSlice({
                 state.assets = state.assets.filter(
                     (a) => String(getAssetId(a)) !== deletedAssetId
                 );
-                state.successMessage = "Asset deleted successfully!";
+                state.successMessage = t("Asset deleted successfully!");
             })
             // A rejected delete used to fall through with no case at all: the
             // row stayed, no message appeared, and a 403 from a user without
             // delete permission looked exactly like nothing happening.
             .addCase(deleteAsset.rejected, (state, action) => {
                 state.isDeleting = false;
-                state.error = action.payload || "Failed to delete asset";
+                state.error = action.payload || t("Failed to delete asset");
             })
 
             // fetch ports
@@ -390,7 +391,7 @@ const assetSlice = createSlice({
 
             // create port
             .addCase(createAssetPort.fulfilled, (state, action) => {
-                state.successMessage = action.payload.message || "Port added successfully!";
+                state.successMessage = action.payload.message || t("Port added successfully!");
             })
 
             // update port
@@ -400,13 +401,13 @@ const assetSlice = createSlice({
                 if (newPort && newPort.ports_added > 0) {
                     // Refresh the ports list after update
                 }
-                state.successMessage = "Port updated successfully!";
+                state.successMessage = t("Port updated successfully!");
             })
 
             // delete port
             .addCase(deleteAssetPort.fulfilled, (state, action) => {
                 state.ports = state.ports.filter(p => p.id !== action.payload);
-                state.successMessage = "Port deleted successfully!";
+                state.successMessage = t("Port deleted successfully!");
             });
     },
 });

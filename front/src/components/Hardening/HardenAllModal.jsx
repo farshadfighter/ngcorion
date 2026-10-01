@@ -6,6 +6,7 @@ import {
     clearHardenAll,
 } from '../../store/hardeningSlice';
 import '../../assets/hardening/HardenAll.css';
+import { t } from "../../i18n";
 
 /**
  * Harden All — remediate every failed check in an audit session.
@@ -20,7 +21,7 @@ import '../../assets/hardening/HardenAll.css';
  * Props: sessionId (required), onClose, onSuccess.
  */
 
-const STEPS = ['Review', 'Parameters', 'Credentials', 'Results'];
+const STEPS = [t("Review"), t("Parameters"), t("Credentials"), t("Results")];
 
 const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
     const dispatch = useDispatch();
@@ -171,20 +172,20 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
             return (
                 <div className="ha-empty">
                     <div className="ha-spinner-sm" />
-                    Loading the hardening plan…
+                    {t("Loading the hardening plan…")}
                 </div>
             );
         }
         if (!plan) {
-            return <div className="ha-empty">{hardenAllError || 'No plan available for this session.'}</div>;
+            return <div className="ha-empty">{hardenAllError || t("No plan available for this session.")}</div>;
         }
         if (plan.fixable.length === 0) {
             return (
                 <div>
                     <div className="ha-empty">
                         {plan.total_failed === 0
-                            ? 'This session has no failed checks.'
-                            : 'None of the failed checks in this session can be remediated automatically.'}
+                            ? t("This session has no failed checks.")
+                            : t("None of the failed checks in this session can be remediated automatically.")}
                     </div>
                     {renderSkipped()}
                 </div>
@@ -193,11 +194,11 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
         return (
             <div>
                 <h3 className="ha-section-title">
-                    <span>Checks to harden</span>
+                    <span>{t("Checks to harden")}</span>
                     <span className="ha-hint">
-                        {selectedIds.length} of {plan.fixable.length} selected
-                        <button type="button" className="ha-link-btn" onClick={() => setAllSelected(true)}>All</button>
-                        <button type="button" className="ha-link-btn" onClick={() => setAllSelected(false)}>None</button>
+                        {t("{{length}} of {{length2}} selected", { length: selectedIds.length, length2: plan.fixable.length })}
+                        <button type="button" className="ha-link-btn" onClick={() => setAllSelected(true)}>{t("All")}</button>
+                        <button type="button" className="ha-link-btn" onClick={() => setAllSelected(false)}>{t("None")}</button>
                     </span>
                 </h3>
                 <div className="ha-list">
@@ -210,8 +211,8 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                                     <span className="ha-check-id">{check.check_number}</span>
                                     <span className="ha-check-title">{check.check_title || '—'}</span>
                                 </span>
-                                {check.vdom && <span className="ha-badge ha-badge-vdom">VDOM: {check.vdom}</span>}
-                                {check.needs_params && <span className="ha-badge ha-badge-params">Needs parameters</span>}
+                                {check.vdom && <span className="ha-badge ha-badge-vdom">{t("VDOM: {{vdom}}", { vdom: check.vdom })}</span>}
+                                {check.needs_params && <span className="ha-badge ha-badge-params">{t("Needs parameters")}</span>}
                             </label>
                         );
                     })}
@@ -226,8 +227,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
         return (
             <div className="ha-skipped">
                 <h4>
-                    {plan.skipped.length} failed check{plan.skipped.length === 1 ? '' : 's'} cannot be
-                    remediated automatically and will be left unchanged:
+                    {t("{{count}} failed checks cannot be remediated automatically and will be left unchanged:", { count: plan.skipped.length })}
                 </h4>
                 <ul>
                     {plan.skipped.map((s) => (
@@ -257,7 +257,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                 </label>
                 {field.options?.length ? (
                     <select id={`ha-${field.name}`} value={value} onChange={onChange}>
-                        <option value="">{field.default ? `Default: ${field.default}` : 'Select…'}</option>
+                        <option value="">{field.default ? t("Default: {{default}}", { default: field.default }) : t("Select…")}</option>
                         {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                 ) : (
@@ -275,7 +275,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                     <span className="ha-field-help">{field.help || field.description}</span>
                 )}
                 {field.checks?.length > 0 && (
-                    <span className="ha-field-checks">Used by: {field.checks.join(', ')}</span>
+                    <span className="ha-field-checks">{t("Used by: {{join}}", { join: field.checks.join(', ') })}</span>
                 )}
                 {error && <span className="ha-field-error">{error}</span>}
             </div>
@@ -285,8 +285,8 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
     const renderParameters = () => (
         <div className="ha-form">
             <h3 className="ha-section-title">
-                <span>Remediation parameters</span>
-                <span className="ha-hint">Blank optional fields fall back to the CIS default</span>
+                <span>{t("Remediation parameters")}</span>
+                <span className="ha-hint">{t("Blank optional fields fall back to the CIS default")}</span>
             </h3>
             {activeParams.map((param) => renderField(param, paramEdits, setParamEdits))}
         </div>
@@ -295,21 +295,21 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
     const renderCredentials = () => (
         <div className="ha-form">
             <h3 className="ha-section-title">
-                <span>Connect to {plan.asset_name || plan.target_ip || 'the device'}</span>
-                <span className="ha-hint">Used for this run only — never stored</span>
+                <span>{t("Connect to")}{" "} {plan.asset_name || plan.target_ip || t("the device")}</span>
+                <span className="ha-hint">{t("Used for this run only — never stored")}</span>
             </h3>
             {plan.credential_fields.map((field) => renderField(field, credEdits, setCredEdits))}
 
             {plan.capabilities.backup && (
                 <label className="ha-toggle">
                     <input type="checkbox" checked={createBackup} onChange={(e) => setCreateBackup(e.target.checked)} />
-                    <span><strong>Back up the device configuration first</strong> — saved to Backups before any change is applied.</span>
+                    <span><strong>{t("Back up the device configuration first")}</strong> {" "}{t("— saved to Backups before any change is applied.")}</span>
                 </label>
             )}
             {plan.capabilities.dry_run && (
                 <label className="ha-toggle is-dry">
                     <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
-                    <span><strong>Preview only (dry run)</strong> — show the exact commands without connecting or changing anything.</span>
+                    <span><strong>{t("Preview only (dry run)")}</strong> {" "}{t("— show the exact commands without connecting or changing anything.")}</span>
                 </label>
             )}
         </div>
@@ -318,8 +318,8 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
     const renderExecuting = () => (
         <div className="ha-executing">
             <div className="ha-spinner" />
-            <h3>{dryRun && plan?.capabilities.dry_run ? 'Building the command preview…' : 'Applying hardening…'}</h3>
-            <p>{selectedIds.length} check{selectedIds.length === 1 ? '' : 's'} on {plan?.target_ip || 'the device'}. This can take a few minutes.</p>
+            <h3>{dryRun && plan?.capabilities.dry_run ? t("Building the command preview…") : t("Applying hardening…")}</h3>
+            <p>{t("{{count}} checks on {{target}}. This can take a few minutes.", { count: selectedIds.length, target: plan?.target_ip || t("the device") })}</p>
         </div>
     );
 
@@ -331,14 +331,14 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
             <div>
                 {result.dry_run && (
                     <div className="ha-notice">
-                        <i className="fa-solid fa-magnifying-glass" /> Dry run — nothing was executed and nothing changed on the device.
+                        <i className="fa-solid fa-magnifying-glass" /> {" "}{t("Dry run — nothing was executed and nothing changed on the device.")}
                     </div>
                 )}
                 {!result.dry_run && (
                     <div className="ha-summary">
-                        <div className="ha-stat is-success"><strong>{result.successful}</strong><span>Fixed</span></div>
-                        <div className="ha-stat is-failed"><strong>{result.failed}</strong><span>Failed</span></div>
-                        <div className="ha-stat is-skipped"><strong>{result.skipped}</strong><span>Skipped</span></div>
+                        <div className="ha-stat is-success"><strong>{result.successful}</strong><span>{t("Fixed")}</span></div>
+                        <div className="ha-stat is-failed"><strong>{result.failed}</strong><span>{t("Failed")}</span></div>
+                        <div className="ha-stat is-skipped"><strong>{result.skipped}</strong><span>{t("Skipped")}</span></div>
                     </div>
                 )}
                 <div className="ha-list" style={{ maxHeight: '380px' }}>
@@ -359,12 +359,12 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                             </span>
                             <span className={`ha-badge ha-badge-${row.status === 'success' ? 'ok' : row.status === 'failed' ? 'fail' : 'skip'}`}>
                                 {result.dry_run && row.status === 'success'
-                                    ? 'Preview'
-                                    : row.status === 'success' ? 'Fixed' : row.status === 'failed' ? 'Failed' : 'Skipped'}
+                                    ? t("Preview")
+                                    : row.status === 'success' ? t("Fixed") : row.status === 'failed' ? t("Failed") : t("Skipped")}
                             </span>
                         </div>
                     ))}
-                    {rows.length === 0 && <div className="ha-empty">The device returned no per-check results.</div>}
+                    {rows.length === 0 && <div className="ha-empty">{t("The device returned no per-check results.")}</div>}
                 </div>
             </div>
         );
@@ -375,7 +375,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
     const renderFooter = () => {
         if (step === 3) {
             if (isHardeningAll || !result) return null;
-            return <button className="ha-btn ha-btn-primary" onClick={handleFinish}>Finish</button>;
+            return <button className="ha-btn ha-btn-primary" onClick={handleFinish}>{t("Finish")}</button>;
         }
 
         const canProceed = !!plan && plan.fixable.length > 0;
@@ -383,26 +383,26 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
             <>
                 {step > 0 && selectedIds.length > 0 && (
                     <span className="ha-footer-info">
-                        {selectedIds.length} check{selectedIds.length === 1 ? '' : 's'} selected
+                        {t("{{count}} checks selected", { count: selectedIds.length })}
                     </span>
                 )}
                 <button
                     className="ha-btn ha-btn-secondary"
                     onClick={step === 0 ? onClose : () => setStep(step === 2 && activeParams.length === 0 ? 0 : step - 1)}
                 >
-                    {step === 0 ? 'Cancel' : 'Back'}
+                    {step === 0 ? t("Cancel") : t("Back")}
                 </button>
                 {step === 0 && (
                     <button className="ha-btn ha-btn-primary" onClick={goToParams} disabled={!canProceed || selectedIds.length === 0}>
-                        Next
+                        {t("Next")}
                     </button>
                 )}
                 {step === 1 && (
-                    <button className="ha-btn ha-btn-primary" onClick={goToCredentials}>Next</button>
+                    <button className="ha-btn ha-btn-primary" onClick={goToCredentials}>{t("Next")}</button>
                 )}
                 {step === 2 && (
                     <button className="ha-btn ha-btn-primary" onClick={handleExecute} disabled={isHardeningAll}>
-                        {dryRun && plan?.capabilities.dry_run ? 'Preview Commands' : 'Apply Hardening'}
+                        {dryRun && plan?.capabilities.dry_run ? t("Preview Commands") : t("Apply Hardening")}
                     </button>
                 )}
             </>
@@ -414,14 +414,14 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
             <div className="ha-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="ha-header">
                     <div>
-                        <h2>Harden All Failed Checks</h2>
+                        <h2>{t("Harden All Failed Checks")}</h2>
                         <p className="ha-subtitle">
                             {plan
                                 ? `${plan.device_label}${plan.sub_device_type ? ` · ${plan.sub_device_type}` : ''} · ${plan.asset_name || plan.target_ip || `session ${sessionId}`}`
-                                : `Session ${sessionId}`}
+                                : t("Session {{sessionId}}", { sessionId })}
                         </p>
                     </div>
-                    <button className="ha-close" onClick={onClose} aria-label="Close">×</button>
+                    <button className="ha-close" onClick={onClose} aria-label={t("Close")}>×</button>
                 </div>
 
                 {renderStepRail()}

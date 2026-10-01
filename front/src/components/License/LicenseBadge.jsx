@@ -1,5 +1,6 @@
 import React from "react";
 import { useSelector } from "react-redux";
+import { n, t } from "../../i18n";
 
 // Asset Management is not license-gated, so it has no badge entry here.
 const moduleIcons = {
@@ -8,8 +9,8 @@ const moduleIcons = {
 };
 
 const moduleNames = {
-    hardening: "Hardening",
-    auditing:  "Auditing",
+    hardening: t("Hardening"),
+    auditing:  t("Auditing"),
 };
 
 const LicenseBadge = ({ module }) => {
@@ -27,7 +28,7 @@ const LicenseBadge = ({ module }) => {
     const moduleData  = limitMap[module] || { max: 0, used: 0 };
     const displayMax  = isUnlimited ? "∞" : (moduleData.max  ?? 0);
     const displayUsed = isUnlimited ? "∞" : (moduleData.used ?? 0);
-    const displayName = moduleNames[module] || "Module";
+    const displayName = moduleNames[module] || t("Module");
     const iconClass   = moduleIcons[module] || "fa-circle-dot";
 
     return (
@@ -47,7 +48,7 @@ const LicenseBadge = ({ module }) => {
                 gap: "8px",
                 padding: "0 16px",
                 backgroundColor: "#ffffff",
-                borderRight: "1px solid #d1d9e6",
+                borderInlineEnd: "1px solid #d1d9e6",
             }}>
                 <i
                     className="fa-solid fa-id-card"
@@ -60,7 +61,7 @@ const LicenseBadge = ({ module }) => {
                     whiteSpace: "nowrap",
                     letterSpacing: "0.1px",
                 }}>
-                    Base Licence
+                    {t("Base Licence")}
                 </span>
             </div>
 
@@ -91,7 +92,7 @@ const LicenseBadge = ({ module }) => {
                         color: "#7aaddb",
                         fontVariantNumeric: "tabular-nums",
                     }}>
-                        {displayUsed}/{displayMax}
+                        {n(`${displayUsed}/${displayMax}`)}
                     </span>
                 </div>
             </div>

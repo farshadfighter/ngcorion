@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { t } from "../i18n";
 
 // =====================
 // Thunks
@@ -12,7 +13,7 @@ export const fetchTopology = createAsyncThunk(
             const res = await api.get("/api/topology/");
             return res.data; // { nodes: [...], links: [...] }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load topology");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to load topology"));
         }
     }
 );
@@ -24,7 +25,7 @@ export const createTopologyLink = createAsyncThunk(
             const res = await api.post("/api/topology/links", payload);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to create link");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to create link"));
         }
     }
 );
@@ -36,7 +37,7 @@ export const updateTopologyLink = createAsyncThunk(
             const res = await api.patch(`/api/topology/links/${linkId}`, changes);
             return res.data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to update link");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to update link"));
         }
     }
 );
@@ -48,7 +49,7 @@ export const deleteTopologyLink = createAsyncThunk(
             await api.delete(`/api/topology/links/${linkId}`);
             return linkId;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to delete link");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to delete link"));
         }
     }
 );
@@ -63,7 +64,7 @@ export const saveNodePosition = createAsyncThunk(
             // A failed position save shouldn't interrupt the user - the node
             // still visually stays where it was dropped for this session, it
             // just won't be remembered on the next visit.
-            return rejectWithValue(err.response?.data?.detail || "Failed to save node position");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to save node position"));
         }
     }
 );
@@ -75,7 +76,7 @@ export const validateTopology = createAsyncThunk(
             const res = await api.post("/api/topology/validate");
             return res.data; // { findings: [...], asset_count, link_count }
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to validate topology");
+            return rejectWithValue(err.response?.data?.detail || t("Failed to validate topology"));
         }
     }
 );
@@ -115,20 +116,20 @@ const topologySlice = createSlice({
             .addCase(createTopologyLink.fulfilled, (state, action) => {
                 state.isMutating = false;
                 state.links.push(action.payload);
-                state.successMessage = "Link created successfully!";
+                state.successMessage = t("Link created successfully!");
             })
             .addCase(createTopologyLink.rejected, (state, action) => { state.isMutating = false; state.error = action.payload; })
 
             .addCase(updateTopologyLink.fulfilled, (state, action) => {
                 const idx = state.links.findIndex((l) => l.id === action.payload.id);
                 if (idx !== -1) state.links[idx] = action.payload;
-                state.successMessage = "Link updated successfully!";
+                state.successMessage = t("Link updated successfully!");
             })
             .addCase(updateTopologyLink.rejected, (state, action) => { state.error = action.payload; })
 
             .addCase(deleteTopologyLink.fulfilled, (state, action) => {
                 state.links = state.links.filter((l) => l.id !== action.payload);
-                state.successMessage = "Link deleted successfully!";
+                state.successMessage = t("Link deleted successfully!");
             })
             .addCase(deleteTopologyLink.rejected, (state, action) => { state.error = action.payload; })
 

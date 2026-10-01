@@ -3,7 +3,7 @@ body, html {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: sans-serif;
+    font-family: var(--font-sans);
 }
 
 /* Full page background */
@@ -67,7 +67,7 @@ body, html {
 .input-wrapper svg {
     width: 20px;
     height: 20px;
-    margin-right: 10px;
+    margin-inline-end: 10px;
     fill: #b3b3b3;
     opacity: 0.7;
 }
@@ -206,3 +206,9 @@ body, html {
 .log-button:hover {
     background: #143b7a;
 }
+
+/* Language switch, top corner of the sign-in page */
+.login-lang { position: fixed; top: 18px; inset-inline-end: 22px; display: inline-flex; border: 1px solid rgba(255, 255, 255, .55); border-radius: 8px; overflow: hidden; z-index: 5; }
+.login-lang button { padding: 6px 12px; border: 0; background: rgba(255, 255, 255, .12); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.login-lang button.is-on { background: #fff; color: #1e3a5f; }
+.login-lang button:focus-visible { outline: 2px solid #fff; outline-offset: -3px; }

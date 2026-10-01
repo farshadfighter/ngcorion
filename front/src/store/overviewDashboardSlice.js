@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 /**
  * Main dashboard aggregates.
@@ -73,7 +74,7 @@ export const fetchOverviewDashboard = createAsyncThunk(
             return rejectWithValue(
                 first?.response?.data?.detail ||
                     first?.message ||
-                    "Dashboard data unavailable"
+                    t("Dashboard data unavailable")
             );
         }
         return { data, failed };

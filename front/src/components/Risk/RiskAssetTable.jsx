@@ -5,10 +5,11 @@ import { RiskTabs } from "./RiskTabs";
 import { RiskSearch } from "./RiskSearch";
 import { OverviewTable } from "./OverviewTable";
 import { AuditRiskTable } from "./AuditRiskTable";
+import { t } from "../../i18n";
 
 const TABS = [
-    { key: "overview", label: "Overview" },
-    { key: "audit", label: "Audit Risk" },
+    { key: "overview", label: t("Overview") },
+    { key: "audit", label: t("Audit Risk") },
 ];
 
 /** Fields the search box matches against, mirroring the backend's ?search=. */
@@ -46,7 +47,7 @@ export const RiskAssetTable = ({
     return (
         <section className="risk-asset-table">
             <RiskNotice>
-                Click on the asset to view more information about asset risk.
+                {t("Click on the asset to view more information about asset risk.")}
             </RiskNotice>
 
             <RiskTabs tabs={TABS} active={activeTab} onChange={setActiveTab} />

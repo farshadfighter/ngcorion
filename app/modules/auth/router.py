@@ -22,6 +22,9 @@ from app.schemas.auth import (
 )
 from app.models import LoginLog, UserRole, User
 from app.models.security_audit_log import log_action
+from app.core.locale import LANGUAGES, user_language
+from pydantic import BaseModel
+from typing import Literal
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
 
@@ -231,7 +234,9 @@ def login(
         "token_type": "bearer",
         "username": user.username,
         "role": user.role.value,
-        "permissions": permissions
+        "permissions": permissions,
+        "language": user_language(db, user),
+        "language_chosen": bool(user.language),
     }
 
 
@@ -255,7 +260,25 @@ def read_current_user(
         "username": current_user.username,
         "role": current_user.role.value,
         "permissions": get_user_permissions(db, current_user.id, current_user.role),
+        "language": user_language(db, current_user),
+        "language_chosen": bool(current_user.language),
     }
+
+
+class LanguageUpdate(BaseModel):
+    language: Literal["en", "fa"]
+
+
+@router.put("/me/language")
+def set_my_language(
+    data: LanguageUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """The signed-in user's interface language; remembered on their account."""
+    current_user.language = data.language
+    db.commit()
+    return {"language": data.language}
 
 
 @router.post("/forgot-password", response_model=MessageResponse)

@@ -11,6 +11,7 @@ import {
     updateOS,
     updateVendor,
 } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 /**
  * One edit dialog for all six requirement tabs.
@@ -21,61 +22,61 @@ import {
  */
 const REQUIREMENT_FORMS = {
     assetType: {
-        title: "Asset Type",
+        title: t("Asset Type"),
         thunk: updateAssetType,
         wide: true,
         fields: [
-            { name: "type_name", label: "Type Name", required: true },
-            { name: "category", label: "Category" },
-            { name: "description", label: "Description", type: "textarea" },
+            { name: "type_name", label: t("Type Name"), required: true },
+            { name: "category", label: t("Category") },
+            { name: "description", label: t("Description"), type: "textarea" },
             // "" = automatic, suggested live from the type name.
-            { name: "icon", label: "Icon", type: "icon", suggestFrom: "type_name" },
+            { name: "icon", label: t("Icon"), type: "icon", suggestFrom: "type_name" },
         ],
     },
     owner: {
-        title: "Owner",
+        title: t("Owner"),
         thunk: updateOwner,
         fields: [
-            { name: "full_name", label: "Full Name", required: true },
-            { name: "department", label: "Department" },
-            { name: "role", label: "Role" },
-            { name: "email", label: "Email", type: "email" },
-            { name: "phone", label: "Phone" },
+            { name: "full_name", label: t("Full Name"), required: true },
+            { name: "department", label: t("Department") },
+            { name: "role", label: t("Role") },
+            { name: "email", label: t("Email"), type: "email" },
+            { name: "phone", label: t("Phone") },
         ],
     },
     location: {
-        title: "Location",
+        title: t("Location"),
         thunk: updateLocation,
         fields: [
-            { name: "site_name", label: "Site Name", required: true },
-            { name: "rack_name", label: "Rack Name" },
-            { name: "room", label: "Room" },
-            { name: "floor", label: "Floor" },
-            { name: "unit", label: "Unit" },
+            { name: "site_name", label: t("Site Name"), required: true },
+            { name: "rack_name", label: t("Rack Name") },
+            { name: "room", label: t("Room") },
+            { name: "floor", label: t("Floor") },
+            { name: "unit", label: t("Unit") },
         ],
     },
     zone: {
-        title: "Network Zone",
+        title: t("Network Zone"),
         thunk: updateZone,
         fields: [
-            { name: "zone_name", label: "Zone Name", required: true },
-            { name: "description", label: "Description", type: "textarea" },
+            { name: "zone_name", label: t("Zone Name"), required: true },
+            { name: "description", label: t("Description"), type: "textarea" },
         ],
     },
     os: {
-        title: "OS Entry",
+        title: t("OS Entry"),
         thunk: updateOS,
         fields: [
-            { name: "os_name", label: "OS Name", required: true },
-            { name: "os_version", label: "Version" },
+            { name: "os_name", label: t("OS Name"), required: true },
+            { name: "os_version", label: t("Version") },
         ],
     },
     vendor: {
-        title: "Vendor",
+        title: t("Vendor"),
         thunk: updateVendor,
         fields: [
-            { name: "vendor_name", label: "Vendor Name", required: true },
-            { name: "vendor_type", label: "Vendor Type" },
+            { name: "vendor_name", label: t("Vendor Name"), required: true },
+            { name: "vendor_type", label: t("Vendor Type") },
         ],
     },
 };
@@ -128,7 +129,7 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-header">
-                    <h3>Edit {config.title}</h3>
+                    <h3>{t("Edit {{title}}", { title: config.title })}</h3>
                     <button className="modal-close" onClick={onClose}>×</button>
                 </div>
 
@@ -177,10 +178,10 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                             onClick={onClose}
                             disabled={isSaving}
                         >
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit" disabled={isSaving}>
-                            {isSaving ? "Saving…" : "Save changes"}
+                            {isSaving ? t("Saving…") : t("Save changes")}
                         </button>
                     </div>
                 </form>

@@ -1,0 +1,19 @@
+{
+  "{{firstRow}}–{{lastRow}} of {{totalItems}}": "{{firstRow}}–{{lastRow}} از {{totalItems}}",
+  "Cleared {{count}} log entries.": "{{count, number}} مورد لاگ پاک شد.",
+  "Clearing…": "در حال پاک کردن…",
+  "Could not clear logs: {{clearError}}": "پاک کردن لاگ‌ها ممکن نشد: {{clearError}}",
+  "Entries in the {{section}} section are the security audit trail and are kept on purpose — they are still listed below.": "موارد بخش {{section}} ردپای ممیزی امنیتی هستند و عمداً نگه داشته می‌شوند — همچنان در زیر فهرست شده‌اند.",
+  "Entries in the Auditing section are NOT deleted — they are the security audit trail and are kept on purpose, so they will still be listed after this.": "موارد بخش ممیزی حذف «نمی‌شوند» — ردپای ممیزی امنیتی هستند و عمداً نگه داشته می‌شوند، پس پس از این هم فهرست خواهند شد.",
+  "Fail": "ناموفق",
+  "Next page": "صفحهٔ بعد",
+  "No logs found": "لاگی پیدا نشد",
+  "Partial": "ناقص",
+  "Permanently delete all Login, Asset Management, Asset Requirement, Auto Discovery and Hardening log entries?": "همهٔ لاگ‌های ورود، مدیریت دارایی‌ها، الزامات دارایی، کشف خودکار و مقاوم‌سازی برای همیشه حذف شوند؟",
+  "Previous page": "صفحهٔ قبل",
+  "Rows": "ردیف‌ها",
+  "Sort by": "مرتب‌سازی",
+  "This cannot be undone.": "این کار برگشت‌پذیر نیست.",
+  "Timestamp": "زمان",
+  "User Name": "نام کاربری"
+}

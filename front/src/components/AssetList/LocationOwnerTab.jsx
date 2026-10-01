@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
+import { t } from "../../i18n";
 
 export const LocationOwnerTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
@@ -39,14 +40,14 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                     <th style={{ width: "4px", padding: 0 }}></th>
                     <th style={{ width: "40px" }}>
                         <input type="checkbox" checked={allSelected} onChange={onToggleAll}
-                               title="Select all" style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
+                               title={t("Select all")} style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                     </th>
-                    <th>Number</th>
-                    <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>Asset Name {renderSortIcon("asset_name")}</th>
-                    <th onClick={() => handleSort("location_name")} style={{ cursor: "pointer" }}>Location {renderSortIcon("location_name")}</th>
-                    <th onClick={() => handleSort("owner_name")} style={{ cursor: "pointer" }}>Owner {renderSortIcon("owner_name")}</th>
-                    <th onClick={() => handleSort("status")} style={{ cursor: "pointer" }}>Status {renderSortIcon("status")}</th>
-                    <th>Actions</th>
+                    <th>{t("Number")}</th>
+                    <th onClick={() => handleSort("asset_name")} style={{ cursor: "pointer" }}>{t("Asset Name")}{renderSortIcon("asset_name")}</th>
+                    <th onClick={() => handleSort("location_name")} style={{ cursor: "pointer" }}>{t("Location")}{renderSortIcon("location_name")}</th>
+                    <th onClick={() => handleSort("owner_name")} style={{ cursor: "pointer" }}>{t("Owner")}{renderSortIcon("owner_name")}</th>
+                    <th onClick={() => handleSort("status")} style={{ cursor: "pointer" }}>{t("Status")}{renderSortIcon("status")}</th>
+                    <th>{t("Actions")}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -74,14 +75,14 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                             <td>{asset.owner_name || "-"}</td>
                             <td>
                                 <span className={`status-badge status-${(asset.status || "unknown").toLowerCase().replace(/\s+/g, '-')}`}>
-                                    {asset.status || "Unknown"}
+                                    {asset.status || t("Unknown")}
                                 </span>
                             </td>
                             <td className="actions-cell">
                                 <button className="btn-icon" onClick={() => onEdit(asset)}>
                                     <i className="fa-solid fa-pen"></i>
                                 </button>
-                                <button className="btn-icon" title="Change History" onClick={() => onViewHistory(asset)}>
+                                <button className="btn-icon" title={t("Change History")} onClick={() => onViewHistory(asset)}>
                                     <i className="fa-solid fa-clock-rotate-left"></i>
                                 </button>
                                 {canDelete && (<button className="btn-icon" onClick={() => onDelete(asset.id)}>

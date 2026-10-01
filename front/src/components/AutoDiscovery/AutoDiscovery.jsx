@@ -22,6 +22,7 @@ import ScanErrorAlert from "./scanErrors.jsx";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/autoDiscoveryStyle/AutoDiscovery.css";
+import { t, uiLocale } from "../../i18n";
 
 // Asset Management (including Auto Discovery) has no license entitlement, so
 // this view is not license-gated (no LicenseLimitModal here).
@@ -186,7 +187,7 @@ const AutoDiscovery = () => {
             <div className="discovery-container">
                 <div className="discovery-header">
                     <div className="header-content">
-                        <h1 className="page-title">Auto Discovery</h1>
+                        <h1 className="page-title">{t("Auto Discovery")}</h1>
                     </div>
                     <div className="header-actions">
                         <button
@@ -197,7 +198,7 @@ const AutoDiscovery = () => {
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M12 5v14M5 12h14" />
                             </svg>
-                            New Scan
+                            {t("New Scan")}
                         </button>
                         {scanHistory.length > 0 && (
                             <button
@@ -208,25 +209,25 @@ const AutoDiscovery = () => {
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
                                 </svg>
-                                Clear History
+                                {t("Clear History")}
                             </button>
                         )}
                         <button
                             className="btn btn-secondary"
                             onClick={handleRefresh}
                             disabled={loading.history || loading.pending}
-                            title="Refresh"
+                            title={t("Refresh")}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
                             </svg>
-                            Refresh
+                            {t("Refresh")}
                         </button>
                         <button
                             className="btn btn-dark"
                             onClick={() => setShowAssetListModal(true)}
                         >
-                            Auto Discovery Asset list
+                            {t("Auto Discovery Asset list")}
                         </button>
                     </div>
                 </div>
@@ -247,20 +248,21 @@ const AutoDiscovery = () => {
                             <div style={{ background: "#1e3a5f", borderRadius: "12px", padding: "24px", marginBottom: "24px", color: "white" }}>
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                                     <div style={{ fontSize: "16px", fontWeight: "600" }}>
-                                        {runningScan.status === "pending" ? "Preparing scan..." : "Scanning:"} {runningScan.target || runningScan.ip_range}
+                                        {runningScan.status === "pending" ? t("Preparing scan...") : t("Scanning:")} {runningScan.target || runningScan.ip_range}
                                     </div>
                                     <div style={{ background: "rgba(255, 255, 255, 0.2)", padding: "4px 12px", borderRadius: "6px", fontSize: "13px", fontWeight: "500" }}>
                                         {runningScan.scan_type === "well_known_ports"
-                                            ? "Well-Know Ports(1-1024)"
+                                            ? t("Well-Know Ports(1-1024)")
                                             : runningScan.scan_type === "all_ports"
-                                                ? "All Ports (1-65535)"
-                                                : "Custom Ports"}
+                                                ? t("All Ports (1-65535)")
+                                                : t("Custom Ports")}
                                     </div>
                                 </div>
 
                                 <div style={{ fontSize: "14px", color: "rgba(255, 255, 255, 0.8)", marginBottom: "16px" }}>
-                                    please wait... Scan started at{" "}
-                                    {runningScan.started_at ? new Date(runningScan.started_at).toLocaleTimeString() : "now"}
+                                    {runningScan.started_at
+                                        ? t("Please wait… Scan started at {{time}}", { time: new Date(runningScan.started_at).toLocaleTimeString(uiLocale()) })
+                                        : t("Please wait… Scan started just now")}
                                 </div>
 
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -284,7 +286,7 @@ const AutoDiscovery = () => {
                                     <path d="M21 21l-4.35-4.35" />
                                 </svg>
                             </div>
-                            <h3>No scans yet. Start your first scan!</h3>
+                            <h3>{t("No scans yet. Start your first scan!")}</h3>
                         </div>
                     ) : (
                         <ScanHistoryTable
@@ -299,12 +301,12 @@ const AutoDiscovery = () => {
                 {/* Activity Log Section */}
                 <div className="activity-log-section">
                     <div className="activity-log-header">
-                        <h3>Activity Log</h3>
+                        <h3>{t("Activity Log")}</h3>
                     </div>
                     <div className="activity-log-content">
                         {scanHistory.length === 0 && !currentScan ? (
                             <div className="activity-empty">
-                                <p>No activity yet. Start a scan to see logs here.</p>
+                                <p>{t("No activity yet. Start a scan to see logs here.")}</p>
                             </div>
                         ) : (
                             <div className="activity-log-list">
@@ -317,10 +319,10 @@ const AutoDiscovery = () => {
                                         </div>
                                         <div className="activity-content">
                                             <p className="activity-message">
-                                                Scan in progress: {currentScan.target}
+                                                {t("Scan in progress: {{target}}", { target: currentScan.target })}
                                             </p>
                                             <span className="activity-time">
-                        {new Date(currentScan.started_at).toLocaleTimeString()}
+                        {new Date(currentScan.started_at).toLocaleTimeString(uiLocale())}
                       </span>
                                         </div>
                                     </div>
@@ -334,16 +336,16 @@ const AutoDiscovery = () => {
                                         </div>
                                         <div className="activity-content">
                                             <p className="activity-message">
-                                                {scan.status === "completed" && `Scan completed: Found ${scan.hosts_up || 0} hosts`}
-                                                {scan.status === "failed" && `Scan failed: ${scan.target}`}
-                                                {scan.status === "running" && `Scanning: ${scan.target}`}
-                                                {scan.status === "pending" && `Pending: ${scan.target}`}
+                                                {scan.status === "completed" && t("Scan completed: Found {{value}} hosts", { value: scan.hosts_up || 0 })}
+                                                {scan.status === "failed" && t("Scan failed: {{target}}", { target: scan.target })}
+                                                {scan.status === "running" && t("Scanning: {{target}}", { target: scan.target })}
+                                                {scan.status === "pending" && t("Pending: {{target}}", { target: scan.target })}
                                             </p>
                                             <p className="activity-details">{scan.target}</p>
                                             <span className="activity-time">
                         {scan.completed_at
-                            ? new Date(scan.completed_at).toLocaleTimeString()
-                            : new Date(scan.started_at).toLocaleTimeString()}
+                            ? new Date(scan.completed_at).toLocaleTimeString(uiLocale())
+                            : new Date(scan.started_at).toLocaleTimeString(uiLocale())}
                       </span>
                                         </div>
                                     </div>
@@ -391,11 +393,11 @@ const AutoDiscovery = () => {
                 isOpen={deleteModal.isOpen}
                 onCancel={() => setDeleteModal((prev) => ({ ...prev, isOpen: false }))}
                 onConfirm={handleConfirmDelete}
-                title={deleteModal.type === "SINGLE_SCAN" ? "Delete Scan" : "Clear History"}
+                title={deleteModal.type === "SINGLE_SCAN" ? t("Delete Scan") : t("Clear History")}
                 message={
                     deleteModal.type === "SINGLE_SCAN"
-                        ? "Are you sure you want to delete this scan?"
-                        : "Are you sure you want to clear all scan history?"
+                        ? t("Are you sure you want to delete this scan?")
+                        : t("Are you sure you want to clear all scan history?")
                 }
             />
         </>

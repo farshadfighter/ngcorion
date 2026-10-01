@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../config/api.js';
+import { t, uiLocale } from "../../i18n";
 
 const BackupViewModal = ({ backupId, onClose }) => {
     const [backup, setBackup] = useState(null);
@@ -12,7 +13,7 @@ const BackupViewModal = ({ backupId, onClose }) => {
                 const res = await api.get(`/api/backups/${backupId}`);
                 setBackup(res.data);
             } catch (e) {
-                setError(e.response?.data?.detail || 'Failed to load backup');
+                setError(e.response?.data?.detail || t("Failed to load backup"));
             } finally {
                 setLoading(false);
             }
@@ -38,7 +39,7 @@ const BackupViewModal = ({ backupId, onClose }) => {
 
     const formatDate = (ts) => {
         if (!ts) return '-';
-        return new Date(ts).toLocaleString('en-US', {
+        return new Date(ts).toLocaleString(uiLocale(),  {
             month: 'short', day: 'numeric', year: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: false,
         });
@@ -53,10 +54,10 @@ const BackupViewModal = ({ backupId, onClose }) => {
             >
                 <div className="modal-header">
                     <div className="modal-title-group">
-                        <h2>Backup Config</h2>
+                        <h2>{t("Backup Config")}</h2>
                         {backup && (
                             <span className="modal-subtitle">
-                                {backup.asset_name || `Asset #${backup.asset_id}`} — {backup.device_ip}
+                                {backup.asset_name || t("Asset #{{asset_id}}", { asset_id: backup.asset_id })} — {backup.device_ip}
                             </span>
                         )}
                     </div>
@@ -68,17 +69,17 @@ const BackupViewModal = ({ backupId, onClose }) => {
                 </div>
 
                 <div className="modal-body">
-                    {loading && <p style={{ textAlign: 'center', color: '#6B7280' }}>Loading…</p>}
+                    {loading && <p style={{ textAlign: 'center', color: '#6B7280' }}>{t("Loading…")}</p>}
                     {error && <p style={{ color: '#ef4444' }}>{error}</p>}
                     {backup && (
                         <>
                             <div style={{ display: 'flex', gap: 24, marginBottom: 16, flexWrap: 'wrap' }}>
                                 <div>
-                                    <span style={{ fontSize: 12, color: '#6B7280' }}>Device Type</span>
+                                    <span style={{ fontSize: 12, color: '#6B7280' }}>{t("Device Type")}</span>
                                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{backup.device_type || '-'}</div>
                                 </div>
                                 <div>
-                                    <span style={{ fontSize: 12, color: '#6B7280' }}>Source</span>
+                                    <span style={{ fontSize: 12, color: '#6B7280' }}>{t("Source")}</span>
                                     <div>
                                         <span className={`status-badge status-${backup.source === 'manual' ? 'completed' : 'running'}`}>
                                             {backup.source}
@@ -86,12 +87,12 @@ const BackupViewModal = ({ backupId, onClose }) => {
                                     </div>
                                 </div>
                                 <div>
-                                    <span style={{ fontSize: 12, color: '#6B7280' }}>Taken At</span>
+                                    <span style={{ fontSize: 12, color: '#6B7280' }}>{t("Taken At")}</span>
                                     <div>{formatDate(backup.created_at)}</div>
                                 </div>
                                 {backup.created_by_username && (
                                     <div>
-                                        <span style={{ fontSize: 12, color: '#6B7280' }}>By</span>
+                                        <span style={{ fontSize: 12, color: '#6B7280' }}>{t("By")}</span>
                                         <div>{backup.created_by_username}</div>
                                     </div>
                                 )}
@@ -119,10 +120,10 @@ const BackupViewModal = ({ backupId, onClose }) => {
                 <div className="modal-footer">
                     {backup && (
                         <button className="btn btn-primary" onClick={handleDownload}>
-                            Download .txt
+                            {t("Download .txt")}
                         </button>
                     )}
-                    <button className="btn btn-ok" onClick={onClose}>Close</button>
+                    <button className="btn btn-ok" onClick={onClose}>{t("Close")}</button>
                 </div>
             </div>
         </div>

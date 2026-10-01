@@ -4,9 +4,11 @@ import { SyslogConfigModal } from "./SyslogConfigModal";
 import { SmtpConfigModal } from "./SmtpConfigModal";
 import { SmsConfigModal } from "./SmsConfigModal";
 import { CertificateConfigModal } from "./CertificateConfigModal";
+import { LanguageConfigModal } from "./LanguageConfigModal";
+import { t } from "../../i18n";
 
 /**
- * The six System Configuration cards, in Figma order.
+ * The System Configuration cards.
  *
  * Endpoints are listed for reference; each modal owns its own calls.
  *
@@ -17,49 +19,57 @@ import { CertificateConfigModal } from "./CertificateConfigModal";
  *   smtp        GET/PUT /api/system/smtp     + POST /smtp/test
  *   certificate GET /api/system/certificate  + POST /certificate/upload
  *                                            + DELETE /certificate
+ *   locale      GET/PUT /api/system/locale   (default language)
  */
 export const SECTIONS = [
     {
         key: "time",
-        title: "Time Configurations",
-        hint: "Timezone, NTP server or manual clock",
+        title: t("Time Configurations"),
+        hint: t("Timezone, NTP server or manual clock"),
         icon: "fa-solid fa-clock",
         modal: TimeConfigModal,
     },
     {
         key: "snmp",
-        title: "SNMP Configurations",
-        hint: "Server address, v2c community or v3 credentials",
+        title: t("SNMP Configurations"),
+        hint: t("Server address, v2c community or v3 credentials"),
         icon: "fa-solid fa-network-wired",
         modal: SnmpConfigModal,
     },
     {
         key: "syslog",
-        title: "Syslog Configurations",
-        hint: "Remote log server and facility",
+        title: t("Syslog Configurations"),
+        hint: t("Remote log server and facility"),
         icon: "fa-solid fa-file-lines",
         modal: SyslogConfigModal,
     },
     {
         key: "sms",
-        title: "SMS Configurations",
-        hint: "Provider gateway and API key",
+        title: t("SMS Configurations"),
+        hint: t("Provider gateway and API key"),
         icon: "fa-solid fa-comment-sms",
         modal: SmsConfigModal,
     },
     {
         key: "smtp",
-        title: "SMTP Configurations",
-        hint: "Mail server and sender identity",
+        title: t("SMTP Configurations"),
+        hint: t("Mail server and sender identity"),
         icon: "fa-solid fa-envelope",
         modal: SmtpConfigModal,
     },
     {
         key: "certificate",
-        title: "Certificate Configurations",
-        hint: "TLS certificate for the web interface",
+        title: t("Certificate Configurations"),
+        hint: t("TLS certificate for the web interface"),
         icon: "fa-solid fa-certificate",
         modal: CertificateConfigModal,
+    },
+    {
+        key: "locale",
+        title: t("Language"),
+        hint: t("Default interface language for new users"),
+        icon: "fa-solid fa-language",
+        modal: LanguageConfigModal,
     },
 ];
 

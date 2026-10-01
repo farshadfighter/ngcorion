@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssetPorts, deleteAssetPort } from "../../store/assetSlice";
 import { PortModal } from "./PortModal";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 export const ManagePortsModal = ({ asset, onClose }) => {
     const dispatch = useDispatch();
@@ -68,7 +70,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
             }, 3000);
 
         } catch (error) {
-            setDeleteError(error.message || 'Failed to delete port');
+            setDeleteError(error.message || t("Failed to delete port"));
         }
     };
 
@@ -119,7 +121,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                         borderBottom: '1px solid #e5e7eb'
                     }}>
                         <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0 }}>
-                            Manage Ports
+                           {t("Manage Ports")}
                         </h2>
                         <button onClick={onClose} style={{
                             background: 'none',
@@ -150,7 +152,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                            Port deleted successfully!
+                           {t("Port deleted successfully!")}
                         </div>
                     )}
 
@@ -169,7 +171,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                 cursor: 'pointer'
                             }}
                         >
-                            + Add Port
+                           {t("+ Add Port")}
                         </button>
                     </div>
 
@@ -186,11 +188,11 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                     animation: 'spin 0.8s linear infinite',
                                     margin: '0 auto 16px'
                                 }}></div>
-                                Loading ports...
+                               {t("Loading ports...")}
                             </div>
                         ) : !ports || ports.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontStyle: 'italic' }}>
-                                No ports added yet. Click "+ Add Port" to add one.
+                               {t("No ports added yet. Click \"+ Add Port\" to add one.")}
                             </div>
                         ) : (
                             <table style={{
@@ -202,24 +204,24 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                 <tr style={{ background: '#f9fafb' }}>
                                     <th style={{
                                         padding: '12px 16px',
-                                        textAlign: 'left',
+                                        textAlign: 'start',
                                         fontSize: '13px',
                                         fontWeight: '600',
                                         color: '#6b7280',
                                         textTransform: 'uppercase',
                                         borderBottom: '1px solid #e5e7eb',
-                                        borderRight: '1px solid #e5e7eb'  // ← خط عمودی
-                                    }}>Protocol</th>
+                                        borderInlineEnd: '1px solid #e5e7eb'  // ← خط عمودی
+                                    }}>{t("Protocol")}</th>
                                     <th style={{
                                         padding: '12px 16px',
-                                        textAlign: 'left',
+                                        textAlign: 'start',
                                         fontSize: '13px',
                                         fontWeight: '600',
                                         color: '#6b7280',
                                         textTransform: 'uppercase',
                                         borderBottom: '1px solid #e5e7eb',
-                                        borderRight: '1px solid #e5e7eb'  // ← خط عمودی
-                                    }}>Port</th>
+                                        borderInlineEnd: '1px solid #e5e7eb'  // ← خط عمودی
+                                    }}>{t("Port")}</th>
                                     <th style={{
                                         padding: '12px 16px',
                                         textAlign: 'center',
@@ -229,7 +231,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                         textTransform: 'uppercase',
                                         borderBottom: '1px solid #e5e7eb'
                                         // بدون borderRight - آخرین ستون
-                                    }}>Actions</th>
+                                    }}>{t("Actions")}</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -240,7 +242,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                             fontSize: '14px',
                                             color: '#111827',
                                             fontWeight: '500',
-                                            borderRight: '1px solid #e5e7eb'  // ← خط عمودی
+                                            borderInlineEnd: '1px solid #e5e7eb'  // ← خط عمودی
                                         }}>
                                             {port.protocol}
                                         </td>
@@ -248,7 +250,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                             padding: '14px 16px',
                                             fontSize: '14px',
                                             color: '#374151',
-                                            borderRight: '1px solid #e5e7eb'
+                                            borderInlineEnd: '1px solid #e5e7eb'
                                         }}>
                                             {port.port_number}
                                         </td>
@@ -269,7 +271,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                                         borderRadius: '6px',
                                                         color: '#3b82f6'
                                                     }}
-                                                    title="Edit Port"
+                                                    title={t("Edit Port")}
                                                 >
                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -288,7 +290,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                                         borderRadius: '6px',
                                                         color: '#ef4444'
                                                     }}
-                                                    title="Delete Port"
+                                                    title={t("Delete Port")}
                                                 >
                                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                         <polyline points="3 6 5 6 21 6" />
@@ -324,7 +326,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                 cursor: 'pointer'
                             }}
                         >
-                            Close
+                           {t("Close")}
                         </button>
                     </div>
                 </div>
@@ -368,16 +370,15 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                          onClick={(e) => e.stopPropagation()}>
                         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb' }}>
                             <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: 0 }}>
-                                Confirm Delete
+                               {t("Confirm Delete")}
                             </h3>
                         </div>
                         <div style={{ padding: '24px' }}>
                             <p style={{ margin: '0 0 12px 0', color: '#374151', fontSize: '14px' }}>
-                                Are you sure you want to delete port{' '}
-                                <strong>{deletingPort?.protocol} {deletingPort?.port_number}</strong>?
+                               {tx("Are you sure you want to delete port {{port}}?", { port: <strong>{deletingPort?.protocol} {deletingPort?.port_number}</strong> })}
                             </p>
                             <p style={{ margin: 0, color: '#ef4444', fontSize: '13px', fontWeight: '500' }}>
-                                This action cannot be undone.
+                               {t("This action cannot be undone.")}
                             </p>
 
                             {deleteError && (
@@ -414,7 +415,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                     cursor: 'pointer'
                                 }}
                             >
-                                Cancel
+                               {t("Cancel")}
                             </button>
                             <button
                                 onClick={confirmDelete}
@@ -429,7 +430,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
                                     cursor: 'pointer'
                                 }}
                             >
-                                Delete
+                               {t("Delete")}
                             </button>
                         </div>
                     </div>

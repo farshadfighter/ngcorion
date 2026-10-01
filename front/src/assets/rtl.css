@@ -1,0 +1,45 @@
+/* ============================================
+   Right-to-left (Persian) adjustments.
+   Layout mirrors through logical CSS properties (margin-inline-start, ...);
+   this file covers what those cannot express.
+   ============================================ */
+
+/* Technical text stays left-to-right: IPs, CVE ids, versions, commands. */
+[dir="rtl"] :is(code, pre, kbd, samp, .mono, [class*="-mono"], [class$="mono"]) {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+[dir="rtl"] :is(input[type="email"], input[type="tel"], input[type="url"], input[type="password"]) {
+    direction: ltr;
+    text-align: end;
+}
+[dir="rtl"] pre { text-align: left; }
+
+/* Diagrams and charts are drawn left-to-right. */
+[dir="rtl"] :is(.react-flow, .recharts-wrapper) { direction: ltr; }
+
+/* Arrows and chevrons point the reading direction. */
+[dir="rtl"] :is(.fa-arrow-left, .fa-arrow-right, .fa-chevron-left, .fa-chevron-right, .fa-angle-left,
+    .fa-angle-right, .fa-angles-left, .fa-angles-right, .fa-caret-left, .fa-caret-right,
+    .fa-right-from-bracket, .fa-arrow-right-from-bracket, .fa-arrow-left-long, .fa-arrow-right-long,
+    .flip-rtl) {
+    transform: scaleX(-1);
+}
+
+/* Switches slide the other way. */
+[dir="rtl"] .sched-switch input:checked + .sched-switch-slider::before { transform: translateX(-16px); }
+[dir="rtl"] .toggle-switch.active .toggle-slider { transform: translateX(-20px); }
+[dir="rtl"] .permissions-table td input[type="checkbox"] { transform: scale(1.2) translateX(-5px); }
+[dir="rtl"] .backup-asset-row:hover .btn-see-result svg { transform: translateX(-3px); }
+
+/* A Persian label (e.g. the language name) in the English interface. */
+[lang="fa"] { font-family: 'Vazirmatn', 'Open Sans', sans-serif; }
+
+/* Free text that may be English (descriptions, reasons, findings from the
+   API): each line takes its direction from its own first letter, so English
+   punctuation and "…" land on the correct side, while staying aligned with
+   the Persian layout around it. */
+[dir="rtl"] .bidi-auto {
+    unicode-bidi: plaintext;
+    text-align: right;
+}

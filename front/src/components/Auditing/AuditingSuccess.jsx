@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 export const AuditingSuccess = ({ sessionData, jobName, onBackToHome, onSeeResult }) => {
     return (
         <div className="auditing-success-container">
@@ -8,26 +9,26 @@ export const AuditingSuccess = ({ sessionData, jobName, onBackToHome, onSeeResul
 
             {/* Success Message */}
             <div className="success-message">
-                <div className="success-text">The auditing was successful.</div>
+                <div className="success-text">{t("The auditing was successful.")}</div>
             </div>
 
             {/* Job Info */}
             <div className="success-info">
                 <p>
-                    <strong>job name :</strong> {jobName || `job number${sessionData.session_id}`}
+                    <strong>{t("job name :")}</strong> {jobName || t("job number{{session_id}}", { session_id: sessionData.session_id })}
                 </p>
                 <p>
-                    <strong>Asset :</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
+                    <strong>{t("Asset :")}</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})
                 </p>
             </div>
 
             {/* Actions */}
             <div className="success-actions">
                 <button className="btn-back-home" onClick={onBackToHome}>
-                    Back to Homepage
+                    {t("Back to Homepage")}
                 </button>
                 <button className="btn-see-result" onClick={onSeeResult}>
-                    See Result
+                    {t("See Result")}
                 </button>
             </div>
         </div>

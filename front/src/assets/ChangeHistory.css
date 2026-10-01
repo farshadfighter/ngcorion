@@ -93,7 +93,7 @@
 
 .ach-entry-line {
     position: absolute;
-    left: 5px;
+    inset-inline-start: 5px;
     top: 22px;
     bottom: -20px;
     width: 2px;

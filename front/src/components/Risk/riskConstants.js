@@ -1,3 +1,5 @@
+import { uiLocale } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 // Shared presentation constants for the Risk Intelligence screens.
 // Palette values come from the Figma chart exports.
 
@@ -84,15 +86,18 @@ export const CATEGORY_COLORS = [
 
 export const TREND_BAR_COLOR = "#29354E";
 
-/** "informational" -> "Informational"; also covers labels the backend adds later. */
-export const titleCase = (value) =>
-    String(value)
+/** "informational" -> "Informational" (translated when known); also covers labels the backend adds later. */
+export const titleCase = (value) => {
+    const known = tv(value);
+    if (known !== value) return known;
+    return String(value)
         .split("_")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+};
 
 export const formatNumber = (value) =>
-    typeof value === "number" ? value.toLocaleString("en-US") : value;
+    typeof value === "number" ? value.toLocaleString(uiLocale()) : value;
 
 /** Table cells render "-" for absent values, matching the Figma mock. */
 export const orDash = (value) =>

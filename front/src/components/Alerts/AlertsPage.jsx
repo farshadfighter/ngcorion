@@ -6,16 +6,18 @@ import { formatWhen } from "../../utils/dates.js";
 import { actionLabel, announceAlertsChanged, MODULES, SEVERITY } from "./alertFormat.js";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
+import { t as tr, n } from "../../i18n";
+import { tb } from "../../i18n/backendText";
 
-const STATUSES = [["open", "Active"], ["acknowledged", "Acknowledged"], ["resolved", "Resolved"]];
+const STATUSES = [["open", tr("Active")], ["acknowledged", tr("Acknowledged")], ["resolved", tr("Resolved")]];
 const PAGE = 50;
 
 function stateText(a) {
-    if (a.status === "acknowledged") return `acknowledged by ${a.acknowledged_by || "someone"}`;
+    if (a.status === "acknowledged") return tr("acknowledged by {{user}}", { user: a.acknowledged_by || tr("someone") });
     if (a.status === "resolved") {
-        return a.auto_resolved ? "recovered by itself" : `resolved by ${a.resolved_by || "someone"}`;
+        return a.auto_resolved ? tr("recovered by itself") : tr("resolved by {{user}}", { user: a.resolved_by || tr("someone") });
     }
-    return "not acknowledged";
+    return tr("not acknowledged");
 }
 
 /** Alerts: what needs attention now, from every module. */
@@ -45,7 +47,7 @@ export function AlertsPage() {
         if (query) params.search = query;
         api.get("/api/alerts", { params })
             .then(({ data }) => { if (alive) { setPage(data); setError(null); } })
-            .catch((e) => alive && setError(e.response?.data?.detail || "Could not load alerts"));
+            .catch((e) => alive && setError(e.response?.data?.detail || tr("Could not load alerts")));
         return () => { alive = false; };
     }, [status, module, query, offset, reload]);
 
@@ -60,7 +62,8 @@ export function AlertsPage() {
         setBusy(`${verb}-${alert.id}`);
         api.post(`/api/alerts/${alert.id}/${verb}`)
             .then(() => { announceAlertsChanged(); refresh(); })
-            .catch((e) => setError(e.response?.data?.detail || `Could not ${verb} the alert`))
+            .catch((e) => setError(e.response?.data?.detail
+                || (verb === "acknowledge" ? tr("Could not acknowledge the alert") : tr("Could not resolve the alert"))))
             .finally(() => setBusy(null));
     };
 
@@ -74,28 +77,28 @@ export function AlertsPage() {
         <div className="bkm-page">
             <div className="bkm-head">
                 <div>
-                    <h1>Alerts</h1>
-                    <p>What needs attention now, from every module. Acknowledge an alert to tell the team you are on it.</p>
+                    <h1>{tr("Alerts")}</h1>
+                    <p>{tr("What needs attention now, from every module. Acknowledge an alert to tell the team you are on it.")}</p>
                 </div>
             </div>
 
             <div className="bkm-stats bkm-stats-4">
                 <div className={`bkm-stat ${stats.critical_unacknowledged ? "alr-stat-critical" : ""}`}>
-                    <b className={stats.critical_unacknowledged ? "bkm-red" : ""}>{stats.critical_unacknowledged ?? "—"}</b>
-                    <span>Critical, not acknowledged</span>
+                    <b className={stats.critical_unacknowledged ? "bkm-red" : ""}>{n(stats.critical_unacknowledged ?? "—")}</b>
+                    <span>{tr("Critical, not acknowledged")}</span>
                 </div>
-                <div className="bkm-stat"><b className="bkm-orange">{stats.warning_open ?? "—"}</b><span>Warning</span></div>
-                <div className="bkm-stat"><b>{stats.acknowledged ?? "—"}</b><span>Acknowledged, still active</span></div>
-                <div className="bkm-stat"><b className="bkm-green">{stats.resolved_7d ?? "—"}</b><span>Resolved · last 7 days</span></div>
+                <div className="bkm-stat"><b className="bkm-orange">{n(stats.warning_open ?? "—")}</b><span>{tr("Warning")}</span></div>
+                <div className="bkm-stat"><b>{n(stats.acknowledged ?? "—")}</b><span>{tr("Acknowledged, still active")}</span></div>
+                <div className="bkm-stat"><b className="bkm-green">{n(stats.resolved_7d ?? "—")}</b><span>{tr("Resolved · last 7 days")}</span></div>
             </div>
 
             <div className="bkm-toolbar">
-                <div className="bkm-chips" role="group" aria-label="Filter alerts">
+                <div className="bkm-chips" role="group" aria-label={tr("Filter alerts")}>
                     {STATUSES.map(([value, label]) => (
                         <button key={value} type="button" aria-pressed={status === value}
                                 className={`bkm-chip ${status === value ? "is-on" : ""}`}
                                 onClick={() => { setStatus(value); setOffset(0); }}>
-                            {label} <b>{counts[value] ?? 0}</b>
+                            {label} <b>{n(counts[value] ?? 0)}</b>
                         </button>
                     ))}
                     <span className="alr-sep" aria-hidden="true" />
@@ -103,7 +106,7 @@ export function AlertsPage() {
                         <button key={m.key} type="button" aria-pressed={module === m.key}
                                 className={`bkm-chip ${module === m.key ? "is-on" : ""}`}
                                 onClick={() => { setModule(module === m.key ? "" : m.key); setOffset(0); }}>
-                            {MODULES[m.key] || m.label}{m.count ? <b>{m.count}</b> : null}
+                            {MODULES[m.key] || m.label}{m.count ? <b>{n(m.count)}</b> : null}
                         </button>
                     ))}
                 </div>
@@ -111,9 +114,9 @@ export function AlertsPage() {
                     <label className="bkm-search">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                         <input value={search} onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
-                               placeholder="Search alerts, devices…" aria-label="Search alerts" />
+                               placeholder={tr("Search alerts, devices…")} aria-label={tr("Search alerts")} />
                     </label>
-                    {canManage && <Link className="bkm-btn" to="/settings/notifications">Notification rules</Link>}
+                    {canManage && <Link className="bkm-btn" to="/settings/notifications">{tr("Notification rules")}</Link>}
                 </div>
             </div>
 
@@ -124,11 +127,11 @@ export function AlertsPage() {
                     <table className="bkm-table alr-table">
                         <thead>
                             <tr>
-                                <th style={{ width: 96 }}>Severity</th>
-                                <th>Alert</th>
-                                <th style={{ width: 200 }}>Source</th>
-                                <th style={{ width: 160 }}>{status === "resolved" ? "Resolved" : "Since"}</th>
-                                <th style={{ width: 320 }}><span className="sr-only">Actions</span></th>
+                                <th style={{ width: 96 }}>{tr("Severity")}</th>
+                                <th>{tr("Alert")}</th>
+                                <th style={{ width: 200 }}>{tr("Source")}</th>
+                                <th style={{ width: 160 }}>{status === "resolved" ? tr("Resolved") : tr("Since")}</th>
+                                <th style={{ width: 320 }}><span className="sr-only">{tr("Actions")}</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -136,8 +139,8 @@ export function AlertsPage() {
                                 <tr key={a.id} className={a.status === "active" && a.severity === "critical" ? "alr-row-critical" : ""}>
                                     <td><span className={`bkm-pill ${SEVERITY[a.severity]?.pill || ""}`}>{SEVERITY[a.severity]?.label || a.severity}</span></td>
                                     <td>
-                                        <b className="bkm-strong">{a.title}</b>
-                                        {a.detail && <span className="bkm-sub alr-detail">{a.detail}</span>}
+                                        <b className="bkm-strong">{tb(a.title)}</b>
+                                        {a.detail && <span className="bkm-sub alr-detail bidi-auto">{tb(a.detail)}</span>}
                                     </td>
                                     <td>
                                         {MODULES[a.module] || a.module}
@@ -157,15 +160,15 @@ export function AlertsPage() {
                                             {a.status === "active" && (
                                                 <button type="button" className="bkm-btn bkm-btn-sm bkm-btn-primary"
                                                         disabled={busy === `acknowledge-${a.id}`} onClick={() => act(a, "acknowledge")}>
-                                                    Acknowledge
+                                                    {tr("Acknowledge")}
                                                 </button>
                                             )}
                                             {a.status !== "resolved" && (a.kind === "event" || a.status === "acknowledged") && (
                                                 <button type="button" className="bkm-btn bkm-btn-sm" title={a.kind === "state"
-                                                    ? "Closes the alert now. If the problem is still there, a new alert is raised at the next check."
-                                                    : "Close this alert"}
+                                                    ? tr("Closes the alert now. If the problem is still there, a new alert is raised at the next check.")
+                                                    : tr("Close this alert")}
                                                         disabled={busy === `resolve-${a.id}`} onClick={() => act(a, "resolve")}>
-                                                    Resolve
+                                                    {tr("Resolve")}
                                                 </button>
                                             )}
                                         </div>
@@ -177,22 +180,22 @@ export function AlertsPage() {
                 </div>
                 {page && items.length === 0 && (
                     <div className="bkm-empty">
-                        <b>{status === "resolved" ? "No resolved alerts" : query || module ? "No alert matches" : "All clear"}</b>
+                        <b>{status === "resolved" ? tr("No resolved alerts") : query || module ? tr("No alert matches") : tr("All clear")}</b>
                         <span className="bkm-muted">
                             {status === "open" && !query && !module
-                                ? "Nothing needs attention right now. New alerts appear here and on the bell."
-                                : "Try another filter."}
+                                ? tr("Nothing needs attention right now. New alerts appear here and on the bell.")
+                                : tr("Try another filter.")}
                         </span>
                     </div>
                 )}
                 {page && page.total > PAGE && (
                     <div className="bkm-card-foot bkm-row-between">
-                        <span>{from}–{to} of {page.total}</span>
+                        <span>{tr("{{from}}–{{to}} of {{total}}", { from, to, total: page.total })}</span>
                         <span className="bkm-actions">
                             <button type="button" className="bkm-btn bkm-btn-sm" disabled={offset === 0}
-                                    onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>
+                                    onClick={() => setOffset(Math.max(0, offset - PAGE))}>{tr("Previous")}</button>
                             <button type="button" className="bkm-btn bkm-btn-sm" disabled={to >= page.total}
-                                    onClick={() => setOffset(offset + PAGE)}>Next</button>
+                                    onClick={() => setOffset(offset + PAGE)}>{tr("Next")}</button>
                         </span>
                     </div>
                 )}

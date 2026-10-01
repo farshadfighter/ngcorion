@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import api from "../config/api";
+import { t } from "../i18n";
 
 // ==================== ASSET TYPES ====================
 export const fetchAssetTypes = createAsyncThunk("requirements/fetchAssetTypes", async (_, { rejectWithValue }) => {
@@ -7,7 +8,7 @@ export const fetchAssetTypes = createAsyncThunk("requirements/fetchAssetTypes", 
         const response = await api.get("/api/asset-types/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch asset types");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch asset types"));
     }
 });
 
@@ -16,7 +17,7 @@ export const createAssetType = createAsyncThunk("requirements/createAssetType", 
         const response = await api.post("/api/asset-types/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create asset type");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create asset type"));
     }
 });
 
@@ -25,7 +26,7 @@ export const updateAssetType = createAsyncThunk("requirements/updateAssetType", 
         const response = await api.put(`/api/asset-types/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to update asset type");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to update asset type"));
     }
 });
 
@@ -34,7 +35,7 @@ export const deleteAssetType = createAsyncThunk("requirements/deleteAssetType", 
         await api.delete(`/api/asset-types/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete asset type");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete asset type"));
     }
 });
 
@@ -44,7 +45,7 @@ export const fetchOwners = createAsyncThunk("requirements/fetchOwners", async (_
         const response = await api.get("/api/owners/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch owners");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch owners"));
     }
 });
 
@@ -53,7 +54,7 @@ export const createOwner = createAsyncThunk("requirements/createOwner", async (d
         const response = await api.post("/api/owners/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create owner");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create owner"));
     }
 });
 
@@ -62,7 +63,7 @@ export const updateOwner = createAsyncThunk("requirements/updateOwner", async ({
         const response = await api.put(`/api/owners/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to update owner");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to update owner"));
     }
 });
 
@@ -71,7 +72,7 @@ export const deleteOwner = createAsyncThunk("requirements/deleteOwner", async (i
         await api.delete(`/api/owners/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete owner");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete owner"));
     }
 });
 
@@ -81,7 +82,7 @@ export const fetchLocations = createAsyncThunk("requirements/fetchLocations", as
         const response = await api.get("/api/locations/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch locations");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch locations"));
     }
 });
 
@@ -90,7 +91,7 @@ export const createLocation = createAsyncThunk("requirements/createLocation", as
         const response = await api.post("/api/locations/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create location");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create location"));
     }
 });
 
@@ -99,7 +100,7 @@ export const updateLocation = createAsyncThunk("requirements/updateLocation", as
         const response = await api.put(`/api/locations/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to update location");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to update location"));
     }
 });
 
@@ -108,7 +109,7 @@ export const deleteLocation = createAsyncThunk("requirements/deleteLocation", as
         await api.delete(`/api/locations/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete location");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete location"));
     }
 });
 
@@ -118,7 +119,7 @@ export const fetchZones = createAsyncThunk("requirements/fetchZones", async (_, 
         const response = await api.get("/api/zones/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch zones");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch zones"));
     }
 });
 
@@ -127,7 +128,7 @@ export const createZone = createAsyncThunk("requirements/createZone", async (dat
         const response = await api.post("/api/zones/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create zone");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create zone"));
     }
 });
 
@@ -136,7 +137,7 @@ export const deleteZone = createAsyncThunk("requirements/deleteZone", async (id,
         await api.delete(`/api/zones/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete zone");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete zone"));
     }
 });
 export const updateZone = createAsyncThunk("requirements/updateZone", async ({ id, data }, { rejectWithValue }) => {
@@ -144,7 +145,7 @@ export const updateZone = createAsyncThunk("requirements/updateZone", async ({ i
         const response = await api.put(`/api/zones/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to update zone");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to update zone"));
     }
 });
 
@@ -155,7 +156,7 @@ export const fetchOSCatalog = createAsyncThunk("requirements/fetchOSCatalog", as
         const response = await api.get("/api/os-catalog/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch OS catalog");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch OS catalog"));
     }
 });
 
@@ -164,7 +165,7 @@ export const createOS = createAsyncThunk("requirements/createOS", async (data, {
         const response = await api.post("/api/os-catalog/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create OS");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create OS"));
     }
 });
 
@@ -173,7 +174,7 @@ export const updateOS = createAsyncThunk("requirements/updateOS", async ({ id, d
         const response = await api.put(`/api/os-catalog/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to update OS");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to update OS"));
     }
 });
 
@@ -182,7 +183,7 @@ export const deleteOS = createAsyncThunk("requirements/deleteOS", async (id, { r
         await api.delete(`/api/os-catalog/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete OS");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete OS"));
     }
 });
 
@@ -192,7 +193,7 @@ export const fetchVendors = createAsyncThunk("requirements/fetchVendors", async 
         const response = await api.get("/api/vendors/");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch vendors");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch vendors"));
     }
 });
 
@@ -201,7 +202,7 @@ export const createVendor = createAsyncThunk("requirements/createVendor", async 
         const response = await api.post("/api/vendors/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create vendor");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create vendor"));
     }
 });
 
@@ -210,7 +211,7 @@ export const updateVendor = createAsyncThunk("requirements/updateVendor", async 
         const response = await api.put(`/api/vendors/${id}`, data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to update vendor");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to update vendor"));
     }
 });
 
@@ -219,7 +220,7 @@ export const deleteVendor = createAsyncThunk("requirements/deleteVendor", async 
         await api.delete(`/api/vendors/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete vendor");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete vendor"));
     }
 });
 
@@ -230,7 +231,7 @@ export const fetchDependencies = createAsyncThunk("requirements/fetchDependencie
         const response = await api.get(url);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch dependencies");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch dependencies"));
     }
 });
 
@@ -239,7 +240,7 @@ export const createDependency = createAsyncThunk("requirements/createDependency"
         const response = await api.post("/api/dependencies/", data);
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to create dependency");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to create dependency"));
     }
 });
 
@@ -248,7 +249,7 @@ export const deleteDependency = createAsyncThunk("requirements/deleteDependency"
         await api.delete(`/api/dependencies/${id}`);
         return id;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to delete dependency");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to delete dependency"));
     }
 });
 
@@ -258,7 +259,7 @@ export const fetchEnums = createAsyncThunk("requirements/fetchEnums", async (_, 
         const response = await api.get("/api/enums/all");
         return response.data;
     } catch (err) {
-        return rejectWithValue(err.response?.data?.detail || "Failed to fetch enums");
+        return rejectWithValue(err.response?.data?.detail || t("Failed to fetch enums"));
     }
 });
 
@@ -303,16 +304,16 @@ const requirementSlice = createSlice({
             })
             .addCase(createAssetType.fulfilled, (state, action) => {
                 state.assetTypes.push(action.payload);
-                state.successMessage = "Asset type created successfully";
+                state.successMessage = t("Asset type created successfully");
             })
             .addCase(updateAssetType.fulfilled, (state, action) => {
                 const index = state.assetTypes.findIndex(item => item.id === action.payload.id);
                 if (index !== -1) state.assetTypes[index] = action.payload;
-                state.successMessage = "Asset type updated successfully";
+                state.successMessage = t("Asset type updated successfully");
             })
             .addCase(deleteAssetType.fulfilled, (state, action) => {
                 state.assetTypes = state.assetTypes.filter(item => item.id !== action.payload);
-                state.successMessage = "Asset type deleted successfully";
+                state.successMessage = t("Asset type deleted successfully");
             });
 
         // Owners
@@ -320,16 +321,16 @@ const requirementSlice = createSlice({
             .addCase(fetchOwners.fulfilled, (state, action) => { state.owners = action.payload; })
             .addCase(createOwner.fulfilled, (state, action) => {
                 state.owners.push(action.payload);
-                state.successMessage = "Owner created successfully";
+                state.successMessage = t("Owner created successfully");
             })
             .addCase(updateOwner.fulfilled, (state, action) => {
                 const index = state.owners.findIndex(item => item.id === action.payload.id);
                 if (index !== -1) state.owners[index] = action.payload;
-                state.successMessage = "Owner updated successfully";
+                state.successMessage = t("Owner updated successfully");
             })
             .addCase(deleteOwner.fulfilled, (state, action) => {
                 state.owners = state.owners.filter(item => item.id !== action.payload);
-                state.successMessage = "Owner deleted successfully";
+                state.successMessage = t("Owner deleted successfully");
             });
 
         // Locations
@@ -337,16 +338,16 @@ const requirementSlice = createSlice({
             .addCase(fetchLocations.fulfilled, (state, action) => { state.locations = action.payload; })
             .addCase(createLocation.fulfilled, (state, action) => {
                 state.locations.push(action.payload);
-                state.successMessage = "Location created successfully";
+                state.successMessage = t("Location created successfully");
             })
             .addCase(updateLocation.fulfilled, (state, action) => {
                 const index = state.locations.findIndex(item => item.id === action.payload.id);
                 if (index !== -1) state.locations[index] = action.payload;
-                state.successMessage = "Location updated successfully";
+                state.successMessage = t("Location updated successfully");
             })
             .addCase(deleteLocation.fulfilled, (state, action) => {
                 state.locations = state.locations.filter(item => item.id !== action.payload);
-                state.successMessage = "Location deleted successfully";
+                state.successMessage = t("Location deleted successfully");
             });
 
         // Zones
@@ -355,7 +356,7 @@ const requirementSlice = createSlice({
             .addCase(fetchZones.fulfilled, (state, action) => { state.zones = action.payload; })
             .addCase(createZone.fulfilled, (state, action) => {
                 state.zones.push(action.payload);
-                state.successMessage = "Zone created successfully";
+                state.successMessage = t("Zone created successfully");
             })
 
             .addCase(updateOS.fulfilled, (state, action) => {
@@ -369,12 +370,12 @@ const requirementSlice = createSlice({
             .addCase(updateZone.fulfilled, (state, action) => {
                 const index = state.zones.findIndex(item => item.id === action.payload.id);
                 if (index !== -1) state.zones[index] = action.payload;
-                state.successMessage = "Zone updated successfully";
+                state.successMessage = t("Zone updated successfully");
             })
             // ---------------------------------
             .addCase(deleteZone.fulfilled, (state, action) => {
                 state.zones = state.zones.filter(item => item.id !== action.payload);
-                state.successMessage = "Zone deleted successfully";
+                state.successMessage = t("Zone deleted successfully");
             });
 
 
@@ -395,11 +396,11 @@ const requirementSlice = createSlice({
             .addCase(fetchVendors.fulfilled, (state, action) => { state.vendors = action.payload; })
             .addCase(createVendor.fulfilled, (state, action) => {
                 state.vendors.push(action.payload);
-                state.successMessage = "Vendor created successfully";
+                state.successMessage = t("Vendor created successfully");
             })
             .addCase(deleteVendor.fulfilled, (state, action) => {
                 state.vendors = state.vendors.filter(item => item.id !== action.payload);
-                state.successMessage = "Vendor deleted successfully";
+                state.successMessage = t("Vendor deleted successfully");
             });
 
         // Dependencies
@@ -407,11 +408,11 @@ const requirementSlice = createSlice({
             .addCase(fetchDependencies.fulfilled, (state, action) => { state.dependencies = action.payload; })
             .addCase(createDependency.fulfilled, (state, action) => {
                 state.dependencies.push(action.payload);
-                state.successMessage = "Dependency created successfully";
+                state.successMessage = t("Dependency created successfully");
             })
             .addCase(deleteDependency.fulfilled, (state, action) => {
                 state.dependencies = state.dependencies.filter(item => item.id !== action.payload);
-                state.successMessage = "Dependency deleted successfully";
+                state.successMessage = t("Dependency deleted successfully");
             });
 
         // Enums
@@ -444,7 +445,7 @@ const requirementSlice = createSlice({
                     fetchEnums.rejected
                 ),
                 (state, action) => {
-                    state.error = action.payload || "Request failed";
+                    state.error = action.payload || t("Request failed");
                     state.successMessage = null;
                 }
             );

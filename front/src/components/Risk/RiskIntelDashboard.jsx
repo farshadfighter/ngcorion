@@ -8,6 +8,7 @@ import { TrendCard } from "./TrendCard";
 import { TopRiskyAssetsTable } from "./TopRiskyAssetsTable";
 import { RISK_LEVEL_COLORS, CATEGORY_COLORS, titleCase } from "./riskConstants";
 import "../../assets/RiskAsset.css";
+import { t } from "../../i18n";
 
 /**
  * Risk Intelligence overview: the KPI band and the four charts.
@@ -45,7 +46,7 @@ export const RiskIntelDashboard = () => {
         const merged = new Map();
         for (const entry of summary?.by_zone || []) {
             const label =
-                entry.key === "unclassified" ? "Unassigned" : entry.key;
+                entry.key === "unclassified" ? t("Unassigned") : entry.key;
             const key = String(label).toLowerCase().replace(/\s*\/\s*/g, "/").trim();
             const existing = merged.get(key);
             if (existing) {
@@ -72,7 +73,7 @@ export const RiskIntelDashboard = () => {
     if (isLoading && !summary) {
         return (
             <div className="risk-page">
-                <p className="risk-state">Loading risk data…</p>
+                <p className="risk-state">{t("Loading risk data…")}</p>
             </div>
         );
     }
@@ -81,7 +82,7 @@ export const RiskIntelDashboard = () => {
         return (
             <div className="risk-page">
                 <p className="risk-state risk-state-error">
-                    Failed to load risk data: {error}
+                    {t("Failed to load risk data: {{error}}", { error })}
                 </p>
             </div>
         );
@@ -98,23 +99,23 @@ export const RiskIntelDashboard = () => {
         <div className="risk-page">
             <section className="risk-card risk-kpi-panel">
                 <div className="risk-kpi-grid">
-                    <KpiCard label="Number of assets" value={totals.total_assets} />
-                    <KpiCard label="Critical Risk assets" value={levelCount("critical")} />
-                    <KpiCard label="High Risk assets" value={levelCount("high")} />
-                    <KpiCard label="Medium Risk assets" value={levelCount("medium")} />
-                    <KpiCard label="Risk Score average" value={totals.risk_score_average} />
+                    <KpiCard label={t("Number of assets")} value={totals.total_assets} />
+                    <KpiCard label={t("Critical Risk assets")} value={levelCount("critical")} />
+                    <KpiCard label={t("High Risk assets")} value={levelCount("high")} />
+                    <KpiCard label={t("Medium Risk assets")} value={levelCount("medium")} />
+                    <KpiCard label={t("Risk Score average")} value={totals.risk_score_average} />
                     <KpiCard
-                        label="Number of incomplete assets"
+                        label={t("Number of incomplete assets")}
                         value={totals.incomplete_assets}
                     />
-                    <KpiCard label="Number of Open Ports" value={totals.open_ports_total} />
+                    <KpiCard label={t("Number of Open Ports")} value={totals.open_ports_total} />
                     <KpiCard
-                        label="Non-conformity asset"
+                        label={t("Non-conformity asset")}
                         value={totals.non_conformity_assets}
-                        note="assets with active findings"
+                        note={t("assets with active findings")}
                     />
                     <KpiCard
-                        label="Number of fixed section by hardening"
+                        label={t("Number of fixed section by hardening")}
                         value={totals.fixed_by_hardening_total}
                     />
                 </div>
@@ -122,25 +123,25 @@ export const RiskIntelDashboard = () => {
 
             <div className="risk-chart-grid">
                 <DonutCard
-                    title="Asset by Risk level"
+                    title={t("Asset by Risk level")}
                     data={riskLevelData}
                     colorFor={(entry) => RISK_LEVEL_COLORS[entry.key] || "#9AA5B5"}
-                    emptyMessage="No scored assets yet."
+                    emptyMessage={t("No scored assets yet.")}
                 />
                 <DonutCard
-                    title="Asset by Zone"
+                    title={t("Asset by Zone")}
                     data={zoneData}
                     colorFor={byIndex}
                     emptyMessage={
-                        "No zones assigned yet.\n" +
-                        "Run the risk seed to create the default zones."
+                        t("No zones assigned yet.") + "\n" +
+                        t("Run the risk seed to create the default zones.")
                     }
                 />
                 <DonutCard
-                    title="Asset by confidentiality level"
+                    title={t("Asset by confidentiality level")}
                     data={confidentialityData}
                     colorFor={byIndex}
-                    emptyMessage="No assets carry a confidentiality level yet."
+                    emptyMessage={t("No assets carry a confidentiality level yet.")}
                 />
 
                 <TrendCard points={trend} message={trendMessage} />

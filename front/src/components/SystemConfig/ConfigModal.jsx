@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n";
 
 /**
  * Shared shell for the six configuration dialogs: title bar with a close X, a
@@ -16,7 +17,7 @@ export const ConfigModal = ({
     isLoading,
     error,
     warning,
-    saveLabel = "Save",
+    saveLabel,
     saveDisabled = false,
 }) => (
     <div className="modal-overlay" onClick={onClose}>
@@ -27,7 +28,7 @@ export const ConfigModal = ({
                     type="button"
                     className="sc-modal-close"
                     onClick={onClose}
-                    aria-label="Close"
+                    aria-label={t("Close")}
                 >
                     <i className="fa-solid fa-xmark" />
                 </button>
@@ -35,7 +36,7 @@ export const ConfigModal = ({
 
             <div className="sc-modal-body">
                 {isLoading ? (
-                    <p className="sc-state">Loading…</p>
+                    <p className="sc-state">{t("Loading…")}</p>
                 ) : (
                     <>
                         {children}
@@ -54,7 +55,7 @@ export const ConfigModal = ({
                     onClick={onClose}
                     disabled={isSaving}
                 >
-                    Cancel
+                    {t("Cancel")}
                 </button>
                 <button
                     type="button"
@@ -64,10 +65,10 @@ export const ConfigModal = ({
                 >
                     {isSaving ? (
                         <>
-                            <i className="fa-solid fa-spinner fa-spin" /> Saving…
+                            <i className="fa-solid fa-spinner fa-spin" /> {" "}{t("Saving…")}
                         </>
                     ) : (
-                        saveLabel
+                        saveLabel ?? t("Save")
                     )}
                 </button>
             </div>

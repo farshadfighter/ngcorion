@@ -20,6 +20,7 @@ import {
     buildCredentials,
 } from './hardeningCredentials';
 import '../../assets/hardening/Hardenallmodal.css';
+import { t } from "../../i18n";
 
 // Cisco and Fortinet return action_id in preview and require it on execute.
 const isCiscoOrFortinet = (dt) => isCisco(dt) || isFortinet(dt);
@@ -113,7 +114,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             if (!paramValues[param]?.trim()) errors.push(param);
         });
         if (errors.length > 0) {
-            alert(`Please fill in required fields:\n${errors.join('\n')}`);
+            alert(t("Please fill in required fields:\n{{join}}", { join: errors.join('\n') }));
             return false;
         }
         return true;
@@ -134,7 +135,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
 
         // Guard: Cisco/Fortinet need an action_id from the preview step.
         if (missingAction) {
-            setFormError('Could not load the hardening action for this check. Go back and retry the preview before executing.');
+            setFormError(t("Could not load the hardening action for this check. Go back and retry the preview before executing."));
             return;
         }
 
@@ -200,7 +201,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             return (
                 <div className="hardening-modal-loading">
                     <div className="hardening-spinner"></div>
-                    <p>Loading preview...</p>
+                    <p>{t("Loading preview...")}</p>
                 </div>
             );
         }
@@ -215,15 +216,15 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             const isManual = errorText && /manual|no automated remediation/i.test(errorText);
             if (errorText) {
                 return (
-                    <div className="hardening-modal-error" style={{ padding: '20px', borderRadius: '10px', borderLeft: isManual ? '5px solid #f59e0b' : '5px solid #ef4444', background: isManual ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
+                    <div className="hardening-modal-error" style={{ padding: '20px', borderRadius: '10px', borderInlineStart: isManual ? '5px solid #f59e0b' : '5px solid #ef4444', background: isManual ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
                         <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700', color: isManual ? '#92400e' : '#c0392b' }}>
-                            {isManual ? ' Manual remediation required' : '⚠️ Could not load hardening preview'}
+                            {isManual ? t(" Manual remediation required") : t("⚠️ Could not load hardening preview")}
                         </h3>
                         <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#4b5563', whiteSpace: 'pre-wrap' }}>{errorText}</p>
                     </div>
                 );
             }
-            return <div className="hardening-modal-error"><p>Failed to load hardening preview.</p></div>;
+            return <div className="hardening-modal-error"><p>{t("Failed to load hardening preview.")}</p></div>;
         }
         const targetVdom = previewData.target_vdom;
         const wrapper = scopeWrapper(previewData.scope || previewData.vdom_context, targetVdom);
@@ -231,28 +232,28 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
         return (
             <div className="hardening-preview-section">
                 <h3 style={{ fontSize: '18px', color: '#1e3a5f', margin: '0 0 20px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className="fa-solid fa-clipboard" /> Hardening Preview
+                    <i className="fa-solid fa-clipboard" /> {" "}{t("Hardening Preview")}
                 </h3>
                 {targetVdom && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', marginBottom: '16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderLeft: '5px solid #7c3aed', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', marginBottom: '16px', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)', border: '1px solid #c4b5fd', borderInlineStart: '5px solid #7c3aed', borderRadius: '10px' }}>
                         <span style={{ fontSize: '18px' }}><i className="fa-solid fa-bullseye" /></span>
                         <span style={{ fontSize: '14px', color: '#4c1d95' }}>
-                            Target VDOM: <strong>{vdomBadgeLabel(targetVdom)}</strong>
-                            <span style={{ color: '#6b7280', marginLeft: '8px', fontSize: '12px' }}>
-                                — the fix runs inside this context on the device
+                            {t("Target VDOM:")}{" "} <strong>{vdomBadgeLabel(targetVdom)}</strong>
+                            <span style={{ color: '#6b7280', marginInlineStart: '8px', fontSize: '12px' }}>
+                                {t("— the fix runs inside this context on the device")}
                             </span>
                         </span>
                     </div>
                 )}
                 {previewData.commands && previewData.commands.length > 0 && (
                     <div className="hardening-commands-preview">
-                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>Commands to Execute:</h4>
+                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>{t("Commands to Execute:")}</h4>
                         <div style={{ background: 'linear-gradient(135deg, #f8f9fb 0%, #ffffff 100%)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e8edf5' }}>
                             {wrapper && wrapper.open.map((line, i) => (
                                 <div key={`open-${i}`} style={wrapperLineStyle}>{line}</div>
                             ))}
                             {previewData.commands.map((cmd, index) => (
-                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderLeft: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)', marginLeft: wrapper ? '18px' : 0 }}>
+                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderInlineStart: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)', marginInlineStart: wrapper ? '18px' : 0 }}>
                                     <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
                                     <code style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '13px', color: '#1f2937', lineHeight: '1.6', wordBreak: 'break-word', background: '#f8f9fb', padding: '2px 6px', borderRadius: '4px' }}>{cmd}</code>
                                 </div>
@@ -262,7 +263,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                             ))}
                             {wrapper && (
                                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#6b7280' }}>
-                                    Dashed lines are the VDOM scope wrapper — added automatically on VDOM-enabled devices.
+                                    {t("Dashed lines are the VDOM scope wrapper — added automatically on VDOM-enabled devices.")}
                                 </p>
                             )}
                         </div>
@@ -270,18 +271,18 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 )}
                 {previewData.warnings && previewData.warnings.length > 0 && (
                     <div className="hardening-warnings-box">
-                        <h4>⚠️ Warnings:</h4>
+                        <h4>{t("⚠️ Warnings:")}</h4>
                         <ul>{previewData.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul>
                     </div>
                 )}
                 {((previewData.required_parameters?.length ?? 0) > 0 || (previewData.optional_parameters?.length ?? 0) > 0) && (
                     <div className="hardening-info-box">
-                        <p><strong>ℹ️ Parameters will be configured in the next step</strong></p>
+                        <p><strong>{t("ℹ️ Parameters will be configured in the next step")}</strong></p>
                         {previewData.required_parameters?.length > 0 && (
-                            <><strong>Required:</strong> <ul>{previewData.required_parameters.map((p, i) => <li key={i}>{p}</li>)}</ul></>
+                            <><strong>{t("Required:")}</strong> <ul>{previewData.required_parameters.map((p, i) => <li key={i}>{p}</li>)}</ul></>
                         )}
                         {previewData.optional_parameters?.length > 0 && (
-                            <><strong>Optional (with defaults):</strong> <ul>{previewData.optional_parameters.map((p, i) => <li key={i}>{p} = {previewData.parameter_defaults?.[p]}</li>)}</ul></>
+                            <><strong>{t("Optional (with defaults):")}</strong> <ul>{previewData.optional_parameters.map((p, i) => <li key={i}>{p} = {previewData.parameter_defaults?.[p]}</li>)}</ul></>
                         )}
                     </div>
                 )}
@@ -298,14 +299,14 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 {previewData.required_parameters?.map((param) => (
                     <div key={param} className="hardening-form-group">
                         <label>{param}<span className="hardening-required">*</span></label>
-                        <input type="text" value={paramValues[param] ?? ''} onChange={(e) => handleParamChange(param, e.target.value)} placeholder={`Enter ${param}`} style={inputStyle} />
+                        <input type="text" value={paramValues[param] ?? ''} onChange={(e) => handleParamChange(param, e.target.value)} placeholder={t("Enter {{param}}", { param })} style={inputStyle} />
                     </div>
                 ))}
                 {previewData.optional_parameters?.map((param) => (
                     <div key={param} className="hardening-form-group">
                         <label>
                             {param}
-                            <span style={{ color: "#6b7280", fontWeight: 400, marginLeft: "6px" }}>(optional)</span>
+                            <span style={{ color: "#6b7280", fontWeight: 400, marginInlineStart: "6px" }}>{t("(optional)")}</span>
                         </label>
                         <input
                             type="text"
@@ -325,7 +326,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
             {missingAction && (
                 <div className="hardening-error-message" style={{ marginBottom: '16px' }}>
                     <span>⚠</span>
-                    <p>Could not load the hardening action for this check. Go back and retry the preview before executing.</p>
+                    <p>{t("Could not load the hardening action for this check. Go back and retry the preview before executing.")}</p>
                 </div>
             )}
             <CredentialsForm
@@ -346,7 +347,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px', padding: '12px 16px', background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', color: '#4c1d95' }}>
                     <input type="checkbox" checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />
                     <span>
-                        <strong>Preview only (dry run)</strong> — show the exact commands without connecting to the server or changing anything.
+                        <strong>{t("Preview only (dry run)")}</strong> {" "}{t("— show the exact commands without connecting to the server or changing anything.")}
                     </span>
                 </label>
             )}
@@ -356,21 +357,21 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
     const renderExecuting = () => (
         <div className="hardening-modal-executing">
             <div className="hardening-spinner-large"></div>
-            <h3>Executing Hardening...</h3>
-            <p>Please wait while we apply this security fix.</p>
+            <h3>{t("Executing Hardening...")}</h3>
+            <p>{t("Please wait while we apply this security fix.")}</p>
         </div>
     );
 
     const renderResults = () => {
-        if (!executionResult) return <div className="hardening-modal-error"><p>No results available.</p></div>;
+        if (!executionResult) return <div className="hardening-modal-error"><p>{t("No results available.")}</p></div>;
 
         // Dry run: nothing was executed — show the command preview only.
         if (executionResult.dry_run) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ padding: '16px 20px', borderRadius: '10px', borderLeft: '5px solid #7c3aed', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)' }}>
+                    <div style={{ padding: '16px 20px', borderRadius: '10px', borderInlineStart: '5px solid #7c3aed', background: 'linear-gradient(135deg,#ede9fe 0%,#f5f3ff 100%)' }}>
                         <p style={{ margin: 0, fontSize: '14px', color: '#4c1d95', fontWeight: 600 }}>
-                            <i className="fa-solid fa-magnifying-glass" /> Dry run — no commands were executed and nothing was changed on the server.
+                            <i className="fa-solid fa-magnifying-glass" /> {" "}{t("Dry run — no commands were executed and nothing was changed on the server.")}
                         </p>
                         {executionResult.check_title && (
                             <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#6b7280' }}>{executionResult.check_title}</p>
@@ -393,36 +394,36 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
         // Linux/MongoDB/MSSQL/Apache return { success: true, verification_result, check_title, error_message }
         const isSuccess = executionResult.success === true || executionResult.status === 'success';
         const isWarning = executionResult.status === 'warning';
-        const displayMessage = executionResult.message || executionResult.check_title || 'Hardening operation completed.';
+        const displayMessage = executionResult.message || executionResult.check_title || t("Hardening operation completed.");
         const verificationText = executionResult.verification_evidence || executionResult.verification_result;
         const modifiedVdom = executionResult.target_vdom;
 
         return (
             <div className="hardening-single-result" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ padding: '24px', borderRadius: '12px', borderLeft: isSuccess ? '5px solid #1e3a5f' : isWarning ? '5px solid #f59e0b' : '5px solid #ef4444', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', background: isSuccess ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : isWarning ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
+                <div style={{ padding: '24px', borderRadius: '12px', borderInlineStart: isSuccess ? '5px solid #1e3a5f' : isWarning ? '5px solid #f59e0b' : '5px solid #ef4444', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', background: isSuccess ? 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)' : isWarning ? 'linear-gradient(135deg,#fef3c7 0%,#fef9e7 100%)' : 'linear-gradient(135deg,#fee2e2 0%,#fef2f2 100%)' }}>
                     <h3 style={{ fontSize: '20px', margin: '0 0 12px 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '10px', color: isSuccess ? '#1e3a5f' : isWarning ? '#92400e' : '#c0392b' }}>
                         {isSuccess && <span style={{ background: '#1e3a5f', color: 'white', width: '32px', height: '32px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}>✓</span>}
-                        {isSuccess ? 'Successfully Hardened' : isWarning ? '⚠ Completed with Warnings' : '✗ Hardening Failed'}
+                        {isSuccess ? t("Successfully Hardened") : isWarning ? t("⚠ Completed with Warnings") : t("✗ Hardening Failed")}
                     </h3>
                     <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>{displayMessage}</p>
                     {isSuccess && (
                         <p style={{ margin: '8px 0 0 0', color: '#166534', fontSize: '13px', fontWeight: 600 }}>
-                            The check's status has been updated in the results list.
+                            {t("The check's status has been updated in the results list.")}
                         </p>
                     )}
                     {modifiedVdom && (
                         <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#4c1d95' }}>
-                            <i className="fa-solid fa-bullseye" /> Modified VDOM: <strong>{vdomBadgeLabel(modifiedVdom)}</strong>
+                            <i className="fa-solid fa-bullseye" /> {" "}{t("Modified VDOM:")}{" "} <strong>{vdomBadgeLabel(modifiedVdom)}</strong>
                         </p>
                     )}
                 </div>
 
                 {(executionResult.verification_passed !== undefined || verificationText) && (
                     <div style={{ background: 'linear-gradient(135deg,#fafbfc 0%,#ffffff 100%)', padding: '18px', borderRadius: '10px', border: '2px solid #e8edf5' }}>
-                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}><i className="fa-solid fa-magnifying-glass" /> Verification</h4>
+                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}><i className="fa-solid fa-magnifying-glass" /> {" "}{t("Verification")}</h4>
                         {executionResult.verification_passed !== undefined && (
                             <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '600', color: executionResult.verification_passed ? '#1e3a5f' : '#ef4444' }}>
-                                {executionResult.verification_passed ? '✓ Verified' : '✗ Not Verified'}
+                                {executionResult.verification_passed ? t("✓ Verified") : t("✗ Not Verified")}
                             </p>
                         )}
                         {verificationText && (
@@ -433,10 +434,10 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
 
                 {executionResult.commands_executed && executionResult.commands_executed.length > 0 && (
                     <div style={{ background: 'linear-gradient(135deg,#fafbfc 0%,#ffffff 100%)', padding: '18px', borderRadius: '10px', border: '2px solid #e8edf5' }}>
-                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>⚙️ Commands Executed</h4>
+                        <h4 style={{ fontSize: '15px', color: '#1e3a5f', margin: '0 0 12px 0', fontWeight: '700' }}>{t("⚙️ Commands Executed")}</h4>
                         <div style={{ background: 'linear-gradient(135deg,#f8f9fb 0%,#ffffff 100%)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e8edf5' }}>
                             {executionResult.commands_executed.map((cmd, index) => (
-                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderLeft: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)' }}>
+                                <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderInlineStart: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)' }}>
                                     <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
                                     <code style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '13px', color: '#1f2937', lineHeight: '1.6', wordBreak: 'break-word', background: '#f8f9fb', padding: '2px 6px', borderRadius: '4px' }}>{cmd}</code>
                                 </div>
@@ -446,8 +447,8 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 )}
 
                 {executionResult.backup_created && (
-                    <div style={{ background: 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)', borderLeft: '5px solid #1e3a5f', padding: '16px 20px', borderRadius: '10px' }}>
-                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '14px', fontWeight: '600' }}><i className="fa-solid fa-floppy-disk" /> Configuration backup created successfully</p>
+                    <div style={{ background: 'linear-gradient(135deg,#e8edf5 0%,#f0f4f9 100%)', borderInlineStart: '5px solid #1e3a5f', padding: '16px 20px', borderRadius: '10px' }}>
+                        <p style={{ margin: 0, color: '#2d4a7c', fontSize: '14px', fontWeight: '600' }}><i className="fa-solid fa-floppy-disk" /> {" "}{t("Configuration backup created successfully")}</p>
                     </div>
                 )}
 
@@ -469,7 +470,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 <div className="hardening-modal-header">
                     <div className="hardening-modal-title">
                         <span className="hardening-modal-icon"><img src="/icons/audit.svg" alt="" className="btn-icon" /></span>
-                        <h2>Harden Single Check</h2>
+                        <h2>{t("Harden Single Check")}</h2>
                     </div>
                     <button className="hardening-modal-close" onClick={onClose}>×</button>
                 </div>
@@ -478,9 +479,9 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                     <div className="hardening-modal-info">
                         <span className="hardening-info-icon">ℹ️</span>
                         <p>
-                            {step === 1 && 'Review the commands that will be executed for this hardening fix.'}
-                            {step === 2 && 'Configure required parameters for this hardening operation.'}
-                            {step === 3 && 'Enter credentials to execute the hardening fix.'}
+                            {step === 1 && t("Review the commands that will be executed for this hardening fix.")}
+                            {step === 2 && t("Configure required parameters for this hardening operation.")}
+                            {step === 3 && t("Enter credentials to execute the hardening fix.")}
                         </p>
                     </div>
                 )}
@@ -496,24 +497,24 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 <div className="hardening-modal-footer">
                     {step === 1 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={onClose}>Cancel</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromPreview} disabled={isLoading || !previewData}>Next</button>
+                            <button className="hardening-btn-secondary" onClick={onClose}>{t("Cancel")}</button>
+                            <button className="hardening-btn-primary" onClick={handleNextFromPreview} disabled={isLoading || !previewData}>{t("Next")}</button>
                         </>
                     )}
                     {step === 2 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(1)}>Back</button>
-                            <button className="hardening-btn-primary" onClick={handleNextFromParams}>Next</button>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(1)}>{t("Back")}</button>
+                            <button className="hardening-btn-primary" onClick={handleNextFromParams}>{t("Next")}</button>
                         </>
                     )}
                     {step === 3 && (
                         <>
-                            <button className="hardening-btn-secondary" onClick={() => setStep(((previewData?.required_parameters?.length ?? 0) > 0 || (previewData?.optional_parameters?.length ?? 0) > 0) ? 2 : 1)}>Back</button>
-                            <button className="hardening-btn-primary" onClick={handleExecute} disabled={isExecuting || missingAction}>Execute Hardening</button>
+                            <button className="hardening-btn-secondary" onClick={() => setStep(((previewData?.required_parameters?.length ?? 0) > 0 || (previewData?.optional_parameters?.length ?? 0) > 0) ? 2 : 1)}>{t("Back")}</button>
+                            <button className="hardening-btn-primary" onClick={handleExecute} disabled={isExecuting || missingAction}>{t("Execute Hardening")}</button>
                         </>
                     )}
                     {step === 5 && (
-                        <button className="hardening-btn-primary" onClick={handleFinish}>Finish</button>
+                        <button className="hardening-btn-primary" onClick={handleFinish}>{t("Finish")}</button>
                     )}
                 </div>
 
@@ -522,7 +523,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                 {(error || formError) && step !== 5 && !(step === 1 && !previewData) && (
                     <div className="hardening-error-message" style={{ margin: '16px 24px' }}>
                         <span>⚠</span>
-                        <p>{formError || (typeof error === 'string' ? error : (error?.message || 'Operation failed'))}</p>
+                        <p>{formError || (typeof error === 'string' ? error : (error?.message || t("Operation failed")))}</p>
                     </div>
                 )}
             </div>

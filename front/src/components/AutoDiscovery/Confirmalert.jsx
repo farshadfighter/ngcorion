@@ -1,4 +1,5 @@
 import React from 'react';
+import { t } from "../../i18n";
 
 const alertStyles = {
     overlay: {
@@ -18,7 +19,7 @@ const alertStyles = {
         maxWidth: '420px',
         boxShadow: '0 24px 60px rgba(10,20,40,0.18)',
         overflow: 'hidden',
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+        fontFamily: "var(--font-sans)",
     },
     header: {
         background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5490 100%)',
@@ -99,10 +100,10 @@ const icons = {
 };
 
 const titles = {
-    success: 'Success',
-    error: 'Error',
-    warning: 'Warning',
-    info: 'Information',
+    success: t("Success"),
+    error: t("Error"),
+    warning: t("Warning"),
+    info: t("Information"),
 };
 
 /**
@@ -141,7 +142,7 @@ const ConfirmAlert = ({ message, type = 'info', onClose }) => {
                         onMouseEnter={e => e.target.style.opacity = '0.85'}
                         onMouseLeave={e => e.target.style.opacity = '1'}
                     >
-                        OK
+                        {t("OK")}
                     </button>
                 </div>
 

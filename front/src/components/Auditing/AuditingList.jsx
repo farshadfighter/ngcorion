@@ -15,6 +15,8 @@ import { getLicenseStatusThunk } from "../../store/licenseSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
 
 import "../../assets/Auditing.css";
+import { t, uiLocale, n } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 export const AuditingList = () => {
     const dispatch = useDispatch();
@@ -88,7 +90,7 @@ export const AuditingList = () => {
             setDeleteError(null);
             dispatch(fetchAuditSessions());
         } catch (err) {
-            setDeleteError(err?.message || err?.toString() || "Failed to delete session");
+            setDeleteError(err?.message || err?.toString() || t("Failed to delete session"));
         }
     };
 
@@ -104,7 +106,7 @@ export const AuditingList = () => {
             setShowClearModal(false);
             setClearError(null);
         } catch (err) {
-            setClearError(err?.message || err?.toString() || "Failed to clear history");
+            setClearError(err?.message || err?.toString() || t("Failed to clear history"));
         }
     };
 
@@ -136,15 +138,15 @@ export const AuditingList = () => {
     };
 
     const getStatusBadge = (status) => {
-        if (status === "completed") return <span className="status-badge status-success">Successful</span>;
-        if (status === "failed")    return <span className="status-badge status-failed">Failed</span>;
-        if (status === "running")   return <span className="status-badge status-running">Running</span>;
+        if (status === "completed") return <span className="status-badge status-success">{t("Successful")}</span>;
+        if (status === "failed")    return <span className="status-badge status-failed">{t("Failed")}</span>;
+        if (status === "running")   return <span className="status-badge status-running">{t("Running")}</span>;
         return <span className="status-badge status-unknown">{status}</span>;
     };
 
     const formatDate = (dateString) => {
         if (!dateString) return "-";
-        return new Date(dateString).toLocaleString("en-US", {
+        return new Date(dateString).toLocaleString(uiLocale(),  {
             year: "numeric", month: "2-digit", day: "2-digit",
             hour: "2-digit", minute: "2-digit",
         });
@@ -160,11 +162,11 @@ export const AuditingList = () => {
                     className="btn-auditing-primary"
                     onClick={() => isAuditLimitReached ? setShowLimitModal(true) : setShowWizard(true)}
                     disabled={isAuditLimitReached}
-                    title={isAuditLimitReached ? "Audit limit reached" : ""}
+                    title={isAuditLimitReached ? t("Audit limit reached") : ""}
                     style={{ opacity: isAuditLimitReached ? 0.6 : 1, cursor: isAuditLimitReached ? "not-allowed" : "pointer" }}
                 >
                     <img src="/icons/audit.svg" alt="" className="btn-icon" />
-                  Add New Auditing
+                  {t("Add New Auditing")}
                 </button>
 
                 {/* Clear History */}
@@ -182,7 +184,7 @@ export const AuditingList = () => {
                         gap: "6px",
                     }}
                 >
-                    <i className="fa-solid fa-trash"></i> Clear History
+                    <i className="fa-solid fa-trash"></i> {" "}{t("Clear History")}
                 </button>
             </div>
 
@@ -193,24 +195,24 @@ export const AuditingList = () => {
             {/* Table */}
             <div className="auditing-table-wrapper">
                 {isLoading ? (
-                    <div className="loading-spinner">Loading audit sessions...</div>
+                    <div className="loading-spinner">{t("Loading audit sessions...")}</div>
                 ) : (
                     <table className="auditing-table">
                         <thead>
                         <tr>
-                            <th>Job Name</th>
-                            <th>Asset Name</th>
-                            <th>Device Type</th>
-                            <th>Process</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <th>{t("Job Name")}</th>
+                            <th>{t("Asset Name")}</th>
+                            <th>{t("Device Type")}</th>
+                            <th>{t("Process")}</th>
+                            <th>{t("Date")}</th>
+                            <th>{t("Actions")}</th>
                         </tr>
                         </thead>
                         <tbody>
                         {pagedSessions.length > 0 ? (
                             pagedSessions.map((session) => (
                                 <tr key={session.session_id}>
-                                    <td>{session.job_name || `job number${session.session_id}`}</td>
+                                    <td>{session.job_name || t("job number{{session_id}}", { session_id: session.session_id })}</td>
                                     <td>
                                         {session.asset_name || "-"}
                                         {session.target_ip && ` (${session.target_ip})`}
@@ -227,14 +229,14 @@ export const AuditingList = () => {
                                                         onClick={() => handleSeeResult(session)}
                                                     >
                                                         <img src="/icons/audit.svg" alt="" className="btn-action-icon" />
-                                                        See Result
+                                                        {t("See Result")}
                                                     </button>
                                                 )}
                                             </div>
                                             <button
                                                 className="btn-delete-icon"
                                                 onClick={() => handleDeleteClick(session)}
-                                                title="Delete"
+                                                title={t("Delete")}
                                             >
                                                 <i className="fa-solid fa-trash"></i>
                                             </button>
@@ -245,7 +247,7 @@ export const AuditingList = () => {
                         ) : (
                             <tr>
                                 <td colSpan="6" style={{ textAlign: "center", padding: "40px" }}>
-                                    No audit sessions found. Click "Auditing" to start a new audit.
+                                    {t("No audit sessions found. Click \"Auditing\" to start a new audit.")}
                                 </td>
                             </tr>
                         )}
@@ -270,21 +272,21 @@ export const AuditingList = () => {
                 <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Confirm Delete</h3>
+                            <h3>{t("Confirm Delete")}</h3>
                             <button className="modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to delete this audit session?</p>
+                            <p>{t("Are you sure you want to delete this audit session?")}</p>
                             <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>
-                                This action cannot be undone.
+                                {t("This action cannot be undone.")}
                             </p>
                             {deleteError && (
                                 <div className="alert alert-error" style={{ marginTop: "12px" }}>{deleteError}</div>
                             )}
                         </div>
                         <div className="modal-actions">
-                            <button className="btn-modal-secondary" onClick={() => setShowDeleteModal(false)}>Cancel</button>
-                            <button className="btn-delete2" onClick={handleDeleteConfirm}>Delete</button>
+                            <button className="btn-modal-secondary" onClick={() => setShowDeleteModal(false)}>{t("Cancel")}</button>
+                            <button className="btn-delete2" onClick={handleDeleteConfirm}>{t("Delete")}</button>
                         </div>
                     </div>
                 </div>
@@ -296,13 +298,15 @@ export const AuditingList = () => {
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header" style={{ borderBottom: `3px solid ${primaryColor}` }}>
                             <h3 style={{ color: primaryColor }}> <i className="fa-solid fa-trash"></i>
-                                Clear History</h3>
+                                {t("Clear History")}</h3>
                             <button className="modal-close" onClick={() => setShowClearModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to clear <strong>all</strong> audit history?</p>
+                            <p>{tx("Are you sure you want to clear {{all}} audit history?", { all: <strong>{t("all")}</strong> })}</p>
                             <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>
-                                This will permanently delete <strong>{sessions.length}</strong> session{sessions.length !== 1 ? "s" : ""}. This action cannot be undone.
+                                {sessions.length === 1
+                                    ? tx("This will permanently delete {{count}} session. This action cannot be undone.", { count: <strong>{n(sessions.length)}</strong> })
+                                    : tx("This will permanently delete {{count}} sessions. This action cannot be undone.", { count: <strong>{n(sessions.length)}</strong> })}
                             </p>
                             {clearError && (
                                 <div className="alert alert-error" style={{ marginTop: "12px" }}>{clearError}</div>
@@ -310,14 +314,14 @@ export const AuditingList = () => {
                         </div>
                         <div className="modal-actions">
                             <button className="btn-modal-secondary" onClick={() => setShowClearModal(false)}>
-                                Cancel
+                                {t("Cancel")}
                             </button>
                             <button
                                 className="btn-modal-primary"
                                 onClick={handleClearConfirm}
                                 disabled={isClearing}
                             >
-                                {isClearing ? "Clearing..." : "Yes, Clear All"}
+                                {isClearing ? t("Clearing...") : t("Yes, Clear All")}
                             </button>
                         </div>
                     </div>

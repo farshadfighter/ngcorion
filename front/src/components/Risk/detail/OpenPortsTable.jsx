@@ -1,24 +1,25 @@
 import React from "react";
 import { orDash, titleCase, formatDate } from "../riskConstants";
+import { t } from "../../../i18n";
 
 const COLUMNS = [
-    "Port",
-    "Protocol",
-    "Service",
-    "Severity",
-    "Severity Score",
-    "Status",
-    "Approved",
-    "Included in Risk",
-    "First Seen",
-    "Last Seen",
-    "Action",
+    t("Port"),
+    t("Protocol"),
+    t("Service"),
+    t("Severity"),
+    t("Severity Score"),
+    t("Status"),
+    t("Approved"),
+    t("Included in Risk"),
+    t("First Seen"),
+    t("Last Seen"),
+    t("Action"),
 ];
 
 /** Open ports observed on the asset — fully covered by the risk detail payload. */
 export const OpenPortsTable = ({ ports }) => (
     <section className="ard-card">
-        <h3 className="ard-card-title">Open Ports</h3>
+        <h3 className="ard-card-title">{t("Open Ports")}</h3>
         <div className="ard-table-wrapper">
             <table className="ard-table">
                 <thead>
@@ -32,7 +33,7 @@ export const OpenPortsTable = ({ ports }) => (
                     {ports.length === 0 && (
                         <tr>
                             <td colSpan={COLUMNS.length} className="ard-table-empty">
-                                No open ports recorded for this asset.
+                                {t("No open ports recorded for this asset.")}
                             </td>
                         </tr>
                     )}
@@ -44,8 +45,8 @@ export const OpenPortsTable = ({ ports }) => (
                             <td>{port.severity ? titleCase(port.severity) : "-"}</td>
                             <td>{orDash(port.severity_score)}</td>
                             <td>{port.status ? titleCase(port.status) : "-"}</td>
-                            <td>{port.is_approved ? "Yes" : "No"}</td>
-                            <td>{port.is_included_in_risk ? "Yes" : "No"}</td>
+                            <td>{port.is_approved ? t("Yes") : t("No")}</td>
+                            <td>{port.is_included_in_risk ? t("Yes") : t("No")}</td>
                             <td>{formatDate(port.first_seen_at)}</td>
                             <td>{formatDate(port.last_seen_at)}</td>
                             <td>
@@ -53,8 +54,8 @@ export const OpenPortsTable = ({ ports }) => (
                                     type="button"
                                     className="ard-icon-btn"
                                     disabled
-                                    title="Edit (not wired up yet)"
-                                    aria-label={`Edit port ${port.port}`}
+                                    title={t("Edit (not wired up yet)")}
+                                    aria-label={t("Edit port {{port}}", { port: port.port })}
                                 >
                                     <i className="fa-solid fa-pen" aria-hidden="true"></i>
                                 </button>

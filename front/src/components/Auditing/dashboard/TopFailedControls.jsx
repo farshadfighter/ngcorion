@@ -1,5 +1,6 @@
 import React from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { t, n } from "../../../i18n";
 
 const COLORS = ["#4299e1", "#805ad5", "#ecc94b", "#48bb78", "#ed8936", "#e53e3e", "#38b2ac", "#a0aec0"];
 
@@ -9,9 +10,9 @@ export const TopFailedControls = ({ items }) => {
 
     return (
         <div className="aud-card">
-            <div className="aud-card-title">Top Failed Controls</div>
+            <div className="aud-card-title">{t("Top Failed Controls")}</div>
             {data.length === 0 ? (
-                <div className="aud-empty">No failed controls recorded yet.</div>
+                <div className="aud-empty">{t("No failed controls recorded yet.")}</div>
             ) : (
                 <>
                     <ResponsiveContainer width="100%" height={220}>
@@ -32,7 +33,7 @@ export const TopFailedControls = ({ items }) => {
                             </Pie>
                             <Tooltip
                                 formatter={(v, _n, e) => [
-                                    `${v} failures on ${e.payload.affected_assets} assets`,
+                                    t("{{v}} failures on {{affected_assets}} assets", { v, affected_assets: e.payload.affected_assets }),
                                     e.payload.check_title || e.payload.check_number,
                                 ]}
                             />
@@ -49,7 +50,7 @@ export const TopFailedControls = ({ items }) => {
                                     className="aud-legend-dot"
                                     style={{ background: COLORS[i % COLORS.length] }}
                                 />
-                                {entry.check_number}: <b>{entry.fail_count}</b>
+                                <bdi>{entry.check_number}</bdi>: <b>{n(entry.fail_count)}</b>
                             </span>
                         ))}
                     </div>

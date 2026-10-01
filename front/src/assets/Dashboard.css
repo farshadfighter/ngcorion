@@ -59,7 +59,7 @@
 
 .toggle-sidebar-btn {
     position: absolute;
-    right: -12px;
+    inset-inline-end: -12px;
     top: 50%;
     transform: translateY(-50%);
     background: #1e3a5f;
@@ -185,7 +185,7 @@
 .nav-item:hover,
 .nav-item.active {
     color: #ffffff;
-    border-left: 6px solid #ffffff;
+    border-inline-start: 6px solid #ffffff;
     border-radius: 0 4px 4px 0;
     background: linear-gradient(
         to right,
@@ -203,12 +203,12 @@
    the label from shifting on hover. */
 .nav-item:hover,
 .nav-item.active {
-    padding-left: 18px;
+    padding-inline-start: 18px;
 }
 
 .nav-item.sub-item:hover,
 .nav-item.sub-item.active {
-    padding-left: 38px;
+    padding-inline-start: 38px;
 }
 
 .nav-item:hover .nav-icon-img,
@@ -218,8 +218,8 @@
 
 .sidebar.collapsed .nav-item:hover,
 .sidebar.collapsed .nav-item.active {
-    border-left: none;
-    border-right: 6px solid #ffffff;
+    border-inline-start: none;
+    border-inline-end: 6px solid #ffffff;
     border-radius: 4px 0 0 4px;
     padding: 12px;
 }
@@ -229,7 +229,7 @@
    pull them together are gone; the vh padding already keeps the menu in frame. */
 .nav-item.sub-item {
     font-size: clamp(13px, 1.35vh, 15px);
-    padding-left: 44px;
+    padding-inline-start: 44px;
     padding-top: clamp(4.5px, 0.95vh, 11px);
     padding-bottom: clamp(4.5px, 0.95vh, 11px);
 }
@@ -241,14 +241,14 @@
 .nav-icon-img {
     width: 20px;
     height: 20px;
-    margin-right: 12px;
+    margin-inline-end: 12px;
     filter: brightness(0) invert(1);
     opacity: 0.8;
     flex-shrink: 0;
 }
 
 .sidebar.collapsed .nav-icon-img {
-    margin-right: 0;
+    margin-inline-end: 0;
 }
 
 .nav-item.active .nav-icon-img {
@@ -511,7 +511,7 @@
 .user-menu-dropdown-container {
     position: absolute;
     bottom: 100%; /* به جای top از bottom استفاده می‌کنیم تا رو به بالا باز شود */
-    right: 0;
+    inset-inline-end: 0;
     background-color: #ffffff;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     border-radius: 8px;
@@ -527,7 +527,7 @@
     display: block;
     width: 100%;
     padding: 10px 15px;
-    text-align: left;
+    text-align: start;
     background-color: transparent;
     border: none;
     cursor: pointer;
@@ -539,7 +539,7 @@
 
 /* فاصله دادن به آیکون‌ها */
 .user-menu-dropdown-btn i {
-    margin-right: 8px;
+    margin-inline-end: 8px;
     width: 16px;
     text-align: center;
 }
@@ -567,9 +567,9 @@
 
 .nav-section-clickable:hover,
 .nav-section-active {
-    border-left: 6px solid #ffffff;
+    border-inline-start: 6px solid #ffffff;
     border-radius: 0 4px 4px 0;
-    padding-left: 14px;
+    padding-inline-start: 14px;
     background: linear-gradient(
         to right,
         rgba(255, 255, 255, 0.55) 0%,
@@ -599,3 +599,11 @@
     color: #4b5563;
     font-size: 14px;
 }
+
+/* Language choice in the user menu */
+.user-menu-lang { border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; margin: 4px 0; padding: 4px 0; }
+.user-menu-lang-label { display: block; padding: 4px 15px 2px; font-size: 11.5px; font-weight: 600; color: #6b7280; }
+.user-menu-dropdown-btn.user-menu-lang-btn { display: flex; align-items: center; justify-content: space-between; color: #333333; }
+.user-menu-dropdown-btn.user-menu-lang-btn:hover { background-color: #f0f0f0; }
+.user-menu-dropdown-btn.user-menu-lang-btn.is-on { font-weight: 700; color: #1e3a5f; }
+.user-menu-dropdown-btn.user-menu-lang-btn i { margin: 0; color: #1e3a5f; }

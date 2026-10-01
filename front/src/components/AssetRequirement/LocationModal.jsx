@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createLocation } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 export const LocationModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -19,7 +20,7 @@ export const LocationModal = ({ onClose }) => {
         const newErrors = {};
 
         if (!formData.site_name.trim()) {
-            newErrors.site_name = "Site name is required";
+            newErrors.site_name = t("Site name is required");
         }
 
         setErrors(newErrors);
@@ -68,7 +69,7 @@ export const LocationModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Add Location</h2>
+                    <h2>{t("Add Location")}</h2>
                     <button className="modal-close" onClick={onClose}>
                         ×
                     </button>
@@ -80,14 +81,14 @@ export const LocationModal = ({ onClose }) => {
                         {/* Site Name - full width */}
                         <div className="form-group full-width">
                             <label>
-                                Site Name <span className="required">*</span>
+                               {t("Site Name")}{" "} <span className="required">*</span>
                             </label>
                             <input
                                 type="text"
                                 name="site_name"
                                 value={formData.site_name}
                                 onChange={handleChange}
-                                placeholder="Enter site name"
+                                placeholder={t("Enter site name")}
                                 className={errors.site_name ? "error" : ""}
                             />
                             {errors.site_name && (
@@ -97,49 +98,49 @@ export const LocationModal = ({ onClose }) => {
 
                         {/* Rack Name */}
                         <div className="form-group">
-                            <label>Rack Name</label>
+                            <label>{t("Rack Name")}</label>
                             <input
                                 type="text"
                                 name="rack_name"
                                 value={formData.rack_name}
                                 onChange={handleChange}
-                                placeholder="Enter rack name"
+                                placeholder={t("Enter rack name")}
                             />
                         </div>
 
                         {/* Room */}
                         <div className="form-group">
-                            <label>Room</label>
+                            <label>{t("Room")}</label>
                             <input
                                 type="text"
                                 name="room"
                                 value={formData.room}
                                 onChange={handleChange}
-                                placeholder="Enter room"
+                                placeholder={t("Enter room")}
                             />
                         </div>
 
                         {/* Floor */}
                         <div className="form-group">
-                            <label>Floor</label>
+                            <label>{t("Floor")}</label>
                             <input
                                 type="text"
                                 name="floor"
                                 value={formData.floor}
                                 onChange={handleChange}
-                                placeholder="Enter floor"
+                                placeholder={t("Enter floor")}
                             />
                         </div>
 
                         {/* Unit */}
                         <div className="form-group">
-                            <label>Unit</label>
+                            <label>{t("Unit")}</label>
                             <input
                                 type="text"
                                 name="unit"
                                 value={formData.unit}
                                 onChange={handleChange}
-                                placeholder="Enter unit"
+                                placeholder={t("Enter unit")}
                             />
                         </div>
 
@@ -147,10 +148,10 @@ export const LocationModal = ({ onClose }) => {
 
                     <div className="modal-footer">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            Cancel
+                           {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit">
-                            Create
+                           {t("Create")}
                         </button>
                     </div>
                 </form>

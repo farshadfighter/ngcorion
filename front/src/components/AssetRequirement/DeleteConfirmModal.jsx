@@ -1,9 +1,10 @@
+import { t } from "../../i18n";
 export const DeleteConfirmModal = ({ title, message, onConfirm, onCancel }) => {
     return (
         <div className="modal-overlay" onClick={onCancel}>
             <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>{title || "Confirm Delete"}</h2>
+                    <h2>{title || t("Confirm Delete")}</h2>
                     <button className="modal-close" onClick={onCancel}>
                         ×
                     </button>
@@ -15,10 +16,10 @@ export const DeleteConfirmModal = ({ title, message, onConfirm, onCancel }) => {
 
                 <div className="modal-footer">
                     <button className="btn-cancel" onClick={onCancel}>
-                        Cancel
+                       {t("Cancel")}
                     </button>
                     <button className="btn-delete-confirm" onClick={onConfirm}>
-                        Delete
+                       {t("Delete")}
                     </button>
                 </div>
             </div>

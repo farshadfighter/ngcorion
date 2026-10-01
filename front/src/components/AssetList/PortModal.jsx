@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAssetPort, updateAssetPort, fetchAssetPorts } from "../../store/assetSlice";
+import { t } from "../../i18n";
 
 export const PortModal = ({ asset, port, onClose }) => {
     const dispatch = useDispatch();
@@ -25,11 +26,11 @@ export const PortModal = ({ asset, port, onClose }) => {
         const newErrors = {};
 
         if (!formData.port_number) {
-            newErrors.port_number = "Port number is required";
+            newErrors.port_number = t("Port number is required");
         } else {
             const portNum = parseInt(formData.port_number);
             if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
-                newErrors.port_number = "Port must be between 1 and 65535";
+                newErrors.port_number = t("Port must be between 1 and 65535");
             }
         }
 
@@ -72,7 +73,7 @@ export const PortModal = ({ asset, port, onClose }) => {
             onClose();
         } catch (error) {
             console.error("❌ Failed to save port:", error);
-            setErrors({ submit: error.message || "Failed to save port" });
+            setErrors({ submit: error.message || t("Failed to save port") });
         } finally {
             setIsSubmitting(false);
         }
@@ -128,7 +129,7 @@ export const PortModal = ({ asset, port, onClose }) => {
                         color: '#111827',
                         margin: 0
                     }}>
-                        {port ? "Edit Port" : "Add Port"}
+                        {port ? t("Edit Port") : t("Add Port")}
                     </h3>
                     <button
                         onClick={onClose}
@@ -163,7 +164,7 @@ export const PortModal = ({ asset, port, onClose }) => {
                                     marginBottom: '8px'
                                 }}
                             >
-                                Protocol
+                                {t("Protocol")}
                             </label>
                             <select
                                 id="protocol"
@@ -182,8 +183,8 @@ export const PortModal = ({ asset, port, onClose }) => {
                                     outline: 'none'
                                 }}
                             >
-                                <option value="TCP">TCP</option>
-                                <option value="UDP">UDP</option>
+                                <option value="TCP">{t("TCP")}</option>
+                                <option value="UDP">{t("UDP")}</option>
                             </select>
                         </div>
 
@@ -199,7 +200,7 @@ export const PortModal = ({ asset, port, onClose }) => {
                                     marginBottom: '8px'
                                 }}
                             >
-                                Port Number <span style={{ color: '#ef4444' }}>*</span>
+                                {t("Port Number")}{" "} <span style={{ color: '#ef4444' }}>*</span>
                             </label>
                             <input
                                 type="number"
@@ -272,7 +273,7 @@ export const PortModal = ({ asset, port, onClose }) => {
                                 opacity: isSubmitting ? 0.6 : 1
                             }}
                         >
-                            Cancel
+                            {t("Cancel")}
                         </button>
                         <button
                             type="submit"
@@ -289,7 +290,7 @@ export const PortModal = ({ asset, port, onClose }) => {
                                 minWidth: '80px'
                             }}
                         >
-                            {isSubmitting ? 'Saving...' : (port ? 'Update' : 'Add')}
+                            {isSubmitting ? t("Saving...") : (port ? t("Update") : t("Add"))}
                         </button>
                     </div>
                 </form>

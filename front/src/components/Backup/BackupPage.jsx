@@ -10,6 +10,7 @@ import { BackupAssetDetail } from './BackupAssetDetail.jsx';
 import '../../assets/Backup.css';
 import '../../assets/LogsPage.css';
 import '../../assets/AssetRequirement.css';
+import { t as tr, n } from "../../i18n";
 
 /**
  * Configuration Backup, in two levels.
@@ -67,7 +68,7 @@ export const BackupPage = () => {
                 if (!cancelled) setGroups(res.data || []);
             } catch (e) {
                 if (!cancelled) {
-                    setError(e.response?.data?.detail || 'Failed to load backups');
+                    setError(e.response?.data?.detail || tr("Failed to load backups"));
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -99,7 +100,7 @@ export const BackupPage = () => {
     }, [groups, typeFilter, search]);
 
     const typeLabel = (t) =>
-        t === 'unknown' ? 'Unknown' : t.charAt(0).toUpperCase() + t.slice(1);
+        t === 'unknown' ? tr("Unknown") : t.charAt(0).toUpperCase() + t.slice(1);
 
     // A new filter is a new result set, so start reading it from the top.
     const applyTypeFilter = (value) => {
@@ -128,7 +129,7 @@ export const BackupPage = () => {
             // Counts on the asset list came from the server, so refresh them.
             load();
         } catch (e) {
-            alert(e.response?.data?.detail || 'Delete failed');
+            alert(e.response?.data?.detail || tr("Delete failed"));
         } finally {
             setDeleting(false);
         }
@@ -142,13 +143,13 @@ export const BackupPage = () => {
     return (
         <div className="backup-container">
             <div className="backup-header">
-                <h1 className="page-title">Device Backups</h1>
+                <h1 className="page-title">{tr("Device Backups")}</h1>
                 <button className="btn-header" onClick={() => setShowNew(true)}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" strokeWidth="2">
                         <path d="M12 5v14M5 12h14" />
                     </svg>
-                    New Backup
+                    {tr("New Backup")}
                 </button>
             </div>
 
@@ -166,7 +167,7 @@ export const BackupPage = () => {
             ) : loading ? (
                 <div className="backup-loading">
                     <div className="spinner-lg" />
-                    <p>Loading backups…</p>
+                    <p>{tr("Loading backups…")}</p>
                 </div>
             ) : error ? (
                 <div className="backup-empty"><p>{error}</p></div>
@@ -177,7 +178,7 @@ export const BackupPage = () => {
                             onClick={() => applyTypeFilter('all')}
                             className={`backup-filter-btn ${typeFilter === 'all' ? 'active' : ''}`}
                         >
-                            All Devices <span className="backup-tab-count">{groups.length}</span>
+                            {tr("All Devices")}{" "} <span className="backup-tab-count">{n(groups.length)}</span>
                         </button>
                         {deviceTypes.map(([t, count]) => (
                             <button
@@ -185,7 +186,7 @@ export const BackupPage = () => {
                                 onClick={() => applyTypeFilter(t)}
                                 className={`backup-filter-btn ${typeFilter === t ? 'active' : ''}`}
                             >
-                                {typeLabel(t)} <span className="backup-tab-count">{count}</span>
+                                {typeLabel(t)} <span className="backup-tab-count">{n(count)}</span>
                             </button>
                         ))}
                     </div>
@@ -195,7 +196,7 @@ export const BackupPage = () => {
                             type="text"
                             value={search}
                             onChange={(e) => applySearch(e.target.value)}
-                            placeholder="Search by asset name or IP…"
+                            placeholder={tr("Search by asset name or IP…")}
                         />
                     </div>
 
@@ -214,23 +215,23 @@ export const BackupPage = () => {
                 <div className="modal-overlay" onClick={() => setDeleteId(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Delete Backup</h3>
+                            <h3>{tr("Delete Backup")}</h3>
                             <button className="modal-close" onClick={() => setDeleteId(null)}>×</button>
                         </div>
                         <div className="modal-body">
-                            <p>Are you sure you want to delete this backup?</p>
+                            <p>{tr("Are you sure you want to delete this backup?")}</p>
                             <p style={{ color: '#dc2626', fontSize: 13 }}>
-                                This action cannot be undone.
+                                {tr("This action cannot be undone.")}
                             </p>
                         </div>
                         <div className="modal-actions">
                             <button className="btn-cancel" onClick={() => setDeleteId(null)}
                                     disabled={deleting}>
-                                Cancel
+                                {tr("Cancel")}
                             </button>
                             <button className="btn-delete2" onClick={() => handleDelete(deleteId)}
                                     disabled={deleting}>
-                                {deleting ? 'Deleting…' : 'Delete'}
+                                {deleting ? tr("Deleting…") : tr("Delete")}
                             </button>
                         </div>
                     </div>

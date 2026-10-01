@@ -128,7 +128,7 @@
     background: #ffffff;
     box-shadow: 0 1px 3px rgba(20, 33, 61, 0.08);
     font-family: inherit;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
     overflow: hidden;
     transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -210,7 +210,7 @@
 
 .ov-table th {
     padding: 14px 16px;
-    text-align: left;
+    text-align: start;
     font-weight: 600;
     color: #6C7A93;
     background: #F7F8FA;
@@ -440,7 +440,7 @@
     top: -5px;
     width: 3px;
     height: 20px;
-    margin-left: -1.5px;
+    margin-inline-start: -1.5px;
     border-radius: 2px;
     background: #14213D;
     box-shadow: 0 0 0 2px #ffffff;

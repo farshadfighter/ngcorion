@@ -7,6 +7,7 @@ import {
     clearProfileError,
 } from "../../../store/riskDetailSlice";
 import { titleCase } from "../riskConstants";
+import { t } from "../../../i18n";
 
 /** Mirrors CRITICALITY_LEVELS in app/modules/risk/schemas.py — the backend
  *  rejects anything else with a 400. Note there is no "very_high" here, even
@@ -60,11 +61,11 @@ export const EditRiskProfileModal = ({ assetId, mode, current, onClose }) => {
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-header">
-                    <h3>{isZone ? "Edit Zone" : "Edit Criticality"}</h3>
+                    <h3>{isZone ? t("Edit Zone") : t("Edit Criticality")}</h3>
                     <button
                         className="modal-close"
                         onClick={onClose}
-                        aria-label="Close"
+                        aria-label={t("Close")}
                     >
                         <i className="fa-solid fa-xmark" />
                     </button>
@@ -72,22 +73,22 @@ export const EditRiskProfileModal = ({ assetId, mode, current, onClose }) => {
 
                 <div className="ard-edit-body">
                     <p className="ard-edit-note">
-                        Saving recalculates this asset&apos;s risk score.
+                        {t("Saving recalculates this asset's risk score.")}
                     </p>
 
                     {isZone ? (
                         <label className="ard-edit-field">
-                            <span>Zone</span>
+                            <span>{t("Zone")}</span>
                             <select
                                 value={zoneId}
                                 onChange={(e) => setZoneId(e.target.value)}
                             >
-                                <option value="">— No zone —</option>
+                                <option value="">{t("— No zone —")}</option>
                                 {zones.map((z) => (
                                     <option key={z.id} value={z.id}>
                                         {z.name}
                                         {z.score !== undefined && z.score !== null
-                                            ? ` (score ${z.score})`
+                                            ? t(" (score {{score}})", { score: z.score })
                                             : ""}
                                     </option>
                                 ))}
@@ -95,7 +96,7 @@ export const EditRiskProfileModal = ({ assetId, mode, current, onClose }) => {
                         </label>
                     ) : (
                         <label className="ard-edit-field">
-                            <span>Criticality</span>
+                            <span>{t("Criticality")}</span>
                             <select
                                 value={level}
                                 onChange={(e) => setLevel(e.target.value)}
@@ -111,14 +112,14 @@ export const EditRiskProfileModal = ({ assetId, mode, current, onClose }) => {
 
                     <label className="ard-edit-field">
                         <span>
-                            Reason <em>(optional)</em>
+                            {t("Reason")}{" "} <em>{t("(optional)")}</em>
                         </span>
                         <input
                             type="text"
                             maxLength={500}
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            placeholder="Why is this being changed?"
+                            placeholder={t("Why is this being changed?")}
                         />
                     </label>
 
@@ -134,7 +135,7 @@ export const EditRiskProfileModal = ({ assetId, mode, current, onClose }) => {
                         onClick={onClose}
                         disabled={isSavingProfile}
                     >
-                        Cancel
+                        {t("Cancel")}
                     </button>
                     <button
                         type="button"
@@ -144,10 +145,10 @@ export const EditRiskProfileModal = ({ assetId, mode, current, onClose }) => {
                     >
                         {isSavingProfile ? (
                             <>
-                                <i className="fa-solid fa-spinner fa-spin" /> Saving…
+                                <i className="fa-solid fa-spinner fa-spin" /> {" "}{t("Saving…")}
                             </>
                         ) : (
-                            "Save & recalculate"
+                            t("Save & recalculate")
                         )}
                     </button>
                 </div>

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
+import { t } from "../i18n";
 
 const detail = (err, fallback) => err.response?.data?.detail || fallback;
 
@@ -9,7 +10,7 @@ export const fetchCveFindings = createAsyncThunk(
         try {
             return (await api.get("/api/cve/findings")).data;
         } catch (err) {
-            return rejectWithValue(detail(err, "Could not load CVE findings"));
+            return rejectWithValue(detail(err, t("Could not load CVE findings")));
         }
     }
 );
@@ -20,7 +21,7 @@ export const fetchCveDbStatus = createAsyncThunk(
         try {
             return (await api.get("/api/cve/db/status")).data;
         } catch (err) {
-            return rejectWithValue(detail(err, "Could not load the CVE database status"));
+            return rejectWithValue(detail(err, t("Could not load the CVE database status")));
         }
     }
 );
@@ -31,7 +32,7 @@ export const fetchCveJobs = createAsyncThunk(
         try {
             return (await api.get("/api/cve/db/jobs", { params: { limit: 30 } })).data;
         } catch (err) {
-            return rejectWithValue(detail(err, "Could not load the update history"));
+            return rejectWithValue(detail(err, t("Could not load the update history")));
         }
     }
 );

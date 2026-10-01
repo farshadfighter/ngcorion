@@ -1,3 +1,4 @@
+import { t } from "../../i18n";
 /**
  * Display helpers for the FortiGate scope/VDOM context in the hardening UI.
  *
@@ -28,8 +29,8 @@ export const groupChecksByScope = (checks) => {
     const vdoms = list.filter((c) => !isGlobal(c));
 
     const groups = [];
-    if (globals.length) groups.push({ key: 'global', label: 'Global checks — device-wide', checks: globals });
-    if (vdoms.length)   groups.push({ key: 'vdom',   label: 'VDOM checks — per virtual domain', checks: vdoms });
+    if (globals.length) groups.push({ key: 'global', label: t("Global checks — device-wide"), checks: globals });
+    if (vdoms.length)   groups.push({ key: 'vdom',   label: t("VDOM checks — per virtual domain"), checks: vdoms });
     return { hasVdom: true, groups };
 };
 

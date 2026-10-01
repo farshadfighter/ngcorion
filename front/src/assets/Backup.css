@@ -57,7 +57,7 @@
     display: inline-block;
     min-width: 18px;
     padding: 1px 6px;
-    margin-left: 4px;
+    margin-inline-start: 4px;
     border-radius: 9px;
     background: #eef2f7;
     color: #1e3a5f;
@@ -91,7 +91,7 @@
 
 .backup-table th {
     padding: 14px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 13px;
     font-weight: 600;
     color: #6b7280;
@@ -341,7 +341,7 @@
 
 .backup-search input {
     width: 100%;
-    padding: 11px 14px 11px 40px;
+    padding-block: 11px 11px; padding-inline: 40px 14px;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     background: #ffffff;
@@ -366,7 +366,7 @@
 .backup-search::before {
     content: "";
     position: absolute;
-    left: 15px;
+    inset-inline-start: 15px;
     top: 50%;
     width: 13px;
     height: 13px;
@@ -379,7 +379,7 @@
 .backup-search::after {
     content: "";
     position: absolute;
-    left: 26px;
+    inset-inline-start: 26px;
     top: 50%;
     width: 6px;
     height: 2px;
@@ -423,7 +423,7 @@
     min-width: 30px;
     height: 26px;
     padding: 0 8px;
-    margin-right: 10px;
+    margin-inline-end: 10px;
     border-radius: 8px;
     background: #eef2f7;
     color: #1e3a5f;
@@ -461,7 +461,7 @@
     background: #ffffff;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
-    border-left: 4px solid #1e3a5f;
+    border-inline-start: 4px solid #1e3a5f;
 }
 
 .backup-back-btn {
@@ -532,7 +532,7 @@
 
 /* Chevron on the drill-in button. */
 .btn-see-result svg {
-    margin-left: 2px;
+    margin-inline-start: 2px;
 }
 
 /* The asset table sits directly on the page background here, so it brings its
@@ -607,7 +607,7 @@
     content: "";
     position: absolute;
     top: 0;
-    left: -60%;
+    inset-inline-start: -60%;
     width: 40%;
     height: 100%;
     background: linear-gradient(
@@ -617,12 +617,12 @@
         transparent
     );
     transform: skewX(-18deg);
-    transition: left 0.55s ease;
+    transition: inset-inline-start 0.55s ease;
     pointer-events: none;
 }
 
 .backup-container .btn-header:hover::after {
-    left: 130%;
+    inset-inline-start: 130%;
 }
 
 /* Row action: quiet until the row is hovered, then it steps forward. */

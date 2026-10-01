@@ -263,7 +263,7 @@
 }
 
 .alert-close {
-    margin-left: auto;
+    margin-inline-start: auto;
     background: none;
     border: none;
     cursor: pointer;
@@ -301,7 +301,7 @@
 
 .data-table th {
     padding: 12px 16px;
-    text-align: left;
+    text-align: start;
     font-size: 12px;
     font-weight: 600;
     color: var(--gray-600);
@@ -336,7 +336,7 @@
 
 .col-actions {
     width: 120px;
-    text-align: right;
+    text-align: end;
 }
 
 /* ============================================
@@ -528,22 +528,22 @@
     padding: 12px;
     background: var(--gray-50);
     border-radius: var(--radius-md);
-    border-left: 3px solid var(--gray-300);
+    border-inline-start: 3px solid var(--gray-300);
 }
 
 .activity-item.activity-completed {
     background: var(--success-bg);
-    border-left-color: var(--success);
+    border-inline-start-color: var(--success);
 }
 
 .activity-item.activity-failed {
     background: var(--danger-bg);
-    border-left-color: var(--danger);
+    border-inline-start-color: var(--danger);
 }
 
 .activity-item.activity-running {
     background: var(--info-bg);
-    border-left-color: var(--info);
+    border-inline-start-color: var(--info);
 }
 
 .activity-icon {
@@ -586,8 +586,8 @@
 .modal-overlay {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
     display: flex;

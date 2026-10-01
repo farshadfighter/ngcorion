@@ -6,6 +6,8 @@ import {
     formatDateTime, formatTime, sourceLabel,
 } from './restoreConstants.js';
 import '../../assets/RestoreWizard.css';
+import { n, t as tr } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 /**
  * Restore a configuration backup onto its live device.
@@ -22,7 +24,7 @@ import '../../assets/RestoreWizard.css';
  * without auto-revert) is re-checked by the server; the UI only explains it.
  */
 
-const STEPS = ['Connect', 'Review changes', 'Safety & confirm', 'Restore'];
+const STEPS = [tr("Connect"), tr("Review changes"), tr("Safety & confirm"), tr("Restore")];
 
 const POLL_MS = 2000;
 const POLL_RETRY_MS = 5000;
@@ -85,7 +87,7 @@ const DiffView = ({ sections, mode }) => (
                 ) : (
                     <div className="rw-split">
                         <div>
-                            <div className="rw-split-head">Live now (removed)</div>
+                            <div className="rw-split-head">{tr("Live now (removed)")}</div>
                             {s.lines.filter((l) => l.op !== '+').map((l, li) => (
                                 <div key={li} className={`rw-dl ${l.op === '-' ? 'del' : 'ctx'}`}>
                                     <span className="rw-sg">{l.op === '-' ? '−' : ''}</span>
@@ -94,7 +96,7 @@ const DiffView = ({ sections, mode }) => (
                             ))}
                         </div>
                         <div>
-                            <div className="rw-split-head">After restore (set)</div>
+                            <div className="rw-split-head">{tr("After restore (set)")}</div>
                             {s.lines.filter((l) => l.op !== '-').map((l, li) => (
                                 <div key={li} className={`rw-dl ${l.op === '+' ? 'add' : 'ctx'}`}>
                                     <span className="rw-sg">{l.op === '+' ? '+' : ''}</span>
@@ -128,11 +130,11 @@ const downloadDiff = (preview, name) => {
 /* ------------------------------------------------------------------ */
 
 const TIMELINE = [
-    { key: 'connect', title: 'Connect over SSH', hint: 'Re-read the live configuration and check it has not changed since review' },
-    { key: 'backup', title: 'Back up the current configuration', hint: 'Saved as a "Before restore" backup - the undo point' },
-    { key: 'apply', title: 'Apply the changes', hint: 'Only the changed lines are sent; the first rejected command stops the run' },
-    { key: 'verify', title: 'Reconnect and verify', hint: 'A new SSH session proves access survived, then the live configuration is compared with the backup' },
-    { key: 'save', title: 'Save on device', hint: 'Only after verification succeeds - this cancels the auto-revert timer' },
+    { key: 'connect', title: tr("Connect over SSH"), hint: tr("Re-read the live configuration and check it has not changed since review") },
+    { key: 'backup', title: tr("Back up the current configuration"), hint: tr("Saved as a \"Before restore\" backup - the undo point") },
+    { key: 'apply', title: tr("Apply the changes"), hint: tr("Only the changed lines are sent; the first rejected command stops the run") },
+    { key: 'verify', title: tr("Reconnect and verify"), hint: tr("A new SSH session proves access survived, then the live configuration is compared with the backup") },
+    { key: 'save', title: tr("Save on device"), hint: tr("Only after verification succeeds - this cancels the auto-revert timer") },
 ];
 
 const STATUS_STEP = {
@@ -169,7 +171,7 @@ const Timeline = ({ job }) => {
             {extras.map((e, i) => (
                 <div key={`x${i}`} className={`rw-tl ${e.status === 'failed' ? 'failed' : 'done'}`}>
                     <span className="rw-dot"><RestoreIcon size={14} /></span>
-                    <div><h3>{e.step === 'revert' ? 'Revert' : 'Error'}</h3><p>{e.message}</p></div>
+                    <div><h3>{e.step === 'revert' ? tr("Revert") : tr("Error")}</h3><p>{e.message}</p></div>
                     <span className="rw-t">{formatTime(e.at)}</span>
                 </div>
             ))}
@@ -194,8 +196,8 @@ const Countdown = ({ job }) => {
             <TimerIcon size={22} />
             <div className="rw-countdown-text">
                 {left > 0
-                    ? <>The device reverts on its own in <b>{mm}:{ss}</b> unless verification completes.</>
-                    : <>The auto-revert timer has expired; waiting for the device to come back.</>}
+                    ? <>{tx("The device reverts on its own in {{time}} unless verification completes.", { time: <b>{n(mm)}:{n(ss)}</b> })}</>
+                    : <>{tr("The auto-revert timer has expired; waiting for the device to come back.")}</>}
             </div>
             <div className="rw-meter"><div style={{ width: `${Math.min(100, 100 - (left / total) * 100)}%` }} /></div>
         </div>
@@ -222,26 +224,28 @@ const Result = ({ job }) => {
                 <div className="rw-result-head">
                     <span className="rw-result-icon ok"><Check size={28} /></span>
                     <div>
-                        <h1 className="ok">{changed ? 'Restore completed and verified' : 'Nothing to restore'}</h1>
-                        <p>{job.asset_name} {changed ? 'now matches' : 'already matched'} backup #{job.backup_id} exactly.</p>
+                        <h1 className="ok">{changed ? tr("Restore completed and verified") : tr("Nothing to restore")}</h1>
+                        <p>{changed
+                            ? tr("{{asset}} now matches backup #{{backup_id}} exactly.", { asset: job.asset_name, backup_id: job.backup_id })
+                            : tr("{{asset}} already matched backup #{{backup_id}} exactly.", { asset: job.asset_name, backup_id: job.backup_id })}</p>
                     </div>
                 </div>
                 <div className="rw-rows">
-                    <div className="rw-row"><span>Verification</span><b className="ok">0 differences from backup #{job.backup_id}</b></div>
+                    <div className="rw-row"><span>{tr("Verification")}</span><b className="ok">{tr("0 differences from backup #{{backup_id}}", { backup_id: job.backup_id })}</b></div>
                     {changed && (
                         <>
-                            <div className="rw-row"><span>Access after restore</span>
-                                <b>{reconnected ? 'SSH reconnected successfully' : '-'}</b></div>
-                            <div className="rw-row"><span>Saved on device</span>
-                                <b>Yes{job.auto_revert === 'armed' ? ' · auto-revert timer cancelled' : ''}</b></div>
-                            <div className="rw-row"><span>Undo point</span>
-                                <b>Backup #{job.pre_restore_backup_id} "Before restore"</b></div>
+                            <div className="rw-row"><span>{tr("Access after restore")}</span>
+                                <b>{reconnected ? tr("SSH reconnected successfully") : '-'}</b></div>
+                            <div className="rw-row"><span>{tr("Saved on device")}</span>
+                                <b>{tr("Yes")}{job.auto_revert === 'armed' ? tr(" · auto-revert timer cancelled") : ''}</b></div>
+                            <div className="rw-row"><span>{tr("Undo point")}</span>
+                                <b>{tr("Backup #{{pre_restore_backup_id}} \"Before restore\"", { pre_restore_backup_id: job.pre_restore_backup_id })}</b></div>
                         </>
                     )}
-                    <div className="rw-row"><span>Duration</span><b>{duration(job)}</b></div>
-                    <div className="rw-row"><span>Performed by</span>
+                    <div className="rw-row"><span>{tr("Duration")}</span><b>{duration(job)}</b></div>
+                    <div className="rw-row"><span>{tr("Performed by")}</span>
                         <b>{job.requested_by_username || '-'} · {formatDateTime(job.created_at)}</b></div>
-                    <div className="rw-row last"><span>Reason</span><b className="plain">{job.reason}</b></div>
+                    <div className="rw-row last"><span>{tr("Reason")}</span><b className="plain">{job.reason}</b></div>
                 </div>
             </>
         );
@@ -256,20 +260,20 @@ const Result = ({ job }) => {
                 </span>
                 <div>
                     <h1 className={reverted ? 'warn' : 'bad'}>
-                        {reverted ? 'Restore reverted' : 'Restore failed'}
+                        {reverted ? tr("Restore reverted") : tr("Restore failed")}
                     </h1>
                     <p>
                         {reverted
-                            ? `The device is back on its previous configuration. Nothing from backup #${job.backup_id} was kept.`
+                            ? tr("The device is back on its previous configuration. Nothing from backup #{{backup_id}} was kept.", { backup_id: job.backup_id })
                             : job.pre_restore_backup_id
-                                ? `Backup #${job.pre_restore_backup_id} "Before restore" holds the configuration from before this run.`
-                                : 'Nothing was changed on the device.'}
+                                ? tr("Backup #{{pre_restore_backup_id}} \"Before restore\" holds the configuration from before this run.", { pre_restore_backup_id: job.pre_restore_backup_id })
+                                : tr("Nothing was changed on the device.")}
                     </p>
                 </div>
             </div>
-            {job.error && <div className="rw-why"><b>Why:</b> {job.error}</div>}
+            {job.error && <div className="rw-why"><b>{tr("Why:")}</b> {job.error}</div>}
             <div className="rw-events">
-                <h2>Timeline</h2>
+                <h2>{tr("Timeline")}</h2>
                 {events.map((e, i) => (
                     <div key={i} className={`rw-ev ${e.status}`}>
                         <span>{formatTime(e.at)}</span><div>{e.message}</div>
@@ -318,7 +322,7 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                 const res = await api.get(`/api/backups/${backupId}`);
                 if (!cancelled) setBackup(res.data);
             } catch (e) {
-                if (!cancelled) setLoadError(errorText(e, 'Failed to load the backup'));
+                if (!cancelled) setLoadError(errorText(e, tr("Failed to load the backup")));
             }
         })();
         return () => { cancelled = true; };
@@ -348,7 +352,7 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                 }
             } catch (e) {
                 if (cancelled) return;
-                setPollError(errorText(e, 'Lost contact with the server; retrying…'));
+                setPollError(errorText(e, tr("Lost contact with the server; retrying…")));
                 timer = setTimeout(tick, POLL_RETRY_MS);
             }
         };
@@ -390,7 +394,7 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
     const runPreview = async (e) => {
         e.preventDefault();
         if (!creds.ssh_username || !creds.ssh_password) {
-            setError('SSH username and password are required.');
+            setError(tr("SSH username and password are required."));
             return;
         }
         setBusy(true);
@@ -402,7 +406,7 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
             setAllowNoRevert(false);
             setStep(1);
         } catch (err) {
-            setError(errorText(err, 'Could not read the device. Check the SSH credentials and connectivity.'));
+            setError(errorText(err, tr("Could not read the device. Check the SSH credentials and connectivity.")));
         } finally {
             setBusy(false);
         }
@@ -428,7 +432,7 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
             setStep(3);
             if (onChanged) onChanged();
         } catch (err) {
-            setError(errorText(err, 'The restore could not be started.'));
+            setError(errorText(err, tr("The restore could not be started.")));
         } finally {
             setBusy(false);
         }
@@ -440,10 +444,10 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
         : null;
 
     const subtitle = (() => {
-        if (step === 0) return `${assetName} · from backup #${backupId}`;
-        if (step === 1) return `${assetName} · live configuration (now) → backup #${backupId}`;
-        if (step === 2) return `${assetName} · ${changedLines} changed line${changedLines === 1 ? '' : 's'} from backup #${backupId}`;
-        return 'You can close this window - the restore continues and stays listed under Restores for this asset.';
+        if (step === 0) return tr("{{assetName}} · from backup #{{backupId}}", { assetName, backupId });
+        if (step === 1) return tr("{{assetName}} · live configuration (now) → backup #{{backupId}}", { assetName, backupId });
+        if (step === 2) return tr("{{assetName}} · {{count}} changed lines from backup #{{backupId}}", { assetName, count: changedLines, backupId });
+        return tr("You can close this window - the restore continues and stays listed under Restores for this asset.");
     })();
 
     const wide = step === 1;
@@ -458,11 +462,11 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                         <header className="rw-head">
                             <div>
                                 <h1 id="rw-title">
-                                    {step === 3 ? `Restoring ${assetName}…` : 'Restore configuration'}
+                                    {step === 3 ? tr("Restoring {{assetName}}…", { assetName }) : tr("Restore configuration")}
                                 </h1>
                                 <p>{subtitle}</p>
                             </div>
-                            <button className="rw-close" aria-label="Close" onClick={onClose} disabled={busy}>
+                            <button className="rw-close" aria-label={tr("Close")} onClick={onClose} disabled={busy}>
                                 <Icon size={18} d="M18 6 6 18M6 6l12 12" />
                             </button>
                         </header>
@@ -479,56 +483,55 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                             {loadError ? (
                                 <div className="rw-alert" role="alert">{loadError}</div>
                             ) : !backup ? (
-                                <div className="rw-loading"><span className="rw-spin" /> Loading backup…</div>
+                                <div className="rw-loading"><span className="rw-spin" /> {" "}{tr("Loading backup…")}</div>
                             ) : (
                                 <div className="rw-kv-grid">
-                                    <div className="rw-kv"><span>Asset</span><b>{backup.asset_name || `Asset #${backup.asset_id}`}</b></div>
-                                    <div className="rw-kv"><span>Device type</span><b>{familyLabel(backup.device_type)}</b></div>
-                                    <div className="rw-kv"><span>Backup</span><b>#{backup.id} · {lineCount(backup.config_content).toLocaleString()} lines</b></div>
-                                    <div className="rw-kv"><span>Taken</span><b>{formatDateTime(backup.created_at)}</b></div>
-                                    <div className="rw-kv"><span>Source</span><b>{sourceLabel(backup.source)}</b></div>
-                                    <div className="rw-kv"><span>Taken by</span><b>{backup.created_by_username || '-'}</b></div>
-                                    <div className="rw-kv"><span>Age</span><b>{age === null ? '-' : age === 0 ? 'Today' : `${age} day${age === 1 ? '' : 's'}`}</b></div>
-                                    <div className="rw-kv"><span>Host</span><b>{backup.device_ip || '-'}</b></div>
+                                    <div className="rw-kv"><span>{tr("Asset")}</span><b>{backup.asset_name || tr("Asset #{{asset_id}}", { asset_id: backup.asset_id })}</b></div>
+                                    <div className="rw-kv"><span>{tr("Device type")}</span><b>{familyLabel(backup.device_type)}</b></div>
+                                    <div className="rw-kv"><span>{tr("Backup")}</span><b>{tr("#{{id}} · {{count}} lines", { id: backup.id, count: lineCount(backup.config_content) })}</b></div>
+                                    <div className="rw-kv"><span>{tr("Taken")}</span><b>{formatDateTime(backup.created_at)}</b></div>
+                                    <div className="rw-kv"><span>{tr("Source")}</span><b>{sourceLabel(backup.source)}</b></div>
+                                    <div className="rw-kv"><span>{tr("Taken by")}</span><b>{backup.created_by_username || '-'}</b></div>
+                                    <div className="rw-kv"><span>{tr("Age")}</span><b>{age === null ? '-' : age === 0 ? tr("Today") : tr("{{count}} days", { count: age })}</b></div>
+                                    <div className="rw-kv"><span>{tr("Host")}</span><b>{backup.device_ip || '-'}</b></div>
                                 </div>
                             )}
                             <div>
-                                <h2 className="rw-h2">SSH connection</h2>
+                                <h2 className="rw-h2">{tr("SSH connection")}</h2>
                                 <p className="rw-muted">
-                                    NGCorion first reads the device's live configuration to show exactly what will change.
-                                    Nothing is written yet.
+                                    {tr("NGCorion first reads the device's live configuration to show exactly what will change. Nothing is written yet.")}
                                 </p>
                                 <div className="rw-fields">
                                     <div className="rw-field span2">
-                                        <label htmlFor="rw-host">Host</label>
+                                        <label htmlFor="rw-host">{tr("Host")}</label>
                                         <input id="rw-host" value={backup?.device_ip || ''} readOnly className="ro" />
                                     </div>
                                     <div className="rw-field">
-                                        <label htmlFor="rw-port">SSH port</label>
+                                        <label htmlFor="rw-port">{tr("SSH port")}</label>
                                         <input id="rw-port" name="ssh_port" type="number" min={1} max={65535}
                                                value={creds.ssh_port} onChange={setCred} />
                                     </div>
                                     <div className="rw-field" />
                                     <div className="rw-field span2">
-                                        <label htmlFor="rw-user">Username</label>
+                                        <label htmlFor="rw-user">{tr("Username")}</label>
                                         <input id="rw-user" name="ssh_username" autoComplete="username"
                                                value={creds.ssh_username} onChange={setCred} required />
                                     </div>
                                     <div className="rw-field span2">
-                                        <label htmlFor="rw-pass">Password</label>
+                                        <label htmlFor="rw-pass">{tr("Password")}</label>
                                         <input id="rw-pass" name="ssh_password" type="password" autoComplete="current-password"
                                                value={creds.ssh_password} onChange={setCred} required />
                                     </div>
                                     {isCisco && (
                                         <div className="rw-field span2">
-                                            <label htmlFor="rw-secret">Enable secret <span className="rw-opt">(optional)</span></label>
+                                            <label htmlFor="rw-secret">{tr("Enable secret")}{" "} <span className="rw-opt">{tr("(optional)")}</span></label>
                                             <input id="rw-secret" name="ssh_secret" type="password" autoComplete="off"
                                                    value={creds.ssh_secret} onChange={setCred} />
                                         </div>
                                     )}
                                     {isHost && (
                                         <div className="rw-field span2">
-                                            <label htmlFor="rw-sudo">Sudo password <span className="rw-opt">(if different from SSH password)</span></label>
+                                            <label htmlFor="rw-sudo">{tr("Sudo password")}{" "} <span className="rw-opt">{tr("(if different from SSH password)")}</span></label>
                                             <input id="rw-sudo" name="sudo_password" type="password" autoComplete="off"
                                                    value={creds.sudo_password} onChange={setCred} />
                                         </div>
@@ -537,13 +540,13 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                             </div>
                             <p className="rw-note">
                                 <Icon stroke="#1e3a5f"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></Icon>
-                                Credentials are used for this restore only and are never stored.
+                                {tr("Credentials are used for this restore only and are never stored.")}
                             </p>
                         </div>
                         <footer className="rw-foot">
-                            <button type="button" className="rw-btn" onClick={onClose} disabled={busy}>Cancel</button>
+                            <button type="button" className="rw-btn" onClick={onClose} disabled={busy}>{tr("Cancel")}</button>
                             <button type="submit" className="rw-btn primary" disabled={busy || !backup}>
-                                {busy ? <><span className="rw-spin light" /> Reading live configuration…</> : 'Connect & compare →'}
+                                {busy ? <><span className="rw-spin light" /> {" "}{tr("Reading live configuration…")}</> : tr("Connect & compare →")}
                             </button>
                         </footer>
                     </form>
@@ -555,19 +558,19 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                         <div className="rw-body tight">
                             <div className="rw-review-bar">
                                 <div className="rw-chips">
-                                    <span className="rw-chip add">+ {preview.summary.added} will be set</span>
-                                    <span className="rw-chip del">− {preview.summary.removed} will be removed</span>
+                                    <span className="rw-chip add">{tr("+ {{added}} will be set", { added: preview.summary.added })}</span>
+                                    <span className="rw-chip del">{tr("− {{removed}} will be removed", { removed: preview.summary.removed })}</span>
                                     {risks.length > 0 && (
-                                        <span className="rw-chip warn">⚠ {risks.length} affect{risks.length === 1 ? 's' : ''} management access</span>
+                                        <span className="rw-chip warn">{tr("⚠ {{count}} affect management access", { count: risks.length })}</span>
                                     )}
-                                    <span className="rw-chip">{preview.summary.sections} section{preview.summary.sections === 1 ? '' : 's'}</span>
+                                    <span className="rw-chip">{tr("{{count}} sections", { count: preview.summary.sections })}</span>
                                 </div>
                                 {!preview.no_changes && (
-                                    <div className="rw-seg" role="group" aria-label="Diff view">
+                                    <div className="rw-seg" role="group" aria-label={tr("Diff view")}>
                                         <button className={diffMode === 'unified' ? 'on' : ''} aria-pressed={diffMode === 'unified'}
-                                                onClick={() => setDiffMode('unified')}>Unified</button>
+                                                onClick={() => setDiffMode('unified')}>{tr("Unified")}</button>
                                         <button className={diffMode === 'split' ? 'on' : ''} aria-pressed={diffMode === 'split'}
-                                                onClick={() => setDiffMode('split')}>Side by side</button>
+                                                onClick={() => setDiffMode('split')}>{tr("Side by side")}</button>
                                     </div>
                                 )}
                             </div>
@@ -575,8 +578,8 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                                 <div key={`l${i}`} className="rw-banner">
                                     <Icon size={20} stroke="#c2410c"><path d="M12 3 2 21h20L12 3Z" /><path d="M12 10v5m0 3v.01" /></Icon>
                                     <div>
-                                        <b>Possible lock-out.</b> {r.message}
-                                        {autoRevert.available && ' The safety timer in the next step reverts the device automatically if that happens.'}
+                                        <b>{tr("Possible lock-out.")}</b> {r.message}
+                                        {autoRevert.available && <>{" "}{tr("The safety timer in the next step reverts the device automatically if that happens.")}</>}
                                     </div>
                                 </div>
                             ))}
@@ -588,31 +591,31 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                             {preview.no_changes ? (
                                 <div className="rw-same">
                                     <Check />
-                                    <div><b>The device already matches this backup.</b> There is nothing to restore.</div>
+                                    <div><b>{tr("The device already matches this backup.")}</b> {" "}{tr("There is nothing to restore.")}</div>
                                 </div>
                             ) : (
                                 <DiffView sections={preview.sections} mode={diffMode} />
                             )}
                             {preview.truncated && (
-                                <p className="rw-muted">The preview is truncated; the full change set is applied.</p>
+                                <p className="rw-muted">{tr("The preview is truncated; the full change set is applied.")}</p>
                             )}
                             {preview.skipped?.length > 0 && (
                                 <details className="rw-skipped">
-                                    <summary>{preview.skipped.length} item{preview.skipped.length === 1 ? '' : 's'} cannot be restored and will be left as they are</summary>
+                                    <summary>{tr("{{count}} items cannot be restored and will be left as they are", { count: preview.skipped.length })}</summary>
                                     <ul>{preview.skipped.map((s, i) => <li key={i}><code>{s}</code></li>)}</ul>
                                 </details>
                             )}
                         </div>
                         <footer className="rw-foot">
-                            <button className="rw-btn" onClick={() => { setError(null); setStep(0); }}>← Back</button>
+                            <button className="rw-btn" onClick={() => { setError(null); setStep(0); }}>{tr("← Back")}</button>
                             <div className="rw-foot-right">
                                 {!preview.no_changes && (
-                                    <button className="rw-btn" onClick={() => downloadDiff(preview, assetName)}>Download diff</button>
+                                    <button className="rw-btn" onClick={() => downloadDiff(preview, assetName)}>{tr("Download diff")}</button>
                                 )}
                                 {preview.no_changes ? (
-                                    <button className="rw-btn primary" onClick={onClose}>Close</button>
+                                    <button className="rw-btn primary" onClick={onClose}>{tr("Close")}</button>
                                 ) : (
-                                    <button className="rw-btn primary" onClick={() => { setError(null); setStep(2); }}>Continue →</button>
+                                    <button className="rw-btn primary" onClick={() => { setError(null); setStep(2); }}>{tr("Continue →")}</button>
                                 )}
                             </div>
                         </footer>
@@ -623,91 +626,96 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                 {step === 2 && preview && (
                     <>
                         <div className="rw-body">
-                            <h2 className="rw-h2">Safety net</h2>
+                            <h2 className="rw-h2">{tr("Safety net")}</h2>
                             <div className="rw-safe">
                                 <Check />
-                                <div><h3>Back up the current configuration first</h3>
-                                    <p>Saved as a "Before restore" backup, so this restore can itself be undone.</p></div>
-                                <span className="rw-lock">Always on</span>
+                                <div><h3>{tr("Back up the current configuration first")}</h3>
+                                    <p>{tr("Saved as a \"Before restore\" backup, so this restore can itself be undone.")}</p></div>
+                                <span className="rw-lock">{tr("Always on")}</span>
                             </div>
                             {autoRevert.available ? (
                                 <div className="rw-safe blue">
                                     <TimerIcon />
-                                    <div><h3>Auto-revert if NGCorion loses the device</h3>
+                                    <div><h3>{tr("Auto-revert if NGCorion loses the device")}</h3>
                                         <p>{AUTO_REVERT_TEXT[family]}</p></div>
                                     <div className="rw-field timer">
-                                        <label htmlFor="rw-timer">Timer</label>
+                                        <label htmlFor="rw-timer">{tr("Timer")}</label>
                                         <select id="rw-timer" value={revertMinutes}
                                                 onChange={(e) => setRevertMinutes(parseInt(e.target.value, 10))}>
-                                            {[5, 10, 15].map((m) => <option key={m} value={m}>{m} minutes</option>)}
+                                            {[5, 10, 15].map((m) => <option key={m} value={m}>{tr("{{m}} minutes", { m })}</option>)}
                                         </select>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="rw-safe amber">
                                     <Icon size={20} stroke="#c2410c"><path d="M12 3 2 21h20L12 3Z" /><path d="M12 10v5m0 3v.01" /></Icon>
-                                    <div><h3>Auto-revert is not available on this device</h3>
-                                        <p>{autoRevert.reason || 'The device cannot revert on its own.'} If NGCorion loses
-                                            access after the changes, the device will not recover by itself.</p></div>
-                                    <span className="rw-lock off">Unavailable</span>
+                                    <div><h3>{tr("Auto-revert is not available on this device")}</h3>
+                                        <p>{autoRevert.reason || tr("The device cannot revert on its own.")} {" "}{tr("If NGCorion loses access after the changes, the device will not recover by itself.")}</p></div>
+                                    <span className="rw-lock off">{tr("Unavailable")}</span>
                                 </div>
                             )}
                             <div className="rw-safe">
                                 <Check />
-                                <div><h3>Verify after restore</h3>
-                                    <p>Re-read the live configuration and compare it with backup #{backupId}. Any difference is reported{autoRevert.available ? ' and reverted' : ''}.</p></div>
-                                <span className="rw-lock">Always on</span>
+                                <div><h3>{tr("Verify after restore")}</h3>
+                                    <p>{autoRevert.available
+                                        ? tr("Re-read the live configuration and compare it with backup #{{backupId}}. Any difference is reported and reverted.", { backupId })
+                                        : tr("Re-read the live configuration and compare it with backup #{{backupId}}. Any difference is reported.", { backupId })}</p></div>
+                                <span className="rw-lock">{tr("Always on")}</span>
                             </div>
                             <div className="rw-safe">
                                 <Check />
-                                <div><h3>Stop at the first error</h3>
-                                    <p>If the device rejects a command, nothing more is sent{autoRevert.available ? ' and the changes are reverted' : ''}.</p></div>
-                                <span className="rw-lock">Always on</span>
+                                <div><h3>{tr("Stop at the first error")}</h3>
+                                    <p>{autoRevert.available
+                                        ? tr("If the device rejects a command, nothing more is sent and the changes are reverted.")
+                                        : tr("If the device rejects a command, nothing more is sent.")}</p></div>
+                                <span className="rw-lock">{tr("Always on")}</span>
                             </div>
 
                             {lockouts.length > 0 && (
                                 <label className="rw-ack">
                                     <input type="checkbox" checked={ackLockout} onChange={(e) => setAckLockout(e.target.checked)} />
                                     <span>
-                                        I understand that {lockouts.length === 1 ? 'this restore' : `these ${lockouts.length} changes`} may
-                                        block NGCorion{preview.source_ip ? ` (${preview.source_ip})` : ''}: {lockouts[0].message}
+                                        {tr("I understand that {{what}} may block NGCorion{{ip}}: {{reason}}", {
+                                            what: lockouts.length === 1 ? tr("this restore") : tr("these {{count}} changes", { count: lockouts.length }),
+                                            ip: preview.source_ip ? ` (${preview.source_ip})` : "",
+                                            reason: lockouts[0].message })}
                                     </span>
                                 </label>
                             )}
                             {!autoRevert.available && (
                                 <label className="rw-ack">
                                     <input type="checkbox" checked={allowNoRevert} onChange={(e) => setAllowNoRevert(e.target.checked)} />
-                                    <span>I understand there is no automatic revert, and will restore backup "Before restore" by hand if needed.</span>
+                                    <span>{tr("I understand there is no automatic revert, and will restore backup \"Before restore\" by hand if needed.")}</span>
                                 </label>
                             )}
 
                             <div className="rw-fields two">
                                 <div className="rw-field">
-                                    <label htmlFor="rw-reason">Reason (required, saved in the audit log)</label>
+                                    <label htmlFor="rw-reason">{tr("Reason (required, saved in the audit log)")}</label>
                                     <textarea id="rw-reason" rows={2} maxLength={1000} value={reason}
                                               onChange={(e) => setReason(e.target.value)}
-                                              placeholder="Why is this configuration being restored?" />
+                                              placeholder={tr("Why is this configuration being restored?")} />
                                 </div>
                                 <div className="rw-field">
-                                    <label htmlFor="rw-confirm">Type the asset name to confirm</label>
+                                    <label htmlFor="rw-confirm">{tr("Type the asset name to confirm")}</label>
                                     <input id="rw-confirm" value={confirmName} autoComplete="off"
                                            className={confirmName ? (nameMatches ? 'match' : 'nomatch') : ''}
                                            onChange={(e) => setConfirmName(e.target.value)} placeholder={assetName} />
                                     {confirmName && (
                                         <span className={`rw-match ${nameMatches ? 'ok' : 'bad'}`}>
-                                            {nameMatches ? '✓ Matches' : 'Does not match'}
+                                            {nameMatches ? tr("✓ Matches") : tr("Does not match")}
                                         </span>
                                     )}
                                 </div>
                             </div>
                         </div>
                         <footer className="rw-foot">
-                            <button className="rw-btn" onClick={() => { setError(null); setStep(1); }} disabled={busy}>← Back</button>
+                            <button className="rw-btn" onClick={() => { setError(null); setStep(1); }} disabled={busy}>{tr("← Back")}</button>
                             <div className="rw-foot-right">
-                                <span className="rw-muted small">Admin or Manager only</span>
+                                <span className="rw-muted small">{tr("Admin or Manager only")}</span>
                                 <button className="rw-btn danger" onClick={startRestore} disabled={!canStart}>
                                     {busy ? <span className="rw-spin light" /> : <RestoreIcon />}
-                                    Restore {assetName}
+                                    {tr("Restore {{assetName}}", { assetName })}
                                 </button>
                             </div>
                         </footer>
@@ -719,13 +727,13 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                     <>
                         <div className="rw-body">
                             {pollError && <div className="rw-alert" role="alert">{pollError}</div>}
-                            {job ? <Timeline job={job} /> : <div className="rw-loading"><span className="rw-spin" /> Loading…</div>}
+                            {job ? <Timeline job={job} /> : <div className="rw-loading"><span className="rw-spin" /> {" "}{tr("Loading…")}</div>}
                             {job && job.auto_revert === 'armed' && ['applying', 'verifying', 'saving'].includes(job.status) && (
                                 <Countdown job={job} />
                             )}
                         </div>
                         <footer className="rw-foot">
-                            <button className="rw-btn" onClick={onClose}>Close (keeps running)</button>
+                            <button className="rw-btn" onClick={onClose}>{tr("Close (keeps running)")}</button>
                         </footer>
                     </>
                 )}
@@ -735,16 +743,18 @@ export const RestoreWizard = ({ backupId, jobId: initialJobId, onClose, onChange
                         <div className="rw-foot-left">
                             {job.pre_restore_backup_id && job.status !== 'reverted' && onOpenBackup && (
                                 <button className="rw-btn" onClick={() => onOpenBackup(job.pre_restore_backup_id)}>
-                                    {job.status === 'succeeded' ? 'Undo — ' : ''}Restore backup #{job.pre_restore_backup_id}
+                                    {job.status === 'succeeded'
+                                        ? tr("Undo — restore backup #{{id}}", { id: job.pre_restore_backup_id })
+                                        : tr("Restore backup #{{pre_restore_backup_id}}", { pre_restore_backup_id: job.pre_restore_backup_id })}
                                 </button>
                             )}
                         </div>
                         <div className="rw-foot-right">
                             {job.status !== 'succeeded' && job.backup_id && onOpenBackup && (
-                                <button className="rw-btn" onClick={() => onOpenBackup(job.backup_id)}>Review changes again</button>
+                                <button className="rw-btn" onClick={() => onOpenBackup(job.backup_id)}>{tr("Review changes again")}</button>
                             )}
                             <button className="rw-btn primary" onClick={onClose}>
-                                {job.status === 'succeeded' ? 'Done' : 'Close'}
+                                {job.status === 'succeeded' ? tr("Done") : tr("Close")}
                             </button>
                         </div>
                     </footer>

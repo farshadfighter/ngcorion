@@ -68,5 +68,7 @@ jobs:
         run: npm run lint
       - name: Tests
         run: npm test
+      - name: Every UI text has a Persian translation
+        run: npm run i18n:check
       - name: Production build
         run: npm run build

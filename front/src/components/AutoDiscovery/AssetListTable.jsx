@@ -3,13 +3,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAssets, deleteAsset } from '../../store/assetSlice.jsx';
 import { selectDiscoveryCreatedAssetIds } from '../../store/discoverySlice.jsx';
 import '../../assets/autoDiscoveryStyle/Assetlisttable.css';
+import { t } from "../../i18n";
 
 // Tab definitions
 const TABS = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'network', label: 'Network & System' },
-    { id: 'location', label: 'Location & Owner' },
-    { id: 'security', label: 'Security & Audit' },
+    { id: 'overview', label: t("Overview") },
+    { id: 'network', label: t("Network & System") },
+    { id: 'location', label: t("Location & Owner") },
+    { id: 'security', label: t("Security & Audit") },
 ];
 
 const AssetListTable = () => {
@@ -70,13 +71,13 @@ const AssetListTable = () => {
      * Handle Delete
      */
     const handleDelete = async (asset) => {
-        if (window.confirm(`Are you sure you want to delete "${asset.asset_name}"?`)) {
+        if (window.confirm(t("Are you sure you want to delete \"{{asset_name}}\"?", { asset_name: asset.asset_name }))) {
             try {
                 await dispatch(deleteAsset(asset.id));
                 dispatch(fetchAssets());
             } catch (error) {
                 console.error('Failed to delete asset:', error);
-                alert('Failed to delete asset');
+                alert(t("Failed to delete asset"));
             }
         }
     };
@@ -89,46 +90,46 @@ const AssetListTable = () => {
             case 'overview':
                 return (
                     <>
-                        <th>ID</th>
-                        <th>Asset Name</th>
-                        <th>Type</th>
-                        <th>IP Address</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th>{t("ID")}</th>
+                        <th>{t("Asset Name")}</th>
+                        <th>{t("Type")}</th>
+                        <th>{t("IP Address")}</th>
+                        <th>{t("Status")}</th>
+                        <th>{t("Actions")}</th>
                     </>
                 );
             case 'network':
                 return (
                     <>
-                        <th>ID</th>
-                        <th>Asset Name</th>
-                        <th>Hostname</th>
-                        <th>IP Address</th>
-                        <th>MAC Address</th>
-                        <th>OS Name</th>
-                        <th>Actions</th>
+                        <th>{t("ID")}</th>
+                        <th>{t("Asset Name")}</th>
+                        <th>{t("Hostname")}</th>
+                        <th>{t("IP Address")}</th>
+                        <th>{t("MAC Address")}</th>
+                        <th>{t("OS Name")}</th>
+                        <th>{t("Actions")}</th>
                     </>
                 );
             case 'location':
                 return (
                     <>
-                        <th>ID</th>
-                        <th>Asset Name</th>
-                        <th>Location</th>
-                        <th>Owner</th>
-                        <th>Department</th>
-                        <th>Actions</th>
+                        <th>{t("ID")}</th>
+                        <th>{t("Asset Name")}</th>
+                        <th>{t("Location")}</th>
+                        <th>{t("Owner")}</th>
+                        <th>{t("Department")}</th>
+                        <th>{t("Actions")}</th>
                     </>
                 );
             case 'security':
                 return (
                     <>
-                        <th>ID</th>
-                        <th>Asset Name</th>
-                        <th>Risk Level</th>
-                        <th>Confidentiality</th>
-                        <th>Last Audit</th>
-                        <th>Actions</th>
+                        <th>{t("ID")}</th>
+                        <th>{t("Asset Name")}</th>
+                        <th>{t("Risk Level")}</th>
+                        <th>{t("Confidentiality")}</th>
+                        <th>{t("Last Audit")}</th>
+                        <th>{t("Actions")}</th>
                     </>
                 );
             default:
@@ -187,12 +188,12 @@ const AssetListTable = () => {
                         <td style={{ fontWeight: 500 }}>{asset.asset_name}</td>
                         <td>
                             <span className={`badge badge-risk-${asset.risk_level || 'low'}`}>
-                                {asset.risk_level || 'Low'}
+                                {asset.risk_level || t("Low")}
                             </span>
                         </td>
                         <td>
                             <span className={`badge badge-${asset.confidentiality_level || 'public'}`}>
-                                {asset.confidentiality_level || 'Public'}
+                                {asset.confidentiality_level || t("Public")}
                             </span>
                         </td>
                         <td>{asset.last_audit_date || '-'}</td>
@@ -206,7 +207,7 @@ const AssetListTable = () => {
     if (loading) {
         return (
             <div className="loading-spinner">
-                <p>Loading assets...</p>
+                <p>{t("Loading assets...")}</p>
             </div>
         );
     }
@@ -231,7 +232,7 @@ const AssetListTable = () => {
                     <path d="M12 16v-4M12 8h.01" />
                 </svg>
                 <span>
-                    This list shows only assets created via Auto Discovery with "Create New" action. Total: {discoveryAssets.length} assets
+                    {t("This list shows only assets created via Auto Discovery with \"Create New\" action. Total: {{length}} assets", { length: discoveryAssets.length })}
                 </span>
             </div>
 
@@ -253,7 +254,7 @@ const AssetListTable = () => {
                 <input
                     type="text"
                     className="search-input"
-                    placeholder="Search by name, IP, or hostname..."
+                    placeholder={t("Search by name, IP, or hostname...")}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -262,8 +263,8 @@ const AssetListTable = () => {
             {/* Table */}
             {filteredAssets.length === 0 ? (
                 <div className="no-data">
-                    <h3>No Assets Created from Discovery Yet</h3>
-                    <p>When you approve discovered hosts with "Create New" action, they will appear here.</p>
+                    <h3>{t("No Assets Created from Discovery Yet")}</h3>
+                    <p>{t("When you approve discovered hosts with \"Create New\" action, they will appear here.")}</p>
                 </div>
             ) : (
                 <div className="table-container">
@@ -282,7 +283,7 @@ const AssetListTable = () => {
                                     <button
                                         className="btn-icon"
                                         onClick={() => handleDelete(asset)}
-                                        title="Delete asset"
+                                        title={t("Delete asset")}
                                         style={{ color: '#C62828' }}
                                     >
                                         <img src={"/icons/delete.svg"} alt={"delete"} />
@@ -303,7 +304,7 @@ const AssetListTable = () => {
                 fontSize: '13px',
                 marginTop: '16px'
             }}>
-                Showing {filteredAssets.length} of {discoveryAssets.length} discovery assets
+                {t("Showing {{length}} of {{length2}} discovery assets", { length: filteredAssets.length, length2: discoveryAssets.length })}
             </div>
         </div>
     );

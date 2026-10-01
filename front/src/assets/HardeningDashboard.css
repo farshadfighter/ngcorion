@@ -150,7 +150,7 @@
 
 .hd-progress-value {
     min-width: 44px;
-    text-align: right;
+    text-align: end;
     font-size: 12px;
     font-weight: 700;
     color: #14213D;
@@ -184,7 +184,7 @@
     width: 10px;
     height: 10px;
     border-radius: 3px;
-    margin-right: 6px;
+    margin-inline-end: 6px;
 }
 
 .hd-dot-success { background: #48BB78; }
@@ -209,7 +209,7 @@
     background: #F7F8FA;
     color: #4A5568;
     font-weight: 600;
-    text-align: left;
+    text-align: start;
     padding: 12px 16px;
 }
 
@@ -315,7 +315,7 @@
 }
 
 .hd-impact-side + .hd-impact-side {
-    border-left: 1px solid #E3E6ED;
+    border-inline-start: 1px solid #E3E6ED;
 }
 
 .hd-impact-subtitle {
@@ -352,7 +352,7 @@
 
 @media (max-width: 640px) {
     .hd-impact-side + .hd-impact-side {
-        border-left: none;
+        border-inline-start: none;
         border-top: 1px solid #E3E6ED;
     }
 }

@@ -3,6 +3,8 @@ import { FixUnsuccessfulConnectionForm } from "./FixUnsuccessfulConnectionForm";
 import { FixUnsuccessfulProcess } from "./FixUnsuccessfulProcess";
 import { FixUnsuccessfulSuccess } from "./FixUnsuccessfulSuccess";
 import { FixUnsuccessfulResults } from "./FixUnsuccessfulResults";
+import { t } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 // ==========================================
 // کامپوننت صفحه Fail
@@ -38,13 +40,12 @@ const FixUnsuccessfulFailed = ({ sessionData, onRetry, onClose }) => (
 
         <div style={{ textAlign: "center", gap: "8px", display: "flex", flexDirection: "column" }}>
             <h2 style={{ fontSize: "22px", fontWeight: "700", color: "#991B1B", margin: 0 }}>
-                Connection Failed
+                {t("Connection Failed")}
             </h2>
             <p style={{ fontSize: "14px", color: "#B91C1C", margin: 0, lineHeight: "1.6" }}>
-                Could not connect to <strong>{sessionData?.asset_name || "the device"}</strong>
-                {sessionData?.target_ip ? ` (${sessionData.target_ip})` : ""}.
+                {tx("Could not connect to {{device}}.", { device: <><strong>{sessionData?.asset_name || t("the device")}</strong>{sessionData?.target_ip ? <bdi>{` (${sessionData.target_ip})`}</bdi> : ""}</> })}
                 <br />
-                Please check your credentials and try again.
+                {t("Please check your credentials and try again.")}
             </p>
         </div>
 
@@ -66,7 +67,7 @@ const FixUnsuccessfulFailed = ({ sessionData, onRetry, onClose }) => (
                 onMouseOver={(e) => e.target.style.background = "#DC2626"}
                 onMouseOut={(e)  => e.target.style.background = "#EF4444"}
             >
-                Try Again
+                {t("Try Again")}
             </button>
             <button
                 onClick={onClose}
@@ -84,7 +85,7 @@ const FixUnsuccessfulFailed = ({ sessionData, onRetry, onClose }) => (
                 onMouseOver={(e) => e.target.style.background = "#F9FAFB"}
                 onMouseOut={(e)  => e.target.style.background = "white"}
             >
-                Close
+                {t("Close")}
             </button>
         </div>
     </div>
@@ -145,7 +146,7 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing, p
                         <div className="stepper-circle">
                             <div className="stepper-icon">1</div>
                         </div>
-                        <div className="stepper-label">Connection</div>
+                        <div className="stepper-label">{t("Connection")}</div>
                     </div>
 
                     <div className={`stepper-line ${currentStep >= 2 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}></div>
@@ -155,7 +156,7 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing, p
                         <div className="stepper-circle">
                             <div className="stepper-icon">2</div>
                         </div>
-                        <div className="stepper-label">Process</div>
+                        <div className="stepper-label">{t("Process")}</div>
                     </div>
 
                     <div className={`stepper-line ${currentStep >= 3 ? "active" : ""} ${hasFailed && currentStep >= 3 ? "failed" : ""}`}></div>
@@ -170,7 +171,7 @@ export const FixUnsuccessfulWizard = ({ isOpen, onClose, onNavigateToAuditing, p
                                 )}
                             </div>
                         </div>
-                        <div className="stepper-label">Harden</div>
+                        <div className="stepper-label">{t("Harden")}</div>
                     </div>
                 </div>
 

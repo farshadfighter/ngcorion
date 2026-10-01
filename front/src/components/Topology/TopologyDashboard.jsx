@@ -11,6 +11,8 @@ import {
 } from "../../store/topologySlice.jsx";
 import { TopologyCanvas } from "./TopologyCanvas.jsx";
 import "../../assets/Topology.css";
+import { t as tr } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 
 const LINK_TYPES = ["ethernet", "fiber", "wireless", "logical"];
 const LINK_STATUSES = ["active", "planned", "down"];
@@ -81,16 +83,16 @@ export const TopologyDashboard = () => {
         <div className="topology-container">
             <div className="topology-toolbar">
                 <div className="topology-toolbar-info">
-                    <span>{nodes.length} assets</span>
+                    <span>{tr("{{length}} assets", { length: nodes.length })}</span>
                     <span className="topology-toolbar-sep">•</span>
-                    <span>{links.length} links</span>
+                    <span>{tr("{{length}} links", { length: links.length })}</span>
                 </div>
                 <div className="topology-toolbar-actions">
                     <button className="topology-btn" onClick={() => dispatch(fetchTopology())} disabled={isLoading}>
-                        <i className="fa-solid fa-arrows-rotate" /> Refresh
+                        <i className="fa-solid fa-arrows-rotate" /> {" "}{tr("Refresh")}
                     </button>
                     <button className="topology-btn topology-btn-primary" onClick={handleValidate}>
-                        <i className="fa-solid fa-clipboard-check" /> Validate
+                        <i className="fa-solid fa-clipboard-check" /> {" "}{tr("Validate")}
                     </button>
                 </div>
             </div>
@@ -104,10 +106,10 @@ export const TopologyDashboard = () => {
             <div className="topology-body">
                 <div className="topology-canvas-wrap">
                     {isLoading ? (
-                        <div className="topology-empty">Loading topology…</div>
+                        <div className="topology-empty">{tr("Loading topology…")}</div>
                     ) : nodes.length === 0 ? (
                         <div className="topology-empty">
-                            No assets yet. Add assets in Asset Management to see them here.
+                            {tr("No assets yet. Add assets in Asset Management to see them here.")}
                         </div>
                     ) : (
                         <TopologyCanvas
@@ -119,29 +121,28 @@ export const TopologyDashboard = () => {
                         />
                     )}
                     <div className="topology-hint">
-                        Drag a device to rearrange it - the layout is saved. Drag from a device's port to another
-                        device's port to create a link. Click a link to edit it.
+                        {tr("Drag a device to rearrange it - the layout is saved. Drag from a device's port to another device's port to create a link. Click a link to edit it.")}
                     </div>
                 </div>
 
                 {selectedLink && (
                     <aside className="topology-panel">
                         <div className="topology-panel-header">
-                            <h3>{selectedLink.link_type === "hosted" ? "Hosted-on relationship" : "Link details"}</h3>
+                            <h3>{selectedLink.link_type === "hosted" ? tr("Hosted-on relationship") : tr("Link details")}</h3>
                             <button className="topology-panel-close" onClick={() => setSelectedLink(null)}>
                                 <i className="fa-solid fa-xmark" />
                             </button>
                         </div>
                         <div className="topology-panel-body">
                             <div className="topology-field">
-                                <label>Server</label>
+                                <label>{tr("Server")}</label>
                                 <div className="topology-field-static">
                                     {nodeById(String(selectedLink.source_asset_id))?.name || selectedLink.source_asset_id}
                                     {selectedLink.source_interface ? ` (${selectedLink.source_interface})` : ""}
                                 </div>
                             </div>
                             <div className="topology-field">
-                                <label>{selectedLink.link_type === "hosted" ? "Hosted asset" : "Destination"}</label>
+                                <label>{selectedLink.link_type === "hosted" ? tr("Hosted asset") : tr("Destination")}</label>
                                 <div className="topology-field-static">
                                     {nodeById(String(selectedLink.destination_asset_id))?.name ||
                                         selectedLink.destination_asset_id}
@@ -154,19 +155,18 @@ export const TopologyDashboard = () => {
                                 <>
                                     {selectedLink.vlan && (
                                         <div className="topology-field">
-                                            <label>VLAN</label>
+                                            <label>{tr("VLAN")}</label>
                                             <div className="topology-field-static">{selectedLink.vlan}</div>
                                         </div>
                                     )}
                                     <p className="topology-panel-hint">
-                                        Set from Asset Management → the hosted asset's "Hosted on server" field, not
-                                        editable here.
+                                        {tr("Set from Asset Management → the hosted asset's \"Hosted on server\" field, not editable here.")}
                                     </p>
                                 </>
                             ) : (
                                 <>
                                     <div className="topology-field">
-                                        <label>Link type</label>
+                                        <label>{tr("Link type")}</label>
                                         <select
                                             value={selectedLink.link_type || "ethernet"}
                                             onChange={(e) => handleUpdateSelected("link_type", e.target.value)}
@@ -179,7 +179,7 @@ export const TopologyDashboard = () => {
                                         </select>
                                     </div>
                                     <div className="topology-field">
-                                        <label>Status</label>
+                                        <label>{tr("Status")}</label>
                                         <select
                                             value={selectedLink.status || "active"}
                                             onChange={(e) => handleUpdateSelected("status", e.target.value)}
@@ -192,7 +192,7 @@ export const TopologyDashboard = () => {
                                         </select>
                                     </div>
                                     <div className="topology-field">
-                                        <label>Speed (Mbps)</label>
+                                        <label>{tr("Speed (Mbps)")}</label>
                                         <input
                                             type="number"
                                             value={selectedLink.speed_mbps ?? ""}
@@ -205,7 +205,7 @@ export const TopologyDashboard = () => {
                                         />
                                     </div>
                                     <div className="topology-field">
-                                        <label>VLAN</label>
+                                        <label>{tr("VLAN")}</label>
                                         <input
                                             type="text"
                                             value={selectedLink.vlan || ""}
@@ -213,7 +213,7 @@ export const TopologyDashboard = () => {
                                         />
                                     </div>
                                     <div className="topology-field">
-                                        <label>Subnet</label>
+                                        <label>{tr("Subnet")}</label>
                                         <input
                                             type="text"
                                             value={selectedLink.subnet || ""}
@@ -226,14 +226,14 @@ export const TopologyDashboard = () => {
                         {selectedLink.link_type !== "hosted" && (
                             <div className="topology-panel-footer">
                                 <button className="topology-btn topology-btn-danger" onClick={handleDeleteSelected}>
-                                    Delete
+                                    {tr("Delete")}
                                 </button>
                                 <button
                                     className="topology-btn topology-btn-primary"
                                     onClick={handleSaveSelected}
                                     disabled={isMutating}
                                 >
-                                    Save
+                                    {tr("Save")}
                                 </button>
                             </div>
                         )}
@@ -243,22 +243,22 @@ export const TopologyDashboard = () => {
                 {showValidation && (
                     <aside className="topology-panel">
                         <div className="topology-panel-header">
-                            <h3>Validation</h3>
+                            <h3>{tr("Validation")}</h3>
                             <button className="topology-panel-close" onClick={() => setShowValidation(false)}>
                                 <i className="fa-solid fa-xmark" />
                             </button>
                         </div>
                         <div className="topology-panel-body">
                             {validation.isLoading ? (
-                                <div className="topology-empty">Checking…</div>
+                                <div className="topology-empty">{tr("Checking…")}</div>
                             ) : validation.findings.length === 0 ? (
-                                <div className="topology-empty">No structural issues found.</div>
+                                <div className="topology-empty">{tr("No structural issues found.")}</div>
                             ) : (
                                 <ul className="topology-findings">
                                     {validation.findings.map((f, i) => (
                                         <li key={i} className="topology-finding">
                                             <span className={`topo-badge ${SEVERITY_CLASS[f.severity] || ""}`}>
-                                                {f.severity}
+                                                {tv(f.severity)}
                                             </span>
                                             <span>{f.message}</span>
                                         </li>

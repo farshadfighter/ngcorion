@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "../../i18n";
 
 /**
  * Table header cell. Columns with a `key` are clickable and cycle
@@ -22,7 +23,7 @@ export const SortableHeader = ({ columns, sortBy, sortOrder, onSort }) => (
                         key={label}
                         className={`risk-th-sortable${isActive ? " is-active" : ""}`}
                         onClick={() => onSort(key)}
-                        title={`Sort by ${label}`}
+                        title={t("Sort by {{label}}", { label })}
                         aria-sort={
                             isActive
                                 ? sortOrder === "asc"

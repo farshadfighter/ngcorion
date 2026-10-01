@@ -18,6 +18,8 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     # Mobile number for SMS alerts (optional). Digits with an optional leading +.
     phone = Column(String(20), nullable=True)
+    # Interface language ("en" | "fa"); empty = the system default (System Configuration).
+    language = Column(String(5), nullable=True)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)

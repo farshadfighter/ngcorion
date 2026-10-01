@@ -2,6 +2,7 @@ import { Handle, Position } from "@xyflow/react";
 import AssetIcon from "./AssetIcon.jsx";
 import "../../assets/AssetIcons.css";
 import { defaultPortsForType } from "../../utils/devicePorts.js";
+import { t } from "../../i18n";
 
 const PORT_HANDLE_STYLE = { width: 7, height: 7, background: "#1e3a5f", border: "1.5px solid #fff" };
 const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f", opacity: 0.55 };
@@ -60,7 +61,7 @@ export function DeviceNode({ data, selected }) {
             <div className="device-node-label">{label}</div>
             {subtitle && <div className="device-node-sub">{subtitle}</div>}
             {badge && <div className="device-node-badge">{badge}</div>}
-            {displayPortCount > 0 && <div className="device-node-ports">{displayPortCount} ports</div>}
+            {displayPortCount > 0 && <div className="device-node-ports">{t("{{displayPortCount}} ports", { displayPortCount })}</div>}
         </div>
     );
 }

@@ -9,16 +9,17 @@ import { NetworkZoneTab } from "./NetworkZoneTab";
 import { OSCatalogTab } from "./OSCatalogTab";
 import { VendorsTab } from "./VendorsTab";
 import { OthersTab } from "./OthersTab"; // <i className="fa-solid fa-star" /> Combined tab
+import { t } from "../../i18n";
 
 // 🔥 Updated TABS - Dependencies حذف شد، 3 تب ترکیب شدند
 const TABS = [
-    { id: "asset-type", label: "Asset Type" },
-    { id: "owners", label: "Owners" },
-    { id: "location", label: "Location" },
-    { id: "network-zone", label: "Network Zone" },
-    { id: "os-catalog", label: "OS Catalog" },
-    { id: "vendors", label: "Vendors" },
-    { id: "others", label: "Others" }, // <i className="fa-solid fa-star" /> Status + Confidentiality + Risk
+    { id: "asset-type", label: t("Asset Type") },
+    { id: "owners", label: t("Owners") },
+    { id: "location", label: t("Location") },
+    { id: "network-zone", label: t("Network Zone") },
+    { id: "os-catalog", label: t("OS Catalog") },
+    { id: "vendors", label: t("Vendors") },
+    { id: "others", label: t("Others") }, // <i className="fa-solid fa-star" /> Status + Confidentiality + Risk
 ];
 
 export const AssetRequirement = () => {
@@ -56,11 +57,11 @@ export const AssetRequirement = () => {
             // backend can't parse the request and the import silently fails.
             const response = await api.post("/api/asset-requirements/import/excel", formData);
 
-            alert("Import successful! " + JSON.stringify(response.data));
+            alert(t("Import successful! {{result}}", { result: JSON.stringify(response.data) }));
             window.location.reload();
         } catch (err) {
             console.error("Import failed:", err);
-            alert("Import failed: " + (err.response?.data?.detail || err.message));
+            alert(t("Import failed: {{error}}", { error: err.response?.data?.detail || err.message }));
         } finally {
             setUploading(false);
             event.target.value = "";
@@ -82,10 +83,10 @@ export const AssetRequirement = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
 
-            alert("Export successful!");
+            alert(t("Export successful!"));
         } catch (err) {
             console.error("Export failed:", err);
-            alert("Export failed: " + (err.response?.data?.detail || err.message));
+            alert(t("Export failed: {{error}}", { error: err.response?.data?.detail || err.message }));
         }
     };
 
@@ -110,11 +111,11 @@ export const AssetRequirement = () => {
             window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error("Template download failed:", err);
-            let message = "Failed to download template.";
+            let message = t("Failed to download template.");
             if (err.response?.data?.detail) {
                 message = err.response.data.detail;
             } else if (err.code === "ERR_NETWORK") {
-                message = "Network error. Please check CORS or backend settings.";
+                message = t("Network error. Please check CORS or backend settings.");
             }
             alert(message);
         }
@@ -145,21 +146,21 @@ export const AssetRequirement = () => {
         <div className="asset-requirement-container">
             {/* Header */}
             <div className="requirement-header">
-                <h1 className="page-title">Asset Requirement</h1>
+                <h1 className="page-title">{t("Asset Requirement")}</h1>
                 <div className="requirement-actions">
                     <button
                         className="btn-header"
                         onClick={handleImport}
                         disabled={uploading}
                     >
-                        {uploading ? "⏳ Importing..." : "⬇ Import"}
+                        {uploading ? t("⏳ Importing...") : t("⬇ Import")}
                     </button>
                     <button className="btn-header" onClick={handleExport}>
-                        ⬆ Export
+                       {t("⬆ Export")}
                     </button>
                     <button className="btn-header" onClick={handleDownloadTemplate}>
 
-                        <i className="fa-solid fa-download"></i>   Dawnload Template
+                        <i className="fa-solid fa-download"></i>   {" "}{t("Download Template")}
 
                     </button>
                 </div>

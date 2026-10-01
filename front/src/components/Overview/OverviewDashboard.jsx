@@ -13,16 +13,16 @@ import {
 import { RiskLevelBadge } from "../Risk/RiskLevelBadge";
 import { RiskScoreBadge } from "./RiskScoreBadge";
 import "../../assets/OverviewDashboard.css";
+import { t, n } from "../../i18n";
 
-const fmt = (value) =>
-    typeof value === "number" ? value.toLocaleString("en-US") : value;
+const fmt = (value) => n(value);
 
 /** One of the six tiles across the top. */
 const MetricCard = ({ metric }) => (
     <div className="ov-metric">
         <span className="ov-metric-label">{metric.label}</span>
         {metric.pending ? (
-            <span className="ov-metric-pending" title="Waiting on a backend endpoint">
+            <span className="ov-metric-pending" title={t("Waiting on a backend endpoint")}>
                 —
             </span>
         ) : (
@@ -31,7 +31,7 @@ const MetricCard = ({ metric }) => (
                     ? "—"
                     : fmt(metric.value)}
                 {metric.value !== null && metric.value !== undefined && metric.suffix
-                    ? metric.suffix
+                    ? n(metric.suffix)
                     : ""}
             </span>
         )}
@@ -50,11 +50,11 @@ const MetricCard = ({ metric }) => (
  * `width` is each band's true share of the 0-100 scale, so the needle (placed
  * at `risk%`) and the colours use the same scale. */
 const RISK_BANDS = [
-    { key: "minimal", label: "Minimal", range: "0-9", color: "#16A34A", width: 10 },
-    { key: "low", label: "Low", range: "10-24", color: "#22C55E", width: 15 },
-    { key: "moderate", label: "Moderate", range: "25-39", color: "#F59E0B", width: 15 },
-    { key: "high", label: "High", range: "40-59", color: "#F97316", width: 20 },
-    { key: "critical", label: "Critical", range: "60-100", color: "#DC2626", width: 40 },
+    { key: "minimal", label: t("Minimal"), range: "0-9", color: "#16A34A", width: 10 },
+    { key: "low", label: t("Low"), range: "10-24", color: "#22C55E", width: 15 },
+    { key: "moderate", label: t("Moderate"), range: "25-39", color: "#F59E0B", width: 15 },
+    { key: "high", label: t("High"), range: "40-59", color: "#F97316", width: 20 },
+    { key: "critical", label: t("Critical"), range: "60-100", color: "#DC2626", width: 40 },
 ];
 
 /** Which band a risk score sits in — highest band first, inclusive bounds. */
@@ -75,12 +75,12 @@ const SecurityPostureGauge = ({ securityScore }) => {
 
     return (
         <section className="ov-card ov-card-medium">
-            <h3 className="ov-card-title">Security Risk Gauge</h3>
+            <h3 className="ov-card-title">{t("Security Risk Gauge")}</h3>
             <div className="ov-gauge">
                 <div className="ov-gauge-readout">
-                    <span className="ov-gauge-label">Security Risk</span>
+                    <span className="ov-gauge-label">{t("Security Risk")}</span>
                     <span className="ov-gauge-value">
-                        {risk === null ? "—" : `${risk}/100`}
+                        {risk === null ? "—" : n(`${risk}/100`)}
                     </span>
                 </div>
 
@@ -92,7 +92,7 @@ const SecurityPostureGauge = ({ securityScore }) => {
                                 band.key === level ? " is-active" : ""
                             }`}
                             style={{ background: band.color, width: `${band.width}%` }}
-                            title={`${band.label}: ${band.range}`}
+                            title={`${band.label}: ${n(band.range)}`}
                         />
                     ))}
                     {risk !== null && (
@@ -110,14 +110,14 @@ const SecurityPostureGauge = ({ securityScore }) => {
                                 className="ov-dot"
                                 style={{ background: band.color }}
                             />
-                            {band.label}: {band.range}
+                            {band.label}: {n(band.range)}
                         </span>
                     ))}
                 </div>
 
                 {securityScore?.incomplete_data && (
                     <p className="ov-gauge-note">
-                        Some inputs are incomplete, so this score is provisional.
+                        {t("Some inputs are incomplete, so this score is provisional.")}
                     </p>
                 )}
             </div>
@@ -135,8 +135,7 @@ const SecurityPostureGauge = ({ securityScore }) => {
 const ModuleCard = ({ card, onOpen }) => (
     <button type="button" className="ov-module" onClick={() => onOpen(card.to)}>
         <span className="ov-module-hint">
-            <i className="fa-solid fa-circle-info" aria-hidden="true" /> click on
-            to see more information
+            <i className="fa-solid fa-circle-info" aria-hidden="true" /> {" "}{t("click on to see more information")}
         </span>
         <span className="ov-module-body">
             <span className="ov-module-title">{card.title}</span>
@@ -146,7 +145,7 @@ const ModuleCard = ({ card, onOpen }) => (
                 ) : (
                     <>
                         {fmt(card.value)}
-                        {card.suffix || ""} {card.unit}
+                        {n(card.suffix || "")} {card.unit}
                     </>
                 )}
             </span>
@@ -157,16 +156,16 @@ const ModuleCard = ({ card, onOpen }) => (
 /** Two percentages side by side, each with its own bar. */
 const ComplianceVsHardening = ({ compliance, hardening }) => (
     <section className="ov-card ov-card-medium ov-compare">
-        <h3 className="ov-card-title">Compliance vs Hardening</h3>
+        <h3 className="ov-card-title">{t("Compliance vs Hardening")}</h3>
         <div className="ov-compare-heads">
             <div className="ov-compare-head">
-                <span className="ov-compare-label">Compliance</span>
+                <span className="ov-compare-label">{t("Compliance")}</span>
                 <span className="ov-compare-value">
                     {compliance === null ? "—" : `${compliance}%`}
                 </span>
             </div>
             <div className="ov-compare-head">
-                <span className="ov-compare-label">Hardening</span>
+                <span className="ov-compare-label">{t("Hardening")}</span>
                 <span className="ov-compare-value">
                     {hardening === null ? "—" : `${hardening}%`}
                 </span>
@@ -181,7 +180,7 @@ const ComplianceVsHardening = ({ compliance, hardening }) => (
                     />
                 </span>
                 <span className="ov-bar-legend">
-                    <i className="ov-dot ov-dot-compliance" /> Compliance:{" "}
+                    <i className="ov-dot ov-dot-compliance" /> {" "}{t("Compliance: ")}
                     {compliance === null ? "—" : `${compliance}%`}
                 </span>
             </div>
@@ -193,7 +192,7 @@ const ComplianceVsHardening = ({ compliance, hardening }) => (
                     />
                 </span>
                 <span className="ov-bar-legend">
-                    <i className="ov-dot ov-dot-hardening" /> Hardening:{" "}
+                    <i className="ov-dot ov-dot-hardening" /> {" "}{t("Hardening: ")}
                     {hardening === null ? "—" : `${hardening}%`}
                 </span>
             </div>
@@ -209,27 +208,27 @@ const dash = (value) =>
  *  shared one, so the colours match the Risk Asset and Risk Intelligence pages. */
 const TopRiskyAssets = ({ items }) => (
     <section className="ov-card ov-card-wide">
-        <h3 className="ov-card-title">Top 20 Risky Assets</h3>
+        <h3 className="ov-card-title">{t("Top 20 Risky Assets")}</h3>
         <div className="ov-table-wrapper">
             <table className="ov-table">
                 <thead>
                     <tr>
-                        <th>Number</th>
-                        <th>Asset Name</th>
-                        <th>Hostname</th>
-                        <th>Type</th>
-                        <th>Zone</th>
-                        <th>Manufacturer</th>
-                        <th>Model</th>
-                        <th>Risk Score</th>
-                        <th>Risk Level</th>
+                        <th>{t("Number")}</th>
+                        <th>{t("Asset Name")}</th>
+                        <th>{t("Hostname")}</th>
+                        <th>{t("Type")}</th>
+                        <th>{t("Zone")}</th>
+                        <th>{t("Manufacturer")}</th>
+                        <th>{t("Model")}</th>
+                        <th>{t("Risk Score")}</th>
+                        <th>{t("Risk Level")}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.length === 0 && (
                         <tr>
                             <td colSpan={9} className="ov-table-empty">
-                                No assets have a risk score yet.
+                                {t("No assets have a risk score yet.")}
                             </td>
                         </tr>
                     )}
@@ -270,21 +269,21 @@ const AssetsRequiringAttention = ({ items }) => {
 
     return (
         <section className="ov-card ov-card-medium">
-            <h3 className="ov-card-title">Assets Requiring Attention</h3>
+            <h3 className="ov-card-title">{t("Assets Requiring Attention")}</h3>
             <div className="ov-table-wrapper">
                 <table className="ov-table">
                     <thead>
                         <tr>
-                            <th>Asset</th>
-                            <th>Risk Score</th>
-                            <th>Risk Level</th>
+                            <th>{t("Asset")}</th>
+                            <th>{t("Risk Score")}</th>
+                            <th>{t("Risk Level")}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.length === 0 && (
                             <tr>
                                 <td colSpan={3} className="ov-table-empty">
-                                    No High or Critical risk assets.
+                                    {t("No High or Critical risk assets.")}
                                 </td>
                             </tr>
                         )}
@@ -329,7 +328,7 @@ export const OverviewDashboard = () => {
     if (isLoading && !riskSummary) {
         return (
             <div className="ov-page">
-                <p className="ov-state">Loading dashboard…</p>
+                <p className="ov-state">{t("Loading dashboard…")}</p>
             </div>
         );
     }
@@ -338,7 +337,7 @@ export const OverviewDashboard = () => {
         return (
             <div className="ov-page">
                 <p className="ov-state ov-state-error">
-                    Failed to load dashboard: {error}
+                    {t("Failed to load dashboard: {{error}}", { error })}
                 </p>
             </div>
         );

@@ -5,6 +5,8 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { rejectHost, bulkApproveHosts, fetchPendingHosts } from '../../store/discoverySlice.jsx';
+import { t, n } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
 const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
     const dispatch = useDispatch();
@@ -32,7 +34,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
 
     // Handle reject
     const handleReject = async (host) => {
-        if (window.confirm(`Reject host ${host.ip_address}? This will remove it from the pending list.`)) {
+        if (window.confirm(t("Reject host {{ip_address}}? This will remove it from the pending list.", { ip_address: host.ip_address }))) {
             await dispatch(rejectHost(host.id));
         }
     };
@@ -40,7 +42,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
     // Handle bulk approve
     const handleBulkApprove = async () => {
         if (!bulkAssetTypeId) {
-            alert('Please select an asset type');
+            alert(t("Please select an asset type"));
             return;
         }
 
@@ -89,7 +91,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                 ))}
                 {remaining > 0 && <span className="port-more">+{remaining}</span>}
                 {closedPorts.length > 0 && (
-                    <span className="port-state-label closed">{closedPorts.length} closed</span>
+                    <span className="port-state-label closed">{t("{{length}} closed", { length: closedPorts.length })}</span>
                 )}
             </div>
         );
@@ -99,7 +101,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
         return (
             <div className="table-loading">
                 <div className="spinner-lg" />
-                <p>Loading pending hosts...</p>
+                <p>{t("Loading pending hosts...")}</p>
             </div>
         );
     }
@@ -113,8 +115,8 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                         <path d="M22 4L12 14.01l-3-3" />
                     </svg>
                 </div>
-                <h3>No Pending Hosts</h3>
-                <p>All discovered hosts have been processed. Start a new scan to discover more assets.</p>
+                <h3>{t("No Pending Hosts")}</h3>
+                <p>{t("All discovered hosts have been processed. Start a new scan to discover more assets.")}</p>
             </div>
         );
     }
@@ -124,7 +126,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
             {/* Bulk Actions */}
             {selectedIds.length > 0 && (
                 <div className="bulk-actions-bar">
-                    <span className="bulk-count">{selectedIds.length} host(s) selected</span>
+                    <span className="bulk-count">{t("{{length}} host(s) selected", { length: selectedIds.length })}</span>
                     <div className="bulk-buttons">
                         <button
                             className="btn btn-sm btn-primary"
@@ -134,13 +136,13 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                                 <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
                                 <path d="M22 4L12 14.01l-3-3" />
                             </svg>
-                            Bulk Approve
+                           {t("Bulk Approve")}
                         </button>
                         <button
                             className="btn btn-sm btn-ghost"
                             onClick={() => setSelectedIds([])}
                         >
-                            Clear Selection
+                           {t("Clear Selection")}
                         </button>
                     </div>
                 </div>
@@ -157,13 +159,13 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                             onChange={toggleSelectAll}
                         />
                     </th>
-                    <th>IP Address</th>
-                    <th>Hostname</th>
-                    <th>MAC Address</th>
-                    <th>OS Info</th>
-                    <th>Ports</th>
-                    <th>Status</th>
-                    <th className="col-actions">Actions</th>
+                    <th>{t("IP Address")}</th>
+                    <th>{t("Hostname")}</th>
+                    <th>{t("MAC Address")}</th>
+                    <th>{t("OS Info")}</th>
+                    <th>{t("Ports")}</th>
+                    <th>{t("Status")}</th>
+                    <th className="col-actions">{t("Actions")}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -196,7 +198,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                                     )}
                                 </div>
                             ) : (
-                                <span className="text-muted">Unknown</span>
+                                <span className="text-muted">{t("Unknown")}</span>
                             )}
                         </td>
                         <td>{formatPorts(host.open_ports)}</td>
@@ -210,17 +212,17 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                                 <button
                                     className="btn btn-sm btn-success"
                                     onClick={() => onApprove(host)}
-                                    title="Approve host"
+                                    title={t("Approve host")}
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M20 6L9 17l-5-5" />
                                     </svg>
-                                    Approve
+                                   {t("Approve")}
                                 </button>
                                 <button
                                     className="btn btn-sm btn-ghost btn-danger"
                                     onClick={() => handleReject(host)}
-                                    title="Reject host"
+                                    title={t("Reject host")}
                                     disabled={storeLoading.approve}
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -239,7 +241,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                 <div className="modal-overlay" onClick={() => setShowBulkModal(false)}>
                     <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Bulk Approve Hosts</h3>
+                            <h3>{t("Bulk Approve Hosts")}</h3>
                             <button className="modal-close" onClick={() => setShowBulkModal(false)}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M18 6L6 18M6 6l12 12" />
@@ -248,18 +250,17 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                         </div>
                         <div className="modal-body">
                             <p className="modal-text">
-                                You are about to create assets for <strong>{selectedIds.length}</strong> discovered hosts.
-                                Please select a default asset type for all new assets.
+                               {tx("You are about to create assets for {{count}} discovered hosts. Please select a default asset type for all new assets.", { count: <strong>{n(selectedIds.length)}</strong> })}
                             </p>
                             <div className="form-group">
-                                <label htmlFor="bulk-asset-type">Asset Type</label>
+                                <label htmlFor="bulk-asset-type">{t("Asset Type")}</label>
                                 <select
                                     id="bulk-asset-type"
                                     value={bulkAssetTypeId}
                                     onChange={(e) => setBulkAssetTypeId(e.target.value)}
                                     className="form-select"
                                 >
-                                    <option value="">Select asset type...</option>
+                                    <option value="">{t("Select asset type...")}</option>
                                     {assetTypes?.map((type) => (
                                         <option key={type.id} value={type.id}>
                                             {type.type_name}
@@ -273,7 +274,7 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                                 className="btn btn-secondary"
                                 onClick={() => setShowBulkModal(false)}
                             >
-                                Cancel
+                               {t("Cancel")}
                             </button>
                             <button
                                 className="btn btn-primary"
@@ -283,10 +284,10 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                                 {storeLoading.approve ? (
                                     <>
                                         <span className="spinner" />
-                                        Processing...
+                                       {t("Processing...")}
                                     </>
                                 ) : (
-                                    `Approve ${selectedIds.length} Hosts`
+                                    t("Approve {{length}} Hosts", { length: selectedIds.length })
                                 )}
                             </button>
                         </div>

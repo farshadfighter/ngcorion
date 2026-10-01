@@ -2,15 +2,19 @@ import React from "react";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from "recharts";
+import { t, uiLocale } from "../../../i18n";
 
 const BAR_COLOR = "#1e3a5f";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = [t("Jan"),t("Feb"),t("Mar"),t("Apr"),t("May"),t("Jun"),t("Jul"),t("Aug"),t("Sep"),t("Oct"),t("Nov"),t("Dec")];
 
-/* "2026-02-14" -> "2/14" (daily view), "2026-02" -> "Feb" (monthly fallback). */
+/* "2026-02-14" -> "2/14" or its Jalali form (daily view), "2026-02" -> "Feb" (monthly fallback). */
 const periodLabel = (period) => {
     const parts = String(period).split("-");
-    if (parts.length === 3) return `${Number(parts[1])}/${Number(parts[2])}`;
+    if (parts.length === 3) {
+        const day = new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+        return day.toLocaleDateString(uiLocale(), { month: "numeric", day: "numeric", timeZone: "UTC" });
+    }
     return MONTHS[Number(parts[1]) - 1] || period;
 };
 
@@ -25,9 +29,9 @@ export const ComplianceTrend = ({ points, message }) => {
 
     return (
         <div className="aud-card">
-            <div className="aud-card-title">Compliance Trend</div>
+            <div className="aud-card-title">{t("Compliance Trend")}</div>
             {data.length === 0 ? (
-                <div className="aud-empty">{message || "No completed audits yet."}</div>
+                <div className="aud-empty">{message || t("No completed audits yet.")}</div>
             ) : (
                 <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={data} margin={{ top: 16, right: 12, bottom: 4, left: 0 }}>
@@ -48,7 +52,7 @@ export const ComplianceTrend = ({ points, message }) => {
                         <Tooltip
                             formatter={(v, _n, e) => [
                                 `${v}% (${e.payload.sessions} audits)`,
-                                "Avg compliance",
+                                t("Avg compliance"),
                             ]}
                             labelFormatter={(_l, p) => p?.[0]?.payload.period || ""}
                         />

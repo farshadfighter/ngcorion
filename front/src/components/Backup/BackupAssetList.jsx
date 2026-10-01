@@ -2,17 +2,18 @@ import React from 'react';
 
 import { Pagination } from '../Logs/Pagination.jsx';
 import AssetIcon from '../shared/AssetIcon.jsx';
+import { t as tr, uiLocale } from "../../i18n";
 
 const formatDate = (ts) => {
     if (!ts) return '-';
-    return new Date(ts).toLocaleString('en-US', {
+    return new Date(ts).toLocaleString(uiLocale(),  {
         month: 'short', day: 'numeric', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hour12: false,
     });
 };
 
 const typeLabel = (t) =>
-    !t || t === 'unknown' ? 'Unknown' : t.charAt(0).toUpperCase() + t.slice(1);
+    !t || t === 'unknown' ? tr("Unknown") : t.charAt(0).toUpperCase() + t.slice(1);
 
 /**
  * Level one of the backup screen: one row per asset that has backups.
@@ -39,7 +40,7 @@ export const BackupAssetList = ({
     if (groups.length === 0) {
         return (
             <div className="backup-empty">
-                <p>No backups match this view.</p>
+                <p>{tr("No backups match this view.")}</p>
             </div>
         );
     }
@@ -50,12 +51,12 @@ export const BackupAssetList = ({
                 <table className="requirement-table backup-asset-table">
                     <thead>
                         <tr>
-                            <th>Asset</th>
-                            <th>IP Address</th>
-                            <th>Device Type</th>
-                            <th>Backups</th>
-                            <th>Last Backup</th>
-                            <th>Actions</th>
+                            <th>{tr("Asset")}</th>
+                            <th>{tr("IP Address")}</th>
+                            <th>{tr("Device Type")}</th>
+                            <th>{tr("Backups")}</th>
+                            <th>{tr("Last Backup")}</th>
+                            <th>{tr("Actions")}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,7 +70,7 @@ export const BackupAssetList = ({
                                     <span className="backup-asset-name-cell">
                                         <AssetIcon icon={g.icon} size={28} />
                                         <span className="backup-asset-name">
-                                            {g.asset_name || `Asset #${g.asset_id}`}
+                                            {g.asset_name || tr("Asset #{{asset_id}}", { asset_id: g.asset_id })}
                                         </span>
                                     </span>
                                 </td>
@@ -92,17 +93,17 @@ export const BackupAssetList = ({
                                     <span className="backup-count-split">
                                         {g.manual_count > 0 && (
                                             <span className="backup-source-badge manual">
-                                                {g.manual_count} manual
+                                                {tr("{{manual_count}} manual", { manual_count: g.manual_count })}
                                             </span>
                                         )}
                                         {g.hardening_count > 0 && (
                                             <span className="backup-source-badge hardening">
-                                                {g.hardening_count} hardening
+                                                {tr("{{hardening_count}} hardening", { hardening_count: g.hardening_count })}
                                             </span>
                                         )}
                                         {g.pre_restore_count > 0 && (
                                             <span className="backup-source-badge pre_restore">
-                                                {g.pre_restore_count} before restore
+                                                {tr("{{pre_restore_count}} before restore", { pre_restore_count: g.pre_restore_count })}
                                             </span>
                                         )}
                                     </span>
@@ -116,7 +117,7 @@ export const BackupAssetList = ({
                                             onOpenAsset(g);
                                         }}
                                     >
-                                        View Backups
+                                        {tr("View Backups")}
                                         <svg width="14" height="14" viewBox="0 0 24 24"
                                              fill="none" stroke="currentColor" strokeWidth="2.5"
                                              strokeLinecap="round" strokeLinejoin="round">

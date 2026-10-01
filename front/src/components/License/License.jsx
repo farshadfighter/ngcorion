@@ -7,6 +7,7 @@ import {
 } from "../../store/licenseSlice";
 import { LicenseCard } from "./LicenseCard";
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
+import { t } from "../../i18n";
 
 export const License = () => {
     const dispatch = useDispatch();
@@ -61,7 +62,7 @@ export const License = () => {
             padding: "32px 28px",
             maxWidth: "960px",
             margin: "0 auto",
-            fontFamily: "'Segoe UI', sans-serif",
+            fontFamily: "var(--font-sans)",
         }}>
 
             {/* Alert */}
@@ -94,7 +95,7 @@ export const License = () => {
                     color: "white",
                 }}>
                     <div style={{ fontSize: "32px", marginBottom: "12px" }}>⏳</div>
-                    <div style={{ fontSize: "16px", opacity: 0.9 }}>Checking licence status...</div>
+                    <div style={{ fontSize: "16px", opacity: 0.9 }}>{t("Checking licence status...")}</div>
                 </div>
             ) : isValid && license ? (
                 /* ---- دارای لایسنس ---- */
@@ -149,7 +150,7 @@ export const License = () => {
                             </div>
                             <div>
                                 <div style={{ fontSize: "13px", opacity: 0.7, marginBottom: "4px", letterSpacing: "0.5px" }}>
-                                    ACTIVE LICENCE
+                                    {t("ACTIVE LICENCE")}
                                 </div>
                                 <div style={{ fontSize: "22px", fontWeight: "700", letterSpacing: "-0.3px" }}>
                                     {license.name}
@@ -168,7 +169,7 @@ export const License = () => {
                             gap: "6px",
                             backdropFilter: "blur(4px)",
                         }}>
-                            ✅ Active
+                            {t("✅ Active")}
                         </div>
                     </div>
 
@@ -259,20 +260,20 @@ export const License = () => {
                                 color: "#FCA5A5",
                                 marginBottom: "20px",
                             }}>
-                                <i className="fa-solid fa-lock" style={{ marginRight: "6px" }} />
-                                No Active Licence
+                                <i className="fa-solid fa-lock" style={{ marginInlineEnd: "6px" }} />
+                                {t("No Active Licence")}
                             </div>
                             <div style={{ fontSize: "22px", fontWeight: "700", marginBottom: "8px" }}>
-                                Activate Your Licence
+                                {t("Activate Your Licence")}
                             </div>
                             <div style={{ fontSize: "14px", opacity: 0.7, marginBottom: "28px", lineHeight: "1.6" }}>
-                                Enter your licence key below to unlock full access to all features.
+                                {t("Enter your licence key below to unlock full access to all features.")}
                             </div>
 
                             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                                 <input
                                     type="text"
-                                    placeholder="XXXX-XXXX-XXXX-XXXX"
+                                    placeholder={t("XXXX-XXXX-XXXX-XXXX")}
                                     value={licenseKey}
                                     onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
                                     disabled={isActivating}
@@ -309,12 +310,12 @@ export const License = () => {
                                         transition: "all 0.2s",
                                     }}
                                 >
-                                    {isActivating ? "⏳ Activating...": "Activate"}
+                                    {isActivating ? t("⏳ Activating..."): t("Activate")}
                                 </button>
                             </div>
 
                             <div style={{ marginTop: "16px", fontSize: "12px", opacity: 0.5 }}>
-                                Don't have a key? Contact your system administrator.
+                                {t("Don't have a key? Contact your system administrator.")}
                             </div>
                         </div>
 
@@ -327,7 +328,7 @@ export const License = () => {
                             minWidth: "200px",
                         }}>
                             <div style={{ fontSize: "13px", opacity: 0.6, marginBottom: "12px", fontWeight: "600", letterSpacing: "0.5px" }}>
-                                <i className="fa-solid fa-gift" /> FREE PILOT PLAN
+                                <i className="fa-solid fa-gift" /> {" "}{t("FREE PILOT PLAN")}
                             </div>
                             {Object.keys(MODULE_LABELS).map((module) => {
                                 const pilotLimit = LICENSE_TYPES.pilot?.limits[module];
@@ -363,11 +364,11 @@ export const License = () => {
                         borderRadius: "2px",
                     }} />
                     <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "700", color: "#111827" }}>
-                        Available Licence Plans
+                        {t("Available Licence Plans")}
                     </h2>
                 </div>
-                <p style={{ margin: "0 0 0 16px", fontSize: "14px", color: "#6B7280", paddingLeft: "16px" }}>
-                    Choose the plan that fits your organization's needs
+                <p style={{ margin: "0 0 0 16px", fontSize: "14px", color: "#6B7280", paddingInlineStart: "16px" }}>
+                    {t("Choose the plan that fits your organization's needs")}
                 </p>
             </div>
 
@@ -392,8 +393,8 @@ export const License = () => {
                 fontSize: "13px",
                 color: "#9CA3AF",
             }}>
-                <i className="fa-solid fa-shield-halved" style={{ marginRight: "6px" }} />
-                All licence operations are secured and validated against your server
+                <i className="fa-solid fa-shield-halved" style={{ marginInlineEnd: "6px" }} />
+                {t("All licence operations are secured and validated against your server")}
             </div>
         </div>
     );

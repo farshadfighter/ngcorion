@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../../i18n";
 
 /**
  * PermissionToast
@@ -15,7 +16,7 @@ export const PermissionToast = () => {
 
     useEffect(() => {
         const handlePermissionDenied = (e) => {
-            const message = e.detail?.message || "You do not have permission to perform this action.";
+            const message = e.detail?.message || t("You do not have permission to perform this action.");
 
             setToast({ message });
             setVisible(true);
@@ -103,7 +104,7 @@ export const PermissionToast = () => {
             <div className={`permission-toast ${!visible ? "hide" : ""}`}>
                 <span className="permission-toast-icon">🔒</span>
                 <div className="permission-toast-body">
-                    <div className="permission-toast-title">Access Denied</div>
+                    <div className="permission-toast-title">{t("Access Denied")}</div>
                     <div className="permission-toast-message">{toast.message}</div>
                 </div>
                 <button

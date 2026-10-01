@@ -119,7 +119,7 @@
 .topology-hint {
     position: absolute;
     bottom: 12px;
-    left: 12px;
+    inset-inline-start: 12px;
     padding: 6px 12px;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid #e5e7eb;

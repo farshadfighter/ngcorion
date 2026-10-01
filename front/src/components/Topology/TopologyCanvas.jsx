@@ -3,6 +3,7 @@ import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState } from "
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
 import IconLegend from "../shared/IconLegend.jsx";
+import { t } from "../../i18n";
 
 const GRID_COLUMNS = 5;
 const GRID_SPACING_X = 220;
@@ -67,7 +68,7 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDra
                 target: String(link.destination_asset_id),
                 sourceHandle: link.source_interface || undefined,
                 targetHandle: link.destination_interface || undefined,
-                label: link.vlan ? `VLAN ${link.vlan}` : undefined,
+                label: link.vlan ? t("VLAN {{vlan}}", { vlan: link.vlan }) : undefined,
                 type: "smoothstep",
                 pathOptions: { borderRadius: 8 },
                 style: {

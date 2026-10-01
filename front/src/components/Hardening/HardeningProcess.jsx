@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkHardeningSessionStatus, getDeviceName } from "../../store/hardeningSlice";
+import { t } from "../../i18n";
 
 // چند بار پشت سر هم خطا بیاد تا onError صدا زده بشه
 const MAX_CONSECUTIVE_ERRORS = 3;
@@ -108,14 +109,14 @@ export const HardeningProcess = ({ sessionData, onComplete, onError }) => {
             {/* Status Message */}
             <div className="process-message">
                 <div className="message-icon">ℹ️</div>
-                <p>Be patient, connection is being established, it may take a few moments.</p>
+                <p>{t("Be patient, connection is being established, it may take a few moments.")}</p>
             </div>
 
             {/* Session Info */}
             <div className="process-info">
-                <p><strong>Asset:</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})</p>
-                <p><strong>Device Type:</strong> {sessionData.device_type ? getDeviceName(sessionData.device_type) : "N/A"}</p>
-                <p><strong>Status:</strong> {currentSession?.status || sessionData.status || "Connecting..."}</p>
+                <p><strong>{t("Asset:")}</strong> {sessionData.asset_name || "N/A"} ({sessionData.target_ip || "N/A"})</p>
+                <p><strong>{t("Device Type:")}</strong> {sessionData.device_type ? getDeviceName(sessionData.device_type) : "N/A"}</p>
+                <p><strong>{t("Status:")}</strong> {currentSession?.status || sessionData.status || t("Connecting...")}</p>
             </div>
 
             {/* Refresh Button */}
@@ -136,7 +137,7 @@ export const HardeningProcess = ({ sessionData, onComplete, onError }) => {
                         transition:   "all 0.2s",
                     }}
                 >
-                    {isRefreshing ? "Refreshing..." : "Refresh"}
+                    {isRefreshing ? t("Refreshing...") : t("Refresh")}
                 </button>
             </div>
         </div>

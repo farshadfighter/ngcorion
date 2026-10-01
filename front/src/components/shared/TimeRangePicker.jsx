@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t as tr } from "../../i18n";
 
 // Presets map straight to NocService.pick_granularity's tier boundaries
 // (app/modules/noc/service.py) - 1h/6h stay in raw resolution, 24h/7d land
@@ -35,7 +36,7 @@ export function TimeRangePicker({ value, onChange, dark = false }) {
         onChange({
             from: new Date(customFrom).toISOString(),
             to: new Date(customTo).toISOString(),
-            label: "Custom",
+            label: tr("Custom"),
         });
     };
 
@@ -67,24 +68,24 @@ export function TimeRangePicker({ value, onChange, dark = false }) {
                         color: value?.label === "Custom" ? t.accentInk : t.text,
                     }}
                 >
-                    Custom
+                    {tr("Custom")}
                 </button>
             </div>
             {customOpen && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: t.textFaint, gap: 2 }}>
-                        From
+                        {tr("From")}
                         <input type="datetime-local" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
                             style={{ padding: "5px 7px", border: `1px solid ${t.border}`, borderRadius: 6, fontSize: 12, background: t.surface, color: t.text }} />
                     </label>
                     <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: t.textFaint, gap: 2 }}>
-                        To
+                        {tr("To")}
                         <input type="datetime-local" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
                             style={{ padding: "5px 7px", border: `1px solid ${t.border}`, borderRadius: 6, fontSize: 12, background: t.surface, color: t.text }} />
                     </label>
                     <button type="button" onClick={applyCustom}
                         style={{ alignSelf: "flex-end", padding: "6px 12px", fontSize: 12, fontWeight: 600, borderRadius: 6, border: `1px solid ${t.accent}`, background: t.accent, color: t.accentInk, cursor: "pointer" }}>
-                        Apply
+                        {tr("Apply")}
                     </button>
                 </div>
             )}

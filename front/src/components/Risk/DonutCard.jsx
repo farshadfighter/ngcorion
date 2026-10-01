@@ -1,5 +1,6 @@
 import React from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { n } from "../../i18n";
 
 /**
  * Donut chart card with legend (Figma: 571x529 card, r=100 ring with a 45 hole).
@@ -49,7 +50,7 @@ export const DonutCard = ({ title, data, colorFor, emptyMessage }) => {
                                 style={{ background: colorFor(entry, data) }}
                             />
                             {entry.label}:{" "}
-                            <span className="risk-legend-count">{entry.count}</span>
+                            <span className="risk-legend-count">{n(entry.count)}</span>
                         </span>
                     ))}
                 </div>

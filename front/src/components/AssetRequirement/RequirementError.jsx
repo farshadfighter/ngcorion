@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { clearMessages } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 /**
  * Surfaces failures from the requirement tabs' add/edit/delete calls.
@@ -23,7 +24,7 @@ export const RequirementError = () => {
 
     if (!error) return null;
 
-    const text = typeof error === "string" ? error : "Request failed";
+    const text = typeof error === "string" ? error : t("Request failed");
     // A 403 arrives as a bare detail string; say what to do about it.
     const isPermission = /permission|not authorized|forbidden|admin/i.test(text);
 
@@ -32,13 +33,13 @@ export const RequirementError = () => {
             <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
             <span>
                 {text}
-                {isPermission && " — this action needs an administrator account."}
+                {isPermission && t(" — this action needs an administrator account.")}
             </span>
             <button
                 type="button"
                 className="requirement-error-close"
                 onClick={() => dispatch(clearMessages())}
-                aria-label="Dismiss"
+                aria-label={t("Dismiss")}
             >
                 ×
             </button>

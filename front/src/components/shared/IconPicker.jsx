@@ -1,6 +1,7 @@
 import AssetIcon from "./AssetIcon.jsx";
 import { ASSET_ICONS, ICON_KEYS } from "./assetIcons.js";
 import "../../assets/AssetIcons.css";
+import { t } from "../../i18n";
 
 /**
  * Choose an icon, or "Automatic".
@@ -16,7 +17,7 @@ export function IconPicker({ value, onChange, automatic = "other", autoHint, lab
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{label}</span>
                 <span className="icon-picker-suggest">
-                    Automatic: {ASSET_ICONS[automatic]?.label || "Other"}{autoHint ? ` (${autoHint})` : ""}
+                    {t("Automatic:")}{" "} {ASSET_ICONS[automatic]?.label || t("Other")}{autoHint ? ` (${autoHint})` : ""}
                 </span>
             </div>
             <div className="icon-picker" role="radiogroup" aria-label={label}>
@@ -28,7 +29,7 @@ export function IconPicker({ value, onChange, automatic = "other", autoHint, lab
                     onClick={() => onChange("")}
                 >
                     <AssetIcon icon={automatic} size={36} />
-                    <span>Automatic</span>
+                    <span>{t("Automatic")}</span>
                 </button>
                 {ICON_KEYS.map((k) => (
                     <button

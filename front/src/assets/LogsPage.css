@@ -260,7 +260,7 @@
 .logs-clear-notice {
     position: relative;
     margin: 0 0 12px;
-    padding: 10px 36px 10px 14px;
+    padding-block: 10px 10px; padding-inline: 14px 36px;
     border: 1px solid #A7D8C0;
     border-radius: 6px;
     background: #E9F7F0;
@@ -276,7 +276,7 @@
 .logs-clear-notice-close {
     position: absolute;
     top: 6px;
-    right: 10px;
+    inset-inline-end: 10px;
     padding: 0;
     border: none;
     background: none;

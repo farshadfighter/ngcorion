@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import api from "../../config/api.js";
 import { formatBytes, formatDate, formatWhen, num } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
+import { t } from "../../i18n";
 
 const CHECK_LABEL = {
-    signature: "Signature",
-    integrity: "File intact",
-    format: "Package format",
-    freshness: "Fits this database",
+    signature: t("Signature"),
+    integrity: t("File intact"),
+    format: t("Package format"),
+    freshness: t("Fits this database"),
 };
 
 const STATUS_ICON = {
@@ -32,7 +33,7 @@ export function CvePackageImport({ file, onStarted, onClose }) {
             timeout: 0,
             onUploadProgress: (e) => alive && e.total && setSent(e.loaded / e.total),
         }).then(({ data }) => alive && setResult(data))
-          .catch((err) => alive && setError(err.response?.data?.detail || "The package could not be uploaded"));
+          .catch((err) => alive && setError(err.response?.data?.detail || t("The package could not be uploaded")));
         return () => { alive = false; };
     }, [file]);
 
@@ -42,7 +43,7 @@ export function CvePackageImport({ file, onStarted, onClose }) {
             const { data } = await api.post(`/api/cve/db/packages/${result.token}/import`);
             onStarted(data);
         } catch (err) {
-            setError(err.response?.data?.detail || "The import could not be started");
+            setError(err.response?.data?.detail || t("The import could not be started"));
             setStarting(false);
         }
     };
@@ -54,14 +55,14 @@ export function CvePackageImport({ file, onStarted, onClose }) {
         <div className="cvx-overlay" role="dialog" aria-modal="true" aria-labelledby="cvx-import-title">
             <section className="cvx-modal cvx-modal-wide">
                 <header className="cvx-modal-head">
-                    <h2 id="cvx-import-title">Import update package</h2>
+                    <h2 id="cvx-import-title">{t("Import update package")}</h2>
                     <p className="cvx-mono">{file.name} · {formatBytes(file.size)}</p>
                 </header>
 
                 <div className="cvx-modal-body">
                     {checking && (
                         <div className="cvx-uploading">
-                            <span>{sent < 1 ? `Uploading… ${Math.round(sent * 100)}%` : "Checking the package…"}</span>
+                            <span>{sent < 1 ? t("Uploading… {{round}}%", { round: Math.round(sent * 100) }) : t("Checking the package…")}</span>
                             <div className="cvx-bar"><span style={{ width: `${Math.max(3, Math.round(sent * 100))}%` }} /></div>
                         </div>
                     )}
@@ -70,7 +71,7 @@ export function CvePackageImport({ file, onStarted, onClose }) {
                     {result && (
                         <div className="cvx-import-grid">
                             <div>
-                                <h3 className="cvx-h3">Checks</h3>
+                                <h3 className="cvx-h3">{t("Checks")}</h3>
                                 <ul className="cvx-checks">
                                     {result.checks.map((c) => {
                                         const s = STATUS_ICON[c.status] || STATUS_ICON.fail;
@@ -88,30 +89,30 @@ export function CvePackageImport({ file, onStarted, onClose }) {
                             </div>
                             {m && (
                                 <aside className="cvx-summary-box">
-                                    <h3 className="cvx-h3">What it holds</h3>
-                                    <div className="cvx-kv"><span>Contents</span><b>{m.kind === "full" ? "The whole database" : `Changes since ${formatDate(m.since)}`}</b></div>
-                                    <div className="cvx-kv"><span>Up to date as of</span><b>{formatWhen(m.until)}</b></div>
-                                    <div className="cvx-kv"><span>CVE records</span><b>{num(m.counts?.cves)}</b></div>
-                                    <div className="cvx-kv"><span>Known exploited</span><b>{num(m.counts?.kev)}</b></div>
-                                    <div className="cvx-kv"><span>EPSS scores</span><b>{m.epss_date ? `${num(m.counts?.epss)} · ${formatDate(m.epss_date)}` : "—"}</b></div>
-                                    <div className="cvx-kv"><span>Exported from</span><b>{m.instance || "—"}</b></div>
-                                    <div className="cvx-kv"><span>Created</span><b>{formatWhen(m.created_at)}</b></div>
+                                    <h3 className="cvx-h3">{t("What it holds")}</h3>
+                                    <div className="cvx-kv"><span>{t("Contents")}</span><b>{m.kind === "full" ? t("The whole database") : t("Changes since {{since}}", { since: formatDate(m.since) })}</b></div>
+                                    <div className="cvx-kv"><span>{t("Up to date as of")}</span><b>{formatWhen(m.until)}</b></div>
+                                    <div className="cvx-kv"><span>{t("CVE records")}</span><b>{num(m.counts?.cves)}</b></div>
+                                    <div className="cvx-kv"><span>{t("Known exploited")}</span><b>{num(m.counts?.kev)}</b></div>
+                                    <div className="cvx-kv"><span>{t("EPSS scores")}</span><b>{m.epss_date ? `${num(m.counts?.epss)} · ${formatDate(m.epss_date)}` : "—"}</b></div>
+                                    <div className="cvx-kv"><span>{t("Exported from")}</span><b>{m.instance || "—"}</b></div>
+                                    <div className="cvx-kv"><span>{t("Created")}</span><b>{formatWhen(m.created_at)}</b></div>
                                 </aside>
                             )}
                         </div>
                     )}
                     {result && !result.importable && (
-                        <div className="cvx-note cvx-note-error">This package cannot be imported. Nothing was changed.</div>
+                        <div className="cvx-note cvx-note-error">{t("This package cannot be imported. Nothing was changed.")}</div>
                     )}
                 </div>
 
                 <footer className="cvx-modal-foot">
-                    <button type="button" className="cvx-btn" onClick={onClose}>Cancel</button>
+                    <button type="button" className="cvx-btn" onClick={onClose}>{t("Cancel")}</button>
                     <div className="cvx-foot-right">
-                        <span className="cvx-muted cvx-small">Admin only · recorded in the audit log</span>
+                        <span className="cvx-muted cvx-small">{t("Admin only · recorded in the audit log")}</span>
                         <button type="button" className="cvx-btn cvx-btn-primary" onClick={start}
                                 disabled={!result?.importable || starting}>
-                            <Icon name="upload" size={16} /> {starting ? "Starting…" : "Import"}
+                            <Icon name="upload" size={16} /> {starting ? t("Starting…") : t("Import")}
                         </button>
                     </div>
                 </footer>

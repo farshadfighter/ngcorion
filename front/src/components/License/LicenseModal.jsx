@@ -1,5 +1,6 @@
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS } from "./licenseConfig";
 import { getModuleLimit } from "./licenseHelpers";
+import { t } from "../../i18n";
 
 export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
     const license = LICENSE_TYPES[licenseType];
@@ -23,7 +24,7 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                 style={{
                     position: "fixed",
                     top: "50%",
-                    left: "50%",
+                    left:  "50%",
                     transform: "translate(-50%, -50%)",
                     backgroundColor: "#ffffff",
                     borderRadius: "16px",
@@ -61,8 +62,8 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                                 {license.name}
                             </div>
                             <div style={{ fontSize: "13px", color: "#6B7280", marginTop: "2px" }}>
-                                <i className="fa-regular fa-clock" style={{ marginRight: "6px" }} />
-                                licence time: {license.duration}
+                                <i className="fa-regular fa-clock" style={{ marginInlineEnd: "6px" }} />
+                                {t("licence time: {{duration}}", { duration: license.duration })}
                             </div>
                         </div>
                     </div>
@@ -90,7 +91,7 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                 {/* ماژول‌ها */}
                 <div style={{ marginBottom: "28px" }}>
                     <div style={{ fontSize: "13px", color: "#6B7280", marginBottom: "12px", fontWeight: "500" }}>
-                        Module Limits
+                        {t("Module Limits")}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {Object.keys(MODULE_LABELS).map((module) => (
@@ -140,7 +141,7 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                             cursor: "pointer",
                         }}
                     >
-                        Cancel
+                        {t("Cancel")}
                     </button>
                     <button
                         onClick={() => onActivate(licenseType)}
@@ -156,7 +157,7 @@ export const LicenseModal = ({ licenseType, onClose, onActivate }) => {
                             cursor: "pointer",
                         }}
                     >
-                        Activate Licence
+                        {t("Activate Licence")}
                     </button>
                 </div>
             </div>

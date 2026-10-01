@@ -7,6 +7,8 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer
 } from "recharts";
 import "../../assets/AssetManagementDashboard.css";
+import { t as tr, n } from "../../i18n";
+import { tv } from "../../i18n/backendText";
 
 const COLORS = ["#1e3a5f", "#2d9cdb", "#27ae60", "#8e44ad", "#f39c12", "#e74c3c", "#16a085", "#d35400"];
 
@@ -48,7 +50,7 @@ export const AssetManagementDashboard = () => {
         const typeMap = {};
         assets.forEach(a => {
             const assetType = assetTypes.find(t => t.id === a.asset_type_id);
-            const key = assetType?.type_name || a.asset_type_name || "Unknown";
+            const key = assetType?.type_name || a.asset_type_name || tr("Unknown");
             typeMap[key] = (typeMap[key] || 0) + 1;
         });
         const typeData = Object.entries(typeMap)
@@ -60,7 +62,7 @@ export const AssetManagementDashboard = () => {
         // Vendor chart
         const vendorMap = {};
         assets.forEach(a => {
-            const key = a.manufacturer || "Unknown";
+            const key = a.manufacturer || tr("Unknown");
             vendorMap[key] = (vendorMap[key] || 0) + 1;
         });
         const vendorData = Object.entries(vendorMap)
@@ -88,38 +90,38 @@ export const AssetManagementDashboard = () => {
         return (
             <div className="amd-loading">
                 <div className="amd-spinner" />
-                <p>Loading dashboard…</p>
+                <p>{tr("Loading dashboard…")}</p>
             </div>
         );
     }
 
     const statCards = [
-        { label: "Total Assets",        value: stats?.total     ?? 0, color: "#1e3a5f" },
-        { label: "Active Assets",        value: stats?.active    ?? 0, color: "#27ae60" },
-        { label: "Inactive Assets",      value: stats?.inactive  ?? 0, color: "#e74c3c" },
-        { label: "New Assets (30 Days)", value: stats?.newAssets ?? 0, color: "#f39c12" },
+        { label: tr("Total Assets"),        value: stats?.total     ?? 0, color: "#1e3a5f" },
+        { label: tr("Active Assets"),        value: stats?.active    ?? 0, color: "#27ae60" },
+        { label: tr("Inactive Assets"),      value: stats?.inactive  ?? 0, color: "#e74c3c" },
+        { label: tr("New Assets (30 Days)"), value: stats?.newAssets ?? 0, color: "#f39c12" },
         {
-            label: "Critical Assets",
+            label: tr("Critical Assets"),
             value: stats?.critical ?? 0,
             color: "#8e44ad",
             // Every other card on this page counts asset_inventory, and this is
             // the value the user picks in the asset form. The risk engine's own
             // computed level is a different number with its own card on the
             // Risk Intelligence screen.
-            hint: "Assets marked Critical in the asset form",
+            hint: tr("Assets marked Critical in the asset form"),
         },
     ];
 
     return (
         <div className="amd-container">
-            <h1 className="amd-title">Asset Management Dashboard</h1>
+            <h1 className="amd-title">{tr("Asset Management Dashboard")}</h1>
 
             {/* ── کارت‌های آماری ── */}
             <div className="amd-stats-grid">
                 {statCards.map((card) => (
                     <div key={card.label} className="amd-stat-card" title={card.hint}>
                         <div className="amd-stat-value" style={{ color: card.color }}>
-                            {card.value}
+                            {n(card.value)}
                         </div>
                         <div className="amd-stat-label">{card.label}</div>
                     </div>
@@ -131,7 +133,7 @@ export const AssetManagementDashboard = () => {
 
                 {/* Asset Type */}
                 <div className="amd-chart-card">
-                    <h3 className="amd-chart-title">Asset Type</h3>
+                    <h3 className="amd-chart-title">{tr("Asset Type")}</h3>
                     {stats?.typeData?.length > 0 ? (
                         <>
                             <ResponsiveContainer width="100%" height={200}>
@@ -155,19 +157,19 @@ export const AssetManagementDashboard = () => {
                                 {stats.typeData.map((item, i) => (
                                     <div key={item.name} className="amd-legend-item">
                                         <div className="amd-legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                                        <span className="amd-legend-text">{item.name}: <strong>{item.value}</strong></span>
+                                        <span className="amd-legend-text"><bdi>{tv(item.name)}</bdi>: <strong>{n(item.value)}</strong></span>
                                     </div>
                                 ))}
                             </div>
                         </>
                     ) : (
-                        <div className="amd-empty">No data</div>
+                        <div className="amd-empty">{tr("No data")}</div>
                     )}
                 </div>
 
                 {/* Vendor */}
                 <div className="amd-chart-card">
-                    <h3 className="amd-chart-title">Vendor</h3>
+                    <h3 className="amd-chart-title">{tr("Vendor")}</h3>
                     {stats?.vendorData?.length > 0 ? (
                         <>
                             <ResponsiveContainer width="100%" height={200}>
@@ -191,20 +193,20 @@ export const AssetManagementDashboard = () => {
                                 {stats.vendorData.map((item, i) => (
                                     <div key={item.name} className="amd-legend-item">
                                         <div className="amd-legend-dot" style={{ background: COLORS[i % COLORS.length] }} />
-                                        <span className="amd-legend-text">{item.name}: <strong>{item.value}</strong></span>
+                                        <span className="amd-legend-text"><bdi>{tv(item.name)}</bdi>: <strong>{n(item.value)}</strong></span>
                                     </div>
                                 ))}
                             </div>
                         </>
                     ) : (
-                        <div className="amd-empty">No data</div>
+                        <div className="amd-empty">{tr("No data")}</div>
                     )}
                 </div>
             </div>
 
             {/* ── Bar Chart OS ── */}
             <div className="amd-chart-card">
-                <h3 className="amd-chart-title">Operating Systems</h3>
+                <h3 className="amd-chart-title">{tr("Operating Systems")}</h3>
                 {stats?.osData?.length > 0 ? (
                     <ResponsiveContainer width="100%" height={250}>
                         <BarChart data={stats.osData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
@@ -217,7 +219,7 @@ export const AssetManagementDashboard = () => {
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="amd-empty">No OS data available</div>
+                    <div className="amd-empty">{tr("No OS data available")}</div>
                 )}
             </div>
         </div>

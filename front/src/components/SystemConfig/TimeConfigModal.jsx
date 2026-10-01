@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchSection, saveSection } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
 import { TIMEZONES } from "./timezones";
+import { t, uiLocale } from "../../i18n";
 
 const SECTION = "time";
 
@@ -47,14 +48,14 @@ const TimeForm = ({ stored, onClose }) => {
         setLocalError(null);
 
         if (!timezone) {
-            setLocalError("Select a timezone.");
+            setLocalError(t("Select a timezone."));
             return;
         }
 
         const payload = { timezone };
         if (mode === "manual") {
             if (!manualTime) {
-                setLocalError("Pick a date and time.");
+                setLocalError(t("Pick a date and time."));
                 return;
             }
             payload.use_ntp = false;
@@ -63,7 +64,7 @@ const TimeForm = ({ stored, onClose }) => {
             payload.use_ntp = useNtp;
             if (useNtp) {
                 if (!ntpServer.trim()) {
-                    setLocalError("Enter an NTP server address.");
+                    setLocalError(t("Enter an NTP server address."));
                     return;
                 }
                 payload.ntp_server = ntpServer.trim();
@@ -86,7 +87,7 @@ const TimeForm = ({ stored, onClose }) => {
 
     return (
         <ConfigModal
-            title="Time Configurations"
+            title={t("Time Configurations")}
             onClose={onClose}
             onSave={handleSave}
             isSaving={!!saving[SECTION]}
@@ -95,14 +96,14 @@ const TimeForm = ({ stored, onClose }) => {
         >
             {serverTime?.current_time && (
                 <p className="sc-hint">
-                    Server clock:{" "}
+                    {t("Server clock: ")}
                     <strong>
-                        {new Date(serverTime.current_time).toLocaleString()}
+                        {new Date(serverTime.current_time).toLocaleString(uiLocale())}
                     </strong>
                     {serverTime.system_timezone
                         ? ` (${serverTime.system_timezone})`
                         : ""}
-                    {serverTime.ntp_synchronized ? " · NTP synced" : ""}
+                    {serverTime.ntp_synchronized ? t(" · NTP synced") : ""}
                 </p>
             )}
 
@@ -112,24 +113,24 @@ const TimeForm = ({ stored, onClose }) => {
                     className={`sc-tab${mode === "timezone" ? " is-active" : ""}`}
                     onClick={() => setMode("timezone")}
                 >
-                    time zone
+                    {t("time zone")}
                 </button>
                 <button
                     type="button"
                     className={`sc-tab${mode === "manual" ? " is-active" : ""}`}
                     onClick={() => setMode("manual")}
                 >
-                    Manual Time
+                    {t("Manual Time")}
                 </button>
             </div>
 
             <label className="sc-field">
-                <span>time zone</span>
+                <span>{t("time zone")}</span>
                 <select
                     value={timezone}
                     onChange={(e) => setTimezone(e.target.value)}
                 >
-                    <option value="">select</option>
+                    <option value="">{t("select")}</option>
                     {TIMEZONES.map((tz) => (
                         <option key={tz} value={tz}>
                             {tz}
@@ -146,10 +147,10 @@ const TimeForm = ({ stored, onClose }) => {
                             checked={useNtp}
                             onChange={(e) => setUseNtp(e.target.checked)}
                         />
-                        <span>NTP</span>
+                        <span>{t("NTP")}</span>
                     </label>
                     <label className="sc-field sc-field-grow">
-                        <span>NTP IP Address</span>
+                        <span>{t("NTP IP Address")}</span>
                         <input
                             type="text"
                             value={ntpServer}
@@ -162,7 +163,7 @@ const TimeForm = ({ stored, onClose }) => {
                 </div>
             ) : (
                 <label className="sc-field">
-                    <span>Date and time</span>
+                    <span>{t("Date and time")}</span>
                     <input
                         type="datetime-local"
                         value={manualTime}
@@ -196,7 +197,7 @@ export const TimeConfigModal = ({ onClose }) => {
     if (!stored) {
         return (
             <ConfigModal
-                title="Time Configurations"
+                title={t("Time Configurations")}
                 onClose={onClose}
                 onSave={onClose}
                 isLoading={!!loading[SECTION]}

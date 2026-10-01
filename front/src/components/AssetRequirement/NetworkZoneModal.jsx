@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createZone } from "../../store/requirementSlice";
+import { t } from "../../i18n";
 
 export const NetworkZoneModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -16,7 +17,7 @@ export const NetworkZoneModal = ({ onClose }) => {
         const newErrors = {};
 
         if (!formData.zone_name.trim()) {
-            newErrors.zone_name = "Zone name is required";
+            newErrors.zone_name = t("Zone name is required");
         }
 
         setErrors(newErrors);
@@ -48,7 +49,7 @@ export const NetworkZoneModal = ({ onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Add Network Zone</h2>
+                    <h2>{t("Add Network Zone")}</h2>
                     <button className="modal-close" onClick={onClose}>
                         ×
                     </button>
@@ -57,14 +58,14 @@ export const NetworkZoneModal = ({ onClose }) => {
                 <form onSubmit={handleSubmit} className="modal-body">
                     <div className="form-group">
                         <label>
-                            Zone Name <span className="required">*</span>
+                           {t("Zone Name")}{" "} <span className="required">*</span>
                         </label>
                         <input
                             type="text"
                             name="zone_name"
                             value={formData.zone_name}
                             onChange={handleChange}
-                            placeholder="Enter zone name"
+                            placeholder={t("Enter zone name")}
                             className={errors.zone_name ? "error" : ""}
                         />
                         {errors.zone_name && (
@@ -73,22 +74,22 @@ export const NetworkZoneModal = ({ onClose }) => {
                     </div>
 
                     <div className="form-group">
-                        <label>Description</label>
+                        <label>{t("Description")}</label>
                         <textarea
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
-                            placeholder="Enter description"
+                            placeholder={t("Enter description")}
                             rows="3"
                         />
                     </div>
 
                     <div className="modal-footer">
                         <button type="button" className="btn-cancel" onClick={onClose}>
-                            Cancel
+                           {t("Cancel")}
                         </button>
                         <button type="submit" className="btn-submit">
-                            Create
+                           {t("Create")}
                         </button>
                     </div>
                 </form>
