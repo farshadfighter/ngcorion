@@ -66,7 +66,7 @@ export const AuditingWizard = ({ isOpen, onClose, onComplete }) => {
 
     return (
         <div className="modal-overlay wizard-overlay">
-            <div className="wizard-modal">
+            <div className={`wizard-modal ${currentStep === 1 ? "wizard-modal-wide" : ""}`}>
                 {/* Stepper */}
                 <div className="wizard-stepper">
                     <div className={`stepper-item ${currentStep >= 1 ? "active" : ""} ${currentStep > 1 ? "completed" : ""}`}>

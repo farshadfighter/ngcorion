@@ -96,6 +96,7 @@ from app.modules.license.router import router as license_router
 
 # Import backup router
 from app.modules.backup.router import router as backup_router
+from app.modules.targets.router import router as targets_router
 
 # Import topology router
 from app.modules.topology.router import router as topology_router
@@ -485,6 +486,9 @@ app.include_router(license_router)
 
 # Backup routes
 app.include_router(backup_router)
+
+# Audit / hardening target catalog (the picker in both forms)
+app.include_router(targets_router)
 
 # Topology routes
 app.include_router(topology_router)

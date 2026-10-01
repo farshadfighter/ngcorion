@@ -22,8 +22,9 @@ from typing import Optional, Sequence, Tuple
 
 ICON_KEYS: Tuple[str, ...] = (
     "router", "switch", "wireless", "load_balancer", "firewall",
-    "server", "hypervisor", "linux", "windows",
+    "server", "hypervisor", "container", "cluster", "linux", "windows",
     "web", "database", "storage",
+    "directory", "dns", "dhcp",
     "workstation", "iot", "internet", "other",
 )
 
@@ -38,11 +39,16 @@ _NAME_RULES: Sequence[Tuple[re.Pattern, str]] = [
     (re.compile(r"router|gateway|\bisr\b|\basr\b", re.I), "router"),
     (re.compile(r"wireless|wi-?fi|access ?point|\bap\b|\bwlc\b", re.I), "wireless"),
     (re.compile(r"switch|catalyst|nexus", re.I), "switch"),
+    (re.compile(r"kubernetes|\bk8s\b|openshift|rancher", re.I), "cluster"),
+    (re.compile(r"docker|podman|container", re.I), "container"),
     (re.compile(r"hypervisor|esxi|vmware|hyper-?v|proxmox|virtual ?host|vcenter|\bxen", re.I), "hypervisor"),
     (re.compile(r"database|\bdb\b|mongo|mssql|sql ?server|mysql|postgres|oracle|mariadb|redis", re.I), "database"),
     (re.compile(r"\bweb|apache|nginx|\biis\b|tomcat", re.I), "web"),
     (re.compile(r"storage|\bnas\b|\bsan\b|netapp|synology", re.I), "storage"),
-    (re.compile(r"windows|domain ?controller|active ?directory", re.I), "windows"),
+    (re.compile(r"active ?directory|domain ?controller|\bldap\b", re.I), "directory"),
+    (re.compile(r"\bdns\b", re.I), "dns"),
+    (re.compile(r"\bdhcp\b", re.I), "dhcp"),
+    (re.compile(r"windows", re.I), "windows"),
     (re.compile(r"linux|ubuntu|debian|centos|rhel|red ?hat|rocky|alma|suse|fedora", re.I), "linux"),
     (re.compile(r"workstation|desktop|laptop|\bpc\b|endpoint", re.I), "workstation"),
     (re.compile(r"\biot\b|camera|cctv|printer|sensor|\bplc\b|scada|voip|ip ?phone", re.I), "iot"),

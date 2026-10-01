@@ -8,10 +8,12 @@ const STATUS_DOT = { up: "#22c55e", down: "#ef4444" };
  *   planned - drawn dashed and hollow (a design device not built yet)
  *   status  - "up" | "down" adds a live-status dot (NOC)
  *   risk    - "high" | "critical" adds a small risk tag
+ *   color   - overrides the family colour (the target picker colours by category)
+ *   monogram - two letters on a corner tag, telling apart same-shape vendors
  */
-export function AssetIcon({ icon, size = 44, planned = false, status, risk, title }) {
+export function AssetIcon({ icon, size = 44, planned = false, status, risk, title, color: colorOverride, monogram }) {
     const key = iconKey(icon);
-    const color = iconColor(key);
+    const color = colorOverride || iconColor(key);
     const radius = Math.round(size * 0.25);
     const glyph = Math.round(size * 0.6);
     const dot = STATUS_DOT[status];
@@ -48,6 +50,18 @@ export function AssetIcon({ icon, size = 44, planned = false, status, risk, titl
                         borderRadius: "50%", background: dot, border: "2px solid #fff",
                     }}
                 />
+            )}
+            {monogram && (
+                <span
+                    aria-hidden="true"
+                    style={{
+                        position: "absolute", right: -5, bottom: -5, minWidth: 20, height: 16, padding: "0 4px",
+                        borderRadius: 5, background: "#fff", border: "1.5px solid #e2e8f0", color,
+                        fontSize: 9, fontWeight: 700, lineHeight: "13px", textAlign: "center", boxSizing: "border-box",
+                    }}
+                >
+                    {monogram}
+                </span>
             )}
             {showRisk && (
                 <span

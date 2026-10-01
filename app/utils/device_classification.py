@@ -122,3 +122,46 @@ def family_matches(inferred: Optional[str], requested: Optional[str]) -> bool:
     if requested in _SERVICE_FAMILIES and inferred in _HOST_FAMILIES:
         return True
     return False
+
+
+# ── Variant (version) detection ─────────────────────────────────────────────
+# The audit/hardening forms also pick a version for some families
+# (linux-ubuntu-22, windows-2022, mssql-2019). Detecting it from the asset lets
+# the picker mark which assets match the chosen version. Like the family, this
+# is a best-effort guess; None means "version not detected", never "wrong".
+
+import re  # noqa: E402
+
+_LINUX_DISTROS = (
+    ("ubuntu", re.compile(r"ubuntu", re.I), re.compile(r"\b(20|22|24)\.04\b")),
+    ("redhat", re.compile(r"red ?hat|rhel", re.I), re.compile(r"\b(8|9|10)(?:\.\d+)?\b")),
+    ("rocky", re.compile(r"rocky", re.I), re.compile(r"\b(8|9|10)(?:\.\d+)?\b")),
+)
+_WINDOWS_YEAR = re.compile(r"windows(?:\s*server)?\s*(20\d\d)", re.I)
+# Only a year written next to SQL Server counts - "SQL Server on Windows
+# Server 2022" must not read as SQL Server 2022.
+_MSSQL_YEAR = re.compile(r"(?:mssql|sql\s*server|sql)\s*(20\d\d)", re.I)
+
+
+def infer_device_variant(asset) -> Optional[str]:
+    """The granular device type for an asset (e.g. "linux-ubuntu-22"), or None
+    when its family has no versions or the version cannot be read."""
+    family = infer_device_family(asset)
+    os_name = getattr(asset, "os_name", None) or ""
+    os_version = getattr(asset, "os_version", None) or ""
+    text = _asset_text(asset) + " " + os_version.lower()
+    if family == "linux":
+        for distro, name_re, version_re in _LINUX_DISTROS:
+            if name_re.search(text):
+                # The version field is the most reliable; the name is a fallback
+                # ("Ubuntu 22.04 LTS" written into os_name).
+                m = version_re.search(os_version) or version_re.search(os_name)
+                return f"linux-{distro}-{m.group(1)}" if m else None
+        return None
+    if family == "windows":
+        m = _WINDOWS_YEAR.search(f"{os_name} {os_version}") or _WINDOWS_YEAR.search(text)
+        return f"windows-{m.group(1)}" if m else None
+    if family == "mssql":
+        m = _MSSQL_YEAR.search(text)
+        return f"mssql-{m.group(1)}" if m else None
+    return None

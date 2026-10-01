@@ -495,6 +495,13 @@ class Asset(Base):
         return infer_device_family(self)
 
     @property
+    def inferred_device_variant(self) -> Optional[str]:
+        """Best-effort version variant (linux-ubuntu-22, windows-2022, ...) for
+        families the audit/hardening picker asks a version for; else None."""
+        from app.utils.device_classification import infer_device_variant
+        return infer_device_variant(self)
+
+    @property
     def is_high_risk(self) -> bool:
         """True if risk level is high or critical."""
         if not self.risk_level:

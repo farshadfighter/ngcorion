@@ -12,10 +12,12 @@ export const ICON_FAMILIES = {
     network: { label: "Network", color: "#1d4ed8" },
     security: { label: "Security", color: "#c2410c" },
     compute: { label: "Compute", color: "#334155" },
+    platforms: { label: "Containers & virtualisation", color: "#0e7490" },
     services: { label: "Services", color: "#6d28d9" },
     storage: { label: "Storage", color: "#a16207" },
     endpoints: { label: "Endpoints", color: "#15803d" },
     external: { label: "External", color: "#0f766e" },
+    identity: { label: "Directory & network services", color: "#be185d" },
     other: { label: "Other", color: "#6b7280" },
 };
 
@@ -42,7 +44,15 @@ export const ASSET_ICONS = {
         label: "Physical server", family: "compute",
         d: "M6 3.5h12v17H6zM6 9.2h12M6 14.8h12M9 6.4h.01M9 12h.01M9 17.7h.01M12.5 6.4h3M12.5 12h3M12.5 17.7h3",
     },
-    hypervisor: { label: "Virtual host", family: "compute", d: "M9 4h11v11H9zM6.5 6.5v11h11M4 9v11h11" },
+    hypervisor: { label: "Virtual host", family: "platforms", d: "M9 4h11v11H9zM6.5 6.5v11h11M4 9v11h11" },
+    container: {
+        label: "Container host", family: "platforms",
+        d: "M3.5 11h17v6.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2zM5.5 7h4v4h-4zM9.5 7h4v4h-4zM9.5 3h4v4h-4zM13.5 7h4v4h-4z",
+    },
+    cluster: {
+        label: "Kubernetes cluster", family: "platforms",
+        d: "M12 3l7.5 3.6 1.8 8-5.2 6.4H7.9l-5.2-6.4 1.8-8zM14.5 12a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0M12 6v3.5M12 14.5V18M6.8 9.3l2.9 1.6M14.3 13.1l2.9 1.6M17.2 9.3l-2.9 1.6M9.7 13.1l-2.9 1.6",
+    },
     linux: { label: "Linux server", family: "compute", d: "M3.5 5h17v14h-17zM7 10l3 2.5L7 15M12.5 15h4.5" },
     windows: {
         label: "Windows server", family: "compute",
@@ -64,6 +74,15 @@ export const ASSET_ICONS = {
     iot: {
         label: "IoT device", family: "endpoints",
         d: "M8 8h8v8H8zM10.5 4v4M13.5 4v4M10.5 16v4M13.5 16v4M4 10.5h4M4 13.5h4M16 10.5h4M16 13.5h4",
+    },
+    directory: {
+        label: "Directory (AD)", family: "identity",
+        d: "M10 3h4v4h-4zM3.5 17h4v4h-4zM10 17h4v4h-4zM16.5 17h4v4h-4zM12 7v10M5.5 17v-3h13v3",
+    },
+    dns: { label: "DNS server", family: "identity", d: "M12 3v18M12 5.5h6.5l2 2.5-2 2.5H12M12 12.5H5.5l-2 2.5 2 2.5H12" },
+    dhcp: {
+        label: "DHCP server", family: "identity",
+        d: "M3.5 12V5a1.5 1.5 0 0 1 1.5-1.5h7l9 9-8.5 8.5zM7.5 7.5h.01M10 13l3-3M12 15l3-3",
     },
     internet: {
         label: "Internet", family: "external",
@@ -96,11 +115,16 @@ const NAME_RULES = [
     [/router|gateway|\bisr\b|\basr\b/i, "router"],
     [/wireless|wi-?fi|access ?point|\bap\b|\bwlc\b/i, "wireless"],
     [/switch|catalyst|nexus/i, "switch"],
+    [/kubernetes|\bk8s\b|openshift|rancher/i, "cluster"],
+    [/docker|podman|container/i, "container"],
     [/hypervisor|esxi|vmware|hyper-?v|proxmox|virtual ?host|vcenter|\bxen/i, "hypervisor"],
     [/database|\bdb\b|mongo|mssql|sql ?server|mysql|postgres|oracle|mariadb|redis/i, "database"],
     [/\bweb|apache|nginx|\biis\b|tomcat/i, "web"],
     [/storage|\bnas\b|\bsan\b|netapp|synology/i, "storage"],
-    [/windows|domain ?controller|active ?directory/i, "windows"],
+    [/active ?directory|domain ?controller|\bldap\b/i, "directory"],
+    [/\bdns\b/i, "dns"],
+    [/\bdhcp\b/i, "dhcp"],
+    [/windows/i, "windows"],
     [/linux|ubuntu|debian|centos|rhel|red ?hat|rocky|alma|suse|fedora/i, "linux"],
     [/workstation|desktop|laptop|\bpc\b|endpoint/i, "workstation"],
     [/\biot\b|camera|cctv|printer|sensor|\bplc\b|scada|voip|ip ?phone/i, "iot"],

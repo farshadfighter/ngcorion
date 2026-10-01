@@ -238,6 +238,8 @@ class AssetResponse(AssetBase):
     # Best-effort device family (cisco/fortinet/linux/...) for filtering the
     # asset list by selected service. None = unknown (Other/Unknown group).
     inferred_device_type: Optional[str] = None
+    # e.g. "linux-ubuntu-22" - lets the target picker mark version matches.
+    inferred_device_variant: Optional[str] = None
     # What the UI draws (override > type icon > keyword rules) and the short
     # vendor/OS label under it. Computed by app/core/asset_icons.py.
     resolved_icon: str = "other"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import api from "../../config/api.js";
+import TargetPicker from "../shared/TargetPicker.jsx";
 import { executeAudit } from "../../store/auditSlice";
 import { discoverFortinetVdoms, clearVdomDiscovery } from "../../store/hardeningSlice";
 import { FortinetBenchmarkModal } from "./FortinetBenchmarkModal";
@@ -14,43 +14,6 @@ import {
     needsSudo,
 } from "../Hardening/hardeningCredentials";
 
-// ─── Device type list ─────────────────────────────────────────────────────────
-const DEVICE_TYPES = [
-    { value: "cisco",           label: "Cisco Router/Switch",       group: "Network"    },
-    { value: "fortinet",        label: "FortiGate Firewall",        group: "Network"    },
-    { value: "apache",          label: "Apache Web Server",         group: "Web Server" },
-    { value: "mongodb",         label: "MongoDB",                   group: "Database"   },
-    { value: "mssql-2016",      label: "SQL Server 2016",           group: "Database"   },
-    { value: "mssql-2019",      label: "SQL Server 2019",           group: "Database"   },
-    { value: "mssql-2022",      label: "SQL Server 2022",           group: "Database"   },
-    { value: "windows-2016",    label: "Windows Server 2016",       group: "Windows"    },
-    { value: "windows-2022",    label: "Windows Server 2022",       group: "Windows"    },
-    { value: "windows-2025",    label: "Windows Server 2025",       group: "Windows"    },
-    { value: "linux-ubuntu-24", label: "Linux – Ubuntu 24.04 LTS", group: "Linux"      },
-    { value: "linux-ubuntu-22", label: "Linux – Ubuntu 22.04 LTS", group: "Linux"      },
-    { value: "linux-ubuntu-20", label: "Linux – Ubuntu 20.04 LTS", group: "Linux"      },
-    { value: "linux-redhat-10", label: "Linux – Red Hat 10",       group: "Linux"      },
-    { value: "linux-redhat-9",  label: "Linux – Red Hat 9",        group: "Linux"      },
-    { value: "linux-redhat-8",  label: "Linux – Red Hat 8",        group: "Linux"      },
-    { value: "linux-rocky-10",  label: "Linux – Rocky Linux 10",   group: "Linux"      },
-    { value: "linux-rocky-9",   label: "Linux – Rocky Linux 9",    group: "Linux"      },
-    { value: "linux-rocky-8",   label: "Linux – Rocky Linux 8",    group: "Linux"      },
-];
-
-// ─── Asset filter mapping ─────────────────────────────────────────────────────
-// The backend filters assets by device_type (?device_type=...) and returns each
-// asset's inferred_device_type (family). We collapse the granular device_type to
-// its family here to split returned assets into a "matches" and an
-// "Other / Unknown type" group.
-const normalizeFamily = (deviceType) => {
-    if (!deviceType) return null;
-    const d = deviceType.toLowerCase();
-    if (d.startsWith("linux"))   return "linux";
-    if (d.startsWith("windows")) return "windows";
-    if (d.startsWith("mssql"))   return "mssql";
-    return d; // cisco, fortinet, apache, mongodb
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 // Device-type predicates are imported from Hardening/hardeningCredentials.js —
 // auditing and hardening connect to the same devices the same way, and keeping
@@ -63,7 +26,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const vdomDiscovery = useSelector((state) => state.hardening.vdomDiscovery);
 
     const [formData, setFormData] = useState({
-        device_type:      "cisco",
+        device_type:      "", // chosen by the target picker
         asset_id:         "",
         job_name:         "",
         ssh_username:     "",
@@ -87,48 +50,39 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const [errors, setErrors] = useState({});
     const [showBenchmark, setShowBenchmark] = useState(false);
 
-    // Assets are fetched per selected device type (backend-filtered), kept in
-    // local state so we don't clobber the shared assets list used elsewhere.
-    const [assetOptions, setAssetOptions] = useState([]);
-    const [assetsLoading, setAssetsLoading] = useState(false);
+    // The picker owns the asset list; the form only keeps the chosen asset.
+    const [selectedAsset, setSelectedAsset] = useState(null);
 
     useEffect(() => {
         dispatch(clearVdomDiscovery());
     }, [dispatch]);
 
     const dt = formData.device_type;
-    const groups = [...new Set(DEVICE_TYPES.map((d) => d.group))];
 
-    // Fetch assets filtered by the selected device type from the backend.
-    useEffect(() => {
-        let cancelled = false;
-        setAssetsLoading(true);
-        api.get(`/api/assets/?device_type=${encodeURIComponent(dt)}`)
-            .then((res) => { if (!cancelled) setAssetOptions(res.data || []); })
-            .catch(() => { if (!cancelled) setAssetOptions([]); })
-            .finally(() => { if (!cancelled) setAssetsLoading(false); });
-        return () => { cancelled = true; };
-    }, [dt]);
 
-    const family = normalizeFamily(dt);
-    const matchedAssets = assetOptions.filter((a) => a.inferred_device_type === family);
-    const otherAssets   = assetOptions.filter((a) => a.inferred_device_type !== family);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
             [name]: value,
-            ...(name === "device_type" ? { asset_id: "", vdom: "" } : {}),
-            ...(name === "asset_id" ? { vdom: "" } : {}),
         }));
-        // Discovered VDOMs are asset/device-specific — drop them when either changes.
-        if (name === "device_type" || name === "asset_id") {
-            dispatch(clearVdomDiscovery());
-        }
         if (errors[name]) {
             setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
         }
+    };
+
+    // From the target picker: device_type and/or asset_id, plus the asset.
+    const handleTargetChange = (patch, asset) => {
+        setFormData((prev) => ({ ...prev, ...patch, vdom: "" }));
+        setSelectedAsset(asset || null);
+        // Discovered VDOMs are asset/device-specific - drop them on any change.
+        dispatch(clearVdomDiscovery());
+        setErrors((prev) => {
+            const n = { ...prev };
+            Object.keys(patch).forEach((k) => delete n[k]);
+            return n;
+        });
     };
 
     const handleDetectVdoms = () => {
@@ -150,6 +104,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
     const validate = () => {
         const newErrors = {};
 
+        if (!formData.device_type) newErrors.device_type = "Choose what to audit";
         if (!formData.asset_id) newErrors.asset_id = "Please select an asset";
         if (!formData.job_name || formData.job_name.trim().length < 2)
             newErrors.job_name = "Job name must be at least 2 characters";
@@ -200,7 +155,6 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             transport:        formData.transport,
         };
 
-        const selectedAsset = assetOptions.find((a) => a.id === assetId);
         const tempSessionData = {
             session_id:  "pending",
             asset_name:  selectedAsset?.asset_name || "N/A",
@@ -242,68 +196,15 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             <form onSubmit={handleSubmit} className="auditing-form">
                 <div className="form-grid-two-column">
 
-                    {/* ── Device Type ── */}
-                    <div className="form-group form-group-full">
-                        <label>
-                            Device Type / Service Type
-                            <span className="required" style={{ color: "#ef4444" }}>*</span>
-                        </label>
-                        <select
-                            name="device_type"
-                            value={dt}
-                            onChange={handleChange}
-                            className={`device-type-selector ${errors.device_type ? "error" : ""}`}
-                        >
-                            {groups.map((group) => (
-                                <optgroup key={group} label={group}>
-                                    {DEVICE_TYPES.filter((d) => d.group === group).map((d) => (
-                                        <option key={d.value} value={d.value}>
-                                            {d.label}
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* ── Asset (فیلتر شده بر اساس device type) ── */}
-                    <div className="form-group">
-                        <label>
-                            Select Asset
-                            <span className="required" style={{ color: "#ef4444" }}>*</span>
-                        </label>
-                        <select
-                            name="asset_id"
-                            value={formData.asset_id}
-                            onChange={handleChange}
-                            className={errors.asset_id ? "error" : ""}
-                            disabled={assetsLoading}
-                        >
-                            <option value="">
-                                {assetsLoading
-                                    ? "Loading assets…"
-                                    : `Select (${assetOptions.length} available)`}
-                            </option>
-                            {matchedAssets.length > 0 && (
-                                <optgroup label="Matching this device type">
-                                    {matchedAssets.map((asset) => (
-                                        <option key={asset.id} value={asset.id}>
-                                            {asset.asset_name} ({asset.ip_address || "No IP"})
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            )}
-                            {otherAssets.length > 0 && (
-                                <optgroup label="Other / Unknown type">
-                                    {otherAssets.map((asset) => (
-                                        <option key={asset.id} value={asset.id}>
-                                            {asset.asset_name} ({asset.ip_address || "No IP"})
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            )}
-                        </select>
-                        {errors.asset_id && <span className="error-message">{errors.asset_id}</span>}
+                    {/* ── Target + asset (spans both columns) ── */}
+                    <div className="form-group form-group-full" style={{ gridColumn: "1 / -1" }}>
+                        <TargetPicker
+                            mode="audit"
+                            deviceType={formData.device_type}
+                            assetId={formData.asset_id}
+                            onChange={handleTargetChange}
+                            errors={errors}
+                        />
                     </div>
 
                     {/* ── Job Name ── */}
