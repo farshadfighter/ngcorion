@@ -1,70 +1,134 @@
 """
-CVE (vulnerability) tracking model.
+Local CVE database.
 
-A local table of known CVEs, matched against the real asset inventory's
-`manufacturer`/`os_name`/`os_version` fields at read time (see
-app/modules/cve/matcher.py) - there is deliberately no persisted "match"
-table, since a match is only ever a function of (asset version, CVE record)
-and recomputing it on every read keeps it always consistent with the latest
-data in both tables, for an asset/CVE count this app operates at.
+A local copy of every published CVE (from NVD), enriched with the CISA
+Known Exploited Vulnerabilities list and FIRST EPSS scores, so findings work
+on networks without internet access. It is loaded once (from the snapshot
+shipped with a release, a full download, or a signed package) and kept
+current by online incremental updates or offline packages
+(app/modules/cve/jobs.py).
 
-Populated two ways:
-- A small, curated seed of well-documented, high-confidence CVEs for the
-  vendors this app already has audit/hardening modules for (see
-  app/modules/cve/seed_data.py) - so there is real, verifiable data with a
-  fresh install and no internet access.
-- An admin-triggered sync against the NVD REST API (app/modules/cve/
-  nvd_sync.py), which upserts by cve_id - deliberately not an always-on
-  background poller like NOC's, since a live NVD API call cannot be
-  assumed to succeed from every deployment network.
+Matching is by CPE: each CVE lists the vendor/product/version ranges it
+affects (CveCpeMatch), and each asset is described by the products it runs
+(inferred from its fields - app/modules/cve/cpe.py - plus AssetSoftware rows
+added by hand). Findings are computed at read time.
 """
-from sqlalchemy import Column, Integer, Float, String, Text, DateTime, UniqueConstraint
 from datetime import datetime
+
+from sqlalchemy import (
+    JSON, BigInteger, Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text,
+    UniqueConstraint,
+)
+
 from app.core.database import Base
 
 
-class CveRecord(Base):
-    """One row per (CVE, affected version branch) - a single CVE routinely
-    affects several disjoint version branches (e.g. FortiOS 7.2.x AND 7.0.x
-    AND 6.4.x for the same advisory), which a single min/max range can't
-    represent, so cve_id is intentionally NOT unique on its own; the
-    composite constraint below just stops an NVD re-sync from duplicating
-    the same branch row."""
+class CveEntry(Base):
+    __tablename__ = "cve_entries"
 
-    __tablename__ = "cve_records"
-    __table_args__ = (
-        UniqueConstraint(
-            "cve_id", "product_keyword", "affected_version_min", "affected_version_max",
-            name="uq_cve_records_branch",
-        ),
-    )
-
-    id = Column(Integer, primary_key=True, index=True)
-    cve_id = Column(String(20), nullable=False, index=True)  # e.g. "CVE-2022-42475"
-
-    vendor = Column(String(100), nullable=False)   # display only, e.g. "Fortinet"
-    product = Column(String(100), nullable=False)  # display only, e.g. "FortiOS"
-    # Matched case-insensitively as a substring against Asset.os_name (falling
-    # back to Asset.manufacturer) - same free-text keyword-match convention
-    # already used for asset_type classification elsewhere in this app (see
-    # front/src/components/shared/DeviceIcon.jsx, app/modules/design/suggestion.py).
-    product_keyword = Column(String(100), nullable=False, index=True)
-
-    # Inclusive version bounds. Either may be null (open-ended). Compared via
-    # app/modules/cve/matcher.py's lenient version parser - real semver
-    # (packaging.version) first, falling back to a leading-numeric-groups
-    # comparison for vendor version strings that aren't strict semver.
-    affected_version_min = Column(String(50), nullable=True)
-    affected_version_max = Column(String(50), nullable=True)
-    fixed_version = Column(String(50), nullable=True)
-
-    severity = Column(String(20), nullable=False)  # critical | high | medium | low
+    cve_id = Column(String(32), primary_key=True)
+    published = Column(DateTime, nullable=True)
+    last_modified = Column(DateTime, nullable=True, index=True)
+    status = Column(String(32), nullable=True)          # NVD vulnStatus
+    description = Column(Text, nullable=False, default="")
     cvss_score = Column(Float, nullable=True)
-    summary = Column(Text, nullable=False)
-    recommendation = Column(Text, nullable=True)
-    reference_url = Column(String(500), nullable=True)
-    published_date = Column(DateTime, nullable=True)
+    cvss_version = Column(String(8), nullable=True)
+    severity = Column(String(16), nullable=True, index=True)  # critical | high | medium | low | none
+    cvss_vector = Column(String(200), nullable=True)
+    cwe = Column(String(200), nullable=True)
+    references = Column(JSON, nullable=True)            # a few URLs, advisories first
 
-    source = Column(String(20), nullable=False, default="seed")  # seed | nvd_sync
-    created_at = Column(DateTime, default=datetime.utcnow)
+    # CISA Known Exploited Vulnerabilities
+    kev = Column(Boolean, nullable=False, default=False, index=True)
+    kev_added = Column(Date, nullable=True)
+    kev_due = Column(Date, nullable=True)
+    kev_ransomware = Column(String(16), nullable=True)
+    kev_action = Column(Text, nullable=True)
+
+    # FIRST EPSS
+    epss = Column(Float, nullable=True)
+    epss_percentile = Column(Float, nullable=True)
+
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CveCpeMatch(Base):
+    """One vulnerable CPE criterion of a CVE: a product, and either an exact
+    version or a version range."""
+
+    __tablename__ = "cve_cpe_matches"
+    __table_args__ = (Index("ix_cve_cpe_matches_vendor_product", "vendor", "product"),)
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    cve_id = Column(String(32), ForeignKey("cve_entries.cve_id", ondelete="CASCADE"), nullable=False, index=True)
+    part = Column(String(1), nullable=True)             # a (application) | o (OS) | h (hardware)
+    vendor = Column(String(120), nullable=False)
+    product = Column(String(160), nullable=False)
+    version = Column(String(80), nullable=True)         # exact version, or "*" / "-" for "see range"
+    start_incl = Column(String(80), nullable=True)
+    start_excl = Column(String(80), nullable=True)
+    end_incl = Column(String(80), nullable=True)
+    end_excl = Column(String(80), nullable=True)
+
+
+class AssetSoftware(Base):
+    """A product an asset runs, added by hand (e.g. Apache 2.4.52 on web-01)
+    when it cannot be inferred from the asset's own fields."""
+
+    __tablename__ = "asset_software"
+    __table_args__ = (UniqueConstraint("asset_id", "vendor", "product", "version", name="uq_asset_software"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), nullable=False, index=True)
+    vendor = Column(String(120), nullable=False)
+    product = Column(String(160), nullable=False)
+    version = Column(String(80), nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+CVE_JOB_ACTIVE = ("queued", "running")
+CVE_JOB_FINAL = ("succeeded", "failed", "cancelled")
+
+
+class CveUpdateJob(Base):
+    """One load/update/import/export of the CVE database."""
+
+    __tablename__ = "cve_update_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    kind = Column(String(16), nullable=False)           # online | full | offline | bundle | export
+    trigger = Column(String(16), nullable=False, default="manual")  # manual | automatic
+    status = Column(String(16), nullable=False, default="queued", index=True)
+    progress = Column(JSON, nullable=True)              # {"step", "done", "total", "message"}
+    stats = Column(JSON, nullable=True)                 # {"new", "changed", "kev", "epss", ...}
+    error = Column(Text, nullable=True)
+    file_name = Column(String(255), nullable=True)
+    requested_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, nullable=True)
+    finished_at = Column(DateTime, nullable=True)
+
+
+class CveSetting(Base):
+    """Key/value state: update watermark, auto-update schedule, NVD API key
+    (encrypted), this instance's package-signing key (encrypted)."""
+
+    __tablename__ = "cve_settings"
+
+    key = Column(String(64), primary_key=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CveTrustedKey(Base):
+    """A public key whose update packages this instance accepts."""
+
+    __tablename__ = "cve_trusted_keys"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(120), nullable=False)
+    public_key = Column(String(100), nullable=False)    # base64 raw Ed25519 public key
+    fingerprint = Column(String(64), nullable=False, unique=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

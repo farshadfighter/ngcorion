@@ -93,3 +93,6 @@ traefik/certs/*.crt
 .env.*.bak
 
 
+
+# CVE database snapshots (hundreds of MB) are release artifacts, never committed.
+data/cve/*.ngcve

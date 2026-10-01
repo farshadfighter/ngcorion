@@ -190,11 +190,12 @@ def test_fortinet_alias_cannot_break_out_of_quotes():
 # --- Stored XSS via CVE reference links --------------------------------------
 
 def test_nvd_reference_url_only_accepts_http_schemes():
-    from app.modules.cve.nvd_sync import _reference_url
-    assert _reference_url({"references": [{"url": "javascript:alert(1)"}]}) is None
-    assert _reference_url({"references": [
-        {"url": "javascript:alert(1)"}, {"url": "https://nvd.nist.gov/vuln/detail/CVE-1"},
-    ]}) == "https://nvd.nist.gov/vuln/detail/CVE-1"
+    from app.modules.cve.feeds import normalize_nvd_cve, safe_url
+    record = normalize_nvd_cve({"id": "CVE-1", "references": [
+        {"url": "javascript:alert(1)"}, {"url": "data:text/html,x"}, {"url": "https://nvd.nist.gov/vuln/detail/CVE-1"},
+    ]})
+    assert record["refs"] == ["https://nvd.nist.gov/vuln/detail/CVE-1"]
+    assert not safe_url("JavaScript:alert(1)") and safe_url("http://example.com/a")
 
 
 # --- License swap (business logic) -------------------------------------------

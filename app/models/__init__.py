@@ -113,8 +113,10 @@ from app.models.hardening_log import (
 from app.models.backup import DeviceBackup
 from app.models.backup_restore import BackupRestore
 
-# Import CVE model (standalone - matched against Asset at read time, no FK)
-from app.models.cve import CveRecord
+# Import CVE database models (local copy of NVD + KEV + EPSS; see app/models/cve.py)
+from app.models.cve import (
+    AssetSoftware, CveCpeMatch, CveEntry, CveSetting, CveTrustedKey, CveUpdateJob,
+)
 
 # Import topology models (depend on Asset and User)
 from app.models.topology import TopologyLink, TopologyNodePosition
@@ -228,7 +230,12 @@ __all__ = [
     "DeviceBackup",
     "BackupRestore",
     # CVE
-    "CveRecord",
+    "CveEntry",
+    "CveCpeMatch",
+    "AssetSoftware",
+    "CveUpdateJob",
+    "CveSetting",
+    "CveTrustedKey",
     # Topology models
     "TopologyLink",
     "TopologyNodePosition",

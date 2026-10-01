@@ -93,6 +93,10 @@ services:
       - ./traefik/certs:/app/traefik/certs
       - ./traefik/dynamic:/app/traefik/dynamic
       - /usr/bin/timedatectl:/usr/bin/timedatectl
+      # CVE database snapshot shipped with a release (bundle.ngcve), offered
+      # on the CVE page's first run. Read-only; an empty folder just means
+      # "no bundled snapshot" and the page offers a download or a package.
+      - ./data/cve:/app/data/cve:ro
       - /run/systemd:/run/systemd
     environment:
       DATABASE_URL: postgresql+psycopg://netease:${POSTGRES_PASSWORD:-1234}@postgres:5432/netease_db
@@ -131,6 +135,13 @@ services:
       # resolve to a path that is NOT the mounted volume and the app would come
       # up unlicensed. Must match the license_client_data mount point above.
       LICENSE_STORAGE_DIR: /var/lib/ngcorion/license
+      # CVE database (see .env.example): the key that signs release snapshots,
+      # and optional internal mirrors of the NVD / CISA KEV / EPSS feeds.
+      CVE_RELEASE_PUBLIC_KEY: ${CVE_RELEASE_PUBLIC_KEY:-}
+      NVD_API_URL: ${NVD_API_URL:-}
+      CVE_KEV_URL: ${CVE_KEV_URL:-}
+      CVE_EPSS_URL: ${CVE_EPSS_URL:-}
+      CVE_MAX_PACKAGE_MB: ${CVE_MAX_PACKAGE_MB:-2048}
     expose:
       - "8000"
     depends_on:

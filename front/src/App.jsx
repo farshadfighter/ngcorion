@@ -35,6 +35,7 @@ import { DesignDetail } from "./components/DesignConfiguration/DesignDetail";
 import { DesignCanvas } from "./components/DesignConfiguration/DesignCanvas";
 import { ScheduledJobsPage } from "./components/Scheduling/ScheduledJobsPage";
 import { CveFindings } from "./components/CVE/CveFindings";
+import { CveDatabase } from "./components/CVE/CveDatabase";
 import { NocDashboard } from "./components/NOC/NocDashboard";
 import { NocHostList } from "./components/NOC/NocHostList";
 import { NocHostDetail } from "./components/NOC/NocHostDetail";
@@ -242,6 +243,11 @@ function AppContent() {
                         <Route path="/cve" element={
                             <RequirePermission module="cve" name="CVE">
                                 <CveFindings />
+                            </RequirePermission>
+                        } />
+                        <Route path="/cve/database" element={
+                            <RequirePermission module="cve" name="CVE">
+                                <CveDatabase />
                             </RequirePermission>
                         } />
 

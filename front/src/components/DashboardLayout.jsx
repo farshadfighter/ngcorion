@@ -31,6 +31,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/design-suggestion"))    return "design-suggestion";
     if (pathname.startsWith("/architecture-validation")) return "architecture-validation";
     if (pathname.startsWith("/design-configuration"))    return "design-configuration";
+    if (pathname.startsWith("/cve/database"))         return "cve-database";
     if (pathname.startsWith("/cve"))                  return "cve";
     if (pathname.startsWith("/noc/dashboard"))        return "noc-dashboard";
     if (pathname.startsWith("/noc/hosts"))            return "noc-hosts";
@@ -133,7 +134,8 @@ export const DashboardLayout = () => {
         "design-suggestion":   "Suggested Design",
         "architecture-validation": "Architecture Validation",
         "design-configuration": "Design & Configuration",
-        "cve":                 "CVE Vulnerability Management",
+        "cve":                 "CVE Findings",
+        "cve-database":        "CVE Database",
         "noc-dashboard":       "NOC Dashboard",
         "noc-hosts":           "NOC Host",
         "user-management":     "User Management",
@@ -342,12 +344,16 @@ export const DashboardLayout = () => {
                                     <span className="nav-section-title">CVE</span>
                                 </div>
                             )}
-                            {isSidebarCollapsed && (
-                                <div className={`nav-item ${activeMenu === "cve" ? "active" : ""}`}
-                                     onClick={() => navigate("/cve")} title="CVE Vulnerability Management">
-                                    <img src="/icons/cve.svg" alt="" className="nav-icon-img" />
-                                </div>
-                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "cve" ? "active" : ""}`}
+                                 onClick={() => navigate("/cve")} title="CVE Findings">
+                                {isSidebarCollapsed && <img src="/icons/cve.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Findings</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "cve-database" ? "active" : ""}`}
+                                 onClick={() => navigate("/cve/database")} title="CVE Database">
+                                {isSidebarCollapsed && <img src="/icons/cve.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Database</span>}
+                            </div>
                         </>
                     )}
 

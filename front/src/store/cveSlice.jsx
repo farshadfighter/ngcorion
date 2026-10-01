@@ -1,78 +1,79 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 
-// =====================
-// Thunks
-// =====================
+const detail = (err, fallback) => err.response?.data?.detail || fallback;
 
 export const fetchCveFindings = createAsyncThunk(
     "cve/fetchFindings",
-    async (assetId, { rejectWithValue }) => {
+    async (_, { rejectWithValue }) => {
         try {
-            const url = assetId ? `/api/cve/findings/${assetId}` : "/api/cve/findings";
-            const res = await api.get(url);
-            return res.data; // CveFindingsResponse
+            return (await api.get("/api/cve/findings")).data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to load CVE findings");
+            return rejectWithValue(detail(err, "Could not load CVE findings"));
         }
     }
 );
 
-export const syncCveFromNvd = createAsyncThunk(
-    "cve/sync",
-    async (productKeyword, { rejectWithValue }) => {
+export const fetchCveDbStatus = createAsyncThunk(
+    "cve/fetchDbStatus",
+    async (_, { rejectWithValue }) => {
         try {
-            const res = await api.post("/api/cve/sync", { product_keyword: productKeyword || null });
-            return res.data; // CveSyncResponse
+            return (await api.get("/api/cve/db/status")).data;
         } catch (err) {
-            return rejectWithValue(err.response?.data?.detail || "Failed to sync from NVD");
+            return rejectWithValue(detail(err, "Could not load the CVE database status"));
         }
     }
 );
 
-// =====================
-// Slice
-// =====================
+export const fetchCveJobs = createAsyncThunk(
+    "cve/fetchJobs",
+    async (_, { rejectWithValue }) => {
+        try {
+            return (await api.get("/api/cve/db/jobs", { params: { limit: 30 } })).data;
+        } catch (err) {
+            return rejectWithValue(detail(err, "Could not load the update history"));
+        }
+    }
+);
 
 const cveSlice = createSlice({
     name: "cve",
     initialState: {
-        summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 },
+        summary: { total: 0, fix_now: 0, affected_assets: 0, critical: 0, high: 0, medium: 0, low: 0 },
         findings: [],
+        assets: [],
+        databaseLoaded: true,
         isLoading: false,
-        isSyncing: false,
+        loadedOnce: false,
         error: null,
-        successMessage: null,
-        lastSync: null, // CveSyncResponse
+        status: null,
+        statusError: null,
+        jobs: [],
     },
-    reducers: {
-        clearMessages: (state) => {
-            state.error = null;
-            state.successMessage = null;
-        },
-    },
+    reducers: {},
     extraReducers: (builder) => {
         builder
             .addCase(fetchCveFindings.pending, (state) => { state.isLoading = true; state.error = null; })
             .addCase(fetchCveFindings.fulfilled, (state, action) => {
                 state.isLoading = false;
+                state.loadedOnce = true;
                 state.summary = action.payload.summary;
                 state.findings = action.payload.findings;
+                state.assets = action.payload.assets;
+                state.databaseLoaded = action.payload.database_loaded;
             })
-            .addCase(fetchCveFindings.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
-
-            .addCase(syncCveFromNvd.pending, (state) => { state.isSyncing = true; state.error = null; })
-            .addCase(syncCveFromNvd.fulfilled, (state, action) => {
-                state.isSyncing = false;
-                state.lastSync = action.payload;
-                const added = action.payload.records_added;
-                const updated = action.payload.records_updated;
-                state.successMessage = `NVD sync complete: ${added} added, ${updated} updated.`
-                    + (action.payload.message ? ` ${action.payload.message}` : "");
+            .addCase(fetchCveFindings.rejected, (state, action) => {
+                state.isLoading = false;
+                state.loadedOnce = true;
+                state.error = action.payload;
             })
-            .addCase(syncCveFromNvd.rejected, (state, action) => { state.isSyncing = false; state.error = action.payload; });
+            .addCase(fetchCveDbStatus.fulfilled, (state, action) => {
+                state.status = action.payload;
+                state.statusError = null;
+            })
+            .addCase(fetchCveDbStatus.rejected, (state, action) => { state.statusError = action.payload; })
+            .addCase(fetchCveJobs.fulfilled, (state, action) => { state.jobs = action.payload; });
     },
 });
 
-export const { clearMessages } = cveSlice.actions;
 export default cveSlice.reducer;

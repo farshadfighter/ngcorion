@@ -26,6 +26,7 @@ from app.core.config import settings
 PURPOSE_SCHEDULED_JOBS = "scheduled-job-params"
 PURPOSE_NOC_SNMP = "noc-snmp-credentials"
 PURPOSE_SYSTEM_CONFIG = "system-config-secrets"
+PURPOSE_CVE = "cve-database-secrets"
 
 
 def _fernet_key(raw: bytes) -> Fernet:

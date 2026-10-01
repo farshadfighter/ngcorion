@@ -226,14 +226,16 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
-    # Seed curated CVE records (idempotent). Uses its own session so a
-    # failure here never blocks startup.
-    from app.modules.cve.seed import seed_cve_defaults
+    # CVE database jobs cut off by a restart wrote nothing (one transaction
+    # each); mark them so the page stops polling.
+    from app.modules.cve.jobs import fail_interrupted_cve_jobs
     db = SessionLocal()
     try:
-        seed_cve_defaults(db)
+        interrupted = fail_interrupted_cve_jobs(db)
+        if interrupted:
+            logger.warning("[Startup] marked %d interrupted CVE database job(s) as failed", interrupted)
     except Exception as e:
-        logger.warning(f"CVE seed skipped: {e}")
+        logger.warning(f"CVE job cleanup skipped: {e}")
     finally:
         db.close()
 
@@ -252,6 +254,8 @@ async def lifespan(app: FastAPI):
 
     start_noc_poller()
     start_metrics_retention_worker()
+    from app.modules.cve.jobs import start_auto_updater, stop_auto_updater
+    start_auto_updater()
 
     yield
     # Shutdown
@@ -259,6 +263,7 @@ async def lifespan(app: FastAPI):
     await stop_job_scheduler()
     await stop_noc_poller()
     await stop_metrics_retention_worker()
+    await stop_auto_updater()
 
 # Initialize FastAPI application
 app = FastAPI(
