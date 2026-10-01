@@ -20,6 +20,8 @@ import { AuditingList } from "./components/Auditing/AuditingList";
 import { UserManagement } from "./components/UserManagement/UserManagement";
 import { LogsPage } from "./components/Logs/LogsPage";
 import BackupPage from "./components/Backup/BackupPage";
+import { BackupOverview } from "./components/Backup/BackupOverview";
+import { RestoreHistory } from "./components/Backup/RestoreHistory";
 import { License } from "./components/License/License";
 import { RiskAsset } from "./components/Risk/RiskAsset";
 import { RiskIntelDashboard } from "./components/Risk/RiskIntelDashboard";
@@ -200,10 +202,20 @@ function AppContent() {
                             </RequirePermission>
                         } />
 
-                        {/* Configuration Backup */}
+                        {/* Backup & Restore */}
+                        <Route path="/backup/overview" element={
+                            <RequirePermission module="backup" name="Backup & Restore">
+                                <BackupOverview />
+                            </RequirePermission>
+                        } />
                         <Route path="/backup" element={
-                            <RequirePermission module="backup" name="Configuration Backup">
+                            <RequirePermission module="backup" name="Backup & Restore">
                                 <BackupPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/backup/restores" element={
+                            <RequirePermission module="backup" name="Backup & Restore">
+                                <RestoreHistory />
                             </RequirePermission>
                         } />
 

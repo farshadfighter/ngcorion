@@ -26,6 +26,8 @@ const menuFromPath = (pathname) => {
     // Operation & Device sub-item.
     if (pathname.startsWith("/hardening/overview"))   return "hardening-overview";
     if (pathname.startsWith("/hardening"))            return "hardening";
+    if (pathname.startsWith("/backup/overview"))      return "backup-overview";
+    if (pathname.startsWith("/backup/restores"))      return "backup-restores";
     if (pathname.startsWith("/backup"))               return "backup";
     if (pathname.startsWith("/topology"))             return "topology";
     if (pathname.startsWith("/design-suggestion"))    return "design-suggestion";
@@ -129,7 +131,9 @@ export const DashboardLayout = () => {
         "hardening-operation": "Operation and Device",
         "risk-intelligence":   "Risk Intelligence",
         "risk-asset":          "Risk Asset",
-        "backup":              "Configuration Backup",
+        "backup-overview":     "Backup & Restore",
+        "backup":              "Device Backups",
+        "backup-restores":     "Restore History",
         "topology":            "Topology",
         "design-suggestion":   "Suggested Design",
         "architecture-validation": "Architecture Validation",
@@ -253,6 +257,34 @@ export const DashboardLayout = () => {
                                  onClick={() => navigate("/hardening")} title="Operation and Device">
                                 {isSidebarCollapsed && <img src="/icons/hardening.svg" alt="" className="nav-icon-img" />}
                                 {!isSidebarCollapsed && <span>Operation & Device</span>}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── BACKUP & RESTORE ── */}
+                    {canReadBackup && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "backup-overview" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/backup/overview")}>
+                                    <img src="/icons/backup.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">Backup &amp; Restore</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup-overview" ? "active" : ""}`}
+                                 onClick={() => navigate("/backup/overview")} title="Backup Overview">
+                                {isSidebarCollapsed && <img src="/icons/backup.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Overview</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup" ? "active" : ""}`}
+                                 onClick={() => navigate("/backup")} title="Device Backups">
+                                {isSidebarCollapsed && <img src="/icons/backup.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Device Backups</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup-restores" ? "active" : ""}`}
+                                 onClick={() => navigate("/backup/restores")} title="Restore History">
+                                {isSidebarCollapsed && <img src="/icons/backup.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>Restore History</span>}
                             </div>
                         </>
                     )}
@@ -388,20 +420,6 @@ export const DashboardLayout = () => {
                              onClick={() => navigate("/settings/logs")} title="Logs">
                             {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
                             {!isSidebarCollapsed && <span>Logs</span>}
-                        </div>
-                    )}
-                    {canReadBackup && (
-                        <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "backup" ? "active" : ""}`}
-                             onClick={() => navigate("/backup")} title="Configuration Backup">
-                            {isSidebarCollapsed && (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                                     className="nav-icon-img" style={{ flexShrink: 0 }}>
-                                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
-                                    <polyline points="17 21 17 13 7 13 7 21" />
-                                    <polyline points="7 3 7 8 15 8" />
-                                </svg>
-                            )}
-                            {!isSidebarCollapsed && <span>Configuration Backup</span>}
                         </div>
                     )}
 

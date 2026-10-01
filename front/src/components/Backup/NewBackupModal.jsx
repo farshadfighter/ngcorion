@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../config/api.js';
 
-const NewBackupModal = ({ onClose, onSuccess }) => {
+const DEVICE_TYPES = [
+    ['cisco', 'Cisco'], ['fortinet', 'Fortinet'], ['linux', 'Linux'], ['apache', 'Apache'], ['mongodb', 'MongoDB'],
+];
+
+/** `assetId` / `deviceType` preselect the device (Backup now from the overview). */
+const NewBackupModal = ({ onClose, onSuccess, assetId, assetName, deviceType }) => {
     const [assets, setAssets] = useState([]);
     const [assetsLoading, setAssetsLoading] = useState(true);
     const [form, setForm] = useState({
-        asset_id: '',
-        device_type: 'cisco',
+        asset_id: assetId ? String(assetId) : '',
+        device_type: DEVICE_TYPES.some(([v]) => v === deviceType) ? deviceType : 'cisco',
         ssh_username: '',
         ssh_password: '',
         ssh_secret: '',
@@ -107,6 +112,9 @@ const NewBackupModal = ({ onClose, onSuccess }) => {
                                 disabled={assetsLoading}
                             >
                                 <option value="">{assetsLoading ? 'Loading assets…' : 'Select an asset'}</option>
+                                {assetId && !assets.some((a) => a.id === assetId) && (
+                                    <option value={assetId}>{assetName || `Asset #${assetId}`}</option>
+                                )}
                                 {assets.map((a) => (
                                     <option key={a.id} value={a.id}>
                                         {a.asset_name}{a.ip_address ? ` (${a.ip_address})` : ''}
@@ -118,8 +126,7 @@ const NewBackupModal = ({ onClose, onSuccess }) => {
                         <div>
                             <label style={labelStyle}>Device Type *</label>
                             <select name="device_type" value={form.device_type} onChange={handleChange} style={inputStyle}>
-                                <option value="cisco">Cisco</option>
-                                <option value="fortinet">Fortinet</option>
+                                {DEVICE_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                             </select>
                         </div>
 

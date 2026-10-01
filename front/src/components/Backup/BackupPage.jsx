@@ -142,7 +142,7 @@ export const BackupPage = () => {
     return (
         <div className="backup-container">
             <div className="backup-header">
-                <h1 className="page-title">Backup</h1>
+                <h1 className="page-title">Device Backups</h1>
                 <button className="btn-header" onClick={() => setShowNew(true)}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" strokeWidth="2">

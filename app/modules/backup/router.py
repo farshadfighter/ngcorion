@@ -19,6 +19,7 @@ from app.models import User, Asset, DeviceBackup
 from app.models.backup_restore import RESTORE_ACTIVE_STATUSES, BackupRestore
 from app.modules.backup.restore import service as restore_service
 from app.modules.backup.restore.drivers import SUPPORTED_FAMILIES, Credentials
+from app.modules.backup.overview import RESTORE_GROUPS, compute_overview, restore_history
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +321,76 @@ def list_restores(
     if asset_id:
         query = query.filter(BackupRestore.asset_id == asset_id)
     return [_restore_job_response(j) for j in query.order_by(BackupRestore.created_at.desc()).limit(limit)]
+
+
+# ============================================
+# Overview
+# ============================================
+
+class AttentionDevice(BaseModel):
+    asset_id: int
+    asset_name: Optional[str]
+    ip_address: Optional[str]
+    icon: str
+    family: str
+    last_backup_at: Optional[datetime]
+    state: str          # never | stale
+
+
+class FamilyCoverage(BaseModel):
+    family: str
+    label: str
+    total: int
+    fresh: int
+
+
+class BackupOverview(BaseModel):
+    stale_days: int
+    stale_before: datetime
+    supported: int
+    fresh: int
+    never: int
+    stale: int
+    by_family: List[FamilyCoverage]
+    attention: List[AttentionDevice]
+    attention_total: int
+    backups_30d: dict
+    daily: List[dict]
+    restores_30d: dict
+    recent_restores: List[RestoreJobResponse] = []
+
+
+@router.get("/overview", response_model=BackupOverview)
+def backup_overview(
+    current_user: User = Depends(require_permission("backup", "read")),
+    db: Session = Depends(get_db),
+):
+    """Coverage of the supported devices, what needs a backup, recent activity."""
+    data = compute_overview(db)
+    recent = db.query(BackupRestore).order_by(BackupRestore.created_at.desc(), BackupRestore.id.desc()).limit(5)
+    data["recent_restores"] = [_restore_job_response(j) for j in recent]
+    return data
+
+
+class RestoreHistoryPage(BaseModel):
+    items: List[RestoreJobResponse]
+    total: int
+    counts: dict
+
+
+@router.get("/restores/history", response_model=RestoreHistoryPage)
+def list_restore_history(
+    status: Optional[str] = Query(None, pattern="^(" + "|".join(RESTORE_GROUPS) + ")$"),
+    search: Optional[str] = Query(None, max_length=200),
+    days: Optional[int] = Query(90, ge=1, le=3650),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=200),
+    current_user: User = Depends(require_permission("backup", "read")),
+    db: Session = Depends(get_db),
+):
+    """Restore History page: filtered, paged, with a count per result."""
+    jobs, total, counts = restore_history(db, group=status, search=search, days=days, offset=offset, limit=limit)
+    return RestoreHistoryPage(items=[_restore_job_response(j) for j in jobs], total=total, counts=counts)
 
 
 @router.get("/restores/{job_id}", response_model=RestoreJobResponse)
