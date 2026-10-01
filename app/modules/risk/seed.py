@@ -21,14 +21,15 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SETTINGS = [
     # Factor weights - PDF sections 2/4:
-    #   RiskScore = (AC*0.20)+(AR*0.20)+(AZ*0.15)+(OP*0.10)+(AF*0.25)+(HF*0.10)
-    # These six must sum to 100.
+    #   RiskScore = AC*0.20 + AR*0.15 + AZ*0.15 + OP*0.10 + AF*0.20 + HF*0.05 + CV*0.15
+    # These seven must sum to 100 (migration 7a3c91e5d204 added CV).
     ("criticality_weight", "20", "int", "AC: weight of asset criticality in the final risk score (%)"),
-    ("asset_risk_weight", "20", "int", "AR: weight of the asset's own risk level in the final risk score (%)"),
+    ("asset_risk_weight", "15", "int", "AR: weight of the asset's own risk level in the final risk score (%)"),
     ("zone_weight", "15", "int", "AZ: weight of network zone exposure in the final risk score (%)"),
     ("open_port_weight", "10", "int", "OP: weight of open-port exposure in the final risk score (%)"),
-    ("audit_weight", "25", "int", "AF: weight of audit findings in the final risk score (%)"),
-    ("hardening_weight", "10", "int", "HF: weight of hardening fixes found in the final risk score (%)"),
+    ("audit_weight", "20", "int", "AF: weight of audit findings in the final risk score (%)"),
+    ("hardening_weight", "5", "int", "HF: weight of hardening fixes found in the final risk score (%)"),
+    ("vulnerability_weight", "15", "int", "CV: weight of known vulnerabilities (CVE findings) in the final risk score (%)"),
     # Per-severity weights for audit findings and hardening fixes found (PDF 7/8)
     ("severity_low_weight", "1", "int", "Finding weight for low severity"),
     ("severity_medium_weight", "4", "int", "Finding weight for medium severity"),

@@ -51,6 +51,7 @@ class BackupRestore(Base):
 
     requested_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    runner = Column(String(160), nullable=True)         # app/core/singleton.runner_tag()
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
 

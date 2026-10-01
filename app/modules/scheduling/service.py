@@ -15,6 +15,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Any
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.core.credential_crypto import encrypt_json, decrypt_json
@@ -187,6 +188,28 @@ class SchedulingService:
             .filter(ScheduledJob.enabled.is_(True), ScheduledJob.next_run_at <= now)
             .all()
         )
+
+    @staticmethod
+    def claim_due_jobs(db: Session, now: datetime) -> list[int]:
+        """Due jobs this caller may run. Each is claimed by moving its
+        next_run_at forward (a one-off job: disabling it) only if nobody moved
+        it first, so a job never starts twice - not from overlapping sweeps,
+        not from several server processes."""
+        claimed = []
+        for job in SchedulingService.due_jobs(db, now):
+            values = ({"enabled": False} if job.recurrence == RECURRENCE_ONCE else
+                      {"next_run_at": compute_next_run_at(job.recurrence, job.hour, job.minute,
+                                                          job.day_of_week, now)})
+            res = db.execute(
+                update(ScheduledJob)
+                .where(ScheduledJob.id == job.id, ScheduledJob.enabled.is_(True),
+                       ScheduledJob.next_run_at == job.next_run_at)
+                .values(**values)
+            )
+            if res.rowcount == 1:
+                claimed.append(job.id)
+        db.commit()
+        return claimed
 
     @staticmethod
     def run_job_now(db: Session, job: ScheduledJob) -> ScheduledJobRun:

@@ -208,6 +208,13 @@ class AssetRiskScore(Base):
     hardening_weight = Column(Numeric(5, 2), nullable=True)
     hardening_contribution = Column(Numeric(5, 2), nullable=True)
 
+    # Known-vulnerability factor (CV): CVE findings of the asset's products
+    vulnerability_score = Column(Numeric(5, 2), nullable=True)
+    vulnerability_weight = Column(Numeric(5, 2), nullable=True)
+    vulnerability_contribution = Column(Numeric(5, 2), nullable=True)
+    cve_findings_count = Column(Integer, default=0, nullable=False, server_default="0")
+    cve_kev_count = Column(Integer, default=0, nullable=False, server_default="0")
+
     # Result
     final_risk_score = Column(Numeric(5, 2), nullable=True)
     # informational, low, medium, high, critical
@@ -267,6 +274,7 @@ class AssetRiskHistory(Base):
     open_port_score = Column(Numeric(5, 2), nullable=True)
     audit_risk_score = Column(Numeric(5, 2), nullable=True)
     hardening_fix_score = Column(Numeric(5, 2), nullable=True)
+    vulnerability_score = Column(Numeric(5, 2), nullable=True)
 
     criticality_contribution = Column(Numeric(5, 2), nullable=True)
     asset_risk_contribution = Column(Numeric(5, 2), nullable=True)
@@ -274,6 +282,7 @@ class AssetRiskHistory(Base):
     open_port_contribution = Column(Numeric(5, 2), nullable=True)
     audit_contribution = Column(Numeric(5, 2), nullable=True)
     hardening_contribution = Column(Numeric(5, 2), nullable=True)
+    vulnerability_contribution = Column(Numeric(5, 2), nullable=True)
 
     audit_id = Column(Integer, nullable=True)
     reason = Column(String(255), nullable=True)  # what triggered the recalculation

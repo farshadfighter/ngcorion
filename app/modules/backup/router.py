@@ -13,6 +13,7 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
+from app.core.singleton import runner_tag
 from app.core.dependencies import get_current_user, require_permission
 from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, Asset, DeviceBackup
@@ -300,7 +301,7 @@ def start_restore(
         backup_id=backup.id, asset_id=asset.id, asset_name=asset.asset_name, device_ip=asset.ip_address,
         device_type=backup.device_type.lower(), status="queued", reason=body.reason.strip(),
         revert_minutes=body.revert_minutes, auto_revert="unavailable", events=[],
-        requested_by=current_user.id, created_at=datetime.utcnow(),
+        requested_by=current_user.id, created_at=datetime.utcnow(), runner=runner_tag(),
     )
     db.add(job)
     db.commit()

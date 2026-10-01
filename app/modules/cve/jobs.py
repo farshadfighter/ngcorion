@@ -31,9 +31,11 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Callable, Dict, Iterator, Optional
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.core.singleton import lock_key, runner_is_alive, runner_tag
 from app.models.cve import CVE_JOB_ACTIVE, CveEntry, CveUpdateJob
 from app.models.security_audit_log import log_action
 from app.modules.cve import feeds, package, settings, store
@@ -48,6 +50,7 @@ STEPS = {
     "export": ["export"],
 }
 PROGRESS_INTERVAL = 1.0          # seconds between progress writes
+CANCEL_CHECK_SECONDS = 2.0
 AUTO_CHECK_SECONDS = 300
 UPLOAD_TTL = timedelta(hours=24)
 KEEP_EXPORTS = 3
@@ -85,13 +88,16 @@ def active_job(db: Session) -> Optional[CveUpdateJob]:
 
 def create_job(db: Session, kind: str, user_id: Optional[int], trigger: str = "manual",
                file_name: Optional[str] = None) -> CveUpdateJob:
-    """Raises JobBusy when another job is queued or running."""
+    """Raises JobBusy when another job is queued or running - in any worker
+    process: the check and the insert run under a Postgres advisory lock."""
     with _lock:
+        db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": lock_key("cve-job-create")})
         running = active_job(db)
         if running is not None:
             raise JobBusy(f"Another database job (#{running.id}) is already running.")
         job = CveUpdateJob(kind=kind, trigger=trigger, status="queued", requested_by=user_id,
-                           file_name=file_name, progress={"steps": STEPS[kind], "step": STEPS[kind][0]})
+                           file_name=file_name, progress={"steps": STEPS[kind], "step": STEPS[kind][0]},
+                           runner=runner_tag())
         db.add(job)
         db.commit()
         db.refresh(job)
@@ -102,19 +108,25 @@ def create_job(db: Session, kind: str, user_id: Optional[int], trigger: str = "m
 def request_cancel(db: Session, job: CveUpdateJob) -> bool:
     if job.status not in CVE_JOB_ACTIVE:
         return False
-    flag = _cancel.get(job.id)
-    if flag is None:
-        # No thread owns it (e.g. the process restarted) - nothing to stop.
+    if not runner_is_alive(job.runner):
+        # The process that ran it is gone - nothing to stop.
         job.status, job.error, job.finished_at = "cancelled", "Cancelled", datetime.utcnow()
         db.commit()
-    else:
+        return True
+    # The job may run in another worker process: it reads this flag.
+    job.cancel_requested = True
+    db.commit()
+    flag = _cancel.get(job.id)
+    if flag is not None:
         flag.set()
     return True
 
 
 def fail_interrupted_cve_jobs(db: Session) -> int:
-    """A job cut off by a server restart wrote nothing (one transaction)."""
-    jobs = db.query(CveUpdateJob).filter(CveUpdateJob.status.in_(CVE_JOB_ACTIVE)).all()
+    """A job cut off by a server restart wrote nothing (one transaction).
+    Jobs another live worker process is running are left alone."""
+    jobs = [j for j in db.query(CveUpdateJob).filter(CveUpdateJob.status.in_(CVE_JOB_ACTIVE))
+            if not runner_is_alive(j.runner)]
     for job in jobs:
         job.status = "failed"
         job.error = "Interrupted by a server restart. The database was not changed - run it again."
@@ -136,11 +148,23 @@ class _Job:
         self.kind = self.row.kind
         self.flag = _cancel.get(job_id) or threading.Event()
         self._last = 0.0
+        self._last_cancel_check = 0.0
         self.stats: dict = {}
         self.file_name: Optional[str] = None
 
+    def cancelled(self) -> bool:
+        """The local flag, or - every couple of seconds - the job row, where
+        a Cancel handled by another worker process leaves its request."""
+        if not self.flag.is_set():
+            now = datetime.utcnow().timestamp()
+            if now - self._last_cancel_check >= CANCEL_CHECK_SECONDS:
+                self._last_cancel_check = now
+                if self.db.query(CveUpdateJob.cancel_requested).filter(CveUpdateJob.id == self.id).scalar():
+                    self.flag.set()
+        return self.flag.is_set()
+
     def check(self):
-        if self.flag.is_set():
+        if self.cancelled():
             raise Cancelled()
 
     def start(self):
@@ -200,6 +224,8 @@ def _run(job_id: int, session_factory: Callable, body: Callable[["_Job", Session
         j.start()
         body(j, work)
         j.finish("succeeded")
+        if j.kind != "export":
+            refresh_risk_scores(work)
     except Cancelled:
         work.rollback()
         j.finish("cancelled", "Cancelled - the database was not changed.")
@@ -216,6 +242,19 @@ def _run(job_id: int, session_factory: Callable, body: Callable[["_Job", Session
     finally:
         work.close()
         j.close()
+
+
+def refresh_risk_scores(db: Session) -> None:
+    """Known vulnerabilities are a risk factor (CV): after the database
+    changes, recalculate every asset's risk score. Never fails the job."""
+    import asyncio
+    from app.modules.risk.service import recalculate_all
+    try:
+        result = asyncio.run(recalculate_all(db, background=False, trigger_type="cve_database_update"))
+        logger.info("[CVE] risk scores recalculated: %s", result)
+    except Exception:  # noqa: BLE001
+        logger.exception("[CVE] risk recalculation after the update failed")
+        db.rollback()
 
 
 # ── online ───────────────────────────────────────────────────────────────
@@ -245,7 +284,7 @@ def _online(j: _Job, db: Session, full: bool) -> None:
             def on_page(done, total):
                 j.progress("download", done, total, force=True)
 
-            for records in client.pages(start, end, on_page=on_page, cancelled=j.flag.is_set):
+            for records in client.pages(start, end, on_page=on_page, cancelled=j.cancelled):
                 for r in records:
                     out.write(json.dumps(r, separators=(",", ":")) + "\n")
                 downloaded += len(records)

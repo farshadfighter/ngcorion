@@ -14,6 +14,17 @@ NGCorion Risk Score Calculation Specification (risk.pdf):
   AF  Audit Failure Risk     audit_sessions/audit_results 25%
   HF  Hardening Fix Found    hardening_actions            10%
 
+  plus, since the local CVE database:
+
+  CV  Known Vulnerabilities  CVE findings (app/modules/cve) - the worst
+                             finding of the asset's products: exploited in
+                             the wild 100, CVSS 9+/EPSS 50%+ 80, CVSS 7+/
+                             EPSS 10%+ 55, other 25, none 0
+
+  Default weights with CV: AC 20, AR 15, AZ 15, OP 10, AF 20, HF 5, CV 15
+  (migration 7a3c91e5d204 moves untouched installs there; customised weights
+  are kept, with CV at 0, until an admin sets it).
+
 Every component is normalized to 0-100 before the weights apply; the final
 score is rounded to the nearest integer and clamped to 0-100 (PDF sections 9,
 11, 12). All tunables (factor weights, severity weights, fallback scores, level
@@ -82,11 +93,12 @@ DEFAULT_SETTINGS = {
     # Factor weights (must sum to 100) — PDF section 2/4:
     #   RiskScore = AC*0.20 + AR*0.20 + AZ*0.15 + OP*0.10 + AF*0.25 + HF*0.10
     "criticality_weight": 20.0,      # AC
-    "asset_risk_weight": 20.0,       # AR
+    "asset_risk_weight": 15.0,       # AR
     "zone_weight": 15.0,             # AZ
     "open_port_weight": 10.0,        # OP
-    "audit_weight": 25.0,            # AF
-    "hardening_weight": 10.0,        # HF
+    "audit_weight": 20.0,            # AF
+    "hardening_weight": 5.0,         # HF
+    "vulnerability_weight": 15.0,    # CV
     # Finding severity weights (audit failures + hardening fixes found) —
     # PDF sections 7/8: Low 1, Medium 4, High 7, Critical 10.
     "severity_low_weight": 1.0,
@@ -441,6 +453,29 @@ class AssetRiskCalculationService:
         return risk_level_for_score(score, thresholds_from_settings(settings))
 
     # ------------------------------------------------------------------
+    # Known vulnerabilities (CV)
+    # ------------------------------------------------------------------
+
+    # CVE finding priority (app/modules/cve/findings.priority) -> CV score
+    _CVE_PRIORITY_SCORE = {1: 100.0, 2: 80.0, 3: 55.0, 4: 25.0}
+
+    def _vulnerability_score(self, db: Session, asset_id: int) -> dict:
+        """CV: the asset's worst CVE finding. 0 with no findings - also when
+        the CVE database is not loaded or no product of the asset is known,
+        since nothing is known to be vulnerable."""
+        from app.modules.cve import findings as cve_findings
+        from app.modules.cve import settings as cve_settings
+        if cve_settings.get(db, cve_settings.WATERMARK) is None:
+            return {"score": 0.0, "findings": 0, "kev": 0}
+        rows = cve_findings.compute(db, asset_id)["findings"]
+        worst = min((f["priority"] for f in rows), default=None)
+        return {
+            "score": self._CVE_PRIORITY_SCORE.get(worst, 0.0),
+            "findings": len(rows),
+            "kev": sum(1 for f in rows if f["kev"]),
+        }
+
+    # ------------------------------------------------------------------
     # Weighted aggregation
     # ------------------------------------------------------------------
 
@@ -452,6 +487,7 @@ class AssetRiskCalculationService:
         "open_port": "open_port_weight",
         "audit": "audit_weight",
         "hardening": "hardening_weight",
+        "vulnerability": "vulnerability_weight",
     }
 
     def _final_score(self, components: dict, settings: dict) -> tuple:
@@ -567,6 +603,9 @@ class AssetRiskCalculationService:
             if audit["is_unknown"]:
                 incomplete_reasons.append("missing_audit")
 
+            # STEP 7b: known vulnerabilities (CV) from the local CVE database
+            vuln = self._vulnerability_score(db, asset_id)
+
             # STEP 8: weighted final score — PDF sections 2/4/9:
             #   Risk = AC*0.20 + AR*0.20 + AZ*0.15 + OP*0.10 + AF*0.25 + HF*0.10
             criticality_weight = float(settings["criticality_weight"])
@@ -575,6 +614,7 @@ class AssetRiskCalculationService:
             open_port_weight = float(settings["open_port_weight"])
             audit_weight = float(settings["audit_weight"])
             hardening_weight = float(settings["hardening_weight"])
+            vulnerability_weight = float(settings["vulnerability_weight"])
 
             final_risk_score, contributions = self._final_score(
                 {
@@ -584,6 +624,7 @@ class AssetRiskCalculationService:
                     "open_port": open_port_score,
                     "audit": audit["score"],
                     "hardening": audit["hardening_score"],
+                    "vulnerability": vuln["score"],
                 },
                 settings,
             )
@@ -593,6 +634,7 @@ class AssetRiskCalculationService:
             open_port_contribution = contributions["open_port"]
             audit_contribution = contributions["audit"]
             hardening_contribution = contributions["hardening"]
+            vulnerability_contribution = contributions["vulnerability"]
 
             # STEP 9: level
             risk_level = self._risk_level(final_risk_score, settings)
@@ -642,6 +684,11 @@ class AssetRiskCalculationService:
             score_row.hardening_weight = hardening_weight
             score_row.hardening_contribution = round(hardening_contribution, 2)
             score_row.hardening_fixes_found_count = audit["fixes_found"]
+            score_row.vulnerability_score = vuln["score"]
+            score_row.vulnerability_weight = vulnerability_weight
+            score_row.vulnerability_contribution = round(vulnerability_contribution, 2)
+            score_row.cve_findings_count = vuln["findings"]
+            score_row.cve_kev_count = vuln["kev"]
             score_row.final_risk_score = final_risk_score
             score_row.risk_level = risk_level
             score_row.critical_findings_count = audit["findings"]["critical"]
@@ -668,12 +715,14 @@ class AssetRiskCalculationService:
                     open_port_score=open_port_score,
                     audit_risk_score=audit["score"],
                     hardening_fix_score=audit["hardening_score"],
+                    vulnerability_score=vuln["score"],
                     criticality_contribution=round(criticality_contribution, 2),
                     asset_risk_contribution=round(asset_risk_contribution, 2),
                     zone_contribution=round(zone_contribution, 2),
                     open_port_contribution=round(open_port_contribution, 2),
                     audit_contribution=round(audit_contribution, 2),
                     hardening_contribution=round(hardening_contribution, 2),
+                    vulnerability_contribution=round(vulnerability_contribution, 2),
                     audit_id=audit_id,
                     reason=trigger_type,
                     calculated_at=calculated_at,
@@ -695,6 +744,9 @@ class AssetRiskCalculationService:
                 "open_port_contribution": round(open_port_contribution, 2),
                 "audit_contribution": round(audit_contribution, 2),
                 "hardening_contribution": round(hardening_contribution, 2),
+                "vulnerability_score": vuln["score"],
+                "vulnerability_contribution": round(vulnerability_contribution, 2),
+                "cve_findings": vuln["findings"],
                 "incomplete_data": incomplete_data,
                 "incomplete_reasons": incomplete_reasons,
                 "audit_session_id": audit_id,

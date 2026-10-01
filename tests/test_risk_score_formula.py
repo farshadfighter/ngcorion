@@ -40,27 +40,25 @@ def settings() -> dict:
 
 
 # ----------------------------------------------------------------------
-# Weights (PDF sections 2/4): AC 20, AR 20, AZ 15, OP 10, AF 25, HF 10 = 100
+# Weights. The PDF (sections 2/4) defines six: AC 20, AR 20, AZ 15, OP 10,
+# AF 25, HF 10. With the CVE factor the defaults are AC 20, AR 15, AZ 15,
+# OP 10, AF 20, HF 5, CV 15 (migration 7a3c91e5d204).
 # ----------------------------------------------------------------------
 
-def test_factor_weights_are_pdf_values(settings):
-    assert float(settings["criticality_weight"]) == 20
-    assert float(settings["asset_risk_weight"]) == 20
-    assert float(settings["zone_weight"]) == 15
-    assert float(settings["open_port_weight"]) == 10
-    assert float(settings["audit_weight"]) == 25
-    assert float(settings["hardening_weight"]) == 10
+PDF_WEIGHTS = {"criticality_weight": 20, "asset_risk_weight": 20, "zone_weight": 15,
+               "open_port_weight": 10, "audit_weight": 25, "hardening_weight": 10,
+               "vulnerability_weight": 0}
+
+
+def test_factor_weights_defaults(settings):
+    assert {k: float(settings[k]) for k in PDF_WEIGHTS} == {
+        "criticality_weight": 20, "asset_risk_weight": 15, "zone_weight": 15, "open_port_weight": 10,
+        "audit_weight": 20, "hardening_weight": 5, "vulnerability_weight": 15}
 
 
 def test_factor_weights_sum_to_100(settings):
-    total = sum(
-        float(settings[k])
-        for k in (
-            "criticality_weight", "asset_risk_weight", "zone_weight",
-            "open_port_weight", "audit_weight", "hardening_weight",
-        )
-    )
-    assert total == 100
+    assert sum(float(settings[k]) for k in PDF_WEIGHTS) == 100
+    assert sum(PDF_WEIGHTS.values()) == 100
 
 
 # ----------------------------------------------------------------------
@@ -238,9 +236,11 @@ def test_custom_thresholds_are_honoured():
 # ----------------------------------------------------------------------
 
 def test_pdf_section9_example(settings):
+    # The spec's own weights (CV 0) reproduce its worked example exactly.
+    settings.update(PDF_WEIGHTS)
     components = {
         "criticality": 100, "asset_risk": 75, "zone": 80,
-        "open_port": 40, "audit": 72, "hardening": 60,
+        "open_port": 40, "audit": 72, "hardening": 60, "vulnerability": 100,
     }
     final, contrib = svc._final_score(components, settings)
     assert contrib["criticality"] == 20
@@ -254,11 +254,19 @@ def test_pdf_section9_example(settings):
     assert svc._risk_level(final, settings) == "high"
 
 
+def test_cve_factor_with_default_weights(settings):
+    components = {"criticality": 100, "asset_risk": 75, "zone": 80,
+                  "open_port": 40, "audit": 72, "hardening": 60, "vulnerability": 100}
+    final, contrib = svc._final_score(components, settings)
+    assert contrib["vulnerability"] == 15 and contrib["asset_risk"] == 11.25 and contrib["hardening"] == 3
+    assert final == round(20 + 11.25 + 12 + 4 + 14.4 + 3 + 15)
+
+
 def test_final_score_rounds_to_integer(settings):
     # A component set that yields a fractional weighted sum must round to int.
     # All-50 components -> 50 * (sum weights / 100) = 50.0
     components = {k: 50 for k in (
-        "criticality", "asset_risk", "zone", "open_port", "audit", "hardening"
+        "criticality", "asset_risk", "zone", "open_port", "audit", "hardening", "vulnerability"
     )}
     final, _ = svc._final_score(components, settings)
     assert final == 50
@@ -267,7 +275,7 @@ def test_final_score_rounds_to_integer(settings):
 
 def test_final_score_clamped_0_100(settings):
     hi = {k: 100 for k in (
-        "criticality", "asset_risk", "zone", "open_port", "audit", "hardening"
+        "criticality", "asset_risk", "zone", "open_port", "audit", "hardening", "vulnerability"
     )}
     lo = {k: 0 for k in hi}
     assert svc._final_score(hi, settings)[0] == 100

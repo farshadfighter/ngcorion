@@ -60,6 +60,16 @@ def _audit(db: Session, user: User, action: str, detail: str, target_id: Optiona
                target_id=target_id, result=result, detail=detail)
 
 
+def _refresh_risk(db: Session, asset_id: int) -> None:
+    """The asset's products changed, so may its known vulnerabilities (CV)."""
+    try:
+        from app.modules.risk.service import risk_calculation_service
+        risk_calculation_service.calculate(asset_id=asset_id, db=db, trigger_type="cve_software_changed")
+    except Exception:  # noqa: BLE001 - never fail the edit over the score
+        logger.exception("[CVE] risk recalculation for asset %s failed", asset_id)
+        db.rollback()
+
+
 def _busy(exc: jobs.JobBusy):
     return HTTPException(status_code=409, detail=str(exc))
 
@@ -122,6 +132,7 @@ def add_software(asset_id: int, body: SoftwareCreate, current_user: User = Depen
     db.refresh(row)
     _audit(db, current_user, "cve.software.add",
            f"{asset.asset_name}: {row.vendor} {row.product} {row.version}", target_id=asset_id)
+    _refresh_risk(db, asset_id)
     return row
 
 
@@ -135,6 +146,7 @@ def remove_software(asset_id: int, software_id: int, current_user: User = Depend
     db.delete(row)
     db.commit()
     _audit(db, current_user, "cve.software.remove", detail, target_id=asset_id)
+    _refresh_risk(db, asset_id)
 
 
 # ── database status ──────────────────────────────────────────────────────

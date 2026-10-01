@@ -107,15 +107,10 @@ from app.modules.noc.router import router as noc_router
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
 
-# Import design and configuration routers
+# Import design router. Configuration jobs, Deployment and Drift have no page
+# in the app any more, so their routers are not mounted (app/modules/
+# configuration, deployment, drift): no reachable API without a UI that uses it.
 from app.modules.design.router import router as design_router
-from app.modules.configuration.router import router as configuration_router
-
-# Import deployment router
-from app.modules.deployment.router import router as deployment_router
-
-# Import drift router
-from app.modules.drift.router import router as drift_router
 
 # Import CVE router
 from app.modules.cve.router import router as cve_router
@@ -213,7 +208,6 @@ async def lifespan(app: FastAPI):
         )
 
     start_heartbeat(client)
-    start_job_scheduler()
 
     # Seed default risk settings/zones (idempotent). Uses its own session so a
     # failure here never blocks startup.
@@ -252,18 +246,26 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
-    start_noc_poller()
-    start_metrics_retention_worker()
+    # Background loops run in ONE worker process (uvicorn runs several in
+    # production): each competes for a Postgres advisory lock, see
+    # app/core/singleton.py. The license heartbeat stays per process - each
+    # worker keeps its own in-memory license state.
+    from app.core.singleton import SingletonTask
     from app.modules.cve.jobs import start_auto_updater, stop_auto_updater
-    start_auto_updater()
+    singletons = [
+        SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
+        SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
+        SingletonTask("noc-metrics-retention", start_metrics_retention_worker, stop_metrics_retention_worker),
+        SingletonTask("cve-auto-update", start_auto_updater, stop_auto_updater),
+    ]
+    for task in singletons:
+        task.start()
 
     yield
     # Shutdown
     stop_heartbeat()
-    await stop_job_scheduler()
-    await stop_noc_poller()
-    await stop_metrics_retention_worker()
-    await stop_auto_updater()
+    for task in singletons:
+        await task.stop()
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -504,15 +506,8 @@ app.include_router(noc_router)
 # Architecture Validation routes
 app.include_router(architecture_validation_router)
 
-# Design and Configuration routes
+# Design routes (Suggested Design creates designs)
 app.include_router(design_router)
-app.include_router(configuration_router)
-
-# Deployment routes
-app.include_router(deployment_router)
-
-# Configuration Drift routes
-app.include_router(drift_router)
 
 # CVE Vulnerability Management routes
 app.include_router(cve_router)

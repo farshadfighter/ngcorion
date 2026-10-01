@@ -295,7 +295,7 @@ def test_asset_risk_from_asset_risk_level(db, factory):
     factory.profile(asset)
     score = calc(db, asset)
     assert float(score.asset_risk_score) == 75          # High -> 75
-    assert float(score.asset_risk_weight) == 20         # AR carries 20%
+    assert float(score.asset_risk_weight) == 15         # AR carries 15% (with the CVE factor)
 
 
 def test_missing_asset_risk_flagged_incomplete(db, factory):
@@ -699,10 +699,10 @@ def test_no_hardening_data_hf_zero(db, factory, settings):
 # ======================================================================
 
 def test_six_factor_formula(db, factory):
-    """AC=100, AR=75, AZ=80, OP=40, AF=100, HF=0
-        -> 20 + 15 + 12 + 4 + 25 + 0 = 76  -> High.
+    """AC=100, AR=75, AZ=80, OP=40, AF=100, HF=0, CV=0 (no CVE finding)
+        -> 20 + 11.25 + 12 + 4 + 20 + 0 + 0 = 67.25 -> 67 -> High.
 
-    76 sits in the 61-80 band, matching spec section 10's literal table.
+    67 sits in the 61-80 band, matching spec section 10's literal table.
     Also proves every required component score is persisted (spec section
     13), not just the final score.
     """
@@ -725,7 +725,8 @@ def test_six_factor_formula(db, factory):
     assert float(score.open_port_score) == 40
     assert float(score.audit_risk_score) == 100
     assert float(score.hardening_fix_score) == 0
-    assert float(score.final_risk_score) == 76
+    assert float(score.vulnerability_score) == 0 and score.cve_findings_count == 0
+    assert float(score.final_risk_score) == 67
     assert score.risk_level == "high"
     assert score.calculated_at is not None
 

@@ -275,14 +275,40 @@ def _exposure_intelligence(db: Session) -> SubScore:
     }
 
 
-def _vulnerability(db: Session) -> SubScore:
-    """6. Vulnerability: inverted average of asset_security_status.
-    vulnerability_score (0-10 CVSS-style, so x10 to reach the 0-100 scale).
+_CVE_PRIORITY_RISK = {1: 100.0, 2: 80.0, 3: 55.0, 4: 25.0}   # as the risk factor CV
 
-    There is no vulnerability scanner in the product yet; until one lands this
-    is whatever operators recorded by hand, and an empty table means unknown
-    (50) rather than perfect.
+
+def _vulnerability(db: Session) -> SubScore:
+    """6. Vulnerability: from the local CVE database - 100 minus the average,
+    over the assets whose products are known, of each asset's worst CVE
+    finding (exploited in the wild 100, CVSS 9+/EPSS 50%+ 80, CVSS 7+/EPSS
+    10%+ 55, other 25, none 0).
+
+    Before the CVE database is loaded, falls back to the hand-recorded
+    asset_security_status.vulnerability_score (0-10, inverted); with neither,
+    unknown (50) rather than perfect.
     """
+    from app.modules.cve import findings as cve_findings
+    from app.modules.cve import settings as cve_settings
+
+    if cve_settings.get(db, cve_settings.WATERMARK) is not None:
+        result = cve_findings.compute(db)
+        assessed = [a for a in result["assets"] if a["products"]]
+        if not assessed:
+            return UNKNOWN_SCORE, "no asset has a known product to match CVEs against", {
+                "source": "cve", "assessed_assets": 0}
+        worst = {}
+        for f in result["findings"]:
+            worst[f["asset_id"]] = min(f["priority"], worst.get(f["asset_id"], 9))
+        risk = [_CVE_PRIORITY_RISK.get(worst.get(a["asset_id"]), 0.0) for a in assessed]
+        return _clamp(round(100.0 - sum(risk) / len(risk), 2)), None, {
+            "source": "cve",
+            "assessed_assets": len(assessed),
+            "vulnerable_assets": len(worst),
+            "findings": result["summary"]["total"],
+            "exploited_in_the_wild": result["summary"]["fix_now"],
+        }
+
     row = (
         db.query(
             func.avg(AssetSecurityStatus.vulnerability_score),
@@ -293,9 +319,10 @@ def _vulnerability(db: Session) -> SubScore:
     )
     average, assessed = (row[0], int(row[1] or 0)) if row else (None, 0)
     if average is None:
-        return UNKNOWN_SCORE, "no vulnerability data", {"assessed_assets": 0}
+        return UNKNOWN_SCORE, "no vulnerability data (load the CVE database)", {"assessed_assets": 0}
 
     return _clamp(round(100.0 - float(average) * 10.0, 2)), None, {
+        "source": "manual",
         "assessed_assets": assessed,
         "avg_vulnerability_score": round(float(average), 2),
     }

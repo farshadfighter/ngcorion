@@ -108,6 +108,9 @@ class CveUpdateJob(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
+    # Set by Cancel; the job checks it, whichever worker process runs it.
+    cancel_requested = Column(Boolean, nullable=False, default=False, server_default="false")
+    runner = Column(String(160), nullable=True)         # app/core/singleton.runner_tag()
 
 
 class CveSetting(Base):

@@ -46,8 +46,7 @@ class JobScheduler:
     async def _sweep_once(self) -> None:
         db = SessionLocal()
         try:
-            due = SchedulingService.due_jobs(db, datetime.utcnow())
-            job_ids = [job.id for job in due]
+            job_ids = SchedulingService.claim_due_jobs(db, datetime.utcnow())
         finally:
             db.close()
 

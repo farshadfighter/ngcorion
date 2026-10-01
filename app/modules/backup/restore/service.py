@@ -325,8 +325,11 @@ def start_restore(job_id: int, creds: Credentials, expected_fingerprint: str,
 
 def fail_interrupted_restores(db: Session) -> int:
     """Jobs left mid-run by a server restart cannot resume (credentials were only
-    in memory). The device's own auto-revert covers an unconfirmed change."""
-    jobs = db.query(BackupRestore).filter(BackupRestore.status.in_(RESTORE_ACTIVE_STATUSES)).all()
+    in memory). The device's own auto-revert covers an unconfirmed change.
+    Restores another live worker process is running are left alone."""
+    from app.core.singleton import runner_is_alive
+    jobs = [j for j in db.query(BackupRestore).filter(BackupRestore.status.in_(RESTORE_ACTIVE_STATUSES))
+            if not runner_is_alive(j.runner)]
     for job in jobs:
         events = list(job.events or [])
         events.append({"at": datetime.utcnow().isoformat() + "Z", "step": "error", "status": "failed",

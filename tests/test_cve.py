@@ -552,6 +552,12 @@ class FakeClient:
 
 def _feeds(monkeypatch, client, kev=KEV_FEED, epss=EPSS_CSV):
     monkeypatch.setattr(jobs, "make_client", lambda api_key: client)
+    # Recalculating every asset's risk would write to this database's other assets.
+    client.risk_refreshes = 0
+
+    def refresh(db):
+        client.risk_refreshes += 1
+    monkeypatch.setattr(jobs, "refresh_risk_scores", refresh)
     monkeypatch.setattr(feeds, "fetch_kev", lambda: feeds.parse_kev(kev))
     monkeypatch.setattr(feeds, "fetch_epss", lambda: feeds.parse_epss_csv(epss))
 
@@ -586,6 +592,7 @@ class TestJobs:
         assert job.stats["new"] == 3 and job.stats["kev"] == 2 and job.stats["epss"] == 3
         assert job.stats["mode"] == "full" and client.calls[0][0] is None
         assert job.progress["step"] == "done"
+        assert client.risk_refreshes == 1                       # risk scores follow the new data
         assert _get(CveEntry, "CVE-2024-21762").kev
         s = SessionLocal()
         try:
@@ -638,15 +645,38 @@ class TestJobs:
         assert job.status == "succeeded" and "previous KEV list was kept" in job.stats["warnings"][0]
 
     def test_only_one_job_at_a_time(self, clean):
-        _job("online", clean)
+        job_id = _job("online", clean)
         with pytest.raises(jobs.JobBusy):
             _job("offline", clean)
         s = SessionLocal()
         try:
+            # Still owned by a live process (this one): a worker starting up leaves it alone.
+            assert jobs.fail_interrupted_cve_jobs(s) == 0
+            s.get(CveUpdateJob, job_id).runner = "old-host:1:1|999999"     # a server run that is gone
+            s.commit()
             assert jobs.fail_interrupted_cve_jobs(s) == 1
         finally:
             s.close()
         _job("export", clean)   # free again
+
+    def test_cancel_reaches_a_job_in_another_process(self, clean, monkeypatch):
+        """Cancel is stored on the job row; the running job reads it there."""
+        monkeypatch.setattr(jobs, "CANCEL_CHECK_SECONDS", 0)
+        holder = {}
+
+        def cancel_from_elsewhere(n):
+            if n == 1:
+                s = SessionLocal()
+                try:
+                    jobs._cancel.pop(holder["id"], None)       # no in-process flag to set
+                    assert jobs.request_cancel(s, s.get(CveUpdateJob, holder["id"]))
+                finally:
+                    s.close()
+        _feeds(monkeypatch, FakeClient([nvd_page(FORTI), nvd_page(IOSXE)], on_page=cancel_from_elsewhere))
+        holder["id"] = _job("online", clean)
+        jobs.run_online(holder["id"])
+        assert _get(CveUpdateJob, holder["id"]).status == "cancelled"
+        assert _get(CveEntry, "CVE-2024-21762") is None
 
     def test_export_then_import_on_an_empty_database(self, clean, monkeypatch):
         _feeds(monkeypatch, FakeClient([nvd_page(FORTI, IOSXE, APACHE)]))
@@ -893,3 +923,47 @@ def test_package_upload_over_http(db, admin, data_dir, tmp_path):
     status, out, reads = post(b"file_name=..%2F..%2Fp.ngcve")
     assert status == 200, out
     assert out["importable"] and out["file_name"] == "p.ngcve" and reads
+
+
+class TestRiskAndDashboard:
+    """Known vulnerabilities feed the asset risk score (factor CV) and the
+    organisation security score (Vulnerability sub-score)."""
+
+    def test_risk_factor(self, db):
+        from app.modules.risk.service import risk_calculation_service
+        _loaded_db(db)
+        vulnerable = _asset(db, os_name="FortiOS", os_version="7.2.5")    # KEV CVE-2024-21762
+        patched = _asset(db, os_name="FortiOS", os_version="7.2.8")
+        a = risk_calculation_service.calculate(asset_id=vulnerable.id, db=db, trigger_type="test")
+        b = risk_calculation_service.calculate(asset_id=patched.id, db=db, trigger_type="test")
+        assert float(a.vulnerability_score) == 100 and a.cve_kev_count == 1 and a.cve_findings_count == 1
+        assert float(a.vulnerability_contribution) == float(a.vulnerability_weight)   # 100% of its share
+        assert float(b.vulnerability_score) == 0 and b.cve_findings_count == 0
+        assert float(a.final_risk_score) > float(b.final_risk_score)
+
+    def test_risk_factor_is_zero_before_the_database_is_loaded(self, db):
+        from app.modules.risk.service import risk_calculation_service
+        _load(db, FORTI)                                   # records, but no watermark: not loaded
+        asset = _asset(db, os_name="FortiOS", os_version="7.2.5")
+        score = risk_calculation_service.calculate(asset_id=asset.id, db=db, trigger_type="test")
+        assert float(score.vulnerability_score) == 0
+
+    def test_dashboard_sub_score(self, db):
+        from app.modules.dashboard.security_score_router import _vulnerability
+        score, reason, detail = _vulnerability(db)
+        assert detail.get("source") != "cve"               # not loaded yet: manual data or unknown
+        _loaded_db(db)
+        _asset(db, os_name="FortiOS", os_version="7.2.5")
+        score, reason, detail = _vulnerability(db)
+        assert detail["source"] == "cve" and reason is None
+        assert detail["vulnerable_assets"] >= 1 and detail["exploited_in_the_wild"] >= 1
+        assert 0 <= score < 100
+
+    def test_software_change_recalculates_the_asset(self, db, admin):
+        from app.models.risk import AssetRiskScore
+        from app.modules.cve.schemas import SoftwareCreate
+        _loaded_db(db)
+        web = _asset(db, os_name="Ubuntu 22.04", type_name="Server")
+        router_mod.add_software(web.id, SoftwareCreate(vendor="apache", product="http_server", version="2.4.49"), admin, db)
+        score = db.query(AssetRiskScore).filter_by(asset_id=web.id).one()
+        assert score.cve_kev_count == 1 and float(score.vulnerability_score) == 100

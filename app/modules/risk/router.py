@@ -59,7 +59,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# The six factor weights of the current formula; must keep summing to 100.
+# The factor weights of the current formula; must keep summing to 100.
 WEIGHT_KEYS = (
     "criticality_weight",     # AC
     "asset_risk_weight",      # AR
@@ -67,6 +67,7 @@ WEIGHT_KEYS = (
     "open_port_weight",       # OP
     "audit_weight",           # AF
     "hardening_weight",       # HF
+    "vulnerability_weight",   # CV (known vulnerabilities, from the CVE module)
 )
 
 # Ordered low-to-high; each is the *inclusive* lower bound of the band it NAMES
@@ -138,6 +139,11 @@ def _score_to_dict(score: AssetRiskScore) -> dict:
         "hardening_fix_score": _num(score.hardening_fix_score),
         "hardening_weight": _num(score.hardening_weight),
         "hardening_contribution": _num(score.hardening_contribution),
+        "vulnerability_score": _num(score.vulnerability_score),
+        "vulnerability_weight": _num(score.vulnerability_weight),
+        "vulnerability_contribution": _num(score.vulnerability_contribution),
+        "cve_findings_count": score.cve_findings_count,
+        "cve_kev_count": score.cve_kev_count,
         "final_risk_score": _num(score.final_risk_score),
         "risk_level": score.risk_level,
         "critical_findings_count": score.critical_findings_count,
@@ -1254,11 +1260,11 @@ def update_settings(
                 detail=f"Invalid value for {key}: expected {value_type}",
             )
 
-    # CRITICAL: the six factor weights must sum to 100 after the update
+    # CRITICAL: the factor weights must sum to 100 after the update
     if any(key in WEIGHT_KEYS for key in updates):
         merged = {}
         for key in WEIGHT_KEYS:
-            merged[key] = float(updates.get(key, rows[key].setting_value))
+            merged[key] = float(updates.get(key, rows[key].setting_value if key in rows else 0))
         total = sum(merged.values())
         if abs(total - 100.0) > 0.001:
             raise HTTPException(
@@ -1510,6 +1516,13 @@ def export_asset_json(
                 "score": _num(score.hardening_fix_score),
                 "weight": _num(score.hardening_weight),
                 "contribution": _num(score.hardening_contribution),
+            },
+            "vulnerability": {
+                "cve_findings": score.cve_findings_count,
+                "exploited_in_the_wild": score.cve_kev_count,
+                "score": _num(score.vulnerability_score),
+                "weight": _num(score.vulnerability_weight),
+                "contribution": _num(score.vulnerability_contribution),
             },
         },
     }
