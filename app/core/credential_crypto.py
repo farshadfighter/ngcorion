@@ -27,6 +27,7 @@ PURPOSE_SCHEDULED_JOBS = "scheduled-job-params"
 PURPOSE_NOC_SNMP = "noc-snmp-credentials"
 PURPOSE_SYSTEM_CONFIG = "system-config-secrets"
 PURPOSE_CVE = "cve-database-secrets"
+PURPOSE_NOTIFICATIONS = "notification-secrets"
 
 
 def _fernet_key(raw: bytes) -> Fernet:

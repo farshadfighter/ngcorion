@@ -31,6 +31,22 @@ def validate_password_strength(v: str) -> str:
 
 
 
+_PHONE = re.compile(r"^\+?[0-9]{7,15}$")
+
+
+def validate_phone(v: Optional[str]) -> Optional[str]:
+    """Mobile number for SMS alerts: digits with an optional leading +.
+    Spaces and dashes are dropped; an empty value clears it."""
+    if v is None:
+        return None
+    v = re.sub(r"[\s\-()]", "", v)
+    if not v:
+        return ""
+    if not _PHONE.match(v):
+        raise ValueError("Phone must be 7-15 digits, optionally starting with +")
+    return v
+
+
 class PermissionBase(BaseModel):
     """Base schema for a single permission"""
     module: str = Field(..., description="Module name (e.g., dashboard, asset_list)")
@@ -56,6 +72,12 @@ class UserBase(BaseModel):
     """Base user schema"""
     username: str = Field(..., min_length=3, max_length=50, description="Username")
     email: EmailStr = Field(..., description="Email address")
+    phone: Optional[str] = Field(None, max_length=20, description="Mobile number for SMS alerts")
+
+    @field_validator('phone')
+    @classmethod
+    def _validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        return validate_phone(v) or None
 
 
 class UserCreate(UserBase):
@@ -87,6 +109,7 @@ class UserUpdate(BaseModel):
     """
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
+    phone: Optional[str] = Field(None, max_length=20, description="Mobile number; empty string clears it")
     password: Optional[str] = Field(None, min_length=8, max_length=72)
     current_password: Optional[str] = Field(
         None,
@@ -100,6 +123,11 @@ class UserUpdate(BaseModel):
         default=None,
         description="Update permissions. If provided, replaces all existing permissions."
     )
+    @field_validator('phone')
+    @classmethod
+    def _validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        return validate_phone(v)
+
     @field_validator('password')
     @classmethod
     def _validate_password(cls, v: Optional[str]) -> Optional[str]:
@@ -116,6 +144,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    phone: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime
@@ -132,6 +161,7 @@ class UserListResponse(BaseModel):
     id: int
     username: str
     email: str
+    phone: Optional[str] = None
     role: str
     is_active: bool
 

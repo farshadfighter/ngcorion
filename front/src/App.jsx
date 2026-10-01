@@ -41,6 +41,8 @@ const CveFindings = lazy(() => import("./components/CVE/CveFindings").then((m) =
 const CveDatabase = lazy(() => import("./components/CVE/CveDatabase").then((m) => ({ default: m.CveDatabase })));
 const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m) => ({ default: m.NocDashboard })));
 const NocHostList = lazy(() => import("./components/NOC/NocHostList").then((m) => ({ default: m.NocHostList })));
+const AlertsPage = lazy(() => import("./components/Alerts/AlertsPage").then((m) => ({ default: m.AlertsPage })));
+const NotificationsPage = lazy(() => import("./components/Notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
     RequirePermission,
@@ -290,6 +292,12 @@ function AppContent() {
                         <Route path="/settings/logs" element={
                             <RequirePermission module="logs" name="System Logs">
                                 <LogsPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/alerts" element={<AlertsPage />} />
+                        <Route path="/settings/notifications" element={
+                            <RequirePermission module="system_config" name="Notifications">
+                                <NotificationsPage />
                             </RequirePermission>
                         } />
                         <Route path="/settings/license" element={<License />} />

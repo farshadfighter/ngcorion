@@ -123,6 +123,10 @@ from app.modules.system_config.router import router as system_config_router
 
 # Import scheduled jobs router
 from app.modules.scheduling.router import router as scheduling_router
+
+# Alerts (bell, Alerts page) and notification rules / channels
+from app.modules.alerts.router import router as alerts_router
+from app.modules.alerts.router import admin_router as notifications_router
 from app.modules.scheduling.scheduler import start_job_scheduler, stop_job_scheduler
 
 # Import organization-wide dashboard routers
@@ -252,11 +256,13 @@ async def lifespan(app: FastAPI):
     # worker keeps its own in-memory license state.
     from app.core.singleton import SingletonTask
     from app.modules.cve.jobs import start_auto_updater, stop_auto_updater
+    from app.modules.alerts.engine import start_alert_engine, stop_alert_engine
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
         SingletonTask("noc-metrics-retention", start_metrics_retention_worker, stop_metrics_retention_worker),
         SingletonTask("cve-auto-update", start_auto_updater, stop_auto_updater),
+        SingletonTask("alert-engine", start_alert_engine, stop_alert_engine),
     ]
     for task in singletons:
         task.start()
@@ -528,6 +534,8 @@ app.include_router(
 
 # Scheduled Jobs routes (scheduled discovery/audit)
 app.include_router(scheduling_router)
+app.include_router(alerts_router)
+app.include_router(notifications_router)
 
 
 @app.get("/api/info", tags=["Meta"])

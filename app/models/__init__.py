@@ -169,6 +169,11 @@ from app.models.system_config import SystemConfigSetting, CONFIG_SECTIONS
 # Import scheduled jobs (depend on Asset and User)
 from app.models.scheduling import ScheduledJob, ScheduledJobRun
 
+# Alerts and notifications (see app/models/notification.py)
+from app.models.notification import (
+    Alert, AlertSeen, NotificationDelivery, NotificationRule, NotificationWebhook,
+)
+
 # Export all
 __all__ = [
     "Base",

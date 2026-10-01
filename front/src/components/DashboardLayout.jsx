@@ -7,6 +7,9 @@ import { useState, useEffect, useRef } from "react";
 import LicenseBadge from './License/LicenseBadge';
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { usePermission } from "../hooks/usePermission";
+import { AlertBell } from "./Alerts/AlertBell";
+import { useAlertSummary } from "./Alerts/useAlertSummary";
+import "../assets/Alerts.css";
 
 import "../assets/Dashboard.css";
 
@@ -41,6 +44,8 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
     if (pathname.startsWith("/settings/system"))      return "system-configuration";
+    if (pathname.startsWith("/settings/notifications")) return "notifications";
+    if (pathname.startsWith("/alerts"))               return "alerts";
     if (pathname.startsWith("/risk/assets"))          return "risk-asset";
     if (pathname.startsWith("/risk/exposure"))        return "risk-asset";
     if (pathname.startsWith("/risk/overview"))        return "risk-intelligence";
@@ -76,6 +81,8 @@ export const DashboardLayout = () => {
     const canReadDesignConfig = usePermission("design_configuration", "read");
     const canReadCve       = usePermission("cve",                   "read");
     const canReadNoc       = usePermission("noc",                   "read");
+    const { summary: alertSummary, refresh: refreshAlerts } = useAlertSummary();
+    const unacknowledged = alertSummary?.unacknowledged || 0;
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -145,6 +152,8 @@ export const DashboardLayout = () => {
         "user-management":     "User Management",
         "system-logs":         "System Logs",
         "system-configuration": "System Configuration",
+        "notifications":       "Notifications",
+        "alerts":              "Alerts",
         "licence":             "License Management",
     };
 
@@ -177,6 +186,20 @@ export const DashboardLayout = () => {
                          onClick={() => navigate("/overview")} title="Dashboard">
                         <img src="/icons/dashboard.svg" alt="" className="nav-icon-img" />
                         {!isSidebarCollapsed && <span>Dashboard</span>}
+                    </div>
+
+                    {/* ── Alerts ── */}
+                    <div className={`nav-item ${activeMenu === "alerts" ? "active" : ""}`}
+                         onClick={() => navigate("/alerts")}
+                         title={unacknowledged ? `Alerts - ${unacknowledged} not acknowledged` : "Alerts"}>
+                        <img src="/icons/alerts.svg" alt="" className="nav-icon-img" />
+                        {!isSidebarCollapsed && <span>Alerts</span>}
+                        {!isSidebarCollapsed && unacknowledged > 0 && (
+                            <span className={`alr-nav-badge ${alertSummary?.critical ? "" : "is-calm"}`}
+                                  aria-label={`${unacknowledged} not acknowledged`}>
+                                {unacknowledged > 99 ? "99+" : unacknowledged}
+                            </span>
+                        )}
                     </div>
 
                     {/* ── ASSET MANAGEMENT ── */}
@@ -403,6 +426,13 @@ export const DashboardLayout = () => {
                             {!isSidebarCollapsed && <span>System Configuration</span>}
                         </div>
                     )}
+                    {canReadSysConfig && (
+                        <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "notifications" ? "active" : ""}`}
+                             onClick={() => navigate("/settings/notifications")} title="Notifications">
+                            {isSidebarCollapsed && <img src="/icons/alerts.svg" alt="" className="nav-icon-img" />}
+                            {!isSidebarCollapsed && <span>Notifications</span>}
+                        </div>
+                    )}
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}
                          onClick={() => navigate("/settings/license")} title="License management">
                         {isSidebarCollapsed && <img src="/icons/license.svg" alt="" className="nav-icon-img nav-icon-license" />}
@@ -481,6 +511,7 @@ export const DashboardLayout = () => {
                         {currentModule && <LicenseBadge module={currentModule} />}
                     </div>
                     <div className="header-right">
+                        <AlertBell summary={alertSummary} onChanged={refreshAlerts} />
                         <div className="date-time">
                             <div className="current-date">{currentDate}</div>
                             <div className="current-time" style={{ paddingLeft: "25px" }}>

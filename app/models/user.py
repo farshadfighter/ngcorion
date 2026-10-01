@@ -16,6 +16,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True)
+    # Mobile number for SMS alerts (optional). Digits with an optional leading +.
+    phone = Column(String(20), nullable=True)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)

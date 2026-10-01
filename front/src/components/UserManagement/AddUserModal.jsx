@@ -18,6 +18,7 @@ export const AddUserModal = ({ onClose }) => {
     const [formData, setFormData] = useState({
         username: "",
         email: "",
+        phone: "",
         password: "",
         confirmPassword: "",
         role: "user",
@@ -137,6 +138,21 @@ export const AddUserModal = ({ onClose }) => {
                                     onChange={handleChange}
                                     required
                                     placeholder="Enter email"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>Mobile number</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    inputMode="tel"
+                                    maxLength={20}
+                                    placeholder="For SMS alerts, e.g. 09121234567"
                                 />
                             </div>
                         </div>

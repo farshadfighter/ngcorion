@@ -335,6 +335,7 @@ export const EditUserModal = ({ user, onClose }) => {
     const [formData, setFormData] = useState({
         username: user.username,
         email: user.email,
+        phone: user.phone || "",
         password: "",
         confirm_password: "",
         current_password: "",
@@ -411,6 +412,7 @@ export const EditUserModal = ({ user, onClose }) => {
         const updateData = {};
         if (formData.username !== user.username) updateData.username = formData.username;
         if (formData.email !== user.email) updateData.email = formData.email;
+        if (formData.phone !== (user.phone || "")) updateData.phone = formData.phone;
         if (formData.role !== user.role) updateData.role = formData.role;
         if (formData.is_active !== user.is_active) updateData.is_active = formData.is_active;
 
@@ -490,6 +492,22 @@ export const EditUserModal = ({ user, onClose }) => {
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
+                                    style={styles.input}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={styles.formRow}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Mobile number</label>
+                                <FocusInput
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    inputMode="tel"
+                                    maxLength={20}
+                                    placeholder="For SMS alerts, e.g. 09121234567"
                                     style={styles.input}
                                 />
                             </div>

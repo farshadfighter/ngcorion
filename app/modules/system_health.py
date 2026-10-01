@@ -99,7 +99,8 @@ def health_detail(request: Request, current_user: User = Depends(require_admin),
     # Background tasks: each runs in one worker that holds its lock.
     mine = {t.name: t.leading for t in getattr(request.app.state, "singletons", [])}
     for name, label in (("job-scheduler", "Job scheduler"), ("noc-poller", "NOC poller"),
-                        ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update")):
+                        ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update"),
+                        ("alert-engine", "Alert engine")):
         if _lock_held(db, name):
             where = "this worker" if mine.get(name) else "another worker"
             checks.append(_ok(f"task:{name}", f"{label} running ({where})"))

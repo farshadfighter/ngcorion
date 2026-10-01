@@ -127,6 +127,7 @@ class UserService:
         new_user = User(
             username=user_data.username,
             email=user_data.email,
+            phone=user_data.phone,
             hashed_password=get_password_hash(user_data.password),
             role=user_role,
             is_active=user_data.is_active
@@ -192,6 +193,9 @@ class UserService:
                 )
             
             user.email = user_data.email
+
+        if user_data.phone is not None:
+            user.phone = user_data.phone or None
         
         # Update password
         if user_data.password is not None:
@@ -278,6 +282,7 @@ class UserService:
         changes = []
         if user_data.username: changes.append(f"username")
         if user_data.email: changes.append(f"email")
+        if user_data.phone is not None: changes.append("phone")
         if user_data.password: changes.append(f"password")
         if user_data.is_active is not None: changes.append(f"is_active")
         
