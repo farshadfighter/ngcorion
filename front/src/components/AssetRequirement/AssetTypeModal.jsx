@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAssetType } from "../../store/requirementSlice";
+import IconPicker from "../shared/IconPicker.jsx";
+import { suggestIconFromName } from "../shared/assetIcons.js";
 
 export const AssetTypeModal = ({ onClose }) => {
     const dispatch = useDispatch();
@@ -9,6 +11,7 @@ export const AssetTypeModal = ({ onClose }) => {
         type_name: "",
         category: "",
         description: "",
+        icon: "", // automatic until one is picked
     });
 
     const [errors, setErrors] = useState({});
@@ -51,7 +54,7 @@ export const AssetTypeModal = ({ onClose }) => {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content modal-small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content modal-small" style={{ maxWidth: 680, width: "100%" }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>Add Asset Type</h2>
                     <button className="modal-close" onClick={onClose}>
@@ -102,6 +105,15 @@ export const AssetTypeModal = ({ onClose }) => {
                             onChange={handleChange}
                             placeholder="Enter description"
                             rows="3"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <IconPicker
+                            value={formData.icon}
+                            onChange={(icon) => setFormData((prev) => ({ ...prev, icon }))}
+                            automatic={suggestIconFromName(formData.type_name)}
+                            autoHint="from the name"
                         />
                     </div>
 

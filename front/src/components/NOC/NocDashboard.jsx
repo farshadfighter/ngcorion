@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ReactFlow, Background, Controls, Panel } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
+import AssetIcon from "../shared/AssetIcon.jsx";
 import { fetchHosts, pollAllNow, clearMessages } from "../../store/nocSlice.jsx";
 import { fetchTopology } from "../../store/topologySlice.jsx";
 import "../../assets/Noc.css";
@@ -19,10 +20,9 @@ function gridPosition(index) {
     };
 }
 
-// Node border color reflects live SNMP status, independent of device type
-// color (DeviceIcon already colors the glyph itself) - green/red/gray ring
-// around the same device pictogram Topology and Design use.
-const STATUS_COLOR = { up: "#34d399", down: "#f87171", unmonitored: "#6b7280" };
+// Live SNMP status is a dot on the asset's icon (green up, red down, none
+// when not monitored); the icon itself is the same one Topology and Design use.
+const STATUS_COLOR = { up: "#22c55e", down: "#ef4444", unmonitored: "#6b7280" };
 
 export const NocDashboard = () => {
     const dispatch = useDispatch();
@@ -71,15 +71,18 @@ export const NocDashboard = () => {
                         : gridPosition(index),
                 data: {
                     label: node.name,
+                    icon: node.icon,
                     typeName: node.type_name,
                     subtitle: node.ip_address || undefined,
+                    badge: node.icon_badge || undefined,
+                    status: statusKey === "unmonitored" ? undefined : statusKey,
+                    dark: true,
                     portCount: node.port_count,
                     // This graph has nodesConnectable={false} - individual
                     // port handles can't be dragged from, and a real device's
                     // full port count (e.g. 48) would balloon the box into
                     // its neighbors. The true count still shows as text.
                     showPortHandles: false,
-                    color: STATUS_COLOR[statusKey],
                 },
                 draggable: false,
             };
@@ -159,11 +162,11 @@ export const NocDashboard = () => {
                             }}
                         >
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                <span style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${STATUS_COLOR.up}`, display: "inline-block" }} />
+                                <span style={{ width: 10, height: 10, borderRadius: "50%", background: STATUS_COLOR.up, display: "inline-block" }} />
                                 Reachable
                             </span>
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                <span style={{ width: 10, height: 10, borderRadius: "50%", border: `2px solid ${STATUS_COLOR.down}`, display: "inline-block" }} />
+                                <span style={{ width: 10, height: 10, borderRadius: "50%", background: STATUS_COLOR.down, display: "inline-block" }} />
                                 Unreachable
                             </span>
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -201,7 +204,12 @@ export const NocDashboard = () => {
                                                 {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}
                                             </span>
                                         </td>
-                                        <td>{h.asset_name}</td>
+                                        <td>
+                                            <span className="noc-asset-cell">
+                                                <AssetIcon icon={h.icon} size={28} />
+                                                {h.asset_name}
+                                            </span>
+                                        </td>
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>
                                         <td>{h.sys_name || "—"}</td>

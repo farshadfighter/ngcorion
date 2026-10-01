@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
 
 const DescriptionModal = ({ description, assetName, onClose }) => (
@@ -93,7 +94,12 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                                            style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                                 </td>
                                 <td>{index + 1}</td>
-                                <td>{asset.asset_name}</td>
+                                <td>
+                                    <span className="asset-name-cell">
+                                        <AssetIcon icon={asset.resolved_icon} size={28} />
+                                        {asset.asset_name}
+                                    </span>
+                                </td>
                                 <td>{asset.confidentiality_level || "-"}</td>
                                 <td>{asset.risk_level || "-"}</td>
                                 <td>{asset.last_audit_date ? new Date(asset.last_audit_date).toLocaleDateString() : "-"}</td>

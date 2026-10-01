@@ -65,6 +65,10 @@ class ComponentSummary(BaseModel):
     mapped_asset_id: Optional[int] = None
     mapped_asset_name: Optional[str] = None
     mapped_asset_port_count: Optional[int] = None
+    # The mapped asset's own icon/badge, so a mapped component looks exactly
+    # like that asset does everywhere else.
+    mapped_asset_icon: Optional[str] = None
+    mapped_asset_badge: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -133,6 +137,8 @@ class SuggestedComponent(BaseModel):
     suggested_asset_id: Optional[int] = None
     suggested_asset_name: Optional[str] = None
     suggested_asset_port_count: Optional[int] = None
+    suggested_asset_icon: Optional[str] = None
+    suggested_asset_badge: Optional[str] = None
 
     class Config:
         from_attributes = True

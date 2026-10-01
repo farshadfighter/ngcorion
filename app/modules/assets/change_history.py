@@ -32,6 +32,7 @@ FIELD_META = {
     "ip_address":    ("IP Address", "network"),
     "mac_address":   ("MAC Address", "network"),
     "port_count":    ("Physical Port Count", "network"),
+    "icon":          ("Icon", "overview"),
     "location_id":       ("Location", "location"),
     "owner_id":          ("Owner", "location"),
     "status":            ("Status", "location"),

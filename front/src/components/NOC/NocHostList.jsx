@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchHosts, clearMessages } from "../../store/nocSlice.jsx";
 import { Pagination } from "../Logs/Pagination.jsx";
+import AssetIcon from "../shared/AssetIcon.jsx";
 import "../../assets/Noc.css";
 // Pagination's styles live with the Logs page it was first built for (see
 // AssetList.jsx, which reuses it the same way).
@@ -48,11 +49,6 @@ export const NocHostList = () => {
     const safePage = Math.min(page, totalPages);
     const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-    // A search that shrinks the list can leave the current page past the end.
-    useEffect(() => {
-        if (page > totalPages) setPage(1);
-    }, [totalPages, page]);
-
     return (
         <div className="noc-container">
             <div className="noc-toolbar">
@@ -60,7 +56,7 @@ export const NocHostList = () => {
                 <input
                     placeholder="Search by name, IP or type…"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                     style={{ padding: "8px 12px", borderRadius: 8, fontSize: 13, minWidth: 260 }}
                 />
             </div>
@@ -99,7 +95,12 @@ export const NocHostList = () => {
                                                 {statusKey === "unmonitored" ? "Not monitored" : statusKey === "up" ? "Up" : "Down"}
                                             </span>
                                         </td>
-                                        <td>{h.asset_name}</td>
+                                        <td>
+                                            <span className="noc-asset-cell">
+                                                <AssetIcon icon={h.icon} size={28} />
+                                                {h.asset_name}
+                                            </span>
+                                        </td>
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>
                                         <td>{h.has_credential ? "Configured" : "Not configured"}</td>

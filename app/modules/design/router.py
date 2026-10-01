@@ -53,6 +53,8 @@ def _component_summary(component) -> ComponentSummary:
         mapped_asset_id=mapping.asset_id if mapping else None,
         mapped_asset_name=mapping.asset.asset_name if mapping and mapping.asset else None,
         mapped_asset_port_count=mapping.asset.port_count if mapping and mapping.asset else None,
+        mapped_asset_icon=mapping.asset.resolved_icon if mapping and mapping.asset else None,
+        mapped_asset_badge=mapping.asset.icon_badge if mapping and mapping.asset else None,
     )
 
 
@@ -113,6 +115,8 @@ def get_design_suggestion(
                 pos_x=c.pos_x, pos_y=c.pos_y, zone=c.zone,
                 suggested_asset_id=c.suggested_asset_id, suggested_asset_name=c.suggested_asset_name,
                 suggested_asset_port_count=c.suggested_asset_port_count,
+                suggested_asset_icon=c.suggested_asset_icon,
+                suggested_asset_badge=c.suggested_asset_badge,
             )
             for c in suggestion.components
         ],

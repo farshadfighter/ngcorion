@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Pagination } from '../Logs/Pagination.jsx';
+import AssetIcon from '../shared/AssetIcon.jsx';
 
 const formatDate = (ts) => {
     if (!ts) return '-';
@@ -65,8 +66,11 @@ export const BackupAssetList = ({
                                 onClick={() => onOpenAsset(g)}
                             >
                                 <td>
-                                    <span className="backup-asset-name">
-                                        {g.asset_name || `Asset #${g.asset_id}`}
+                                    <span className="backup-asset-name-cell">
+                                        <AssetIcon icon={g.icon} size={28} />
+                                        <span className="backup-asset-name">
+                                            {g.asset_name || `Asset #${g.asset_id}`}
+                                        </span>
                                     </span>
                                 </td>
                                 <td>

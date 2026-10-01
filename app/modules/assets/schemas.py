@@ -1,10 +1,11 @@
-from pydantic import BaseModel, field_validator, EmailStr, ConfigDict
+from pydantic import BaseModel, field_validator, EmailStr, ConfigDict, computed_field
 from typing import Optional, Generic, TypeVar, List
 import re
 
 from datetime import date, datetime
 from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
 from app.models.enums import RelationTypeEnum
+from app.core.asset_icons import ICON_KEYS, suggest_icon
 
 # Generic type for pagination
 T = TypeVar('T')
@@ -17,10 +18,21 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page_size: int
     total_pages: int
 
+def _validate_icon(v):
+    """'' / None = automatic; anything else must be a known icon key."""
+    if v is None or (isinstance(v, str) and v.strip() == ''):
+        return None
+    if v not in ICON_KEYS:
+        raise ValueError(f"Unknown icon '{v}'")
+    return v
+
+
 class AssetTypeBase(BaseModel):
     type_name: str
     category: str
     description: Optional[str] = None
+    # None = suggested from the type name (see app/core/asset_icons.py).
+    icon: Optional[str] = None
 
 class AssetTypeCreate(AssetTypeBase):
     @field_validator('type_name', 'category')
@@ -31,10 +43,21 @@ class AssetTypeCreate(AssetTypeBase):
             raise ValueError('Field must be at least 2 characters')
         return v
 
+    @field_validator('icon', mode='before')
+    @classmethod
+    def validate_icon(cls, v):
+        return _validate_icon(v)
+
 class AssetTypeResponse(AssetTypeBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def effective_icon(self) -> str:
+        """The chosen icon, or the one suggested from the name."""
+        return self.icon or suggest_icon(self.type_name)
 
 
 # Asset Schemas
@@ -55,6 +78,8 @@ class AssetBase(BaseModel):
     owner_id: Optional[int] = None
     hosted_on_asset_id: Optional[int] = None
     hosted_vlan: Optional[str] = None
+    # Per-asset icon override; None = the asset type's icon.
+    icon: Optional[str] = None
     status: StatusEnum = StatusEnum.ACTIVE
     confidentiality_level: Optional[ConfidentialityLevelEnum] = None
     risk_level: Optional[RiskLevelEnum] = None
@@ -110,6 +135,11 @@ class AssetCreate(AssetBase):
             raise ValueError('Asset name must be at least 2 characters')
         return v
 
+    @field_validator('icon', mode='before')
+    @classmethod
+    def validate_icon(cls, v):
+        return _validate_icon(v)
+
     @field_validator('port_count')
     @classmethod
     def validate_port_count(cls, v):
@@ -134,6 +164,7 @@ class AssetUpdate(BaseModel):
     owner_id: Optional[int] = None
     hosted_on_asset_id: Optional[int] = None
     hosted_vlan: Optional[str] = None
+    icon: Optional[str] = None
     status: Optional[StatusEnum] = None
     confidentiality_level: Optional[ConfidentialityLevelEnum] = None
     risk_level: Optional[RiskLevelEnum] = None
@@ -187,6 +218,11 @@ class AssetUpdate(BaseModel):
             raise ValueError('Asset name must be at least 2 characters')
         return v
 
+    @field_validator('icon', mode='before')
+    @classmethod
+    def validate_icon(cls, v):
+        return _validate_icon(v)
+
     @field_validator('port_count')
     @classmethod
     def validate_port_count(cls, v):
@@ -202,6 +238,11 @@ class AssetResponse(AssetBase):
     # Best-effort device family (cisco/fortinet/linux/...) for filtering the
     # asset list by selected service. None = unknown (Other/Unknown group).
     inferred_device_type: Optional[str] = None
+    # What the UI draws (override > type icon > keyword rules) and the short
+    # vendor/OS label under it. Computed by app/core/asset_icons.py.
+    resolved_icon: str = "other"
+    auto_icon: str = "other"
+    icon_badge: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

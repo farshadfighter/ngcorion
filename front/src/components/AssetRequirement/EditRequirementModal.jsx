@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 
+import IconPicker from "../shared/IconPicker.jsx";
+import { suggestIconFromName } from "../shared/assetIcons.js";
 import {
     updateAssetType,
     updateOwner,
@@ -21,10 +23,13 @@ const REQUIREMENT_FORMS = {
     assetType: {
         title: "Asset Type",
         thunk: updateAssetType,
+        wide: true,
         fields: [
             { name: "type_name", label: "Type Name", required: true },
             { name: "category", label: "Category" },
             { name: "description", label: "Description", type: "textarea" },
+            // "" = automatic, suggested live from the type name.
+            { name: "icon", label: "Icon", type: "icon", suggestFrom: "type_name" },
         ],
     },
     owner: {
@@ -119,6 +124,7 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div
                 className="modal-content modal-small"
+                style={config.wide ? { maxWidth: 680, width: "100%" } : undefined}
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="modal-header">
@@ -128,7 +134,17 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
 
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
-                        {config.fields.map((f) => (
+                        {config.fields.map((f) => f.type === "icon" ? (
+                            <div className="form-group" key={f.name}>
+                                <IconPicker
+                                    label={f.label}
+                                    value={form[f.name]}
+                                    onChange={(v) => setField(f.name, v)}
+                                    automatic={suggestIconFromName(form[f.suggestFrom])}
+                                    autoHint="from the name"
+                                />
+                            </div>
+                        ) : (
                             <div className="form-group" key={f.name}>
                                 <label>
                                     {f.label}

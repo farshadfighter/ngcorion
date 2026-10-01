@@ -93,10 +93,13 @@ def update_asset_type(
     db: Session = Depends(get_db)
 ):
     """Update asset type (admin only)"""
-    asset_type = AssetService.update_asset_type(db, type_id, data.model_dump())
+    # exclude_unset: an older client that does not send `icon` keeps the
+    # type's chosen icon instead of resetting it.
+    changes = data.model_dump(exclude_unset=True)
+    asset_type = AssetService.update_asset_type(db, type_id, changes)
     if not asset_type:
         raise HTTPException(status_code=404, detail="Asset type not found")
-    log_requirement_update(db, current_user.id, "asset_type", asset_type.id, asset_type.type_name, data.model_dump())
+    log_requirement_update(db, current_user.id, "asset_type", asset_type.id, asset_type.type_name, changes)
     return asset_type
 
 
@@ -153,8 +156,9 @@ def get_assets(
     from app.models import Asset
 
     # Build base query - no user_id filtering, permission-based access
-    # Sort by asset_name instead of ID (makes ID gaps invisible)
-    query = db.query(Asset).order_by(Asset.asset_name)
+    # Sort by asset_name instead of ID (makes ID gaps invisible). The type is
+    # eager-loaded because every row's resolved_icon reads it.
+    query = db.query(Asset).options(joinedload(Asset.asset_type)).order_by(Asset.asset_name)
 
     # Device-type filtering is a Python-side heuristic over free-text fields +
     # the asset_type relationship, so eager-load the type and filter in memory.
@@ -163,7 +167,7 @@ def get_assets(
             normalize_device_type, infer_device_family, family_matches
         )
         requested = normalize_device_type(device_type)
-        assets = query.options(joinedload(Asset.asset_type)).all()
+        assets = query.all()
         assets = [a for a in assets if family_matches(infer_device_family(a), requested)]
         if page is not None and page_size is not None:
             start = (page - 1) * page_size

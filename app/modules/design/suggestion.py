@@ -24,9 +24,9 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.asset import Asset
 from app.modules.design.templates import SCALES, build_template
 
-# Mirrors front/src/components/shared/DeviceIcon.jsx's KEYWORD_RULES exactly,
-# so a device is classified into the same "kind" on the canvas icon and here.
-# Order matters: first match wins, so more specific keywords come first.
+# Buckets an asset into a SAFE template slot (router/switch/firewall/...).
+# Coarser than the drawing icon (app/core/asset_icons.py): every kind of host
+# fills a "server" slot. Order matters: first match wins.
 KEYWORD_RULES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"firewall|fortigate|fortinet|palo ?alto|asa", re.I), "firewall"),
     (re.compile(r"router|cisco.*ios|gateway", re.I), "router"),
@@ -71,6 +71,8 @@ class SuggestedComponent:
     suggested_asset_id: Optional[int] = None
     suggested_asset_name: Optional[str] = None
     suggested_asset_port_count: Optional[int] = None
+    suggested_asset_icon: Optional[str] = None
+    suggested_asset_badge: Optional[str] = None
 
 
 @dataclass
@@ -129,6 +131,8 @@ def suggest_design(db: Session) -> DesignSuggestion:
             suggested.suggested_asset_id = asset.id
             suggested.suggested_asset_name = asset.asset_name
             suggested.suggested_asset_port_count = asset.port_count
+            suggested.suggested_asset_icon = asset.resolved_icon
+            suggested.suggested_asset_badge = asset.icon_badge
             matched_assets += 1
         components.append(suggested)
 

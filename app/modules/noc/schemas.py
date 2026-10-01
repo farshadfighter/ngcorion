@@ -36,6 +36,7 @@ class HostSummary(BaseModel):
     asset_name: str
     ip_address: Optional[str] = None
     asset_type_name: Optional[str] = None
+    icon: str = "other"
     has_credential: bool
     reachable: Optional[bool] = None  # None = never polled
     sys_name: Optional[str] = None
@@ -66,6 +67,7 @@ class HostDetail(BaseModel):
     asset_name: str
     ip_address: Optional[str] = None
     asset_type_name: Optional[str] = None
+    icon: str = "other"
     credential: Optional[SnmpCredentialInfo] = None
     reachable: Optional[bool] = None
     sys_descr: Optional[str] = None

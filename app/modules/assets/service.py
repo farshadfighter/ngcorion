@@ -224,7 +224,9 @@ class AssetService:
 
             # Update asset fields
             for key, value in data.items():
-                if value is not None:
+                # `icon` is the exception to "None is a no-op": an explicit
+                # None puts the asset back on its type's automatic icon.
+                if value is not None or key == 'icon':
                     setattr(asset, key, value)
             db.commit()
             db.refresh(asset)

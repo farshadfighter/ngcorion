@@ -736,3 +736,6 @@
         transform: none;
     }
 }
+
+/* Asset name with its type icon. */
+.backup-asset-name-cell { display: inline-flex; align-items: center; gap: 10px; }

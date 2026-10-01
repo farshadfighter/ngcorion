@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useCallback } from "react";
-import { ReactFlow, Background, Controls, MiniMap, useNodesState } from "@xyflow/react";
+import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
+import IconLegend from "../shared/IconLegend.jsx";
 
 const GRID_COLUMNS = 5;
 const GRID_SPACING_X = 220;
@@ -47,8 +48,10 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDra
                         : gridPosition(index),
                 data: {
                     label: node.name,
+                    icon: node.icon,
                     typeName: node.type_name,
                     subtitle: node.ip_address || node.hostname || undefined,
+                    badge: node.icon_badge || undefined,
                     portCount: node.port_count,
                 },
             }))
@@ -121,6 +124,9 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDra
                 <Background gap={20} color="#e5e7eb" />
                 <Controls />
                 <MiniMap pannable zoomable style={{ background: "#f9fafb" }} />
+                <Panel position="top-left">
+                    <IconLegend />
+                </Panel>
             </ReactFlow>
         </div>
     );

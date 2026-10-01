@@ -50,6 +50,8 @@ def get_topology(
             name=a.asset_name,
             hostname=a.hostname,
             type_name=a.asset_type.type_name if a.asset_type else None,
+            icon=a.resolved_icon,
+            icon_badge=a.icon_badge,
             ip_address=a.ip_address,
             port_count=getattr(a, "port_count", None),
             pos_x=positions[a.id].pos_x if a.id in positions else None,

@@ -1,0 +1,107 @@
+/* Asset icons on the diagram canvases (DeviceNode, IconLegend) and the
+   icon picker. The tile itself (AssetIcon.jsx) is styled inline. */
+
+.device-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 4px 8px;
+    border-radius: 10px;
+    background: transparent;
+    font-family: 'Open Sans', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+.device-node:hover { background: rgba(255, 255, 255, 0.92); }
+.device-node.selected {
+    background: #ffffff;
+    box-shadow: 0 0 0 2px #1e3a5f, 0 8px 20px rgba(15, 23, 42, 0.16);
+}
+.device-node-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.device-node-sub {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    color: #4b5563;
+}
+.device-node-badge {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 15px;
+    color: #334155;
+    background: #eef2f6;
+    border: 1px solid #dde3ea;
+    border-radius: 999px;
+    padding: 0 7px;
+}
+.device-node-ports { font-size: 9px; color: #6b7280; }
+
+.device-node.dark:hover { background: rgba(255, 255, 255, 0.06); }
+.device-node.dark .device-node-label { color: #e5e7eb; }
+.device-node.dark .device-node-sub,
+.device-node.dark .device-node-ports { color: #9ca3af; }
+.device-node.dark .device-node-badge { color: #cbd5e1; background: #1f2937; border-color: #374151; }
+
+.icon-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e5e7eb;
+    font-size: 11.5px;
+    color: #374151;
+    font-family: 'Open Sans', sans-serif;
+}
+.icon-legend-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.icon-legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.icon-legend-swatch.planned { width: 12px; height: 12px; border: 2px dashed #6b7280; box-sizing: border-box; }
+
+/* Icon picker (Asset Type form, asset override, design palette) */
+.icon-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 6px;
+}
+.icon-picker-option {
+    border: 2px solid transparent;
+    background: #fff;
+    border-radius: 10px;
+    padding: 7px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font: 11.5px 'Open Sans', sans-serif;
+    color: #1f2937;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+}
+.icon-picker-option:hover { border-color: #cbd5e1; }
+.icon-picker-option.on { border-color: #1e3a5f; background: #f1f5fb; }
+.icon-picker-option:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.icon-picker-suggest {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    padding: 3px 10px;
+}

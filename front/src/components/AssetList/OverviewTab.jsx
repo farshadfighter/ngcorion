@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
 
 export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
@@ -67,7 +68,12 @@ export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsse
                                        style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                             </td>
                             <td>{index + 1}</td>
-                            <td>{asset.asset_name}</td>
+                            <td>
+                                <span className="asset-name-cell">
+                                    <AssetIcon icon={asset.resolved_icon} size={28} />
+                                    {asset.asset_name}
+                                </span>
+                            </td>
                             <td>{asset.hostname || "-"}</td>
                             <td>{asset.asset_type_name || "-"}</td>
                             <td>{asset.asset_role || "-"}</td>

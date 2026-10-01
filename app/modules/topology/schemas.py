@@ -10,6 +10,8 @@ class TopologyNode(BaseModel):
     name: str
     hostname: Optional[str] = None
     type_name: Optional[str] = None
+    icon: str = "other"            # app.core.asset_icons key
+    icon_badge: Optional[str] = None
     ip_address: Optional[str] = None
     port_count: Optional[int] = None
     # None means "never dragged" - the frontend falls back to its grid layout.

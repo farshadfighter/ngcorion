@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from "@xyflow/react";
+import { ReactFlow, Background, Controls, Panel, useNodesState, useEdgesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
+import AssetIcon from "../shared/AssetIcon.jsx";
+import IconLegend from "../shared/IconLegend.jsx";
+import { ASSET_ICONS, ICON_GROUPS, iconKey } from "../shared/assetIcons.js";
 import {
     fetchVersionDetail,
     createComponent,
@@ -18,16 +21,21 @@ import {
 import { fetchAssets } from "../../store/assetSlice.jsx";
 import "../../assets/DesignConfiguration.css";
 
-const PALETTE = [
-    { type: "router", label: "Router" },
-    { type: "switch", label: "Switch" },
-    { type: "firewall", label: "Firewall" },
-    { type: "load_balancer", label: "Load Balancer" },
-    { type: "wireless", label: "Wireless AP" },
-    { type: "server", label: "Server" },
-    { type: "storage", label: "Storage" },
-    { type: "cloud", label: "Cloud" },
-];
+// Every icon except the catch-all can be placed as a device type.
+const PALETTE_GROUPS = ICON_GROUPS.filter((g) => g.family !== "other");
+
+// A component mapped to a real asset is drawn exactly like that asset (its
+// icon and vendor/OS badge); an unmapped one is a planned device - dashed,
+// drawn from its component type.
+const componentData = (c) => ({
+    label: c.label,
+    icon: c.mapped_asset_icon || c.component_type,
+    typeName: c.component_type,
+    subtitle: c.mapped_asset_name || undefined,
+    badge: c.mapped_asset_badge || undefined,
+    planned: !c.mapped_asset_id,
+    portCount: c.mapped_asset_port_count,
+});
 
 export const DesignCanvas = () => {
     const { versionId } = useParams();
@@ -62,12 +70,7 @@ export const DesignCanvas = () => {
                 id: String(c.id),
                 type: "device",
                 position: { x: c.pos_x, y: c.pos_y },
-                data: {
-                    label: c.label,
-                    typeName: c.component_type,
-                    subtitle: c.mapped_asset_name || undefined,
-                    portCount: c.mapped_asset_port_count,
-                },
+                data: componentData(c),
             }))
         );
         setEdges(
@@ -86,6 +89,22 @@ export const DesignCanvas = () => {
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentVersion?.components.length, currentVersion?.relationships.length, versionId]);
+
+    // The rebuild above only runs when components are added or removed, so a
+    // type change, rename or asset mapping would otherwise leave the old icon
+    // on the canvas. Patch node data in place - positions and selection stay.
+    const dataSignature = useMemo(
+        () => JSON.stringify((currentVersion?.components || []).map((c) => [
+            c.id, c.label, c.component_type, c.mapped_asset_id, c.mapped_asset_icon, c.mapped_asset_badge,
+        ])),
+        [currentVersion]
+    );
+    useEffect(() => {
+        if (!currentVersion) return;
+        const byId = new Map(currentVersion.components.map((c) => [String(c.id), c]));
+        setNodes((prev) => prev.map((n) => (byId.has(n.id) ? { ...n, data: componentData(byId.get(n.id)) } : n)));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dataSignature]);
 
     const handleAddComponent = (type) => {
         paletteDropCounter.current += 1;
@@ -171,12 +190,24 @@ export const DesignCanvas = () => {
             )}
 
             <div className="dc-canvas-body">
-                <aside className="dc-palette">
-                    <h4>Add component</h4>
-                    {PALETTE.map((p) => (
-                        <button key={p.type} className="dc-palette-btn" onClick={() => handleAddComponent(p.type)}>
-                            {p.label}
-                        </button>
+                <aside className="dc-palette" aria-label="Add a device">
+                    <h4>Add device</h4>
+                    {PALETTE_GROUPS.map((g) => (
+                        <div key={g.family} className="dc-palette-group">
+                            <div className="dc-palette-family">
+                                <span className="dc-palette-swatch" style={{ background: g.color }} />
+                                {g.label}
+                            </div>
+                            <div className="dc-palette-grid">
+                                {g.icons.map((k) => (
+                                    <button key={k} className="dc-palette-btn" onClick={() => handleAddComponent(k)}
+                                            title={`Add a ${ASSET_ICONS[k].label}`}>
+                                        <AssetIcon icon={k} size={28} />
+                                        <span>{ASSET_ICONS[k].label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </aside>
 
@@ -196,6 +227,9 @@ export const DesignCanvas = () => {
                     >
                         <Background gap={20} color="#e5e7eb" />
                         <Controls />
+                        <Panel position="top-left">
+                            <IconLegend showPlanned />
+                        </Panel>
                     </ReactFlow>
                 </div>
 
@@ -208,6 +242,25 @@ export const DesignCanvas = () => {
                             </button>
                         </div>
                         <div className="dc-panel-body">
+                            <div className="dc-panel-device">
+                                <AssetIcon
+                                    icon={selectedComponent.mapped_asset_icon || selectedComponent.component_type}
+                                    planned={!selectedComponent.mapped_asset_id}
+                                    size={52}
+                                />
+                                <div>
+                                    <div className="dc-panel-device-name">{selectedComponent.label}</div>
+                                    <div className="dc-panel-device-type">
+                                        {ASSET_ICONS[iconKey(selectedComponent.mapped_asset_icon || selectedComponent.component_type)].label}
+                                        {selectedComponent.mapped_asset_badge ? ` · ${selectedComponent.mapped_asset_badge}` : ""}
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="dc-panel-note">
+                                {selectedComponent.mapped_asset_id
+                                    ? "Drawn with the mapped asset's icon. Change it on the asset or its Asset Type."
+                                    : "Planned device (dashed). Map it to an asset to draw it with that asset's icon."}
+                            </p>
                             <div className="dc-field">
                                 <label>Label</label>
                                 <input
@@ -220,15 +273,19 @@ export const DesignCanvas = () => {
                             <div className="dc-field">
                                 <label>Type</label>
                                 <select
-                                    value={selectedComponent.component_type}
+                                    value={iconKey(selectedComponent.component_type)}
                                     onChange={(e) =>
                                         dispatch(
                                             updateComponent({ componentId: selectedComponent.id, changes: { component_type: e.target.value } })
                                         )
                                     }
                                 >
-                                    {PALETTE.map((p) => (
-                                        <option key={p.type} value={p.type}>{p.label}</option>
+                                    {PALETTE_GROUPS.map((g) => (
+                                        <optgroup key={g.family} label={g.label}>
+                                            {g.icons.map((k) => (
+                                                <option key={k} value={k}>{ASSET_ICONS[k].label}</option>
+                                            ))}
+                                        </optgroup>
                                     ))}
                                 </select>
                             </div>

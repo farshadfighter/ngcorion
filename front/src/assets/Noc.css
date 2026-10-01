@@ -368,3 +368,6 @@
 }
 
 .noc-container .pagination-gap { color: var(--noc-text-faint); }
+
+/* Asset name with its icon in the host tables. */
+.noc-asset-cell { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }

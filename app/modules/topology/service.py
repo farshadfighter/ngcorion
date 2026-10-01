@@ -2,7 +2,7 @@
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models import Asset, TopologyLink, TopologyNodePosition
 from app.modules.topology.schemas import TopologyFinding
 
@@ -12,8 +12,8 @@ class TopologyService:
 
     @staticmethod
     def get_nodes(db: Session):
-        """All assets, as topology nodes."""
-        return db.query(Asset).all()
+        """All assets, as topology nodes (type eager-loaded: name and icon)."""
+        return db.query(Asset).options(joinedload(Asset.asset_type)).all()
 
     @staticmethod
     def get_links(db: Session):

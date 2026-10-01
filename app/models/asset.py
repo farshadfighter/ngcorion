@@ -224,6 +224,14 @@ class Asset(Base):
         comment="Additional notes or description"
     )
     
+    # Per-asset icon override (app.core.asset_icons.ICON_KEYS); NULL = the
+    # asset type's icon or the keyword rules.
+    icon = Column(
+        String(32),
+        nullable=True,
+        comment="Icon key override for this asset"
+    )
+
     discovered_fields = Column(
         JSON,
         nullable=True,
@@ -310,6 +318,23 @@ class Asset(Base):
     
 
     
+    @property
+    def resolved_icon(self) -> str:
+        """The icon this asset is drawn with everywhere in the UI."""
+        from app.core.asset_icons import resolve_icon
+        return resolve_icon(self)
+
+    @property
+    def auto_icon(self) -> str:
+        """The icon this asset gets when it has no override of its own."""
+        from app.core.asset_icons import resolve_icon
+        return resolve_icon(self, use_override=False)
+
+    @property
+    def icon_badge(self) -> Optional[str]:
+        from app.core.asset_icons import icon_badge
+        return icon_badge(self)
+
     def __repr__(self) -> str:
         """Developer-friendly representation: <Asset(id=1, name='...', type='...')>"""
         asset_type_name = self.asset_type.type_name if self.asset_type else 'Unknown'

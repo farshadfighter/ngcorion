@@ -63,6 +63,13 @@ class AssetType(Base):
         comment="Optional description"
     )
 
+    # One of app.core.asset_icons.ICON_KEYS; NULL = suggested from the name.
+    icon = Column(
+        String(32),
+        nullable=True,
+        comment="Icon key used to draw assets of this type"
+    )
+
 
 
 

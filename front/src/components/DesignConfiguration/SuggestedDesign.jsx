@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ReactFlow, Background, Controls, Panel } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
+import IconLegend from "../shared/IconLegend.jsx";
 import { ZoneBandNode } from "./ZoneBandNode.jsx";
 import { ZONES } from "../shared/designZones.js";
 import {
@@ -57,8 +58,10 @@ export const SuggestedDesign = () => {
             position: { x: c.pos_x, y: c.pos_y },
             data: {
                 label: c.label,
+                icon: c.suggested_asset_icon || c.component_type,
                 typeName: c.component_type,
                 subtitle: c.suggested_asset_name || "no matching asset in inventory",
+                badge: c.suggested_asset_badge || undefined,
                 portCount: c.suggested_asset_port_count,
                 // This canvas has nodesConnectable={false} - individual port
                 // handles can't be dragged from anyway, and a real device's
@@ -66,8 +69,7 @@ export const SuggestedDesign = () => {
                 // the template's fixed column spacing. The true count still
                 // shows as text (see DeviceNode's displayPortCount).
                 showPortHandles: false,
-                dashed: !c.suggested_asset_id,
-                color: c.suggested_asset_id ? "#1e3a5f" : "#9ca3af",
+                planned: !c.suggested_asset_id,
             },
             draggable: false,
             zIndex: 1,
@@ -218,6 +220,9 @@ export const SuggestedDesign = () => {
                     >
                         <Background gap={20} color="#e5e7eb" />
                         <Controls showInteractive={false} />
+                        <Panel position="top-left">
+                            <IconLegend showPlanned />
+                        </Panel>
                         <Panel position="bottom-left">
                             <div
                                 style={{

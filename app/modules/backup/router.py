@@ -10,7 +10,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
@@ -109,6 +109,7 @@ class BackupAssetGroup(BaseModel):
     manual_count: int
     hardening_count: int
     pre_restore_count: int = 0
+    icon: str = "other"
     last_backup_at: Optional[datetime]
 
 
@@ -158,9 +159,16 @@ def list_backups_by_asset(
         .all()
     )
 
+    # The asset's own icon; one extra query for the whole page, not per row.
+    assets = {
+        a.id: a for a in db.query(Asset).options(joinedload(Asset.asset_type))
+        .filter(Asset.id.in_([row.asset_id for row in rows])).all()
+    } if rows else {}
+
     return [
         BackupAssetGroup(
             asset_id=row.asset_id,
+            icon=assets[row.asset_id].resolved_icon if row.asset_id in assets else "other",
             asset_name=row.asset_name,
             device_ip=row.device_ip,
             device_type=row.device_type,

@@ -9,6 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
+import AssetIcon from "../shared/AssetIcon.jsx";
 
 export const AssetTypeTab = () => {
     const dispatch = useDispatch();
@@ -156,6 +157,7 @@ export const AssetTypeTab = () => {
                         </th>
                         <th>Number</th>
 
+                        <th style={{ width: 56 }}>Icon</th>
                         <th onClick={() => handleSort("type_name")} style={{ cursor: "pointer" }}>
                             Type Name{renderSortIcon("type_name")}
                         </th>
@@ -171,7 +173,7 @@ export const AssetTypeTab = () => {
                     <tbody>
                     {paged.length === 0 ? (
                         <tr>
-                            <td colSpan="7" className="no-data">
+                            <td colSpan="8" className="no-data">
                                 No asset types found
                             </td>
                         </tr>
@@ -187,6 +189,10 @@ export const AssetTypeTab = () => {
                                     />
                                 </td>
                                 <td>{(page - 1) * pageSize + index + 1}</td>
+                                <td>
+                                    <AssetIcon icon={item.effective_icon || item.type_name} size={28}
+                                               title={item.icon ? undefined : "Automatic (from the name)"} />
+                                </td>
                                 <td>{item.type_name}</td>
                                 <td>{item.category || "-"}</td>
                                 <td>{item.description || "-"}</td>

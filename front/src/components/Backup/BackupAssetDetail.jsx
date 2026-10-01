@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import api from '../../config/api.js';
 import { Pagination } from '../Logs/Pagination.jsx';
+import AssetIcon from '../shared/AssetIcon.jsx';
 import {
     RESTORE_STATUS_LABELS, formatDateTime, isRestorable, sourceLabel,
 } from './restoreConstants.js';
@@ -106,6 +107,7 @@ export const BackupAssetDetail = ({
                     All Assets
                 </button>
                 <div className="backup-detail-title">
+                    <AssetIcon icon={group.icon} size={32} />
                     <span className="backup-asset-name">
                         {group.asset_name || `Asset #${group.asset_id}`}
                     </span>

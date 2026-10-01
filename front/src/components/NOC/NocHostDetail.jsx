@@ -12,6 +12,7 @@ import {
 import { MetricChart } from "../shared/MetricChart.jsx";
 import { TimeRangePicker } from "../shared/TimeRangePicker.jsx";
 import "../../assets/Noc.css";
+import AssetIcon from "../shared/AssetIcon.jsx";
 
 function formatUptime(ticks) {
     if (ticks == null) return "—";
@@ -193,6 +194,7 @@ export const NocHostDetail = () => {
                 <div>
                     <div className="noc-card">
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                            <AssetIcon icon={currentHost.icon} size={36} />
                             <h3 style={{ margin: 0 }}>{currentHost.asset_name}</h3>
                             <span className={`noc-status-pill ${statusKey}`}>
                                 <span className={`noc-status-dot ${statusKey}`} />

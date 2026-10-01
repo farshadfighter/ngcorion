@@ -1044,3 +1044,6 @@ td.completeness-indicator.incomplete {
 .main-asset-list {
     padding: 32px 40px !important;
 }
+
+/* Asset name with its type icon in the inventory tables. */
+.asset-name-cell { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }

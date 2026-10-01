@@ -1,42 +1,41 @@
 import { Handle, Position } from "@xyflow/react";
-import DeviceIcon from "./DeviceIcon.jsx";
+import AssetIcon from "./AssetIcon.jsx";
+import "../../assets/AssetIcons.css";
 import { defaultPortsForType } from "../../utils/devicePorts.js";
 
 const PORT_HANDLE_STYLE = { width: 7, height: 7, background: "#1e3a5f", border: "1.5px solid #fff" };
-const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f" };
+const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f", opacity: 0.55 };
 
 // Shared React Flow node used by the Topology, Design & Configuration, Suggested Design and NOC
-// canvases: one real connection handle per known port (EVE-NG style - drag directly from a
-// specific numbered port on one device to a specific port on another), falling back to 4 generic
-// handles for asset types with no known port catalog (see utils/devicePorts.js) - or, when
-// `showPortHandles` is false (Suggested Design's read-only preview, where nodesConnectable is
-// already off and individual ports can't be dragged from anyway), always the 4 generic handles.
-// A real device's port count can be large (a 48-port switch), and each port handle needs its own
-// ~9px of width, so a node showing all of them can balloon past a template's fixed column
-// spacing; skipping them where nothing can be wired keeps the box a normal size while the true
-// port count still shows as text below (see the port-count line at the bottom of this component).
+// canvases: the asset's icon tile with its name, address and vendor/OS badge underneath.
+//
+// data:
+//   label       name under the icon
+//   icon        icon key (server-resolved for assets; a component type in Design)
+//   typeName    asset type name - only picks the port catalog (utils/devicePorts.js)
+//   subtitle    IP address / mapped asset, in monospace
+//   badge       short vendor / OS label
+//   planned     dashed hollow tile (a design device not built yet); `dashed` is the old name
+//   status      "up" | "down" live-status dot (NOC)
+//   portCount   real port count, shown as text
+//   showPortHandles  false on read-only canvases
+//   dark        light text for the NOC's dark canvas
+//
+// One connection handle per known port (EVE-NG style - drag directly from a specific numbered
+// port to a port on another device), falling back to 4 generic handles for asset types with no
+// known port catalog, or when `showPortHandles` is false. Port handles need ~9px each, so a
+// 48-port switch is wider than other nodes; read-only canvases skip them to keep nodes compact.
 export function DeviceNode({ data, selected }) {
-    const { label, typeName, color = "#1e3a5f", dashed = false, subtitle, portCount, showPortHandles = true } = data;
-    const ports = showPortHandles ? defaultPortsForType(typeName, portCount) : [];
-    const minWidth = ports.length > 0 ? Math.max(110, ports.length * 9) : 110;
+    const {
+        label, icon, typeName, subtitle, badge, status, portCount,
+        planned = false, dashed = false, showPortHandles = true, dark = false,
+    } = data;
+    const ports = showPortHandles ? defaultPortsForType(typeName || icon, portCount) : [];
+    const width = ports.length > 0 ? Math.max(112, ports.length * 9) : 112;
     const displayPortCount = portCount ?? ports.length;
 
     return (
-        <div
-            style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: `2px ${dashed ? "dashed" : "solid"} ${color}`,
-                background: dashed ? "#fff" : `${color}14`,
-                boxShadow: selected ? `0 0 0 3px ${color}33` : "0 1px 2px rgba(0,0,0,0.08)",
-                minWidth,
-                cursor: "pointer",
-            }}
-        >
+        <div className={`device-node ${dark ? "dark" : ""} ${selected ? "selected" : ""}`} style={{ width }}>
             {ports.length > 0 ? (
                 // A physical port can be either end of a link, so each one needs both
                 // a source and a target handle at the same id/position - React Flow
@@ -58,10 +57,11 @@ export function DeviceNode({ data, selected }) {
                     <Handle type="source" position={Position.Bottom} style={GENERIC_HANDLE_STYLE} />
                 </>
             )}
-            <DeviceIcon typeName={typeName} color={color} size={22} />
-            <div style={{ fontSize: 12, fontWeight: 600, textAlign: "center", lineHeight: 1.25, color: "#1f2937" }}>{label}</div>
-            {subtitle && <div style={{ fontSize: 10, color: "#6b7280" }}>{subtitle}</div>}
-            {displayPortCount > 0 && <div style={{ fontSize: 9, color: "#9ca3af" }}>{displayPortCount} ports</div>}
+            <AssetIcon icon={icon || typeName} planned={planned || dashed} status={status} />
+            <div className="device-node-label">{label}</div>
+            {subtitle && <div className="device-node-sub">{subtitle}</div>}
+            {badge && <div className="device-node-badge">{badge}</div>}
+            {displayPortCount > 0 && <div className="device-node-ports">{displayPortCount} ports</div>}
         </div>
     );
 }

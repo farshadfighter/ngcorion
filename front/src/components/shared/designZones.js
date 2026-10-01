@@ -1,7 +1,7 @@
 // Mirrors app/modules/design/templates.py's ZONES dict exactly, so the
 // zone bands drawn behind Suggested Design's nodes use the same id/label
 // pairing the backend already assigns each component to - same convention
-// as DeviceIcon.jsx mirroring hosting.py's keyword rules.
+// as assetIcons.js mirroring app/core/asset_icons.py's keyword rules.
 export const ZONES = {
     internet_edge: { label: "Internet Edge", color: "#eef2ff", border: "#c7d2fe" },
     dmz: { label: "DMZ", color: "#fff7ed", border: "#fed7aa" },

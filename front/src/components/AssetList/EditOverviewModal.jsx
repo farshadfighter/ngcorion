@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { useAssetFormOptions } from "./useAssetFormOptions";
+import IconPicker from "../shared/IconPicker.jsx";
 
 // Validation functions
 const validateAssetName = (name) => {
@@ -23,8 +24,16 @@ export const EditOverviewModal = ({ asset, isOpen, onClose }) => {
         asset_type_id: asset.asset_type_id ?? "",
         asset_role: asset.asset_role ?? "",
         manufacturer: asset.manufacturer ?? "",
-        model: asset.model ?? ""
+        model: asset.model ?? "",
+        icon: asset.icon ?? "", // "" = automatic (the asset type's icon)
     });
+
+    // What "Automatic" resolves to: the server's answer for this asset, or -
+    // once a different type is picked here - that type's icon.
+    const pickedType = assetTypes.find((t) => String(t.id) === String(formData.asset_type_id));
+    const automaticIcon = String(formData.asset_type_id) !== String(asset.asset_type_id) && pickedType
+        ? pickedType.effective_icon
+        : asset.auto_icon;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -157,6 +166,14 @@ export const EditOverviewModal = ({ asset, isOpen, onClose }) => {
                                 <div className="form-group">
                                     <label>Model</label>
                                     <input type="text" name="model" value={formData.model} onChange={handleChange} disabled={isSubmitting} />
+                                </div>
+                                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                                    <IconPicker
+                                        value={formData.icon}
+                                        onChange={(icon) => setFormData((prev) => ({ ...prev, icon }))}
+                                        automatic={automaticIcon || "other"}
+                                        autoHint="from the asset type"
+                                    />
                                 </div>
                             </div>
                         )}
