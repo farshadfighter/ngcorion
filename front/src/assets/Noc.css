@@ -1,30 +1,29 @@
 /* ============================================
    NOC (SNMP MONITORING) - STYLES
 
-   A deliberately different visual register from the rest of the app: NOC
-   screens are read continuously (often on a wall monitor), so a dark,
-   high-contrast palette reads better over long sessions than the app's
-   normal light theme - the same reasoning most real NOC/SOC products use.
-   Scoped entirely under .noc-container so no other page is affected, and
-   built only on the font already bundled for this app (Open Sans - see
-   index.html's "closed networks, no internet" note) rather than pulling in
-   a new typeface from a CDN.
+   Same light theme as the rest of the app (white cards on the page
+   background, navy primary). Colours are tokens scoped to .noc-container,
+   so the module stays consistent with itself and no other page is affected.
    ============================================ */
 
 .noc-container {
-    --noc-bg: #0b0f19;
-    --noc-surface: #111827;
-    --noc-surface-alt: #141b2b;
-    --noc-border: #1f2937;
-    --noc-text: #e7ebf3;
-    --noc-text-dim: #8b96ac;
-    --noc-text-faint: #5c667e;
-    --noc-accent: #2dd4bf;
-    --noc-accent-ink: #08221f;
-    --noc-up: #34d399;
-    --noc-down: #f87171;
+    --noc-bg: transparent;
+    --noc-surface: #ffffff;
+    --noc-surface-alt: #f9fafb;
+    --noc-border: #e5e7eb;
+    --noc-text: #1f2937;
+    --noc-text-dim: #4b5563;
+    --noc-text-faint: #6b7280;
+    --noc-accent: #1e3a5f;
+    --noc-accent-hover: #274b75;
+    --noc-accent-ink: #ffffff;
+    --noc-up: #15803d;
+    --noc-down: #b91c1c;
     --noc-unmonitored: #6b7280;
-    --noc-warn: #fbbf24;
+    --noc-warn: #b45309;
+    --noc-up-bg: #dcfce7;
+    --noc-down-bg: #fee2e2;
+    --noc-muted-bg: #f3f4f6;
 
     padding: 32px 40px;
     background: var(--noc-bg);
@@ -48,9 +47,11 @@
 
 .noc-toolbar input {
     background: var(--noc-surface);
-    border: 1px solid var(--noc-border);
+    border: 1px solid #d1d5db;
     color: var(--noc-text);
 }
+
+.noc-toolbar input:focus { outline: none; border-color: var(--noc-accent); box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.12); }
 
 .noc-toolbar input::placeholder { color: var(--noc-text-faint); }
 
@@ -66,6 +67,7 @@
 .noc-stat-card {
     background: var(--noc-surface);
     border: 1px solid var(--noc-border);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     border-radius: 12px;
     padding: 16px 18px;
     display: flex;
@@ -85,9 +87,10 @@
     color: var(--noc-text-dim);
 }
 
-.noc-stat-card.reachable .noc-stat-icon { background: rgba(52, 211, 153, 0.14); color: var(--noc-up); }
-.noc-stat-card.unreachable .noc-stat-icon { background: rgba(248, 113, 113, 0.14); color: var(--noc-down); }
-.noc-stat-card.unmonitored .noc-stat-icon { background: rgba(107, 114, 128, 0.18); color: var(--noc-text-dim); }
+.noc-stat-card .noc-stat-icon { background: #e8eef6; color: var(--noc-accent); }
+.noc-stat-card.reachable .noc-stat-icon { background: var(--noc-up-bg); color: var(--noc-up); }
+.noc-stat-card.unreachable .noc-stat-icon { background: var(--noc-down-bg); color: var(--noc-down); }
+.noc-stat-card.unmonitored .noc-stat-icon { background: var(--noc-muted-bg); color: var(--noc-text-dim); }
 
 .noc-stat-value {
     font-size: 26px;
@@ -112,9 +115,9 @@
     gap: 6px;
     padding: 9px 16px;
     border-radius: 8px;
-    border: 1px solid var(--noc-border);
-    background: transparent;
-    color: var(--noc-text-dim);
+    border: 1px solid #d1d5db;
+    background: var(--noc-surface);
+    color: var(--noc-text);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -130,15 +133,15 @@
     color: var(--noc-accent-ink);
 }
 
-.noc-btn-primary:hover { background: #5fe0cc; border-color: #5fe0cc; color: var(--noc-accent-ink); }
+.noc-btn-primary:hover { background: var(--noc-accent-hover); border-color: var(--noc-accent-hover); color: var(--noc-accent-ink); }
 
 .noc-btn-danger {
-    background: transparent;
-    border-color: rgba(248, 113, 113, 0.35);
+    background: var(--noc-surface);
+    border-color: #fecaca;
     color: var(--noc-down);
 }
 
-.noc-btn-danger:hover { background: rgba(248, 113, 113, 0.1); border-color: var(--noc-down); }
+.noc-btn-danger:hover { background: #fef2f2; border-color: var(--noc-down); color: var(--noc-down); }
 
 /* ── Table ── */
 
@@ -156,10 +159,11 @@
 
 .noc-table th {
     text-align: left;
-    font-size: 10.5px;
+    font-size: 11.5px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--noc-text-faint);
+    letter-spacing: 0.04em;
+    color: var(--noc-text-dim);
     padding: 12px 16px;
     border-bottom: 1px solid var(--noc-border);
     background: var(--noc-surface-alt);
@@ -189,9 +193,9 @@
     font-weight: 600;
 }
 
-.noc-status-pill.up { background: rgba(52, 211, 153, 0.14); color: var(--noc-up); }
-.noc-status-pill.down { background: rgba(248, 113, 113, 0.14); color: var(--noc-down); }
-.noc-status-pill.unmonitored { background: rgba(107, 114, 128, 0.18); color: var(--noc-text-dim); }
+.noc-status-pill.up { background: var(--noc-up-bg); color: var(--noc-up); }
+.noc-status-pill.down { background: var(--noc-down-bg); color: var(--noc-down); }
+.noc-status-pill.unmonitored { background: var(--noc-muted-bg); color: var(--noc-text-dim); }
 
 .noc-status-dot {
     display: inline-block;
@@ -200,8 +204,8 @@
     border-radius: 50%;
 }
 
-.noc-status-dot.up { background: var(--noc-up); }
-.noc-status-dot.down { background: var(--noc-down); }
+.noc-status-dot.up { background: #22c55e; }
+.noc-status-dot.down { background: #ef4444; }
 .noc-status-dot.unmonitored { background: var(--noc-unmonitored); }
 
 .noc-empty {
@@ -219,8 +223,8 @@
     border: 1px solid transparent;
 }
 
-.noc-toast-error { background: rgba(248, 113, 113, 0.1); color: #fca5a5; border-color: rgba(248, 113, 113, 0.3); }
-.noc-toast-success { background: rgba(52, 211, 153, 0.1); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.3); }
+.noc-toast-error { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.noc-toast-success { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
 
 .noc-graph-wrap {
     background: var(--noc-surface);
@@ -231,16 +235,6 @@
     overflow: hidden;
 }
 
-/* @xyflow/react ships its own light-themed Controls widget (dist/style.css) -
-   override just enough to keep the zoom buttons legible on the dark canvas. */
-.noc-graph-wrap .react-flow__controls-button {
-    background: var(--noc-surface);
-    border-bottom: 1px solid var(--noc-border);
-    fill: var(--noc-text-dim);
-}
-
-.noc-graph-wrap .react-flow__controls-button:hover { background: var(--noc-surface-alt); }
-.noc-graph-wrap .react-flow__controls { border: 1px solid var(--noc-border); border-radius: 6px; overflow: hidden; }
 .noc-graph-wrap .react-flow__attribution { display: none; }
 
 /* ── Host detail ── */
@@ -269,10 +263,10 @@
 
 .noc-mini-select {
     padding: 5px 8px;
-    border: 1px solid var(--noc-border);
+    border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 12px;
-    background: var(--noc-surface-alt);
+    background: var(--noc-surface);
     color: var(--noc-text);
 }
 
@@ -281,8 +275,8 @@
     font-weight: 600;
     padding: 6px 11px;
     border-radius: 7px;
-    border: 1px solid var(--noc-border);
-    background: var(--noc-surface-alt);
+    border: 1px solid #d1d5db;
+    background: var(--noc-surface);
     color: var(--noc-text-dim);
     cursor: pointer;
 }
@@ -290,10 +284,12 @@
 .noc-chip:hover { border-color: var(--noc-accent); color: var(--noc-accent); }
 
 .noc-chip-active {
-    background: rgba(45, 212, 191, 0.14);
-    color: var(--noc-accent);
-    border-color: rgba(45, 212, 191, 0.4);
+    background: var(--noc-accent);
+    color: var(--noc-accent-ink);
+    border-color: var(--noc-accent);
 }
+
+.noc-chip-active:hover { color: var(--noc-accent-ink); }
 
 .noc-kv-grid {
     display: grid;
@@ -321,11 +317,11 @@
 .noc-field input,
 .noc-field select {
     padding: 8px 10px;
-    border: 1px solid var(--noc-border);
+    border: 1px solid #d1d5db;
     border-radius: 6px;
     font-size: 13px;
     color: var(--noc-text);
-    background: var(--noc-surface-alt);
+    background: var(--noc-surface);
     box-sizing: border-box;
     width: 100%;
 }
@@ -337,37 +333,6 @@
     gap: 8px;
     margin-top: 14px;
 }
-
-/* ── Pagination, scoped dark override (shared component/CSS - see Pagination.jsx) ── */
-
-.noc-container .pagination-info,
-.noc-container .pagination-size { color: var(--noc-text-dim); }
-
-.noc-container .pagination-btn {
-    background: var(--noc-surface);
-    border-color: var(--noc-border);
-    color: var(--noc-text-dim);
-}
-
-.noc-container .pagination-btn:hover:not(:disabled):not(.is-active) {
-    background: var(--noc-accent);
-    border-color: var(--noc-accent);
-    color: var(--noc-accent-ink);
-}
-
-.noc-container .pagination-btn.is-active {
-    background: var(--noc-accent);
-    border-color: var(--noc-accent);
-    color: var(--noc-accent-ink);
-}
-
-.noc-container .pagination-size select {
-    background: var(--noc-surface);
-    border-color: var(--noc-border);
-    color: var(--noc-text);
-}
-
-.noc-container .pagination-gap { color: var(--noc-text-faint); }
 
 /* Asset name with its icon in the host tables. */
 .noc-asset-cell { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }

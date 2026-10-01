@@ -47,12 +47,6 @@
 }
 .device-node-ports { font-size: 9px; color: #6b7280; }
 
-.device-node.dark:hover { background: rgba(255, 255, 255, 0.06); }
-.device-node.dark .device-node-label { color: #e5e7eb; }
-.device-node.dark .device-node-sub,
-.device-node.dark .device-node-ports { color: #9ca3af; }
-.device-node.dark .device-node-badge { color: #cbd5e1; background: #1f2937; border-color: #374151; }
-
 .icon-legend {
     display: flex;
     flex-wrap: wrap;

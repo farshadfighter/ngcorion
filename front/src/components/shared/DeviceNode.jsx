@@ -19,7 +19,6 @@ const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f", opaci
 //   status      "up" | "down" live-status dot (NOC)
 //   portCount   real port count, shown as text
 //   showPortHandles  false on read-only canvases
-//   dark        light text for the NOC's dark canvas
 //
 // One connection handle per known port (EVE-NG style - drag directly from a specific numbered
 // port to a port on another device), falling back to 4 generic handles for asset types with no
@@ -28,14 +27,14 @@ const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f", opaci
 export function DeviceNode({ data, selected }) {
     const {
         label, icon, typeName, subtitle, badge, status, portCount,
-        planned = false, dashed = false, showPortHandles = true, dark = false,
+        planned = false, dashed = false, showPortHandles = true,
     } = data;
     const ports = showPortHandles ? defaultPortsForType(typeName || icon, portCount) : [];
     const width = ports.length > 0 ? Math.max(112, ports.length * 9) : 112;
     const displayPortCount = portCount ?? ports.length;
 
     return (
-        <div className={`device-node ${dark ? "dark" : ""} ${selected ? "selected" : ""}`} style={{ width }}>
+        <div className={`device-node ${selected ? "selected" : ""}`} style={{ width }}>
             {ports.length > 0 ? (
                 // A physical port can be either end of a link, so each one needs both
                 // a source and a target handle at the same id/position - React Flow

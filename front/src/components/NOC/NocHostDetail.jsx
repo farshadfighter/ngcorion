@@ -222,7 +222,7 @@ export const NocHostDetail = () => {
                             <dt>Location</dt><dd>{currentHost.sys_location || "—"}</dd>
                         </dl>
                         {!currentHost.sys_name && !currentHost.sys_descr && (
-                            <div style={{ marginTop: 10, fontSize: 11.5, color: "#5c667e" }}>
+                            <div style={{ marginTop: 10, fontSize: 11.5, color: "#6b7280" }}>
                                 {currentHost.credential
                                     ? "Device hasn't returned this yet — try Poll Now, or it doesn't expose the MIB-2 system group over SNMP."
                                     : "Configure an SNMP credential to start collecting this."}
@@ -257,22 +257,21 @@ export const NocHostDetail = () => {
                             </div>
                         </div>
                         <div style={{ margin: "10px 0" }}>
-                            <TimeRangePicker value={historyRange} onChange={setHistoryRange} dark />
+                            <TimeRangePicker value={historyRange} onChange={setHistoryRange} />
                         </div>
                         {isLoadingMetric ? (
                             <div className="noc-empty">Loading…</div>
                         ) : (
                             <MetricChart
                                 points={metricSeries?.points}
-                                color={historyMetric === "reachable" ? "#34d399" : "#2dd4bf"}
+                                color={historyMetric === "reachable" ? "#16a34a" : "#1e3a5f"}
                                 valueFormatter={(v) =>
                                     historyMetric === "reachable" ? (v >= 0.5 ? "up" : "down") : formatBytes(v)
                                 }
-                                dark
                             />
                         )}
                         {metricSeries?.granularity && metricSeries.granularity !== "raw" && (
-                            <div style={{ fontSize: 10.5, color: "#5c667e", marginTop: 6 }}>
+                            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
                                 Averaged into {metricSeries.granularity} buckets for this range.
                             </div>
                         )}
@@ -328,10 +327,10 @@ export const NocHostDetail = () => {
                                                     <tr key={iface.if_index}>
                                                         <td>{iface.if_index}</td>
                                                         <td>{interfaceDisplayName(iface)}</td>
-                                                        <td style={{ color: "#8b96ac" }}>{iface._group}</td>
+                                                        <td style={{ color: "#6b7280" }}>{iface._group}</td>
                                                         <td>{iface.if_speed ? `${(iface.if_speed / 1e6).toFixed(0)} Mbps` : "—"}</td>
-                                                        <td style={{ color: iface.if_admin_status === "up" ? "#34d399" : undefined }}>{iface.if_admin_status || "—"}</td>
-                                                        <td style={{ color: iface.if_oper_status === "up" ? "#34d399" : iface.if_oper_status === "down" ? "#f87171" : undefined }}>{iface.if_oper_status || "—"}</td>
+                                                        <td style={{ color: iface.if_admin_status === "up" ? "#15803d" : undefined }}>{iface.if_admin_status || "—"}</td>
+                                                        <td style={{ color: iface.if_oper_status === "up" ? "#15803d" : iface.if_oper_status === "down" ? "#b91c1c" : undefined }}>{iface.if_oper_status || "—"}</td>
                                                         <td>{formatBytes(iface.in_octets)}</td>
                                                         <td>{formatBytes(iface.out_octets)}</td>
                                                     </tr>

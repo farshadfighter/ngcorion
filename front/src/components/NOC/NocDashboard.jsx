@@ -76,7 +76,6 @@ export const NocDashboard = () => {
                     subtitle: node.ip_address || undefined,
                     badge: node.icon_badge || undefined,
                     status: statusKey === "unmonitored" ? undefined : statusKey,
-                    dark: true,
                     portCount: node.port_count,
                     // This graph has nodesConnectable={false} - individual
                     // port handles can't be dragged from, and a real device's
@@ -151,14 +150,14 @@ export const NocDashboard = () => {
                     fitView
                     proOptions={{ hideAttribution: true }}
                 >
-                    <Background gap={20} color="#1f2937" />
+                    <Background gap={20} color="#e5e7eb" />
                     <Controls showInteractive={false} />
                     <Panel position="bottom-left">
                         <div
                             style={{
                                 display: "flex", gap: 14,
-                                padding: "8px 12px", background: "rgba(17,24,39,0.94)",
-                                border: "1px solid #1f2937", borderRadius: 8, fontSize: 11, color: "#8b96ac",
+                                padding: "8px 12px", background: "rgba(255,255,255,0.94)",
+                                border: "1px solid #e5e7eb", borderRadius: 8, fontSize: 11.5, color: "#4b5563",
                             }}
                         >
                             <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
