@@ -59,6 +59,11 @@ const TEMPLATES = [
     msg("A finding is not fixed {{days}} days after its deadline"),
     msg("An accepted risk ends within {{days}} days"),
     msg("This finding can be accepted for at most {{days}} days"),
+    // reports
+    msg("Not an email address: {{email}}"),
+    msg("Building the report failed: {{error}}"),
+    msg("SMTP error: {{error}}"),
+    msg("{{name}} - {{error}}"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -142,6 +147,124 @@ msg("NOC poller");
 msg("NOC metrics rollup");
 msg("CVE automatic update");
 msg("No license is activated on this machine. Activate a license key via POST /api/license/activate first.");
+// reports: catalog (app/modules/reports/templates.py)
+msg("Management");
+msg("Audit and hardening");
+msg("Vulnerability, risk and remediation");
+msg("Assets and infrastructure");
+msg("System");
+msg("Security executive summary");
+msg("Risk score and its trend, compliance, critical vulnerabilities, fixing on time and exceptions; with key points and a comparison with the previous period.");
+msg("Summary and key points");
+msg("Figures and sentences drawn from the data");
+msg("Risk score trend");
+msg("Weekly, with the riskiest assets");
+msg("CIS compliance");
+msg("By asset");
+msg("Vulnerabilities");
+msg("Critical and known exploited");
+msg("Remediation and deadlines");
+msg("Findings past their deadline");
+msg("Accepted risks");
+msg("Exceptions in force");
+msg("Backups");
+msg("Devices without a recent backup");
+msg("Appendix: every open finding");
+msg("As a separate Excel file");
+msg("Pass rate of each asset and each part of the benchmark, failed checks with evidence, and the change since the previous audit.");
+msg("Overview");
+msg("Compliance by asset");
+msg("Most common failures");
+msg("Failed checks");
+msg("Every failed check of each asset");
+msg("Not audited in the period");
+msg("Include the evidence of each failed check");
+msg("Vulnerabilities (CVE)");
+msg("Findings by asset and product, known exploited ones (KEV) and the chance of exploitation (EPSS).");
+msg("Fix first");
+msg("Known exploited, CVSS 9+ or EPSS 50%+");
+msg("All findings");
+msg("Severity");
+msg("All");
+msg("Medium and above");
+msg("High and above");
+msg("Critical only");
+msg("Only known exploited (KEV)");
+msg("Asset risk");
+msg("Risk score of each asset, the factors behind it and its trend over the period.");
+msg("Trend");
+msg("Risk by asset");
+msg("Risk factors");
+msg("Remediation and accepted risks");
+msg("Fixing on time, findings past their deadline by owner, and the list of exceptions with reason and approver.");
+msg("By owner");
+msg("Past the deadline");
+msg("Open by source and severity");
+msg("Fixed in the period");
+msg("Every open finding");
+msg("Sources");
+msg("CVE");
+msg("Audit");
+msg("Architecture");
+msg("Audit details");
+msg("The full result of one audit with the output of every check; evidence for the auditor.");
+msg("Hardening changes");
+msg("What changed, on which device, by whom, with the backup taken before the change.");
+msg("Assets and coverage");
+msg("Which assets are audited, backed up and monitored, and which are not.");
+msg("Backup and restore");
+msg("How recent each device's backup is, restores and their result.");
+msg("Availability (NOC)");
+msg("Availability, outages and interface use.");
+msg("Architecture validation");
+msg("Architecture findings and the decision on each.");
+msg("Alerts");
+msg("Alerts in the period, time to acknowledge and resolve, noisiest sources.");
+msg("User activity");
+msg("Logins, failed logins and sensitive actions of each user.");
+// reports: API errors and alerts
+msg("A schedule needs a period that moves with it, not fixed dates");
+msg("A scheduled report could not be built or emailed");
+msg("Add at least one recipient");
+msg("Building was interrupted; build the report again");
+msg("Choose PDF, Excel or both");
+msg("Choose a day of the month between 1 and 28");
+msg("Choose at least one item for the asset filter");
+msg("Choose at least one section");
+msg("Choose the day of the week");
+msg("Choose the start and end of the period");
+msg("Could not work out the next run");
+msg("Enter the time as HH:MM");
+msg("File too large (max 50 MB)");
+msg("Give the schedule a name");
+msg("Keep reports between 30 and 3650 days");
+msg("None of the chosen sections can be built with your permissions");
+msg("Only a report that has not started can be cancelled");
+msg("Report not found");
+msg("Reports");
+msg("Schedule not found");
+msg("Scheduled report failed");
+msg("The logo must be a PNG or JPEG image");
+msg("The logo must be smaller than 200 KB");
+msg("The owner of this schedule no longer has an active account");
+msg("The period ends before it starts");
+msg("The period starts in the future");
+msg("The person this report is built for no longer has an active account");
+msg("This report has no such file");
+msg("Unknown asset filter");
+msg("Unknown classification");
+msg("Unknown frequency");
+msg("Unknown language");
+msg("Unknown period");
+msg("Unknown recipient");
+msg("Unknown view");
+msg("Wait for the report to finish, or cancel it");
+msg("You already have 3 reports being built; wait for one to finish");
+msg("You have no access to this report");
+msg("Unknown report");
+msg("This report is not available yet");
+msg("The schedule could not run");
+msg("Email is not configured - set SMTP in System Configuration");
 // architecture rules (app/modules/architecture_validation/rules)
 msg("Asset has no IP address");
 msg("Set the asset's IP address so audits, hardening and topology can target it.");

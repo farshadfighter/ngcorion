@@ -66,7 +66,8 @@ def local_timezone(db: Session):
 # ---------------------------------------------------------------------------
 
 def send_email(config: Dict[str, Any], to: List[str], subject: str, text_body: str,
-               html_body: Optional[str] = None) -> None:
+               html_body: Optional[str] = None, attachments: Optional[List[tuple]] = None) -> None:
+    """attachments: [(filename, bytes, "maintype/subtype")]"""
     if not config or not config.get("host"):
         raise DeliveryError("Email is not configured - set SMTP in System Configuration")
     message = EmailMessage()
@@ -77,6 +78,9 @@ def send_email(config: Dict[str, Any], to: List[str], subject: str, text_body: s
     message.set_content(text_body)
     if html_body:
         message.add_alternative(html_body, subtype="html")
+    for filename, content, mime in attachments or ():
+        maintype, _, subtype = mime.partition("/")
+        message.add_attachment(content, maintype=maintype, subtype=subtype or "octet-stream", filename=filename)
     host, port = config["host"], int(config.get("port") or 587)
     try:
         server = (smtplib.SMTP_SSL(host, port, timeout=TIMEOUT) if config.get("use_ssl")

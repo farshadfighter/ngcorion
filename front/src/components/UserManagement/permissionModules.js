@@ -34,6 +34,7 @@ export const PERMISSION_MODULES = [
     { name: "cve",                  label: t("CVE"),                icon: "fa-solid fa-bug" },
     { name: "noc",                  label: t("NOC"),                icon: "fa-solid fa-satellite-dish" },
     { name: "remediation",          label: t("Remediation"),        icon: "fa-solid fa-clipboard-check" },
+    { name: "reports",              label: t("Reports"),            icon: "fa-solid fa-file-lines" },
 ];
 
 export default PERMISSION_MODULES;

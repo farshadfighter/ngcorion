@@ -10,6 +10,7 @@ import {
 import { RiskAssetTable } from "./RiskAssetTable";
 import "../../assets/RiskAsset.css";
 import { t } from "../../i18n";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 /**
  * Risk Asset screen: the hint bar plus the Overview / Audit Risk tabbed table.
@@ -75,6 +76,7 @@ export const RiskAsset = () => {
 
     return (
         <div className="risk-page">
+            <div className="rep-shortcut-row"><ReportShortcut template="risk" className="bkm-btn bkm-btn-sm" /></div>
             {recalcError && (
                 <p className="risk-state risk-state-error risk-recalc-error">
                     {recalcError}

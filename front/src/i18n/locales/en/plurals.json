@@ -44,5 +44,17 @@
   "Cleared {{count}} log entries._one": "Cleared {{count}} log entry.",
   "Cleared {{count}} log entries._other": "Cleared {{count}} log entries.",
   "You are about to create assets for {{count}} discovered hosts. Please select a default asset type for all new assets._one": "You are about to create an asset for {{count}} discovered host. Please select a default asset type for the new asset.",
-  "You are about to create assets for {{count}} discovered hosts. Please select a default asset type for all new assets._other": "You are about to create assets for {{count}} discovered hosts. Please select a default asset type for all new assets."
+  "You are about to create assets for {{count}} discovered hosts. Please select a default asset type for all new assets._other": "You are about to create assets for {{count}} discovered hosts. Please select a default asset type for all new assets.",
+  "{{count}} pages_one": "{{count}} page",
+  "{{count}} pages_other": "{{count}} pages",
+  "{{count}} recipients_one": "{{count}} recipient",
+  "{{count}} recipients_other": "{{count}} recipients",
+  "{{count}} sections left out_one": "{{count}} section left out",
+  "{{count}} sections left out_other": "{{count}} sections left out",
+  "Emailed to {{count}} people_one": "Emailed to {{count}} person",
+  "Emailed to {{count}} people_other": "Emailed to {{count}} people",
+  "{{count}} assets_one": "{{count}} asset",
+  "{{count}} assets_other": "{{count}} assets",
+  "{{count}} chosen_one": "{{count}} chosen",
+  "{{count}} chosen_other": "{{count}} chosen"
 }

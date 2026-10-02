@@ -13,6 +13,7 @@ export const MODULES = {
     audit: t("Audit"),
     backup: t("Backup"),
     remediation: t("Remediation"),
+    reports: t("Reports"),
     system: t("System"),
 };
 
@@ -35,6 +36,7 @@ export function actionLabel(alert) {
     if (link.startsWith("/audit") || link.startsWith("/assets/schedule")) return t("Open job");
     if (link.startsWith("/remediation/acceptances")) return t("Open accepted risks");
     if (link.startsWith("/remediation")) return t("Open finding");
+    if (link.startsWith("/reports/schedules")) return t("Open schedules");
     if (link.startsWith("/settings/license")) return t("Open license");
     return t("View");
 }

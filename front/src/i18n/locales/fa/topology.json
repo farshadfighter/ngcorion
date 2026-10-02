@@ -1,7 +1,6 @@
 {
   "{{length}} assets": "{{length}} دارایی",
   "{{length}} links": "{{length}} اتصال",
-  "Checking…": "در حال بررسی…",
   "Destination": "مقصد",
   "Drag a device to rearrange it - the layout is saved. Drag from a device's port to another device's port to create a link. Click a link to edit it.": "برای جابه‌جایی، دستگاه را بکشید - چیدمان ذخیره می‌شود. برای ایجاد اتصال، از پورت یک دستگاه به پورت دستگاه دیگر بکشید. برای ویرایش اتصال روی آن کلیک کنید.",
   "Hosted asset": "دارایی میزبانی‌شده",

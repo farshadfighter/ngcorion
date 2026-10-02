@@ -6,6 +6,7 @@ import { SmsConfigModal } from "./SmsConfigModal";
 import { CertificateConfigModal } from "./CertificateConfigModal";
 import { LanguageConfigModal } from "./LanguageConfigModal";
 import { RemediationConfigModal } from "./RemediationConfigModal";
+import { ReportsConfigModal } from "./ReportsConfigModal";
 import { t } from "../../i18n";
 
 /**
@@ -78,6 +79,13 @@ export const SECTIONS = [
         hint: t("Days to fix each severity, and the longest risk acceptance"),
         icon: "fa-solid fa-clipboard-check",
         modal: RemediationConfigModal,
+    },
+    {
+        key: "reports",
+        title: t("Reports"),
+        hint: t("Organization name and logo on reports, and how long they are kept"),
+        icon: "fa-solid fa-file-lines",
+        modal: ReportsConfigModal,
     },
 ];
 

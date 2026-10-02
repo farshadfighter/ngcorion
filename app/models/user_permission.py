@@ -64,6 +64,9 @@ class ModuleEnum(str, enum.Enum):
     # Remediation tracking and risk acceptance
     REMEDIATION = "remediation"
 
+    # Reports (catalog, archive, schedules)
+    REPORTS = "reports"
+
 
 class UserPermission(Base):
     """

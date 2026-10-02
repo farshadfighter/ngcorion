@@ -710,7 +710,7 @@ def test_builtin_rule_cannot_be_deleted(db):
 def test_list_rules_groups_by_module(db):
     user = _user(db)
     groups = api.list_rules(_user=user, db=db)["groups"]
-    assert [g["module"] for g in groups] == ["noc", "cve", "audit", "backup", "remediation", "system"]
+    assert [g["module"] for g in groups] == ["noc", "cve", "audit", "backup", "remediation", "reports", "system"]
     assert any(r["event_type"] == "noc.device_unreachable" for r in groups[0]["rules"])
 
 

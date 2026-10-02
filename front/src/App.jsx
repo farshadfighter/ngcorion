@@ -46,6 +46,10 @@ const AlertsPage = lazy(() => import("./components/Alerts/AlertsPage").then((m) 
 const NotificationsPage = lazy(() => import("./components/Notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const RemediationPage = lazy(() => import("./components/Remediation/RemediationPage").then((m) => ({ default: m.RemediationPage })));
 const AcceptancesPage = lazy(() => import("./components/Remediation/AcceptancesPage").then((m) => ({ default: m.AcceptancesPage })));
+const ReportsCatalog = lazy(() => import("./components/Reports/ReportsCatalog").then((m) => ({ default: m.ReportsCatalog })));
+const ReportBuilder = lazy(() => import("./components/Reports/ReportBuilder").then((m) => ({ default: m.ReportBuilder })));
+const ReportsArchive = lazy(() => import("./components/Reports/ReportsArchive").then((m) => ({ default: m.ReportsArchive })));
+const ReportSchedules = lazy(() => import("./components/Reports/ReportSchedules").then((m) => ({ default: m.ReportSchedules })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
     RequirePermission,
@@ -306,6 +310,26 @@ function AppContent() {
                         <Route path="/remediation/acceptances" element={
                             <RequirePermission module="remediation" name="Accepted Risks">
                                 <AcceptancesPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/reports" element={
+                            <RequirePermission module="reports" name="Reports">
+                                <ReportsCatalog />
+                            </RequirePermission>
+                        } />
+                        <Route path="/reports/new/:template" element={
+                            <RequirePermission module="reports" name="Reports">
+                                <ReportBuilder />
+                            </RequirePermission>
+                        } />
+                        <Route path="/reports/archive" element={
+                            <RequirePermission module="reports" name="Report archive">
+                                <ReportsArchive />
+                            </RequirePermission>
+                        } />
+                        <Route path="/reports/schedules" element={
+                            <RequirePermission module="reports" name="Report schedules">
+                                <ReportSchedules />
                             </RequirePermission>
                         } />
                         <Route path="/settings/notifications" element={

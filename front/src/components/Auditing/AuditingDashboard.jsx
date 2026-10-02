@@ -9,6 +9,7 @@ import { TopFailedControls } from "./dashboard/TopFailedControls";
 import { ComplianceTrend } from "./dashboard/ComplianceTrend";
 import "../../assets/AuditingDashboard.css";
 import { t, uiLocale, n } from "../../i18n";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 // ── Compliance badge colours: green >= 80, yellow 50-79, red < 50 ──────────────
 const scoreColor = (p) => (p >= 80 ? "#16a34a" : p >= 50 ? "#d97706" : "#dc2626");
@@ -158,6 +159,7 @@ export const AuditingDashboard = () => {
 
     return (
         <div className="aud-container">
+            <div className="rep-shortcut-row"><ReportShortcut template="cis_compliance" className="bkm-btn bkm-btn-sm" /></div>
 
             {/* ── Findings breakdown (aggregate endpoints) ── */}
             <div className="aud-row aud-row-2">

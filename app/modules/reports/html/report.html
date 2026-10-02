@@ -1,0 +1,129 @@
+{% from "blocks.html" import block with context %}<!doctype html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if rtl else 'ltr' }}">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>
+@font-face { font-family: "RVazir"; src: url("vazirmatn-arabic-400-normal.woff"); font-weight: 400; }
+@font-face { font-family: "RVazir"; src: url("vazirmatn-arabic-700-normal.woff"); font-weight: 700; }
+@font-face { font-family: "RVazirLatin"; src: url("vazirmatn-latin-400-normal.woff"); font-weight: 400; }
+@font-face { font-family: "RVazirLatin"; src: url("vazirmatn-latin-700-normal.woff"); font-weight: 700; }
+@font-face { font-family: "RMono"; src: url("DejaVuSansMono.ttf"); }
+
+@page {
+  size: A4 {{ 'landscape' if landscape else 'portrait' }};
+  margin: 16mm 14mm 17mm 14mm;
+  @top-{{ 'right' if rtl else 'left' }} { content: string(doctitle); font: 7.5pt "RVazir", "RVazirLatin", sans-serif; color: #5d6a80; direction: {{ 'rtl' if rtl else 'ltr' }}; }
+  @top-{{ 'left' if rtl else 'right' }} { content: "{{ classification_label|css }}"; font: 700 7.5pt "RVazir", "RVazirLatin", sans-serif; color: {{ classification_color|css }}; direction: {{ 'rtl' if rtl else 'ltr' }}; }
+  @bottom-{{ 'right' if rtl else 'left' }} { content: "{{ footer_start|css }}"; font: 7pt "RVazir", "RVazirLatin", sans-serif; color: #5d6a80; direction: {{ 'rtl' if rtl else 'ltr' }}; }
+  @bottom-{{ 'left' if rtl else 'right' }} { content: "{{ page_word }} " counter(page{{ ', persian' if rtl else '' }}) " {{ of_word|css }} " counter(pages{{ ', persian' if rtl else '' }}); font: 7pt "RVazir", "RVazirLatin", sans-serif; color: #5d6a80; direction: {{ 'rtl' if rtl else 'ltr' }}; }
+}
+@page :first { @top-left { content: none; } @top-right { content: none; } }
+
+html { font-family: "RVazir", "RVazirLatin", "DejaVu Sans", sans-serif; font-size: 8.6pt; line-height: 1.6; color: #1b2333; }
+body { margin: 0; }
+h1, h2, h3 { line-height: 1.35; }
+.mono, .mono * { font-family: "RMono", monospace; font-size: 7.4pt; }
+.nowrap { white-space: nowrap; }
+
+.band { display: flex; justify-content: space-between; align-items: flex-start; gap: 12pt; border-bottom: 2pt solid #1e3a5f; padding-bottom: 9pt; margin-bottom: 10pt; }
+.brand { display: flex; align-items: center; gap: 8pt; }
+.brand img { max-height: 30pt; max-width: 110pt; }
+.brand-name { font-weight: 700; color: #1e3a5f; font-size: 10pt; }
+.brand-unit { color: #5d6a80; font-size: 7.8pt; }
+h1 { string-set: doctitle content(); font-size: 17pt; margin: 6pt 0 1pt; color: #1e3a5f; }
+.meta { color: #5d6a80; font-size: 8pt; }
+.cls { border: 1pt solid {{ classification_color|css }}; color: {{ classification_color|css }}; border-radius: 3pt; padding: 1pt 7pt; font-size: 7.5pt; font-weight: 700; white-space: nowrap; }
+
+section { margin-top: 12pt; }
+h2 { font-size: 11.5pt; color: #1e3a5f; margin: 0 0 6pt; padding-bottom: 3pt; border-bottom: 0.75pt solid #dfe4ec; page-break-after: avoid; break-after: avoid; }
+h3 { font-size: 9.2pt; color: #1e3a5f; margin: 9pt 0 4pt; page-break-after: avoid; break-after: avoid; }
+p { margin: 0 0 5pt; }
+
+.kpis { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5pt; margin-bottom: 6pt; }
+.kpi { background: #f4f7fb; border-radius: 3pt; padding: 5pt 7pt; break-inside: avoid; }
+.kpi b { display: block; font-size: 13.5pt; line-height: 1.25; }
+.kpi span { color: #5d6a80; font-size: 7.6pt; }
+.kpi em { font-style: normal; font-size: 7.4pt; font-weight: 700; margin-inline-start: 4pt; }
+.kpi small { display: block; color: #5d6a80; font-size: 7.2pt; }
+.up { color: #1f8a4c; } .down { color: #c0262d; } .flat { color: #5d6a80; }
+
+ul { margin: 0; padding-inline-start: 13pt; }
+li { margin-bottom: 2.5pt; }
+.note { color: #5d6a80; font-size: 7.6pt; margin: 3pt 0 5pt; }
+.chart { width: 100%; }
+.caption { color: #5d6a80; font-size: 7.4pt; }
+.chart-box { direction: ltr; }
+.xaxis { position: relative; height: 12pt; font-size: 7.4pt; color: #5d6a80; }
+.xaxis span { position: absolute; top: 0; white-space: nowrap; }
+.xaxis .x-middle { transform: translateX(-50%); }
+.xaxis .x-end { transform: translateX(-100%); }
+
+.bars { margin: 2pt 0 6pt; }
+.bar { display: flex; align-items: center; gap: 6pt; margin-bottom: 3pt; break-inside: avoid; }
+.bar .lbl { flex: 0 0 82pt; font-size: 7.6pt; overflow: hidden; }
+.bar .track { flex: 1; height: 7pt; background: #eef2f7; border-radius: 1.5pt; display: flex; direction: ltr; overflow: hidden; }
+.bar .track i { display: block; height: 100%; }
+.bar .val { flex: 0 0 34pt; font-size: 7.6pt; text-align: {{ 'left' if rtl else 'right' }}; }
+.bar .chg { flex: 0 0 34pt; white-space: nowrap; font-size: 7pt; color: #5d6a80; }
+.legend { display: flex; gap: 10pt; color: #5d6a80; font-size: 7.2pt; }
+.legend i { display: inline-block; width: 6pt; height: 6pt; border-radius: 1pt; margin-inline-end: 3pt; }
+
+.cols { display: flex; gap: 14pt; }
+.cols > div { flex: 1; min-width: 0; }
+
+table { width: 100%; border-collapse: collapse; font-size: 7.6pt; margin-bottom: 4pt; }
+thead { display: table-header-group; }
+th { text-align: start; background: #f4f7fb; color: #5d6a80; font-weight: 700; font-size: 7.2pt; padding: 3pt 5pt; border-bottom: 0.75pt solid #dfe4ec; }
+td { padding: 3pt 5pt; border-bottom: 0.5pt solid #e6ebf2; vertical-align: top; }
+tr { break-inside: avoid; }
+td.num, th.num { text-align: {{ 'start' if rtl else 'right' }}; white-space: nowrap; }
+td.small { font-size: 6.6pt; color: #3b475c; white-space: pre-wrap; }
+.sev { font-weight: 700; white-space: nowrap; }
+.sev-critical { color: #c0262d; } .sev-high { color: #c4561a; } .sev-medium { color: #a57c07; } .sev-low { color: #5d6a80; }
+.late { color: #c0262d; }
+.empty { color: #5d6a80; font-style: italic; padding: 4pt 0; }
+.more { color: #5d6a80; font-size: 7.2pt; }
+
+.about { margin-top: 16pt; border-top: 0.75pt solid #dfe4ec; padding-top: 6pt; color: #5d6a80; font-size: 7.2pt; break-inside: avoid; }
+.about dl { display: flex; flex-wrap: wrap; margin: 0; }
+.about dt { flex: 0 0 22%; font-weight: 700; }
+.about dd { flex: 0 0 76%; margin: 0 0 2pt; }
+</style>
+</head>
+<body>
+<div class="band">
+  <div>
+    <div class="brand">
+      {% if logo %}<img src="{{ logo }}" alt="">{% endif %}
+      <div><div class="brand-name">{{ org_name }}</div>{% if org_unit %}<div class="brand-unit">{{ org_unit }}</div>{% endif %}</div>
+    </div>
+    <h1>{{ title }}</h1>
+    <div class="meta">{{ period_line }}</div>
+    <div class="meta">{{ scope_line }}</div>
+  </div>
+  <span class="cls">{{ classification_label }}</span>
+</div>
+
+{% for s in sections %}
+<section>
+  <h2>{{ s.title }}</h2>
+  {% for b in s.blocks %}{{ block(b) }}{% endfor %}
+</section>
+{% endfor %}
+
+{% if omitted %}
+<section>
+  <h2>{{ t_omitted }}</h2>
+  <ul>{% for o in omitted %}<li>{{ o }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<div class="about">
+  <dl>
+    {% for k, v in about %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}
+  </dl>
+  {% if footer_text %}<p>{{ footer_text }}</p>{% endif %}
+</div>
+</body>
+</html>

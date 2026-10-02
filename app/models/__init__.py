@@ -308,3 +308,6 @@ __all__ = [
 
 # Remediation tracking and risk acceptance (see app/models/remediation.py)
 from app.models.remediation import RemediationEvent, RemediationItem, RiskAcceptance  # noqa: E402,F401
+
+# Reports: built documents, their files and schedules (see app/models/report.py)
+from app.models.report import Report, ReportFile, ReportSchedule  # noqa: E402,F401

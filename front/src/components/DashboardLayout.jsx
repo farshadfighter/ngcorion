@@ -34,6 +34,9 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/hardening"))            return "hardening";
     if (pathname.startsWith("/remediation/acceptances")) return "remediation-acceptances";
     if (pathname.startsWith("/remediation"))          return "remediation";
+    if (pathname.startsWith("/reports/archive"))      return "reports-archive";
+    if (pathname.startsWith("/reports/schedules"))    return "reports-schedules";
+    if (pathname.startsWith("/reports"))              return "reports";
     if (pathname.startsWith("/backup/overview"))      return "backup-overview";
     if (pathname.startsWith("/backup/restores"))      return "backup-restores";
     if (pathname.startsWith("/backup"))               return "backup";
@@ -81,6 +84,7 @@ export const DashboardLayout = () => {
     const canReadLogs      = usePermission("logs",                 "read");
     const canReadBackup    = usePermission("backup",               "read");
     const canReadRemediation = usePermission("remediation",        "read");
+    const canReadReports   = usePermission("reports",              "read");
     const canReadSysConfig = usePermission("system_config",        "read");
     const canReadTopology  = usePermission("topology",             "read");
     const canReadArchValidation = usePermission("architecture_validation", "read");
@@ -164,6 +168,9 @@ export const DashboardLayout = () => {
         "risk-asset":          t("Risk Asset"),
         "remediation":         t("Remediation"),
         "remediation-acceptances": t("Accepted Risks"),
+        "reports":             t("Reports"),
+        "reports-archive":     t("Report archive"),
+        "reports-schedules":   t("Report schedules"),
         "backup-overview":     t("Backup & Restore"),
         "backup":              t("Device Backups"),
         "backup-restores":     t("Restore History"),
@@ -329,6 +336,34 @@ export const DashboardLayout = () => {
                                  onClick={() => navigate("/remediation/acceptances")} title={t("Accepted Risks")}>
                                 {isSidebarCollapsed && <img src="/icons/remediation.svg" alt="" className="nav-icon-img" />}
                                 {!isSidebarCollapsed && <span>{t("Accepted Risks")}</span>}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── REPORTS ── */}
+                    {canReadReports && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "reports" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/reports")}>
+                                    <img src="/icons/reports.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">{t("Reports")}</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "reports" ? "active" : ""}`}
+                                 onClick={() => navigate("/reports")} title={t("Report list")}>
+                                {isSidebarCollapsed && <img src="/icons/reports.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>{t("Report list")}</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "reports-archive" ? "active" : ""}`}
+                                 onClick={() => navigate("/reports/archive")} title={t("Archive")}>
+                                {isSidebarCollapsed && <img src="/icons/reports.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>{t("Archive")}</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "reports-schedules" ? "active" : ""}`}
+                                 onClick={() => navigate("/reports/schedules")} title={t("Schedules")}>
+                                {isSidebarCollapsed && <img src="/icons/reports.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>{t("Schedules")}</span>}
                             </div>
                         </>
                     )}

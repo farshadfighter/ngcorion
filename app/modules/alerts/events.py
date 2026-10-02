@@ -434,6 +434,16 @@ def _acceptance_expiring(db: Session, params: Dict, now: datetime, since: dateti
             for a in rows]
 
 
+def _report_schedule_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.report import ReportSchedule
+    rows = (db.query(ReportSchedule)
+            .filter(ReportSchedule.enabled.is_(True), ReportSchedule.last_status == "failed").all())
+    return [Problem(key=f"schedule:{s.id}", title="Scheduled report failed",
+                    detail=f"{s.name} - {(s.last_error or '')[:160]}", source_label="NGCorion",
+                    link="/reports/schedules", owner_user_id=s.owner_id)
+            for s in rows]
+
+
 EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("noc.device_unreachable", "noc", "Device unreachable",
               "No SNMP answer for {polls} polls in a row", "state", 60, _device_unreachable,
@@ -491,9 +501,12 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
               "An accepted risk ends within {days} days", "state", 3600, _acceptance_expiring,
               params=[Param("days", "Days before the end", 7, "days", 1, 60)], has_owner=True,
               roles=["admin", "manager"]),
+    EventType("reports.schedule_failed", "reports", "Scheduled report failed",
+              "A scheduled report could not be built or emailed", "state", 300, _report_schedule_failed,
+              has_owner=True, roles=["admin"]),
 )}
 
 MODULE_LABELS = {"noc": "NOC", "cve": "CVE", "audit": "Audit & Hardening", "backup": "Backup & Restore",
-                 "remediation": "Remediation",
+                 "remediation": "Remediation", "reports": "Reports",
                  "system": "System"}
-MODULE_ORDER = ("noc", "cve", "audit", "backup", "remediation", "system")
+MODULE_ORDER = ("noc", "cve", "audit", "backup", "remediation", "reports", "system")

@@ -4,6 +4,7 @@ import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
 import { t, n } from "../../i18n";
 import { RemediationDrawer } from "./RemediationDrawer.jsx";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 import { SEVERITY, SOURCE, STATUS, count, dueClass, dueText, itemTitle, shortDate } from "./remediationFormat.js";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
@@ -78,7 +79,10 @@ export function RemediationPage() {
                     <h1>{t("Remediation Tracking")}</h1>
                     <p>{t("Every open finding from CVE, audits and architecture validation, with an owner and a deadline. A finding closes by itself when the next audit or CVE check no longer reports it.")}</p>
                 </div>
-                <Link className="bkm-btn" to="/remediation/acceptances">{t("Accepted Risks")}</Link>
+                <div className="bkm-actions">
+                    <ReportShortcut template="remediation" query={{ sources: source }} className="bkm-btn" />
+                    <Link className="bkm-btn" to="/remediation/acceptances">{t("Accepted Risks")}</Link>
+                </div>
             </div>
 
             <div className="bkm-stats rem-stats">

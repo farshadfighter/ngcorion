@@ -10,6 +10,7 @@ import { Icon } from "./CveIcons.jsx";
 import { CveJobModal } from "./CveJobModal.jsx";
 import { CvePackageImport } from "./CvePackageImport.jsx";
 import { CveDetail } from "./CveDetail.jsx";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 import { CveAssetProducts } from "./CveAssetProducts.jsx";
 import "../../assets/Cve.css";
 import { t as tr, n } from "../../i18n";
@@ -88,7 +89,10 @@ export function CveFindings() {
                     <h1>{tr("CVE Findings")}</h1>
                     <p>{tr("Known vulnerabilities in your assets, ordered by what to fix first.")}</p>
                 </div>
-                <DbPill status={status} onOpenJob={setJobId} />
+                <div className="cvx-head-actions">
+                    <ReportShortcut template="cve" className="cvx-btn cvx-btn-sm" />
+                    <DbPill status={status} onOpenJob={setJobId} />
+                </div>
             </div>
 
             {error && <div className="cvx-note cvx-note-error">{error}</div>}
