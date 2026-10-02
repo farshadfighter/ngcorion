@@ -38,7 +38,7 @@ RUN groupadd -g 10001 ngcorion \
     && install -d /usr/local/lib/ngcorion \
     && cp /usr/bin/date /usr/local/lib/ngcorion/date \
     && setcap cap_sys_time+ep /usr/local/lib/ngcorion/date \
-    && mkdir -p /var/lib/ngcorion/license /var/lib/ngcorion/tz \
+    && mkdir -p /var/lib/ngcorion/license /var/lib/ngcorion/tz /var/lib/ngcorion/backups \
     && ln -sf /usr/share/zoneinfo/Etc/UTC /var/lib/ngcorion/tz/localtime \
     && ln -sf /var/lib/ngcorion/tz/localtime /etc/localtime \
     && chown -R 10001:10001 /var/lib/ngcorion

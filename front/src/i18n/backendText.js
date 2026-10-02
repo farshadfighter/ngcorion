@@ -40,6 +40,29 @@ const TEMPLATES = [
     msg("{{free}} GB free of {{total}} GB ({{path}})"),
     msg("{{ids}} and {{more}} more ({{product}})"),
     msg("{{ids}} and {{more}} more"),
+    // NGCorion self-backup (app/modules/sysbackup)
+    msg("No successful backup in the last {{hours}} hours"),
+    msg("No successful backup for {{hours}} hours"),
+    msg("Cannot reach {{target}} ({{error}})"),
+    msg("Cannot write to the share: {{error}}"),
+    msg("SFTP connection failed: {{error}}"),
+    msg("Windows share connection failed: {{error}}"),
+    msg("Writing to the share failed: {{error}}"),
+    msg("Keep between {{lo}} and {{hi}}"),
+    msg("The copy on the destination has {{size}} bytes instead of {{expected}}"),
+    msg("The passphrase must be at least {{min}} characters"),
+    msg("This is not a usable NGCorion backup: {{reason}}"),
+    msg("The backup cannot be read: {{reason}}"),
+    msg("The backup was restored, but a final step failed: {{reason}}"),
+    msg("file is damaged (chunk {{n}} failed its check)"),
+    msg("row counts differ: {{tables}}"),
+    msg("tables missing from the backup: {{tables}}"),
+    msg("the backup has a table this version does not know: {{name}}"),
+    msg("the backup is inconsistent: {{name}}"),
+    msg("{{name}} does not match its recorded checksum"),
+    msg("{{name}} is not in the manifest"),
+    msg("Uploaded: {{name}}"),
+    msg("Before restoring {{when}}"),
     // rule catalogue summaries (values already filled in by the API)
     msg("No SNMP answer for {{polls}} polls in a row"),
     msg("Above {{percent}}% for {{minutes}} minutes"),
@@ -288,6 +311,73 @@ msg("High-risk asset is active without a recent audit");
 msg("This asset is high risk and active - audit it within 30 days.");
 msg("Last audit failed");
 msg("The most recent audit run failed to complete - investigate and re-run it.");
+// NGCorion self-backup: API errors, alert catalogue (app/modules/sysbackup, alerts/events.py)
+msg("NGCorion backup failed");
+msg("The last backup of NGCorion itself failed");
+msg("No recent NGCorion backup");
+msg("No backup for");
+msg("hours");
+msg("NGCorion backups are not set up");
+msg("Set the backup passphrase so daily backups can run");
+msg("Backup destination unreachable");
+msg("A copy could not be sent to an SFTP server or Windows share");
+msg("Backup restore test failed");
+msg("The weekly test restore of a backup failed");
+msg("A backup is already waiting to run");
+msg("A backup or restore test is running; try again when it finishes");
+msg("A restore is already running");
+msg("Another backup, restore or restore test is running; try again when it finishes");
+msg("Authentication failed");
+msg("Authentication failed: check the username and password or key");
+msg("Authentication failed: check the username, domain and password");
+msg("Backup not found");
+msg("Destination not found");
+msg("Enter only the server name or address");
+msg("Enter the passphrase this backup was made with");
+msg("Enter the share name");
+msg("Less than 256 MB free in the backup folder");
+msg("Only a finished backup can be restored");
+msg("Restore not found");
+msg("Set the backup passphrase first");
+msg("The backup file is missing");
+msg("The backup has no file");
+msg("The backup is not ready");
+msg("The backup is still being written");
+msg("The backup no longer exists");
+msg("The current passphrase is not correct");
+msg("The file is empty");
+msg("The file is too large");
+msg("The passphrase does not open this backup");
+msg("The passphrase is too long");
+msg("The private key could not be read (OpenSSH or PEM, without a passphrase)");
+msg("The server presented a different host key than the one pinned. If the server was reinstalled, clear the pinned key and test again.");
+msg("The stored password could not be opened; enter it again");
+msg("This backup comes from a newer NGCorion version. Update this server first, then restore it.");
+msg("Type RESTORE to confirm");
+msg("Unknown backup content");
+msg("Unknown weekday");
+msg("Your password is not correct");
+msg("The backup was interrupted");
+msg("The restore was interrupted");
+msg("The file is no longer in the backup folder");
+msg("The backup passphrase is not set");
+msg("archive ends in the middle of an entry");
+msg("archive is damaged");
+msg("entry is larger than expected");
+msg("file is cut short");
+msg("file is damaged");
+msg("header is damaged");
+msg("header is too large");
+msg("not an NGCorion backup file");
+msg("the backup does not start with its manifest");
+msg("the backup has no summary");
+msg("the backup is empty");
+msg("the database has no migration revision");
+msg("the file changed since it was written");
+msg("the manifest or summary is missing");
+msg("unexpected data after the end of the archive");
+msg("unexpected data after the end of the backup");
+msg("Command line");
 // design template (app/modules/design/templates.py)
 msg("Small (< 50 devices, single site)");
 msg("Medium (50-200 devices)");

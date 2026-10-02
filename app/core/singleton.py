@@ -27,6 +27,16 @@ from app.core.database import engine
 logger = logging.getLogger(__name__)
 
 RETRY_SECONDS = 30
+PAUSE_CHECK_SECONDS = 5
+
+
+def _maintenance_active() -> bool:
+    """A self-backup restore is running (app/modules/sysbackup/maintenance.py)."""
+    try:
+        from app.modules.sysbackup.maintenance import state
+        return state() is not None
+    except Exception:
+        return False
 
 
 def lock_key(name: str) -> int:
@@ -86,24 +96,47 @@ class SingletonTask:
         self._stopping = asyncio.Event()
         self._conn = None
         self.leading = False
+        self._paused = False
 
     async def _run(self):
+        last_lock_check = 0.0
+        loop = asyncio.get_running_loop()
         while not self._stopping.is_set():
-            if self._conn is None:
-                self._conn = await asyncio.to_thread(_try_lock, self.key)
-                if self._conn is not None:
-                    logger.info("[Singleton] this worker runs %s", self.name)
-                    self.leading = True
+            paused = _maintenance_active()
+            if self.leading and paused != self._paused:
+                # A restore is replacing the database: background work done
+                # now would be lost (or land in the old tables), so the task
+                # waits it out and resumes on its own afterwards.
+                self._paused = paused
+                if paused:
+                    logger.info("[Singleton] %s paused for maintenance", self.name)
+                    await self._stop()
+                else:
+                    logger.info("[Singleton] %s resumed after maintenance", self.name)
                     self._start()
-            elif not await asyncio.to_thread(_still_held, self._conn):
-                logger.warning("[Singleton] lost the lock for %s; stopping it here", self.name)
-                self.leading = False
-                await self._stop()
-                await asyncio.to_thread(_release, self._conn, self.key)
-                self._conn = None
-                continue
+            if loop.time() - last_lock_check >= self.retry_seconds:
+                last_lock_check = loop.time()
+                if self._conn is None:
+                    self._conn = await asyncio.to_thread(_try_lock, self.key)
+                    if self._conn is not None:
+                        logger.info("[Singleton] this worker runs %s", self.name)
+                        self.leading = True
+                        self._paused = paused
+                        if not paused:
+                            self._start()
+                elif not await asyncio.to_thread(_still_held, self._conn):
+                    logger.warning("[Singleton] lost the lock for %s; stopping it here", self.name)
+                    self.leading = False
+                    if not self._paused:
+                        await self._stop()
+                    self._paused = False
+                    await asyncio.to_thread(_release, self._conn, self.key)
+                    self._conn = None
+                    last_lock_check = 0.0       # compete again right away
+                    continue
             try:
-                await asyncio.wait_for(self._stopping.wait(), timeout=self.retry_seconds)
+                await asyncio.wait_for(self._stopping.wait(),
+                                       timeout=min(self.retry_seconds, PAUSE_CHECK_SECONDS))
             except asyncio.TimeoutError:
                 pass
 
@@ -122,7 +155,9 @@ class SingletonTask:
             self._task = None
         if self.leading:
             self.leading = False
-            await self._stop()
+            if not self._paused:
+                await self._stop()
+            self._paused = False
         if self._conn is not None:
             await asyncio.to_thread(_release, self._conn, self.key)
             self._conn = None

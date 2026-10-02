@@ -208,6 +208,12 @@ class Settings(BaseSettings):
     NOC_METRICS_STORAGE_BUDGET_GB: float = 10.0
     NOC_METRICS_STORAGE_EVICT_THRESHOLD: float = 0.8
 
+    # NGCorion self-backup (app/modules/sysbackup): encrypted .ngbak archives
+    # of the database and the files the product keeps on disk. Mounted as a
+    # volume in docker-compose so archives survive container recreation; copy
+    # them off the server too (SFTP / Windows share destinations in the UI).
+    BACKUP_DIR: str = "/var/lib/ngcorion/backups"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

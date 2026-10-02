@@ -56,5 +56,13 @@
   "{{count}} assets_one": "{{count}} asset",
   "{{count}} assets_other": "{{count}} assets",
   "{{count}} chosen_one": "{{count}} chosen",
-  "{{count}} chosen_other": "{{count}} chosen"
+  "{{count}} chosen_other": "{{count}} chosen",
+  "{{count}} rows_one": "{{count}} row",
+  "{{count}} rows_other": "{{count}} rows",
+  "Delete this backup from the server and its {{count}} copies on the destinations?_one": "Delete this backup from the server and its copy on the destination?",
+  "Delete this backup from the server and its {{count}} copies on the destinations?_other": "Delete this backup from the server and its {{count}} copies on the destinations?",
+  "{{count}} stored passwords re-encrypted for this server._one": "{{count}} stored password re-encrypted for this server.",
+  "{{count}} stored passwords re-encrypted for this server._other": "{{count}} stored passwords re-encrypted for this server.",
+  "{{count}} system files restored._one": "{{count}} system file restored.",
+  "{{count}} system files restored._other": "{{count}} system files restored."
 }

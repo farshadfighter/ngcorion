@@ -72,6 +72,16 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # A caller that already holds a connection (the self-backup restore runs
+    # the migrations inside a staging schema on its own connection) passes it
+    # in config.attributes; use it as-is instead of opening a second one.
+    provided = config.attributes.get("connection")
+    if provided is not None:
+        context.configure(connection=provided, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_url()
     connectable = engine_from_config(

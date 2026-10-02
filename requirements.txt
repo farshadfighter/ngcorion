@@ -26,6 +26,7 @@ python-dotenv>=1.0.0
 # SSH & Network Device Management
 netmiko>=4.2.0
 paramiko>=3.3.0
+smbprotocol>=1.13
 
 # CIS MongoDB benchmark module (app/cis/services/mongodb.py)
 pymongo>=4.0.0

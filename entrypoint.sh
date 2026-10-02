@@ -42,7 +42,7 @@ if [ "$(id -u)" = "0" ]; then
         return 0
     }
 
-    mkdir -p /var/lib/ngcorion/license /var/lib/ngcorion/tz
+    mkdir -p /var/lib/ngcorion/license /var/lib/ngcorion/tz /var/lib/ngcorion/backups
     own /var/lib/ngcorion /etc/ngcorion /app/traefik/certs /app/traefik/dynamic
     own_file /etc/snmp/snmpd.conf 0640
     own_file /etc/rsyslog.d/99-ngcorion.conf 0644

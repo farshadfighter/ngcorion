@@ -1,3 +1,4 @@
+import { useSelector } from "react-redux";
 import React, { lazy } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermission } from "../hooks/usePermission";
@@ -32,6 +33,12 @@ export const ComingSoon = ({ name }) => (
 export const RequirePermission = ({ module, name, children }) => {
     const allowed = usePermission(module, "read");
     return allowed ? children : <AccessDenied menuName={t(name)} />;
+};
+
+/** Pages for system administrators only (no module permission grants them). */
+export const RequireAdmin = ({ name, children }) => {
+    const role = useSelector((state) => state.auth.role);
+    return role === "admin" ? children : <AccessDenied menuName={t(name)} />;
 };
 
 // ── Overview home (the dashboard stat cards) ──────────────────────────────────

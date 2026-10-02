@@ -47,6 +47,15 @@ api.interceptors.response.use(
     (error) => {
 
         // ----------------------------------------
+        // 503 with "maintenance": a backup is being restored
+        // (app/modules/sysbackup/maintenance.py). MaintenanceOverlay waits it out.
+        // ----------------------------------------
+        if (error.response?.status === 503 && error.response.data?.maintenance) {
+            window.dispatchEvent(new CustomEvent('ngc-maintenance', { detail: error.response.data.maintenance }));
+            return Promise.reject(error);
+        }
+
+        // ----------------------------------------
         // 401 — Unauthorized: توکن نداره یا منقضی شده
         // ----------------------------------------
         if (error.response?.status === 401) {

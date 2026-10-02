@@ -129,6 +129,8 @@ from app.modules.alerts.router import router as alerts_router
 from app.modules.alerts.router import admin_router as notifications_router
 from app.modules.remediation.router import router as remediation_router
 from app.modules.reports.router import router as reports_router
+from app.modules.sysbackup.router import router as system_backup_router
+from app.modules.sysbackup.maintenance import MaintenanceMiddleware
 from app.modules.scheduling.scheduler import start_job_scheduler, stop_job_scheduler
 
 # Import organization-wide dashboard routers
@@ -261,6 +263,7 @@ async def lifespan(app: FastAPI):
     from app.modules.alerts.engine import start_alert_engine, stop_alert_engine
     from app.modules.remediation.engine import start_remediation_sync, stop_remediation_sync
     from app.modules.reports.engine import start_report_worker, stop_report_worker
+    from app.modules.sysbackup.engine import start_backup_worker, stop_backup_worker
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
@@ -269,6 +272,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("alert-engine", start_alert_engine, stop_alert_engine),
         SingletonTask("remediation-sync", start_remediation_sync, stop_remediation_sync),
         SingletonTask("report-worker", start_report_worker, stop_report_worker),
+        SingletonTask("system-backup", start_backup_worker, stop_backup_worker),
     ]
     for task in singletons:
         task.start()
@@ -328,6 +332,10 @@ FRONTEND_INDEX = FRONTEND_DIST / "index.html"
 # to be added last, which meant every license-blocked response - the ones an
 # unauthenticated scan of an unlicensed instance would actually see - shipped
 # with no CSP/X-Frame-Options/etc. and no CORS headers at all.
+# MaintenanceMiddleware is added before LicenseMiddleware, so it sits inside
+# it: while a restore runs, the license check still runs first and nothing
+# gets past it - maintenance only turns requests away, it never lets one in.
+app.add_middleware(MaintenanceMiddleware)
 app.add_middleware(LicenseMiddleware)
 
 # ---------------------------------------------------------------------------
@@ -544,6 +552,7 @@ app.include_router(alerts_router)
 app.include_router(notifications_router)
 app.include_router(remediation_router)
 app.include_router(reports_router)
+app.include_router(system_backup_router)
 
 
 @app.get("/api/info", tags=["Meta"])

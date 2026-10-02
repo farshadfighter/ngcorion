@@ -51,6 +51,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
     if (pathname.startsWith("/settings/license"))     return "licence";
+    if (pathname.startsWith("/settings/system-backup")) return "system-backup";
     if (pathname.startsWith("/settings/system"))      return "system-configuration";
     if (pathname.startsWith("/settings/notifications")) return "notifications";
     if (pathname.startsWith("/alerts"))               return "alerts";
@@ -63,6 +64,7 @@ const menuFromPath = (pathname) => {
 
 export const DashboardLayout = () => {
     const { username, role } = useSelector((state) => state.auth);
+    const isAdmin = role === "admin";
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { pathname } = useLocation();
@@ -185,6 +187,7 @@ export const DashboardLayout = () => {
         "user-management":     t("User Management"),
         "system-logs":         t("System Logs"),
         "system-configuration": t("System Configuration"),
+        "system-backup":       t("NGCorion backup"),
         "notifications":       t("Notifications"),
         "alerts":              t("Alerts"),
         "licence":             t("License Management"),
@@ -515,6 +518,13 @@ export const DashboardLayout = () => {
                              onClick={() => navigate("/settings/notifications")} title={t("Notifications")}>
                             {isSidebarCollapsed && <img src="/icons/alerts.svg" alt="" className="nav-icon-img" />}
                             {!isSidebarCollapsed && <span>{t("Notifications")}</span>}
+                        </div>
+                    )}
+                    {isAdmin && (
+                        <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "system-backup" ? "active" : ""}`}
+                             onClick={() => navigate("/settings/system-backup")} title={t("NGCorion backup")}>
+                            {isSidebarCollapsed && <img src="/icons/system-backup.svg" alt="" className="nav-icon-img" />}
+                            {!isSidebarCollapsed && <span>{t("NGCorion backup")}</span>}
                         </div>
                     )}
                     <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "licence" ? "active" : ""}`}

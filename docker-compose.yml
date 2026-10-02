@@ -86,6 +86,11 @@ services:
       # the image directory, which Dockerfile.ngcorion already creates owned by
       # 10001.
       - license_client_data:/var/lib/ngcorion/license
+      # NGCorion self-backups (Settings > NGCorion backup): encrypted .ngbak
+      # archives of the database and the certificate / SSH host keys. A named
+      # volume, so Docker seeds it owned by UID 10001 from the image. Keep
+      # copies off this host too - add an SFTP or Windows share destination.
+      - ngcorion_backups:/var/lib/ngcorion/backups
       - /etc/snmp:/etc/snmp
       - /etc/rsyslog.d:/etc/rsyslog.d
       - /etc/systemd/timesyncd.conf:/etc/systemd/timesyncd.conf
@@ -231,6 +236,7 @@ volumes:
   postgres_data:
   redis_data:
   license_client_data:
+  ngcorion_backups:
 
 networks:
   app:

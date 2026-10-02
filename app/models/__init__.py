@@ -311,3 +311,6 @@ from app.models.remediation import RemediationEvent, RemediationItem, RiskAccept
 
 # Reports: built documents, their files and schedules (see app/models/report.py)
 from app.models.report import Report, ReportFile, ReportSchedule  # noqa: E402,F401
+
+# NGCorion self-backup: archive catalog, destinations, restores (see app/models/system_backup.py)
+from app.models.system_backup import BackupDestination, SystemBackup, SystemRestore  # noqa: E402,F401

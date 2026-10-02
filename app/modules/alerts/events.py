@@ -357,7 +357,8 @@ def _license_problem(db: Session, params: Dict, now: datetime, since: datetime) 
 
 
 BACKGROUND_TASKS = (("job-scheduler", "Job scheduler"), ("noc-poller", "NOC poller"),
-                    ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update"))
+                    ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update"),
+                    ("system-backup", "NGCorion backup"))
 
 
 def _task_stopped(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
@@ -444,6 +445,66 @@ def _report_schedule_failed(db: Session, params: Dict, now: datetime, since: dat
             for s in rows]
 
 
+# ---------------------------------------------------------------------------
+# NGCorion self-backup (app/modules/sysbackup)
+# ---------------------------------------------------------------------------
+
+BACKUP_LINK = "/settings/system-backup"
+
+
+def _backup_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.system_backup import SystemBackup
+    last = (db.query(SystemBackup).filter(SystemBackup.kind.in_(("scheduled", "manual")),
+                                          SystemBackup.status.in_(("ready", "failed")))
+            .order_by(SystemBackup.created_at.desc()).first())
+    if last is None or last.status != "failed":
+        return []
+    return [Problem(key=f"backup:{last.id}", title="NGCorion backup failed",
+                    detail=(last.error or "")[:200], source_label="NGCorion", link=BACKUP_LINK)]
+
+
+def _backup_missing(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.system_backup import SystemBackup
+    from app.modules.sysbackup.service import get_settings
+    cfg = get_settings(db)
+    if not cfg["enabled"]:
+        return []
+    if not cfg["passphrase_set"]:
+        return [Problem(key="backup:setup", title="NGCorion backups are not set up",
+                        detail="Set the backup passphrase so daily backups can run", source_label="NGCorion",
+                        link=BACKUP_LINK)]
+    hours = float(params.get("hours", 48))
+    recent = (db.query(SystemBackup.id).filter(SystemBackup.status == "ready",
+                                               SystemBackup.kind != "uploaded",
+                                               SystemBackup.finished_at >= now - timedelta(hours=hours)).first())
+    if recent is not None:
+        return []
+    return [Problem(key="backup:stale", title="No recent NGCorion backup",
+                    detail=f"No successful backup in the last {_fmt(hours)} hours", source_label="NGCorion",
+                    link=BACKUP_LINK)]
+
+
+def _backup_destination(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.system_backup import BackupDestination
+    rows = (db.query(BackupDestination).filter(BackupDestination.enabled.is_(True),
+                                               BackupDestination.last_status == "failed").all())
+    return [Problem(key=f"destination:{d.id}", title="Backup destination unreachable",
+                    detail=f"{d.name}: {(d.last_error or '')[:160]}", source_label="NGCorion", link=BACKUP_LINK)
+            for d in rows]
+
+
+def _restore_test_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.system_backup import SystemRestore
+    last = (db.query(SystemRestore).filter(SystemRestore.kind == "test",
+                                           SystemRestore.status.in_(("succeeded", "failed")))
+            .order_by(SystemRestore.created_at.desc()).first())
+    if last is None or last.status != "failed":
+        return []
+    return [Problem(key=f"test:{last.id}", title="Backup restore test failed",
+                    detail=f"{last.backup_label or ''}: {(last.error or '')[:160]}", source_label="NGCorion",
+                    link=BACKUP_LINK)]
+
+
 EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("noc.device_unreachable", "noc", "Device unreachable",
               "No SNMP answer for {polls} polls in a row", "state", 60, _device_unreachable,
@@ -501,6 +562,17 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
               "An accepted risk ends within {days} days", "state", 3600, _acceptance_expiring,
               params=[Param("days", "Days before the end", 7, "days", 1, 60)], has_owner=True,
               roles=["admin", "manager"]),
+    EventType("system.backup_failed", "system", "NGCorion backup failed",
+              "The last backup of NGCorion itself failed", "state", 300, _backup_failed,
+              severity="critical", channels=["email", "sms"]),
+    EventType("system.backup_missing", "system", "No recent NGCorion backup",
+              "No successful backup for {hours} hours", "state", 1800, _backup_missing,
+              params=[Param("hours", "No backup for", 48, "hours", 24, 720)], severity="critical"),
+    EventType("system.backup_destination", "system", "Backup destination unreachable",
+              "A copy could not be sent to an SFTP server or Windows share", "state", 600, _backup_destination),
+    EventType("system.restore_test_failed", "system", "Backup restore test failed",
+              "The weekly test restore of a backup failed", "state", 600, _restore_test_failed,
+              severity="critical"),
     EventType("reports.schedule_failed", "reports", "Scheduled report failed",
               "A scheduled report could not be built or emailed", "state", 300, _report_schedule_failed,
               has_owner=True, roles=["admin"]),

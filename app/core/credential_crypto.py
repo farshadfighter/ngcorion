@@ -28,14 +28,15 @@ PURPOSE_NOC_SNMP = "noc-snmp-credentials"
 PURPOSE_SYSTEM_CONFIG = "system-config-secrets"
 PURPOSE_CVE = "cve-database-secrets"
 PURPOSE_NOTIFICATIONS = "notification-secrets"
+PURPOSE_SYSTEM_BACKUP = "system-backup"
 
 
 def _fernet_key(raw: bytes) -> Fernet:
     return Fernet(base64.urlsafe_b64encode(raw))
 
 
-def _cipher(purpose: str) -> MultiFernet:
-    secret = settings.SECRET_KEY.encode()
+def _cipher(purpose: str, secret_key: str = None) -> MultiFernet:
+    secret = (secret_key or settings.SECRET_KEY).encode()
     derived = HKDF(
         algorithm=hashes.SHA256(),
         length=32,
@@ -46,14 +47,17 @@ def _cipher(purpose: str) -> MultiFernet:
     return MultiFernet([_fernet_key(derived), _fernet_key(legacy)])
 
 
-def encrypt(plaintext: str, purpose: str) -> str:
-    return _cipher(purpose).encrypt(plaintext.encode()).decode()
+def encrypt(plaintext: str, purpose: str, secret_key: str = None) -> str:
+    return _cipher(purpose, secret_key).encrypt(plaintext.encode()).decode()
 
 
-def decrypt(ciphertext: str, purpose: str) -> str:
-    """Raises ValueError (e.g. SECRET_KEY changed, or corrupted value)."""
+def decrypt(ciphertext: str, purpose: str, secret_key: str = None) -> str:
+    """Raises ValueError (e.g. SECRET_KEY changed, or corrupted value).
+
+    secret_key overrides settings.SECRET_KEY - used when a restored backup was
+    taken on a server with a different key and its secrets are re-encrypted."""
     try:
-        return _cipher(purpose).decrypt(ciphertext.encode()).decode()
+        return _cipher(purpose, secret_key).decrypt(ciphertext.encode()).decode()
     except InvalidToken as exc:
         raise ValueError("Could not decrypt stored secret - SECRET_KEY may have changed") from exc
 

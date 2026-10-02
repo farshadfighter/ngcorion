@@ -13,6 +13,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { LicenseActivationScreen } from "./components/License/LicenseActivationScreen.jsx";
 import QuotaExhaustedModal from './components/License/QuotaExhaustedModal';
 import {PermissionToast} from "./components/UserManagement/Permissiontoast.jsx";
+import { MaintenanceOverlay } from "./components/SystemBackup/MaintenanceOverlay.jsx";
 
 // Pages load on first visit (code splitting); the shell above loads at once.
 const AssetRequirement = lazy(() => import("./components/AssetRequirement/AssetRequirement").then((m) => ({ default: m.AssetRequirement })));
@@ -50,8 +51,10 @@ const ReportsCatalog = lazy(() => import("./components/Reports/ReportsCatalog").
 const ReportBuilder = lazy(() => import("./components/Reports/ReportBuilder").then((m) => ({ default: m.ReportBuilder })));
 const ReportsArchive = lazy(() => import("./components/Reports/ReportsArchive").then((m) => ({ default: m.ReportsArchive })));
 const ReportSchedules = lazy(() => import("./components/Reports/ReportSchedules").then((m) => ({ default: m.ReportSchedules })));
+const SystemBackup = lazy(() => import("./components/SystemBackup/SystemBackup").then((m) => ({ default: m.SystemBackup })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
+    RequireAdmin,
     RequirePermission,
     AssetListRoute,
     AutoDiscoveryRoute,
@@ -337,6 +340,11 @@ function AppContent() {
                                 <NotificationsPage />
                             </RequirePermission>
                         } />
+                        <Route path="/settings/system-backup" element={
+                            <RequireAdmin name="NGCorion backup">
+                                <SystemBackup />
+                            </RequireAdmin>
+                        } />
                         <Route path="/settings/license" element={<License />} />
                         <Route path="/settings/system" element={
                             <RequirePermission module="system_config" name="System Configuration">
@@ -377,6 +385,7 @@ function AppContent() {
 
             {/* مودال سهمیه تمام شده - نمایش در تمام صفحات */}
             <PermissionToast />
+            <MaintenanceOverlay />
             <QuotaExhaustedModal />
         </>
     );
