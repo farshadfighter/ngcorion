@@ -18,6 +18,7 @@ const TRIGGER_LABELS = {
     port_updated: t("Ports changed"),
     profile_updated: t("Profile changed"),
     zone_updated: t("Zone changed"),
+    risk_acceptance: t("Risk acceptance changed"),
 };
 
 const triggerLabel = (reason) =>

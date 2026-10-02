@@ -195,7 +195,6 @@
   "To enable network scanning, run this command on the server:": "برای فعال شدن اسکن شبکه، دستور زیر را روی سرور اجرا کنید:",
   "Type: {{asset_type}}": "نوع: {{asset_type}}",
   "Update Ports": "به‌روزرسانی پورت‌ها",
-  "View": "مشاهده",
   "View error details": "مشاهدهٔ جزئیات خطا",
   "View results": "مشاهدهٔ نتایج",
   "Waiting for scan events…": "در انتظار رویدادهای اسکن…",

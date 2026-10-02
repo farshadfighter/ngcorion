@@ -341,6 +341,9 @@ class AssetRiskCalculationService:
             "findings": {"critical": 0, "high": 0, "medium": 0, "low": 0},
             "resolved_by_hardening": 0,
             "active_findings": 0,
+            # Failed controls covered by an approved risk acceptance
+            # (app/modules/remediation): not counted in AF or HF until it ends.
+            "accepted_findings": 0,
             # HF block
             "hardening_raw": None,
             "hardening_applicable_weight": None,
@@ -365,6 +368,9 @@ class AssetRiskCalculationService:
             .all()
         )
 
+        from app.modules.remediation.service import accepted_refs, audit_ref
+        accepted = accepted_refs(db, asset_id, "audit")
+
         failed_weight = 0.0
         applicable_weight = 0.0
         hardening_weight_found = 0.0
@@ -376,6 +382,9 @@ class AssetRiskCalculationService:
             applicable_weight += weight
 
             if result.status != CheckStatus.FAIL:
+                continue
+            if accepted and audit_ref(result.check_number, result.vdom) in accepted:
+                out["accepted_findings"] += 1
                 continue
 
             # Every failed applicable control counts toward AF (PDF section 7).
@@ -468,6 +477,12 @@ class AssetRiskCalculationService:
         if cve_settings.get(db, cve_settings.WATERMARK) is None:
             return {"score": 0.0, "findings": 0, "kev": 0}
         rows = cve_findings.compute(db, asset_id)["findings"]
+        # Findings under an approved risk acceptance (app/modules/remediation)
+        # leave the score until the acceptance ends.
+        from app.modules.remediation.service import accepted_refs
+        accepted = accepted_refs(db, asset_id, "cve")
+        if accepted:
+            rows = [f for f in rows if f["cve_id"] not in accepted]
         worst = min((f["priority"] for f in rows), default=None)
         return {
             "score": self._CVE_PRIORITY_SCORE.get(worst, 0.0),

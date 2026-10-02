@@ -192,6 +192,7 @@ MODULE_DESCRIPTIONS = {
     ModuleEnum.RISK: "Risk Module",
     ModuleEnum.SYSTEM_CONFIG: "System Configuration",
     ModuleEnum.LOGS: "System Log",
+    ModuleEnum.REMEDIATION: "Remediation and risk acceptance",
 }
 
 

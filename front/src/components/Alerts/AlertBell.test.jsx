@@ -59,7 +59,7 @@ describe("actionLabel", () => {
     it("names what the link opens", () => {
         expect(actionLabel({ link: "/noc/hosts/3" })).toBe("Open host");
         expect(actionLabel({ link: "/cve/database" })).toBe("Open database");
-        expect(actionLabel({ link: "/cve" })).toBe("Open findings");
+        expect(actionLabel({ link: "/cve" })).toBe("Open CVE findings");
         expect(actionLabel({ link: "/backup/restores?restore=1" })).toBe("Open restore");
         expect(actionLabel({ link: "/audit/schedule-auditing" })).toBe("Open job");
     });

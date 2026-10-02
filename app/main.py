@@ -127,6 +127,7 @@ from app.modules.scheduling.router import router as scheduling_router
 # Alerts (bell, Alerts page) and notification rules / channels
 from app.modules.alerts.router import router as alerts_router
 from app.modules.alerts.router import admin_router as notifications_router
+from app.modules.remediation.router import router as remediation_router
 from app.modules.scheduling.scheduler import start_job_scheduler, stop_job_scheduler
 
 # Import organization-wide dashboard routers
@@ -257,12 +258,14 @@ async def lifespan(app: FastAPI):
     from app.core.singleton import SingletonTask
     from app.modules.cve.jobs import start_auto_updater, stop_auto_updater
     from app.modules.alerts.engine import start_alert_engine, stop_alert_engine
+    from app.modules.remediation.engine import start_remediation_sync, stop_remediation_sync
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
         SingletonTask("noc-metrics-retention", start_metrics_retention_worker, stop_metrics_retention_worker),
         SingletonTask("cve-auto-update", start_auto_updater, stop_auto_updater),
         SingletonTask("alert-engine", start_alert_engine, stop_alert_engine),
+        SingletonTask("remediation-sync", start_remediation_sync, stop_remediation_sync),
     ]
     for task in singletons:
         task.start()
@@ -536,6 +539,7 @@ app.include_router(
 app.include_router(scheduling_router)
 app.include_router(alerts_router)
 app.include_router(notifications_router)
+app.include_router(remediation_router)
 
 
 @app.get("/api/info", tags=["Meta"])

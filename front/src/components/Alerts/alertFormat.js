@@ -12,6 +12,7 @@ export const MODULES = {
     cve: "CVE",
     audit: t("Audit"),
     backup: t("Backup"),
+    remediation: t("Remediation"),
     system: t("System"),
 };
 
@@ -27,13 +28,15 @@ export function actionLabel(alert) {
     const link = alert.link || "";
     if (link.startsWith("/noc/hosts")) return t("Open host");
     if (link.startsWith("/cve/database")) return t("Open database");
-    if (link.startsWith("/cve")) return t("Open findings");
+    if (link.startsWith("/cve")) return t("Open CVE findings");
     if (link.startsWith("/backup/restores")) return t("Open restore");
     if (link.startsWith("/backup")) return t("Open list");
     if (link.startsWith("/audit/sessions")) return t("Open audit");
     if (link.startsWith("/audit") || link.startsWith("/assets/schedule")) return t("Open job");
+    if (link.startsWith("/remediation/acceptances")) return t("Open accepted risks");
+    if (link.startsWith("/remediation")) return t("Open finding");
     if (link.startsWith("/settings/license")) return t("Open license");
-    return t("Open");
+    return t("View");
 }
 
 /** Notify the bell and the sidebar badge that alerts changed here. */

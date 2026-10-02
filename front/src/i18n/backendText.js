@@ -52,6 +52,13 @@ const TEMPLATES = [
     msg("{{module}} rule"),
     msg("Webhook · {{name}}"),
     msg("user #{{id}}"),
+    // remediation alerts and rules
+    msg("{{ref}} - due {{date}}"),
+    msg("{{ref}} - until {{date}}"),
+    msg("{{ref}} - ends {{date}}"),
+    msg("A finding is not fixed {{days}} days after its deadline"),
+    msg("An accepted risk ends within {{days}} days"),
+    msg("This finding can be accepted for at most {{days}} days"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -74,6 +81,33 @@ msg("License server unreachable");
 msg("License is not valid");
 msg("Background task stopped");
 msg("Disk space low");
+msg("Remediation");
+msg("Remediation overdue");
+msg("Risk acceptance waiting for approval");
+msg("Risk acceptance ending soon");
+msg("Risk acceptance requested");
+msg("Risk acceptance ending");
+msg("A risk acceptance is waiting for approval");
+msg("Days after the deadline");
+msg("Days before the end");
+// remediation API errors
+msg("That user does not exist");
+msg("This finding is closed; its status follows its source or its risk acceptance");
+msg("A finding is resolved by the next audit or CVE check, not by hand");
+msg("This finding is already resolved");
+msg("A justification is required");
+msg("The end date must be in the future");
+msg("A risk acceptance for this is already pending or active");
+msg("Only administrators and managers can decide on a risk acceptance");
+msg("You cannot decide on your own request");
+msg("Only an administrator can accept a critical or known-exploited finding");
+msg("This request has already been decided");
+msg("The requested end date has already passed; ask for a new request");
+msg("Only a pending or active risk acceptance can be withdrawn");
+msg("Only the requester, an administrator or a manager can withdraw this");
+msg("Only the requester can cancel a pending request; reject it instead");
+msg("Finding not found");
+msg("Risk acceptance not found");
 msg("An enabled interface goes down");
 msg("A finding in CISA KEV appears on an asset");
 msg("A scheduled audit or discovery could not run or finish");

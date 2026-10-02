@@ -5,6 +5,7 @@ import { SmtpConfigModal } from "./SmtpConfigModal";
 import { SmsConfigModal } from "./SmsConfigModal";
 import { CertificateConfigModal } from "./CertificateConfigModal";
 import { LanguageConfigModal } from "./LanguageConfigModal";
+import { RemediationConfigModal } from "./RemediationConfigModal";
 import { t } from "../../i18n";
 
 /**
@@ -70,6 +71,13 @@ export const SECTIONS = [
         hint: t("Default interface language for new users"),
         icon: "fa-solid fa-language",
         modal: LanguageConfigModal,
+    },
+    {
+        key: "remediation",
+        title: t("Remediation deadlines"),
+        hint: t("Days to fix each severity, and the longest risk acceptance"),
+        icon: "fa-solid fa-clipboard-check",
+        modal: RemediationConfigModal,
     },
 ];
 

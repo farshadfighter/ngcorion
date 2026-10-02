@@ -44,6 +44,8 @@ const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m)
 const NocHostList = lazy(() => import("./components/NOC/NocHostList").then((m) => ({ default: m.NocHostList })));
 const AlertsPage = lazy(() => import("./components/Alerts/AlertsPage").then((m) => ({ default: m.AlertsPage })));
 const NotificationsPage = lazy(() => import("./components/Notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const RemediationPage = lazy(() => import("./components/Remediation/RemediationPage").then((m) => ({ default: m.RemediationPage })));
+const AcceptancesPage = lazy(() => import("./components/Remediation/AcceptancesPage").then((m) => ({ default: m.AcceptancesPage })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
     RequirePermission,
@@ -296,6 +298,16 @@ function AppContent() {
                             </RequirePermission>
                         } />
                         <Route path="/alerts" element={<AlertsPage />} />
+                        <Route path="/remediation" element={
+                            <RequirePermission module="remediation" name="Remediation">
+                                <RemediationPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/remediation/acceptances" element={
+                            <RequirePermission module="remediation" name="Accepted Risks">
+                                <AcceptancesPage />
+                            </RequirePermission>
+                        } />
                         <Route path="/settings/notifications" element={
                             <RequirePermission module="system_config" name="Notifications">
                                 <NotificationsPage />

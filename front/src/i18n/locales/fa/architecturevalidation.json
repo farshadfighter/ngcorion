@@ -15,6 +15,7 @@
   "No findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافته‌ای نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
   "No ignored findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافتهٔ نادیده‌گرفته‌شده‌ای نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
   "No open findings. Click \"Run Analysis\" to check every asset against the architecture rule set.": "یافتهٔ بازی نیست. برای بررسی همهٔ دارایی‌ها با قواعد معماری روی «اجرای تحلیل» کلیک کنید.",
+  "Open": "باز",
   "Optionally explain why this finding doesn't apply.": "در صورت تمایل توضیح دهید چرا این یافته صدق نمی‌کند.",
   "Reason (optional)": "دلیل (اختیاری)",
   "Recommendation": "توصیه",

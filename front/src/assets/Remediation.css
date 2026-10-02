@@ -1,0 +1,80 @@
+/* Remediation tracking and accepted risks. Builds on BackupModule.css (bkm-*)
+   and Alerts.css (alr-* form and modal pieces). */
+
+.rem-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+/* Long description, button kept on the same line. */
+.rem-head > div:first-child { flex: 1 1 420px; min-width: 0; }
+.rem-violet { color: #6d28d9 !important; }
+
+/* severity */
+.rem-sev-critical { background: #fee2e2; color: #991b1b; }
+.rem-sev-high { background: #ffedd5; color: #9a3412; }
+.rem-sev-medium { background: #fef9c3; color: #854d0e; }
+.rem-sev-low { background: #f3f4f6; color: #374151; }
+.rem-kev { background: #fee2e2; color: #b91c1c; font-weight: 600; }
+.rem-kev-block { margin-top: 4px; }
+
+/* status */
+.rem-st-open { background: #f3f4f6; color: #1f2937; }
+.rem-st-progress { background: #dbeafe; color: #1e40af; }
+.rem-st-verify { background: #fef9c3; color: #854d0e; }
+.rem-st-fixed { background: #dcfce7; color: #166534; }
+.rem-st-accepted { background: #ede9fe; color: #5b21b6; }
+.rem-st-rejected { background: #fee2e2; color: #991b1b; }
+
+.rem-due-over { color: #b91c1c; font-weight: 600; }
+.rem-due-soon { color: #c2410c; font-weight: 600; }
+
+.rem-table td { vertical-align: top; }
+.rem-list-table { table-layout: fixed; }
+/* IPs and IDs stay left-to-right but line up with the rest of the cell. */
+[dir="rtl"] .rem-table .bkm-sub.bkm-mono { text-align: right; }
+.rem-row-on td { background: #eff6ff; }
+.rem-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rem-ref { font-weight: 600; color: #1e3a5f; }
+.rem-clip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 560px; }
+.rem-block { display: block; }
+.rem-nowrap { white-space: nowrap; }
+.rem-acc-actions { justify-content: flex-start; margin-top: 8px; }
+.rem-acc-actions:empty { display: none; }
+
+/* drawer */
+.rem-drawer { width: 640px; }
+.rem-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.rem-sec { display: flex; flex-direction: column; gap: 8px; }
+.rem-desc { margin: 0; font-size: 13px; color: #1f2937; line-height: 1.6; }
+.rem-ip { margin-left: 8px; font-weight: 400; color: #4b5563; }
+/* The IP is left-to-right, so its inline-start side is the left even in Persian: set the gap explicitly. */
+[dir="rtl"] .rem-ip { margin-left: 0; margin-right: 8px; }
+.rem-evidence { margin: 0; max-height: 140px; overflow: auto; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 10px; font-size: 11.5px; white-space: pre-wrap; direction: ltr; text-align: left; }
+.rem-note-accepted { background: #f5f3ff; border-color: #ddd6fe; color: #4c1d95; }
+.rem-note-field { margin-top: 4px; }
+.rem-drawer .bkm-select, .rem-modal .bkm-select { box-sizing: border-box; }
+.rem-note-field textarea, .rem-modal textarea { width: 100%; box-sizing: border-box; resize: vertical; font-family: inherit; padding: 8px 10px; height: auto; }
+.rem-actions { flex-wrap: wrap; }
+.rem-acc { border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; }
+.rem-acc p { margin: 6px 0; font-size: 13px; }
+
+.rem-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.rem-history li { position: relative; padding-inline-start: 18px; padding-block: 5px; border-inline-start: 2px solid #e5e7eb; margin-inline-start: 5px; font-size: 13px; display: flex; flex-direction: column; }
+.rem-history li::before { content: ""; position: absolute; inset-inline-start: -6px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 2px solid #1e3a5f; }
+.rem-history li.rem-ev-resolved::before { background: #16a34a; border-color: #16a34a; }
+.rem-history li.rem-ev-accepted::before, .rem-history li.rem-ev-acceptance_approved::before { border-color: #7c3aed; }
+.rem-history li.rem-ev-reopened::before { border-color: #c2410c; }
+.rem-history time { font-size: 11.5px; color: #6b7280; }
+
+/* acceptance request */
+.rem-modal { width: 580px; }
+.rem-radio { display: grid; gap: 6px; }
+.rem-radio button { text-align: start; font-family: inherit; font-size: 13px; font-weight: 600; color: #1f2937; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.rem-radio button small { font-weight: 400; color: #4b5563; font-size: 12px; }
+.rem-radio button.is-on { border-color: #1e3a5f; background: #eff6ff; box-shadow: inset 0 0 0 1px #1e3a5f; }
+.rem-radio button:focus-visible { outline: 2px solid #1e3a5f; outline-offset: 2px; }
+
+@media (max-width: 1300px) {
+    .rem-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+    .rem-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rem-drawer { width: 100%; }
+}

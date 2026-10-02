@@ -61,6 +61,9 @@ class ModuleEnum(str, enum.Enum):
     # NOC (SNMP monitoring)
     NOC = "noc"
 
+    # Remediation tracking and risk acceptance
+    REMEDIATION = "remediation"
+
 
 class UserPermission(Base):
     """

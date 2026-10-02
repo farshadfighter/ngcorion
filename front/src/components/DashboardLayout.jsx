@@ -32,6 +32,8 @@ const menuFromPath = (pathname) => {
     // Operation & Device sub-item.
     if (pathname.startsWith("/hardening/overview"))   return "hardening-overview";
     if (pathname.startsWith("/hardening"))            return "hardening";
+    if (pathname.startsWith("/remediation/acceptances")) return "remediation-acceptances";
+    if (pathname.startsWith("/remediation"))          return "remediation";
     if (pathname.startsWith("/backup/overview"))      return "backup-overview";
     if (pathname.startsWith("/backup/restores"))      return "backup-restores";
     if (pathname.startsWith("/backup"))               return "backup";
@@ -78,6 +80,7 @@ export const DashboardLayout = () => {
     const canReadUserMgmt  = usePermission("user_management",      "read");
     const canReadLogs      = usePermission("logs",                 "read");
     const canReadBackup    = usePermission("backup",               "read");
+    const canReadRemediation = usePermission("remediation",        "read");
     const canReadSysConfig = usePermission("system_config",        "read");
     const canReadTopology  = usePermission("topology",             "read");
     const canReadArchValidation = usePermission("architecture_validation", "read");
@@ -159,6 +162,8 @@ export const DashboardLayout = () => {
         "hardening-operation": t("Operation and Device"),
         "risk-intelligence":   t("Risk Intelligence"),
         "risk-asset":          t("Risk Asset"),
+        "remediation":         t("Remediation"),
+        "remediation-acceptances": t("Accepted Risks"),
         "backup-overview":     t("Backup & Restore"),
         "backup":              t("Device Backups"),
         "backup-restores":     t("Restore History"),
@@ -301,6 +306,29 @@ export const DashboardLayout = () => {
                                  onClick={() => navigate("/hardening")} title={t("Operation and Device")}>
                                 {isSidebarCollapsed && <img src="/icons/hardening.svg" alt="" className="nav-icon-img" />}
                                 {!isSidebarCollapsed && <span>{t("Operation & Device")}</span>}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── REMEDIATION ── */}
+                    {canReadRemediation && (
+                        <>
+                            {!isSidebarCollapsed && (
+                                <div className={`nav-section nav-section-clickable ${activeMenu === "remediation" ? "nav-section-active" : ""}`}
+                                     onClick={() => navigate("/remediation")}>
+                                    <img src="/icons/remediation.svg" alt="" className="section-icon" />
+                                    <span className="nav-section-title">{t("Remediation")}</span>
+                                </div>
+                            )}
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "remediation" ? "active" : ""}`}
+                                 onClick={() => navigate("/remediation")} title={t("Remediation Tracking")}>
+                                {isSidebarCollapsed && <img src="/icons/remediation.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>{t("Remediation Tracking")}</span>}
+                            </div>
+                            <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "remediation-acceptances" ? "active" : ""}`}
+                                 onClick={() => navigate("/remediation/acceptances")} title={t("Accepted Risks")}>
+                                {isSidebarCollapsed && <img src="/icons/remediation.svg" alt="" className="nav-icon-img" />}
+                                {!isSidebarCollapsed && <span>{t("Accepted Risks")}</span>}
                             </div>
                         </>
                     )}

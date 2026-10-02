@@ -392,6 +392,48 @@ def _disk_low(db: Session, params: Dict, now: datetime, since: datetime) -> List
     return out
 
 
+# ---------------------------------------------------------------------------
+# Remediation (app/modules/remediation)
+# ---------------------------------------------------------------------------
+
+def _item_label(item) -> str:
+    return f"{item.asset_name} · {item.ip_address}" if item.ip_address else (item.asset_name or "NGCorion")
+
+
+def _remediation_overdue(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.remediation import ITEM_ACTIVE, RemediationItem
+    grace = timedelta(days=float(params.get("days", 0)))
+    rows = (db.query(RemediationItem)
+            .filter(RemediationItem.status.in_(ITEM_ACTIVE), RemediationItem.due_at.isnot(None),
+                    RemediationItem.due_at < now - grace)
+            .order_by(RemediationItem.due_at).all())
+    return [Problem(key=f"item:{i.id}", title="Remediation overdue",
+                    detail=f"{i.ref} - due {i.due_at:%Y-%m-%d}", asset_id=i.asset_id,
+                    source_label=_item_label(i), link=f"/remediation?item={i.id}", owner_user_id=i.owner_id)
+            for i in rows]
+
+
+def _acceptance_pending(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.remediation import ACCEPT_PENDING, RiskAcceptance
+    rows = db.query(RiskAcceptance).filter(RiskAcceptance.status == ACCEPT_PENDING).all()
+    return [Problem(key=f"acceptance:{a.id}", title="Risk acceptance waiting for approval",
+                    detail=f"{a.ref} - until {a.expires_at:%Y-%m-%d}", asset_id=a.asset_id,
+                    source_label="NGCorion", link="/remediation/acceptances")
+            for a in rows]
+
+
+def _acceptance_expiring(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.remediation import ACCEPT_APPROVED, RiskAcceptance
+    horizon = now + timedelta(days=float(params.get("days", 7)))
+    rows = (db.query(RiskAcceptance)
+            .filter(RiskAcceptance.status == ACCEPT_APPROVED, RiskAcceptance.expires_at > now,
+                    RiskAcceptance.expires_at <= horizon).all())
+    return [Problem(key=f"acceptance:{a.id}", title="Risk acceptance ending soon",
+                    detail=f"{a.ref} - ends {a.expires_at:%Y-%m-%d}", asset_id=a.asset_id,
+                    source_label="NGCorion", link="/remediation/acceptances", owner_user_id=a.requested_by)
+            for a in rows]
+
+
 EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("noc.device_unreachable", "noc", "Device unreachable",
               "No SNMP answer for {polls} polls in a row", "state", 60, _device_unreachable,
@@ -438,8 +480,20 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("system.disk_low", "system", "Disk space low",
               "Less than {gb} GB free", "state", 600, _disk_low,
               params=[Param("gb", "Free space below", 2, "GB", 1, 1000)]),
+    EventType("remediation.overdue", "remediation", "Remediation overdue",
+              "A finding is not fixed {days} days after its deadline", "state", 900, _remediation_overdue,
+              params=[Param("days", "Days after the deadline", 0, "days", 0, 365)], uses_assets=True,
+              has_owner=True, roles=["admin", "manager"], repeat_minutes=1440),
+    EventType("remediation.acceptance_pending", "remediation", "Risk acceptance requested",
+              "A risk acceptance is waiting for approval", "state", 300, _acceptance_pending,
+              severity="info", roles=["admin", "manager"]),
+    EventType("remediation.acceptance_expiring", "remediation", "Risk acceptance ending",
+              "An accepted risk ends within {days} days", "state", 3600, _acceptance_expiring,
+              params=[Param("days", "Days before the end", 7, "days", 1, 60)], has_owner=True,
+              roles=["admin", "manager"]),
 )}
 
 MODULE_LABELS = {"noc": "NOC", "cve": "CVE", "audit": "Audit & Hardening", "backup": "Backup & Restore",
+                 "remediation": "Remediation",
                  "system": "System"}
-MODULE_ORDER = ("noc", "cve", "audit", "backup", "system")
+MODULE_ORDER = ("noc", "cve", "audit", "backup", "remediation", "system")

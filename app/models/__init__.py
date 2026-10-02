@@ -305,3 +305,6 @@ __all__ = [
     "log_asset_action",
     "log_discovery_action",
 ]
+
+# Remediation tracking and risk acceptance (see app/models/remediation.py)
+from app.models.remediation import RemediationEvent, RemediationItem, RiskAcceptance  # noqa: E402,F401

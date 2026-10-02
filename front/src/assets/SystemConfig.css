@@ -482,3 +482,9 @@
 .sc-btn-primary:hover:not(:disabled) {
     background: #1E3255;
 }
+
+/* Remediation deadlines: one row per severity. */
+.sc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sc-table th { text-align: start; font-size: 12px; font-weight: 600; color: #4b5563; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+.sc-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+.sc-table input { width: 90px; height: 34px; padding: 0 10px; border: 1px solid #d1d5db; border-radius: 8px; font-family: inherit; font-size: 13px; box-sizing: border-box; }
