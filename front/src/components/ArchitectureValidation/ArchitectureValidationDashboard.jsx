@@ -10,6 +10,7 @@ import {
 import "../../assets/ArchitectureValidation.css";
 import { t } from "../../i18n";
 import { tb, tv } from "../../i18n/backendText";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const STATUS_TABS = [
     { key: "open", label: t("Open") },
@@ -65,6 +66,7 @@ export const ArchitectureValidationDashboard = () => {
 
     return (
         <div className="av-container">
+            <div className="rep-shortcut-row"><ReportShortcut template="architecture" className="bkm-btn bkm-btn-sm" /></div>
             <div className="av-toolbar">
                 <div className="av-tabs">
                     {STATUS_TABS.map((tab) => (

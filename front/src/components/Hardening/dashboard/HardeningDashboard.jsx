@@ -10,6 +10,7 @@ import { ProgressList } from "./ProgressList";
 import { HardeningImpact } from "./HardeningImpact";
 import "../../../assets/HardeningDashboard.css";
 import { t, uiLocale, n } from "../../../i18n";
+import { ReportShortcut } from "../../Reports/ReportShortcut.jsx";
 
 const BAR_COLOR = "#29354E";
 
@@ -66,6 +67,7 @@ export const HardeningDashboard = () => {
 
     return (
         <div className="hd-page">
+            <div className="rep-shortcut-row"><ReportShortcut template="hardening_changes" className="bkm-btn bkm-btn-sm" /></div>
             <div className="hd-grid">
                 {/* ── Overview ── */}
                 <HardeningCard title={t("Hardening Overview")} className="hd-card-overview">

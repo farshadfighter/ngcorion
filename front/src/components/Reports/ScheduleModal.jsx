@@ -11,7 +11,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * title, language, formats, classification, params); `schedule` is an
  * existing schedule when editing.
  */
-export function ScheduleModal({ draft, schedule, templateTitle, onClose, onSaved }) {
+export function ScheduleModal({ draft, schedule, templateTitle, usesPeriod = true, onClose, onSaved }) {
     const base = schedule || draft;
     const [name, setName] = useState(schedule?.name || base.title || tb(templateTitle) || "");
     const [preset, setPreset] = useState(base.params?.period?.preset === "custom" ? "previous_month"
@@ -87,11 +87,11 @@ export function ScheduleModal({ draft, schedule, templateTitle, onClose, onSaved
                             {FREQUENCIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                     </label>
-                    <label className="alr-lbl">{t("Period in each report")}
+                    {usesPeriod && <label className="alr-lbl">{t("Period in each report")}
                         <select className="bkm-select" value={preset} onChange={(e) => setPreset(e.target.value)}>
                             {PERIODS.filter(([v]) => v !== "custom").map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
-                    </label>
+                    </label>}
                     {frequency === "weekly" && (
                         <label className="alr-lbl">{t("Day")}
                             <select className="bkm-select" value={weekday} onChange={(e) => setWeekday(Number(e.target.value))}>

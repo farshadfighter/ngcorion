@@ -36,7 +36,9 @@ DEFAULT_SETTINGS = {"org_name": "NGCorion", "org_unit": "", "logo": None, "defau
                     "footer_text": "", "retention_days": 365}
 
 MODULE_LABELS = {"risk": "Risk Analysis", "auditing": "Auditing", "cve": "Vulnerabilities (CVE)",
-                 "remediation": "Remediation", "backup": "Backup & Restore", "hardening": "Hardening"}
+                 "remediation": "Remediation", "backup": "Backup & Restore", "hardening": "Hardening",
+                 "asset_list": "Asset List", "noc": "NOC", "architecture_validation": "Architecture Validation",
+                 "logs": "Logs", "system_config": "System Configuration"}
 
 MIME = {"pdf": "application/pdf", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
 
@@ -100,6 +102,8 @@ def can_read(db: Session, user: User, module: Optional[str]) -> bool:
 
 
 def template_visible(db: Session, user: User, tpl) -> bool:
+    if getattr(tpl, "admin_only", False):
+        return _role(user) == "admin"
     if tpl.module:
         return can_read(db, user, tpl.module)
     return any(can_read(db, user, s.module) for s in tpl.sections) if tpl.sections else True
@@ -169,9 +173,19 @@ def validate(db: Session, user: User, template: str, language: str, formats: Lis
             v = v if v in {c[0] for c in o.choices} else o.default
         elif o.kind == "multi":
             v = [x for x in (v or []) if x in {c[0] for c in o.choices}]
+        elif o.kind == "int":
+            try:
+                v = int(v) if v not in (None, "") else None
+            except (TypeError, ValueError):
+                v = None
         options[o.key] = v
+    if tpl.id == "audit_session":
+        if options.get("audit_mode") == "session" and not options.get("audit_session"):
+            raise ReportError("Choose the audit this report describes")
+        if for_schedule and options.get("audit_mode") == "session":
+            raise ReportError("A schedule describes the latest audit of each asset, not one fixed audit")
     clean = {"period": {"preset": preset, "from": period.get("from"), "to": period.get("to")},
-             "compare": bool(params.get("compare", True)), "scope": params["scope"], "sections": sections,
+             "compare": bool(params.get("compare", True)) and tpl.uses_period, "scope": params["scope"], "sections": sections,
              "options": options, "orientation": "landscape" if params.get("orientation") == "landscape" else "portrait"}
     return tpl.id, formats, clean
 
@@ -209,6 +223,8 @@ def build(db: Session, report: Report, now: Optional[datetime] = None) -> Dict:
     user = db.get(User, report.created_by) if report.created_by else None
     if user is None or not user.is_active:
         raise ReportError("The person this report is built for no longer has an active account")
+    if tpl.admin_only and _role(user) != "admin":
+        raise ReportError("Only an administrator can build this report", 403)
     tr = Tr(report.language)
     tz = _timezone(db)
     params = report.params or {}
@@ -243,6 +259,7 @@ def build(db: Session, report: Report, now: Optional[datetime] = None) -> Dict:
 
     ctx = Ctx(db, tr, tz, now, period, prev if compare else None, assets, params.get("options") or {}, enabled, can,
               report.formats)
+    ctx.user = user
     blocks = tpl.build(ctx)
 
     def cut_note(shown, total):
@@ -260,10 +277,19 @@ def build(db: Session, report: Report, now: Optional[datetime] = None) -> Dict:
         sched = db.get(ReportSchedule, report.schedule_id)
         if sched:
             by = tr("Schedule \"{name}\" of {user}", name=sched.name, user=user.username)
-    period_line = tr("Period: {label}", label=period.label)
-    if compare and prev:
-        period_line += " · " + tr("compared with {label}", label=prev.label)
-    scope_line = scope.describe(db, params.get("scope") or {}, len(assets), tr)
+    if tpl.uses_period:
+        period_line = tr("Period: {label}", label=period.label)
+        if compare and prev:
+            period_line += " · " + tr("compared with {label}", label=prev.label)
+    else:
+        period_line = ctx.header_line or tr("As of {date}", date=cal.fmt_datetime(periods.local_now(now, tz),
+                                                                                    report.language))
+    if ctx.scope_line is not None:
+        scope_line = ctx.scope_line
+    elif tpl.uses_assets:
+        scope_line = scope.describe(db, params.get("scope") or {}, len(assets), tr)
+    else:
+        scope_line = ""
     classification = tr({"public": "Public", "internal": "Internal", "confidential": "Confidential"}
                         [report.classification])
     meta = {
@@ -276,8 +302,9 @@ def build(db: Session, report: Report, now: Optional[datetime] = None) -> Dict:
         "omitted": omitted, "t_omitted": tr("Left out of this report"), "t_summary": tr("Summary"),
         "footer_text": settings["footer_text"],
         "about": [(tr("Report ID"), report.code), (tr("Generated"), cal.fmt_datetime(local_now, report.language)),
-                  (tr("Requested by"), by), (tr("Report"), tr(tpl.title)), (tr("Period"), period.label),
-                  (tr("Assets"), scope_line),
+                  (tr("Requested by"), by), (tr("Report"), tr(tpl.title)),
+                  (tr("Period"), period.label if tpl.uses_period else period_line),
+                  *([(tr("Assets"), scope_line)] if scope_line else []),
                   (tr("Data"), tr("Figures come from NGCorion as they were when the report was built. The SHA-256 "
                                   "of this file is kept in the report archive, where its authenticity can be "
                                   "checked."))],

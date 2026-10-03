@@ -31,6 +31,7 @@ export function ReportSchedules() {
     const canWrite = usePermission("reports", "write");
     const [rows, setRows] = useState(null);
     const [titles, setTitles] = useState({});
+    const [usesPeriod, setUsesPeriod] = useState({});
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null);
     const [editing, setEditing] = useState(null);
@@ -47,7 +48,10 @@ export function ReportSchedules() {
 
     useEffect(() => {
         api.get("/api/reports/catalog")
-            .then(({ data }) => setTitles(Object.fromEntries(data.templates.map((x) => [x.id, x.title]))))
+            .then(({ data }) => {
+                setTitles(Object.fromEntries(data.templates.map((x) => [x.id, x.title])));
+                setUsesPeriod(Object.fromEntries(data.templates.map((x) => [x.id, x.uses_period !== false])));
+            })
             .catch(() => {});
     }, []);
 
@@ -108,7 +112,7 @@ export function ReportSchedules() {
                                         <span className="bkm-sub">{tb(titles[s.template] || s.template)} · {s.formats.map((f) => (f === "pdf" ? "PDF" : "Excel")).join(" + ")} · {s.language === "fa" ? t("Persian") : t("English")}</span>
                                         <span className="bkm-sub">{t("Owner")}: {s.owner}</span>
                                     </td>
-                                    <td>{when(s)}<span className="bkm-sub">{t("Period in each report")}: {periodText(s.params)}</span>
+                                    <td>{when(s)}{usesPeriod[s.template] !== false && <span className="bkm-sub">{t("Period in each report")}: {periodText(s.params)}</span>}
                                         <span className="bkm-sub">{label(FREQUENCIES, s.frequency)}</span></td>
                                     <td>
                                         {t("{{count}} recipients", { count: s.recipient_names.length + s.recipient_emails.length })}
@@ -153,6 +157,7 @@ export function ReportSchedules() {
 
             {editing && (
                 <ScheduleModal schedule={editing} templateTitle={titles[editing.template] || editing.template}
+                               usesPeriod={usesPeriod[editing.template] !== false}
                                onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} />
             )}
             {confirm && (

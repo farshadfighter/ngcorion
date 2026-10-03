@@ -9,6 +9,7 @@ import { fetchHosts, pollAllNow, clearMessages } from "../../store/nocSlice.jsx"
 import { fetchTopology } from "../../store/topologySlice.jsx";
 import "../../assets/Noc.css";
 import { t, uiLocale, n } from "../../i18n";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const GRID_COLUMNS = 6;
 const GRID_SPACING_X = 200;
@@ -106,6 +107,7 @@ export const NocDashboard = () => {
         <div className="noc-container">
             <div className="noc-toolbar">
                 <div className="noc-toolbar-info">{t("SNMP status across every asset, and the same topology graph as Topology.")}</div>
+                <ReportShortcut template="noc" className="bkm-btn bkm-btn-sm" />
                 <button className="noc-btn noc-btn-primary" onClick={() => dispatch(pollAllNow())} disabled={isPolling}>
                     <i className="fa-solid fa-arrows-rotate" /> {isPolling ? t("Polling…") : t("Poll All Now")}
                 </button>

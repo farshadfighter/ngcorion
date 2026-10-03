@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
-import { t, n } from "../../i18n";
+import { currentLanguage, t, n } from "../../i18n";
 import { tb } from "../../i18n/backendText";
 import { formatDateTime, formatWhen } from "../../utils/dates.js";
 import { STATUS, download, errorText, fileSize, periodText } from "./reportFormat.js";
@@ -117,7 +117,7 @@ export function ReportsArchive() {
                                         {r.pinned && <span className="rep-pin" title={t("Pinned")}> ★</span>}
                                         <span className="bkm-sub"><span className="bkm-mono rep-code">{r.code}</span> · {r.language === "fa" ? t("Persian") : t("English")}</span>
                                     </td>
-                                    <td>{periodText(r.params)}</td>
+                                    <td>{periodText(r.params, r.uses_period !== false)}</td>
                                     <td>
                                         {r.schedule ? t("Schedule “{{name}}”", { name: r.schedule }) : (r.created_by || "—")}
                                         <span className="bkm-sub">{formatWhen(r.created_at)}</span>
@@ -125,7 +125,8 @@ export function ReportsArchive() {
                                     </td>
                                     <td>
                                         {r.files.length ? r.files.map((f) => <span key={f.kind} className="rep-fmt">{f.kind.toUpperCase()}</span>) : "—"}
-                                        {r.files.length > 0 && <span className="bkm-sub">{r.files.map((f) => fileSize(f.size)).join(" · ")}{r.page_count ? ` · ${t("{{count}} pages", { count: r.page_count })}` : ""}</span>}
+                                        {r.files.length > 0 && <span className="bkm-sub">{[...r.files.map((f) => fileSize(f.size)), ...(r.page_count ? [t("{{count}} pages", { count: r.page_count })] : [])]
+                                            .join(currentLanguage() === "fa" ? "، " : " · ")}</span>}
                                     </td>
                                     <td>
                                         <span className={`bkm-pill ${STATUS[r.status]?.pill}`}>{STATUS[r.status]?.label || r.status}</span>

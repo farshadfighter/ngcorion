@@ -45,7 +45,7 @@ class Section:
 class Option:
     key: str
     label: str
-    kind: str                        # bool | choice | multi
+    kind: str                        # bool | choice | multi | int (set by the page that links here)
     default: object = None
     choices: Sequence = ()           # [(value, label)]
 
@@ -62,6 +62,9 @@ class Template:
     default_period: str = "previous_month"
     available: bool = True
     build: Optional[Callable] = None  # (ctx) -> {section key: [blocks]}
+    uses_period: bool = True          # False: the report describes one moment or one audit, not a period
+    admin_only: bool = False
+    uses_assets: bool = True          # False: the asset filter does not apply (user activity)
 
     def section(self, key: str) -> Section:
         return next(s for s in self.sections if s.key == key)
@@ -93,6 +96,9 @@ class Ctx:
         self.sections = sections
         self.can = can
         self.formats = formats
+        self.user = None                  # who the report is built for (set by the service)
+        self.header_line: Optional[str] = None   # replaces the period line, for reports without a period
+        self.scope_line: Optional[str] = None    # replaces the asset line; "" leaves it out
         self._cache: Dict = {}
 
     def on(self, key: str) -> bool:
@@ -853,21 +859,10 @@ TEMPLATES: Dict[str, Template] = {t.id: t for t in (
              build=_remediation),
 )}
 
-PLANNED = (
-    Template("audit_session", "Audit details", "The full result of one audit with the output of every check; "
-             "evidence for the auditor.", "audit", "auditing", available=False),
-    Template("hardening_changes", "Hardening changes", "What changed, on which device, by whom, with the backup "
-             "taken before the change.", "audit", "hardening", available=False),
-    Template("asset_coverage", "Assets and coverage", "Which assets are audited, backed up and monitored, and "
-             "which are not.", "infrastructure", "asset_list", available=False),
-    Template("backup", "Backup and restore", "How recent each device's backup is, restores and their result.",
-             "infrastructure", "backup", available=False),
-    Template("noc", "Availability (NOC)", "Availability, outages and interface use.", "infrastructure", "noc",
-             available=False),
-    Template("architecture", "Architecture validation", "Architecture findings and the decision on each.",
-             "infrastructure", "architecture_validation", available=False),
-    Template("alerts", "Alerts", "Alerts in the period, time to acknowledge and resolve, noisiest sources.",
-             "system", None, available=False),
-    Template("user_activity", "User activity", "Logins, failed logins and sensitive actions of each user.",
-             "system", "logs", available=False),
-)
+# Templates shown in the catalog that cannot be built yet.
+PLANNED: tuple = ()
+
+# The second set lives in templates2.py, which builds on the helpers above.
+from app.modules.reports.templates2 import PHASE2  # noqa: E402
+
+TEMPLATES.update({t.id: t for t in PHASE2})

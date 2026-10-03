@@ -5,6 +5,8 @@
 
 /* "Report" button on module pages without a header bar */
 .rep-shortcut-row { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+/* ... and inside an existing header bar of buttons */
+.rep-shortcut-header { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
 
 /* status */
 .rep-st-ok { background: #dcfce7; color: #166534; }

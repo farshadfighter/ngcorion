@@ -41,6 +41,7 @@ h3 { font-size: 9.2pt; color: #1e3a5f; margin: 9pt 0 4pt; page-break-after: avoi
 p { margin: 0 0 5pt; }
 
 .kpis { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5pt; margin-bottom: 6pt; }
+.kpis-2 { grid-template-columns: 1fr 1fr; } .kpis-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
 .kpi { background: #f4f7fb; border-radius: 3pt; padding: 5pt 7pt; break-inside: avoid; }
 .kpi b { display: block; font-size: 13.5pt; line-height: 1.25; }
 .kpi span { color: #5d6a80; font-size: 7.6pt; }
@@ -79,6 +80,8 @@ td { padding: 3pt 5pt; border-bottom: 0.5pt solid #e6ebf2; vertical-align: top; 
 tr { break-inside: avoid; }
 td.num, th.num { text-align: {{ 'start' if rtl else 'right' }}; white-space: nowrap; }
 td.small { font-size: 6.6pt; color: #3b475c; white-space: pre-wrap; }
+/* commands, evidence: always left to right, line by line, as on the device */
+td.mono.small { direction: ltr; text-align: left; }
 .sev { font-weight: 700; white-space: nowrap; }
 .sev-critical { color: #c0262d; } .sev-high { color: #c4561a; } .sev-medium { color: #a57c07; } .sev-low { color: #5d6a80; }
 .late { color: #c0262d; }
@@ -100,7 +103,7 @@ td.small { font-size: 6.6pt; color: #3b475c; white-space: pre-wrap; }
     </div>
     <h1>{{ title }}</h1>
     <div class="meta">{{ period_line }}</div>
-    <div class="meta">{{ scope_line }}</div>
+    {% if scope_line %}<div class="meta">{{ scope_line }}</div>{% endif %}
   </div>
   <span class="cls">{{ classification_label }}</span>
 </div>

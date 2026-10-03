@@ -181,8 +181,14 @@ def test_request_validation(db):
     admin = _user(db)
     with pytest.raises(ReportError, match="Unknown report"):
         service.create(db, admin, "nope", "", "fa", ["pdf"], "internal", _params())
-    with pytest.raises(ReportError, match="not available yet"):
-        service.create(db, admin, "noc", "", "fa", ["pdf"], "internal", _params())
+    with pytest.raises(ReportError, match="Choose the audit"):
+        service.create(db, admin, "audit_session", "", "fa", ["pdf"], "internal",
+                       _params(options={"audit_mode": "session"}))
+    with pytest.raises(ReportError, match="latest audit of each asset"):
+        service.validate(db, admin, "audit_session", "fa", ["pdf"], "internal",
+                         _params(period={"preset": "previous_month"}, options={"audit_mode": "session",
+                                                                               "audit_session": 1}),
+                         for_schedule=True)
     with pytest.raises(ReportError, match="Choose PDF"):
         service.create(db, admin, "risk", "", "fa", [], "internal", _params())
     with pytest.raises(ReportError, match="at least one section"):
@@ -208,7 +214,8 @@ def test_permissions_decide_templates_and_sections(db):
     assert out["files"]["pdf"][1][:4] == b"%PDF"
     cat = api.catalog(user=auditor, db=db)
     ids = {t["id"]: t for t in cat["templates"]}
-    assert "cis_compliance" in ids and "cve" not in ids and ids["noc"]["available"] is False
+    assert "cis_compliance" in ids and "audit_session" in ids and "cve" not in ids and "noc" not in ids
+    assert "user_activity" not in ids                     # administrators only
     sections = {s["key"]: s["allowed"] for s in ids["executive"]["sections"]}
     assert sections["compliance"] is True and sections["vulnerabilities"] is False
 
@@ -400,3 +407,298 @@ def test_failed_schedule_raises_an_alert(db):
     mine = [p for p in problems if p.key == f"schedule:{s.id}"]
     assert mine and mine[0].owner_user_id == admin.id and "SMTP error" in mine[0].detail
     assert "reports.schedule_failed" in alert_events.EVENTS
+
+
+# ── phase 2 templates ────────────────────────────────────────────────────
+
+def _built(db, monkeypatch, user, tid, params, now=datetime(2026, 10, 2, 8), formats=("pdf",), lang="en"):
+    """Build a report and return (meta, {section: blocks}) as handed to the PDF renderer."""
+    seen = {}
+
+    def fake_pdf(meta, sections):
+        seen["meta"], seen["sections"] = meta, sections
+        return b"%PDF-1.7", 1
+
+    monkeypatch.setattr(service.render, "pdf", fake_pdf)
+    r = service.create(db, user, tid, "", lang, list(formats), "internal", params)
+    service.build(db, r, now=now)
+    r.status = "ready"
+    return seen["meta"], {s["key"]: s["blocks"] for s in seen["sections"]}
+
+
+def _rows(blocks, index=0):
+    """Cell texts of the n-th table among the blocks."""
+    tables = [b for b in blocks if b["type"] == "table"]
+    return [[str(c["text"]) for c in row] for row in tables[index]["rows"]]
+
+
+def _kpis(blocks):
+    return {k["label"]: k for b in blocks if b["type"] == "kpis" for k in b["items"]}
+
+
+def _flat(blocks):
+    return " | ".join(" ".join(r) for i in range(sum(b["type"] == "table" for b in blocks)) for r in _rows(blocks, i))
+
+
+def _assets_scope(*assets):
+    return {"mode": "assets", "values": [a.id for a in assets]}
+
+
+def test_audit_details_one_audit_and_the_latest_of_each_asset(db, monkeypatch):
+    admin = _user(db)
+    a, b = _asset(db), _asset(db)
+    _audit(db, a, 40.0, datetime(2026, 8, 1), fails=(("1.1.1.1", "high"),))
+    one = _audit(db, a, 60.0, datetime(2026, 9, 1), fails=())
+    db.add_all([
+        AuditResult(session_id=one.id, check_number="1.1.1.1", check_title="Disable cramfs", severity="high",
+                    status=CheckStatus.FAIL, evidence_snippet="install cramfs /bin/false: not set"),
+        AuditResult(session_id=one.id, check_number="5.2.7", check_title="Root login", severity="critical",
+                    status=CheckStatus.PASS),
+        AuditResult(session_id=one.id, check_number="6.1.1", check_title="Audit permissions", severity="low",
+                    status=CheckStatus.ERROR, evidence_snippet="permission denied"),
+    ])
+    _audit(db, b, 90.0, datetime(2026, 9, 5), fails=())
+    db.flush()
+    sections = ["summary", "failed", "errors", "passed"]
+
+    meta, out = _built(db, monkeypatch, admin, "audit_session",
+                       _params(sections=sections, options={"audit_mode": "session", "audit_session": one.id}))
+    assert meta["period_line"].startswith(f"Audit #{one.id} of {a.asset_name}")
+    assert meta["scope_line"] == "" and "Assets" not in dict(meta["about"])   # the audit names its asset
+    k = _kpis(out["summary"])
+    assert k["Compliance"]["value"] == "60%" and k["Passed"]["value"] == "1" and k["Failed"]["value"] == "1"
+    failed = _rows(out["failed"])
+    assert failed[0][:3] == ["1.1.1.1", "Disable cramfs", "High"]
+    assert failed[0][3] == "install cramfs /bin/false: not set"
+    assert failed[0][4] not in ("", "—")                       # how to fix, from the CIS catalog
+    assert len([b for b in out["failed"] if b["type"] == "table"]) == 2      # and why it matters
+    assert _rows(out["errors"])[0][:3] == ["6.1.1", "Audit permissions", "Error"]
+    assert _rows(out["passed"]) == [["5.2.7", "Root login", "Critical"]]
+
+    # without guidance the failed table has no "how to fix" column and no rationale table
+    _, out = _built(db, monkeypatch, admin, "audit_session",
+                    _params(sections=["failed"], options={"audit_mode": "session", "audit_session": one.id,
+                                                          "guidance": False}))
+    assert len(_rows(out["failed"])[0]) == 4 and len(out["failed"]) == 1
+
+    # the latest audit of each asset: one row per asset, the newer audit of a
+    meta, out = _built(db, monkeypatch, admin, "audit_session",
+                       _params(sections=["summary", "failed", "compare"], scope=_assets_scope(a, b),
+                               options={"audit_mode": "latest"}))
+    assert meta["period_line"].startswith("Latest audit of each asset")
+    summary = _rows(out["summary"])
+    assert sorted(r[0] for r in summary) == sorted([a.asset_name, b.asset_name])
+    assert {r[0]: r[3] for r in summary}[a.asset_name] == "60%"
+    assert [r[0] for r in _rows(out["failed"])] == [a.asset_name]          # asset column when several
+    assert _rows(out["compare"]) == []                     # 1.1.1.1 failed before and still fails
+
+    pending = AuditSession(user_id=admin.id, asset_id=a.id, target_ip=a.ip_address, device_type="linux",
+                           status="running")
+    db.add(pending)
+    db.flush()
+    with pytest.raises(ReportError, match="not found or did not complete"):
+        _built(db, monkeypatch, admin, "audit_session",
+               _params(sections=["summary"], options={"audit_mode": "session", "audit_session": pending.id}))
+
+
+def test_hardening_changes_mask_secrets_and_find_the_backup_before(db, monkeypatch):
+    import json as _json
+    from app.models.backup import DeviceBackup
+    from app.models.hardening import HardeningAction
+    admin = _user(db)
+    a = _asset(db)
+    s = _audit(db, a, 50.0, datetime(2026, 9, 1))
+    result = db.query(AuditResult).filter_by(session_id=s.id).first()
+
+    def act(when, status, cmds, **kw):
+        h = HardeningAction(audit_result_id=result.id, user_id=admin.id, asset_id=a.id, audit_session_id=s.id,
+                            check_number="1.1.1", check_title="Set SNMP", action_type="execute", status=status,
+                            commands_json=_json.dumps(cmds), created_at=when, executed_at=when, **kw)
+        db.add(h)
+        db.flush()
+        return h
+
+    act(datetime(2026, 9, 10, 10), "success", ["snmp-server community S3cr3t RO",
+                                                     "username admin secret 5 $1$abcd$xyz"], verification_passed=True)
+    act(datetime(2026, 9, 12, 10), "failed", ["no ip http server"], error_message="Timeout waiting for prompt")
+    act(datetime(2026, 9, 13, 10), "success", ["x"]).action_type = "preview"     # a preview is not a change
+    old = DeviceBackup(asset_id=a.id, config_content="hostname x", source="manual", created_at=datetime(2026, 9, 9))
+    before = DeviceBackup(asset_id=a.id, config_content="hostname x", source="hardening",
+                          created_at=datetime(2026, 9, 10, 9, 30))
+    db.add_all([old, before])
+    db.flush()
+
+    _, out = _built(db, monkeypatch, admin, "hardening_changes",
+                    _params(sections=["overview", "changes", "failed"], scope=_assets_scope(a)))
+    k = _kpis(out["overview"])
+    assert k["Changes"]["value"] == "2" and k["Failed"]["value"] == "1"
+    assert k["With a backup taken before"]["value"] == "1 of 2"
+    first, second = _rows(out["changes"])
+    assert first[5] == "Succeeded · verified" and first[6].startswith(f"#{before.id} ·")
+    assert "S3cr3t" not in first[7] and "$1$abcd" not in first[7]
+    assert "community ********" in first[7] and "secret 5 ********" in first[7]
+    assert second[5] == "Failed" and second[6] == "—"
+    assert _rows(out["failed"])[0][-1] == "Timeout waiting for prompt"
+    assert "hostname x" not in _flat(out["changes"])          # backup content is never printed
+
+    _, out = _built(db, monkeypatch, admin, "hardening_changes",
+                    _params(sections=["changes"], scope=_assets_scope(a), options={"commands": False}))
+    assert len(_rows(out["changes"])[0]) == 7
+
+
+def test_coverage_states_and_the_recent_audit_threshold(db, monkeypatch):
+    from app.models.backup import DeviceBackup
+    from app.models.noc import AssetSnmpStatus
+    admin = _user(db)
+    now = datetime(2026, 10, 2, 8)
+    router, server = _asset(db, "network"), _asset(db, "server")
+    _audit(db, router, 80.0, now - timedelta(days=45))
+    db.add_all([DeviceBackup(asset_id=router.id, config_content="x", source="manual", created_at=now - timedelta(days=3)),
+                AssetSnmpStatus(asset_id=router.id, reachable=True)])
+    db.flush()
+    params = dict(sections=["overview", "gaps"], scope=_assets_scope(router, server))
+
+    meta, out = _built(db, monkeypatch, admin, "asset_coverage", _params(**params, options={"audit_days": "90"}),
+                       now=now)
+    assert "within 90 days" in meta["period_line"]
+    gaps = {r[0]: r for r in _rows(out["gaps"])}
+    assert gaps[router.asset_name][3:6] == ["45 days ago", "3 days ago", "SNMP"]
+    assert gaps[server.asset_name][3:6] == ["Never", "Not needed", "Not monitored"]
+    k = _kpis(out["overview"])
+    assert k["Audit"]["sub"] == "1 of 2" and k["Configuration backup"]["sub"] == "1 of 1"
+
+    _, out = _built(db, monkeypatch, admin, "asset_coverage", _params(**params, options={"audit_days": "30"}),
+                    now=now)
+    assert _kpis(out["overview"])["Audit"]["sub"] == "0 of 2"          # 45 days is no longer recent
+    cls = {r[0]["text"]: r[3]["cls"] for r in [b for b in out["gaps"] if b["type"] == "table"][0]["rows"]}
+    assert cls[router.asset_name] == "late"
+
+
+def test_backup_lists_devices_without_a_recent_backup(db, monkeypatch):
+    from app.models.backup import DeviceBackup
+    admin = _user(db)
+    now = datetime(2026, 10, 2, 8)
+    fresh, stale, server = _asset(db, "network"), _asset(db, "network"), _asset(db, "server")
+    db.add_all([DeviceBackup(asset_id=fresh.id, config_content="x", source="manual", created_at=now - timedelta(days=2)),
+                DeviceBackup(asset_id=stale.id, config_content="x", source="manual", created_at=now - timedelta(days=40))])
+    db.flush()
+    _, out = _built(db, monkeypatch, admin, "backup",
+                    _params(sections=["overview", "stale"], scope=_assets_scope(fresh, stale, server)), now=now)
+    names = [r[0] for r in _rows(out["stale"])]
+    assert names == [stale.asset_name]                         # servers need no configuration backup
+
+
+def test_noc_availability_and_outages_from_the_samples(db, monkeypatch):
+    from app.models.noc import AssetSnmpStatus
+    from app.models.noc_metrics import AssetMetricSample
+    admin = _user(db)
+    up, flaky, unmonitored = _asset(db), _asset(db), _asset(db)
+    db.add_all([AssetSnmpStatus(asset_id=up.id, reachable=True), AssetSnmpStatus(asset_id=flaky.id, reachable=True)])
+    start = datetime(2026, 9, 28, 10)
+    for i in range(100):
+        at = start + timedelta(minutes=i)
+        db.add(AssetMetricSample(asset_id=up.id, metric_type="reachable", value=1.0, sampled_at=at))
+        db.add(AssetMetricSample(asset_id=flaky.id, metric_type="reachable", value=0.0 if 30 <= i < 35 else 1.0,
+                                 sampled_at=at))
+    db.flush()
+    _, out = _built(db, monkeypatch, admin, "noc",
+                    _params(period={"preset": "custom", "from": "2026-09-27", "to": "2026-09-30"},
+                            sections=["overview", "availability", "outages"],
+                            scope=_assets_scope(up, flaky, unmonitored), options={"target": "99.9"}),
+                    now=datetime(2026, 10, 2, 8))
+    k = _kpis(out["overview"])
+    assert k["Outages"]["value"] == "1" and k["Below target"]["value"] == "1"
+    assert k["Total downtime"]["value"] == "5 min"
+    avail = _rows(out["availability"])
+    assert [r[0] for r in avail] == [flaky.asset_name, up.asset_name]     # worst first; unmonitored left out
+    assert avail[0][2] == "95.00%" and avail[1][2] == "100%"
+    outages = _rows(out["outages"])
+    assert len(outages) == 1 and outages[0][0] == flaky.asset_name and outages[0][2] == "5 min"
+
+
+def test_alerts_leave_out_modules_without_permission(db, monkeypatch):
+    from app.models.notification import Alert
+    noc_only = _user(db, UserRole.USER, modules=[ModuleEnum.REPORTS, ModuleEnum.NOC])
+    a = _asset(db)
+    t0 = datetime(2031, 3, 5, 10)
+    db.add_all([
+        Alert(event_type="noc.unreachable", module="noc", severity="critical", fingerprint=f"t:{_n()}",
+              title="Device unreachable", asset_id=a.id, source_label=a.asset_name, status="resolved",
+              first_seen_at=t0, last_seen_at=t0, acknowledged_at=t0 + timedelta(minutes=10),
+              resolved_at=t0 + timedelta(minutes=40)),
+        Alert(event_type="cve.kev", module="cve", severity="critical", fingerprint=f"t:{_n()}",
+              title="Exploited vulnerability", asset_id=a.id, source_label=a.asset_name, status="active",
+              first_seen_at=t0, last_seen_at=t0),
+    ])
+    db.flush()
+    _, out = _built(db, monkeypatch, noc_only, "alerts",
+                    _params(period={"preset": "custom", "from": "2031-03-01", "to": "2031-03-31"},
+                            sections=["overview", "all"], scope=_assets_scope(a)),
+                    now=datetime(2031, 4, 2), formats=("pdf", "xlsx"))
+    k = _kpis(out["overview"])
+    assert k["Alerts"]["value"] == "1" and k["Time to acknowledge"]["value"] == "10 min"
+    assert k["Time to resolve"]["value"] == "40 min"
+    assert any(b["type"] == "note" and "no access" in b["text"] for b in out["overview"])
+    titles = [r[1] for r in _rows(out["all"])]
+    assert titles == ["Device unreachable"]
+
+
+def test_user_activity_is_for_administrators_and_lists_sensitive_actions(db, monkeypatch):
+    from datetime import timezone as tz
+    from app.models.login_log import LoginLog
+    from app.models.security_audit_log import AuditLog
+    admin = _user(db)
+    viewer = _user(db, UserRole.USER, modules=[ModuleEnum.REPORTS, ModuleEnum.LOGS])
+    params = _params(period={"preset": "custom", "from": "2031-03-01", "to": "2031-03-31"},
+                     sections=["overview", "failed_by_ip", "sensitive"])
+    with pytest.raises(ReportError) as e:
+        service.create(db, viewer, "user_activity", "", "en", ["pdf"], "internal", params)
+    assert e.value.status_code in (403, 404)
+
+    t0 = datetime(2031, 3, 10, 9, tzinfo=tz.utc)
+    db.add_all([LoginLog(username=admin.username, success=True, ip_address="10.0.0.5", timestamp=t0)] +
+               [LoginLog(username="ghost", success=False, ip_address="203.0.113.9",
+                         timestamp=t0 + timedelta(minutes=i)) for i in range(3)])
+    for action, module in (("user.delete", "user_management"), ("execute_audit", "auditing"),
+                           ("settings.update", "system_config"), ("system_backup.create", "system_backup"),
+                           ("hardening.execute_single", "hardening")):
+        db.add(AuditLog(user_id=admin.id, username=admin.username, action=action, module=module,
+                        ip_address="10.0.0.5", result="success", timestamp=t0 + timedelta(hours=1)))
+    db.flush()
+    _, out = _built(db, monkeypatch, admin, "user_activity", params, now=datetime(2031, 4, 2))
+    k = _kpis(out["overview"])
+    assert k["Failed logins"]["value"] == "3" and k["Failed logins"]["sub"] == "3 from one address"
+    assert k["Sensitive actions"]["value"] == "3"
+    assert _rows(out["failed_by_ip"])[0][0] == "203.0.113.9"
+    actions = _flat(out["sensitive"])
+    assert "user.delete" in actions and "settings.update" in actions and "hardening.execute_single" in actions
+    assert "execute_audit" not in actions and "system_backup.create" not in actions
+
+
+def test_software_report_separates_repository_and_new_installations(db, monkeypatch):
+    from app.models.software import SoftwareChange, SoftwareCollection, SoftwareItem
+    admin = _user(db)
+    a = _asset(db, "server")
+    c = SoftwareCollection(asset_id=a.id, collector="linux", collected_at=datetime(2026, 9, 20), status="ok")
+    db.add(c)
+    db.flush()
+    db.add_all([
+        SoftwareItem(asset_id=a.id, collector="linux", name="bash", version="5.2", source="distro", vkind="deb",
+                     collection_id=c.id),
+        SoftwareItem(asset_id=a.id, collector="linux", name="zz-acme-agent", version="1.4", source="manual",
+                     vkind="deb", collection_id=c.id),
+        SoftwareChange(asset_id=a.id, collection_id=c.id, change="added", name="zz-acme-agent", new_version="1.4",
+                       source="manual", at=datetime(2026, 9, 20)),
+        SoftwareChange(asset_id=a.id, collection_id=c.id, change="added", name="bash", new_version="5.2",
+                       source="distro", at=datetime(2026, 9, 20)),
+    ])
+    db.flush()
+    _, out = _built(db, monkeypatch, admin, "software",
+                    _params(sections=["overview", "new", "outside"], scope=_assets_scope(a)))
+    k = _kpis(out["overview"])
+    assert k["Assets with a software list"]["value"] == "1 of 1"
+    assert k["New software in the period"]["value"] == "1"
+    new = _flat(out["new"])
+    assert "zz-acme-agent" in new and "bash" not in new
+    outside = _flat(out["outside"])
+    assert "zz-acme-agent" in outside and "bash" not in outside

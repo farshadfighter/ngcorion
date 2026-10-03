@@ -35,13 +35,14 @@ def _css(value) -> Markup:
 _env = Environment(loader=FileSystemLoader(str(HERE / "html")), autoescape=select_autoescape(["html"]),
                    trim_blocks=True, lstrip_blocks=True)
 _env.filters["css"] = _css
-_LATIN = re.compile(r"[A-Za-z]")
+_LATIN = re.compile(r"[A-Za-z0-9]")
 _PERSIAN = re.compile(r"[\u0600-\u06FF]")
 
 
 @pass_context
 def _bidi(context, value):
-    """In a Persian report, Latin-only text keeps its own direction inside right-to-left cells."""
+    """In a Persian report, Latin text and Latin-digit values (versions, IPs, lists of
+    them) keep their own direction inside right-to-left cells."""
     text = "" if value is None else str(value)
     if context.get("rtl") and _LATIN.search(text) and not _PERSIAN.search(text):
         return f"\u2066{text}\u2069"

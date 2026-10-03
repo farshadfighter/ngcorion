@@ -48,6 +48,7 @@ export function ReportBuilder() {
                     if (q == null) return [o.key, o.default];
                     if (o.kind === "bool") return [o.key, q === "1" || q === "true"];
                     if (o.kind === "multi") return [o.key, q.split(",").filter(Boolean)];
+                    if (o.kind === "int") return [o.key, Number(q) || null];
                     return [o.key, q];
                 }));
                 setForm({
@@ -82,8 +83,14 @@ export function ReportBuilder() {
         },
     });
 
+    // Audit details: one audit chosen on its own page, or the latest audit of each asset.
+    const oneAudit = templateId === "audit_session" && form?.options.audit_mode === "session";
+    const usesAssets = tpl ? tpl.uses_assets !== false && !oneAudit : true;
+    const usesPeriod = tpl ? tpl.uses_period !== false : true;
+
     const valid = form && form.sections.length > 0 && form.formats.length > 0
-        && (form.scopeMode === "all" || form.scopeValues.length > 0)
+        && (!usesAssets || form.scopeMode === "all" || form.scopeValues.length > 0)
+        && (!oneAudit || !!form.options.audit_session)
         && (form.preset !== "custom" || (form.from && form.to));
 
     const build = () => {
@@ -140,7 +147,7 @@ export function ReportBuilder() {
                                placeholder={tb(tpl.title)} onChange={(e) => set({ title: e.target.value })} aria-label={t("Title")} />
                     </fieldset>
 
-                    <fieldset className="rep-fs">
+                    {usesPeriod && <fieldset className="rep-fs">
                         <legend>{t("Period")}</legend>
                         <div className="bkm-chips">
                             {PERIODS.map(([v, l]) => (
@@ -163,9 +170,9 @@ export function ReportBuilder() {
                         <p className="alr-hint">{form.language === "fa"
                             ? t("Months, quarters and years follow the Solar Hijri calendar because the report is in Persian.")
                             : t("Months, quarters and years follow the Gregorian calendar because the report is in English.")}</p>
-                    </fieldset>
+                    </fieldset>}
 
-                    <fieldset className="rep-fs">
+                    {usesAssets && <fieldset className="rep-fs">
                         <legend>{t("Assets")}</legend>
                         <div className="bkm-chips">
                             {SCOPES.map(([v, l]) => (
@@ -187,7 +194,7 @@ export function ReportBuilder() {
                                 ))}</div>
                                 : <p className="alr-hint">{t("Nothing to choose from yet.")}</p>
                         )}
-                    </fieldset>
+                    </fieldset>}
 
                     <fieldset className="rep-fs">
                         <legend>{t("Sections")}</legend>
@@ -210,8 +217,27 @@ export function ReportBuilder() {
                     {tpl.options.length > 0 && (
                         <fieldset className="rep-fs">
                             <legend>{t("Options")}</legend>
-                            {tpl.options.map((o) => (
-                                o.kind === "bool" ? (
+                            {tpl.options.filter((o) => o.kind !== "int").map((o) => (
+                                o.key === "audit_mode" ? (
+                                    <div key={o.key} className="alr-lbl">{tb(o.label)}
+                                        <div className="bkm-chips">
+                                            {o.choices.map((c) => {
+                                                const off = c.value === "session" && !form.options.audit_session;
+                                                return (
+                                                    <button key={c.value} type="button" aria-pressed={form.options[o.key] === c.value}
+                                                            className={`bkm-chip ${form.options[o.key] === c.value ? "is-on" : ""}`} disabled={off}
+                                                            onClick={() => set({ options: { ...form.options, [o.key]: c.value } })}>
+                                                        {tb(c.label)}{c.value === "session" && form.options.audit_session
+                                                            ? <b>#{form.options.audit_session}</b> : null}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <span className="alr-hint">{form.options.audit_session
+                                            ? t("A schedule always describes the latest audit of each asset.")
+                                            : t("To describe one audit, open it and use Report on its page.")}</span>
+                                    </div>
+                                ) : o.kind === "bool" ? (
                                     <label key={o.key} className={`rep-check ${form.options[o.key] ? "is-on" : ""}`}>
                                         <input type="checkbox" checked={!!form.options[o.key]}
                                                onChange={(e) => set({ options: { ...form.options, [o.key]: e.target.checked } })} />
@@ -277,10 +303,13 @@ export function ReportBuilder() {
                     <h2 className="bkm-h3">{t("What will be built")}</h2>
                     <dl>
                         <dt>{t("Report")}</dt><dd>{tb(tpl.title)}</dd>
-                        <dt>{t("Period")}</dt><dd>{form.preset === "custom" && form.from && form.to ? `${form.from} – ${form.to}` : label(PERIODS, form.preset)}
-                            {form.compare ? ` · ${t("compared")}` : ""}</dd>
-                        <dt>{t("Assets")}</dt><dd>{assetCount != null ? t("{{count}} assets", { count: assetCount })
-                            : t("{{count}} chosen", { count: form.scopeValues.length })}</dd>
+                        {oneAudit && <><dt>{t("Audit")}</dt><dd>#{form.options.audit_session}</dd></>}
+                        {usesPeriod
+                            ? <><dt>{t("Period")}</dt><dd>{form.preset === "custom" && form.from && form.to ? `${form.from} – ${form.to}` : label(PERIODS, form.preset)}
+                                {form.compare ? ` · ${t("compared")}` : ""}</dd></>
+                            : !oneAudit && <><dt>{t("Figures")}</dt><dd>{t("As they are when the report is built")}</dd></>}
+                        {usesAssets && <><dt>{t("Assets")}</dt><dd>{assetCount != null ? t("{{count}} assets", { count: assetCount })
+                            : t("{{count}} chosen", { count: form.scopeValues.length })}</dd></>}
                         <dt>{t("Sections")}</dt><dd>{form.sections.length ? form.sections.map(sectionTitle).join(currentLanguage() === "fa" ? "، " : ", ") : "—"}</dd>
                         <dt>{t("Output")}</dt><dd>{form.formats.map((f) => (f === "pdf" ? "PDF" : "Excel")).join(" + ")} · {form.language === "fa" ? t("Persian") : t("English")}</dd>
                         <dt>{t("Classification")}</dt><dd>{label(CLASSIFICATIONS, form.classification)}</dd>
@@ -291,8 +320,9 @@ export function ReportBuilder() {
                             {busy === "build" ? t("Starting…") : t("Build report")}</button>
                         <button type="button" className="bkm-btn" disabled={!valid || !!busy} onClick={preview}>
                             {busy === "preview" ? t("Building the preview…") : t("Preview PDF")}</button>
-                        <button type="button" className="bkm-btn" disabled={!valid || !!busy || form.preset === "custom"}
-                                title={form.preset === "custom" ? t("A schedule needs a period that moves with it, not fixed dates") : undefined}
+                        <button type="button" className="bkm-btn" disabled={!valid || !!busy || (usesPeriod && form.preset === "custom") || oneAudit}
+                                title={oneAudit ? t("A schedule always describes the latest audit of each asset.")
+                                    : usesPeriod && form.preset === "custom" ? t("A schedule needs a period that moves with it, not fixed dates") : undefined}
                                 onClick={() => setScheduling(true)}>{t("Save as a schedule…")}</button>
                     </div>
                     <p className="rep-info">{t("The report is built in the background; you can leave this page. It appears in the archive when it is ready.")}</p>
@@ -301,7 +331,7 @@ export function ReportBuilder() {
             </div>
 
             {scheduling && (
-                <ScheduleModal draft={request()} templateTitle={tpl.title} onClose={() => setScheduling(false)}
+                <ScheduleModal draft={request()} templateTitle={tpl.title} usesPeriod={usesPeriod} onClose={() => setScheduling(false)}
                                onSaved={() => navigate("/reports/schedules")} />
             )}
         </div>

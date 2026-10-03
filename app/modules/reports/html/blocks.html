@@ -1,6 +1,6 @@
 {% macro block(b) -%}
 {%- if b.type == "kpis" -%}
-<div class="kpis">{% for k in b["items"] %}<div class="kpi"><span>{{ k.label }}</span><b>{{ k.value }}{% if k.delta %}<em class="{{ 'up' if k.good else ('down' if k.good is sameas false else 'flat') }}">{{ k.delta }}</em>{% endif %}</b>{% if k.sub %}<small>{{ k.sub }}</small>{% endif %}</div>{% endfor %}</div>
+<div class="kpis kpis-{{ b['items']|length }}">{% for k in b["items"] %}<div class="kpi"><span>{{ k.label }}</span><b>{{ k.value }}{% if k.delta %}<em class="{{ 'up' if k.good else ('down' if k.good is sameas false else 'flat') }}">{{ k.delta }}</em>{% endif %}</b>{% if k.sub %}<small>{{ k.sub }}</small>{% endif %}</div>{% endfor %}</div>
 {%- elif b.type == "heading" -%}
 <h3>{{ b.text }}</h3>
 {%- elif b.type == "bullets" -%}
@@ -18,7 +18,7 @@
 {% if b.title and b.show_title %}<h3>{{ b.title }}</h3>{% endif %}
 {% if not b.rows %}<p class="empty">{{ b.empty }}</p>{% else %}
 <table><thead><tr>{% for c in b.columns %}<th class="{{ 'num' if c.num else '' }}">{{ c.label }}</th>{% endfor %}</tr></thead>
-<tbody>{% for row in b.shown %}<tr>{% for c in row %}{% set colm = b.columns[loop.index0] %}<td class="{{ c.cls }}{{ ' mono' if colm.mono and 'mono' not in c.cls else '' }}{{ ' num' if colm.num and 'num' not in c.cls else '' }}">{{ c.text|bidi }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+<tbody>{% for row in b.shown %}<tr>{% for c in row %}{% set colm = b.columns[loop.index0] %}<td class="{{ c.cls }}{{ ' mono' if colm.mono and 'mono' not in c.cls else '' }}{{ ' num' if colm.num and 'num' not in c.cls else '' }}{{ ' nowrap' if colm.mono and 'small' not in c.cls and (c.text|string|length) <= 24 else '' }}">{{ c.text|bidi }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
 {% if b.cut %}<p class="more">{{ b.cut }}</p>{% endif %}{% if b.more %}<p class="more">{{ b.more }}</p>{% endif %}
 {% endif %}
 {%- endif -%}

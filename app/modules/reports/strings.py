@@ -44,5 +44,16 @@ def collect() -> Set[str]:
     found.update(label for _, label, _ in templates.LEVELS)
     found.update(service.MODULE_LABELS.values())
     found.update(["Critical", "High", "Medium", "Low", "Info", "Informational", "Public", "Internal", "Confidential"])
+    # templates2: tables of labels, and texts that come from other modules
+    from app.modules.reports import templates2
+    found.update(label for _, label in templates2.CONTROLS)
+    found.update(templates2.SW_SOURCE.values())
+    found.update(["System administrator", "Manager", "User", "Guest", "Redundancy", "Exposure", "Best practice", "Inventory",
+                  "Topology", "Resilience", "Compliance"])
+    from app.modules.alerts.events import EVENTS
+    found.update(e.name for e in EVENTS.values())
+    from app.modules.architecture_validation.engine import load_rules
+    for rule in load_rules():
+        found.update(x for x in (rule.get("title"), rule.get("recommendation")) if x)
     Tr  # noqa: B018 - imported for its side-effect-free name
     return found

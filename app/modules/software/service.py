@@ -66,13 +66,17 @@ def _cve_summary(found: List[dict]) -> Optional[dict]:
 
 # ── the fleet ─────────────────────────────────────────────────────────────
 
-def products(db: Session) -> Dict:
+def products(db: Session, asset_ids: Optional[List[int]] = None) -> Dict:
+    """The fleet's products; `asset_ids` limits it to some assets (reports)."""
     maps = load_maps(db)
     get = _resolver(maps)
     findings = _findings_by_asset_product(db)
     groups: Dict[tuple, dict] = {}
     package_count = 0
-    for it in db.query(SoftwareItem).filter(SoftwareItem.kind.notin_(("hotfix", "os"))).all():
+    q = db.query(SoftwareItem).filter(SoftwareItem.kind.notin_(("hotfix", "os")))
+    if asset_ids is not None:
+        q = q.filter(SoftwareItem.asset_id.in_(list(asset_ids) or [-1]))
+    for it in q.all():
         package_count += 1
         r = get(it)
         if r.status not in LISTED:
@@ -114,10 +118,14 @@ def products(db: Session) -> Dict:
                              -((r["cve"] or {}).get("count") or 0), r["status"] != "unknown",
                              r["sources"] == ["distro"], r["label"].lower()))
 
-    assets_total = db.query(func.count(Asset.id)).scalar() or 0
-    with_inventory = db.query(func.count(func.distinct(SoftwareCollection.asset_id))).filter(
-        SoftwareCollection.status == "ok").scalar() or 0
-    last = db.query(func.max(SoftwareCollection.collected_at)).filter(SoftwareCollection.status == "ok").scalar()
+    cq = db.query(SoftwareCollection).filter(SoftwareCollection.status == "ok")
+    if asset_ids is not None:
+        cq = cq.filter(SoftwareCollection.asset_id.in_(list(asset_ids) or [-1]))
+        assets_total = len(set(asset_ids))
+    else:
+        assets_total = db.query(func.count(Asset.id)).scalar() or 0
+    with_inventory = cq.with_entities(func.count(func.distinct(SoftwareCollection.asset_id))).scalar() or 0
+    last = cq.with_entities(func.max(SoftwareCollection.collected_at)).scalar()
     counts = {
         "all": len(rows),
         "outside_distro": sum(1 for r in rows if any(s in ("third_party", "manual", "service", "firmware")

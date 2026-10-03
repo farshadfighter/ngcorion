@@ -52,6 +52,7 @@ def _report_out(r: Report, files: List[ReportFile], names: Dict[int, str], sched
     return {
         "id": r.id, "code": r.code, "template": r.template, "title": r.title, "language": r.language,
         "formats": r.formats, "classification": r.classification, "params": r.params,
+        "uses_period": TEMPLATES[r.template].uses_period if r.template in TEMPLATES else True,
         "period_start": _iso(r.period_start), "period_end": _iso(r.period_end), "status": r.status,
         "progress": r.progress, "error": r.error, "omitted": r.omitted or [], "page_count": r.page_count,
         "pinned": r.pinned, "created_by": names.get(r.created_by), "schedule_id": r.schedule_id,
@@ -81,6 +82,7 @@ def _template_out(db: Session, user: User, t, last: Dict[str, datetime]) -> dict
     return {
         "id": t.id, "title": t.title, "description": t.description, "group": t.group, "available": t.available,
         "default_period": t.default_period, "last_built": _iso(last.get(t.id)),
+        "uses_period": t.uses_period, "admin_only": t.admin_only, "uses_assets": t.uses_assets,
         "sections": [{"key": s.key, "title": s.title, "hint": s.hint, "default": s.default,
                       "excel_only": s.excel_only, "allowed": service.can_read(db, user, s.module)}
                      for s in t.sections],

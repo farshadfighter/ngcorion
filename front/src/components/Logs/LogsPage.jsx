@@ -9,6 +9,7 @@ import { Pagination } from "./Pagination.jsx";
 import "../../assets/LogsPage.css";
 import { t, uiLocale, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 /* DELETE /api/logs/clear keys -> the Section names this page shows, so the
    summary line matches the table's own labels. */
@@ -103,6 +104,7 @@ export const LogsPage = () => {
 
     return (
         <div className="logs-wrapper">
+            <div className="rep-shortcut-row"><ReportShortcut template="user_activity" adminOnly className="bkm-btn bkm-btn-sm" /></div>
 
             {/* Toolbar */}
             <div className="logs-toolbar">

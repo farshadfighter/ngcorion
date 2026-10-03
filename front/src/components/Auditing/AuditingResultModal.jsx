@@ -5,6 +5,7 @@ import { getDeviceName } from "../../store/hardeningSlice";
 import { FixUnsuccessfulWizard } from "../Hardening/FixUnsuccessfulWizard";
 import { ResultHardeningBar } from "./ResultHardeningBar";
 import { t, uiLocale, n } from "../../i18n";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "-");
 
@@ -195,6 +196,11 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                     <button className="result-back-btn" onClick={onClose}>
                         {t("← Audit Result")}
                     </button>
+                    {sessionDetails?.session_id && String(sessionDetails?.status || "").toLowerCase() === "completed" && (
+                        <ReportShortcut template="audit_session" className="bkm-btn bkm-btn-sm"
+                                        query={{ audit_mode: "session", audit_session: sessionDetails.session_id }}
+                                        title={t("Report of this audit, with the evidence of every check")} />
+                    )}
                 </div>
 
                 {/* Statistics — one white panel holding the coloured summary row

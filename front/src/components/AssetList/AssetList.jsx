@@ -22,6 +22,7 @@ import "../../assets/AssetList.css"
 import "../../assets/LogsPage.css"
 import { t as tr, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const PRIMARY = "#1e3a5f";
 
@@ -242,6 +243,8 @@ export const AssetList = () => {
             <div className="asset-list-header">
                 <h1 className="page-title">{tr("Asset List")}</h1>
                 <div className="header-actions">
+                    <ReportShortcut template="asset_coverage" className="btn-header rep-shortcut-header"
+                                    title={tr("Coverage report: which assets are audited, backed up and monitored")} />
                     <button className="btn-header" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                         {uploading ? tr("⏳ Importing...") : tr("⬇ Import")}
                     </button>

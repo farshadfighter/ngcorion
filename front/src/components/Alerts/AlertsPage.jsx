@@ -8,6 +8,7 @@ import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import { t as tr, n } from "../../i18n";
 import { tb } from "../../i18n/backendText";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const STATUSES = [["open", tr("Active")], ["acknowledged", tr("Acknowledged")], ["resolved", tr("Resolved")]];
 const PAGE = 50;
@@ -80,6 +81,7 @@ export function AlertsPage() {
                     <h1>{tr("Alerts")}</h1>
                     <p>{tr("What needs attention now, from every module. Acknowledge an alert to tell the team you are on it.")}</p>
                 </div>
+                <div className="bkm-actions"><ReportShortcut template="alerts" className="bkm-btn" /></div>
             </div>
 
             <div className="bkm-stats bkm-stats-4">

@@ -8,6 +8,7 @@ import NewBackupModal from "./NewBackupModal.jsx";
 import { Changes, RestoreDetailDrawer, RestoreResult } from "./RestoreDetailDrawer.jsx";
 import "../../assets/BackupModule.css";
 import { t, uiLocale, n } from "../../i18n";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const FAMILY_LABEL = { cisco: "Cisco", fortinet: "Fortinet", linux: "Linux", apache: "Apache", mongodb: "MongoDB" };
 const ATTENTION_ROWS = 8;
@@ -46,6 +47,7 @@ export function BackupOverview() {
                     <p>{t("Is every device's configuration saved, and what was restored recently.")}</p>
                 </div>
                 <div className="bkm-actions">
+                    <ReportShortcut template="backup" className="bkm-btn" />
                     <button type="button" className="bkm-btn" onClick={() => navigate("/backup/restores")}>{t("Restore history")}</button>
                     {canWrite && (
                         <button type="button" className="bkm-btn bkm-btn-primary" onClick={() => setBackupFor({})}>

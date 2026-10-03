@@ -78,7 +78,11 @@ export async function download(report, kind) {
 }
 
 /** How a period preset reads in a list: "Previous month", or the custom dates. */
-export function periodText(params) {
+export function periodText(params, usesPeriod = true) {
+    if (!usesPeriod) {
+        const id = params?.options?.audit_mode === "session" && params.options.audit_session;
+        return id ? t("Audit {{id}}", { id: `\u2066#${id}\u2069` }) : t("At build time");
+    }
     const p = params?.period || {};
     if (p.preset === "custom" && p.from && p.to) return `${p.from} – ${p.to}`;
     return label(PERIODS, p.preset) || "—";

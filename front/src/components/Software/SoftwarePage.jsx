@@ -13,6 +13,7 @@ import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import "../../assets/Remediation.css";
 import "../../assets/Software.css";
+import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const VIEWS = [
     ["all", t("All")],
@@ -95,6 +96,7 @@ export function SoftwarePage() {
                     <p>{t("What is actually installed on each asset, from its latest collection. Every Linux and Windows audit refreshes the list; Apache, MongoDB, SQL Server, Cisco and Fortinet audits record the exact version of the product itself.")}</p>
                 </div>
                 <div className="bkm-actions">
+                    <ReportShortcut template="software" className="bkm-btn" />
                     <button type="button" className="bkm-btn" onClick={exportExcel} disabled={exporting || !data?.items.length}>
                         {exporting ? t("Exporting…") : t("Export to Excel")}
                     </button>
