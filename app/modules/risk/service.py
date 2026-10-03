@@ -474,7 +474,7 @@ class AssetRiskCalculationService:
         since nothing is known to be vulnerable."""
         from app.modules.cve import findings as cve_findings
         from app.modules.cve import settings as cve_settings
-        if cve_settings.get(db, cve_settings.WATERMARK) is None:
+        if not cve_settings.vulnerability_data_loaded(db):
             return {"score": 0.0, "findings": 0, "kev": 0}
         rows = cve_findings.compute(db, asset_id)["findings"]
         # Findings under an approved risk acceptance (app/modules/remediation)

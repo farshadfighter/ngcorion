@@ -1078,8 +1078,9 @@ def _software(ctx: Ctx) -> Dict[str, List[dict]]:
             kpi(tr("Products with known vulnerabilities"), tr.num(len(vulnerable)),
                 sub=tr("{count} exploited", count=sum(1 for r in vulnerable if r["cve"]["kev"]))),
             kpi(tr("New software in the period"), tr.num(len(changes)), sub=tr("{count} installed manually", count=manual)),
-        ]), note(tr("Packages from the distribution's own repository are not matched against NVD; the distribution's "
-                    "advisories cover them in the next phase."))]
+        ]), note(tr("Packages from the distribution's own repository are matched against the distribution's own "
+                    "security advisories (Ubuntu USN, Debian DSA/DLA, Red Hat RHSA, Rocky RLSA, AlmaLinux ALSA), "
+                    "the rest against NVD."))]
 
     if ctx.on("vulnerable"):
         rows = [[cell(r["label"]), cell(" ".join(r["cpes"]), cls="mono"), _num(ctx, r["asset_count"]),

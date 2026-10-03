@@ -291,9 +291,11 @@ def _vulnerability(db: Session) -> SubScore:
     from app.modules.cve import findings as cve_findings
     from app.modules.cve import settings as cve_settings
 
-    if cve_settings.get(db, cve_settings.WATERMARK) is not None:
+    if cve_settings.vulnerability_data_loaded(db):
         result = cve_findings.compute(db)
-        assessed = [a for a in result["assets"] if a["products"]]
+        # An asset is assessed when it has a known product, or a Linux release
+        # whose advisories are loaded.
+        assessed = [a for a in result["assets"] if a["products"] or a.get("advisory_status") == "ok"]
         if not assessed:
             return UNKNOWN_SCORE, "no asset has a known product to match CVEs against", {
                 "source": "cve", "assessed_assets": 0}

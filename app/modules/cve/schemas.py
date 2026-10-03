@@ -27,6 +27,14 @@ class CveFinding(BaseModel):
     epss_percentile: Optional[float] = None
     published: Optional[datetime] = None
     priority: int
+    # nvd: a version range in NVD; advisory: the distribution's own advisory
+    source: str = "nvd"
+    advisories: List[str] = []
+    package: Optional[str] = None
+    binaries: List[str] = []
+    availability: Optional[str] = None       # standard | pro (Ubuntu Pro only)
+    release: Optional[str] = None
+    reboot: bool = False                     # the fix is installed, the running kernel is older
 
 
 class AssetProduct(BaseModel):
@@ -45,6 +53,9 @@ class AssetFindings(BaseModel):
     ip_address: Optional[str] = None
     findings: int
     products: List[AssetProduct]
+    platform: Optional[str] = None
+    advisory_status: Optional[str] = None
+    reboot_required: bool = False
 
 
 class FindingsSummary(BaseModel):
@@ -55,6 +66,9 @@ class FindingsSummary(BaseModel):
     high: int
     medium: int
     low: int
+    from_advisories: int = 0
+    from_nvd: int = 0
+    reboot_assets: int = 0
 
 
 class FindingsResponse(BaseModel):
@@ -62,6 +76,7 @@ class FindingsResponse(BaseModel):
     findings: List[CveFinding]
     assets: List[AssetFindings]
     database_loaded: bool
+    advisories_loaded: bool = False
 
 
 class CveEntryDetail(BaseModel):

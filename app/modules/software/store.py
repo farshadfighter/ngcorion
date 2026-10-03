@@ -62,6 +62,7 @@ def save(db: Session, asset_id: int, collector: str, items: Optional[List[dict]]
                                 source=it["source"], origin=(it.get("origin") or None) and it["origin"][:200],
                                 publisher=(it.get("publisher") or None) and it["publisher"][:200],
                                 source_package=it.get("source_package"), vkind=it.get("vkind"),
+                                source_version=it.get("source_version"),
                                 collection_id=col.id, first_seen=now, last_seen=now))
             added += 1
             changes.append(SoftwareChange(change="added", kind=it["kind"], name=it["name"][:300],
@@ -77,6 +78,7 @@ def save(db: Session, asset_id: int, collector: str, items: Optional[List[dict]]
         row.source, row.origin = it["source"], (it.get("origin") or None) and it["origin"][:200]
         row.publisher = (it.get("publisher") or None) and it["publisher"][:200]
         row.source_package, row.vkind = it.get("source_package"), it.get("vkind")
+        row.source_version = it.get("source_version")
         row.collection_id, row.last_seen = col.id, now
     for key, row in old.items():
         if key not in new:
@@ -91,6 +93,9 @@ def save(db: Session, asset_id: int, collector: str, items: Optional[List[dict]]
     os_item = next((it for it in items if it["kind"] == "os"), None)
     if os_item:
         col.summary["os"] = f"{os_item['name']} {os_item.get('version') or ''}".strip()
+        if os_item.get("platform"):
+            col.summary["platform"] = os_item["platform"]
+            col.summary["os"] = os_item["platform"].get("pretty") or col.summary["os"]
     if had_before:
         # The first collection lists everything once; changes start with the second.
         col.added, col.removed, col.updated = added, removed, updated

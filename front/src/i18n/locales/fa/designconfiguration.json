@@ -33,7 +33,6 @@
   "Start from": "شروع از",
   "Start with an empty design and add components yourself.": "با یک طرح خالی شروع کنید و اجزا را خودتان اضافه کنید.",
   "Subnet": "زیرشبکه",
-  "Updated": "به‌روزرسانی",
   "v{{version_number}} · {{length}} component(s) · {{length2}} link(s)": "نسخهٔ {{version_number}} · {{length}} جزء · {{length2}} اتصال",
   "VLAN {{vlan}}": "VLAN {{vlan}}"
 }

@@ -318,3 +318,6 @@ from app.models.system_backup import BackupDestination, SystemBackup, SystemRest
 # Software inventory: installed packages / programs per asset (see app/models/software.py)
 from app.models.software import (SoftwareChange, SoftwareCollection, SoftwareItem,  # noqa: E402,F401
                                  SoftwareProductMap)
+
+# Distribution security advisories: fixed versions per package and release (see app/models/advisory.py)
+from app.models.advisory import DistroFeed, DistroVuln  # noqa: E402,F401

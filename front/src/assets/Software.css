@@ -119,3 +119,29 @@
 .sw-vers-change { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; vertical-align: middle; }
 .sw-vers-change .sw-ver { max-width: 46%; }
 .sw-change .sw-ver { max-width: 100%; }
+
+/* Security updates from the distribution's advisories (asset drawer) */
+.su-panel { gap: 12px; }
+.su-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.su-stats > div { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.su-stats b { font-size: 20px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.su-stats span { font-size: 12px; color: #64748b; }
+.su-stats .is-bad b { color: #b91c1c; }
+.su-stats .is-ok b { color: #15803d; }
+.su-reboot { margin: 0; }
+.su-table td { vertical-align: top; }
+.su-prio { display: inline-block; border-radius: 6px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.su-tag { font-size: 10.5px; background: #e0e7ff; color: #3730a3; border-radius: 4px; padding: 0 5px; margin-inline-start: 6px; }
+.su-clip { display: block; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.su-fixed { background: #dcfce7; color: #166534; }
+.su-adv { display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; background: #eef2f7; border-radius: 4px; padding: 0 5px; margin: 0 4px 2px 0; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.su-cves { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; margin-top: 2px; }
+.su-cve { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #475569; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
+.su-cve.is-kev { color: #b91c1c; font-weight: 700; }
+.su-pro { background: #ede9fe; color: #6d28d9; }
+.su-cmd-wrap { display: flex; flex-direction: column; gap: 6px; }
+.su-cmd { margin: 0; background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; text-align: left; }
+.su-unfixed summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.su-unfixed-list { max-height: 320px; overflow-y: auto; margin-top: 8px; }
+@media (max-width: 900px) { .su-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.su-table .bkm-pill { white-space: normal; text-align: center; line-height: 1.35; }

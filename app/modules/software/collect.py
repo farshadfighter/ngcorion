@@ -25,7 +25,7 @@ from typing import Dict, List, Optional
 # ── Debian / Ubuntu ──────────────────────────────────────────────────────
 
 DEB_PACKAGES = ("dpkg-query -W -f='${binary:Package}\\t${Version}\\t${Architecture}\\t${source:Package}"
-                "\\t${db:Status-Abbrev}\\n' 2>/dev/null")
+                "\\t${db:Status-Abbrev}\\t${source:Version}\\n' 2>/dev/null")
 # For every installed package: where its installed version comes from (I),
 # and where other versions of it are offered (C) - an installed version the
 # archive has moved past is still the distribution's package.
@@ -46,10 +46,26 @@ RPM_PACKAGES = ("rpm -qa --qf '%{NAME}\\t%{EPOCHNUM}:%{VERSION}-%{RELEASE}\\t%{A
 RPM_REPOS = ("(dnf -C repoquery --installed --qf '%{name}\\t%{arch}\\t%{from_repo}\\n' 2>/dev/null"
              " || yum list installed -C 2>/dev/null | awk 'NF==3{print $1\"\\t\\t\"$3}') | head -20000")
 
+# ── the release and the running kernel (both families) ──────────────────
+# The release decides which advisories apply (Ubuntu 22.04 and 24.04 fix the
+# same package in different versions); the running kernel decides which of
+# the installed kernels counts, and whether a reboot is still needed.
+OS_RELEASE = "cat /etc/os-release 2>/dev/null"
+KERNEL = "uname -r"
+REBOOT = ("cat /var/run/reboot-required.pkgs 2>/dev/null; "
+          "[ -f /var/run/reboot-required ] && echo __REBOOT_REQUIRED__; true")
+PLATFORM_COMMANDS = [("os_release", OS_RELEASE, 20), ("kernel", KERNEL, 20), ("reboot", REBOOT, 20)]
+
 LINUX_COMMANDS = {
-    "debian": [("deb_packages", DEB_PACKAGES, 90), ("deb_sources", DEB_SOURCES, 120), ("deb_repos", DEB_REPOS, 60)],
-    "rhel": [("rpm_packages", RPM_PACKAGES, 90), ("rpm_repos", RPM_REPOS, 120)],
+    "debian": [("deb_packages", DEB_PACKAGES, 90), ("deb_sources", DEB_SOURCES, 120),
+               ("deb_repos", DEB_REPOS, 60)] + PLATFORM_COMMANDS,
+    "rhel": [("rpm_packages", RPM_PACKAGES, 90), ("rpm_repos", RPM_REPOS, 120)] + PLATFORM_COMMANDS,
 }
+
+# Packages of which several versions stay installed side by side (one per
+# kernel); every version is kept, so the running one can be found.
+RPM_INSTALLONLY = re.compile(r"^kernel(-(core|modules|modules-core|modules-extra|devel|uek|uek-core|"
+                             r"uek-modules|rt|rt-core|rt-modules|debug|debug-core|debug-modules))?$")
 
 _DISTRO_ORIGINS = {"ubuntu", "debian", "ubuntuesm", "ubuntuesmapps", "ubuntu-security", "debian backports",
                    "canonical"}
@@ -121,9 +137,12 @@ def parse_debian(outputs: Dict[str, str]) -> List[dict]:
         if len(status) < 2 or status[1] != "i":          # only packages actually installed
             continue
         source, origin = classify(name)
+        src_version = parts[5].strip() if len(parts) > 5 else ""
         items.append({"name": re.sub(r":[a-z0-9_]+$", "", name), "version": version, "arch": arch,
                       "source": source, "origin": origin, "publisher": None, "kind": "package",
-                      "source_package": src_pkg or None, "vkind": "deb"})
+                      "source_package": src_pkg or None, "vkind": "deb",
+                      # advisories give the source package's version; a binary can differ (libldb2 of samba)
+                      "source_version": src_version if src_version and src_version != version else None})
     return _dedupe(items)
 
 
@@ -164,14 +183,48 @@ def _dedupe(items: List[dict]) -> List[dict]:
     seen, out = set(), []
     for it in items:
         key = (it["name"], it.get("arch") or "")
+        if it.get("vkind") == "rpm" and RPM_INSTALLONLY.match(it["name"]):
+            key += (it.get("version") or "",)
         if key not in seen:
             seen.add(key)
             out.append(it)
     return out
 
 
+def parse_os_release(text: str) -> Dict[str, str]:
+    out = {}
+    for line in (text or "").splitlines():
+        m = re.match(r"^([A-Z_]+)=(.*)$", line.strip())
+        if m:
+            out[m.group(1)] = m.group(2).strip().strip('"').strip("'")
+    return out
+
+
+def parse_platform(outputs: Dict[str, str]) -> Optional[dict]:
+    """The os item: release, running kernel and pending reboot."""
+    def clean(key):
+        v = outputs.get(key) or ""
+        return "" if v.startswith("<<ERROR") else v
+    rel = parse_os_release(clean("os_release"))
+    if not rel.get("ID"):
+        return None
+    kernel = (clean("kernel").strip().splitlines() or [""])[0].strip()
+    reboot_text = clean("reboot")
+    pending = sorted({x.strip() for x in reboot_text.splitlines() if x.strip() and x.strip() != "__REBOOT_REQUIRED__"})
+    platform = {"id": rel.get("ID", "").lower(), "version_id": rel.get("VERSION_ID") or None,
+                "codename": rel.get("VERSION_CODENAME") or rel.get("UBUNTU_CODENAME") or None,
+                "pretty": rel.get("PRETTY_NAME") or rel.get("NAME") or rel.get("ID"),
+                "kernel": kernel if re.match(r"^\d+\.\d+", kernel) else None,
+                "reboot_required": "__REBOOT_REQUIRED__" in reboot_text, "reboot_packages": pending[:200]}
+    return {"name": rel.get("NAME") or rel.get("ID"), "version": rel.get("VERSION_ID") or None, "arch": None,
+            "source": "distro", "origin": platform["codename"], "publisher": None, "kind": "os",
+            "source_package": None, "vkind": None, "platform": platform}
+
+
 def parse_linux(family: str, outputs: Dict[str, str]) -> List[dict]:
-    return parse_debian(outputs) if family == "debian" else parse_rhel(outputs)
+    items = parse_debian(outputs) if family == "debian" else parse_rhel(outputs)
+    os_item = parse_platform(outputs)
+    return items + [os_item] if items and os_item else items
 
 
 # ── Windows ──────────────────────────────────────────────────────────────

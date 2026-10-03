@@ -736,6 +736,8 @@ ADMIN_ONLY = {
     ("POST", "/api/cve/db/packages/{token}/import"), ("POST", "/api/cve/db/export"),
     ("GET", "/api/cve/db/export/{job_id}/file"), ("POST", "/api/cve/db/jobs/{job_id}/cancel"),
     ("GET", "/api/cve/db/keys"), ("POST", "/api/cve/db/keys"), ("DELETE", "/api/cve/db/keys/{key_id}"),
+    ("PUT", "/api/cve/advisories/settings"), ("POST", "/api/cve/advisories/update"),
+    ("POST", "/api/cve/advisories/import"), ("DELETE", "/api/cve/advisories/releases/{release}"),
 }
 
 

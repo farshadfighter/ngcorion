@@ -44,6 +44,7 @@ const cveSlice = createSlice({
         findings: [],
         assets: [],
         databaseLoaded: true,
+        advisoriesLoaded: false,
         isLoading: false,
         loadedOnce: false,
         error: null,
@@ -62,6 +63,7 @@ const cveSlice = createSlice({
                 state.findings = action.payload.findings;
                 state.assets = action.payload.assets;
                 state.databaseLoaded = action.payload.database_loaded;
+                state.advisoriesLoaded = !!action.payload.advisories_loaded;
             })
             .addCase(fetchCveFindings.rejected, (state, action) => {
                 state.isLoading = false;

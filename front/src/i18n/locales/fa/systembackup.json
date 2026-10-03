@@ -139,7 +139,6 @@
   "no successful backup for 48 hours": "۴۸ ساعت است پشتیبان موفقی نیست",
   "No successful backup in the last 2 days": "در ۲ روز گذشته پشتیبان موفقی نیست",
   "NOC monitoring history": "سابقهٔ پایش NOC",
-  "Not checked": "بررسی‌نشده",
   "Not correct: this is not the current backup passphrase.": "درست نیست: این رمز فعلی پشتیبان‌ها نیست.",
   "Not in a backup: device SSH passwords (never stored), the license files (bound to this server; activate again on a new server) and the program itself (install the same version).": "داخل پشتیبان نیستند: گذرواژه‌های SSH دستگاه‌ها (هیچ‌وقت ذخیره نمی‌شوند)، فایل‌های لایسنس (به این سرور گره خورده‌اند؛ روی سرور جدید دوباره فعال کنید) و خود برنامه (همان نسخه را نصب کنید).",
   "Nothing was changed: the system is exactly as it was before the restore.": "چیزی تغییر نکرد: سیستم دقیقاً همان وضعیت پیش از بازیابی را دارد.",

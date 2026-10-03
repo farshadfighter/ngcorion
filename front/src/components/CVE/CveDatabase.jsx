@@ -3,11 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import api from "../../config/api.js";
 import { fetchCveDbStatus, fetchCveJobs } from "../../store/cveSlice.jsx";
-import { KIND_LABEL, formatBytes, formatDate, formatWhen, num } from "./cveFormat.js";
+import { KIND_LABEL, formatBytes, formatDate, formatWhen, isAdvisoryJob, num } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
 import { CveJobModal } from "./CveJobModal.jsx";
 import { CvePackageImport } from "./CvePackageImport.jsx";
 import { CveExportModal } from "./CveExportModal.jsx";
+import { CveAdvisories } from "./CveAdvisories.jsx";
+import { tb } from "../../i18n/backendText";
 import "../../assets/Cve.css";
 import { t as tr, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
@@ -87,7 +89,7 @@ export function CveDatabase() {
     }
 
     const last = status.last_job;
-    const lastOk = jobs.find((j) => j.status === "succeeded" && j.kind !== "export");
+    const lastOk = jobs.find((j) => j.status === "succeeded" && j.kind !== "export" && !isAdvisoryJob(j.kind));
 
     return (
         <div className="cvx-page">
@@ -125,6 +127,8 @@ export function CveDatabase() {
                 </div>
             </div>
 
+            <CveAdvisories busy={busy || !!jobId} onJob={setJobId} />
+
             {!isAdmin && (
                 <div className="cvx-note">{tr("Only administrators can update the CVE database. Findings use the copy shown here.")}</div>
             )}
@@ -152,6 +156,7 @@ export function CveDatabase() {
                                 {jobs.map((j) => {
                                     const r = RESULT[j.status] || RESULT.failed;
                                     const export_ = j.kind === "export";
+                                    const adv = isAdvisoryJob(j.kind);
                                     return (
                                         <tr key={j.id} className="cvx-row-click" tabIndex={0}
                                             onClick={() => setJobId(j.id)}
@@ -161,13 +166,13 @@ export function CveDatabase() {
                                                 <div>{methodLabel(j)}</div>
                                                 {j.file_name && <div className="cvx-sub cvx-mono">{j.file_name}</div>}
                                             </td>
-                                            <td className="cvx-num">{export_ || j.status !== "succeeded" ? "—" : num(j.stats?.new || 0)}</td>
-                                            <td className="cvx-num">{export_ || j.status !== "succeeded" ? "—" : num(j.stats?.changed || 0)}</td>
+                                            <td className="cvx-num">{export_ || adv || j.status !== "succeeded" ? "—" : num(j.stats?.new || 0)}</td>
+                                            <td className="cvx-num">{export_ || j.status !== "succeeded" ? "—" : num((adv ? j.stats?.records : j.stats?.changed) || 0)}</td>
                                             <td className="cvx-num">{j.status === "succeeded" && j.stats?.kev != null ? num(j.stats.kev) : "—"}</td>
                                             <td>{j.requested_by_name || (j.trigger === "automatic" ? tr("Automatic") : "—")}</td>
                                             <td>
                                                 <span className={`cvx-pill ${r.cls}`} title={j.error || undefined}>{r.label}</span>
-                                                {j.status === "failed" && j.error && <div className="cvx-sub cvx-clip" title={j.error}>{j.error}</div>}
+                                                {j.status === "failed" && j.error && <div className="cvx-sub cvx-clip" title={tb(j.error)}>{tb(j.error)}</div>}
                                             </td>
                                         </tr>
                                     );

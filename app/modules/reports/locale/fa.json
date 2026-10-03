@@ -351,7 +351,7 @@
   "Outside the distribution repository": "بیرون از مخزن توزیع",
   "Overview": "نمای کلی",
   "Owner": "مالک",
-  "Packages from the distribution's own repository are not matched against NVD; the distribution's advisories cover them in the next phase.": "بسته‌های مخزن خود توزیع با NVD تطبیق داده نمی‌شوند؛ در مرحلهٔ بعد با اطلاعیه‌های خود توزیع سنجیده می‌شوند.",
+  "Packages from the distribution's own repository are matched against the distribution's own security advisories (Ubuntu USN, Debian DSA/DLA, Red Hat RHSA, Rocky RLSA, AlmaLinux ALSA), the rest against NVD.": "بسته‌های مخزن خود توزیع با اطلاعیه‌های امنیتی همان توزیع (USN اوبونتو، DSA/DLA دبیان، RHSA ردهت، RLSA راکی، ALSA آلما) تطبیق داده می‌شوند و بقیه با NVD.",
   "Page": "صفحهٔ",
   "Pass rate of each asset and each part of the benchmark, failed checks with evidence, and the change since the previous audit.": "درصد قبولی هر دارایی و هر بخش استاندارد، بررسی‌های ناموفق با شواهد، و تغییر نسبت به ممیزی قبلی.",
   "Passed": "موفق",

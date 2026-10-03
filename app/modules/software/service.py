@@ -50,6 +50,10 @@ def _findings_by_asset_product(db: Session, asset_id: Optional[int] = None):
     for f in cve_findings.compute(db, asset_id)["findings"]:
         if f["identity_source"] == "inventory":
             out[(f["asset_id"], f["vendor"], f["product_key"])].append(f)
+        elif f["source"] == "advisory":
+            # a distribution package: by the installed package's own name
+            for b in f["binaries"]:
+                out[(f["asset_id"], "binary", b)].append(f)
     return out
 
 
@@ -59,6 +63,17 @@ def _cve_summary(found: List[dict]) -> Optional[dict]:
     ids = {f["cve_id"] for f in found}
     worst = max((f.get("severity") for f in found), key=lambda s: SEVERITY_RANK.get(s or "", 0))
     fixed = sorted({f["fixed_in"] for f in found if f.get("fixed_in")})
+    adv = [f for f in found if f.get("source") == "advisory" and f.get("fixed_in") and f.get("release")]
+    if adv and len(adv) == len(found):
+        # one update fixes them all: the highest fixed version of each release
+        from functools import cmp_to_key
+        from app.modules.advisories.releases import family
+        from app.modules.advisories.versions import compare
+        by_release = defaultdict(list)
+        for f in adv:
+            by_release[f["release"]].append(f["fixed_in"])
+        fixed = sorted(max(v, key=cmp_to_key(lambda a, b, r=r: compare(family(r), a, b)))
+                       for r, v in by_release.items())
     return {"count": len(ids), "severity": worst, "kev": any(f.get("kev") for f in found),
             "top_priority": min(f["priority"] for f in found), "fixed_in": fixed[:3],
             "affected_versions": sorted({f["installed"] for f in found if f.get("installed")})}
@@ -99,6 +114,8 @@ def products(db: Session, asset_ids: Optional[List[int]] = None) -> Dict:
         if it.asset_id not in g["assets"] and r.status == "known" and r.nvd:
             for v, p in r.cpes:
                 g["findings"].extend(findings.get((it.asset_id, v, p), []))
+        if it.source == "distro":
+            g["findings"].extend(findings.get((it.asset_id, "binary", it.name), []))
         g["assets"].add(it.asset_id)
         g["nvd"] = g["nvd"] or r.nvd
 
@@ -142,6 +159,7 @@ def products(db: Session, asset_ids: Optional[List[int]] = None) -> Dict:
             "products": len(rows), "outside_distro": counts["outside_distro"],
             "vulnerable_products": counts["vulnerable"],
             "findings": sum((r["cve"] or {}).get("count", 0) for r in rows),
+            "advisories_loaded": _advisories_loaded(db),
             "kev_products": sum(1 for r in rows if (r["cve"] or {}).get("kev")),
             "unidentified": counts["unidentified"], "last_collected_at": _iso(last),
             "catalog_size": catalog.catalog_size(),
@@ -186,6 +204,8 @@ def asset_inventory(db: Session, asset_id: int) -> Dict:
         if r.status == "known" and r.nvd:
             for v, p in r.cpes:
                 found.extend(findings.get((asset_id, v, p), []))
+        if it.source == "distro":
+            found.extend(findings.get((asset_id, "binary", it.name), []))
         items.append({
             "id": it.id, "name": it.name, "version": it.version, "arch": it.arch, "kind": it.kind,
             "source": it.source, "origin": it.origin, "publisher": it.publisher, "collector": it.collector,
@@ -212,6 +232,7 @@ def asset_inventory(db: Session, asset_id: int) -> Dict:
             "outside_distro": sum(v for k, v in by_source.items() if k != "distro"),
             "vulnerable": sum(1 for i in items if i["cve"]),
             "unidentified": sum(1 for i in items if i["status"] == "unknown"),
+            "advisory_status": _advisory_status(db, asset_id),
             "last": _collection(full) if full else None,
             "previous_at": _iso(next((c.collected_at for c in collections
                                       if full and c.collector == full.collector and c.id != full.id
@@ -220,6 +241,26 @@ def asset_inventory(db: Session, asset_id: int) -> Dict:
         "items": items,
         "collections": [_collection(c) for c in collections],
     }
+
+
+def _advisories_loaded(db: Session) -> bool:
+    from app.modules.advisories.store import loaded
+    return loaded(db)
+
+
+def _advisory_status(db: Session, asset_id: int) -> Optional[str]:
+    """ok | not_loaded | unsupported | unknown, or None without a Linux list:
+    whether this asset's distribution packages were checked."""
+    from app.models.advisory import DistroFeed
+    from app.modules.advisories import releases, store
+    platform = store.platforms(db, [asset_id]).get(asset_id)
+    if platform is None:
+        return None
+    release, st = releases.from_platform(platform)
+    if st != "ok":
+        return st
+    loaded = db.query(DistroFeed.id).filter(DistroFeed.release == release, DistroFeed.watermark.isnot(None)).first()
+    return "ok" if loaded else "not_loaded"
 
 
 def assets_overview(db: Session) -> List[dict]:
@@ -246,7 +287,7 @@ def assets_overview(db: Session) -> List[dict]:
             r["hotfixes"] += n
     maps = load_maps(db)
     get = _resolver(maps)
-    for it in db.query(SoftwareItem).filter(SoftwareItem.source != "distro",
+    for it in db.query(SoftwareItem).filter(or_(SoftwareItem.source != "distro", SoftwareItem.kind == "os"),
                                             SoftwareItem.kind.notin_(("hotfix",))).all():
         r = get(it)
         if r.status == "unknown":
@@ -257,7 +298,7 @@ def assets_overview(db: Session) -> List[dict]:
             row(it.asset_id)["firmware"] = f"{it.name} {it.version or ''}".strip()
     found = defaultdict(set)
     for f in cve_findings.compute(db)["findings"]:
-        if f["identity_source"] == "inventory":
+        if f["identity_source"] in ("inventory", "advisory"):
             found[f["asset_id"]].add(f["cve_id"])
             if f.get("kev"):
                 row(f["asset_id"])["kev"] = True

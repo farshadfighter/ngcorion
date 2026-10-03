@@ -8,6 +8,9 @@ A package is a ZIP with exactly these members:
   cves.jsonl.gz    normalised CVE records (feeds.normalize_nvd_cve), one per line
   kev.json         the full CISA KEV list (feeds.parse_kev output)
   epss.csv.gz      cve,epss,percentile for every scored CVE
+  advisories.jsonl.gz  (optional) the distributions' advisories this
+                   instance holds, one DistroVuln row per line; always
+                   complete per release (manifest "advisories" names them)
 
 kind "full" replaces nothing on its own - like an online update it upserts
 every record - but it covers everything up to `until`, so it can load an
@@ -36,6 +39,7 @@ from app.modules.cve.feeds import iso_to_dt
 
 FORMAT = 1
 MEMBERS = ("manifest.json", "manifest.sig", "cves.jsonl.gz", "kev.json", "epss.csv.gz")
+OPTIONAL = ("advisories.jsonl.gz",)
 MAX_PACKAGE_BYTES = int(os.getenv("CVE_MAX_PACKAGE_MB") or "2048") * 1024 * 1024
 MAX_MEMBER_BYTES = 6 * 1024 * 1024 * 1024
 EXTENSION = ".ngcve"
@@ -127,6 +131,9 @@ def build(db: Session, path: str, kind: str, since: Optional[datetime] = None,
             epss_count += 1
 
     members = {"cves.jsonl.gz": cves_buf.getvalue(), "kev.json": kev_bytes, "epss.csv.gz": epss_buf.getvalue()}
+    adv_bytes, adv_info = _advisories(db)
+    if adv_info:
+        members["advisories.jsonl.gz"] = adv_bytes
     public = keys.instance_public(db)
     manifest = {
         "format": FORMAT, "kind": kind,
@@ -139,6 +146,8 @@ def build(db: Session, path: str, kind: str, since: Optional[datetime] = None,
         "files": {name: {"sha256": _sha(data), "size": len(data)} for name, data in members.items()},
         "key_fingerprint": keys.fingerprint(public),
     }
+    if adv_info:
+        manifest["advisories"] = adv_info
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode()
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_STORED) as zf:
         zf.writestr("manifest.json", manifest_bytes)
@@ -146,6 +155,27 @@ def build(db: Session, path: str, kind: str, since: Optional[datetime] = None,
         for name, data in members.items():
             zf.writestr(name, data)
     return manifest
+
+
+def _advisories(db: Session):
+    """(gzip bytes, {release: {"watermark", "rows"}}) of every loaded release."""
+    from app.models.advisory import DistroFeed, DistroVuln
+    feeds = [f for f in db.query(DistroFeed).order_by(DistroFeed.release) if f.watermark and f.rows]
+    if not feeds:
+        return b"", {}
+    buf = io.BytesIO()
+    cols = ("release", "stream", "package", "record_id", "kind", "introduced", "fixed", "last_affected", "cves",
+            "severity", "availability", "title", "published", "modified")
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+        for f in feeds:
+            q = select(*[getattr(DistroVuln, c) for c in cols]).where(DistroVuln.release == f.release)
+            for row in db.execute(q.order_by(DistroVuln.id)).yield_per(5000):
+                rec = dict(zip(cols, row))
+                for c in ("published", "modified"):
+                    rec[c] = rec[c].isoformat() if rec[c] else None
+                gz.write((json.dumps(rec, separators=(",", ":")) + "\n").encode())
+    info = {f.release: {"watermark": f.watermark.isoformat(), "rows": f.rows} for f in feeds}
+    return buf.getvalue(), info
 
 
 def _write_batch(db: Session, gz, batch: List[CveEntry]) -> int:
@@ -170,7 +200,7 @@ def _open(path: str) -> zipfile.ZipFile:
     except zipfile.BadZipFile as exc:
         raise PackageError("Not an NGCorion update package (not a valid archive).") from exc
     names = set(zf.namelist())
-    if names != set(MEMBERS):
+    if not set(MEMBERS) <= names or names - set(MEMBERS) - set(OPTIONAL):
         zf.close()
         raise PackageError("Not an NGCorion update package (unexpected contents).")
     for info in zf.infolist():
@@ -206,7 +236,7 @@ def verify(db: Session, path: str) -> Verified:
 
         intact = True
         for name, meta in (manifest.get("files") or {}).items():
-            if name not in MEMBERS or _sha(zf.read(name)) != meta.get("sha256"):
+            if name not in MEMBERS + OPTIONAL or _sha(zf.read(name)) != meta.get("sha256"):
                 intact = False
         checks.append(Check("integrity", "ok" if intact else "fail",
                             "Every file matches the signed manifest" if intact else
@@ -246,6 +276,19 @@ def read_cves(path: str) -> Iterator[dict]:
                     raise PackageError("The package holds a malformed CVE record.")
                 rec.setdefault("cvss", {})
                 yield rec
+
+
+def read_advisories(path: str) -> Iterator[dict]:
+    with _open(path) as zf:
+        if "advisories.jsonl.gz" not in zf.namelist():
+            return
+        with zf.open("advisories.jsonl.gz") as raw, gzip.open(raw, "rt", encoding="utf-8") as fh:
+            for line in fh:
+                if line.strip():
+                    rec = json.loads(line)
+                    if not isinstance(rec, dict) or "release" not in rec:
+                        raise PackageError("The package holds a malformed advisory record.")
+                    yield rec
 
 
 def read_kev(path: str) -> dict:

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../config/api.js";
-import { ACTIVE, KIND_LABEL, STEP_LABEL, formatBytes, formatWhen, num } from "./cveFormat.js";
+import { ACTIVE, ADV_STEP_LABEL, KIND_LABEL, STEP_LABEL, formatBytes, formatWhen, isAdvisoryJob, num, releaseLabel } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
-import { t, n } from "../../i18n";
+import { tb } from "../../i18n/backendText";
+import { currentLanguage, t, n } from "../../i18n";
 
 const POLL_MS = 1500;
 
@@ -12,16 +13,36 @@ const TITLES = {
     offline: [t("Importing the package…"), t("Package imported"), t("Import failed"), t("Import cancelled")],
     bundle: [t("Loading the bundled CVE database…"), "CVE database loaded", t("Loading failed"), t("Loading cancelled")],
     export: [t("Creating the update package…"), t("Package ready"), t("Export failed"), t("Export cancelled")],
+    advisories: [t("Updating the distribution advisories…"), t("Advisories updated"), t("Update failed"), t("Update cancelled")],
+    adv_import: [t("Importing the advisories…"), t("Advisories imported"), t("Import failed"), t("Import cancelled")],
 };
 
 const SUBTITLES = {
     online: t("Downloads only what changed since the last update, then applies it in one step."),
     full: t("Downloads every published CVE again. Without an NVD API key this takes about 20 minutes."),
     bundle: t("The snapshot of the CVE database shipped with this release."),
+    advisories: t("Downloads the security advisories of the Linux releases your assets run, from OSV.dev."),
+    adv_import: t("An OSV archive downloaded from OSV.dev, for servers without internet access."),
     export: "A signed package of this database, to carry to a server without internet access.",
 };
 
+function advStepText(step, progress) {
+    const { done, total, message } = progress || {};
+    switch (step) {
+        case "connect": return "osv-vulnerabilities.storage.googleapis.com";
+        case "download":
+            if (done == null) return message || t("The releases your assets run");
+            return total ? `${message ? `${message} · ` : ""}${formatBytes(done)} / ${formatBytes(total)}` : t("{{num}} changed records", { num: num(done) });
+        case "apply":
+            if (done != null) return total ? `${num(Math.min(done, total))} / ${num(total)}` : t("{{num}} records read", { num: num(done) });
+            return t("Written in one step - the database changes only when all of it is applied");
+        case "verify": return done != null ? t("{{num}} records read", { num: num(done) }) : t("Which releases the file holds");
+        default: return "";
+    }
+}
+
 function stepText(step, progress, job) {
+    if (isAdvisoryJob(job?.kind)) return advStepText(step, progress);
     const { done, total } = progress || {};
     switch (step) {
         case "connect": return "services.nvd.nist.gov";
@@ -128,7 +149,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                                              state === "failed" ? <Icon name="x" size={14} /> : n(i + 1)}
                                         </span>
                                         <div>
-                                            <h3>{STEP_LABEL[step] || step}</h3>
+                                            <h3>{(isAdvisoryJob(kind) ? ADV_STEP_LABEL[step] : STEP_LABEL[step]) || step}</h3>
                                             <p>{state === "active" || state === "done" || state === "todo" ? stepText(step, state === "active" ? progress : null, job) : ""}</p>
                                             {state === "active" && <Bar done={progress.done} total={progress.total} />}
                                         </div>
@@ -138,7 +159,20 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                         </ol>
                     )}
 
-                    {job?.status === "succeeded" && kind !== "export" && (
+                    {job?.status === "succeeded" && isAdvisoryJob(kind) && (
+                        <div className="cvx-result cvx-result-ok">
+                            <Icon name="check" size={18} />
+                            <div>
+                                <b>{(stats.releases || []).length ? (stats.releases || []).map(releaseLabel).join(currentLanguage() === "fa" ? "، " : ", ") : t("No release to load")}</b>
+                                <span>
+                                    {stats.note ? t("No asset runs a supported Linux release yet - nothing to load.")
+                                        : t("{{records}} records changed · {{rows}} rows written", { records: num(stats.records || 0), rows: num(stats.rows || 0) })}
+                                    {" · "}{t("finished {{finished_at}}", { finished_at: formatWhen(job.finished_at) })}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                    {job?.status === "succeeded" && kind !== "export" && !isAdvisoryJob(kind) && (
                         <div className="cvx-result cvx-result-ok">
                             <Icon name="check" size={18} />
                             <div>
@@ -166,7 +200,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                     ))}
                     {job && ["failed", "cancelled"].includes(job.status) && (
                         <div className="cvx-note cvx-note-error">
-                            {job.error || t("The job did not finish.")} {job.kind !== "export" && t("The database was not changed.")}
+                            {job.error ? tb(job.error) : t("The job did not finish.")} {job.kind !== "export" && t("The database was not changed.")}
                         </div>
                     )}
                     {error && <div className="cvx-note cvx-note-error">{error}</div>}

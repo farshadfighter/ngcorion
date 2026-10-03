@@ -97,6 +97,16 @@ def get_asset_inventory(asset_id: int, db: Session = Depends(get_db), _: User = 
         raise _fail(e)
 
 
+@router.get("/assets/{asset_id}/updates")
+def get_asset_updates(asset_id: int, db: Session = Depends(get_db), _: User = Depends(_read)):
+    """The distribution's security updates this asset is missing."""
+    from app.models import Asset
+    from app.modules.advisories.service import security_updates
+    if db.get(Asset, asset_id) is None:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return security_updates(db, asset_id)
+
+
 @router.get("/assets/{asset_id}/changes")
 def get_asset_changes(asset_id: int, collection_id: Optional[int] = None, db: Session = Depends(get_db),
                       _: User = Depends(_read)):

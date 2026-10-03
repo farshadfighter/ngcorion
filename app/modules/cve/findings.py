@@ -5,6 +5,11 @@ For every asset: its products (cpe.identities_for) → the CVE criteria for
 those vendor/products → keep the ones whose version range contains the
 asset's version. One query per table for the whole inventory.
 
+Packages from a Linux distribution's own repositories are matched against
+that distribution's advisories instead (app/modules/advisories): a finding
+there has source "advisory", the advisory IDs (USN-6859-1, RHSA-...) and the
+fixed version of the package. Both kinds are one list, one CVE per asset.
+
 Priority, so the list reads "fix this first":
   P1  in CISA KEV - exploited in the wild
   P2  CVSS >= 9, or EPSS >= 0.5
@@ -28,11 +33,14 @@ SEVERITIES = ("critical", "high", "medium", "low")
 def _inventory(db: Session, asset_id: Optional[int] = None):
     """Per asset: the inventory's NVD identities, and which assets have a
     complete package list (app/modules/software)."""
-    from sqlalchemy import or_
+    from sqlalchemy import and_, or_
     from app.models.software import FULL_COLLECTORS, NVD_SOURCES, SoftwareCollection, SoftwareItem
     from app.modules.software.identify import load_maps, nvd_identities
     # Distribution packages are not matched in phase 1: leave them in the table.
-    q = db.query(SoftwareItem).filter(or_(SoftwareItem.source.in_(NVD_SOURCES), SoftwareItem.kind == "os"),
+    # A Linux release (kind "os", collector "linux") is matched through the
+    # distribution's advisories (app/modules/advisories), not NVD.
+    q = db.query(SoftwareItem).filter(or_(SoftwareItem.source.in_(NVD_SOURCES),
+                                          and_(SoftwareItem.kind == "os", SoftwareItem.collector != "linux")),
                                       SoftwareItem.kind != "hotfix")
     fq = db.query(SoftwareCollection.asset_id).filter(SoftwareCollection.status == "ok",
                                                       SoftwareCollection.collector.in_(FULL_COLLECTORS))
@@ -105,7 +113,12 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
                     seen.add(m.cve_id)
                     raw.append((a, ident, m))
 
-    cve_ids = list({m.cve_id for _, _, m in raw})
+    from app.modules.advisories import match as adv_match
+    from app.modules.advisories.releases import label as release_label
+    adv = adv_match.analyse(db, [a.id for a in assets])
+    adv_raw = [(a, f) for a in assets if a.id in adv for f in adv[a.id].findings]
+
+    cve_ids = list({m.cve_id for _, _, m in raw} | {f["cve_id"] for _, f in adv_raw})
     entries = {}
     for k in range(0, len(cve_ids), 1000):
         for e in db.scalars(select(CveEntry).where(CveEntry.cve_id.in_(cve_ids[k:k + 1000]))):
@@ -125,12 +138,43 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
             "cve_id": e.cve_id, "description": e.description, "severity": e.severity,
             "cvss": e.cvss_score, "cvss_version": e.cvss_version, "kev": e.kev, "kev_due": e.kev_due,
             "epss": e.epss, "epss_percentile": e.epss_percentile, "published": e.published,
-            "priority": priority(e),
+            "priority": priority(e), "source": "nvd", "advisories": [], "package": None, "binaries": [],
+            "availability": None, "release": None, "reboot": False,
         })
+    by_key = {(f["asset_id"], f["cve_id"]): f for f in findings}
+    for a, f in adv_raw:
+        e = entries.get(f["cve_id"])
+        scored = e is not None and (e.cvss_score is not None or e.kev or e.epss)
+        severity = (e.severity if e is not None and e.severity else None) or f["vendor_severity"]
+        row = {
+            "asset_id": a.id, "asset_name": a.asset_name, "asset_icon": a.resolved_icon, "ip_address": a.ip_address,
+            "product": f["package"], "vendor": release_label(adv[a.id].release), "product_key": f["package"],
+            "installed": f["installed"], "identity_source": "advisory", "fixed_in": f["fixed_in"],
+            "cve_id": f["cve_id"], "description": (e.description if e is not None else None) or f["title"] or f["cve_id"],
+            "severity": severity, "cvss": e.cvss_score if e else None, "cvss_version": e.cvss_version if e else None,
+            "kev": bool(e.kev) if e else False, "kev_due": e.kev_due if e else None,
+            "epss": e.epss if e else None, "epss_percentile": e.epss_percentile if e else None,
+            "published": e.published if e else None,
+            "priority": min(priority(e), adv_match.priority_from_severity(severity)) if scored
+            else adv_match.priority_from_severity(severity),
+            "source": "advisory", "advisories": f["advisories"], "package": f["package"],
+            "binaries": f["binaries"], "availability": f["availability"], "release": adv[a.id].release,
+            "reboot": f["reboot"],
+        }
+        # One CVE per asset: an NVD match of the same CVE (another product) keeps the more urgent.
+        prev = by_key.get((a.id, f["cve_id"]))
+        if prev is None or row["priority"] <= prev["priority"]:
+            if prev is not None:
+                findings.remove(prev)
+            findings.append(row)
+            by_key[(a.id, f["cve_id"])] = row
     findings.sort(key=lambda f: (f["priority"], -(f["cvss"] or 0), -(f["epss"] or 0), f["asset_name"] or ""))
 
     summary = {"total": len(findings), "fix_now": sum(1 for f in findings if f["priority"] == 1),
-               "affected_assets": len({f["asset_id"] for f in findings})}
+               "affected_assets": len({f["asset_id"] for f in findings}),
+               "from_advisories": sum(1 for f in findings if f["source"] == "advisory"),
+               "from_nvd": sum(1 for f in findings if f["source"] == "nvd"),
+               "reboot_assets": sum(1 for r in adv.values() if r.reboot_required)}
     for s in SEVERITIES:
         summary[s] = sum(1 for f in findings if f["severity"] == s)
 
@@ -140,6 +184,9 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
     asset_rows = [{
         "asset_id": a.id, "asset_name": a.asset_name, "asset_icon": a.resolved_icon, "ip_address": a.ip_address,
         "findings": counts[a.id],
+        "platform": adv[a.id].label if a.id in adv else None,
+        "advisory_status": adv[a.id].status if a.id in adv else None,
+        "reboot_required": adv[a.id].reboot_required if a.id in adv else False,
         "products": [{"vendor": i.vendor, "product": i.product, "version": i.version, "label": i.label,
                       "source": i.source, "software_id": i.software_id} for i in per_asset[a.id]],
     } for a in assets]

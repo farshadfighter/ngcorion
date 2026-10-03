@@ -61,3 +61,12 @@ def has_api_key(db: Session) -> bool:
 
 def api_key(db: Session) -> Optional[str]:
     return get(db, NVD_API_KEY) or None
+
+
+def vulnerability_data_loaded(db: Session) -> bool:
+    """NVD or a distribution's advisories: either makes findings meaningful
+    (no finding then means nothing known to be vulnerable)."""
+    if get(db, WATERMARK) is not None:
+        return True
+    from app.modules.advisories.store import loaded
+    return loaded(db)

@@ -110,7 +110,6 @@
   "That email address does not look right": "این نشانی ایمیل درست به نظر نمی‌رسد",
   "The alert stays open while the condition holds and closes by itself when it clears.": "هشدار تا وقتی شرایط برقرار است باز می‌ماند و با رفع آن خودش بسته می‌شود.",
   "Ticketing, chat or automation - any system that accepts an HTTP POST.": "سامانهٔ تیکت، پیام‌رسان یا اتوماسیون - هر سامانه‌ای که درخواست HTTP POST بپذیرد.",
-  "to": "تا",
   "To": "گیرنده",
   "Turn off": "خاموش کردن",
   "Turn off \"{{name}}\"? Its {{open_alerts}} open alert(s) will be closed.": "«{{name}}» خاموش شود؟ {{open_alerts}} هشدار باز آن بسته می‌شود.",

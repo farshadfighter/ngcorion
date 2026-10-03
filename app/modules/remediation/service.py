@@ -123,7 +123,7 @@ def _cve_found(db: Session) -> Optional[List[Found]]:
     """None when the CVE database is not loaded: CVE items are then left as they are."""
     from app.modules.cve import findings as cve_findings
     from app.modules.cve import settings as cve_settings
-    if cve_settings.get(db, cve_settings.WATERMARK) is None:
+    if not cve_settings.vulnerability_data_loaded(db):
         return None
     assets = {a.id: a for a in db.query(Asset)}
     out = []
@@ -139,7 +139,9 @@ def _cve_found(db: Session) -> Optional[List[Found]]:
             key=f"cve:{asset.id}:{f['cve_id']}", source="cve", ref=f["cve_id"], asset=asset,
             title=(f.get("description") or f["cve_id"])[:500], severity=severity, kev=bool(f.get("kev")),
             detail={"product": f.get("product"), "installed": f.get("installed"), "fixed_in": f.get("fixed_in"),
-                    "cvss": f.get("cvss"), "epss": f.get("epss"), "priority": f.get("priority")},
+                    "cvss": f.get("cvss"), "epss": f.get("epss"), "priority": f.get("priority"),
+                    "source": f.get("source"), "advisories": f.get("advisories") or [],
+                    "availability": f.get("availability")},
         ))
     return out
 

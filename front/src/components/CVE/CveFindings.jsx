@@ -5,7 +5,7 @@ import api from "../../config/api.js";
 import { fetchCveDbStatus, fetchCveFindings } from "../../store/cveSlice.jsx";
 import { usePermission } from "../../hooks/usePermission";
 import { AssetIcon } from "../shared/AssetIcon.jsx";
-import { PRIORITY, SEVERITY, ageDays, epssColor, epssLabel, formatWhen, num } from "./cveFormat.js";
+import { PRIORITY, SEVERITY, ageDays, epssColor, epssLabel, formatWhen, num, versionCompare } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
 import { CveJobModal } from "./CveJobModal.jsx";
 import { CvePackageImport } from "./CvePackageImport.jsx";
@@ -19,8 +19,14 @@ import { tx } from "../../i18n/tx";
 const TABS = [
     { key: "first", label: tr("Fix first") },
     { key: "all", label: tr("All findings") },
+    { key: "updates", label: tr("By update") },
     { key: "assets", label: tr("By asset") },
     { key: "cves", label: tr("By CVE") },
+];
+const SOURCES = [
+    { key: "", label: tr("Every source") },
+    { key: "advisory", label: tr("Distribution advisories") },
+    { key: "nvd", label: tr("NVD") },
 ];
 const PAGE = 100;
 
@@ -28,7 +34,10 @@ const matchText = (q, ...values) => values.some((v) => v && String(v).toLowerCas
 
 export function CveFindings() {
     const dispatch = useDispatch();
-    const { summary, findings, assets, databaseLoaded, isLoading, loadedOnce, error, status } = useSelector((s) => s.cve);
+    const { summary, findings: allFindings, assets, databaseLoaded, advisoriesLoaded, isLoading, loadedOnce, error, status } = useSelector((s) => s.cve);
+    const [source, setSource] = useState("");
+    const findings = useMemo(() => (source ? allFindings.filter((f) => (f.source || "nvd") === source) : allFindings),
+        [allFindings, source]);
     const canWrite = usePermission("cve", "write");
     const [tab, setTab] = useState("first");
     const [search, setSearch] = useState("");
@@ -72,6 +81,34 @@ export function CveFindings() {
         return [...map.values()];
     }, [findings, q]);
 
+    // One line per fix to install: a package of a release, the version that fixes it, on every asset that needs it.
+    const byUpdate = useMemo(() => {
+        const map = new Map();
+        for (const f of findings) {
+            if (f.source !== "advisory") continue;
+            if (q && !matchText(q, f.cve_id, f.asset_name, f.product, ...(f.advisories || []))) continue;
+            const key = `${f.release}|${f.package}`;
+            const g = map.get(key) || { key, package: f.package, vendor: f.vendor, release: f.release, fixed_in: f.fixed_in,
+                advisories: new Set(), cves: new Map(), assets: new Map(), priority: f.priority, kev: false, cvss: null,
+                epss: null, pro: true, reboot: 0 };
+            (f.advisories || []).forEach((a) => g.advisories.add(a));
+            g.cves.set(f.cve_id, f);
+            g.assets.set(f.asset_id, { id: f.asset_id, name: f.asset_name, icon: f.asset_icon, reboot: f.reboot });
+            g.priority = Math.min(g.priority, f.priority);
+            g.kev = g.kev || f.kev;
+            if (f.cvss != null && (g.cvss == null || f.cvss > g.cvss)) { g.cvss = f.cvss; g.severity = f.severity; }
+            if (g.cvss == null && !g.severity) g.severity = f.severity;
+            if (f.epss != null && (g.epss == null || f.epss > g.epss)) g.epss = f.epss;
+            g.pro = g.pro && f.availability === "pro";
+            if (versionCompare(f.fixed_in, g.fixed_in) > 0) g.fixed_in = f.fixed_in;
+            map.set(key, g);
+        }
+        return [...map.values()].map((g) => ({ ...g, advisories: [...g.advisories].sort(), cves: [...g.cves.values()],
+            assets: [...g.assets.values()] }))
+            .sort((a, b) => a.priority - b.priority || b.kev - a.kev || b.assets.length - a.assets.length
+                || b.cves.length - a.cves.length || a.package.localeCompare(b.package));
+    }, [findings, q]);
+
     const closeJob = () => {
         setJobId(null);
         dispatch(fetchCveDbStatus());
@@ -80,7 +117,7 @@ export function CveFindings() {
 
     const changeTab = (key) => { setTab(key); setLimit(PAGE); };
 
-    const showFirstRun = loadedOnce && !databaseLoaded;
+    const showFirstRun = loadedOnce && !databaseLoaded && !advisoriesLoaded;
 
     return (
         <div className="cvx-page">
@@ -123,6 +160,13 @@ export function CveFindings() {
                                 </button>
                             ))}
                         </div>
+                        <div className="cvx-source" role="group" aria-label={tr("Source")}>
+                            {SOURCES.map((s) => (
+                                <button key={s.key} type="button" aria-pressed={source === s.key}
+                                        className={`cvx-source-btn ${source === s.key ? "is-on" : ""}`}
+                                        onClick={() => { setSource(s.key); setLimit(PAGE); }}>{s.label}</button>
+                            ))}
+                        </div>
                         <label className="cvx-search">
                             <Icon name="search" size={15} />
                             <input aria-label={tr("Search findings")} placeholder={tab === "assets" ? tr("Search asset or product") : tr("Search CVE, asset or product")}
@@ -137,6 +181,8 @@ export function CveFindings() {
                                           onChanged={() => dispatch(fetchCveFindings())} />
                     ) : tab === "cves" ? (
                         <CveTable groups={byCve.slice(0, limit)} onOpen={setDetail} />
+                    ) : tab === "updates" ? (
+                        <UpdatesTable groups={byUpdate.slice(0, limit)} onOpen={setDetail} />
                     ) : (
                         <FindingsTable rows={rows.slice(0, limit)} onOpen={setDetail} emptyText={
                             tab === "first"
@@ -145,16 +191,16 @@ export function CveFindings() {
                         } assetsWithoutProducts={assets.filter((a) => !a.products.length).length} onAssets={() => changeTab("assets")} />
                     )}
 
-                    {tab !== "assets" && (tab === "cves" ? byCve.length : rows.length) > limit && (
+                    {tab !== "assets" && (tab === "cves" ? byCve.length : tab === "updates" ? byUpdate.length : rows.length) > limit && (
                         <div className="cvx-more">
                             <button type="button" className="cvx-btn" onClick={() => setLimit(limit + PAGE * 2)}>
-                                {tr("Show more ({{num}} left)", { num: num((tab === "cves" ? byCve.length : rows.length) - limit) })}
+                                {tr("Show more ({{num}} left)", { num: num((tab === "cves" ? byCve.length : tab === "updates" ? byUpdate.length : rows.length) - limit) })}
                             </button>
                         </div>
                     )}
 
                     <p className="cvx-footnote">
-                        {tr("Matched by vendor, product and version (CPE) against the local CVE database. Exploit likelihood from FIRST EPSS; \"Exploited in the wild\" from CISA KEV.")}
+                        {tr("Packages from a Linux distribution's own repository are matched against that distribution's security advisories (Ubuntu USN, Debian DSA/DLA, Red Hat RHSA, Rocky RLSA, AlmaLinux ALSA); other software by vendor, product and version (CPE) against the local CVE database. Exploit likelihood from FIRST EPSS; \"Exploited in the wild\" from CISA KEV.")}
                     </p>
                 </>
             )}
@@ -258,15 +304,78 @@ function FindingsTable({ rows, onOpen, emptyText, assetsWithoutProducts, onAsset
                                 </span>
                             </td>
                             <td className="cvx-tight"><bdi>{f.product}</bdi>{f.identity_source === "manual" && <span className="cvx-sub">{tr("added by hand")}</span>}
-                                {f.identity_source === "inventory" && <span className="cvx-sub cvx-from-inv">{tr("from the software inventory")}</span>}</td>
+                                {f.identity_source === "inventory" && <span className="cvx-sub cvx-from-inv">{tr("from the software inventory")}</span>}
+                                {f.source === "advisory" && <AdvisoryLine f={f} />}</td>
                             <td className="cvx-tight">
                                 <span className="cvx-mono">{f.installed || "?"}</span>
                                 {f.fixed_in
                                     ? <span className="cvx-sub cvx-fixed">{tr("fixed in")}{" "} <span className="cvx-mono">{f.fixed_in}</span></span>
                                     : <span className="cvx-sub" title={tr("NVD lists no fixed version - see the advisory")}>{tr("fix: see advisory")}</span>}
+                                {f.reboot && <span className="cvx-sub cvx-reboot">{tr("Installed; needs a reboot")}</span>}
                             </td>
                             <td><CvssPill score={f.cvss} severity={f.severity} /></td>
                             <td><Epss value={f.epss} /></td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function AdvisoryLine({ f }) {
+    return (
+        <span className="cvx-sub cvx-adv">
+            <span className="cvx-adv-src">{f.vendor}</span>
+            {(f.advisories || []).slice(0, 2).map((a) => <span key={a} className="cvx-mono cvx-adv-id">{a}</span>)}
+            {(f.advisories || []).length > 2 && <span className="cvx-muted">{tr("+{{value}} more", { value: f.advisories.length - 2 })}</span>}
+            {f.availability === "pro" && <span className="cvx-pill cvx-pill-pro">{tr("Ubuntu Pro only")}</span>}
+        </span>
+    );
+}
+
+function UpdatesTable({ groups, onOpen }) {
+    if (!groups.length) {
+        return <div className="cvx-card cvx-empty"><b>{tr("No security update is missing on assets with a Linux distribution")}</b></div>;
+    }
+    return (
+        <div className="cvx-card cvx-card-flush cvx-table-wrap">
+            <table className="cvx-table">
+                <thead><tr><th>{tr("Priority")}</th><th>{tr("Update")}</th><th>{tr("Advisory")}</th><th>{tr("CVEs it closes")}</th><th>{tr("CVSS")}</th><th>{tr("Exploit likelihood")}</th><th>{tr("Assets")}</th></tr></thead>
+                <tbody>
+                    {groups.map((g) => (
+                        <tr key={g.key}>
+                            <td><PriorityPill p={g.priority} /></td>
+                            <td className="cvx-tight">
+                                <b><bdi>{g.package}</bdi></b>
+                                {g.fixed_in && <span className="cvx-sub">{tr("to")}{" "}<span className="cvx-mono">{g.fixed_in}</span></span>}
+                                <span className="cvx-sub">{g.vendor}{g.pro && <> · <span className="cvx-pill cvx-pill-pro">{tr("Ubuntu Pro only")}</span></>}</span>
+                            </td>
+                            <td className="cvx-tight">
+                                {g.advisories.slice(0, 3).map((a) => <span key={a} className="cvx-mono cvx-adv-id cvx-block">{a}</span>)}
+                                {g.advisories.length > 3 && <span className="cvx-muted cvx-small">{tr("+{{value}} more", { value: g.advisories.length - 3 })}</span>}
+                                {!g.advisories.length && <span className="cvx-muted">—</span>}
+                            </td>
+                            <td>
+                                <div className="cvx-cve-chips">
+                                    {g.cves.slice(0, 3).map((c) => (
+                                        <button key={c.cve_id} type="button" className={`cvx-cve-chip ${c.kev ? "is-kev" : ""}`} onClick={() => onOpen(c)}>{c.cve_id}</button>
+                                    ))}
+                                    {g.cves.length > 3 && <span className="cvx-muted cvx-small">{tr("+{{value}} more", { value: g.cves.length - 3 })}</span>}
+                                </div>
+                            </td>
+                            <td><CvssPill score={g.cvss} severity={g.severity} /></td>
+                            <td><Epss value={g.epss} /></td>
+                            <td>
+                                <div className="cvx-asset-stack">
+                                    {g.assets.slice(0, 3).map((a) => (
+                                        <span key={a.id} className="cvx-asset-chip" title={a.reboot ? tr("Installed; needs a reboot") : undefined}>
+                                            <AssetIcon icon={a.icon} size={20} />{a.name}{a.reboot && " ⟳"}
+                                        </span>
+                                    ))}
+                                    {g.assets.length > 3 && <span className="cvx-muted cvx-small">{tr("+{{value}} more", { value: g.assets.length - 3 })}</span>}
+                                </div>
+                            </td>
                         </tr>
                     ))}
                 </tbody>

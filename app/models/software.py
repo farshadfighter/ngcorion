@@ -58,6 +58,7 @@ class SoftwareItem(Base):
     origin = Column(String(200), nullable=True)                     # repository / PPA / Release origin
     publisher = Column(String(200), nullable=True)
     source_package = Column(String(200), nullable=True)
+    source_version = Column(String(160), nullable=True)             # deb: the source's version, when it differs
     vkind = Column(String(4), nullable=True)                        # deb | rpm | win | svc | fw (version format)
     collection_id = Column(Integer, ForeignKey("software_collections.id", ondelete="SET NULL"), nullable=True)
     first_seen = Column(DateTime, nullable=False, default=datetime.utcnow)

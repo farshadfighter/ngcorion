@@ -5,6 +5,7 @@ import { formatDate, formatDateTime, relativeDays } from "../../utils/dates.js";
 import { tb } from "../../i18n/backendText";
 import { CollectForm } from "./CollectForm.jsx";
 import { MapModal } from "./MapModal.jsx";
+import { SecurityUpdates } from "./SecurityUpdates.jsx";
 import { CHANGE, COLLECTOR, KIND, SEVERITY, SOURCE, SOURCE_ORDER, errorText } from "./softwareFormat.js";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
@@ -102,13 +103,14 @@ export function AssetSoftwareDrawer({ assetId, canWrite, canMap, onClose, onChan
                     {data && !empty && (
                         <>
                             <Summary data={data} canWrite={canWrite && !collecting} onCollect={() => { setNotice(null); setCollecting(true); }} />
+                            <SecurityUpdates assetId={assetId} reload={reload} />
                             <div className="sw-two">
                                 <section className="sw-panel">
                                     {!showAll ? (
                                         <OutsideDistro items={items} canMap={canMap} onMap={setMapping}
                                                        onShowAll={() => setShowAll(true)} total={s.packages + s.hotfixes} />
                                     ) : (
-                                        <AllItems items={items} onBack={() => setShowAll(false)} />
+                                        <AllItems items={items} distro={s.advisory_status} onBack={() => setShowAll(false)} />
                                     )}
                                 </section>
                                 <Changes assetId={assetId} data={data} reload={reload} />
@@ -172,7 +174,7 @@ function Summary({ data, canWrite, onCollect }) {
     );
 }
 
-export function CveCell({ item }) {
+export function CveCell({ item, distro }) {
     if (item.cve) {
         const sev = SEVERITY[item.cve.severity];
         return (
@@ -185,7 +187,11 @@ export function CveCell({ item }) {
     }
     if (item.status === "unknown") return <span className="bkm-pill bkm-pill-amber">{t("Unidentified")}</span>;
     if (item.status === "internal") return <span className="bkm-pill bkm-pill-muted">{t("Internal software")}</span>;
-    if (item.source === "distro") return <span className="bkm-muted bkm-small">{t("Distribution advisories · next phase")}</span>;
+    if (item.source === "distro") {
+        return distro === "ok"
+            ? <span className="bkm-muted">{t("None known")}</span>
+            : <span className="bkm-muted bkm-small" title={t("Packages from the distribution are checked against its own security advisories once the release of the asset is known and its advisories are loaded.")}>{t("Not checked")}</span>;
+    }
     if (item.status === "known" && item.nvd) return <span className="bkm-muted">{t("None known")}</span>;
     return <span className="bkm-muted">—</span>;
 }
@@ -245,7 +251,7 @@ function OutsideDistro({ items, canMap, onMap, onShowAll, total }) {
     );
 }
 
-function AllItems({ items, onBack }) {
+function AllItems({ items, distro, onBack }) {
     const [q, setQ] = useState("");
     const [source, setSource] = useState("");
     const [limit, setLimit] = useState(ALL_PAGE);
@@ -280,7 +286,7 @@ function AllItems({ items, onBack }) {
                                 <td><span className="sw-ltr-inline sw-name">{i.name}</span>{i.kind !== "package" && <span className="bkm-sub">{KIND[i.kind]}</span>}</td>
                                 <td><span className="sw-ver" title={i.version}>{i.version || "?"}</span>{i.arch && <span className="bkm-sub sw-ltr-inline">{i.arch}</span>}</td>
                                 <td><span className={`sw-src ${SOURCE[i.source]?.cls || ""}`}>{i.origin || SOURCE[i.source]?.label}</span></td>
-                                <td><CveCell item={i} /></td>
+                                <td><CveCell item={i} distro={distro} /></td>
                             </tr>
                         ))}
                         {rows.length === 0 && <tr><td colSpan={4} className="bkm-muted">{t("Nothing matches")}</td></tr>}

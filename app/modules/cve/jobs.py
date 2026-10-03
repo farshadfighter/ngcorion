@@ -10,6 +10,8 @@ one at a time:
   offline  import a signed package (.ngcve) uploaded by an admin
   bundle   import the signed snapshot shipped with the release (first run)
   export   write a signed package of this database, for an air-gapped site
+  advisories / adv_import
+           the distributions' security advisories (app/modules/advisories)
 
 An update downloads first (records are spooled to disk, so the network part
 never holds a database transaction open), then writes everything - CVEs, KEV
@@ -48,7 +50,10 @@ STEPS = {
     "offline": ["verify", "apply"],
     "bundle": ["verify", "apply"],
     "export": ["export"],
+    "advisories": ["connect", "download", "apply"],
+    "adv_import": ["verify", "apply"],
 }
+ADVISORY_RETRY = timedelta(hours=1)  # a release never loaded is tried again after this
 PROGRESS_INTERVAL = 1.0          # seconds between progress writes
 CANCEL_CHECK_SECONDS = 2.0
 AUTO_CHECK_SECONDS = 300
@@ -213,6 +218,9 @@ def _summary(kind: str, status: str, stats: dict, error: Optional[str]) -> str:
         return f"{kind}: {status}" + (f" - {error}" if error else "")
     if kind == "export":
         return f"export: {stats.get('cves', 0)} CVEs written to {stats.get('file')}"
+    if kind in ("advisories", "adv_import"):
+        return (f"{kind}: {', '.join(stats.get('releases') or []) or 'no release'} - "
+                f"{stats.get('records', 0)} records, {stats.get('rows', 0)} rows")
     return (f"{kind}: {stats.get('new', 0)} new, {stats.get('changed', 0)} updated, "
             f"{stats.get('removed', 0)} removed, {stats.get('kev', 0)} KEV, {stats.get('epss', 0)} EPSS")
 
@@ -368,6 +376,9 @@ def _import(j: _Job, db: Session, path: str) -> None:
     epss = package.read_epss(path)
     epss["date"] = epss.get("date") or m.get("epss_date")
     _apply(j, db, package.read_cves(path), total, kev, epss)
+    if m.get("advisories"):
+        from app.modules.advisories.jobs import apply_package
+        j.stats["advisories"] = apply_package(db, m["advisories"], package.read_advisories(path), j.check)
 
     until = feeds.iso_to_dt(m.get("until"))
     current = feeds.iso_to_dt(settings.get(db, settings.WATERMARK))
@@ -416,6 +427,29 @@ def _export(j: _Job, db: Session, kind: str, since: Optional[datetime]) -> None:
         os.remove(os.path.join(folder, f))
 
 
+def run_advisories(job_id: int, session_factory: Callable = SessionLocal) -> None:
+    from app.modules.advisories import jobs as adv
+
+    def body(j, db):
+        adv.online(j, db, data_dir("spool"))
+        db.commit()
+    _run(job_id, session_factory, body)
+
+
+def run_adv_import(job_id: int, path: str, remove_after: bool = True,
+                   session_factory: Callable = SessionLocal) -> None:
+    from app.modules.advisories import jobs as adv
+
+    def body(j, db):
+        adv.import_zip(j, db, path)
+        db.commit()
+    try:
+        _run(job_id, session_factory, body)
+    finally:
+        if remove_after and os.path.exists(path):
+            os.remove(path)
+
+
 def run_export(job_id: int, kind: str, since: Optional[datetime], session_factory: Callable = SessionLocal) -> None:
     _run(job_id, session_factory, lambda j, db: _export(j, db, kind, since))
 
@@ -457,6 +491,14 @@ def start_export(job: CveUpdateJob, kind: str, since: Optional[datetime]):
     _thread(run_export, job.id, kind, since, name=f"cve-{job.id}")
 
 
+def start_advisories(job: CveUpdateJob):
+    _thread(run_advisories, job.id, name=f"cve-{job.id}")
+
+
+def start_adv_import(job: CveUpdateJob, path: str, remove_after: bool = True):
+    _thread(run_adv_import, job.id, path, remove_after, name=f"cve-{job.id}")
+
+
 # ── automatic updates ────────────────────────────────────────────────────
 
 def auto_update_due(db: Session, now: datetime) -> bool:
@@ -476,20 +518,55 @@ def auto_update_due(db: Session, now: datetime) -> bool:
     return active_job(db) is None
 
 
+def advisories_due(db: Session, now: datetime) -> bool:
+    """Once a day at the CVE update time, and - within the hour - when an
+    asset runs a release that was never loaded."""
+    from app.models.advisory import DistroFeed
+    from app.modules.advisories import store as adv_store
+    if not adv_store.auto_enabled(db) or active_job(db) is not None:
+        return False
+    tracked = adv_store.tracked(db)
+    if not tracked:
+        return False
+    loaded = {r for (r,) in db.query(DistroFeed.release).filter(DistroFeed.watermark.isnot(None))}
+    last_try = feeds.iso_to_dt(settings.get(db, adv_store.LAST_ATTEMPT))
+    if tracked - loaded and (last_try is None or now - last_try >= ADVISORY_RETRY):
+        return True
+    try:
+        hour, minute = (int(x) for x in settings.auto_update(db)["time"].split(":"))
+    except ValueError:
+        return False
+    if (now.hour, now.minute) < (hour, minute):
+        return False
+    return settings.get(db, adv_store.LAST_AUTO_RUN) != now.date().isoformat()
+
+
 def _auto_tick(session_factory: Callable = SessionLocal) -> Optional[int]:
     db = session_factory()
     try:
         now = datetime.now()
-        if not auto_update_due(db, now):
-            return None
-        settings.put(db, settings.LAST_AUTO_RUN, now.date().isoformat())
-        db.commit()
-        try:
-            job = create_job(db, "online", None, trigger="automatic")
-        except JobBusy:
-            return None
-        start_online(job, False)
-        return job.id
+        if auto_update_due(db, now):
+            settings.put(db, settings.LAST_AUTO_RUN, now.date().isoformat())
+            db.commit()
+            try:
+                job = create_job(db, "online", None, trigger="automatic")
+            except JobBusy:
+                return None
+            start_online(job, False)
+            return job.id
+        if advisories_due(db, now):
+            from app.modules.advisories import store as adv_store
+            settings.put(db, adv_store.LAST_ATTEMPT, now.isoformat())
+            if (now.hour, now.minute) >= tuple(int(x) for x in settings.auto_update(db)["time"].split(":")):
+                settings.put(db, adv_store.LAST_AUTO_RUN, now.date().isoformat())
+            db.commit()
+            try:
+                job = create_job(db, "advisories", None, trigger="automatic")
+            except JobBusy:
+                return None
+            start_advisories(job)
+            return job.id
+        return None
     finally:
         db.close()
 

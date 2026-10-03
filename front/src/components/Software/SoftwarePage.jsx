@@ -161,7 +161,7 @@ export function SoftwarePage() {
                         </thead>
                         <tbody>
                             {rows.slice(0, limit).map((r) => (
-                                <ProductRow key={`${r.status}:${r.key}:${r.label}`} r={r} canMap={canMap}
+                                <ProductRow key={`${r.status}:${r.key}:${r.label}`} r={r} canMap={canMap} advisories={!!s.advisories_loaded}
                                             onOpen={() => setProduct(r)} onMap={() => setMapping(r)} />
                             ))}
                             {data && rows.length === 0 && (
@@ -190,7 +190,7 @@ export function SoftwarePage() {
                 ))}
             </div>
             <p className="alr-hint sw-note">
-                {t("Packages from the distribution's own repository are not matched against NVD: Ubuntu and Red Hat patch security fixes into the same version number (a patched OpenSSL 3.0.2 still says 3.0.2), so comparing versions with NVD would report hundreds of false findings. The distributions' own advisories (USN, OVAL) cover them in the next phase.")}
+                {t("Packages from the distribution's own repository are matched against the distribution's own security advisories (Ubuntu USN, Debian DSA/DLA, Red Hat RHSA, Rocky RLSA, AlmaLinux ALSA), not NVD: the distributions patch security fixes into the same version number (a patched OpenSSL 3.0.2 still says 3.0.2), so comparing versions with NVD would report hundreds of false findings.")}
             </p>
 
             {product && <ProductDrawer product={product} canMap={canMap} onClose={() => setProduct(null)}
@@ -220,7 +220,7 @@ function Versions({ versions, max = 3 }) {
     );
 }
 
-function ProductRow({ r, canMap, onOpen, onMap }) {
+function ProductRow({ r, canMap, onOpen, onMap, advisories }) {
     const outside = r.sources.filter((s) => s !== "distro");
     const sources = outside.length ? outside : r.sources;
     return (
@@ -253,7 +253,7 @@ function ProductRow({ r, canMap, onOpen, onMap }) {
                 )}
             </td>
             <td>{r.status === "unknown" ? <span className="bkm-muted">{t("Unknown")}</span>
-                : <CveCell item={{ ...r, source: r.sources.find((s) => s !== "distro") || "distro" }} />}</td>
+                : <CveCell item={{ ...r, source: r.sources.find((x) => x !== "distro") || "distro" }} distro={advisories ? "ok" : null} />}</td>
         </tr>
     );
 }

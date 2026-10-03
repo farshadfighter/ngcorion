@@ -82,6 +82,16 @@ const TEMPLATES = [
     msg("A finding is not fixed {{days}} days after its deadline"),
     msg("An accepted risk ends within {{days}} days"),
     msg("This finding can be accepted for at most {{days}} days"),
+    // CVE database jobs (app/modules/cve/feeds.py)
+    msg("NVD is not reachable: {{error}}"),
+    msg("CISA KEV is not reachable: {{error}}"),
+    msg("EPSS is not reachable: {{error}}"),
+    // distribution advisories (app/modules/advisories)
+    msg("OSV.dev is not reachable: {{error}}"),
+    msg("OSV answered HTTP {{code}} for {{ecosystem}}"),
+    msg("OSV answered HTTP {{code}} for the change list of {{ecosystem}}"),
+    msg("The file is larger than the {{num}} MB limit."),
+    msg("Unknown release: {{release}}"),
     // reports
     msg("Not an email address: {{email}}"),
     msg("Building the report failed: {{error}}"),
@@ -320,6 +330,15 @@ msg("Several versions");
 msg("Products with more than one version");
 msg("Unidentified");
 msg("Every installed package");
+// distribution advisories: API errors
+msg("The file holds no advisory of a supported distribution (Ubuntu, Debian, Red Hat, Rocky Linux, AlmaLinux). Download all.zip of the release from OSV.dev.");
+msg("Not an OSV archive (not a ZIP file).");
+msg("Not an OSV archive (not a valid ZIP file).");
+msg("The OSV archive is larger than allowed.");
+msg("An asset runs this release; it cannot be removed.");
+msg("Wait for the running database job to finish.");
+msg("Cancelled - the database was not changed.");
+msg("Interrupted by a server restart. The database was not changed - run it again.");
 // reports: API errors and alerts
 msg("A schedule needs a period that moves with it, not fixed dates");
 msg("A scheduled report could not be built or emailed");

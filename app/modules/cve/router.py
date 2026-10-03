@@ -15,6 +15,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -82,6 +83,8 @@ def get_findings(asset_id: Optional[int] = None, current_user: User = Depends(_r
         raise HTTPException(status_code=404, detail="Asset not found")
     result = findings.compute(db, asset_id)
     result["database_loaded"] = settings.get(db, settings.WATERMARK) is not None
+    from app.modules.advisories.store import loaded as advisories_loaded
+    result["advisories_loaded"] = advisories_loaded(db)
     return result
 
 
@@ -413,3 +416,92 @@ def remove_key(key_id: int, current_user: User = Depends(require_admin), db: Ses
     db.delete(row)
     db.commit()
     _audit(db, current_user, "cve.key.remove", detail, target_id=key_id)
+
+
+# ── distribution advisories (app/modules/advisories) ─────────────────────
+
+class AdvisorySettings(BaseModel):
+    auto: Optional[bool] = None
+    releases: Optional[List[str]] = Field(None, max_length=50)
+
+
+@router.get("/advisories")
+def advisories_status(current_user: User = Depends(_read), db: Session = Depends(get_db)):
+    from app.modules.advisories.service import status
+    out = status(db)
+    out["job"] = _job_out(db, jobs.active_job(db))
+    out["is_admin"] = current_user.role.value == "admin"
+    return out
+
+
+@router.put("/advisories/settings")
+def advisories_settings(body: AdvisorySettings, current_user: User = Depends(require_admin),
+                        db: Session = Depends(get_db)):
+    from app.modules.advisories.service import set_settings
+    try:
+        changes = set_settings(db, body.auto, body.releases)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if changes:
+        _audit(db, current_user, "cve.advisories.settings", "; ".join(changes))
+    return advisories_status(current_user, db)
+
+
+@router.post("/advisories/update", response_model=JobOut, status_code=202)
+def advisories_update(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    try:
+        job = jobs.create_job(db, "advisories", current_user.id)
+    except jobs.JobBusy as exc:
+        raise _busy(exc)
+    jobs.start_advisories(job)
+    return _job_out(db, job)
+
+
+@router.post("/advisories/import", response_model=JobOut, status_code=202)
+async def advisories_import(request: Request, file_name: str = Query("all.zip", max_length=255),
+                            current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """An OSV archive (all.zip of Ubuntu, Debian, Red Hat, Rocky Linux or
+    AlmaLinux from osv-vulnerabilities.storage.googleapis.com), streamed as
+    the request body. It is not signed: administrators only, and its SHA-256
+    goes into the audit log."""
+    from app.modules.advisories import osv
+    name = os.path.basename(file_name)[:200] or "all.zip"
+    limit = osv.MAX_ZIP_BYTES
+    too_big = f"The file is larger than the {limit // (1024 * 1024)} MB limit."
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > limit:
+        raise HTTPException(status_code=413, detail=too_big)
+    token, path = jobs.new_upload()
+    path = path[:-len(package.EXTENSION)] + ".zip"
+    size = 0
+    try:
+        with open(path, "wb") as out:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(status_code=413, detail=too_big)
+                out.write(chunk)
+        if size < 22 or open(path, "rb").read(2) != b"PK":
+            raise HTTPException(status_code=422, detail="Not an OSV archive (not a ZIP file).")
+        job = jobs.create_job(db, "adv_import", current_user.id, file_name=name)
+    except jobs.JobBusy as exc:
+        os.remove(path)
+        raise _busy(exc)
+    except BaseException:
+        if os.path.exists(path):
+            os.remove(path)
+        raise
+    _audit(db, current_user, "cve.advisories.import", f"{name} ({size:,} bytes) queued as job {job.id}",
+           target_id=job.id)
+    jobs.start_adv_import(job, path)
+    return _job_out(db, job)
+
+
+@router.delete("/advisories/releases/{release}", status_code=204)
+def advisories_remove(release: str, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    from app.modules.advisories.service import remove_release
+    if jobs.active_job(db) is not None:
+        raise HTTPException(status_code=409, detail="Wait for the running database job to finish.")
+    if not remove_release(db, release):
+        raise HTTPException(status_code=409, detail="An asset runs this release; it cannot be removed.")
+    _audit(db, current_user, "cve.advisories.remove", release)
