@@ -10,7 +10,7 @@ import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
 import AssetIcon from "../shared/AssetIcon.jsx";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const AssetTypeTab = () => {
     const dispatch = useDispatch();
@@ -189,7 +189,7 @@ export const AssetTypeTab = () => {
                                         aria-label={t("Select {{value}}", { value: item.type_name || item.id })}
                                     />
                                 </td>
-                                <td>{(page - 1) * pageSize + index + 1}</td>
+                                <td>{n((page - 1) * pageSize + index + 1)}</td>
                                 <td>
                                     <AssetIcon icon={item.effective_icon || item.type_name} size={28}
                                                title={item.icon ? undefined : t("Automatic (from the name)")} />

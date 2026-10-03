@@ -200,7 +200,7 @@ function PriorityPill({ p }) {
 function CvssPill({ score, severity }) {
     if (score == null) return <span className="cvx-muted">—</span>;
     const s = SEVERITY[severity] || SEVERITY.low;
-    return <span className="cvx-pill" style={{ background: s.bg, color: s.fg }} title={s.label}>{Number(score).toFixed(1)}</span>;
+    return <span className="cvx-pill" style={{ background: s.bg, color: s.fg }} title={s.label}>{n(Number(score).toFixed(1))}</span>;
 }
 
 export function Epss({ value }) {

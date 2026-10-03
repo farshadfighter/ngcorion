@@ -161,13 +161,13 @@ const ComplianceVsHardening = ({ compliance, hardening }) => (
             <div className="ov-compare-head">
                 <span className="ov-compare-label">{t("Compliance")}</span>
                 <span className="ov-compare-value">
-                    {compliance === null ? "—" : `${compliance}%`}
+                    {compliance === null ? "—" : n(`${compliance}%`)}
                 </span>
             </div>
             <div className="ov-compare-head">
                 <span className="ov-compare-label">{t("Hardening")}</span>
                 <span className="ov-compare-value">
-                    {hardening === null ? "—" : `${hardening}%`}
+                    {hardening === null ? "—" : n(`${hardening}%`)}
                 </span>
             </div>
         </div>
@@ -181,7 +181,7 @@ const ComplianceVsHardening = ({ compliance, hardening }) => (
                 </span>
                 <span className="ov-bar-legend">
                     <i className="ov-dot ov-dot-compliance" /> {" "}{t("Compliance: ")}
-                    {compliance === null ? "—" : `${compliance}%`}
+                    {compliance === null ? "—" : n(`${compliance}%`)}
                 </span>
             </div>
             <div className="ov-bar-row">
@@ -193,7 +193,7 @@ const ComplianceVsHardening = ({ compliance, hardening }) => (
                 </span>
                 <span className="ov-bar-legend">
                     <i className="ov-dot ov-dot-hardening" /> {" "}{t("Hardening: ")}
-                    {hardening === null ? "—" : `${hardening}%`}
+                    {hardening === null ? "—" : n(`${hardening}%`)}
                 </span>
             </div>
         </div>
@@ -234,7 +234,7 @@ const TopRiskyAssets = ({ items }) => (
                     )}
                     {items.map((row, i) => (
                         <tr key={row.asset_id}>
-                            <td>{row.rank ?? i + 1}</td>
+                            <td>{n(row.rank ?? i + 1)}</td>
                             <td>{dash(row.asset_name)}</td>
                             <td>{dash(row.hostname)}</td>
                             <td>{dash(row.asset_type)}</td>

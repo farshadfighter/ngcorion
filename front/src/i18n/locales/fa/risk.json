@@ -2,6 +2,7 @@
   " (score {{score}})": " (امتیاز {{score}})",
   "— No zone —": "— بدون ناحیه —",
   "{{heading}} Score": "امتیاز {{heading}}",
+  "{{score}} · {{count}} assets": "{{score}} · {{count, number}} دارایی",
   "Active Failed Controls": "کنترل‌های ناموفق فعال",
   "Actual Value": "مقدار واقعی",
   "Approved": "تأییدشده",

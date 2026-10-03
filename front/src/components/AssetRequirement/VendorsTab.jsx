@@ -9,7 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const VendorsTab = () => {
     const dispatch = useDispatch();
@@ -183,7 +183,7 @@ export const VendorsTab = () => {
                                         aria-label={t("Select {{value}}", { value: item.vendor_name || item.id })}
                                     />
                                 </td>
-                                <td>{(page - 1) * pageSize + index + 1}</td>
+                                <td>{n((page - 1) * pageSize + index + 1)}</td>
                                 <td>{item.vendor_name}</td>
                                 <td>{item.vendor_type || "-"}</td>
                                 <td className="actions">

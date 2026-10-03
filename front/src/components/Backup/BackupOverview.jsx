@@ -7,7 +7,7 @@ import { formatDate, formatWhen, relativeDays } from "../../utils/dates.js";
 import NewBackupModal from "./NewBackupModal.jsx";
 import { Changes, RestoreDetailDrawer, RestoreResult } from "./RestoreDetailDrawer.jsx";
 import "../../assets/BackupModule.css";
-import { t, uiLocale } from "../../i18n";
+import { t, uiLocale, n } from "../../i18n";
 
 const FAMILY_LABEL = { cisco: "Cisco", fortinet: "Fortinet", linux: "Linux", apache: "Apache", mongodb: "MongoDB" };
 const ATTENTION_ROWS = 8;
@@ -64,7 +64,7 @@ export function BackupOverview() {
                     <div className="bkm-stats">
                         <div className="bkm-stat">
                             <span>{t("Backup coverage")}</span>
-                            <b className="bkm-navy">{data.supported ? `${coverage}%` : "—"}</b>
+                            <b className="bkm-navy">{data.supported ? n(`${coverage}%`) : "—"}</b>
                             <div className="bkm-meter"><span style={{ width: `${coverage}%` }} /></div>
                             <small>{t("{{num}} of {{num2}} supported devices", { num: num(data.fresh), num2: num(data.supported) })}</small>
                         </div>

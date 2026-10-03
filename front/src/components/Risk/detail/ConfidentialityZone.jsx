@@ -1,7 +1,7 @@
 import React from "react";
 
 import { orDash, titleCase, badgeForScore } from "../riskConstants";
-import { t } from "../../../i18n";
+import { t, n } from "../../../i18n";
 
 /**
  * "Criticality, Confidentiality & Zone": the three asset-derived inputs to the
@@ -27,7 +27,7 @@ const ScoreBox = ({ score }) => {
             className="ard-score-box"
             style={colors ? { background: colors.bg, color: colors.fg } : undefined}
         >
-            {score ?? "-"}
+            {score == null ? "-" : n(score)}
         </span>
     );
 };

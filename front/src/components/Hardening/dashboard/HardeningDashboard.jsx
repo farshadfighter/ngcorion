@@ -9,7 +9,7 @@ import { HardeningCard } from "./HardeningCard";
 import { ProgressList } from "./ProgressList";
 import { HardeningImpact } from "./HardeningImpact";
 import "../../../assets/HardeningDashboard.css";
-import { t, uiLocale } from "../../../i18n";
+import { t, uiLocale, n } from "../../../i18n";
 
 const BAR_COLOR = "#29354E";
 
@@ -91,11 +91,11 @@ export const HardeningDashboard = () => {
                                 <CartesianGrid stroke="#EEF0F4" vertical={false} />
                                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#6C7A93" }}
                                        axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 100]} width={36}
+                                <YAxis domain={[0, 100]} width={36} tickFormatter={(v) => n(v)}
                                        tick={{ fontSize: 11, fill: "#6C7A93" }}
                                        axisLine={false} tickLine={false} />
                                 <Tooltip
-                                    formatter={(v, _n, e) => [`${v}% (${e.payload.total} actions)`, t("Success rate")]}
+                                    formatter={(v, _n, e) => [t("{{pct}}% · {{count}} actions", { pct: v, count: e.payload.total }), t("Success rate")]}
                                     labelFormatter={(_l, p) => p?.[0]?.payload.period || ""}
                                 />
                                 <Bar dataKey="rate" fill={BAR_COLOR} barSize={18} radius={[2, 2, 0, 0]} />
@@ -206,8 +206,8 @@ export const HardeningDashboard = () => {
                                                 <span className="hd-muted">—</span>
                                             )}
                                         </td>
-                                        <td>{a.active_findings_count ?? "-"}</td>
-                                        <td>{a.resolved_by_hardening ?? "-"}</td>
+                                        <td>{n(a.active_findings_count ?? "-")}</td>
+                                        <td>{n(a.resolved_by_hardening ?? "-")}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -238,7 +238,7 @@ export const HardeningDashboard = () => {
                                             {c.check_number}
                                             {c.check_title ? ` — ${c.check_title}` : ""}
                                         </td>
-                                        <td>{c.affected_assets}</td>
+                                        <td>{n(c.affected_assets)}</td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -84,5 +84,11 @@
   "first list · {{count}} items_one": "first list · {{count}} item",
   "first list · {{count}} items_other": "first list · {{count}} items",
   "Products outside the distribution repository · {{count}} installed packages in total_one": "Products outside the distribution repository · {{count}} installed package in total",
-  "Products outside the distribution repository · {{count}} installed packages in total_other": "Products outside the distribution repository · {{count}} installed packages in total"
+  "Products outside the distribution repository · {{count}} installed packages in total_other": "Products outside the distribution repository · {{count}} installed packages in total",
+  "{{pct}}% · {{count}} audits_one": "{{pct}}% · {{count}} audit",
+  "{{pct}}% · {{count}} audits_other": "{{pct}}% · {{count}} audits",
+  "{{pct}}% · {{count}} actions_one": "{{pct}}% · {{count}} action",
+  "{{pct}}% · {{count}} actions_other": "{{pct}}% · {{count}} actions",
+  "{{score}} · {{count}} assets_one": "{{score}} · {{count}} asset",
+  "{{score}} · {{count}} assets_other": "{{score}} · {{count}} assets"
 }

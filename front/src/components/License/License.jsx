@@ -7,7 +7,7 @@ import {
 } from "../../store/licenseSlice";
 import { LicenseCard } from "./LicenseCard";
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const License = () => {
     const dispatch = useDispatch();
@@ -201,9 +201,9 @@ export const License = () => {
                                         </span>
                                     </div>
                                     <div style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
-                                        {usedValue}
+                                        {n(usedValue)}
                                         <span style={{ fontSize: "14px", opacity: 0.7, fontWeight: "400" }}>
-                                            /{displayMax}
+                                            /{n(displayMax)}
                                         </span>
                                     </div>
                                     {maxValue && (

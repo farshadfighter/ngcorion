@@ -9,7 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 const DescriptionModal = ({ description, zoneName, onClose }) => {
     return (
@@ -305,7 +305,7 @@ export const NetworkZoneTab = () => {
                                         aria-label={t("Select {{value}}", { value: item.zone_name || item.id })}
                                     />
                                 </td>
-                                    <td>{(page - 1) * pageSize + index + 1}</td>
+                                    <td>{n((page - 1) * pageSize + index + 1)}</td>
                                     <td>{item.zone_name}</td>
                                     <td>
                                         {item.description ? (

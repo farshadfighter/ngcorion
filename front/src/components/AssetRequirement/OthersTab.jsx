@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchEnums } from "../../store/requirementSlice";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const OthersTab = () => {
     const dispatch = useDispatch();
@@ -69,7 +69,7 @@ export const OthersTab = () => {
                         ) : (
                             statusValues.map((value, index) => (
                                 <tr key={index}>
-                                    <td>{index + 1}</td>
+                                    <td>{n(index + 1)}</td>
                                     <td>{value}</td>
                                     <td>{value.charAt(0).toUpperCase() + value.slice(1)}</td>
                                 </tr>
@@ -102,7 +102,7 @@ export const OthersTab = () => {
                         ) : (
                             confidentialityValues.map((value, index) => (
                                 <tr key={index}>
-                                    <td>{index + 1}</td>
+                                    <td>{n(index + 1)}</td>
                                     <td>{value}</td>
                                     <td>{value.charAt(0).toUpperCase() + value.slice(1)}</td>
                                 </tr>
@@ -135,7 +135,7 @@ export const OthersTab = () => {
                         ) : (
                             riskValues.map((value, index) => (
                                 <tr key={index}>
-                                    <td>{index + 1}</td>
+                                    <td>{n(index + 1)}</td>
                                     <td>{value}</td>
                                     <td>{value.charAt(0).toUpperCase() + value.slice(1)}</td>
                                 </tr>

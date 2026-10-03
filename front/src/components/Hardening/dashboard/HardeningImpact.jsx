@@ -1,6 +1,6 @@
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { t } from "../../../i18n";
+import { t, n } from "../../../i18n";
 
 /**
  * "Hardening Impact": before/after donuts of critical & high findings.
@@ -52,7 +52,7 @@ const Donut = ({ title, data }) => {
                                     className="hd-dot"
                                     style={{ background: colorFor(entry.label, i) }}
                                 />
-                                {entry.label}: {entry.value}
+                                {entry.label}: {n(entry.value)}
                             </span>
                         ))}
                     </div>

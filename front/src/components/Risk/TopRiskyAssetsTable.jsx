@@ -1,7 +1,7 @@
 import React from "react";
 import { orDash } from "./riskConstants";
 import { RiskLevelBadge } from "./RiskLevelBadge";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 const COLUMNS = [
     t("Number"),
@@ -38,7 +38,7 @@ export const TopRiskyAssetsTable = ({ rows }) => (
                     )}
                     {rows.map((row, index) => (
                         <tr key={row.asset_id}>
-                            <td>{row.rank ?? index + 1}</td>
+                            <td>{n(row.rank ?? index + 1)}</td>
                             <td>{orDash(row.asset_name)}</td>
                             <td>{orDash(row.hostname)}</td>
                             <td>{orDash(row.asset_type)}</td>

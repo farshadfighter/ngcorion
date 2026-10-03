@@ -5,7 +5,7 @@ import {
 
 import { RiskLevelBadge } from "../RiskLevelBadge";
 import { formatDate } from "../riskConstants";
-import { t, uiLocale } from "../../../i18n";
+import { t, uiLocale, n } from "../../../i18n";
 
 /** trigger_type values written by risk_calculation_service.calculate(). */
 const TRIGGER_LABELS = {
@@ -101,13 +101,14 @@ export const RiskHistory = ({ history, isLoading, error }) => {
                         <YAxis
                             domain={[0, 100]}
                             width={36}
+                            tickFormatter={(v) => n(v)}
                             tick={{ fontSize: 11, fill: "#6C7A93" }}
                             axisLine={false}
                             tickLine={false}
                         />
                         <Tooltip
                             formatter={(value, _n, entry) => [
-                                `${value} (${entry.payload.reason})`,
+                                `${n(value)} (${entry.payload.reason})`,
                                 t("Risk score"),
                             ]}
                         />
@@ -149,7 +150,7 @@ export const RiskHistory = ({ history, isLoading, error }) => {
                                     {h.risk_score === null ||
                                     h.risk_score === undefined
                                         ? "-"
-                                        : Math.round(h.risk_score)}
+                                        : n(Math.round(h.risk_score))}
                                 </td>
                                 <td>
                                     <RiskLevelBadge level={h.risk_level} />

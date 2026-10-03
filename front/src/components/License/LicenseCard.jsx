@@ -1,6 +1,6 @@
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 import { getModuleLimit, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onActivate }) => {
     const license = LICENSE_TYPES[licenseType];
@@ -123,7 +123,7 @@ export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onA
                             <i className={`fa-solid ${MODULE_ICONS[module]}`} style={{ color: license.borderColor }} />
                             <span>{MODULE_LABELS[module]}</span>
                             <span style={{ fontWeight: "700", color: license.borderColor, marginInlineStart: "4px" }}>
-                                {usedValue !== null ? `${usedValue}/` : ""}{limit}
+                                {usedValue !== null ? <>{n(usedValue)}/</> : ""}{n(limit)}
                             </span>
                         </div>
                     );

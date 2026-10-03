@@ -42,7 +42,7 @@ const ComplianceBadge = ({ pct }) => (
             textAlign: "center",
         }}
     >
-        {pct}%
+        {n(`${pct}%`)}
     </span>
 );
 
@@ -321,7 +321,7 @@ export const AuditingDashboard = () => {
                                         <td>{r.asset}</td>
                                         <td>{r.deviceLabel}</td>
                                         <td><ComplianceBadge pct={r.pct} /></td>
-                                        <td>{r.total ? `${r.total - r.failed}/${r.total} passed` : "-"}</td>
+                                        <td>{r.total ? t("{{passed}} of {{total}} passed", { passed: r.total - r.failed, total: r.total }) : "-"}</td>
                                         <td>{fmtDate(r.date)}</td>
                                     </tr>
                                 ))

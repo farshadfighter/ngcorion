@@ -1,7 +1,7 @@
 import React from "react";
 import { RISK_LEVEL_LABELS } from "../../../store/riskSlice";
 import { titleCase, formatDate, orDash, RISK_LEVEL_BADGES } from "../riskConstants";
-import { t } from "../../../i18n";
+import { t, n } from "../../../i18n";
 
 /**
  * The four summary tiles at the top of the asset risk detail page.
@@ -19,7 +19,7 @@ const Tile = ({ label, value, caption, variant, colors }) => (
         style={colors ? { background: colors.bg, color: colors.fg } : undefined}
     >
         <span className="ard-tile-value" style={colors ? { color: colors.fg } : undefined}>
-            {value}
+            {n(value)}
         </span>
         <span className="ard-tile-label" style={colors ? { color: colors.fg } : undefined}>
             {label}

@@ -15,6 +15,7 @@
   "{{count}} failed checks cannot be remediated automatically and will be left unchanged:": "{{count, number}} بررسی ناموفق را نمی‌توان خودکار اصلاح کرد و بدون تغییر می‌مانند:",
   "{{getDeviceLabel}} CIS": "CIS {{getDeviceLabel}}",
   "{{length}} of {{length2}} selected": "{{length}} از {{length2}} انتخاب شده",
+  "{{pct}}% · {{count}} actions": "{{pct}}٪ · {{count, number}} اقدام",
   "{{total}} findings": "{{total}} یافته",
   "← Hardening Result": "→ نتیجهٔ مقاوم‌سازی",
   "⚙️ Commands Executed": "⚙️ دستورهای اجراشده",

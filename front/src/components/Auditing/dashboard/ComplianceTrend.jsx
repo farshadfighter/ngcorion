@@ -2,7 +2,7 @@ import React from "react";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer,
 } from "recharts";
-import { t, uiLocale } from "../../../i18n";
+import { t, uiLocale, n } from "../../../i18n";
 
 const BAR_COLOR = "#1e3a5f";
 
@@ -45,13 +45,14 @@ export const ComplianceTrend = ({ points, message }) => {
                         <YAxis
                             domain={[0, 100]}
                             width={36}
+                            tickFormatter={(v) => n(v)}
                             tick={{ fontSize: 11, fill: "#6c7a93" }}
                             axisLine={false}
                             tickLine={false}
                         />
                         <Tooltip
                             formatter={(v, _n, e) => [
-                                `${v}% (${e.payload.sessions} audits)`,
+                                t("{{pct}}% · {{count}} audits", { pct: v, count: e.payload.sessions }),
                                 t("Avg compliance"),
                             ]}
                             labelFormatter={(_l, p) => p?.[0]?.payload.period || ""}

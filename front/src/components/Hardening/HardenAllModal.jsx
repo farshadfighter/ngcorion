@@ -6,7 +6,7 @@ import {
     clearHardenAll,
 } from '../../store/hardeningSlice';
 import '../../assets/hardening/HardenAll.css';
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 /**
  * Harden All — remediate every failed check in an audit session.
@@ -159,7 +159,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                 <React.Fragment key={label}>
                     {index > 0 && <span className="ha-step-sep" />}
                     <span className={`ha-step ${index === step ? 'is-active' : index < step ? 'is-done' : ''}`}>
-                        <span className="ha-step-dot">{index < step ? '✓' : index + 1}</span>
+                        <span className="ha-step-dot">{index < step ? '✓' : n(index + 1)}</span>
                         {label}
                     </span>
                 </React.Fragment>

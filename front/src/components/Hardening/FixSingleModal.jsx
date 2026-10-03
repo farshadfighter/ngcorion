@@ -20,7 +20,7 @@ import {
     buildCredentials,
 } from './hardeningCredentials';
 import '../../assets/hardening/Hardenallmodal.css';
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 // Cisco and Fortinet return action_id in preview and require it on execute.
 const isCiscoOrFortinet = (dt) => isCisco(dt) || isFortinet(dt);
@@ -254,7 +254,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                             ))}
                             {previewData.commands.map((cmd, index) => (
                                 <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderInlineStart: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)', marginInlineStart: wrapper ? '18px' : 0 }}>
-                                    <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
+                                    <div style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{n(index + 1)}</div>
                                     <code style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '13px', color: '#1f2937', lineHeight: '1.6', wordBreak: 'break-word', background: '#f8f9fb', padding: '2px 6px', borderRadius: '4px' }}>{cmd}</code>
                                 </div>
                             ))}
@@ -438,7 +438,7 @@ const FixSingleModal = ({ check, assetId, sessionId, deviceType, onClose, onSucc
                         <div style={{ background: 'linear-gradient(135deg,#f8f9fb 0%,#ffffff 100%)', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #e8edf5' }}>
                             {executionResult.commands_executed.map((cmd, index) => (
                                 <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px', background: 'white', borderRadius: '8px', borderInlineStart: '4px solid #1e3a5f', boxShadow: '0 2px 6px rgba(30,58,95,0.06)' }}>
-                                    <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{index + 1}</div>
+                                    <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2d4a7c 100%)', color: 'white', minWidth: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: '0' }}>{n(index + 1)}</div>
                                     <code style={{ fontFamily: "'Consolas','Monaco','Courier New',monospace", fontSize: '13px', color: '#1f2937', lineHeight: '1.6', wordBreak: 'break-word', background: '#f8f9fb', padding: '2px 6px', borderRadius: '4px' }}>{cmd}</code>
                                 </div>
                             ))}

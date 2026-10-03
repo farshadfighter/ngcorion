@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 /**
  * Page bar for client-side paginated tables.
@@ -67,7 +67,7 @@ export const Pagination = ({
                             onClick={() => onPageChange(entry)}
                             aria-current={entry === page ? "page" : undefined}
                         >
-                            {entry}
+                            {n(entry)}
                         </button>
                     )
                 )}
@@ -92,7 +92,7 @@ export const Pagination = ({
                     >
                         {pageSizeOptions.map((size) => (
                             <option key={size} value={size}>
-                                {size}
+                                {n(size)}
                             </option>
                         ))}
                     </select>

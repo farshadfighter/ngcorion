@@ -12,7 +12,7 @@ import "../../assets/Alerts.css";
 import "../../assets/Reports.css";
 
 function when(s) {
-    const at = s.run_time;
+    const at = n(s.run_time);
     if (s.frequency === "daily") return t("Every day at {{time}}", { time: at });
     if (s.frequency === "weekly") return t("Every {{day}} at {{time}}", { day: label(WEEKDAYS, s.weekday), time: at });
     if (s.frequency === "monthly") return t("Day {{day}} of every month at {{time}}", { day: n(s.monthday), time: at });

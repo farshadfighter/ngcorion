@@ -83,7 +83,7 @@ export function n(value) {
     if (value === null || value === undefined || value === "") return value;
     if (typeof value === "number") return numberFormat.format(value);
     // Already-formatted figures such as "54%" or "34/100".
-    if (language === "fa" && typeof value === "string" && /^[\d\s.,%/+\-−]+$/.test(value)) {
+    if (language === "fa" && typeof value === "string" && /^[\d\s.,%/+\-−:]+$/.test(value)) {
         const out = value.replace(/(\d)\.(\d)/g, "$1٫$2").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]).replace(/%/g, "٪");
         // After Persian letters the bidi algorithm reverses "10-24" or "34/100"; keep them left-to-right.
         return /[-/−]/.test(out) ? `\u2066${out}\u2069` : out;

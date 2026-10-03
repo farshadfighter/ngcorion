@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Pagination } from '../Logs/Pagination.jsx';
 import AssetIcon from '../shared/AssetIcon.jsx';
-import { t as tr, uiLocale } from "../../i18n";
+import { t as tr, uiLocale, n } from "../../i18n";
 
 const formatDate = (ts) => {
     if (!ts) return '-';
@@ -88,7 +88,7 @@ export const BackupAssetList = ({
                                 </td>
                                 <td>
                                     <span className="backup-count-total">
-                                        {g.backup_count}
+                                        {n(g.backup_count)}
                                     </span>
                                     <span className="backup-count-split">
                                         {g.manual_count > 0 && (

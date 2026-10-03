@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import api from "../../config/api.js";
 import { ACTIVE, KIND_LABEL, STEP_LABEL, formatBytes, formatWhen, num } from "./cveFormat.js";
 import { Icon } from "./CveIcons.jsx";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 const POLL_MS = 1500;
 
@@ -125,7 +125,7 @@ export function CveJobModal({ jobId, isAdmin, onClose }) {
                                         <span className="cvx-step-dot" aria-hidden="true">
                                             {state === "done" ? <Icon name="check" size={15} /> :
                                              state === "active" ? <span className="cvx-spin" /> :
-                                             state === "failed" ? <Icon name="x" size={14} /> : i + 1}
+                                             state === "failed" ? <Icon name="x" size={14} /> : n(i + 1)}
                                         </span>
                                         <div>
                                             <h3>{STEP_LABEL[step] || step}</h3>

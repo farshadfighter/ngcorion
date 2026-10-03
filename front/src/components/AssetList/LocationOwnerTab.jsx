@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const LocationOwnerTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
@@ -64,7 +64,7 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                                 <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={() => onToggleSelect(asset.id)}
                                        style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                             </td>
-                            <td>{index + 1}</td>
+                            <td>{n(index + 1)}</td>
                             <td>
                                 <span className="asset-name-cell">
                                     <AssetIcon icon={asset.resolved_icon} size={28} />

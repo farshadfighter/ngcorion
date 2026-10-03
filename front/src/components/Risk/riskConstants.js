@@ -1,5 +1,6 @@
-import { uiLocale } from "../../i18n";
+import { uiLocale, n } from "../../i18n";
 import { tv } from "../../i18n/backendText";
+import { formatDate as formatUiDate } from "../../utils/dates";
 // Shared presentation constants for the Risk Intelligence screens.
 // Palette values come from the Figma chart exports.
 
@@ -99,13 +100,14 @@ export const titleCase = (value) => {
 export const formatNumber = (value) =>
     typeof value === "number" ? value.toLocaleString(uiLocale()) : value;
 
-/** Table cells render "-" for absent values, matching the Figma mock. */
+/** Table cells render "-" for absent values, matching the Figma mock.
+ *  Numbers are written in the user's digits; text (names, addresses) as it is. */
 export const orDash = (value) =>
-    value === null || value === undefined || value === "" ? "-" : value;
+    value === null || value === undefined || value === "" ? "-" : typeof value === "number" ? n(value) : value;
 
+/** A date in the user's calendar and digits (Solar Hijri in Persian). */
 export const formatDate = (value) => {
     if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+    const out = formatUiDate(value);
+    return out === "—" ? "-" : out;
 };

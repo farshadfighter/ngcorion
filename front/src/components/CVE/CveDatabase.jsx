@@ -9,7 +9,7 @@ import { CveJobModal } from "./CveJobModal.jsx";
 import { CvePackageImport } from "./CvePackageImport.jsx";
 import { CveExportModal } from "./CveExportModal.jsx";
 import "../../assets/Cve.css";
-import { t as tr } from "../../i18n";
+import { t as tr, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
 
 const TIMES = Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
@@ -29,7 +29,7 @@ function nextRun(auto) {
     const [h, m] = auto.time.split(":").map(Number);
     const now = new Date();
     const passed = now.getHours() * 60 + now.getMinutes() >= h * 60 + m;
-    return `${passed ? tr("Tomorrow") : tr("Today")} ${auto.time}`;
+    return `${passed ? tr("Tomorrow") : tr("Today")} ${n(auto.time)}`;
 }
 
 function methodLabel(job) {

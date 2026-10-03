@@ -20,7 +20,7 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     return (
         <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
-            {`${(percent * 100).toFixed(0)}%`}
+            {n(`${(percent * 100).toFixed(0)}%`)}
         </text>
     );
 };
@@ -150,7 +150,7 @@ export const AssetManagementDashboard = () => {
                                             <Cell key={i} fill={COLORS[i % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value, name) => [value, name]} />
+                                    <Tooltip formatter={(value, name) => [n(value), tv(name)]} />
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="amd-legend">
@@ -186,7 +186,7 @@ export const AssetManagementDashboard = () => {
                                             <Cell key={i} fill={COLORS[i % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value, name) => [value, name]} />
+                                    <Tooltip formatter={(value, name) => [n(value), tv(name)]} />
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="amd-legend">
@@ -212,10 +212,10 @@ export const AssetManagementDashboard = () => {
                         <BarChart data={stats.osData} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                             <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#6b7280" }} angle={-20} textAnchor="end" interval={0} />
-                            <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} allowDecimals={false} />
-                            <Tooltip />
+                            <YAxis tick={{ fontSize: 12, fill: "#6b7280" }} allowDecimals={false} tickFormatter={(v) => n(v)} />
+                            <Tooltip formatter={(value) => n(value)} />
                             <Bar dataKey="value" fill="#1e3a5f" radius={[6, 6, 0, 0]}
-                                 label={{ position: "inside", fill: "white", fontSize: 12, fontWeight: 600 }} />
+                                 label={{ position: "inside", fill: "white", fontSize: 12, fontWeight: 600, formatter: (v) => n(v) }} />
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (

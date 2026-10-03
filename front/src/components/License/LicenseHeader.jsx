@@ -1,6 +1,6 @@
 import { MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 import { getLicenseInfo, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const LicenseHeader = ({ licenseType, apiData = null }) => {
     const license = getLicenseInfo(licenseType);
@@ -82,7 +82,7 @@ export const LicenseHeader = ({ licenseType, apiData = null }) => {
                             <span>{MODULE_ICONS[module]}</span>
                             <span>{MODULE_LABELS[module]}:</span>
                             <span style={{ fontWeight: "600", color: "#111827" }}>
-                                {usedValue}/{displayMax}
+                                {n(usedValue)}/{n(displayMax)}
                             </span>
                         </div>
                     );

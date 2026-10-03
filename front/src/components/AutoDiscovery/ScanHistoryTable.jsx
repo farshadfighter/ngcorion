@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrorText.js';
-import { t, uiLocale } from "../../i18n";
+import { t, uiLocale, n } from "../../i18n";
 
 const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
   // Format date
@@ -157,7 +157,7 @@ const ScanHistoryTable = ({ scans, loading, onViewResults, onDelete }) => {
                       <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                       <path d="M8 21h8M12 17v4" />
                     </svg>
-                    {scan.hosts_up || 0}
+                    {n(scan.hosts_up || 0)}
                   </span>
                 ) : (
                   <span className="text-muted">-</span>

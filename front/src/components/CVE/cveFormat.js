@@ -1,4 +1,4 @@
-import { t, uiLocale } from "../../i18n";
+import { t, uiLocale, n } from "../../i18n";
 // Shared formatting for the CVE pages.
 
 export { parseUtc, formatWhen, formatDate, ageDays } from "../../utils/dates.js";
@@ -37,7 +37,7 @@ export function epssColor(p) {
 export function epssLabel(p) {
     if (p == null) return "—";
     const pct = p * 100;
-    return pct >= 10 ? `${Math.round(pct)}%` : pct >= 1 ? `${pct.toFixed(1)}%` : `${pct.toFixed(2)}%`;
+    return n(pct >= 10 ? `${Math.round(pct)}%` : pct >= 1 ? `${pct.toFixed(1)}%` : `${pct.toFixed(2)}%`);
 }
 
 export const KIND_LABEL = {

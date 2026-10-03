@@ -9,7 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const OwnersTab = () => {
     const dispatch = useDispatch();
@@ -210,7 +210,7 @@ export const OwnersTab = () => {
                                     />
                                 </td>
                                 {/* Continues across pages rather than restarting at 1. */}
-                                <td>{(page - 1) * pageSize + index + 1}</td>
+                                <td>{n((page - 1) * pageSize + index + 1)}</td>
                                 <td>{item.full_name}</td>
                                 <td>{item.department || "-"}</td>
                                 <td>{item.role || "-"}</td>

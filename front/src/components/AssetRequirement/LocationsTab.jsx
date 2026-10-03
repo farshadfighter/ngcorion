@@ -9,7 +9,7 @@ import { EditRequirementModal } from "./EditRequirementModal";
 import { useTableSelection } from "./useTableSelection";
 import { Pagination } from "../Logs/Pagination.jsx";
 import "../../assets/LogsPage.css";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const LocationsTab = () => {
     const dispatch = useDispatch();
@@ -194,7 +194,7 @@ export const LocationsTab = () => {
                                         aria-label={t("Select {{value}}", { value: item.site_name || item.id })}
                                     />
                                 </td>
-                                <td>{(page - 1) * pageSize + index + 1}</td>
+                                <td>{n((page - 1) * pageSize + index + 1)}</td>
                                 <td>{item.site_name}</td>
                                 <td>{item.rack_name || "-"}</td>
                                 <td>{item.room || "-"}</td>

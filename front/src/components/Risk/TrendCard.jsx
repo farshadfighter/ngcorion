@@ -9,7 +9,7 @@ import {
     CartesianGrid,
 } from "recharts";
 import { TREND_BAR_COLOR } from "./riskConstants";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 /** "2026-06" -> "Jun" — the Figma axis shows short month names. */
 const MONTH_LABELS = [
@@ -58,6 +58,7 @@ export const TrendCard = ({ points, message }) => {
                             />
                             <YAxis
                                 domain={[0, 100]}
+                                tickFormatter={(v) => n(v)}
                                 tick={{ fontSize: 11, fill: "#6C7A93" }}
                                 axisLine={false}
                                 tickLine={false}
@@ -65,7 +66,7 @@ export const TrendCard = ({ points, message }) => {
                             />
                             <Tooltip
                                 formatter={(value, _name, entry) => [
-                                    `${value} (${entry.payload.assets} assets)`,
+                                    t("{{score}} · {{count}} assets", { score: value, count: entry.payload.assets }),
                                     t("Avg score"),
                                 ]}
                                 labelFormatter={(_label, payload) =>

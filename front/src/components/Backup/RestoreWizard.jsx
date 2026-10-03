@@ -59,7 +59,7 @@ const Stepper = ({ current }) => (
                 {i > 0 && <li className="rw-bar" aria-hidden="true" />}
                 <li className={`rw-st ${i < current ? 'done' : i === current ? 'on' : ''}`}
                     aria-current={i === current ? 'step' : undefined}>
-                    <span className="rw-n">{i < current ? '✓' : i + 1}</span>{label}
+                    <span className="rw-n">{i < current ? '✓' : n(i + 1)}</span>{label}
                 </li>
             </React.Fragment>
         ))}
@@ -158,7 +158,7 @@ const Timeline = ({ job }) => {
                     <div key={t.key} className={`rw-tl ${state}`}>
                         <span className="rw-dot">
                             {state === 'done' ? '✓' : state === 'failed' ? '!' : state === 'running'
-                                ? <span className="rw-spin" /> : i + 1}
+                                ? <span className="rw-spin" /> : n(i + 1)}
                         </span>
                         <div>
                             <h3>{t.title}</h3>

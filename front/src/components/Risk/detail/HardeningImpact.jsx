@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "../../../i18n";
+import { t, n } from "../../../i18n";
 
 /**
  * "Hardening Impact": three before/after comparisons, each with a progress bar.
@@ -23,13 +23,13 @@ const Row = ({ label, value, priorLabel, priorValue }) => {
                 <div className="ard-impact-box">
                     <span className="ard-impact-label">{label}</span>
                     <span className="ard-impact-value">
-                        {value === null || value === undefined ? "-" : value}
+                        {value === null || value === undefined ? "-" : n(value)}
                     </span>
                 </div>
                 <div className="ard-impact-prior">
                     <span className="ard-impact-label">{priorLabel}</span>
                     <span className="ard-impact-value ard-cell-pending">
-                        {hasPrior ? priorValue : "—"}
+                        {hasPrior ? n(priorValue) : "—"}
                     </span>
                 </div>
             </div>

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { ManagePortsModal } from "./ManagePortsModal";
 import { isAssetComplete } from "./assetCompleteness";
-import { t } from "../../i18n";
+import { t, n } from "../../i18n";
 
 export const NetworkSystemTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [selectedAsset, setSelectedAsset] = useState(null);
@@ -73,7 +73,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                                 <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={() => onToggleSelect(asset.id)}
                                        style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                             </td>
-                            <td>{index + 1}</td>
+                            <td>{n(index + 1)}</td>
                             <td>
                                 <span className="asset-name-cell">
                                     <AssetIcon icon={asset.resolved_icon} size={28} />
@@ -84,7 +84,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                             <td>{asset.os_name ? [asset.os_name, asset.os_version].filter(Boolean).join(" ") : "-"}</td>
                             <td>{asset.ip_address || "-"}</td>
                             <td>{asset.mac_address || "-"}</td>
-                            <td>{asset.port_count ?? "-"}</td>
+                            <td>{asset.port_count == null ? "-" : n(asset.port_count)}</td>
                             <td>
                                 <button className="btn-icon" onClick={() => handleManagePorts(asset)}>
                                     <i className="fa-solid fa-eye"></i>

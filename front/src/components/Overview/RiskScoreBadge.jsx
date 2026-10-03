@@ -1,6 +1,7 @@
 import React from "react";
 
 import { RISK_LEVEL_BADGES } from "../Risk/riskConstants";
+import { n } from "../../i18n";
 
 /**
  * A risk score tinted by the level it falls in.
@@ -26,7 +27,7 @@ export const RiskScoreBadge = ({ score, level }) => {
             className="ov-risk-score"
             style={colors ? { background: colors.bg, color: colors.fg } : undefined}
         >
-            {Math.round(score)}
+            {n(Math.round(score))}
         </span>
     );
 };

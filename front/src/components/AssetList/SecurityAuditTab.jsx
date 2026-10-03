@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
-import { t, uiLocale } from "../../i18n";
+import { t, uiLocale, n } from "../../i18n";
 
 const DescriptionModal = ({ description, assetName, onClose }) => (
     <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
@@ -94,7 +94,7 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                                     <input type="checkbox" checked={selectedIds.has(asset.id)} onChange={() => onToggleSelect(asset.id)}
                                            style={{ cursor: "pointer", accentColor: "#1e3a5f" }} />
                                 </td>
-                                <td>{index + 1}</td>
+                                <td>{n(index + 1)}</td>
                                 <td>
                                     <span className="asset-name-cell">
                                         <AssetIcon icon={asset.resolved_icon} size={28} />
@@ -105,7 +105,7 @@ export const SecurityAuditTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                                 <td>{asset.risk_level || "-"}</td>
                                 <td>{asset.last_audit_date ? new Date(asset.last_audit_date).toLocaleDateString(uiLocale()) : "-"}</td>
                                 <td>{asset.last_patch_date ? new Date(asset.last_patch_date).toLocaleDateString(uiLocale()) : "-"}</td>
-                                <td>{asset.asset_value ?? "-"}</td>
+                                <td>{asset.asset_value == null ? "-" : n(asset.asset_value)}</td>
                                 <td>
                                     {asset.description ? (
                                         <button

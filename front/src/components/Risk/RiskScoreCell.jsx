@@ -1,5 +1,6 @@
 import React from "react";
 import { RISK_LEVEL_BADGES } from "./riskConstants";
+import { n } from "../../i18n";
 
 /**
  * The score box that opens every table row.
@@ -26,7 +27,7 @@ export const RiskScoreCell = ({ score, level }) => {
                         : undefined
                 }
             >
-                {score === null || score === undefined ? "-" : Math.round(score)}
+                {score === null || score === undefined ? "-" : n(Math.round(score))}
             </div>
         </td>
     );
