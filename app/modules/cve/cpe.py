@@ -1,7 +1,9 @@
 """
 Which products (as CPE vendor/product/version) an asset runs.
 
-Two sources:
+Three sources:
+  * the software inventory (app/modules/software): what an audit found
+    installed, outside the distribution's own repositories;
   * inferred from the asset's own fields - the operating system / firmware
     named in os_name + os_version, and the product when manufacturer or model
     names one (rules below);
@@ -130,10 +132,26 @@ def infer_identities(asset) -> List[Identity]:
     return found
 
 
-def identities_for(asset, software_rows) -> List[Identity]:
-    """Inferred + hand-added, without duplicates."""
-    ids = infer_identities(asset)
+_APP_PRODUCTS = {(v, p) for _, v, p, _ in _APPS}
+
+
+def identities_for(asset, software_rows, inventory=(), full_inventory: bool = False) -> List[Identity]:
+    """Inferred + inventory + hand-added, without duplicates.
+
+    inventory: (vendor, product, version, label) from the software inventory.
+    full_inventory: the asset has a complete package list - then an
+    application guessed from its fields but not installed is dropped, and an
+    inferred product the inventory also has gives way to the inventory's."""
+    inv_pairs = {(v, p) for v, p, _, _ in inventory}
+    ids = [i for i in infer_identities(asset)
+           if (i.vendor, i.product) not in inv_pairs
+           and not (full_inventory and (i.vendor, i.product) in _APP_PRODUCTS)]
     seen = {(i.vendor, i.product, i.version) for i in ids}
+    for vendor, product, version, label in inventory:
+        key = (vendor, product, version)
+        if key not in seen:
+            seen.add(key)
+            ids.append(Identity(vendor, product, version, "inventory", label))
     for s in software_rows:
         key = (s.vendor, s.product, s.version)
         if key not in seen:

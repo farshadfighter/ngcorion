@@ -7,6 +7,11 @@ import { t as tr } from "../../i18n";
 
 const PAGE = 50;
 const pretty = (s) => (s || "").replace(/_/g, " ");
+const PRODUCT_SOURCE = {
+    manual: tr("added by hand"),
+    inventory: tr("installed, from the software inventory"),
+    inferred: tr("detected from the asset's fields"),
+};
 
 /** "By asset": what each asset runs, as matched against the CVE database,
  *  and adding the software its own fields do not describe. */
@@ -82,8 +87,8 @@ function AssetRow({ asset, canWrite, open, onToggle, onChanged }) {
                 <div className="cvx-chips">
                     {asset.products.length === 0 && <span className="cvx-muted cvx-small">{tr("No recognised product")}</span>}
                     {asset.products.map((p) => (
-                        <span key={`${p.vendor}:${p.product}:${p.version}`} className={`cvx-chip ${p.source === "manual" ? "is-manual" : ""}`}
-                              title={`${p.vendor}:${p.product} · ${p.source === "manual" ? "added by hand" : "detected from the asset's fields"}`}>
+                        <span key={`${p.vendor}:${p.product}:${p.version}`} className={`cvx-chip ${p.source === "manual" ? "is-manual" : ""} ${p.source === "inventory" ? "is-inventory" : ""}`}
+                              title={`${p.vendor}:${p.product} · ${PRODUCT_SOURCE[p.source] || PRODUCT_SOURCE.inferred}`}>
                             {p.label}
                             <span className="cvx-mono">{p.version || tr("version unknown")}</span>
                             {p.source === "manual" && canWrite && (
@@ -99,7 +104,7 @@ function AssetRow({ asset, canWrite, open, onToggle, onChanged }) {
                 </span>
                 {canWrite && (
                     <button type="button" className="cvx-btn cvx-btn-sm" onClick={onToggle} aria-expanded={open}>
-                        <Icon name="plus" size={14} /> {" "}{tr("Software")}
+                        <Icon name="plus" size={14} /> {" "}{tr("Add software")}
                     </button>
                 )}
             </div>

@@ -108,6 +108,8 @@ CISCO_TURBO_COMMANDS: List[str] = [
     # Crypto key / boot / version evidences
     "show crypto key mypubkey rsa",
     "show version | i Configuration register|System image file is",
+    # Software family and version, for the software inventory
+    "show version | i Software.*Version",
 
     # Secure boot / boot system
     "show run | i ^secure boot-(image|config)|^boot system",

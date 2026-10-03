@@ -21,6 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.models import AuditResult, AuditSession, Asset
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.software.collect import mongodb_item
+from app.modules.software.hooks import save_single
 
 from .mongo_client import MongoDBSSHClient, redact_sensitive_mongo_data
 from .rules import (
@@ -258,6 +260,9 @@ class MongoDBSHAuditService:
                 f"MongoDB audit completed for asset {asset_id} ({target_ip}): "
                 f"{summary['compliance_pct']}% compliance"
             )
+
+            # Version of the mongodb software for the software inventory (never fails the audit)
+            save_single(db, asset_id, "mongodb", mongodb_item(raw_dump), audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:

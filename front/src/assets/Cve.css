@@ -319,3 +319,5 @@
 .cvx-fixed { color: #166534; }
 .cvx-fixed .cvx-mono { font-size: 11.5px; color: #166534; }
 .cvx-drawer .cvx-summary-box { align-self: stretch; }
+.cvx-chip.is-inventory { background: #ecfdf3; box-shadow: inset 0 0 0 1px #bbe5cb; }
+.cvx-from-inv { color: #15803d; }

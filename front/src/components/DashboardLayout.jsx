@@ -22,6 +22,7 @@ import { formatLongDate } from "../utils/dates";
 const menuFromPath = (pathname) => {
     if (pathname.startsWith("/assets/requirements")) return "asset-requirement";
     if (pathname.startsWith("/assets/inventory"))    return "asset-list";
+    if (pathname.startsWith("/assets/software"))     return "software";
     if (pathname.startsWith("/assets/discovery"))     return "auto-discovery";
     if (pathname.startsWith("/assets/schedule-discovery")) return "schedule-discovery";
     if (pathname.startsWith("/assets"))               return "asset-management";
@@ -158,6 +159,7 @@ export const DashboardLayout = () => {
         "asset-management":    t("Asset Management"),
         "asset-requirement":   t("Asset Requirement"),
         "asset-list":          t("Asset List"),
+        "software":            t("Software"),
         "auto-discovery":      t("Auto Discovery"),
         "schedule-discovery":  t("Schedule Discovery"),
         "auditing":            t("Auditing"),
@@ -260,6 +262,13 @@ export const DashboardLayout = () => {
                                      onClick={() => navigate("/assets/inventory")} title={t("Asset List")}>
                                     {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
                                     {!isSidebarCollapsed && <span>{t("Asset List")}</span>}
+                                </div>
+                            )}
+                            {canReadAssetList && (
+                                <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "software" ? "active" : ""}`}
+                                     onClick={() => navigate("/assets/software")} title={t("Software")}>
+                                    {isSidebarCollapsed && <img src="/icons/asset-management.svg" alt="" className="nav-icon-img" />}
+                                    {!isSidebarCollapsed && <span>{t("Software")}</span>}
                                 </div>
                             )}
                             {canReadAutoDisc && (

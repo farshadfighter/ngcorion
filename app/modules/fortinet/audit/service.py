@@ -23,6 +23,8 @@ from sqlalchemy.orm import Session
 
 from app.models import Asset, AuditResult, AuditSession
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.software.collect import fortinet_item
+from app.modules.software.hooks import save_single
 
 from .rules import FortiGateControl, FortiGateRule, get_fortinet_controls
 from .ssh_client import (
@@ -1349,10 +1351,15 @@ class FortinetAuditService:
 
             findings: List[Dict[str, Any]] = []
             raw_dump: Dict[str, str] = {}
+            firmware_status = None
 
             with cls._timed_operation("SSH collection + evaluation"):
                 with FortiGateSSHClient(target_ip, ssh_username, ssh_password, port=ssh_port) as client:
                     client.connect()
+                    try:
+                        firmware_status = client.get_system_status()
+                    except Exception:
+                        firmware_status = None
                     vdom_enabled = client.is_vdom_enabled()
 
                     # Resolve the VDOMs whose per-VDOM controls we evaluate.
@@ -1420,6 +1427,9 @@ class FortinetAuditService:
                 "Audit done for asset %s (%s): %s%% (%s/%s) across %s vdom target(s)",
                 asset_id, target_ip, compliance_pct, passed, total, len(target_vdoms),
             )
+
+            # Version of the fortinet software for the software inventory (never fails the audit)
+            save_single(db, asset_id, "fortinet", fortinet_item(firmware_status), audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:

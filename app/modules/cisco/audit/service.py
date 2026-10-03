@@ -10,6 +10,8 @@ import time
 
 from app.models import AuditSession, AuditResult, Asset, User
 from app.models.audit import DeviceType, CheckStatus
+from app.modules.software.collect import cisco_item
+from app.modules.software.hooks import save_single
 from .ssh_client import CiscoSSHClient, redact_sensitive_data
 from .rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
 from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
@@ -281,6 +283,9 @@ class AuditService:
             db.refresh(session)
 
             logger.info(f"Audit completed for asset {asset_id} ({target_ip}): {report['summary']['compliance_pct']}% compliance")
+
+            # Version of the cisco software for the software inventory (never fails the audit)
+            save_single(db, asset_id, "cisco", cisco_item(raw_dump), audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:
@@ -662,6 +667,9 @@ class AuditService:
             db.refresh(session)
 
             logger.info(f"CIS Benchmark audit completed for asset {asset_id} ({target_ip}): {report['summary']['compliance_pct']}% compliance")
+
+            # Version of the cisco software for the software inventory (never fails the audit)
+            save_single(db, asset_id, "cisco", cisco_item(raw_dump), audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:

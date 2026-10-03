@@ -311,6 +311,20 @@ msg("High-risk asset is active without a recent audit");
 msg("This asset is high risk and active - audit it within 30 days.");
 msg("Last audit failed");
 msg("The most recent audit run failed to complete - investigate and re-run it.");
+// Software inventory: API errors, collection errors, alert catalogue (app/modules/software, alerts/events.py)
+msg("New software outside known repositories");
+msg("Software installed by hand or from a repository new to the asset");
+msg("The asset has no IP address");
+msg("The username or password was not accepted");
+msg("Could not connect to the asset");
+msg("Nothing could be collected");
+msg("The package list could not be read");
+msg("No installed package was found in the output");
+msg("No installed program was found in the output");
+msg("Mapping not found");
+msg("Unknown product");
+msg("Unknown choice");
+msg("Enter the vendor and product the way NVD writes them, e.g. vendor:product");
 // NGCorion self-backup: API errors, alert catalogue (app/modules/sysbackup, alerts/events.py)
 msg("NGCorion backup failed");
 msg("The last backup of NGCorion itself failed");

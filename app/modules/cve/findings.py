@@ -25,6 +25,28 @@ from app.modules.cve.cpe import identities_for
 SEVERITIES = ("critical", "high", "medium", "low")
 
 
+def _inventory(db: Session, asset_id: Optional[int] = None):
+    """Per asset: the inventory's NVD identities, and which assets have a
+    complete package list (app/modules/software)."""
+    from sqlalchemy import or_
+    from app.models.software import FULL_COLLECTORS, NVD_SOURCES, SoftwareCollection, SoftwareItem
+    from app.modules.software.identify import load_maps, nvd_identities
+    # Distribution packages are not matched in phase 1: leave them in the table.
+    q = db.query(SoftwareItem).filter(or_(SoftwareItem.source.in_(NVD_SOURCES), SoftwareItem.kind == "os"),
+                                      SoftwareItem.kind != "hotfix")
+    fq = db.query(SoftwareCollection.asset_id).filter(SoftwareCollection.status == "ok",
+                                                      SoftwareCollection.collector.in_(FULL_COLLECTORS))
+    if asset_id is not None:
+        q = q.filter(SoftwareItem.asset_id == asset_id)
+        fq = fq.filter(SoftwareCollection.asset_id == asset_id)
+    items = defaultdict(list)
+    for it in q.all():
+        items[it.asset_id].append(it)
+    maps = load_maps(db) if items else {}
+    return ({aid: nvd_identities(rows, maps) for aid, rows in items.items()},
+            {r[0] for r in fq.distinct().all()})
+
+
 def priority(entry: CveEntry) -> int:
     score = entry.cvss_score or 0
     epss = entry.epss or 0
@@ -58,7 +80,8 @@ def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
     for s in sq.all():
         software[s.asset_id].append(s)
 
-    per_asset = {a.id: identities_for(a, software[a.id]) for a in assets}
+    inventory, full = _inventory(db, asset_id)
+    per_asset = {a.id: identities_for(a, software[a.id], inventory.get(a.id, ()), a.id in full) for a in assets}
     pairs = {(i.vendor, i.product) for ids in per_asset.values() for i in ids}
 
     by_product = defaultdict(list)

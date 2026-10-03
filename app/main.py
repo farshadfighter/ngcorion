@@ -130,6 +130,7 @@ from app.modules.alerts.router import admin_router as notifications_router
 from app.modules.remediation.router import router as remediation_router
 from app.modules.reports.router import router as reports_router
 from app.modules.sysbackup.router import router as system_backup_router
+from app.modules.software.router import router as software_router
 from app.modules.sysbackup.maintenance import MaintenanceMiddleware
 from app.modules.scheduling.scheduler import start_job_scheduler, stop_job_scheduler
 
@@ -553,6 +554,7 @@ app.include_router(notifications_router)
 app.include_router(remediation_router)
 app.include_router(reports_router)
 app.include_router(system_backup_router)
+app.include_router(software_router)
 
 
 @app.get("/api/info", tags=["Meta"])

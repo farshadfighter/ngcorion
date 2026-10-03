@@ -19,6 +19,7 @@ import time
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
 from app.modules.linux.common.ssh_client import LinuxSSHClient, redact_sensitive_linux_data
+from app.modules.software.hooks import collect_linux as collect_linux_software, save_linux as save_linux_software
 from .audit_commands import get_linux_audit_commands
 from .rules import (
     build_linux_cis_rules,
@@ -258,6 +259,11 @@ class LinuxAuditService:
                 with LinuxAuditService._timed_operation(f"Collect {len(audit_commands)} commands"):
                     audit_data = ssh_client.collect_audit_data(audit_commands)
 
+                # 6b. Installed packages for the software inventory, on the
+                #     same connection. Never fails the audit.
+                with LinuxAuditService._timed_operation("Collect software inventory"):
+                    software_raw = collect_linux_software(ssh_client, distro_id)
+
             finally:
                 ssh_client.disconnect()
 
@@ -296,6 +302,8 @@ class LinuxAuditService:
                 f"Linux audit completed for asset {asset_id} ({target_ip}): "
                 f"{report['summary']['compliance_pct']}% compliance"
             )
+
+            save_linux_software(db, asset_id, software_raw, audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:

@@ -7,6 +7,7 @@ import { OverviewTab } from "./OverviewTab";
 import { NetworkSystemTab } from "./NetworkSystemTab";
 import { LocationOwnerTab } from "./LocationOwnerTab";
 import { SecurityAuditTab } from "./SecurityAuditTab";
+import { SoftwareTab } from "./SoftwareTab";
 import { Pagination } from "../Logs/Pagination.jsx";
 import { EditOverviewModal } from "./EditOverviewModal";
 import { EditNetworkModal } from "./EditNetworkModal";
@@ -293,6 +294,7 @@ export const AssetList = () => {
                     { id: "network",   label: tr("Network & System") },
                     { id: "location",  label: tr("Location & Owner") },
                     { id: "security",  label: tr("Security & Audit") },
+                    { id: "software",  label: tr("Software") },
                 ].map((tab) => (
                     <button key={tab.id} className={`asset-tab ${activeTab === tab.id ? "active" : ""}`}
                             onClick={() => setActiveTab(tab.id)}>
@@ -335,6 +337,7 @@ export const AssetList = () => {
             {!isLoading && activeTab === "network"   && <NetworkSystemTab {...tabProps} />}
             {!isLoading && activeTab === "location"  && <LocationOwnerTab {...tabProps} />}
             {!isLoading && activeTab === "security"  && <SecurityAuditTab {...tabProps} />}
+            {!isLoading && activeTab === "software"  && <SoftwareTab      {...tabProps} />}
 
             {!isLoading && (
                 <Pagination

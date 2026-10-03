@@ -505,6 +505,47 @@ def _restore_test_failed(db: Session, params: Dict, now: datetime, since: dateti
                     link=BACKUP_LINK)]
 
 
+# ---------------------------------------------------------------------------
+# Software inventory (app/modules/software)
+# ---------------------------------------------------------------------------
+
+def _software_unexpected(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Software that appeared on an asset from outside the repositories it
+    already used: installed by hand, or from a repository new to the asset."""
+    from app.models import Asset
+    from app.models.software import SoftwareChange, SoftwareCollection, SoftwareItem
+    rows = (db.query(SoftwareChange)
+            .filter(SoftwareChange.change == "added", SoftwareChange.at >= since,
+                    SoftwareChange.source.in_(("manual", "third_party"))).all())
+    by_collection: Dict[int, List] = {}
+    known_origins: Dict[tuple, set] = {}
+    for ch in rows:
+        if ch.source == "third_party":
+            seen = (ch.asset_id, ch.at)
+            if seen not in known_origins:
+                known_origins[seen] = {o for (o,) in db.query(SoftwareItem.origin).filter(
+                    SoftwareItem.asset_id == ch.asset_id, SoftwareItem.first_seen < ch.at,
+                    SoftwareItem.origin.isnot(None)).distinct()}
+            if ch.origin in known_origins[seen]:
+                continue
+        by_collection.setdefault(ch.collection_id, []).append(ch)
+    out = []
+    for cid, changes in by_collection.items():
+        col = db.get(SoftwareCollection, cid)
+        asset = db.get(Asset, changes[0].asset_id)
+        names = sorted({c.name for c in changes})
+        origins = sorted({c.origin for c in changes if c.source == "third_party" and c.origin})
+        detail = ", ".join(names[:8]) + (f" +{len(names) - 8}" if len(names) > 8 else "")
+        if origins:
+            detail += " - from " + ", ".join(origins[:3])
+        out.append(Problem(key=f"software:{cid}", title="New software outside known repositories",
+                           detail=detail, asset_id=changes[0].asset_id,
+                           source_label=_label(asset) if asset else None,
+                           link=f"/assets/software?asset={changes[0].asset_id}",
+                           owner_user_id=col.collected_by if col else None))
+    return out
+
+
 EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("noc.device_unreachable", "noc", "Device unreachable",
               "No SNMP answer for {polls} polls in a row", "state", 60, _device_unreachable,
@@ -576,9 +617,13 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("reports.schedule_failed", "reports", "Scheduled report failed",
               "A scheduled report could not be built or emailed", "state", 300, _report_schedule_failed,
               has_owner=True, roles=["admin"]),
+    EventType("software.unexpected", "software", "New software outside known repositories",
+              "Software installed by hand or from a repository new to the asset", "event", 300,
+              _software_unexpected, uses_assets=True, has_owner=True, severity="warning", channels=[],
+              enabled=False),
 )}
 
 MODULE_LABELS = {"noc": "NOC", "cve": "CVE", "audit": "Audit & Hardening", "backup": "Backup & Restore",
                  "remediation": "Remediation", "reports": "Reports",
-                 "system": "System"}
-MODULE_ORDER = ("noc", "cve", "audit", "backup", "remediation", "reports", "system")
+                 "software": "Software", "system": "System"}
+MODULE_ORDER = ("noc", "cve", "audit", "backup", "remediation", "reports", "software", "system")

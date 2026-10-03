@@ -17,6 +17,8 @@ import time
 from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
 from app.modules.linux.common.ssh_client import LinuxSSHClient, redact_sensitive_linux_data
+from app.modules.software.collect import apache_item
+from app.modules.software.hooks import save_single
 from .audit_commands import get_apache_audit_commands, get_distro_family
 from .rules import (
     build_apache_cis_rules,
@@ -285,6 +287,9 @@ class ApacheAuditService:
                 f"Apache audit completed for asset {asset_id} ({target_ip}): "
                 f"{report['summary']['compliance_pct']}% compliance"
             )
+
+            # Version of the apache software for the software inventory (never fails the audit)
+            save_single(db, asset_id, "apache", apache_item(audit_data.get("apache_version", "")), audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:

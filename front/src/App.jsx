@@ -51,6 +51,7 @@ const ReportsCatalog = lazy(() => import("./components/Reports/ReportsCatalog").
 const ReportBuilder = lazy(() => import("./components/Reports/ReportBuilder").then((m) => ({ default: m.ReportBuilder })));
 const ReportsArchive = lazy(() => import("./components/Reports/ReportsArchive").then((m) => ({ default: m.ReportsArchive })));
 const ReportSchedules = lazy(() => import("./components/Reports/ReportSchedules").then((m) => ({ default: m.ReportSchedules })));
+const SoftwarePage = lazy(() => import("./components/Software/SoftwarePage").then((m) => ({ default: m.SoftwarePage })));
 const SystemBackup = lazy(() => import("./components/SystemBackup/SystemBackup").then((m) => ({ default: m.SystemBackup })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
@@ -164,6 +165,11 @@ function AppContent() {
                         <Route path="/assets/inventory" element={
                             <RequirePermission module="asset_list" name="Asset List">
                                 <AssetListRoute />
+                            </RequirePermission>
+                        } />
+                        <Route path="/assets/software" element={
+                            <RequirePermission module="asset_list" name="Software">
+                                <SoftwarePage />
                             </RequirePermission>
                         } />
                         <Route path="/assets/discovery" element={

@@ -257,7 +257,8 @@ function FindingsTable({ rows, onOpen, emptyText, assetsWithoutProducts, onAsset
                                     <span><b>{f.asset_name}</b>{f.ip_address && <span className="cvx-sub cvx-mono">{f.ip_address}</span>}</span>
                                 </span>
                             </td>
-                            <td className="cvx-tight">{f.product}{f.identity_source === "manual" && <span className="cvx-sub">{tr("added by hand")}</span>}</td>
+                            <td className="cvx-tight"><bdi>{f.product}</bdi>{f.identity_source === "manual" && <span className="cvx-sub">{tr("added by hand")}</span>}
+                                {f.identity_source === "inventory" && <span className="cvx-sub cvx-from-inv">{tr("from the software inventory")}</span>}</td>
                             <td className="cvx-tight">
                                 <span className="cvx-mono">{f.installed || "?"}</span>
                                 {f.fixed_in

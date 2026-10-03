@@ -21,6 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.models import AuditResult, AuditSession, Asset
 from app.models.audit import CheckStatus, DeviceType
+from app.modules.software.collect import mssql_item
+from app.modules.software.hooks import save_single
 
 from .mssql_client import MSSQLClient, redact_sensitive_mssql_data
 from .rules import (
@@ -259,6 +261,9 @@ class MSSQLAuditService:
                 f"SQL Server audit completed for asset {asset_id} ({target_ip}): "
                 f"{summary['compliance_pct']}% compliance"
             )
+
+            # Version of the mssql software for the software inventory (never fails the audit)
+            save_single(db, asset_id, "mssql", mssql_item(raw_dump), audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:

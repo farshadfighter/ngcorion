@@ -314,3 +314,7 @@ from app.models.report import Report, ReportFile, ReportSchedule  # noqa: E402,F
 
 # NGCorion self-backup: archive catalog, destinations, restores (see app/models/system_backup.py)
 from app.models.system_backup import BackupDestination, SystemBackup, SystemRestore  # noqa: E402,F401
+
+# Software inventory: installed packages / programs per asset (see app/models/software.py)
+from app.models.software import (SoftwareChange, SoftwareCollection, SoftwareItem,  # noqa: E402,F401
+                                 SoftwareProductMap)

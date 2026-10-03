@@ -25,6 +25,7 @@ from app.core.database import ensure_session_usable
 from app.models import AuditResult, AuditSession, Asset
 from app.models.audit import CheckStatus, DeviceType
 from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
+from app.modules.software.hooks import collect_windows as collect_windows_software, save_windows as save_windows_software
 
 from .winrm_client import WindowsWinRMClient, redact_sensitive_windows_data
 from .rules import (
@@ -238,6 +239,9 @@ class WindowsAuditService:
                     verify_ssl=verify_ssl,
                 ) as client:
                     raw_dump = client.collect_audit_data()
+                    # Installed programs and updates for the software
+                    # inventory, on the same connection. Never fails the audit.
+                    software_raw = collect_windows_software(client)
 
             # 4. Redact sensitive values
             clean_dump = redact_sensitive_windows_data(raw_dump)
@@ -296,6 +300,8 @@ class WindowsAuditService:
                     f"{summary['error_checks']} checks — some data did not "
                     "collect; compliance is computed over the rest"
                 )
+
+            save_windows_software(db, asset_id, software_raw, audit_session_id=session.id, user_id=user_id)
 
             # Risk recalculation trigger
             try:
