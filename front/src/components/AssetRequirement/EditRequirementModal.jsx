@@ -142,7 +142,7 @@ export const EditRequirementModal = ({ kind, item, onClose }) => {
                                     value={form[f.name]}
                                     onChange={(v) => setField(f.name, v)}
                                     automatic={suggestIconFromName(form[f.suggestFrom])}
-                                    autoHint="from the name"
+                                    autoHint={t("from the name")}
                                 />
                             </div>
                         ) : (

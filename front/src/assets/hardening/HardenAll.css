@@ -253,6 +253,7 @@
 .ha-field input,
 .ha-field select {
     width: 100%;
+    box-sizing: border-box;  /* padding inside the 100%, or inputs overflow the modal */
     padding: 9px 12px;
     border: 1px solid #d1d5db;
     border-radius: 6px;

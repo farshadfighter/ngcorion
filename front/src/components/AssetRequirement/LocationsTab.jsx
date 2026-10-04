@@ -115,7 +115,7 @@ export const LocationsTab = () => {
                 <div className="search-wrapper">
                     <input
                         type="text"
-                        placeholder={t("Search asset types...")}
+                        placeholder={t("Search locations...")}
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}

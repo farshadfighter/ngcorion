@@ -173,7 +173,7 @@ export const EditOverviewModal = ({ asset, isOpen, onClose }) => {
                                         value={formData.icon}
                                         onChange={(icon) => setFormData((prev) => ({ ...prev, icon }))}
                                         automatic={automaticIcon || "other"}
-                                        autoHint="from the asset type"
+                                        autoHint={tr("from the asset type")}
                                     />
                                 </div>
                             </div>

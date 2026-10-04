@@ -39,7 +39,7 @@
     margin-bottom: 20px;
 }
 
-.search-input {
+.search-box-container .search-input {
     width: 340px !important;
     padding: 8px 14px;
     font-size: 13px;
@@ -49,11 +49,11 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.search-input:hover {
+.search-box-container .search-input:hover {
     border-color: #667085;
 }
 
-.search-input:focus {
+.search-box-container .search-input:focus {
     border-color: #0A234E;
     box-shadow: 0 0 0 3px rgba(10, 35, 78, 0.1);
     outline: none;
@@ -214,7 +214,7 @@
         overflow-x: auto;
     }
 
-    .search-input {
+    .search-box-container .search-input {
         width: 100%;
     }
 

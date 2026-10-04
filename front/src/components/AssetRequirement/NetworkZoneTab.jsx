@@ -237,7 +237,7 @@ export const NetworkZoneTab = () => {
                     <div className="search-wrapper">
                         <input
                             type="text"
-                            placeholder={t("Search asset types...")}
+                            placeholder={t("Search network zones...")}
                             className="search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}

@@ -359,7 +359,7 @@
     align-items: center;
 }
 
-.search-input {
+.search-wrapper .search-input {
     padding: 8px 14px;
     font-size: 13px;
     border: 1px solid #d0d5dd;
@@ -369,7 +369,7 @@
     transition: all 0.2s;
 }
 
-.search-input:focus {
+.search-wrapper .search-input:focus {
     border-color: #1e3a5f;
     box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }

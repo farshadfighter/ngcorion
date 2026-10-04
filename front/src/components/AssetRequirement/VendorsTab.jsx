@@ -113,7 +113,7 @@ export const VendorsTab = () => {
                     <input
                         type="text"
 
-                        placeholder={t("Search asset types...")}
+                        placeholder={t("Search vendors...")}
                         className="search-input"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}

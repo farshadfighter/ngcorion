@@ -9,3 +9,11 @@
 * {
     font-family: var(--font-sans);
 }
+
+/* Text fields size like select boxes and buttons already do: padding and
+   border inside the declared width, so `width: 100%` never overflows its
+   container (browsers default inputs and textareas to content-box). */
+input,
+textarea {
+    box-sizing: border-box;
+}

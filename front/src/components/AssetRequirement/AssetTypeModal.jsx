@@ -114,7 +114,7 @@ export const AssetTypeModal = ({ onClose }) => {
                             value={formData.icon}
                             onChange={(icon) => setFormData((prev) => ({ ...prev, icon }))}
                             automatic={suggestIconFromName(formData.type_name)}
-                            autoHint="from the name"
+                            autoHint={t("from the name")}
                         />
                     </div>
 

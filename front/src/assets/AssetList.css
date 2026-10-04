@@ -115,7 +115,7 @@
     pointer-events: none;
 }
 
-.search-input {
+.search-box .search-input {
     width: 100%;
     padding-block: 10px 10px; padding-inline: 40px 12px;
     border: 1px solid #e5e7eb;
@@ -125,13 +125,13 @@
     transition: all 0.2s;
 }
 
-.search-input:focus {
+.search-box .search-input:focus {
     outline: none;
     border-color: #1e3a5f;
     box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }
 
-.search-input::placeholder {
+.search-box .search-input::placeholder {
     color: #9ca3af;
 }
 

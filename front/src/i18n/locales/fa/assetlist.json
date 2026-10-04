@@ -65,6 +65,7 @@
   "Failed to load form options.": "بارگذاری گزینه‌های فرم ممکن نشد.",
   "Failed to save port": "ذخیرهٔ پورت انجام نشد",
   "Failed to update asset": "به‌روزرسانی دارایی انجام نشد",
+  "from the asset type": "از نوع دارایی",
   "Hosted on server": "میزبانی‌شده روی سرور",
   "Hostname": "نام میزبان",
   "How many physical ports this device has - drives the port count shown on Topology/Design.": "تعداد پورت‌های فیزیکی این دستگاه - تعداد پورت نمایش‌داده‌شده در توپولوژی/طراحی از همین گرفته می‌شود.",

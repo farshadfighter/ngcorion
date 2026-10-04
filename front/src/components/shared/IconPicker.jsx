@@ -8,10 +8,12 @@ import { t } from "../../i18n";
  *
  *   value       "" / null = automatic, otherwise an icon key
  *   automatic   the icon "Automatic" currently resolves to (shown on that tile)
- *   autoHint    where the automatic icon comes from, e.g. "from the type name"
+ *   autoHint    where the automatic icon comes from, already translated,
+ *               e.g. t("from the name")
  */
-export function IconPicker({ value, onChange, automatic = "other", autoHint, label = "Icon" }) {
+export function IconPicker({ value, onChange, automatic = "other", autoHint, label }) {
     const current = value || "";
+    label = label || t("Icon");
     return (
         <div className="icon-picker-wrap">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
