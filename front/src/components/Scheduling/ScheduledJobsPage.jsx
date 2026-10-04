@@ -71,9 +71,15 @@ const TECH_FIELDS = {
     dns_server: WINRM_FIELDS,
     dhcp_server: WINRM_FIELDS,
     iis: WINRM_FIELDS,
+    docker: [
+        { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
+        { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
+        { key: "sudo_password", label: tr("Sudo Password (optional)"), type: "password" },
+        { key: "ssh_port", label: tr("SSH Port"), type: "number", default: 22 },
+    ],
 };
 
-const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10" };
+const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 

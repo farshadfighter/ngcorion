@@ -10,8 +10,9 @@ def specs() -> List[ModuleSpec]:
     from app.modules.active_directory.spec import SPEC as active_directory
     from app.modules.dhcp_server.spec import SPEC as dhcp_server
     from app.modules.dns_server.spec import SPEC as dns_server
+    from app.modules.docker.spec import SPEC as docker
     from app.modules.iis.spec import SPEC as iis
-    return [active_directory, dns_server, dhcp_server, iis]
+    return [active_directory, dns_server, dhcp_server, iis, docker]
 
 
 def spec_map() -> Dict[str, ModuleSpec]:

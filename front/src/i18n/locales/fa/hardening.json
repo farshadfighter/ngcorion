@@ -63,6 +63,7 @@
   "Checks to harden": "بررسی‌های قابل مقاوم‌سازی",
   "Choose what to harden": "انتخاب موارد مقاوم‌سازی",
   "CIS {{cis_id}}": "CIS {{cis_id}}",
+  "CIS Docker Benchmark": "CIS Docker Benchmark",
   "CIS domain controller + domain checks": "CIS کنترلر دامنه + بررسی‌های دامنه",
   "CIS Microsoft IIS 10": "CIS Microsoft IIS 10",
   "CLI Commands": "دستورهای CLI",

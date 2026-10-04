@@ -5,15 +5,18 @@ import "../../assets/TargetPicker.css";
 import { t as tr, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
 import { tb } from "../../i18n/backendText";
-import { isWindowsRole } from "../Hardening/hardeningCredentials";
+import { isLinuxRole, isWindowsRole } from "../Hardening/hardeningCredentials";
 
 // How an asset's detected family relates to the chosen target. A domain
 // controller is still a Windows Server, and any Windows Server may carry a
-// Windows role the inventory does not show.
+// Windows role the inventory does not show; the same holds for a Docker host
+// and Linux.
 const familyRelation = (assetFamily, targetFamily) => {
     if (assetFamily === targetFamily) return "same";
     if (targetFamily === "windows" && isWindowsRole(assetFamily)) return "same";
     if (isWindowsRole(targetFamily) && (assetFamily === "windows" || isWindowsRole(assetFamily))) return "host";
+    if (targetFamily === "linux" && isLinuxRole(assetFamily)) return "same";
+    if (isLinuxRole(targetFamily) && assetFamily === "linux") return "host";
     return "other";
 };
 

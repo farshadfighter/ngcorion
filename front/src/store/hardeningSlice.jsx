@@ -135,6 +135,7 @@ export const getDeviceName = (deviceType) => {
         "dns_server":       "Windows DNS Server",
         "dhcp_server":      "Windows DHCP Server",
         "iis":              "IIS 10",
+        "docker":           "Docker",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -202,6 +203,14 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
                 ...(credentials.mongo_username && { mongo_username: credentials.mongo_username }),
                 ...(credentials.mongo_password && { mongo_password: credentials.mongo_password }),
                 ...(credentials.mongo_port     && { mongo_port:     credentials.mongo_port }),
+            };
+
+        case "docker":
+            return {
+                ssh_username: credentials.ssh_username,
+                ssh_password: credentials.ssh_password,
+                ssh_port:     credentials.ssh_port || 22,
+                ...(credentials.sudo_password && { sudo_password: credentials.sudo_password }),
             };
 
         case "mssql":

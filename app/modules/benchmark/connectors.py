@@ -17,6 +17,7 @@ connection and never stored.
 """
 
 import logging
+import shlex
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
@@ -112,7 +113,93 @@ class WinRMConnector(Connector):
             yield WinRMConnection(executor)
 
 
-CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector()}
+# ── SSH with sudo (Linux-hosted targets: Docker, ...) ─────────────────────
+
+SUDO_REJECTED = ("incorrect password", "a password is required", "is not in the sudoers",
+                 "may not run sudo", "not allowed to execute")
+
+
+def _first_line(text: str) -> str:
+    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+    return lines[-1][:300] if lines else ""
+
+
+class SSHConnection:
+    """One SSH session; every script runs as root (`sh -c` under sudo, or
+    directly when the login is root) so redirections and pipes are root's too."""
+
+    def __init__(self, runner, as_root: bool):
+        self._runner = runner
+        self._as_root = as_root
+        self.ip = runner.ip
+
+    def _exec(self, script: str, timeout: int = 120):
+        command = f"sh -c {shlex.quote(script)}"
+        if self._as_root:
+            return self._runner.run_with_status(command, timeout=timeout)
+        return self._runner.send_command_with_status(command, use_sudo=True, timeout=timeout)
+
+    def run(self, script: str) -> str:
+        try:
+            out, status = self._exec(script)
+        except Exception as exc:  # noqa: BLE001 - reported per section
+            return f"SSH_ERROR: {str(exc)[:300]}"
+        if status != 0:
+            return f"CMD_ERROR: exit {status}: {_first_line(out)}"
+        return out if out.strip() else "(no output)"
+
+    def execute(self, script: str) -> str:
+        out, status = self._exec(script)
+        if status != 0:
+            raise RuntimeError(_first_line(out) or f"command exited with status {status}")
+        return out if out.strip() else "(ok)"
+
+
+class SSHConnector(Connector):
+    key = "ssh"
+    request_fields = {
+        "ssh_username": (str, Field(..., min_length=1, description="SSH account with sudo, not stored")),
+        "ssh_password": (str, Field(..., min_length=1, description="Password, not stored")),
+        "ssh_port": (int, Field(22, ge=1, le=65535)),
+        "sudo_password": (Optional[str], Field(None, description="Leave empty to reuse the SSH password")),
+    }
+    credential_fields = [
+        CredentialField(name="ssh_username", label="SSH Username", type="text", required=True),
+        CredentialField(name="ssh_password", label="SSH Password", type="password", required=True),
+        CredentialField(name="ssh_port", label="SSH Port", type="number", default="22"),
+        CredentialField(name="sudo_password", label="Sudo Password", type="password",
+                        help="Leave empty to reuse the SSH password"),
+    ]
+    required_for_schedule = frozenset({"ssh_username", "ssh_password"})
+
+    def port_of(self, creds):
+        return int(creds.get("ssh_port") or 22)
+
+    @contextmanager
+    def open(self, ip: str, creds: Dict[str, Any]):
+        from app.core.ssh_exceptions import SSHAuthenticationError, SSHConnectionError
+        from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
+        runner = HardeningSSHRunner(
+            ip=ip, username=creds["ssh_username"], password=creds["ssh_password"],
+            sudo_password=creds.get("sudo_password") or None, port=self.port_of(creds), max_retries=2)
+        try:
+            runner.connect()
+        except SSHAuthenticationError as exc:
+            raise PermissionError(str(exc)) from exc
+        except SSHConnectionError as exc:
+            raise ConnectionError(str(exc)) from exc
+        try:
+            as_root = creds["ssh_username"] == "root"
+            if not as_root:
+                out, status = runner.send_command_with_status("true", use_sudo=True, timeout=30)
+                if status != 0 or any(m in out.lower() for m in SUDO_REJECTED):
+                    raise PermissionError(f"sudo was refused for {creds['ssh_username']}: {_first_line(out)}")
+            yield SSHConnection(runner, as_root)
+        finally:
+            runner.disconnect()
+
+
+CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector()}
 
 
 def get_connector(key: str) -> Connector:

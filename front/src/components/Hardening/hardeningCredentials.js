@@ -21,18 +21,24 @@ export const isApache   = (dt) => dt === "apache";
 export const isMongo    = (dt) => dt === "mongodb";
 export const isMssql    = (dt) => dt === "mssql" || dt?.startsWith("mssql-");
 export const isWindows  = (dt) => dt === "windows" || dt?.startsWith("windows-");
-export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
+export const isDocker   = (dt) => dt === "docker";
+export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || isDocker(dt);
 
 // Windows Server roles audited as their own target (app/core/target_catalog.py).
 // They connect the way Windows Server does: WinRM with a Windows account.
 export const WINDOWS_ROLES = ["active_directory", "dns_server", "dhcp_server", "iis"];
-export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10" };
-// What each role target is audited against (shown as "Benchmark" on result pages).
+// Platforms that run on a Linux host and are audited as their own target over SSH.
+export const LINUX_ROLES = ["docker"];
+export const isLinuxRole = (dt) => LINUX_ROLES.includes(dt);
+// Names and benchmarks of the benchmark-engine targets (Windows roles and Linux platforms).
+export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker" };
+// What each target is audited against (shown as "Benchmark" on result pages).
 export const roleBenchmark = (dt) => ({
     active_directory: t("CIS domain controller + domain checks"),
     dns_server: t("DISA STIG - Windows DNS Server"),
     dhcp_server: t("Microsoft guidance - Windows DHCP Server"),
     iis: t("CIS Microsoft IIS 10"),
+    docker: t("CIS Docker Benchmark"),
 })[dt];
 export const isWindowsRole = (dt) => WINDOWS_ROLES.includes(dt);
 export const usesWinRM     = (dt) => isWindows(dt) || isWindowsRole(dt);
@@ -45,7 +51,7 @@ export const defaultCredentialsState = {
     ssh_port:         "22",
     ssh_secret:       "",       // Cisco only
     vdom:             "",       // Fortinet only
-    sudo_password:    "",       // Linux / Apache / MongoDB
+    sudo_password:    "",       // Linux / Apache / MongoDB / Docker
     // MongoDB extra
     mongo_username:   "",
     mongo_password:   "",

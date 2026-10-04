@@ -182,6 +182,9 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
             return <span className="result-badge result-running">{t("Running")}</span>;
         } else if (normalizedStatus === "ERROR") {
             return <span className="result-badge result-error">{t("Error")}</span>;
+        } else if (normalizedStatus === "NOT_APPLICABLE" || normalizedStatus === "SKIPPED") {
+            // Manual controls: not scored, reviewed by hand.
+            return <span className="result-badge result-unknown">{t("Manual")}</span>;
         } else {
             return <span className="result-badge result-unknown">{titleCase(status) === "-" ? t("Unknown") : titleCase(status)}</span>;
         }

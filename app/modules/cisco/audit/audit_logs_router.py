@@ -54,6 +54,7 @@ _AUDIT_FEED_MODULES = {
     "active_directory_cis",
     "dns_server_stig",
     "dhcp_server_audit",
+    "docker_cis",
     "iis_cis",
 }
 

@@ -19,7 +19,7 @@ export const sortNewestFirst = (sessions) =>
     [...sessions].sort((a, b) => String(b.started_at || "").localeCompare(String(a.started_at || "")));
 
 // Every family with its own /api/audit/{family}/sessions listing.
-export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server", "dhcp_server", "iis"];
+export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server", "dhcp_server", "iis", "docker"];
 
 // =====================
 // Thunks

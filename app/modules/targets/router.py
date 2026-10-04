@@ -14,7 +14,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.core.target_catalog import CATEGORIES, MODES, targets_for
 from app.models import Asset, User
-from app.utils.device_classification import WINDOWS_ROLE_FAMILIES, infer_device_family, infer_device_variant
+from app.utils.device_classification import (
+    LINUX_ROLE_FAMILIES, WINDOWS_ROLE_FAMILIES, infer_device_family, infer_device_variant,
+)
 
 router = APIRouter(prefix="/api/targets", tags=["Targets"])
 
@@ -70,6 +72,9 @@ def get_catalog(
         # A domain controller (or another Windows role) is a Windows Server too.
         if family in WINDOWS_ROLE_FAMILIES:
             families["windows"] += 1
+        # A Docker host is a Linux server too.
+        if family in LINUX_ROLE_FAMILIES:
+            families["linux"] += 1
         variants[infer_device_variant(asset)] += 1
 
     targets = targets_for(mode)

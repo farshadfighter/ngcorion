@@ -86,6 +86,8 @@ TARGETS: Tuple[Target, ...] = (
            device_type="apache", keywords=("httpd", "web server")),
     Target("iis", "IIS 10", "Microsoft web server", "web", "iis", "web", "IS", "WinRM",
            device_type="iis", keywords=("iis", "internet information services", "asp.net", "web server", "microsoft")),
+    Target("docker", "Docker", "Container host · CIS", "platforms", "docker", "container", "DK", "SSH",
+           device_type="docker", keywords=("docker", "container", "containers", "moby", "engine")),
     Target("active_directory", "Active Directory", "Domain controllers", "services", "active_directory",
            "directory", "AD", "WinRM", device_type="active_directory",
            keywords=("ad", "ad ds", "domain controller", "dc", "kerberos", "ldap", "microsoft")),
