@@ -25,6 +25,7 @@ def _backup(conn) -> str:
 
 
 def collect_software(conn) -> Optional[dict]:
+    """The SFOS firmware version as a software item for the inventory, or None."""
     m = re.search(r"APIVersion=(\S+)", conn.run(C.COMMANDS[C.VERSION]))
     if not m or sfos_version(m.group(1)) == "unknown":
         return None

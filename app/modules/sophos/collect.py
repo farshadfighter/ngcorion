@@ -31,6 +31,9 @@ _USER_KEEP = ("Username", "Name", "UserType", "Profile", "Status", "Group")
 
 
 def redact_element(el: ET.Element) -> ET.Element:
+    """Replace the text of every secret-looking element (passwords, keys, PSKs) with "***" before the
+    dump is stored.
+    """
     for node in el.iter():
         if _SECRET_TAG.search(node.tag) and (node.text or "").strip():
             node.text = "***"
@@ -39,6 +42,7 @@ def redact_element(el: ET.Element) -> ET.Element:
 
 
 def slim_user(el: ET.Element) -> ET.Element:
+    """A user record reduced to the fields the rules need (no password hashes or personal data)."""
     out = ET.Element("User")
     for tag in _USER_KEEP:
         child = el.find(tag)
@@ -48,6 +52,7 @@ def slim_user(el: ET.Element) -> ET.Element:
 
 
 def entity_text(entity: str, elements) -> str:
+    """The dump section of one entity: its objects as redacted XML, or the "no records" marker."""
     if not elements:
         return NO_RECORDS
     parts = []
@@ -68,6 +73,9 @@ def redact(dump: str) -> str:
 
 
 def collect(conn) -> str:
+    """Collect the Sophos audit dump: the API version first (if the API does not answer, only that),
+    then every audited entity.
+    """
     out = {VERSION: conn.run(COMMANDS[VERSION])}
     if out[VERSION].startswith(("API_ERROR", "CMD_ERROR")):
         return assemble(out)

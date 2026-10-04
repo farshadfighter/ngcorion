@@ -24,10 +24,15 @@ from app.core import tls_pins
 logger = logging.getLogger(__name__)
 
 API_PATH = "/webconsole/APIController"
+# Entity names are interpolated into the request XML, so only plain element
+# names are accepted (they come from the module's own command and template
+# lists, never from a user, but the client does not rely on that).
+_ENTITY = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,63}$")
+_OPERATIONS = ("update", "add")
 
 
 class SophosAPIError(RuntimeError):
-    pass
+    """The firewall refused a request or answered with something unexpected."""
 
 
 def parse_xml(text: str) -> ET.Element:
@@ -43,6 +48,7 @@ def parse_xml(text: str) -> ET.Element:
 
 
 def to_text(el: ET.Element) -> str:
+    """Serialise an element (values escaped by ElementTree)."""
     return ET.tostring(el, encoding="unicode")
 
 
@@ -56,6 +62,10 @@ def sfos_version(api_version: str) -> str:
 
 
 class SophosAPI:
+    """Client of one firewall's XML API. Every request logs in again (the API is stateless);
+    username and password are XML-escaped into the Login block.
+    """
+
     def __init__(self, host: str, port: int, username: str, password: str, timeout: int = 60):
         self.host, self.port, self.timeout = host, int(port), timeout
         self._login = (f"<Login><Username>{escape(username)}</Username>"
@@ -98,6 +108,11 @@ class SophosAPI:
         return self.api_version
 
     def get(self, entity: str) -> List[ET.Element]:
+        """All objects of an entity (e.g. "Zone", "AdminSettings"); an empty list when the firewall
+        has none ("records Zero"), SophosAPIError for any other refusal.
+        """
+        if not _ENTITY.match(entity or ""):
+            raise SophosAPIError(f"invalid entity name {entity[:60]!r}")
         root = self._post(f"<Get><{entity}/></Get>")
         found = root.findall(entity)
         if len(found) == 1:
@@ -110,6 +125,11 @@ class SophosAPI:
         return found
 
     def set(self, element: ET.Element, operation: str = "update") -> str:
+        """Send an object back (operation "update" or "add"); SophosAPIError unless the firewall
+        answers with a 2xx status code. Returns the status text.
+        """
+        if operation not in _OPERATIONS:
+            raise SophosAPIError(f"invalid operation {operation[:30]!r}")
         name = element.tag
         root = self._post(f'<Set operation="{operation}">{to_text(element)}</Set>')
         answer = root.find(name)
@@ -143,6 +163,7 @@ def child_path(el: ET.Element, path: str, create: bool = True) -> Optional[ET.El
 
 
 def split_assignment(text: str) -> Tuple[str, str]:
+    """Split a "Path/To/Element=value" statement into (path, value)."""
     if "=" not in text:
         raise SophosAPIError(f"expected path=value, got {text!r}")
     path, value = text.split("=", 1)

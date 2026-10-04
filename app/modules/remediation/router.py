@@ -103,6 +103,9 @@ def list_items(
     user: User = Depends(_read),
     db: Session = Depends(get_db),
 ):
+    """Remediation items of one view (open, overdue, mine, ...), filtered by source, severity, asset
+    and text, with paging.
+    """
     now = datetime.utcnow()
     query = db.query(RemediationItem)
     active = RemediationItem.status.in_(ITEM_ACTIVE)
@@ -144,6 +147,9 @@ def list_items(
 
 @router.get("/items/{item_id}")
 def get_item(item_id: int, user: User = Depends(_read), db: Session = Depends(get_db)):
+    """One remediation item with its history, its risk acceptances and the longest acceptance its
+    severity allows.
+    """
     now = datetime.utcnow()
     item = db.get(RemediationItem, item_id)
     if item is None:
@@ -171,6 +177,8 @@ def get_item(item_id: int, user: User = Depends(_read), db: Session = Depends(ge
 
 
 class ItemUpdate(BaseModel):
+    """Body of changing an item: owner, deadline, status and a note; omitted fields stay as they are.
+    """
     owner_id: Optional[int] = None
     due_date: Optional[date] = None          # null resets the deadline to the SLA
     status: Optional[Literal["open", "in_progress", "pending_verification"]] = None
@@ -179,6 +187,8 @@ class ItemUpdate(BaseModel):
 
 @router.patch("/items/{item_id}")
 def update_item(item_id: int, data: ItemUpdate, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Assign, reschedule or move an item through its workflow; each change is recorded in its history.
+    """
     item = db.get(RemediationItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Finding not found")
@@ -212,6 +222,8 @@ def list_users(_user: User = Depends(_read), db: Session = Depends(get_db)):
 # ── risk acceptance ───────────────────────────────────────────────────────
 
 class AcceptanceRequest(BaseModel):
+    """Body of asking to accept the risk of a finding (this item, or the same finding on every asset).
+    """
     scope: Literal["item", "ref"] = "item"
     justification: str = Field(..., min_length=10, max_length=4000)
     compensating_control: Optional[str] = Field(None, max_length=4000)
@@ -221,6 +233,7 @@ class AcceptanceRequest(BaseModel):
 @router.post("/items/{item_id}/acceptances", status_code=201)
 def request_acceptance(item_id: int, data: AcceptanceRequest, user: User = Depends(_write),
                        db: Session = Depends(get_db)):
+    """Ask for a risk acceptance; it takes effect only once someone else approves it."""
     item = db.get(RemediationItem, item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Finding not found")
@@ -244,6 +257,7 @@ def list_acceptances(
     user: User = Depends(_read),
     db: Session = Depends(get_db),
 ):
+    """The risk-acceptance register (pending, active, expiring, ended, rejected)."""
     now = datetime.utcnow()
     q = db.query(RiskAcceptance)
     approved_live = (RiskAcceptance.status == ACCEPT_APPROVED) & (RiskAcceptance.expires_at > now)
@@ -285,6 +299,7 @@ def list_acceptances(
 
 
 class Decision(BaseModel):
+    """Body of approving or rejecting: an optional note."""
     note: Optional[str] = Field(None, max_length=2000)
 
 
@@ -297,6 +312,9 @@ def _get_acceptance(db: Session, acceptance_id: int) -> RiskAcceptance:
 
 @router.post("/acceptances/{acceptance_id}/approve")
 def approve(acceptance_id: int, data: Optional[Decision] = None, user: User = Depends(_read), db: Session = Depends(get_db)):
+    """Approve a pending risk acceptance. The service checks the role (admin or manager, admin only for
+    critical or exploited findings) and refuses the requester's own request.
+    """
     acc = _get_acceptance(db, acceptance_id)
     try:
         service.decide_acceptance(db, acc, user, True, data.note if data else None)
@@ -309,6 +327,7 @@ def approve(acceptance_id: int, data: Optional[Decision] = None, user: User = De
 
 @router.post("/acceptances/{acceptance_id}/reject")
 def reject(acceptance_id: int, data: Decision, user: User = Depends(_read), db: Session = Depends(get_db)):
+    """Reject a pending risk acceptance (same rules as approving)."""
     acc = _get_acceptance(db, acceptance_id)
     try:
         service.decide_acceptance(db, acc, user, False, data.note)
@@ -321,6 +340,7 @@ def reject(acceptance_id: int, data: Decision, user: User = Depends(_read), db: 
 
 @router.post("/acceptances/{acceptance_id}/withdraw")
 def withdraw(acceptance_id: int, user: User = Depends(_read), db: Session = Depends(get_db)):
+    """Cancel a pending request or end an active acceptance; the finding is open again."""
     acc = _get_acceptance(db, acceptance_id)
     try:
         service.end_acceptance(db, acc, user)
@@ -335,6 +355,7 @@ def withdraw(acceptance_id: int, user: User = Depends(_read), db: Session = Depe
 # ── deadlines ─────────────────────────────────────────────────────────────
 
 class Days(BaseModel):
+    """Days per severity class (KEV, critical, high, medium, low)."""
     kev: int = Field(..., ge=1, le=3650)
     critical: int = Field(..., ge=1, le=3650)
     high: int = Field(..., ge=1, le=3650)
@@ -343,6 +364,7 @@ class Days(BaseModel):
 
 
 class RemediationSettings(BaseModel):
+    """Fix deadlines and the longest allowed risk acceptance, per severity."""
     sla: Days
     accept_max: Days
 
@@ -355,6 +377,7 @@ def get_settings(_user: User = Depends(_read), db: Session = Depends(get_db)):
 @router.put("/settings")
 def put_settings(data: RemediationSettings, user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                  db: Session = Depends(get_db)):
+    """Save the deadlines and acceptance limits (system configuration permission)."""
     saved = service.save_settings(db, data.model_dump(), user)
     log_action(db, user_id=user.id, username=user.username, action="remediation.settings.update",
                module=MODULE, detail=f"Deadlines {saved['sla']}, longest acceptance {saved['accept_max']}")

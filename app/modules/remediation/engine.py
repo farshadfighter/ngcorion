@@ -17,6 +17,9 @@ SYNC_SECONDS = 300
 
 
 def run_sync() -> None:
+    """One synchronisation of remediation items with the current findings, in its own session; errors
+    are logged.
+    """
     db = SessionLocal()
     try:
         stats = service.sync(db)
@@ -30,6 +33,9 @@ def run_sync() -> None:
 
 
 class RemediationSync:
+    """Background loop that keeps remediation items in step with findings every SYNC_SECONDS (runs in
+    the leader worker only).
+    """
     def __init__(self, interval: int = SYNC_SECONDS):
         self.interval = interval
         self._task: Optional[asyncio.Task] = None
@@ -49,6 +55,7 @@ class RemediationSync:
             self._task = asyncio.create_task(self._loop(), name="remediation-sync")
 
     async def stop(self) -> None:
+        """Stop the loop, waiting up to 30 seconds for a running synchronisation."""
         if self._task is None:
             return
         self._stop.set()
@@ -63,6 +70,7 @@ _worker: Optional[RemediationSync] = None
 
 
 def start_remediation_sync() -> None:
+    """Start the synchronisation loop (once per process)."""
     global _worker
     if _worker is None:
         _worker = RemediationSync()

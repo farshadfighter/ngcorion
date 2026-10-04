@@ -49,6 +49,7 @@ SLA_KEYS = ("kev",) + SEVERITIES
 
 
 class RemediationError(Exception):
+    """A remediation rule was broken; carries the HTTP status to answer with."""
     def __init__(self, message: str, status_code: int = 400):
         super().__init__(message)
         self.message = message
@@ -60,6 +61,7 @@ class RemediationError(Exception):
 # ──────────────────────────────────────────────────────────────────────────
 
 def get_settings(db: Session) -> Dict[str, Dict[str, int]]:
+    """The deadlines and acceptance limits, stored values over the defaults."""
     row = db.query(SystemConfigSetting).filter(SystemConfigSetting.section == SECTION_REMEDIATION).first()
     stored = (row.config_json or {}) if row else {}
     sla = {k: int((stored.get("sla") or {}).get(k, v)) for k, v in DEFAULT_SLA.items()}
@@ -68,6 +70,7 @@ def get_settings(db: Session) -> Dict[str, Dict[str, int]]:
 
 
 def save_settings(db: Session, payload: Dict[str, Dict[str, int]], user: User) -> Dict:
+    """Store the deadlines and acceptance limits."""
     row = db.query(SystemConfigSetting).filter(SystemConfigSetting.section == SECTION_REMEDIATION).first()
     if row is None:
         row = SystemConfigSetting(section=SECTION_REMEDIATION)
@@ -96,6 +99,9 @@ def accept_max_days(severity: str, kev: bool, settings: Dict) -> int:
 
 @dataclass
 class Found:
+    """A current finding (CVE, failed audit check or architecture finding) on one asset, as the
+    synchronisation sees it.
+    """
     key: str
     source: str
     ref: str
@@ -395,6 +401,9 @@ def audit_ref(check_number: Optional[str], vdom: Optional[str]) -> str:
 
 def update_item(db: Session, item: RemediationItem, user: User, *, owner_id=..., due_at=..., status=None,
                 note: Optional[str] = None) -> RemediationItem:
+    """Change owner, deadline or status of an item and write a history event for each change; a note
+    alone is recorded as a comment.
+    """
     now = datetime.utcnow()
     if owner_id is not ...:
         if owner_id is not None and db.get(User, owner_id) is None:
@@ -440,6 +449,9 @@ def _covering_pending(db: Session, item: RemediationItem, scope: str) -> Optiona
 
 def request_acceptance(db: Session, item: RemediationItem, user: User, *, scope: str, justification: str,
                        compensating_control: Optional[str], expires_at: datetime) -> RiskAcceptance:
+    """Record a pending risk-acceptance request; the expiry may not exceed the limit for the finding's
+    severity.
+    """
     now = datetime.utcnow()
     if item.status == ITEM_RESOLVED:
         raise RemediationError("This finding is already resolved")
@@ -484,6 +496,9 @@ def can_decide(user: User, acc: RiskAcceptance) -> Optional[str]:
 
 def decide_acceptance(db: Session, acc: RiskAcceptance, user: User, approve: bool,
                       note: Optional[str] = None) -> RiskAcceptance:
+    """Approve or reject a pending request (see can_decide); an approval marks the item(s) accepted
+    until the expiry.
+    """
     if acc.status != ACCEPT_PENDING:
         raise RemediationError("This request has already been decided")
     reason = can_decide(user, acc)
@@ -514,6 +529,8 @@ def can_withdraw(user: User, acc: RiskAcceptance) -> bool:
 
 
 def end_acceptance(db: Session, acc: RiskAcceptance, user: User) -> RiskAcceptance:
+    """Withdraw a pending or active acceptance (see can_withdraw); accepted items become open again.
+    """
     if acc.status not in (ACCEPT_APPROVED, ACCEPT_PENDING):
         raise RemediationError("Only a pending or active risk acceptance can be withdrawn")
     if not can_withdraw(user, acc):
@@ -541,6 +558,9 @@ def _items_of(db: Session, acc: RiskAcceptance) -> List[RemediationItem]:
 # ──────────────────────────────────────────────────────────────────────────
 
 def summary(db: Session, now: Optional[datetime] = None) -> Dict:
+    """Counts for the remediation page: open, overdue, due within 7 days, accepted, fixes in the last
+    90 days with on-time rate and mean time to remediate, acceptances, and counts by status and source.
+    """
     now = now or datetime.utcnow()
     q = db.query(RemediationItem)
     active = q.filter(RemediationItem.status.in_(ITEM_ACTIVE))

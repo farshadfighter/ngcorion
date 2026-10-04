@@ -49,12 +49,18 @@ def _parse(words: List[str]) -> List[Tuple[str, str]]:
 
 
 class SophosConnection:
+    """The connection object the benchmark engine drives for Sophos: run() executes read commands and
+    SFOS: edit statements over the XML API.
+    """
     def __init__(self, api: SophosAPI):
         self.api = api
         self.ip = api.host
 
     # ── engine contract ──
     def run(self, script: str) -> str:
+        """Execute one command or statement; errors come back as "API_ERROR: ..." text so the engine
+        reports them per section or statement instead of aborting.
+        """
         try:
             return self._do(script)
         except Exception as exc:  # noqa: BLE001 - reported per section / per statement
@@ -111,6 +117,8 @@ class SophosConnection:
         return f"{entity}: {self.api.set(payload)}"
 
     def zone(self, selector: str, assignments: List[Tuple[str, str]]) -> str:
+        """Apply the assignments to the zones matching "type=..." or "name=..." and send each back.
+        """
         key, _, value = selector.partition("=")
         zones = [z for z in self.api.get("Zone")
                  if (key == "type" and (z.findtext("Type") or "").upper() == value.upper())
@@ -126,6 +134,9 @@ class SophosConnection:
         return f"zones changed: {', '.join(changed) or 'none needed'}"
 
     def each(self, entity: str, assignments: List[Tuple[str, str]]) -> str:
+        """Apply the assignments to every object of an entity that has the paths (missing paths are not
+        created) and send the changed ones back.
+        """
         changed = []
         for obj in self.api.get(entity):
             el = strip_transaction(obj)
@@ -148,6 +159,9 @@ class SophosConnection:
         return f"logging turned on for: {', '.join(changed) or 'none needed'}"
 
     def check(self, rule_id: str) -> str:
+        """Verify a fix: collect a fresh dump and evaluate one rule on it; prints PASS or FAIL with the
+        evidence.
+        """
         from app.modules.benchmark.rules import evaluate
         from . import rules as R
         from .collect import collect

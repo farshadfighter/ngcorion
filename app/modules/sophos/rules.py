@@ -35,6 +35,7 @@ def _parse(text: str) -> ET.Element:
 
 
 def items(d, entity) -> List[ET.Element]:
+    """The objects of an entity in the dump (empty when the section is missing or holds no XML)."""
     text = section(d, entity)
     if not text or not text.lstrip().startswith("<"):
         return []
@@ -47,6 +48,7 @@ def one(d, entity) -> Optional[ET.Element]:
 
 
 def val(el: Optional[ET.Element], path: str, default: str = "") -> str:
+    """The stripped text at `path` under an element, or `default`."""
     if el is None:
         return default
     v = el.findtext(path)
@@ -91,6 +93,7 @@ def rules_list(d) -> List[ET.Element]:
 
 
 def policy(rule: ET.Element) -> Optional[ET.Element]:
+    """The NetworkPolicy or UserPolicy part of a firewall rule."""
     for tag in ("NetworkPolicy", "UserPolicy"):
         if rule.find(tag) is not None:
             return rule.find(tag)
@@ -130,6 +133,9 @@ def _wan_service_rule(rules, sec, title, severity, tags, remediation, level="L1"
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """All Sophos Firewall benchmark rules (vendor hardening guide), grouped like the guide:
+    administrative access, authentication, logging and time, firewall rules, protections, updates.
+    """
     r: List[BenchmarkRule] = []
     A = ["AdminSettings"]
 
@@ -145,6 +151,7 @@ def build_rules() -> List[BenchmarkRule]:
                       "Administration > Device access: clear the services the WAN zone does not need.")
 
     def acl_exceptions(d):
+        """Local-service ACL exceptions that accept HTTPS or SSH from the WAN zone."""
         out = []
         for acl in items(d, "LocalServiceACL"):
             services = [s.text for s in acl.iter("Service") if s.text]
@@ -176,6 +183,7 @@ def build_rules() -> List[BenchmarkRule]:
           "Login security: block login after 5 unsuccessful attempts.", A)
 
     def complexity(d):
+        """What is missing from the admin password-complexity settings."""
         pc = one(d, "AdminSettings")
         base = "PasswordComplexitySettings/PasswordComplexity/"
         length = val(pc, base + "MinimumPasswordLengthValue")
@@ -252,6 +260,7 @@ def build_rules() -> List[BenchmarkRule]:
           "Log settings: enable secure connection (TLS) on each syslog server.", ["SyslogServers"], level="L2")
 
     def notification(d):
+        """The e-mail addresses notifications go to."""
         n = one(d, "Notification")
         if n is None:
             return ""
@@ -267,6 +276,7 @@ def build_rules() -> List[BenchmarkRule]:
           "Rules and policies: enable Log firewall traffic on every allow rule.", ["FirewallRule"])
 
     def ntp(d):
+        """The NTP settings as "tag=value" text."""
         t = one(d, "Time")
         if t is None:
             return ""
@@ -277,6 +287,7 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 4 Network protection ────────────────────────────────────────────────
     def any_any(d):
+        """Names of enabled allow rules with no zone, network or service restriction at all."""
         out = []
         for x in rules_list(d):
             p = policy(x)
@@ -290,6 +301,7 @@ def build_rules() -> List[BenchmarkRule]:
           "Narrow or remove allow rules without zones, networks and services.", ["FirewallRule"])
 
     def inbound_without_ips(d):
+        """Names of enabled allow rules from the WAN zone without an intrusion-prevention policy."""
         out = []
         for x in rules_list(d):
             p = policy(x)
@@ -340,6 +352,7 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when the API did not answer (nothing can be judged)."""
     v = section(dump, "VERSION")
     if not v.startswith("APIVersion="):
         raise ValueError(f"The Sophos Firewall API did not answer: {v[:200] or 'no answer'}")
