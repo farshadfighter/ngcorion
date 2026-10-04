@@ -79,6 +79,35 @@ REQUIRED_PARAMS = {
 }
 
 
+# Benchmark modules (app/modules/benchmark) share one service; each takes its
+# connector's credential fields plus profile/job_name.
+def _benchmark_dispatch(key: str) -> Callable:
+    def dispatch(db: Session, asset_id: int, user_id: int, params: dict):
+        from app.modules.benchmark.audit_service import BenchmarkAuditService
+        from app.modules.benchmark.connectors import get_connector
+        from app.modules.benchmark.registry import spec_for
+        spec = spec_for(key)
+        names = get_connector(spec.connector).request_fields.keys()
+        creds = {n: params.get(n) for n in names}
+        return BenchmarkAuditService(spec).execute(
+            db, asset_id, user_id, creds, profile=params.get("profile") or "FULL",
+            job_name=params.get("job_name"))
+    return dispatch
+
+
+def _register_benchmark_modules() -> None:
+    global SUPPORTED_TECHNOLOGIES
+    from app.modules.benchmark.connectors import get_connector
+    from app.modules.benchmark.registry import specs
+    for spec in specs():
+        _DISPATCH_TABLE[spec.key] = _benchmark_dispatch(spec.key)
+        REQUIRED_PARAMS[spec.key] = set(get_connector(spec.connector).required_for_schedule)
+    SUPPORTED_TECHNOLOGIES = tuple(dict.fromkeys(SUPPORTED_TECHNOLOGIES + tuple(s.key for s in specs())))
+
+
+_register_benchmark_modules()
+
+
 def run_audit(technology: str, db: Session, asset_id: int, user_id: int, params: dict):
     """Execute the audit for `technology`. Raises KeyError for an unknown
     technology - callers validate against SUPPORTED_TECHNOLOGIES first."""

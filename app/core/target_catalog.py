@@ -84,6 +84,9 @@ TARGETS: Tuple[Target, ...] = (
            "SSH + MongoDB login", device_type="mongodb", keywords=("mongo", "nosql")),
     Target("apache", "Apache", "HTTP server", "web", "apache", "web", "AP", "SSH",
            device_type="apache", keywords=("httpd", "web server")),
+    Target("active_directory", "Active Directory", "Domain controllers", "services", "active_directory",
+           "directory", "AD", "WinRM", device_type="active_directory",
+           keywords=("ad", "ad ds", "domain controller", "dc", "kerberos", "ldap", "microsoft")),
 )
 
 ALL_DEVICE_TYPES = frozenset(dt for t in TARGETS for dt in t.device_types)

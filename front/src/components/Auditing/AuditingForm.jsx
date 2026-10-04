@@ -10,7 +10,7 @@ import {
     isFortinet,
     isMongo,
     isMssql,
-    isWindows,
+    usesWinRM,
     needsSudo,
 } from "../Hardening/hardeningCredentials";
 import { t } from "../../i18n";
@@ -110,7 +110,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         if (!formData.job_name || formData.job_name.trim().length < 2)
             newErrors.job_name = t("Job name must be at least 2 characters");
 
-        if (isWindows(dt)) {
+        if (usesWinRM(dt)) {
             if (!formData.windows_username?.trim()) newErrors.windows_username = t("Username is required");
             if (!formData.windows_password?.trim()) newErrors.windows_password = t("Password is required");
         } else if (isMssql(dt)) {
@@ -229,7 +229,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                     {/* ══════════════════════════════════════════════════════
                         SSH credentials
                     ══════════════════════════════════════════════════════ */}
-                    {!isWindows(dt) && !isMssql(dt) && (
+                    {!usesWinRM(dt) && !isMssql(dt) && (
                         <>
                             <div className="form-group">
                                 <label>
@@ -469,7 +469,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                     {/* ══════════════════════════════════════════════════════
                         Windows credentials (WinRM)
                     ══════════════════════════════════════════════════════ */}
-                    {isWindows(dt) && (
+                    {usesWinRM(dt) && (
                         <>
                             <div className="form-group">
                                 <label>

@@ -209,7 +209,8 @@ def get_hardening_log_stats(
         ).count()
 
     by_device_type = {}
-    for device_type in ["cisco", "fortinet", "linux", "apache", "windows", "mssql", "mongodb"]:
+    from app.modules.benchmark.registry import keys as benchmark_keys
+    for device_type in ["cisco", "fortinet", "linux", "apache", "windows", "mssql", "mongodb", *benchmark_keys()]:
         count = db.query(HardeningLog).filter(
             HardeningLog.device_type == device_type
         ).count()

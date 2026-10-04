@@ -71,10 +71,23 @@ LOADERS = {"cisco": _cisco, "linux": _linux, "windows": _windows, "apache": _apa
            "mssql": _mssql, "fortinet": _fortinet}
 
 
+def _benchmark_loader(key: str):
+    """Benchmark modules (app/modules/benchmark/registry.py) carry their own catalog."""
+    from app.modules.benchmark.registry import spec_for
+    spec = spec_for(key)
+    if spec is None:
+        return None
+
+    def load(out):
+        for r in spec.all_rules():
+            _add(out, r, r.id)
+    return load
+
+
 @lru_cache(maxsize=None)
 def catalog(device_type: str) -> Dict[str, Text]:
     out: Dict[str, Text] = {}
-    loader = LOADERS.get(device_type)
+    loader = LOADERS.get(device_type) or _benchmark_loader(device_type)
     if loader:
         try:
             loader(out)

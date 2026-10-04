@@ -419,6 +419,48 @@ def _build_registry() -> Dict[str, FamilySpec]:
     }
 
 
+def _benchmark_family(module) -> FamilySpec:
+    """Adapter for a benchmark module (app/modules/benchmark)."""
+    from app.modules.benchmark.connectors import get_connector
+    from app.modules.benchmark.hardening_service import BenchmarkHardeningService
+
+    ts = module.templates
+    connector = get_connector(module.connector)
+    service = BenchmarkHardeningService(module)
+
+    def execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        creds: Dict[str, Any] = {}
+        for name in connector.request_fields:
+            value = ctx.cred(name)
+            if name.endswith("_port") and value is not None:
+                value = ctx.int_cred(name, 0) or None
+            creds[name] = value
+        creds = {k: v for k, v in creds.items() if v is not None}
+        return service.batch_execute_selected(
+            db=ctx.db, session_id=ctx.session.id, asset_id=ctx.asset.id, credentials=creds,
+            checks=ctx.checks, create_backup=ctx.create_backup, user_id=ctx.user_id)
+
+    return FamilySpec(
+        key=module.key,
+        label=module.label,
+        device_type=module.device_type,
+        has_template=lambda cn: ts.get(cn) is not None,
+        categorize=ts.categorize,
+        aggregate=ts.aggregate,
+        execute=execute,
+        normalize_rows=_normalize_success_rows,
+        credential_fields=list(connector.credential_fields),
+        capabilities=PlanCapabilities(backup=module.backup is not None),
+    )
+
+
+def _with_benchmark_modules(registry: Dict[str, FamilySpec]) -> Dict[str, FamilySpec]:
+    from app.modules.benchmark.registry import specs
+    for module in specs():
+        registry[module.key] = _benchmark_family(module)
+    return registry
+
+
 _REGISTRY: Optional[Dict[str, FamilySpec]] = None
 
 
@@ -426,7 +468,7 @@ def get_family(device_type: DeviceType) -> FamilySpec:
     """Resolve the adapter for an audit session's device type."""
     global _REGISTRY
     if _REGISTRY is None:
-        _REGISTRY = _build_registry()
+        _REGISTRY = _with_benchmark_modules(_build_registry())
 
     key = device_type.value if isinstance(device_type, DeviceType) else str(device_type)
     spec = _REGISTRY.get(key)

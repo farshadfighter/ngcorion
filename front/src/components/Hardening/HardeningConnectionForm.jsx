@@ -8,7 +8,7 @@ import {
     isFortinet,
     isMongo,
     isMssql,
-    isWindows,
+    usesWinRM,
     needsSudo,
 } from "./hardeningCredentials";
 import { t } from "../../i18n";
@@ -115,7 +115,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             errs.job_name = t("Job name must be at least 2 characters");
         }
 
-        if (isWindows(dt)) {
+        if (usesWinRM(dt)) {
             if (!formData.windows_username?.trim()) errs.windows_username = t("Username is required");
             if (!formData.windows_password?.trim()) errs.windows_password = t("Password is required");
         } else if (isMssql(dt)) {
@@ -142,7 +142,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
 
         let credentials = {};
 
-        if (isWindows(dt)) {
+        if (usesWinRM(dt)) {
             credentials = {
                 windows_username: formData.windows_username,
                 windows_password: formData.windows_password,
@@ -246,7 +246,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                     {/* ══════════════════════════════════════════════════════
                         SSH credentials (Linux, Cisco, Fortinet, Apache, MongoDB)
                     ══════════════════════════════════════════════════════ */}
-                    {!isWindows(dt) && !isMssql(dt) && (
+                    {!usesWinRM(dt) && !isMssql(dt) && (
                         <>
                             <div className="form-group">
                                 <label>
@@ -472,7 +472,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                     {/* ══════════════════════════════════════════════════════
                         Windows credentials (WinRM)
                     ══════════════════════════════════════════════════════ */}
-                    {isWindows(dt) && (
+                    {usesWinRM(dt) && (
                         <>
                             <div className="form-group">
                                 <label>

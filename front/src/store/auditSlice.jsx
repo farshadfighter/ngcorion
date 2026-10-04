@@ -15,6 +15,9 @@ const getDeviceApiPath = (deviceType) => {
     return deviceType;
 };
 
+// Every family with its own /api/audit/{family}/sessions listing.
+export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory"];
+
 // =====================
 // Thunks
 // =====================
@@ -72,7 +75,7 @@ export const fetchAuditSessions = createAsyncThunk(
     "audit/fetchSessions",
     async ({ limit = 50, offset = 0 } = {}, { rejectWithValue }) => {
         try {
-            const families = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows"];
+            const families = AUDIT_FAMILIES;
             const results = await Promise.allSettled(
                 families.map((family) =>
                     api.get(`/api/audit/${family}/sessions`, { params: { limit, offset } })
@@ -139,7 +142,7 @@ export const clearAllAuditSessions = createAsyncThunk(
 
             // هر session رو با session_id و device_type پیدا میکنیم
             // چون endpoint به device family نیاز داره
-            const families = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows"];
+            const families = AUDIT_FAMILIES;
 
             // تلاش میکنیم DELETE /api/audit/{family}/sessions/clear رو صدا بزنیم
             // اگه backend این endpoint رو نداره، به صورت موازی همه رو یکی‌یکی حذف میکنیم

@@ -180,6 +180,9 @@
 
 .wizard-overlay {
     background: rgba(0, 0, 0, 0.5);
+    /* Above the audit result view (.result-modal-overlay, 2000): its
+       "Harden" button opens this wizard, which otherwise opened behind it. */
+    z-index: 2100;
 }
 
 .wizard-modal {

@@ -4,6 +4,18 @@ import AssetIcon from "./AssetIcon.jsx";
 import "../../assets/TargetPicker.css";
 import { t as tr, n } from "../../i18n";
 import { tx } from "../../i18n/tx";
+import { tb } from "../../i18n/backendText";
+import { isWindowsRole } from "../Hardening/hardeningCredentials";
+
+// How an asset's detected family relates to the chosen target. A domain
+// controller is still a Windows Server, and any Windows Server may carry a
+// Windows role the inventory does not show.
+const familyRelation = (assetFamily, targetFamily) => {
+    if (assetFamily === targetFamily) return "same";
+    if (targetFamily === "windows" && isWindowsRole(assetFamily)) return "same";
+    if (isWindowsRole(targetFamily) && assetFamily === "windows") return "host";
+    return "other";
+};
 
 /**
  * "What do you want to audit / harden, and on which asset?"
@@ -95,7 +107,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
         [targets]
     );
     const view = category || (inventoryTargets.length ? INVENTORY : ALL);
-    const categoryLabel = (id) => catalog?.categories.find((c) => c.id === id)?.label || id;
+    const categoryLabel = (id) => tb(catalog?.categories.find((c) => c.id === id)?.label) || id;
 
     const q = query.trim().toLowerCase();
     const shown = useMemo(() => {
@@ -103,8 +115,8 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
             // Word-start match: "sql" finds SQL Server, not MongoDB's "nosql".
             const terms = q.split(/\s+/);
             return targets.filter((t) => {
-                const words = [t.label, t.description, categoryLabel(t.category), ...t.keywords]
-                    .join(" ").toLowerCase().split(/[^a-z0-9.]+/);
+                const words = [t.label, t.description, tb(t.description), categoryLabel(t.category), ...t.keywords]
+                    .join(" ").toLowerCase().split(/[^\p{L}\p{N}.]+/u);
                 return terms.every((term) => words.some((w) => w.startsWith(term)));
             });
         }
@@ -119,7 +131,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
         { id: INVENTORY, label: tr("In my inventory"), color: "#16a34a", count: inventoryTargets.length },
         { id: ALL, label: tr("All targets"), color: "#94a3b8", count: targets.length },
         ...catalog.categories.map((c, i) => ({
-            id: c.id, label: c.label, color: CATEGORY_COLORS[c.id] || "#6b7280",
+            id: c.id, label: tb(c.label), color: CATEGORY_COLORS[c.id] || "#6b7280",
             count: targets.filter((t) => t.category === c.id).length, divider: i === 0,
         })),
     ] : [];
@@ -140,8 +152,13 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
     const matched = [];
     const other = [];
     visibleAssets.forEach((a) => {
-        if (!selected || a.inferred_device_type !== selected.family) {
+        const relation = selected ? familyRelation(a.inferred_device_type, selected.family) : "other";
+        if (relation === "other") {
             other.push({ asset: a, state: "other", text: tr("Type not detected") });
+            return;
+        }
+        if (relation === "host") {
+            matched.push({ asset: a, state: "unknown", text: tr("Windows Server - role not detected") });
             return;
         }
         if (!selected.versions.length) {
@@ -268,7 +285,7 @@ export function TargetPicker({ mode = "audit", deviceType, assetId, onChange, er
                                                        monogram={t.monogram} title={t.label} />
                                             <span className="tp-card-text">
                                                 <span className="tp-card-name">{t.label}</span>
-                                                <span className="tp-card-sub">{t.description}</span>
+                                                <span className="tp-card-sub">{tb(t.description)}</span>
                                                 <span className={`tp-card-count ${t.asset_count ? "has" : ""}`}>
                                                     {t.asset_count ? tr("{{asset_count}} in inventory", { asset_count: t.asset_count }) : tr("No assets yet")}
                                                 </span>

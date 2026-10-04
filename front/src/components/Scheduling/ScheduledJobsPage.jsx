@@ -60,7 +60,14 @@ const TECH_FIELDS = {
         { key: "windows_password", label: tr("Windows Password"), type: "password", required: true },
         { key: "winrm_port", label: tr("WinRM Port"), type: "number", default: 5985 },
     ],
+    active_directory: [
+        { key: "windows_username", label: tr("Windows Username"), type: "text", required: true },
+        { key: "windows_password", label: tr("Windows Password"), type: "password", required: true },
+        { key: "winrm_port", label: tr("WinRM Port"), type: "number", default: 5985 },
+    ],
 };
+
+const TECH_LABELS = { active_directory: "Active Directory" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 
@@ -286,7 +293,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                         onChange={(e) => setForm({ ...form, technology: e.target.value, audit_params: {} })}
                                     >
                                         {Object.keys(TECH_FIELDS).map((t) => (
-                                            <option key={t} value={t}>{t}</option>
+                                            <option key={t} value={t}>{TECH_LABELS[t] || t}</option>
                                         ))}
                                     </select>
                                 </div>

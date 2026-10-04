@@ -25,7 +25,13 @@ logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
-FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "windows", "linux")
+FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "windows", "linux")
+
+# Windows Server roles audited as their own target. A host carrying one of
+# these roles is still a Windows Server: it stays in the Windows target's
+# asset list (and gets its Windows version), and Windows hosts stay in the
+# role's list, since the role may run on any of them.
+WINDOWS_ROLE_FAMILIES = {"active_directory"}
 
 # Families that are network/OS "hosts" a service can run on top of.
 _HOST_FAMILIES = {"linux", "windows"}
@@ -43,6 +49,7 @@ _FAMILY_KEYWORDS = [
     ("mongodb", ("mongodb", "mongo")),
     ("mssql", ("mssql", "sql server", "sqlserver", "microsoft sql")),
     ("apache", ("apache", "httpd")),
+    ("active_directory", ("active directory", "activedirectory", "domain controller")),
     ("windows", ("windows",)),
     ("linux", ("linux", "ubuntu", "red hat", "redhat", "rhel", "rocky",
                "centos", "debian", "fedora", "suse", "almalinux")),
@@ -121,6 +128,10 @@ def family_matches(inferred: Optional[str], requested: Optional[str]) -> bool:
         return True
     if requested in _SERVICE_FAMILIES and inferred in _HOST_FAMILIES:
         return True
+    if requested in WINDOWS_ROLE_FAMILIES and inferred == "windows":
+        return True
+    if requested == "windows" and inferred in WINDOWS_ROLE_FAMILIES:
+        return True
     return False
 
 
@@ -158,7 +169,7 @@ def infer_device_variant(asset) -> Optional[str]:
                 m = version_re.search(os_version) or version_re.search(os_name)
                 return f"linux-{distro}-{m.group(1)}" if m else None
         return None
-    if family == "windows":
+    if family == "windows" or family in WINDOWS_ROLE_FAMILIES:
         m = _WINDOWS_YEAR.search(f"{os_name} {os_version}") or _WINDOWS_YEAR.search(text)
         return f"windows-{m.group(1)}" if m else None
     if family == "mssql":

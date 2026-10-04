@@ -487,6 +487,15 @@ app.include_router(windows_audit_router)
 # Windows Server Hardening routes
 app.include_router(windows_hardening_router)
 
+# Benchmark modules (Active Directory, ...): audit + hardening routes, from
+# app/modules/benchmark/registry.py
+from app.modules.benchmark.registry import specs as _benchmark_specs  # noqa: E402
+from app.modules.benchmark.routers import build_audit_router, build_hardening_router  # noqa: E402
+
+for _spec in _benchmark_specs():
+    app.include_router(build_audit_router(_spec))
+    app.include_router(build_hardening_router(_spec))
+
 # Schema-driven Hardening routes (unified)
 app.include_router(unified_hardening_router)
 

@@ -276,6 +276,10 @@ class TestBackupCapability:
             MSSQLHardeningService, WindowsHardeningService,
         ):
             monkeypatch.setattr(svc, "batch_execute_selected", staticmethod(_fake_service))
+        # Benchmark modules (Active Directory, ...) share one service class.
+        from app.modules.benchmark.hardening_service import BenchmarkHardeningService
+        monkeypatch.setattr(BenchmarkHardeningService, "batch_execute_selected",
+                            lambda self, **kwargs: _fake_service(**kwargs))
 
         class _Asset:
             id = 7

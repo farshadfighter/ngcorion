@@ -1,0 +1,160 @@
+===SECTION:OS_VERSION===
+{"Caption":"Microsoft Windows Server 2022 Standard","Version":"10.0.20348","BuildNumber":"20348","OSArchitecture":"64-bit"}
+===SECTION:DOMAIN_ROLE===
+{"DomainRole":5,"Domain":"corp.example.com","PartOfDomain":true}
+===SECTION:SECURITY_POLICY===
+[Unicode]
+Unicode=yes
+[System Access]
+MinimumPasswordAge = 1
+MaximumPasswordAge = 42
+MinimumPasswordLength = 7
+PasswordComplexity = 1
+PasswordHistorySize = 24
+LockoutBadCount = 0
+RequireLogonToChangePassword = 0
+ForceLogoffWhenHourExpire = 0
+NewAdministratorName = "Administrator"
+NewGuestName = "Guest"
+ClearTextPassword = 0
+LSAAnonymousNameLookup = 0
+EnableAdminAccount = 1
+EnableGuestAccount = 0
+[Version]
+signature="$CHICAGO$"
+Revision=1
+===SECTION:USER_RIGHTS===
+SeNetworkLogonRight = *S-1-1-0,*S-1-5-11,*S-1-5-32-544,*S-1-5-32-554,*S-1-5-9
+SeMachineAccountPrivilege = *S-1-5-11
+SeIncreaseQuotaPrivilege = *S-1-5-19,*S-1-5-20,*S-1-5-32-544
+SeInteractiveLogonRight = *S-1-5-32-548,*S-1-5-32-550,*S-1-5-32-549,*S-1-5-32-551,*S-1-5-32-544,*S-1-5-9
+SeBackupPrivilege = *S-1-5-32-549,*S-1-5-32-551,*S-1-5-32-544
+SeSystemtimePrivilege = *S-1-5-32-549,*S-1-5-19,*S-1-5-32-544
+SeCreatePagefilePrivilege = *S-1-5-32-544
+SeDebugPrivilege = *S-1-5-32-544
+SeRemoteShutdownPrivilege = *S-1-5-32-549,*S-1-5-32-544
+SeAuditPrivilege = *S-1-5-19,*S-1-5-20
+SeEnableDelegationPrivilege = *S-1-5-32-544
+SeLoadDriverPrivilege = *S-1-5-32-550,*S-1-5-32-544
+SeBatchLogonRight = *S-1-5-32-559,*S-1-5-32-551,*S-1-5-32-544
+SeSecurityPrivilege = *S-1-5-32-544
+SeSystemEnvironmentPrivilege = *S-1-5-32-544
+SeProfileSingleProcessPrivilege = *S-1-5-32-544
+SeSystemProfilePrivilege = *S-1-5-32-544,*S-1-5-80-3139157870-2983391045-3678747466-658725712-1809340420
+SeAssignPrimaryTokenPrivilege = *S-1-5-19,*S-1-5-20
+SeRestorePrivilege = *S-1-5-32-549,*S-1-5-32-551,*S-1-5-32-544
+SeShutdownPrivilege = *S-1-5-32-550,*S-1-5-32-549,*S-1-5-32-551,*S-1-5-32-544
+SeTakeOwnershipPrivilege = *S-1-5-32-544
+SeChangeNotifyPrivilege = *S-1-1-0,*S-1-5-19,*S-1-5-20,*S-1-5-32-544,*S-1-5-11,*S-1-5-32-554
+SeImpersonatePrivilege = *S-1-5-19,*S-1-5-20,*S-1-5-32-544,*S-1-5-6
+SeCreateGlobalPrivilege = *S-1-5-19,*S-1-5-20,*S-1-5-32-544,*S-1-5-6
+SeIncreaseBasePriorityPrivilege = *S-1-5-32-544,*S-1-5-90-0
+SeTimeZonePrivilege = *S-1-5-19,*S-1-5-32-544,*S-1-5-32-549
+SeCreateSymbolicLinkPrivilege = *S-1-5-32-544
+SeManageVolumePrivilege = *S-1-5-32-544
+SeDelegateSessionUserImpersonatePrivilege = *S-1-5-32-544
+===SECTION:AUDIT_POLICY===
+Machine Name,Policy Target,Subcategory,Subcategory GUID,Inclusion Setting,Exclusion Setting
+DC01,System,Credential Validation,{0CCE9200-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Kerberos Authentication Service,{0CCE9201-69AE-11D9-BED3-505054503030},Success and Failure,
+DC01,System,Kerberos Service Ticket Operations,{0CCE9202-69AE-11D9-BED3-505054503030},Success and Failure,
+DC01,System,Application Group Management,{0CCE9203-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Computer Account Management,{0CCE9204-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Distribution Group Management,{0CCE9205-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Other Account Management Events,{0CCE9206-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Security Group Management,{0CCE9207-69AE-11D9-BED3-505054503030},Success,
+DC01,System,User Account Management,{0CCE9208-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Plug and Play Events,{0CCE9209-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Process Creation,{0CCE920A-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Directory Service Access,{0CCE920B-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Directory Service Changes,{0CCE920C-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Account Lockout,{0CCE920D-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Group Membership,{0CCE920E-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Logoff,{0CCE920F-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Logon,{0CCE9210-69AE-11D9-BED3-505054503030},Success and Failure,
+DC01,System,Other Logon/Logoff Events,{0CCE9211-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Special Logon,{0CCE9212-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Detailed File Share,{0CCE9213-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,File Share,{0CCE9214-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Other Object Access Events,{0CCE9215-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Removable Storage,{0CCE9216-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Audit Policy Change,{0CCE9217-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Authentication Policy Change,{0CCE9218-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Authorization Policy Change,{0CCE9219-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,MPSSVC Rule-Level Policy Change,{0CCE921A-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Other Policy Change Events,{0CCE921B-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Sensitive Privilege Use,{0CCE921C-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,IPsec Driver,{0CCE921D-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,Other System Events,{0CCE921E-69AE-11D9-BED3-505054503030},Success and Failure,
+DC01,System,Security State Change,{0CCE921F-69AE-11D9-BED3-505054503030},Success,
+DC01,System,Security System Extension,{0CCE9220-69AE-11D9-BED3-505054503030},No Auditing,
+DC01,System,System Integrity,{0CCE9221-69AE-11D9-BED3-505054503030},Success and Failure,
+===SECTION:REGISTRY===
+{
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SAM": "{\"RelaxMinimumPasswordLengthLimits\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa": "{\"LimitBlankPasswordUse\":1,\"CrashOnAuditFail\":0,\"RestrictAnonymousSAM\":1,\"RestrictAnonymous\":1,\"EveryoneIncludesAnonymous\":0,\"ForceGuest\":0,\"NoLMHash\":1,\"LmCompatibilityLevel\":5}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Print\\Providers\\LanMan Print Services\\Servers": "{\"AddPrinterDrivers\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Parameters": "{\"ldapserverintegrity\":2}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Netlogon\\Parameters": "{\"RefusePasswordChange\":0,\"SealSecureChannel\":1,\"SignSecureChannel\":1,\"MaximumPasswordAge\":30,\"RequireStrongKey\":1,\"AuditNTLMInDomain\":7}",
+  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System": "{\"DontDisplayLastUserName\":1,\"InactivityTimeoutSecs\":900,\"ConsentPromptBehaviorAdmin\":2,\"ConsentPromptBehaviorUser\":0,\"ValidateAdminCodeSignatures\":0,\"PromptOnSecureDesktop\":1,\"LocalAccountTokenFilterPolicy\":0}",
+  "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon": "{\"PasswordExpiryWarning\":14,\"ForceUnlockLogon\":1,\"ScreenSaverGracePeriod\":\"5\"}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanmanWorkstation\\Parameters": "{\"RequireSecuritySignature\":1,\"EnableSecuritySignature\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanManServer\\Parameters": "{\"AutoDisconnect\":15,\"RequireSecuritySignature\":1,\"EnableForcedLogOff\":1,\"SMBServerNameHardeningLevel\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0": "{\"allownullsessionfallback\":0,\"NTLMMinClientSec\":537395200,\"NTLMMinServerSec\":537395200,\"RestrictSendingNTLMTraffic\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\pku2u": "{\"AllowOnlineID\":0}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Kernel": "{\"ObCaseInsensitive\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager": "{\"ProtectionMode\":1,\"SafeDllSearchMode\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Personalization": "{\"NoLockScreenCamera\":1,\"NoLockScreenSlideshow\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\mrxsmb10": "{\"Start\":4}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\kernel": "{\"DisableExceptionChainValidation\":0}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\WDigest": "{\"UseLogonCredential\":0}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters": "{\"DisableIPSourceRouting\":2}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters": "{\"DisableIPSourceRouting\":2}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\DNSClient": "{\"EnableMulticast\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\LanmanWorkstation": "{\"AllowInsecureGuestAuth\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Network Connections": "{\"NC_AllowNetBridge_NLA\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers": "{\"RegisterSpoolerRemoteRpcEndPoint\":2}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Printers\\PointAndPrint": "{\"RestrictDriverInstallationToAdministrators\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CredentialsDelegation": "{\"AllowProtectedCreds\":1}",
+  "HKLM:\\SYSTEM\\CurrentControlSet\\Policies\\EarlyLaunch": "{\"DriverLoadPolicy\":3}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Group Policy\\{35378EAC-683F-11D2-A89A-00C04FBBCFA2}": "{\"NoGPOListChanges\":0}",
+  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\Explorer": "{\"NoAutorun\":1,\"PreXPSP2ShellProtocolBehavior\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent": "{\"DisableConsumerAccountStateContent\":1,\"DisableWindowsConsumerFeatures\":1}",
+  "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\CredUI": "{\"EnumerateAdministrators\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection": "{\"AllowTelemetry\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Application": "{\"MaxSize\":32768}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Security": "{\"Retention\":\"0\"}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\Setup": "{\"Retention\":\"0\",\"MaxSize\":32768}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\EventLog\\System": "{\"MaxSize\":32768}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Attachment Manager": "{\"ScanWithAntiVirus\":3}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Explorer": "{\"NoHeapTerminationOnCorruption\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Spynet": "{\"LocalSettingOverrideSpynetReporting\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Windows Defender Exploit Guard\\ASR": "{\"ExploitGuard_ASR_Rules\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\MpEngine": "{\"EnableFileHashComputation\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection": "{\"DisableIOAVProtection\":0,\"DisableBehaviorMonitoring\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows Defender": "{\"PUAProtection\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services": "{\"DisablePasswordSaving\":1,\"fDisableCdm\":1,\"fEncryptRPCTraffic\":1,\"SecurityLayer\":2,\"MinEncryptionLevel\":3}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Internet Explorer\\Feeds": "{\"DisableEnclosureDownload\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System": "{\"EnableSmartScreen\":1,\"EnableMPRNotifications\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\WindowsInkWorkspace": "{\"AllowWindowsInkWorkspace\":1}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Installer": "{\"AlwaysInstallElevated\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Client": "{\"AllowBasic\":0,\"AllowUnencryptedTraffic\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WinRM\\Service": "{\"AllowBasic\":0,\"AllowUnencryptedTraffic\":0}",
+  "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU": "{\"NoAutoUpdate\":0,\"ScheduledInstallDay\":0}"
+}
+===SECTION:FIREWALL_PROFILES===
+[{"Name":"Domain","Enabled":"True","DefaultInboundAction":"NotConfigured","DefaultOutboundAction":"NotConfigured","NotifyOnListen":"False","AllowLocalFirewallRules":"NotConfigured","AllowLocalIPsecRules":"NotConfigured","LogAllowed":"False","LogBlocked":"False","LogMaxSizeKilobytes":"4096","LogFileName":"%systemroot%\\system32\\LogFiles\\Firewall\\pfirewall.log"},{"Name":"Private","Enabled":"True","DefaultInboundAction":"NotConfigured","DefaultOutboundAction":"NotConfigured","NotifyOnListen":"False","AllowLocalFirewallRules":"NotConfigured","AllowLocalIPsecRules":"NotConfigured","LogAllowed":"False","LogBlocked":"False","LogMaxSizeKilobytes":"4096","LogFileName":"%systemroot%\\system32\\LogFiles\\Firewall\\pfirewall.log"},{"Name":"Public","Enabled":"True","DefaultInboundAction":"Block","DefaultOutboundAction":"NotConfigured","NotifyOnListen":"False","AllowLocalFirewallRules":"NotConfigured","AllowLocalIPsecRules":"NotConfigured","LogAllowed":"False","LogBlocked":"True","LogMaxSizeKilobytes":"16384","LogFileName":"%systemroot%\\system32\\logfiles\\firewall\\publicfw.log"}]
+===SECTION:AD_DOMAIN===
+{"DNSRoot":"corp.example.com","NetBIOSName":"CORP","DomainSID":"S-1-5-21-1004336348-1177238915-682003330","DistinguishedName":"DC=corp,DC=example,DC=com","DomainMode":"Windows2016Domain","ForestMode":"Windows2012R2Forest","ForestRoot":"corp.example.com","IsForestRoot":true,"DomainControllers":[{"Name":"DC01","HostName":"dc01.corp.example.com","OperatingSystem":"Windows Server 2022 Standard","OperatingSystemVersion":"10.0 (20348)","IsGlobalCatalog":true,"IsReadOnly":false},{"Name":"DC02","HostName":"dc02.corp.example.com","OperatingSystem":"Windows Server 2012 R2 Standard","OperatingSystemVersion":"6.3 (9600)","IsGlobalCatalog":true,"IsReadOnly":false}],"TombstoneLifetime":180,"DsHeuristics":null,"RecycleBinEnabled":false,"MachineAccountQuota":10,"LapsLegacySchema":false,"LapsWindowsSchema":true,"FineGrainedPolicies":0}
+===SECTION:AD_PRIVILEGED===
+{"Domain Admins":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-512","Exists":true,"Members":[{"Sam":"Administrator","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-500","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":812,"LastLogonDays":1,"Spn":0,"AdminCount":1},{"Sam":"adm.sara","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1105","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":64,"LastLogonDays":0,"Spn":0,"AdminCount":1},{"Sam":"adm.reza","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1106","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":401,"LastLogonDays":3,"Spn":0,"AdminCount":1},{"Sam":"svc_backup","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1120","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":1460,"LastLogonDays":0,"Spn":1,"AdminCount":1},{"Sam":"adm.old","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1131","Enabled":false,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":900,"LastLogonDays":null,"Spn":0,"AdminCount":1}],"Error":null},"Schema Admins":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-518","Exists":true,"Members":[{"Sam":"Administrator","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-500","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":812,"LastLogonDays":1,"Spn":0,"AdminCount":1}],"Error":null},"Enterprise Admins":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-519","Exists":true,"Members":[{"Sam":"Administrator","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-500","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":812,"LastLogonDays":1,"Spn":0,"AdminCount":1},{"Sam":"adm.sara","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1105","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":64,"LastLogonDays":0,"Spn":0,"AdminCount":1}],"Error":null},"Administrators":{"Identity":"S-1-5-32-544","Exists":true,"Members":[{"Sam":"Administrator","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-500","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":812,"LastLogonDays":1,"Spn":0,"AdminCount":1},{"Sam":"adm.sara","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1105","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":64,"LastLogonDays":0,"Spn":0,"AdminCount":1},{"Sam":"adm.reza","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1106","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":401,"LastLogonDays":3,"Spn":0,"AdminCount":1},{"Sam":"svc_backup","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1120","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":1460,"LastLogonDays":0,"Spn":1,"AdminCount":1},{"Sam":"adm.old","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1131","Enabled":false,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":900,"LastLogonDays":null,"Spn":0,"AdminCount":1}],"Error":null},"Account Operators":{"Identity":"S-1-5-32-548","Exists":true,"Members":[{"Sam":"helpdesk1","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1140","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":30,"LastLogonDays":1,"Spn":0,"AdminCount":1}],"Error":null},"Server Operators":{"Identity":"S-1-5-32-549","Exists":true,"Members":[],"Error":null},"Print Operators":{"Identity":"S-1-5-32-550","Exists":true,"Members":[],"Error":null},"Backup Operators":{"Identity":"S-1-5-32-551","Exists":true,"Members":[{"Sam":"svc_backup","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1120","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":1460,"LastLogonDays":0,"Spn":1,"AdminCount":1}],"Error":null},"Group Policy Creator Owners":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-520","Exists":true,"Members":[{"Sam":"Administrator","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-500","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":812,"LastLogonDays":1,"Spn":0,"AdminCount":1}],"Error":null},"Key Admins":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-526","Exists":true,"Members":[],"Error":null},"Enterprise Key Admins":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-527","Exists":true,"Members":[],"Error":null},"Protected Users":{"Identity":"S-1-5-21-1004336348-1177238915-682003330-525","Exists":true,"Members":[{"Sam":"adm.sara","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1105","Enabled":true,"PwdNeverExpires":false,"NotDelegated":false,"PwdLastSetDays":64,"LastLogonDays":0,"Spn":0,"AdminCount":1}],"Error":null},"DnsAdmins":{"Identity":"DnsAdmins","Exists":true,"Members":[{"Sam":"svc_dnsmgmt","Class":"user","Sid":"S-1-5-21-1004336348-1177238915-682003330-1150","Enabled":true,"PwdNeverExpires":true,"NotDelegated":false,"PwdLastSetDays":700,"LastLogonDays":12,"Spn":0,"AdminCount":null}],"Error":null},"Pre-Windows 2000 Compatible Access":{"Identity":"S-1-5-32-554","Exists":true,"Members":["S-1-5-11"],"Error":null}}
+===SECTION:AD_ACCOUNTS===
+{"UsersEnabled":{"Count":412,"Sample":[]},"PwdNotRequired":{"Count":2,"Sample":["scanner","kiosk01"]},"ReversibleEncryption":{"Count":0,"Sample":[]},"PwdNeverExpires":{"Count":37,"Sample":["Administrator","svc_backup","svc_sql","svc_dnsmgmt","scanner"]},"DesOnly":{"Count":0,"Sample":[]},"NoPreAuth":{"Count":1,"Sample":["legacy.unix"]},"UserSpn":{"Count":3,"Sample":["svc_backup","svc_sql","svc_web"]},"UnconstrainedUsers":{"Count":0,"Sample":[]},"UnconstrainedComputers":{"Count":1,"Sample":["APP-OLD01$"]},"ProtocolTransition":{"Count":0,"Sample":[]},"ConstrainedDelegation":{"Count":1,"Sample":["WEB01$"]},"StaleUsers":{"Count":58,"Sample":["m.ahmadi","t.karimi","intern2023"]},"StaleComputers":{"Count":23,"Sample":["PC-0412$","PC-0198$"]},"UnsupportedOs":{"Count":4,"Sample":["PC-0007$","SRV-LEGACY$"]},"WindowsComputers":{"Count":318,"Sample":[]},"LapsLegacyManaged":null,"LapsWindowsManaged":{"Count":141,"Sample":[]},"Krbtgt":{"PwdLastSetDays":1283},"BuiltinAdmin":{"Sam":"Administrator","Enabled":true,"NotDelegated":false,"PwdLastSetDays":812,"LastLogonDays":1},"Guest":{"Sam":"Guest","Enabled":false},"StaleDays":90}
+===SECTION:AD_TRUSTS===
+[{"Name":"partner.example.net","Direction":"Outbound","TrustType":"Uplevel","ForestTransitive":false,"IntraForest":false,"SIDFilteringQuarantined":false,"SIDFilteringForestAware":false,"SelectiveAuthentication":false,"TGTDelegation":false}]
+===SECTION:AD_GPP===
+{"Scanned":"C:\\Windows\\SYSVOL\\sysvol\\corp.example.com\\Policies","Files":["\\{6AC1786C-016F-11D2-945F-00C04fB984F9}\\Machine\\Preferences\\Groups\\Groups.xml"]}
+===SECTION:AD_DC_CONFIG===
+{"EnableSMB1Protocol":false,"RequireSecuritySignature":true,"SpoolerStatus":"Running","SpoolerStartType":"Automatic"}
+===SECTION:AD_REGISTRY===
+{"HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa":"{\"DsrmAdminLogonBehavior\":2}","HKLM:\\SYSTEM\\CurrentControlSet\\Services\\LanManServer\\Parameters":"{\"NullSessionPipes\":[\"LSARPC\",\"NETLOGON\",\"SAMR\",\"BROWSER\"]}","HKLM:\\SYSTEM\\CurrentControlSet\\Services\\NTDS\\Parameters":"{\"LDAPServerIntegrity\":1}"}

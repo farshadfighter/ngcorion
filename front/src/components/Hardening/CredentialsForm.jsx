@@ -1,5 +1,5 @@
 import {
-    isWindows,
+    usesWinRM,
     isMssql,
     isCisco,
     isFortinet,
@@ -49,7 +49,7 @@ export default function CredentialsForm({
     canDetectVdoms = false,
 }) {
     // ── Windows ──────────────────────────────────────────────────────────────
-    if (isWindows(deviceType)) {
+    if (usesWinRM(deviceType)) {
         return (
             <div className="hardening-ssh-form">
                 <div className="hardening-form-group">

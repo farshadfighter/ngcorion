@@ -173,12 +173,14 @@
 .ha-check-body { flex: 1; min-width: 0; }
 
 .ha-check-id {
+    display: block;
     font-size: 13px;
     font-weight: 700;
     color: #1f2937;
 }
 
 .ha-check-title {
+    display: block;
     font-size: 13px;
     color: #4b5563;
     margin-top: 2px;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditSessions, getDeviceName } from "../../store/hardeningSlice";
-import { t, uiLocale } from "../../i18n";
+import { t, uiLocale, n } from "../../i18n";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -179,20 +179,20 @@ export const FixUnsuccessfulConnectionForm = ({ onSubmit, onCancel, preselectedS
                                 <strong>{t("Device Type:")}</strong> {getDeviceName(deviceType)}
                             </p>
                             <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
-                                <strong>{t("Status:")}</strong> {selectedSession.status}
+                                <strong>{t("Status:")}</strong> {({ completed: t("Completed"), failed: t("Failed"), running: t("Running") })[selectedSession.status] || selectedSession.status}
                             </p>
                             {selectedSession.compliance && (
                                 <>
                                     <p style={{ margin: "4px 0", fontSize: "13px", color: "#1f2937" }}>
                                         <strong>{t("Total Checks:")}</strong>{" "}
-                                        {selectedSession.compliance.total_checks || selectedSession.compliance.total || 0}
+                                        {n(selectedSession.compliance.total_checks || selectedSession.compliance.total || 0)}
                                     </p>
                                     <p style={{ margin: "4px 0", fontSize: "13px", color: "#dc2626" }}>
-                                        <strong>{t("Failed Checks:")}</strong> {getFailedCount(selectedSession)}
+                                        <strong>{t("Failed Checks:")}</strong> {n(getFailedCount(selectedSession))}
                                     </p>
                                     <p style={{ margin: "4px 0", fontSize: "13px", color: "#059669" }}>
                                         <strong>{t("Passed Checks:")}</strong>{" "}
-                                        {selectedSession.compliance.passed_checks || selectedSession.compliance.passed || 0}
+                                        {n(selectedSession.compliance.passed_checks || selectedSession.compliance.passed || 0)}
                                     </p>
                                 </>
                             )}

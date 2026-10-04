@@ -7,6 +7,7 @@ import {
 } from '../../store/hardeningSlice';
 import '../../assets/hardening/HardenAll.css';
 import { t, n } from "../../i18n";
+import { tb } from "../../i18n/backendText";
 
 /**
  * Harden All — remediate every failed check in an audit session.
@@ -208,8 +209,8 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                             <label key={check.result_id} className={`ha-check ${selected ? '' : 'is-unselected'}`}>
                                 <input type="checkbox" checked={selected} onChange={() => toggleCheck(check.result_id)} />
                                 <span className="ha-check-body">
-                                    <span className="ha-check-id">{check.check_number}</span>
-                                    <span className="ha-check-title">{check.check_title || '—'}</span>
+                                    <bdi className="ha-check-id">{check.check_number}</bdi>
+                                    <bdi className="ha-check-title">{check.check_title || '—'}</bdi>
                                 </span>
                                 {check.vdom && <span className="ha-badge ha-badge-vdom">{t("VDOM: {{vdom}}", { vdom: check.vdom })}</span>}
                                 {check.needs_params && <span className="ha-badge ha-badge-params">{t("Needs parameters")}</span>}
@@ -232,8 +233,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                 <ul>
                     {plan.skipped.map((s) => (
                         <li key={s.result_id}>
-                            {s.check_number}
-                            {s.vdom ? ` (${s.vdom})` : ''} — {s.check_title || s.reason}
+                            <bdi>{s.check_number}{s.vdom ? ` (${s.vdom})` : ''}</bdi> — <bdi>{s.check_title || s.reason}</bdi>
                         </li>
                     ))}
                 </ul>
@@ -252,13 +252,13 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
         return (
             <div className="ha-field" key={field.name}>
                 <label htmlFor={`ha-${field.name}`}>
-                    {field.label || field.name}
+                    {tb(field.label) || field.name}
                     {field.required && <span className="ha-req">*</span>}
                 </label>
                 {field.options?.length ? (
                     <select id={`ha-${field.name}`} value={value} onChange={onChange}>
                         <option value="">{field.default ? t("Default: {{default}}", { default: field.default }) : t("Select…")}</option>
-                        {field.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+                        {field.options.map((opt) => <option key={opt} value={opt}>{tb(opt)}</option>)}
                     </select>
                 ) : (
                     <input
@@ -272,7 +272,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                     />
                 )}
                 {(field.help || field.description) && (
-                    <span className="ha-field-help">{field.help || field.description}</span>
+                    <span className="ha-field-help">{tb(field.help || field.description)}</span>
                 )}
                 {field.checks?.length > 0 && (
                     <span className="ha-field-checks">{t("Used by: {{join}}", { join: field.checks.join(', ') })}</span>
@@ -349,7 +349,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                                     {row.check_number}
                                     {row.vdom ? ` (${row.vdom})` : ''}
                                 </span>
-                                {row.check_title && <span className="ha-check-title">{row.check_title}</span>}
+                                {row.check_title && <bdi className="ha-check-title">{row.check_title}</bdi>}
                                 {row.detail && <span className="ha-result-detail">{row.detail}</span>}
                                 {row.commands?.length > 0 && (
                                     <span className="ha-commands">

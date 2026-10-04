@@ -68,6 +68,7 @@
   "What do you want to harden?": "چه چیزی را می‌خواهید مقاوم‌سازی کنید؟",
   "Which asset?": "کدام دارایی؟",
   "Windows server": "سرور Windows",
+  "Windows Server - role not detected": "Windows Server - نقش آن شناسایی نشد",
   "Wireless AP": "اکسس‌پوینت بی‌سیم",
   "Workstation": "ایستگاه کاری",
   "You are auditing {{target}} - choose an asset": "در حال ممیزی {{target}} هستید - یک دارایی انتخاب کنید",

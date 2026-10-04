@@ -264,13 +264,13 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
 
                 <div className="result-stats-summary">
                     <div className="result-card result-card-success">
-                        <div className="card-percent">{conformityPercent}%</div>
+                        <div className="card-percent">{n(`${conformityPercent}%`)}</div>
                         <div className="card-sub">{t("{{passedChecks}} of {{totalChecks}} checks", { passedChecks, totalChecks })}</div>
                         <div className="card-label">{t("Conformity")}</div>
                     </div>
 
                     <div className="result-card result-card-danger">
-                        <div className="card-percent">{nonConformityPercent}%</div>
+                        <div className="card-percent">{n(`${nonConformityPercent}%`)}</div>
                         <div className="card-sub">{t("{{failedChecks}} of {{totalChecks}} checks", { failedChecks, totalChecks })}</div>
                         <div className="card-label">{t("Non-Conformity")}</div>
                     </div>
@@ -340,7 +340,8 @@ export const AuditingResultModal = ({ session, isOpen, onClose }) => {
                                                 )}
                                                 <td>
                                                     <div className="recommendation-text">
-                                                        {result.check_title}
+                                                        {/* benchmark titles are English: keep their quotes in place in RTL */}
+                                                        <bdi>{result.check_title}</bdi>
                                                     </div>
                                                 </td>
                                                 <td>{getSeverityBadge(result.severity)}</td>

@@ -14,7 +14,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.core.target_catalog import CATEGORIES, MODES, targets_for
 from app.models import Asset, User
-from app.utils.device_classification import infer_device_family, infer_device_variant
+from app.utils.device_classification import WINDOWS_ROLE_FAMILIES, infer_device_family, infer_device_variant
 
 router = APIRouter(prefix="/api/targets", tags=["Targets"])
 
@@ -65,7 +65,11 @@ def get_catalog(
 
     families, variants = Counter(), Counter()
     for asset in db.query(Asset).options(joinedload(Asset.asset_type)).all():
-        families[infer_device_family(asset)] += 1
+        family = infer_device_family(asset)
+        families[family] += 1
+        # A domain controller (or another Windows role) is a Windows Server too.
+        if family in WINDOWS_ROLE_FAMILIES:
+            families["windows"] += 1
         variants[infer_device_variant(asset)] += 1
 
     targets = targets_for(mode)

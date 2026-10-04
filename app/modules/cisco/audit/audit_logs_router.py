@@ -51,6 +51,7 @@ _AUDIT_FEED_MODULES = {
     "mongodb_cis",
     "mssql_cis",
     "windows_cis",
+    "active_directory_cis",
 }
 
 

@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { DEFAULT_WINRM_PORT } from "../components/Hardening/winrmDefaults";
 import { t } from "../i18n";
+import { AUDIT_FAMILIES } from "./auditSlice";
 
 // ===========================
 // ERROR NORMALIZATION
@@ -128,6 +129,9 @@ export const getDeviceName = (deviceType) => {
         "windows-2016":     "Windows Server 2016",
         "windows-2022":     "Windows Server 2022",
         "windows-2025":     "Windows Server 2025",
+
+        // Windows Server roles
+        "active_directory": "Active Directory",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -205,6 +209,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             };
 
         case "windows":
+        case "active_directory":
             return {
                 windows_username: credentials.windows_username,
                 windows_password: credentials.windows_password,
@@ -286,7 +291,7 @@ export const fetchAuditSessions = createAsyncThunk(
     async (_arg, { rejectWithValue }) => {
         try {
             // Fetch from every API family in parallel
-            const families = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows"];
+            const families = AUDIT_FAMILIES;
 
             const results = await Promise.allSettled(
                 families.map((family) =>

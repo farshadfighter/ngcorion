@@ -105,6 +105,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
         if (dt === 'apache')           return 'Apache';
         if (dt === 'mongodb')          return 'MongoDB';
         if (dt?.startsWith('mssql-'))  return 'SQL Server';
+        if (dt === 'active_directory') return 'Active Directory';
         if (dt?.startsWith('windows-'))return 'Windows';
         return 'Cisco';
     };
@@ -159,13 +160,13 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                     <div className="hr-panel">
                     <div className="result-stats-summary">
                         <div className="result-card result-card-success">
-                            <div className="card-percent">{conformityPercent}%</div>
+                            <div className="card-percent">{n(`${conformityPercent}%`)}</div>
                             <div className="card-sub">{t("{{passedChecks}} of {{totalChecks}} checks", { passedChecks, totalChecks })}</div>
                             <div className="card-label">{t("Conformity")}</div>
                         </div>
 
                         <div className="result-card result-card-danger">
-                            <div className="card-percent">{nonConformityPercent}%</div>
+                            <div className="card-percent">{n(`${nonConformityPercent}%`)}</div>
                             <div className="card-sub">{t("{{failedChecks}} of {{totalChecks}} checks", { failedChecks, totalChecks })}</div>
                             <div className="card-label">{t("Non-Conformity")}</div>
                         </div>
@@ -180,7 +181,9 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                         <div className="result-card result-card-info">
                             <div className="card-label">{t("Benchmark")}</div>
                             <div className="card-value">
-                                {t("{{getDeviceLabel}} CIS", { getDeviceLabel: getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type) })}
+                                {(sessionData?.sub_device_type || sessionData?.device_type) === "active_directory"
+                                    ? t("CIS domain controller + domain checks")
+                                    : t("{{getDeviceLabel}} CIS", { getDeviceLabel: getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type) })}
                             </div>
                         </div>
 
@@ -295,7 +298,7 @@ export const HardeningResults = ({ sessionData, onClose, onNavigateToAuditing })
                                                         </td>
                                                     )}
                                                     <td>
-                                                        <div className="recommendation-text">{check.check_title}</div>
+                                                        <div className="recommendation-text"><bdi>{check.check_title}</bdi></div>
                                                     </td>
                                                     <td>{getSeverityBadge(check.severity)}</td>
                                                     <td>{getStatusBadge(check.status)}</td>

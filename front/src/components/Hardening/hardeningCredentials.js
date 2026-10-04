@@ -23,6 +23,12 @@ export const isMssql    = (dt) => dt === "mssql" || dt?.startsWith("mssql-");
 export const isWindows  = (dt) => dt === "windows" || dt?.startsWith("windows-");
 export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
+// Windows Server roles audited as their own target (app/core/target_catalog.py).
+// They connect the way Windows Server does: WinRM with a Windows account.
+export const WINDOWS_ROLES = ["active_directory"];
+export const isWindowsRole = (dt) => WINDOWS_ROLES.includes(dt);
+export const usesWinRM     = (dt) => isWindows(dt) || isWindowsRole(dt);
+
 // ─── Default form state ──────────────────────────────────────────────────────
 export const defaultCredentialsState = {
     // SSH-based (Linux, Cisco, Fortinet, Apache, MongoDB)
@@ -51,7 +57,7 @@ export const defaultCredentialsState = {
 // Returns a { fieldName: message } object. Empty object means valid.
 export function validateCredentials(deviceType, creds) {
     const errors = {};
-    if (isWindows(deviceType)) {
+    if (usesWinRM(deviceType)) {
         if (!creds.windows_username?.trim()) errors.windows_username = t("Windows Username is required");
         if (!creds.windows_password?.trim()) errors.windows_password = t("Windows Password is required");
     } else if (isMssql(deviceType)) {
@@ -67,7 +73,7 @@ export function validateCredentials(deviceType, creds) {
 // ─── Request payload builder ─────────────────────────────────────────────────
 // Builds the credentials object sent to the hardening execute endpoints.
 export function buildCredentials(deviceType, creds, { vdomEnabled = false } = {}) {
-    if (isWindows(deviceType)) {
+    if (usesWinRM(deviceType)) {
         return {
             windows_username: creds.windows_username,
             windows_password: creds.windows_password,

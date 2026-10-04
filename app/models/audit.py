@@ -23,6 +23,7 @@ class DeviceType(str, enum.Enum):
     APACHE = "apache"
     MONGODB = "mongodb"
     MSSQL = "mssql"
+    ACTIVE_DIRECTORY = "active_directory"
 
 
 class CheckStatus(str, enum.Enum):
