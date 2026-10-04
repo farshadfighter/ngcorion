@@ -66,6 +66,8 @@ TARGETS: Tuple[Target, ...] = (
            device_type="cisco", keywords=("router", "switch", "ios", "ios-xe", "catalyst")),
     Target("fortinet", "FortiGate", "Firewall", "network", "fortinet", "firewall", "FG", "SSH",
            device_type="fortinet", keywords=("fortinet", "fortios", "firewall", "vdom")),
+    Target("sophos", "Sophos Firewall", "Firewall · Sophos guidance", "network", "sophos", "firewall", "SO", "HTTPS API",
+           device_type="sophos", keywords=("sophos", "sfos", "xgs", "xg firewall", "firewall", "utm")),
     Target("windows", "Windows Server", "Operating system", "servers", "windows", "windows", "WS", "WinRM",
            versions=_versions(None, ("windows-2016", "2016"), ("windows-2022", "2022"), ("windows-2025", "2025")),
            keywords=("microsoft", "os")),

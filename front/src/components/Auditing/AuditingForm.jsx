@@ -12,6 +12,7 @@ import {
     isMySQL,
     isESXi,
     isMssql,
+    isSophos,
     usesWinRM,
     needsSudo,
 } from "../Hardening/hardeningCredentials";
@@ -47,6 +48,9 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         mssql_username:   "",
         mssql_password:   "",
         mssql_port:       "1433",
+        sophos_username:  "",
+        sophos_password:  "",
+        sophos_port:      "4444",
         windows_username: "",
         windows_password: "",
         winrm_port:       DEFAULT_WINRM_PORT,
@@ -118,6 +122,9 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
         if (usesWinRM(dt)) {
             if (!formData.windows_username?.trim()) newErrors.windows_username = t("Username is required");
             if (!formData.windows_password?.trim()) newErrors.windows_password = t("Password is required");
+        } else if (isSophos(dt)) {
+            if (!formData.sophos_username?.trim()) newErrors.sophos_username = t("Username is required");
+            if (!formData.sophos_password?.trim()) newErrors.sophos_password = t("Password is required");
         } else if (isMssql(dt)) {
             if (!formData.mssql_username?.trim()) newErrors.mssql_username = t("Username is required");
             if (!formData.mssql_password?.trim()) newErrors.mssql_password = t("Password is required");
@@ -159,6 +166,9 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
             mssql_username:   formData.mssql_username,
             mssql_password:   formData.mssql_password,
             mssql_port:       formData.mssql_port,
+            sophos_username:  formData.sophos_username,
+            sophos_password:  formData.sophos_password,
+            sophos_port:      formData.sophos_port,
             windows_username: formData.windows_username,
             windows_password: formData.windows_password,
             winrm_port:       formData.winrm_port,
@@ -238,7 +248,7 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                     {/* ══════════════════════════════════════════════════════
                         SSH credentials
                     ══════════════════════════════════════════════════════ */}
-                    {!usesWinRM(dt) && !isMssql(dt) && (
+                    {!usesWinRM(dt) && !isMssql(dt) && !isSophos(dt) && (
                         <>
                             <div className="form-group">
                                 <label>
@@ -471,6 +481,62 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                     autoComplete="current-password"
                                 />
                                 {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ══════════════════════════════════════════════════════
+                        Sophos Firewall XML API credentials
+                    ══════════════════════════════════════════════════════ */}
+                    {isSophos(dt) && (
+                        <>
+                            <div className="form-group">
+                                <label>
+                                    {t("API Username")}
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="sophos_username"
+                                    value={formData.sophos_username}
+                                    onChange={handleChange}
+                                    className={errors.sophos_username ? "error" : ""}
+                                    placeholder={t("Administrator with API access")}
+                                    autoComplete="username"
+                                />
+                                {errors.sophos_username && <span className="error-message">{errors.sophos_username}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>
+                                    {t("API Password")}
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    name="sophos_password"
+                                    value={formData.sophos_password}
+                                    onChange={handleChange}
+                                    className={errors.sophos_password ? "error" : ""}
+                                    placeholder={t("API password")}
+                                    autoComplete="current-password"
+                                />
+                                {errors.sophos_password && <span className="error-message">{errors.sophos_password}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>{t("API Port")}</label>
+                                <input
+                                    type="number"
+                                    name="sophos_port"
+                                    value={formData.sophos_port}
+                                    onChange={handleChange}
+                                    placeholder="4444"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div className="form-group form-group-full">
+                                <small className="form-hint">
+                                    {t("Enable the API on the firewall (Backup & firmware > API) and add this server's address to its allowed list. The firewall's certificate is pinned on first connection.")}
+                                </small>
                             </div>
                         </>
                     )}

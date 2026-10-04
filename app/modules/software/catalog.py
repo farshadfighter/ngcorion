@@ -160,6 +160,7 @@ _add("cisco nx-os", "Cisco NX-OS", ("cisco", "nx-os"))
 _add("cisco asa", "Cisco ASA", ("cisco", "adaptive_security_appliance_software"))
 _add("fortinet fortios", "Fortinet FortiOS", ("fortinet", "fortios"))
 _add("vmware esxi", "VMware ESXi", ("vmware", "esxi"))
+_add("sophos firewall os", "Sophos Firewall OS", ("sophos", "sfos"))
 
 # ── families ─────────────────────────────────────────────────────────────
 _pat(r"^postgresql-\d+(\.\d+)?$|^postgresql\d+-server$|^postgresql \d+$", "PostgreSQL", ("postgresql", "postgresql"))

@@ -19,7 +19,7 @@ export const sortNewestFirst = (sessions) =>
     [...sessions].sort((a, b) => String(b.started_at || "").localeCompare(String(a.started_at || "")));
 
 // Every family with its own /api/audit/{family}/sessions listing.
-export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "mysql", "esxi", "nginx"];
+export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "mysql", "esxi", "nginx", "sophos"];
 
 // =====================
 // Thunks
@@ -52,6 +52,11 @@ export const executeAudit = createAsyncThunk(
             if (formData.mssql_username) payload.mssql_username = formData.mssql_username;
             if (formData.mssql_password) payload.mssql_password = formData.mssql_password;
             if (formData.mssql_port)     payload.mssql_port     = parseInt(formData.mssql_port);
+            if (deviceType === "sophos") {
+                payload.sophos_username = formData.sophos_username;
+                payload.sophos_password = formData.sophos_password;
+                payload.sophos_port     = parseInt(formData.sophos_port) || 4444;
+            }
             if (formData.windows_username) payload.windows_username = formData.windows_username;
             if (formData.windows_password) payload.windows_password = formData.windows_password;
             if (formData.winrm_port)       payload.winrm_port       = parseInt(formData.winrm_port);

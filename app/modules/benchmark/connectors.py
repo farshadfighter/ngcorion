@@ -376,8 +376,43 @@ class NginxConnector(SSHConnector):
             yield NginxConnection(shell, write)
 
 
+# ── Sophos Firewall XML API (HTTPS) ──────────────────────────────────────
+
+class SophosConnector(Connector):
+    """The firewall's XML API: an API-enabled administrator account, and this
+    server's address in the firewall's API allowed list. The certificate is
+    pinned on first use (app/core/tls_pins.py)."""
+    key = "sophos_api"
+    request_fields = {
+        "sophos_username": (str, Field(..., min_length=1, description="Administrator with API access, not stored")),
+        "sophos_password": (str, Field(..., min_length=1, description="Password, not stored")),
+        "sophos_port": (int, Field(4444, ge=1, le=65535, description="Web admin / API HTTPS port")),
+    }
+    credential_fields = [
+        CredentialField(name="sophos_username", label="API Username", type="text", required=True),
+        CredentialField(name="sophos_password", label="API Password", type="password", required=True),
+        CredentialField(name="sophos_port", label="API Port", type="number", default="4444"),
+    ]
+    required_for_schedule = frozenset({"sophos_username", "sophos_password"})
+
+    def port_of(self, creds):
+        return int(creds.get("sophos_port") or 4444)
+
+    @contextmanager
+    def open(self, ip: str, creds: Dict[str, Any]):
+        from app.modules.sophos.api import SophosAPI, SophosAPIError
+        from app.modules.sophos.edit import SophosConnection
+        api = SophosAPI(ip, self.port_of(creds), creds["sophos_username"], creds["sophos_password"])
+        try:
+            api.login()
+        except SophosAPIError as exc:
+            raise ConnectionError(str(exc)) from exc
+        yield SophosConnection(api)
+
+
 CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector(), "ssh_mysql": MySQLConnector(),
-                                    "ssh_esxi": ESXiConnector(), "ssh_nginx": NginxConnector()}
+                                    "ssh_esxi": ESXiConnector(), "ssh_nginx": NginxConnector(),
+                                    "sophos_api": SophosConnector()}
 
 
 def get_connector(key: str) -> Connector:

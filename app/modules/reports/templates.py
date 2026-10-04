@@ -235,7 +235,8 @@ DEVICE_NAMES = {"cisco": "Cisco", "fortinet": "Fortinet", "linux": "Linux", "win
                 "active_directory": "Active Directory", "dns_server": "Windows DNS Server",
                 "dhcp_server": "Windows DHCP Server", "iis": "IIS",
                 "docker": "Docker", "kubernetes": "Kubernetes", "mysql": "MySQL",
-                "esxi": "VMware ESXi", "nginx": "NGINX"}
+                "esxi": "VMware ESXi", "nginx": "NGINX",
+                "sophos": "Sophos Firewall"}
 
 
 def _device(value) -> str:

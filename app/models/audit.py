@@ -32,6 +32,7 @@ class DeviceType(str, enum.Enum):
     MYSQL = "mysql"
     ESXI = "esxi"
     NGINX = "nginx"
+    SOPHOS = "sophos"
 
 
 class CheckStatus(str, enum.Enum):

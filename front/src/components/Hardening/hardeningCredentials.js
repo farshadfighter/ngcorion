@@ -27,6 +27,8 @@ export const isMySQL    = (dt) => dt === "mysql";
 // ESXi: SSH as root or an Administrator-role account; the host has no sudo.
 export const isESXi     = (dt) => dt === "esxi";
 export const isNginx    = (dt) => dt === "nginx";
+// Sophos Firewall: XML API over HTTPS with an API-enabled administrator.
+export const isSophos   = (dt) => dt === "sophos";
 export const isMssql    = (dt) => dt === "mssql" || dt?.startsWith("mssql-");
 export const isWindows  = (dt) => dt === "windows" || dt?.startsWith("windows-");
 export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || isMySQL(dt) || isNginx(dt) || isLinuxRole(dt);
@@ -35,7 +37,7 @@ export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || 
 // They connect the way Windows Server does: WinRM with a Windows account.
 export const WINDOWS_ROLES = ["active_directory", "dns_server", "dhcp_server", "iis"];
 // Names and benchmarks of the benchmark-engine targets (Windows roles and Linux platforms).
-export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi", nginx: "NGINX" };
+export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi", nginx: "NGINX", sophos: "Sophos Firewall" };
 // What each target is audited against (shown as "Benchmark" on result pages).
 export const roleBenchmark = (dt) => ({
     active_directory: t("CIS domain controller + domain checks"),
@@ -47,6 +49,7 @@ export const roleBenchmark = (dt) => ({
     mysql: t("CIS MySQL 8.0 Community Server"),
     esxi: t("CIS VMware ESXi 7/8"),
     nginx: t("CIS NGINX Benchmark"),
+    sophos: t("Sophos Firewall hardening guidance"),
 })[dt];
 export const isWindowsRole = (dt) => WINDOWS_ROLES.includes(dt);
 export const usesWinRM     = (dt) => isWindows(dt) || isWindowsRole(dt);
@@ -71,6 +74,10 @@ export const defaultCredentialsState = {
     mssql_username:   "",
     mssql_password:   "",
     mssql_port:       "1433",
+    // Sophos Firewall XML API
+    sophos_username:  "",
+    sophos_password:  "",
+    sophos_port:      "4444",
     // Windows (WinRM)
     windows_username: "",
     windows_password: "",
@@ -85,6 +92,9 @@ export function validateCredentials(deviceType, creds) {
     if (usesWinRM(deviceType)) {
         if (!creds.windows_username?.trim()) errors.windows_username = t("Windows Username is required");
         if (!creds.windows_password?.trim()) errors.windows_password = t("Windows Password is required");
+    } else if (isSophos(deviceType)) {
+        if (!creds.sophos_username?.trim()) errors.sophos_username = t("API Username is required");
+        if (!creds.sophos_password?.trim()) errors.sophos_password = t("API Password is required");
     } else if (isMssql(deviceType)) {
         if (!creds.mssql_username?.trim()) errors.mssql_username = "SQL Server Username is required";
         if (!creds.mssql_password?.trim()) errors.mssql_password = "SQL Server Password is required";
@@ -105,6 +115,13 @@ export function buildCredentials(deviceType, creds, { vdomEnabled = false } = {}
             windows_password: creds.windows_password,
             winrm_port:       parseInt(creds.winrm_port) || Number(DEFAULT_WINRM_PORT),
             transport:        creds.transport || "ntlm",
+        };
+    }
+    if (isSophos(deviceType)) {
+        return {
+            sophos_username: creds.sophos_username,
+            sophos_password: creds.sophos_password,
+            sophos_port:     parseInt(creds.sophos_port) || 4444,
         };
     }
     if (isMssql(deviceType)) {

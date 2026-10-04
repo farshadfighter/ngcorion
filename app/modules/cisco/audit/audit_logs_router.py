@@ -59,6 +59,7 @@ _AUDIT_FEED_MODULES = {
     "mysql_cis",
     "esxi_cis",
     "nginx_cis",
+    "sophos_firewall",
     "iis_cis",
 }
 

@@ -1,6 +1,7 @@
 import {
     usesWinRM,
     isMssql,
+    isSophos,
     isCisco,
     isFortinet,
     isMongo,
@@ -76,6 +77,28 @@ export default function CredentialsForm({
                         <option value="credssp">{t("CredSSP")}</option>
                         <option value="basic">{t("Basic")}</option>
                     </select>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Sophos Firewall (XML API) ────────────────────────────────────────────
+    if (isSophos(deviceType)) {
+        return (
+            <div className="hardening-ssh-form">
+                <div className="hardening-form-group">
+                    <label>{t("API Username")}<span className="hardening-required">*</span></label>
+                    <input type="text" name="sophos_username" value={value.sophos_username} onChange={onChange} placeholder={t("Administrator with API access")} autoComplete="username" style={inputStyle} />
+                    <FieldError message={errors.sophos_username} />
+                </div>
+                <div className="hardening-form-group">
+                    <label>{t("API Password")}<span className="hardening-required">*</span></label>
+                    <input type="password" name="sophos_password" value={value.sophos_password} onChange={onChange} placeholder={t("API password")} autoComplete="current-password" style={inputStyle} />
+                    <FieldError message={errors.sophos_password} />
+                </div>
+                <div className="hardening-form-group">
+                    <label>{t("API Port")}</label>
+                    <input type="number" name="sophos_port" value={value.sophos_port} onChange={onChange} placeholder="4444" autoComplete="off" style={inputStyle} />
                 </div>
             </div>
         );

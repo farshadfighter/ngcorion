@@ -1,0 +1,398 @@
+===SECTION:VERSION===
+APIVersion=2000.1
+===SECTION:AdminSettings===
+<AdminSettings>
+  <HostnameSettings>
+    <HostName>fw01.corp.example.com</HostName>
+    <HostNameDesc>Head office</HostNameDesc>
+  </HostnameSettings>
+  <WebAdminSettings>
+    <Certificate>ApplianceCertificate</Certificate>
+    <HTTPSport>4444</HTTPSport>
+    <UserPortalHTTPSPort>443</UserPortalHTTPSPort>
+    <VPNPortalHTTPSPort>443</VPNPortalHTTPSPort>
+    <PortalRedirectMode>ip</PortalRedirectMode>
+    <PortalCustomHostname />
+  </WebAdminSettings>
+  <LoginSecurity>
+    <LogoutSession>30</LogoutSession>
+    <BlockLogin>Disable</BlockLogin>
+    <BlockLoginSettings>
+      <UnsucccessfulAttempt>3</UnsucccessfulAttempt>
+      <Duration>30</Duration>
+      <ForMinutes>1</ForMinutes>
+    </BlockLoginSettings>
+  </LoginSecurity>
+  <PasswordComplexitySettings>
+    <PasswordComplexityCheck>Disable</PasswordComplexityCheck>
+    <PasswordComplexity>
+      <MinimumPasswordLength>Disable</MinimumPasswordLength>
+      <IncludeAlphabeticCharacters>Disable</IncludeAlphabeticCharacters>
+      <IncludeNumericCharacter>Disable</IncludeNumericCharacter>
+      <IncludeSpecialCharacter>Disable</IncludeSpecialCharacter>
+      <MinimumPasswordLengthValue>8</MinimumPasswordLengthValue>
+    </PasswordComplexity>
+  </PasswordComplexitySettings>
+  <LoginDisclaimer>Disable</LoginDisclaimer>
+</AdminSettings>
+===SECTION:Zone===
+<Zone>
+  <Name>LAN</Name>
+  <Type>LAN</Type>
+  <Description />
+  <ApplianceAccess>
+    <AdminServices>
+      <HTTPS>Enable</HTTPS>
+      <SSH>Enable</SSH>
+    </AdminServices>
+    <AuthenticationServices>
+      <ClientAuthentication>Disable</ClientAuthentication>
+      <CaptivePortal>Disable</CaptivePortal>
+      <RadiusSSO>Disable</RadiusSSO>
+      <ChromebookSSO>Disable</ChromebookSSO>
+    </AuthenticationServices>
+    <NetworkServices>
+      <DNS>Disable</DNS>
+      <Ping>Enable</Ping>
+    </NetworkServices>
+    <VPNServices>
+      <IPsec>Enable</IPsec>
+      <RED>Disable</RED>
+      <SSLVPN>Enable</SSLVPN>
+      <VPNPortal>Enable</VPNPortal>
+    </VPNServices>
+    <OtherServices>
+      <WebProxy>Disable</WebProxy>
+      <WirelessProtection>Disable</WirelessProtection>
+      <UserPortal>Enable</UserPortal>
+      <DynamicRouting>Disable</DynamicRouting>
+      <SMTPRelay>Disable</SMTPRelay>
+      <SNMP>Disable</SNMP>
+    </OtherServices>
+  </ApplianceAccess>
+</Zone>
+<Zone>
+  <Name>WAN</Name>
+  <Type>WAN</Type>
+  <Description />
+  <ApplianceAccess>
+    <AdminServices>
+      <HTTPS>Enable</HTTPS>
+      <SSH>Disable</SSH>
+    </AdminServices>
+    <AuthenticationServices>
+      <ClientAuthentication>Disable</ClientAuthentication>
+      <CaptivePortal>Disable</CaptivePortal>
+      <RadiusSSO>Disable</RadiusSSO>
+      <ChromebookSSO>Disable</ChromebookSSO>
+    </AuthenticationServices>
+    <NetworkServices>
+      <DNS>Disable</DNS>
+      <Ping>Enable</Ping>
+    </NetworkServices>
+    <VPNServices>
+      <IPsec>Enable</IPsec>
+      <RED>Disable</RED>
+      <SSLVPN>Enable</SSLVPN>
+      <VPNPortal>Enable</VPNPortal>
+    </VPNServices>
+    <OtherServices>
+      <WebProxy>Disable</WebProxy>
+      <WirelessProtection>Disable</WirelessProtection>
+      <UserPortal>Enable</UserPortal>
+      <DynamicRouting>Disable</DynamicRouting>
+      <SMTPRelay>Disable</SMTPRelay>
+      <SNMP>Disable</SNMP>
+    </OtherServices>
+  </ApplianceAccess>
+</Zone>
+<Zone>
+  <Name>DMZ</Name>
+  <Type>DMZ</Type>
+  <Description />
+  <ApplianceAccess>
+    <AdminServices>
+      <HTTPS>Disable</HTTPS>
+      <SSH>Disable</SSH>
+    </AdminServices>
+    <AuthenticationServices>
+      <ClientAuthentication>Disable</ClientAuthentication>
+      <CaptivePortal>Disable</CaptivePortal>
+      <RadiusSSO>Disable</RadiusSSO>
+      <ChromebookSSO>Disable</ChromebookSSO>
+    </AuthenticationServices>
+    <NetworkServices>
+      <DNS>Disable</DNS>
+      <Ping>Disable</Ping>
+    </NetworkServices>
+    <VPNServices>
+      <IPsec>Enable</IPsec>
+      <RED>Disable</RED>
+      <SSLVPN>Enable</SSLVPN>
+      <VPNPortal>Enable</VPNPortal>
+    </VPNServices>
+    <OtherServices>
+      <WebProxy>Disable</WebProxy>
+      <WirelessProtection>Disable</WirelessProtection>
+      <UserPortal>Disable</UserPortal>
+      <DynamicRouting>Disable</DynamicRouting>
+      <SMTPRelay>Disable</SMTPRelay>
+      <SNMP>Disable</SNMP>
+    </OtherServices>
+  </ApplianceAccess>
+</Zone>
+===SECTION:LocalServiceACL===
+<LocalServiceACL>
+  <RuleName>Allow SSH from WAN (vendor)</RuleName>
+  <Description>Temporary support access</Description>
+  <IPFamily>IPv4</IPFamily>
+  <SourceZone>WAN</SourceZone>
+  <Services>
+    <Service>SSH</Service>
+  </Services>
+  <Action>accept</Action>
+</LocalServiceACL>
+===SECTION:OTPSettings===
+<OTPSettings>
+  <otp>0</otp>
+  <allUsers>0</allUsers>
+  <otpUsers />
+  <tokenAutoCreation>0</tokenAutoCreation>
+  <otpUserPortal>0</otpUserPortal>
+  <otpSSLVPN>0</otpSSLVPN>
+  <otpWebAdmin>0</otpWebAdmin>
+  <otpIPsec>0</otpIPsec>
+  <defaultTimeStep>30</defaultTimeStep>
+  <maxTimeStepsInterval>3</maxTimeStepsInterval>
+  <maxInitialTimeStepDiff>10</maxInitialTimeStepDiff>
+</OTPSettings>
+===SECTION:User===
+<User>
+  <Username>admin</Username>
+  <Name>Super Administrator</Name>
+  <UserType>Administrator</UserType>
+  <Profile>Administrator</Profile>
+  <Status>Active</Status>
+  <Group>Open Group</Group>
+</User>
+<User>
+  <Username>netops</Username>
+  <Name>Network Operations</Name>
+  <UserType>Administrator</UserType>
+  <Profile>Administrator</Profile>
+  <Status>Active</Status>
+  <Group>Open Group</Group>
+</User>
+<User>
+  <Username>jdoe</Username>
+  <Name>John Doe</Name>
+  <UserType>User</UserType>
+  <Profile />
+  <Status>Active</Status>
+  <Group>Open Group</Group>
+</User>
+===SECTION:AdminAuthentication===
+<AdminAuthentication>
+  <AuthenticationServerList>
+    <AuthenticationServer>Local</AuthenticationServer>
+  </AuthenticationServerList>
+</AdminAuthentication>
+===SECTION:Hotfix===
+<Hotfix>
+  <AllowAutoInstallOfHotFixes>Enable</AllowAutoInstallOfHotFixes>
+</Hotfix>
+===SECTION:PatternDownload===
+<PatternDownload>
+  <AutoUpdate>On</AutoUpdate>
+  <Interval>Every 2 Hours</Interval>
+</PatternDownload>
+===SECTION:SyslogServers===
+<SyslogServers>
+  <Name>siem01</Name>
+  <ServerAddress>10.0.5.20</ServerAddress>
+  <Port>514</Port>
+  <EnableSecureConnection>Disable</EnableSecureConnection>
+  <Facility>DAEMON</Facility>
+  <SeverityLevel>Information</SeverityLevel>
+  <Format>DeviceStandardFormat</Format>
+</SyslogServers>
+===SECTION:Notification===
+<Notification>
+  <MailServer>smtp.corp.example.com</MailServer>
+  <Port>587</Port>
+  <Authentication>Enable</Authentication>
+  <Username>fw-notify</Username>
+  <Password>***</Password>
+  <ConnectionSecurity>STARTTLS</ConnectionSecurity>
+  <EmailAddress>fw01@corp.example.com</EmailAddress>
+  <SenderAddress>fw01@corp.example.com</SenderAddress>
+  <ManagementInterface>PortA</ManagementInterface>
+  <SendTo>netops@corp.example.com</SendTo>
+</Notification>
+===SECTION:SNMPAgentConfiguration===
+<SNMPAgentConfiguration>
+  <EnableAgent>Enable</EnableAgent>
+  <Name>fw01</Name>
+  <Description />
+  <Location>Rack 3</Location>
+  <ContactPerson>netops</ContactPerson>
+  <AgentPort>161</AgentPort>
+  <ManagerPort>162</ManagerPort>
+</SNMPAgentConfiguration>
+===SECTION:SNMPCommunity===
+<SNMPCommunity>
+  <Name>monitoring</Name>
+  <CommunityString>***</CommunityString>
+  <Description />
+  <AuthorizedHostIpv4>10.0.5.30</AuthorizedHostIpv4>
+  <AcceptQueries>
+    <V1>Disable</V1>
+    <V2c>Enable</V2c>
+  </AcceptQueries>
+  <SendTraps>
+    <V1>Disable</V1>
+    <V2c>Enable</V2c>
+  </SendTraps>
+</SNMPCommunity>
+===SECTION:SNMPv3User===
+<Records count="0" />
+===SECTION:FirewallRule===
+<FirewallRule>
+  <Name>LAN to WAN</Name>
+  <Description />
+  <IPFamily>IPv4</IPFamily>
+  <Status>Enable</Status>
+  <Position>Top</Position>
+  <PolicyType>Network</PolicyType>
+  <NetworkPolicy>
+    <Action>Accept</Action>
+    <LogTraffic>Disable</LogTraffic>
+    <SkipLocalDestined>Disable</SkipLocalDestined>
+    <SourceZones>
+      <Zone>LAN</Zone>
+    </SourceZones>
+    <DestinationZones>
+      <Zone>WAN</Zone>
+    </DestinationZones>
+    <Schedule>All The Time</Schedule>
+    <WebFilter>None</WebFilter>
+    <ScanVirus>Disable</ScanVirus>
+    <ApplicationControl>None</ApplicationControl>
+    <IntrusionPrevention>lantowan_general</IntrusionPrevention>
+  </NetworkPolicy>
+</FirewallRule>
+<FirewallRule>
+  <Name>Web server inbound</Name>
+  <Description />
+  <IPFamily>IPv4</IPFamily>
+  <Status>Enable</Status>
+  <Position>Bottom</Position>
+  <PolicyType>Network</PolicyType>
+  <NetworkPolicy>
+    <Action>Accept</Action>
+    <LogTraffic>Enable</LogTraffic>
+    <SkipLocalDestined>Disable</SkipLocalDestined>
+    <SourceZones>
+      <Zone>WAN</Zone>
+    </SourceZones>
+    <DestinationZones>
+      <Zone>DMZ</Zone>
+    </DestinationZones>
+    <Schedule>All The Time</Schedule>
+    <Services>
+      <Service>HTTPS</Service>
+    </Services>
+    <WebFilter>None</WebFilter>
+    <ScanVirus>Disable</ScanVirus>
+    <ApplicationControl>None</ApplicationControl>
+    <IntrusionPrevention>None</IntrusionPrevention>
+  </NetworkPolicy>
+</FirewallRule>
+<FirewallRule>
+  <Name>Any allow (temporary)</Name>
+  <Description />
+  <IPFamily>IPv4</IPFamily>
+  <Status>Enable</Status>
+  <Position>Bottom</Position>
+  <PolicyType>Network</PolicyType>
+  <NetworkPolicy>
+    <Action>Accept</Action>
+    <LogTraffic>Disable</LogTraffic>
+    <SkipLocalDestined>Disable</SkipLocalDestined>
+    <Schedule>All The Time</Schedule>
+    <WebFilter>None</WebFilter>
+    <ScanVirus>Disable</ScanVirus>
+    <ApplicationControl>None</ApplicationControl>
+    <IntrusionPrevention>None</IntrusionPrevention>
+  </NetworkPolicy>
+</FirewallRule>
+<FirewallRule>
+  <Name>Old VPN rule</Name>
+  <Description />
+  <IPFamily>IPv4</IPFamily>
+  <Status>Disable</Status>
+  <Position>Bottom</Position>
+  <PolicyType>Network</PolicyType>
+  <NetworkPolicy>
+    <Action>Accept</Action>
+    <LogTraffic>Disable</LogTraffic>
+    <SkipLocalDestined>Disable</SkipLocalDestined>
+    <SourceZones>
+      <Zone>VPN</Zone>
+    </SourceZones>
+    <DestinationZones>
+      <Zone>LAN</Zone>
+    </DestinationZones>
+    <Schedule>All The Time</Schedule>
+    <WebFilter>None</WebFilter>
+    <ScanVirus>Disable</ScanVirus>
+    <ApplicationControl>None</ApplicationControl>
+    <IntrusionPrevention>None</IntrusionPrevention>
+  </NetworkPolicy>
+</FirewallRule>
+<FirewallRule>
+  <Name>Drop all</Name>
+  <Description />
+  <IPFamily>IPv4</IPFamily>
+  <Status>Enable</Status>
+  <Position>Bottom</Position>
+  <PolicyType>Network</PolicyType>
+  <NetworkPolicy>
+    <Action>Drop</Action>
+    <LogTraffic>Enable</LogTraffic>
+    <SkipLocalDestined>Disable</SkipLocalDestined>
+    <Schedule>All The Time</Schedule>
+    <WebFilter>None</WebFilter>
+    <ScanVirus>Disable</ScanVirus>
+    <ApplicationControl>None</ApplicationControl>
+    <IntrusionPrevention>None</IntrusionPrevention>
+  </NetworkPolicy>
+</FirewallRule>
+===SECTION:ATP===
+<ATP>
+  <ThreatProtectionStatus>Enable</ThreatProtectionStatus>
+  <Policy>Log Only</Policy>
+  <InspectContent>untrusted</InspectContent>
+</ATP>
+===SECTION:BackupRestore===
+<BackupRestore>
+  <ScheduleBackup>
+    <BackupMode>Local</BackupMode>
+    <BackupPrefix>fw01</BackupPrefix>
+    <FTPServer />
+    <Username />
+    <FtpPath />
+    <EmailAddress />
+    <BackupFrequency>Never</BackupFrequency>
+    <Day />
+    <Hour>0</Hour>
+    <Minute>0</Minute>
+    <Date />
+  </ScheduleBackup>
+</BackupRestore>
+===SECTION:Time===
+<Time>
+  <TimeZone>Asia/Tehran</TimeZone>
+  <SyncwithNTPServer>Enable</SyncwithNTPServer>
+  <PredefinedNTPServer>Enable</PredefinedNTPServer>
+</Time>

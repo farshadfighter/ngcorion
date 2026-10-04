@@ -10,6 +10,7 @@ import {
     isMySQL,
     isESXi,
     isMssql,
+    isSophos,
     usesWinRM,
     needsSudo,
 } from "./hardeningCredentials";
@@ -52,6 +53,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         mssql_username:   "",
         mssql_password:   "",
         mssql_port:       "1433",
+        sophos_username:  "",
+        sophos_password:  "",
+        sophos_port:      "4444",
         windows_username: "",
         windows_password: "",
         winrm_port:       DEFAULT_WINRM_PORT,
@@ -123,6 +127,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         if (usesWinRM(dt)) {
             if (!formData.windows_username?.trim()) errs.windows_username = t("Username is required");
             if (!formData.windows_password?.trim()) errs.windows_password = t("Password is required");
+        } else if (isSophos(dt)) {
+            if (!formData.sophos_username?.trim()) errs.sophos_username = t("Username is required");
+            if (!formData.sophos_password?.trim()) errs.sophos_password = t("Password is required");
         } else if (isMssql(dt)) {
             if (!formData.mssql_username?.trim()) errs.mssql_username = t("Username is required");
             if (!formData.mssql_password?.trim()) errs.mssql_password = t("Password is required");
@@ -154,6 +161,12 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                 windows_password: formData.windows_password,
                 winrm_port:       parseInt(formData.winrm_port) || Number(DEFAULT_WINRM_PORT),
                 transport:        formData.transport || "ntlm",
+            };
+        } else if (isSophos(dt)) {
+            credentials = {
+                sophos_username: formData.sophos_username,
+                sophos_password: formData.sophos_password,
+                sophos_port:     parseInt(formData.sophos_port) || 4444,
             };
         } else if (isMssql(dt)) {
             credentials = {
@@ -255,7 +268,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                     {/* ══════════════════════════════════════════════════════
                         SSH credentials (Linux, Cisco, Fortinet, Apache, MongoDB)
                     ══════════════════════════════════════════════════════ */}
-                    {!usesWinRM(dt) && !isMssql(dt) && (
+                    {!usesWinRM(dt) && !isMssql(dt) && !isSophos(dt) && (
                         <>
                             <div className="form-group">
                                 <label>
@@ -474,6 +487,62 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                     autoComplete="current-password"
                                 />
                                 {errors.ssh_password && <span className="error-message">{errors.ssh_password}</span>}
+                            </div>
+                        </>
+                    )}
+
+                    {/* ══════════════════════════════════════════════════════
+                        Sophos Firewall XML API credentials
+                    ══════════════════════════════════════════════════════ */}
+                    {isSophos(dt) && (
+                        <>
+                            <div className="form-group">
+                                <label>
+                                    {t("API Username")}
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="sophos_username"
+                                    value={formData.sophos_username}
+                                    onChange={handleChange}
+                                    className={errors.sophos_username ? "error" : ""}
+                                    placeholder={t("Administrator with API access")}
+                                    autoComplete="username"
+                                />
+                                {errors.sophos_username && <span className="error-message">{errors.sophos_username}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>
+                                    {t("API Password")}
+                                    <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <input
+                                    type="password"
+                                    name="sophos_password"
+                                    value={formData.sophos_password}
+                                    onChange={handleChange}
+                                    className={errors.sophos_password ? "error" : ""}
+                                    placeholder={t("API password")}
+                                    autoComplete="current-password"
+                                />
+                                {errors.sophos_password && <span className="error-message">{errors.sophos_password}</span>}
+                            </div>
+                            <div className="form-group">
+                                <label>{t("API Port")}</label>
+                                <input
+                                    type="number"
+                                    name="sophos_port"
+                                    value={formData.sophos_port}
+                                    onChange={handleChange}
+                                    placeholder="4444"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div className="form-group form-group-full">
+                                <small className="form-hint">
+                                    {t("Enable the API on the firewall (Backup & firmware > API) and add this server's address to its allowed list. The firewall's certificate is pinned on first connection.")}
+                                </small>
                             </div>
                         </>
                     )}

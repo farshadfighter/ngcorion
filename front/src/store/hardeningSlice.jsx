@@ -140,6 +140,7 @@ export const getDeviceName = (deviceType) => {
         "mysql":            "MySQL 8",
         "esxi":             "VMware ESXi",
         "nginx":            "NGINX",
+        "sophos":           "Sophos Firewall",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -229,6 +230,13 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
                 mysql_username: credentials.mysql_username || "root",
                 mysql_password: credentials.mysql_password,
                 mysql_port:     credentials.mysql_port || 3306,
+            };
+
+        case "sophos":
+            return {
+                sophos_username: credentials.sophos_username,
+                sophos_password: credentials.sophos_password,
+                sophos_port:     credentials.sophos_port || 4444,
             };
 
         case "mssql":

@@ -81,6 +81,11 @@ const TECH_FIELDS = {
     docker: SSH_SUDO_FIELDS,
     kubernetes: SSH_SUDO_FIELDS,
     nginx: SSH_SUDO_FIELDS,
+    sophos: [
+        { key: "sophos_username", label: tr("API Username"), type: "text", required: true },
+        { key: "sophos_password", label: tr("API Password"), type: "password", required: true },
+        { key: "sophos_port", label: tr("API Port"), type: "number", default: 4444 },
+    ],
     esxi: [
         { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true, default: "root" },
         { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
@@ -94,7 +99,7 @@ const TECH_FIELDS = {
     ],
 };
 
-const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi", nginx: "NGINX" };
+const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi", nginx: "NGINX", sophos: "Sophos Firewall" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 
