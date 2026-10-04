@@ -1,0 +1,12 @@
+===SECTION:OS_VERSION===
+{"Caption":"Microsoft Windows Server 2022 Standard","Version":"10.0.20348","BuildNumber":"20348","OSArchitecture":"64-bit"}
+===SECTION:DOMAIN_ROLE===
+{"DomainRole":3,"Domain":"corp.example.com","PartOfDomain":true}
+===SECTION:DNS_SETTINGS===
+{"Version":"10.0.20348","EnableDnsSec":true,"ListeningIPAddress":["10.10.0.53"],"Recursion":{"Enable":true,"SecureResponse":true},"Cache":{"EnablePollutionProtection":true,"LockingPercent":100,"MaxTtlSeconds":86400,"MaxNegativeTtlSeconds":900},"Forwarders":["10.0.0.53","10.0.1.53"],"UseRootHint":true,"RootHints":13,"BlockList":{"Enable":true,"List":["wpad","isatap"]},"Rrl":"Disable","Diagnostics":{"EventLogLevel":2,"EnableLoggingToFile":false}}
+===SECTION:DNS_ZONES===
+[{"Name":"corp.example.com","Type":"Primary","DsIntegrated":true,"Reverse":false,"DynamicUpdate":"Secure","SecureSecondaries":"NoTransfer","Signed":true,"Dnssec":{"DenialOfExistence":"NSec3","Keys":[{"Type":"KeySigningKey","Algorithm":"RsaSha256","Length":2048,"Rollover":true},{"Type":"ZoneSigningKey","Algorithm":"RsaSha256","Length":1024,"Rollover":true}]}},{"Name":"lab.example.com","Type":"Primary","DsIntegrated":true,"Reverse":false,"DynamicUpdate":"NonsecureAndSecure","SecureSecondaries":"NoTransfer","Signed":false,"Dnssec":null},{"Name":"example.net","Type":"Primary","DsIntegrated":false,"Reverse":false,"DynamicUpdate":"None","SecureSecondaries":"TransferAnyServer","Signed":false,"Dnssec":null},{"Name":"10.in-addr.arpa","Type":"Primary","DsIntegrated":true,"Reverse":true,"DynamicUpdate":"Secure","SecureSecondaries":"NoTransfer","Signed":false,"Dnssec":null},{"Name":"partner.example.org","Type":"Secondary","DsIntegrated":false,"Reverse":false,"DynamicUpdate":"","SecureSecondaries":"","Signed":false,"Dnssec":null}]
+===SECTION:DNS_HOST===
+{"Interfaces":[{"Alias":"Ethernet0","Dhcp":"Disabled"}],"DnsFolderAcl":[{"Identity":"NT AUTHORITY\\SYSTEM","Rights":"FullControl","Type":"Allow"},{"Identity":"BUILTIN\\Administrators","Rights":"FullControl","Type":"Allow"},{"Identity":"CREATOR OWNER","Rights":"268435456","Type":"Allow"},{"Identity":"CORP\\DnsAdmins","Rights":"Modify, Synchronize","Type":"Allow"},{"Identity":"BUILTIN\\Users","Rights":"ReadAndExecute, Synchronize","Type":"Allow"}],"AuditLogEnabled":true,"DnsLogMaxBytes":20971520,"ServiceStatus":"Running","ServiceStartType":"Automatic","Roles":["DNS","FileAndStorage-Services","Print-Services"]}
+===SECTION:DNS_REGISTRY===
+{}

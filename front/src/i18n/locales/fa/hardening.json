@@ -87,6 +87,7 @@
   "Detecting…": "در حال شناسایی…",
   "Device output": "خروجی دستگاه",
   "Device Type:": "نوع دستگاه:",
+  "DISA STIG - Windows DNS Server": "DISA STIG - Windows DNS Server",
   "Dry run — no commands were executed and nothing was changed on the server.": "اجرای آزمایشی — هیچ دستوری اجرا نشد و چیزی روی سرور تغییر نکرد.",
   "Dry run — nothing was executed and nothing changed on the device.": "اجرای آزمایشی — چیزی اجرا نشد و چیزی روی دستگاه تغییر نکرد.",
   "Enter {{label}}": "{{label}} را وارد کنید",

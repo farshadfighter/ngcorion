@@ -13,7 +13,7 @@ import { isWindowsRole } from "../Hardening/hardeningCredentials";
 const familyRelation = (assetFamily, targetFamily) => {
     if (assetFamily === targetFamily) return "same";
     if (targetFamily === "windows" && isWindowsRole(assetFamily)) return "same";
-    if (isWindowsRole(targetFamily) && assetFamily === "windows") return "host";
+    if (isWindowsRole(targetFamily) && (assetFamily === "windows" || isWindowsRole(assetFamily))) return "host";
     return "other";
 };
 

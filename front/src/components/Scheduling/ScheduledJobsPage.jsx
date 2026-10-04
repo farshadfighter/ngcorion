@@ -17,6 +17,13 @@ import { t as tr, uiLocale } from "../../i18n";
 
 const DAY_NAMES = [tr("Monday"), tr("Tuesday"), tr("Wednesday"), tr("Thursday"), tr("Friday"), tr("Saturday"), tr("Sunday")];
 
+// Windows Server roles connect like Windows Server itself.
+const WINRM_FIELDS = [
+    { key: "windows_username", label: tr("Windows Username"), type: "text", required: true },
+    { key: "windows_password", label: tr("Windows Password"), type: "password", required: true },
+    { key: "winrm_port", label: tr("WinRM Port"), type: "number", default: 5985 },
+];
+
 const TECH_FIELDS = {
     cisco: [
         { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true },
@@ -60,14 +67,11 @@ const TECH_FIELDS = {
         { key: "windows_password", label: tr("Windows Password"), type: "password", required: true },
         { key: "winrm_port", label: tr("WinRM Port"), type: "number", default: 5985 },
     ],
-    active_directory: [
-        { key: "windows_username", label: tr("Windows Username"), type: "text", required: true },
-        { key: "windows_password", label: tr("Windows Password"), type: "password", required: true },
-        { key: "winrm_port", label: tr("WinRM Port"), type: "number", default: 5985 },
-    ],
+    active_directory: WINRM_FIELDS,
+    dns_server: WINRM_FIELDS,
 };
 
-const TECH_LABELS = { active_directory: "Active Directory" };
+const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 

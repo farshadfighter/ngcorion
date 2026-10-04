@@ -11,6 +11,7 @@ import { groupChecksByScope } from './vdomScope';
 // the styles cannot disappear if that ever changes.
 import '../../assets/Auditing.css';
 import { t, uiLocale, n } from "../../i18n";
+import { ROLE_NAMES, roleBenchmark } from "./hardeningCredentials";
 
 const titleCase = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : null);
 
@@ -140,7 +141,7 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
         if (dt === 'apache')            return 'Apache';
         if (dt === 'mongodb')           return 'MongoDB';
         if (dt?.startsWith('mssql-'))   return 'SQL Server';
-        if (dt === 'active_directory') return 'Active Directory';
+        if (ROLE_NAMES[dt]) return ROLE_NAMES[dt];
         if (dt?.startsWith('windows-')) return 'Windows';
         return 'Cisco';
     };
@@ -178,9 +179,8 @@ export const FixUnsuccessfulResults = ({ sessionData, onClose, onNavigateToAudit
                 <div className="result-stats-container">
                     <div className="result-card result-card-info">
                         <div className="card-label">{t("Benchmark")}</div>
-                        <div className="card-value">{(sessionData?.sub_device_type || sessionData?.device_type) === "active_directory"
-                            ? t("CIS domain controller + domain checks")
-                            : t("{{getDeviceLabel}} CIS", { getDeviceLabel: getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type) })}</div>
+                        <div className="card-value">{roleBenchmark(sessionData?.sub_device_type || sessionData?.device_type)
+                            || t("{{getDeviceLabel}} CIS", { getDeviceLabel: getDeviceLabel(sessionData?.sub_device_type || sessionData?.device_type) })}</div>
                     </div>
 
                     <div className="result-card result-card-info">

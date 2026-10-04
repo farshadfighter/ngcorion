@@ -15,8 +15,11 @@ const getDeviceApiPath = (deviceType) => {
     return deviceType;
 };
 
+export const sortNewestFirst = (sessions) =>
+    [...sessions].sort((a, b) => String(b.started_at || "").localeCompare(String(a.started_at || "")));
+
 // Every family with its own /api/audit/{family}/sessions listing.
-export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory"];
+export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server"];
 
 // =====================
 // Thunks
@@ -90,7 +93,8 @@ export const fetchAuditSessions = createAsyncThunk(
                     console.warn(`Failed to fetch ${families[idx]} sessions:`, result.reason?.message);
                 }
             });
-            return allSessions;
+            // One request per family: put the merged list in date order, newest first.
+            return sortNewestFirst(allSessions);
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || t("Failed to fetch audit sessions"));
         }

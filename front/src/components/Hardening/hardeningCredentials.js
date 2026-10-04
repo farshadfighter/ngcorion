@@ -25,7 +25,13 @@ export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt);
 
 // Windows Server roles audited as their own target (app/core/target_catalog.py).
 // They connect the way Windows Server does: WinRM with a Windows account.
-export const WINDOWS_ROLES = ["active_directory"];
+export const WINDOWS_ROLES = ["active_directory", "dns_server"];
+export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server" };
+// What each role target is audited against (shown as "Benchmark" on result pages).
+export const roleBenchmark = (dt) => ({
+    active_directory: t("CIS domain controller + domain checks"),
+    dns_server: t("DISA STIG - Windows DNS Server"),
+})[dt];
 export const isWindowsRole = (dt) => WINDOWS_ROLES.includes(dt);
 export const usesWinRM     = (dt) => isWindows(dt) || isWindowsRole(dt);
 

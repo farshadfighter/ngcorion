@@ -232,7 +232,7 @@ def _days_late(ctx: Ctx, due: Optional[datetime]) -> str:
 
 DEVICE_NAMES = {"cisco": "Cisco", "fortinet": "Fortinet", "linux": "Linux", "windows": "Windows",
                 "apache": "Apache", "mongodb": "MongoDB", "mssql": "SQL Server",
-                "active_directory": "Active Directory"}
+                "active_directory": "Active Directory", "dns_server": "Windows DNS Server"}
 
 
 def _device(value) -> str:

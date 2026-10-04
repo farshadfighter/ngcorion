@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
-FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "windows", "linux")
+FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "dns_server", "windows", "linux")
 
 # Windows Server roles audited as their own target. A host carrying one of
 # these roles is still a Windows Server: it stays in the Windows target's
 # asset list (and gets its Windows version), and Windows hosts stay in the
 # role's list, since the role may run on any of them.
-WINDOWS_ROLE_FAMILIES = {"active_directory"}
+WINDOWS_ROLE_FAMILIES = {"active_directory", "dns_server"}
 
 # Families that are network/OS "hosts" a service can run on top of.
 _HOST_FAMILIES = {"linux", "windows"}
@@ -50,6 +50,7 @@ _FAMILY_KEYWORDS = [
     ("mssql", ("mssql", "sql server", "sqlserver", "microsoft sql")),
     ("apache", ("apache", "httpd")),
     ("active_directory", ("active directory", "activedirectory", "domain controller")),
+    ("dns_server", ("dns server", "dns-server", "name server", "nameserver", "dns")),
     ("windows", ("windows",)),
     ("linux", ("linux", "ubuntu", "red hat", "redhat", "rhel", "rocky",
                "centos", "debian", "fedora", "suse", "almalinux")),
@@ -104,8 +105,13 @@ def infer_device_family(asset) -> Optional[str]:
     text = _asset_text(asset)
     if not text.strip():
         return None
+    linux_keywords = dict(_FAMILY_KEYWORDS)["linux"]
     for family, keywords in _FAMILY_KEYWORDS:
         if any(kw in text for kw in keywords):
+            # A Windows role only on a host that is not Linux: a BIND name
+            # server or a Samba DC stays a Linux host.
+            if family in WINDOWS_ROLE_FAMILIES and any(kw in text for kw in linux_keywords):
+                continue
             return family
     return None
 
@@ -128,7 +134,7 @@ def family_matches(inferred: Optional[str], requested: Optional[str]) -> bool:
         return True
     if requested in _SERVICE_FAMILIES and inferred in _HOST_FAMILIES:
         return True
-    if requested in WINDOWS_ROLE_FAMILIES and inferred == "windows":
+    if requested in WINDOWS_ROLE_FAMILIES and (inferred == "windows" or inferred in WINDOWS_ROLE_FAMILIES):
         return True
     if requested == "windows" and inferred in WINDOWS_ROLE_FAMILIES:
         return True

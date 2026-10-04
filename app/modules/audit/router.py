@@ -121,7 +121,10 @@ def get_audit_results(
     session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
     assert_session_access(session, current_user)
 
-    results = db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+    # In the order the audit wrote them (its rule order); without ORDER BY,
+    # rows a fix has updated drift to the end of the list.
+    results = (db.query(AuditResult).filter(AuditResult.session_id == session_id)
+               .order_by(AuditResult.id).all())
 
     # FortiGate: some checks are heuristic (Manual + presence/absence rules); flag
     # those so the UI can mark their PASS/FAIL as "needs manual review".

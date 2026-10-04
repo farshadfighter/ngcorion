@@ -8,7 +8,8 @@ from .spec import ModuleSpec
 
 def specs() -> List[ModuleSpec]:
     from app.modules.active_directory.spec import SPEC as active_directory
-    return [active_directory]
+    from app.modules.dns_server.spec import SPEC as dns_server
+    return [active_directory, dns_server]
 
 
 def spec_map() -> Dict[str, ModuleSpec]:

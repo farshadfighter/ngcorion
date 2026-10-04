@@ -52,6 +52,7 @@ _AUDIT_FEED_MODULES = {
     "mssql_cis",
     "windows_cis",
     "active_directory_cis",
+    "dns_server_stig",
 }
 
 

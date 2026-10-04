@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { DEFAULT_WINRM_PORT } from "../components/Hardening/winrmDefaults";
 import { t } from "../i18n";
-import { AUDIT_FAMILIES } from "./auditSlice";
+import { AUDIT_FAMILIES, sortNewestFirst } from "./auditSlice";
 
 // ===========================
 // ERROR NORMALIZATION
@@ -132,6 +132,7 @@ export const getDeviceName = (deviceType) => {
 
         // Windows Server roles
         "active_directory": "Active Directory",
+        "dns_server":       "Windows DNS Server",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -210,6 +211,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
 
         case "windows":
         case "active_directory":
+        case "dns_server":
             return {
                 windows_username: credentials.windows_username,
                 windows_password: credentials.windows_password,
@@ -314,7 +316,8 @@ export const fetchAuditSessions = createAsyncThunk(
                 }
             });
 
-            return allSessions;
+            // One request per family: put the merged list in date order, newest first.
+            return sortNewestFirst(allSessions);
         } catch (error) {
             return rejectWithValue(
                 getErrorMessage(error, t("Failed to fetch audit sessions"))

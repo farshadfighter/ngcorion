@@ -158,7 +158,9 @@ class BenchmarkAuditService:
         return db.query(AuditSession).filter(AuditSession.id == session_id).first()
 
     def get_results(self, db: Session, session_id: int) -> List[AuditResult]:
-        return db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
+        # Insertion order is the module's rule order (sections ascending).
+        return (db.query(AuditResult).filter(AuditResult.session_id == session_id)
+                .order_by(AuditResult.id).all())
 
     def list_sessions(self, db: Session, limit: int, offset: int, owner_id: Optional[int] = None):
         return (self._query(db, owner_id).order_by(AuditSession.started_at.desc())

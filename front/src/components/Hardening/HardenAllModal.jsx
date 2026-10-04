@@ -336,9 +336,9 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                 )}
                 {!result.dry_run && (
                     <div className="ha-summary">
-                        <div className="ha-stat is-success"><strong>{result.successful}</strong><span>{t("Fixed")}</span></div>
-                        <div className="ha-stat is-failed"><strong>{result.failed}</strong><span>{t("Failed")}</span></div>
-                        <div className="ha-stat is-skipped"><strong>{result.skipped}</strong><span>{t("Skipped")}</span></div>
+                        <div className="ha-stat is-success"><strong>{n(result.successful)}</strong><span>{t("Fixed")}</span></div>
+                        <div className="ha-stat is-failed"><strong>{n(result.failed)}</strong><span>{t("Failed")}</span></div>
+                        <div className="ha-stat is-skipped"><strong>{n(result.skipped)}</strong><span>{t("Skipped")}</span></div>
                     </div>
                 )}
                 <div className="ha-list" style={{ maxHeight: '380px' }}>
