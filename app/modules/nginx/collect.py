@@ -120,6 +120,10 @@ def second_pass(cfg: Config, version_text: str) -> Dict[str, str]:
 
 
 def collect(conn) -> str:
+    """Collect the nginx audit dump: version, the full configuration (nginx -T, secrets redacted,
+    comments stripped), then the account, file permissions, log pages and processes the
+    configuration points to. A host without nginx yields a dump saying so.
+    """
     version = conn.run(COMMANDS["NGINX_VERSION"])
     if NOT_INSTALLED in version or "nginx version" not in version:
         return assemble({"NGINX_VERSION": NOT_INSTALLED})

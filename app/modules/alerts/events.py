@@ -28,6 +28,9 @@ from app.core.config import settings
 
 @dataclass
 class Problem:
+    """One problem an event check found: its identity within the rule (for one alert per problem), the
+    texts and the asset it concerns.
+    """
     key: str                          # identifies the problem within its rule
     title: str
     detail: Optional[str] = None
@@ -39,6 +42,7 @@ class Problem:
 
 @dataclass
 class Param:
+    """A threshold of an event type that a rule can set (with unit and range)."""
     key: str
     label: str
     default: float
@@ -49,6 +53,9 @@ class Param:
 
 @dataclass
 class EventType:
+    """A kind of alert: its module, texts, whether it is a lasting state or a one-off event, how often
+    it is checked, its thresholds, and the check function that returns the current problems.
+    """
     code: str
     module: str                       # noc | cve | audit | backup | system
     name: str

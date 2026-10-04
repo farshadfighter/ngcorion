@@ -38,10 +38,16 @@ CSP_POLICIES = {
 
 
 class EditError(RuntimeError):
+    """A configuration edit could not be made safely; nothing was changed (or the change was rolled
+    back).
+    """
     pass
 
 
 def render(name: str, args: List[str]) -> str:
+    """One directive as configuration text, quoting arguments that contain spaces or special
+    characters.
+    """
     out = [name]
     for a in args:
         if a == "" or re.search(r"[\s;{}#\"']", a):
@@ -116,6 +122,7 @@ class Editor:
         self._op(d.file, d.line, 2, "before", [indent + ln for ln in lines])
 
     def http(self) -> Directive:
+        """The http block; editing requires one."""
         h = self.cfg.http()
         if h is None:
             raise EditError("the configuration has no http block")
@@ -123,6 +130,9 @@ class Editor:
 
     # ── edits ──
     def set(self, ctx: str, name: str, args: List[str], top_only: bool = False) -> str:
+        """Make `name args` the value at a level: rewrite the existing directive(s) there, comment out
+        conflicting ones below (top_only keeps lower levels), or add it when absent.
+        """
         if ctx == "main":
             targets = self.cfg.main(name)
         else:
@@ -157,6 +167,9 @@ class Editor:
         return f"{render(name, args)} in {changed} block(s)"
 
     def comment_matching(self, name: str, value: str, levels: Optional[List[str]] = None) -> str:
+        """Comment out every `name value ...` directive (optionally only at some levels), for example
+        "autoindex on".
+        """
         targets = [x for x in self.http().walk() if x.name == name and x.args[:1] == [value]
                    and (not levels or x.context() in levels)]
         for d in targets:
@@ -164,6 +177,9 @@ class Editor:
         return f"{len(targets)} '{name} {value}' disabled"
 
     def add(self, name: str, args: List[str], match: Optional[str] = None) -> str:
+        """Add an http-level directive (for an array directive such as add_header, alongside the
+        others), replacing one that matches `match`.
+        """
         h = self.http()
         same = [x for x in h.direct(name) if (match and any(a.startswith(match) for a in x.args))
                 or (not match and x.args == args)]
@@ -175,6 +191,7 @@ class Editor:
         return f"{render(name, args)} added to http"
 
     def error_level(self, level: str) -> str:
+        """Set the level of every main-level error_log, adding one when none exists."""
         logs = self.cfg.main("error_log")
         if not logs:
             self.insert_before(self.http(), [render("error_log", ["/var/log/nginx/error.log", level])])
@@ -185,6 +202,9 @@ class Editor:
         return f"error_log level {level} on {len(logs)} log(s)"
 
     def catchall(self) -> str:
+        """Add a default server for every listen address that has none, which closes requests with an
+        unknown Host (444; TLS handshake rejected).
+        """
         groups: Dict[str, List[Tuple[Directive, List[str]]]] = {}
         for s in self.cfg.servers():
             for key, params in listens(s):
@@ -223,6 +243,9 @@ class Editor:
         return f"catch-all default server added for {', '.join(taken)}"
 
     def http2(self) -> str:
+        """Turn on HTTP/2 for TLS servers: "http2 on" on nginx 1.25.1 and later, the listen parameter
+        before that.
+        """
         changed = 0
         for s in self.cfg.servers():
             if not is_ssl(s) or effective_value(s, "http2") == "on" or any("http2" in p for _k, p in listens(s)):
@@ -240,6 +263,9 @@ class Editor:
 
     # ── apply ──
     def commit(self) -> str:
+        """Apply the collected edits: back up the touched files, write them, run nginx -t, and restore
+        the backup if the test fails. Returns what changed.
+        """
         if not self.ops:
             return "no change needed"
         new: Dict[str, str] = {}
@@ -276,6 +302,9 @@ class Editor:
         return f"backup in {backup}; " + self.reload()
 
     def reload(self) -> str:
+        """Reload nginx after a successful test; when nginx is not running (container without systemd),
+        the configuration simply applies at the next start.
+        """
         out = self.conn.run("nginx -s reload 2>&1")
         if out.startswith(("CMD_ERROR", "SSH_ERROR")):
             running = self.conn.run("for p in /proc/[0-9]*; do [ \"$(cat $p/comm 2>/dev/null)\" = nginx ] && "
@@ -302,6 +331,9 @@ def _flag(args: List[str], name: str) -> Tuple[List[str], Optional[str]]:
 
 
 def run_statement(conn, statement: str, check: Callable[[str], str]) -> str:
+    """Execute one NGX: statement (set, array, comment, add, error-level, catchall, http2, csp, check)
+    against a freshly collected configuration.
+    """
     words = shlex.split(statement[len(PREFIX):])
     if not words:
         raise EditError("empty nginx edit")
@@ -348,6 +380,9 @@ class NginxConnection:
         self.ip = getattr(shell, "ip", None)
 
     def run(self, script: str) -> str:
+        """Run a collection command, or an NGX: statement; an edit error comes back as CMD_ERROR text
+        so the fix is reported as failed.
+        """
         if not script.startswith(PREFIX):
             return self._shell.run(script)
         try:
@@ -364,6 +399,7 @@ class NginxConnection:
         self._writer(path, content)
 
     def check(self, rule_id: str) -> str:
+        """Verify a fix by collecting again and evaluating the rule: "PASS: ..." or "FAIL: ..."."""
         from app.modules.benchmark.rules import evaluate
         from . import rules as R
         from .collect import collect

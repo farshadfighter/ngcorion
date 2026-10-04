@@ -43,6 +43,7 @@ FACILITIES = {f"local{i}": 16 + i for i in range(8)} | {"user": 1, "daemon": 3, 
 
 
 class DeliveryError(Exception):
+    """A notification could not be sent on its channel; the message is shown in the delivery log."""
     pass
 
 
@@ -53,6 +54,9 @@ def load_section(db: Session, section: str) -> Dict[str, Any]:
 
 
 def local_timezone(db: Session):
+    """The server's configured time zone (System Configuration), for times in messages; None when
+    unset.
+    """
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
     name = load_section(db, SECTION_TIME).get("timezone")
     try:
@@ -102,6 +106,9 @@ def send_email(config: Dict[str, Any], to: List[str], subject: str, text_body: s
 # ---------------------------------------------------------------------------
 
 def send_sms(config: Dict[str, Any], phone: str, text_body: str) -> None:
+    """Send one SMS through the configured gateway. The gateway URL is checked against SSRF targets and
+    redirects are not followed.
+    """
     from app.modules.system_config.schemas import reject_ssrf_target
     from app.modules.system_config.service import _sms_request
     if not config or not config.get("provider"):
@@ -152,6 +159,7 @@ def cef_message(payload: Dict[str, Any]) -> str:
 
 
 def send_syslog(config: Dict[str, Any], payload: Dict[str, Any]) -> None:
+    """Send one alert as an RFC 5424 syslog message (UDP or TCP) to the configured server."""
     if not config or not config.get("server_ip"):
         raise DeliveryError("Syslog is not configured - set the server in System Configuration")
     facility = FACILITIES.get(str(config.get("facility") or "local0").lower(), 16)
@@ -211,6 +219,10 @@ def sign(secret: str, timestamp: str, body: bytes) -> str:
 
 
 def send_webhook(url: str, secret: str, payload: Dict[str, Any]) -> int:
+    """POST an alert as JSON to a webhook, signed with HMAC-SHA256 of timestamp and body
+    (X-NGCorion-Signature); the URL is checked against SSRF targets, redirects are refused. Returns
+    the HTTP status.
+    """
     try:
         check_webhook_url(url)
     except ValueError as exc:

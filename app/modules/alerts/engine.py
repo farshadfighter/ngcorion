@@ -60,6 +60,7 @@ _held_since: Dict[str, datetime] = {}
 # ---------------------------------------------------------------------------
 
 def rule_params(rule: NotificationRule) -> Dict:
+    """A rule's thresholds: the event's defaults overridden by the rule's own values."""
     event = EVENTS.get(rule.event_type)
     values = {p.key: p.default for p in (event.params if event else [])}
     values.update(rule.params or {})
@@ -99,6 +100,9 @@ def _asset_matcher(db: Session, rules: Iterable[NotificationRule]):
 
 
 def in_scope(rule: NotificationRule, asset_id: Optional[int], assets: Dict) -> bool:
+    """Whether an asset is covered by a rule (all assets, assets of given types/zones, or specific
+    assets). Problems not tied to an asset are always in scope.
+    """
     if rule.asset_scope == "all" or asset_id is None:
         return True
     f = rule.asset_filter or {}
@@ -116,6 +120,9 @@ def in_scope(rule: NotificationRule, asset_id: Optional[int], assets: Dict) -> b
 
 def evaluate(db: Session, now: Optional[datetime] = None, force: bool = False,
              only: Optional[Iterable[str]] = None) -> Dict[str, int]:
+    """Run the checks of every enabled rule that is due (or all, with force), open alerts for new
+    problems and resolve alerts whose problem is gone. Returns counts of opened and resolved alerts.
+    """
     now = now or datetime.utcnow()
     clock = _time.monotonic()
     rules = db.query(NotificationRule).filter(NotificationRule.enabled.is_(True)).all()
@@ -212,6 +219,9 @@ def _base_url() -> Optional[str]:
 
 
 def alert_payload(alert: Alert, asset: Optional[Asset] = None) -> Dict:
+    """An alert as notifications carry it (webhook JSON, syslog structured data), with a link to it in
+    NGCorion.
+    """
     base = _base_url()
     return {
         "alert_id": alert.id, "event_type": alert.event_type, "module": alert.module,
@@ -318,6 +328,7 @@ def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[A
     rows: List[NotificationDelivery] = []
 
     def add(channel, recipient, subj, text_body, payload=None, webhook_id=None, status="pending", error=None):
+        """Queue one delivery row of the current message."""
         d = NotificationDelivery(alert_ids=ids, rule_id=rule.id, channel=channel, webhook_id=webhook_id,
                                  recipient=recipient, kind=kind, severity=worst, subject=subj, body=text_body,
                                  payload=payload, status=status, error=error, attempts=0, next_attempt_at=now,
@@ -353,6 +364,10 @@ def queue_message(db: Session, rule: NotificationRule, kind: str, alerts: List[A
 
 
 def dispatch(db: Session, now: Optional[datetime] = None) -> int:
+    """Turn new and resolved alerts into deliveries: group them per rule as configured, respect quiet
+    hours and repeat intervals, and resolve recipients (roles, users, addresses, asset owner) per
+    channel. Returns how many deliveries were queued.
+    """
     now = now or datetime.utcnow()
     tz = ch.local_timezone(db)
     queued = 0
@@ -455,6 +470,9 @@ def deliver(db: Session, d: NotificationDelivery, configs: Optional[_Configs] = 
 
 
 def send_pending(db: Session, now: Optional[datetime] = None, limit: int = SEND_BATCH) -> Dict[str, int]:
+    """Send due deliveries (row-locked so two workers never send the same one), retrying with backoff
+    and giving up after the last attempt.
+    """
     now = now or datetime.utcnow()
     rows = (db.query(NotificationDelivery)
             .filter(NotificationDelivery.status == "pending", NotificationDelivery.next_attempt_at <= now)
@@ -485,6 +503,7 @@ def send_pending(db: Session, now: Optional[datetime] = None, limit: int = SEND_
 
 
 def cleanup(db: Session, now: Optional[datetime] = None) -> None:
+    """Delete deliveries and resolved alerts older than RETENTION_DAYS."""
     now = now or datetime.utcnow()
     cutoff = now - timedelta(days=RETENTION_DAYS)
     db.query(NotificationDelivery).filter(NotificationDelivery.created_at < cutoff).delete(synchronize_session=False)
@@ -497,6 +516,7 @@ def cleanup(db: Session, now: Optional[datetime] = None) -> None:
 # ---------------------------------------------------------------------------
 
 def acknowledge(db: Session, alert: Alert, user_id: int, now: Optional[datetime] = None) -> None:
+    """Mark an active alert as acknowledged by a user (it stays open until its problem is gone)."""
     if alert.status != ALERT_ACTIVE:
         return
     alert.status = ALERT_ACKNOWLEDGED
@@ -505,6 +525,7 @@ def acknowledge(db: Session, alert: Alert, user_id: int, now: Optional[datetime]
 
 
 def resolve(db: Session, alert: Alert, user_id: Optional[int], now: Optional[datetime] = None) -> None:
+    """Resolve an alert by hand; no "resolved" notification is sent for it."""
     if alert.status == ALERT_RESOLVED:
         return
     alert.status = ALERT_RESOLVED
@@ -518,6 +539,9 @@ def resolve(db: Session, alert: Alert, user_id: Optional[int], now: Optional[dat
 # ---------------------------------------------------------------------------
 
 def run_cycle(now: Optional[datetime] = None) -> None:
+    """One cycle of the alert engine: evaluate rules, dispatch, send, and clean up now and then.
+    Built-in rules are created on the first cycle.
+    """
     from app.core.database import SessionLocal
     db = SessionLocal()
     try:
@@ -539,6 +563,7 @@ def run_cycle(now: Optional[datetime] = None) -> None:
 
 
 class AlertEngine:
+    """The background loop of alerts (one worker only, see app/core/singleton.py)."""
     def __init__(self, interval: int = CYCLE_SECONDS):
         self.interval = interval
         self._task: Optional[asyncio.Task] = None
@@ -553,6 +578,7 @@ class AlertEngine:
                 pass
 
     def start(self) -> None:
+        """Start the loop if it is not running."""
         if self._task is None or self._task.done():
             self._stop.clear()
             _last_checked.clear()
@@ -560,6 +586,7 @@ class AlertEngine:
             logger.info("[alerts] engine started (every %ss)", self.interval)
 
     async def stop(self) -> None:
+        """Stop the loop, waiting up to 20 seconds for the current cycle."""
         if self._task is None:
             return
         self._stop.set()
@@ -574,6 +601,7 @@ _engine: Optional[AlertEngine] = None
 
 
 def start_alert_engine() -> None:
+    """Start the alert engine (called when this worker becomes leader)."""
     global _engine
     if _engine is None:
         _engine = AlertEngine()

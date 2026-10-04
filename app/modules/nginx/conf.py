@@ -23,11 +23,16 @@ BLOCK_CONTEXTS = ("http", "server", "location", "if", "limit_except")
 
 
 class ParseError(ValueError):
+    """The nginx -T output cannot be parsed as a configuration."""
     pass
 
 
 @dataclass(eq=False)
 class Directive:
+    """One directive of the configuration, where it is (file, lines) and, for a block, its children.
+    `parent` links let rules find the context (main, http, server, location) and apply nginx's
+    inheritance.
+    """
     name: str
     args: List[str]
     file: str
@@ -42,6 +47,7 @@ class Directive:
         return self.children is not None
 
     def ancestors(self) -> Iterator["Directive"]:
+        """The enclosing blocks, innermost first."""
         p = self.parent
         while p is not None:
             yield p
@@ -129,6 +135,7 @@ def _skip_raw_block(text_tokens, line):
 
 
 def parse_file(text: str, path: str) -> List[Directive]:
+    """Parse one configuration file into directives (includes are expanded later by Config)."""
     tokens = tokenize(text)
     root: List[Directive] = []
     stack: List[Tuple[Optional[Directive], List[Directive]]] = [(None, root)]
@@ -183,6 +190,9 @@ def split_dump(text: str) -> Dict[str, str]:
 
 class Config:
     def __init__(self, dump: str):
+        """Parse every file of the nginx -T dump and build one tree, with include directives replaced
+        by the files they load (the first file is nginx.conf).
+        """
         self.files = split_dump(dump)
         if not self.files:
             raise ParseError("no configuration in the nginx -T output")

@@ -25,6 +25,7 @@ def _backup(conn) -> str:
 
 
 def collect_software(conn) -> Optional[dict]:
+    """nginx itself as a software inventory item (name and version from nginx -v)."""
     m = re.search(r"nginx version: nginx/(\d+\.\d+\.\d+)", conn.run("nginx -v 2>&1"))
     if not m:
         return None

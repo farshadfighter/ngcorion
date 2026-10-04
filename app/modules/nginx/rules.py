@@ -34,6 +34,9 @@ def _config(text: str) -> Config:
 
 
 def config_error(d) -> Optional[str]:
+    """The error when nginx -t refused the configuration, else None (the audit stops: an unloadable
+    configuration cannot be judged).
+    """
     text = section(d, "NGINX_T")
     m = re.search(r"nginx: \[emerg\][^\n]*", text)
     if m or "test failed" in text:
@@ -73,6 +76,8 @@ def files(d) -> List[Tuple[str, str, int, str, str]]:
 
 
 def paths(d) -> Dict[str, Tuple[str, str, int, str]]:
+    """Owner, group, mode and type of every file and directory the configuration names (PATHS section).
+    """
     out = {}
     for r in _rows(d, "PATHS"):
         out[r[4]] = (r[0], r[1], int(r[2], 8) if r[2].isdigit() else -1, r[3])
@@ -80,6 +85,7 @@ def paths(d) -> Dict[str, Tuple[str, str, int, str]]:
 
 
 def account(d) -> Dict[str, str]:
+    """The worker account from /etc/passwd (name, uid, gid, home, shell) and whether it exists."""
     text = section(d, "ACCOUNT")
     out = {"exists": "NO_ACCOUNT" not in text}
     for line in text.splitlines():
@@ -94,6 +100,7 @@ def account(d) -> Dict[str, str]:
 
 
 def procs(d) -> List[Dict[str, str]]:
+    """nginx processes with their uid, parent and security context."""
     out = []
     for r in _rows(d, "PROCS"):
         out.append({"pid": r[0], "uid": r[1], "ppid": r[2], "cmd": r[3], "context": r[4] if len(r) > 4 else ""})
@@ -174,6 +181,8 @@ def _per_scope(rules, sec, title, severity, bad_fn, what, remediation, *, scope=
     location) where bad_fn(block) - bad_fn(block, dump) with with_dump -
     returns a reason."""
     def items(d):
+        """The blocks a per-block rule examines (TLS servers, proxied locations, every level, servers).
+        """
         if scope == "ssl":
             return [(server_label(s), s) for s in ssl_servers(d)]
         if scope == "proxied":
@@ -183,6 +192,7 @@ def _per_scope(rules, sec, title, severity, bad_fn, what, remediation, *, scope=
         return [(server_label(s), s) for s in servers(d)]
 
     def offenders(d):
+        """"label (reason)" of every block that fails the rule."""
         out = []
         for label, block in items(d):
             reason = bad_fn(block, d) if with_dump else bad_fn(block)
@@ -194,6 +204,7 @@ def _per_scope(rules, sec, title, severity, bad_fn, what, remediation, *, scope=
         return (empty_ok or bool(items(d))) and not offenders(d)
 
     def evidence(d):
+        """"N of M compliant" plus the offenders."""
         n = len(items(d))
         if not n:
             return f"{what}: {empty_note}"
@@ -205,6 +216,7 @@ def _per_scope(rules, sec, title, severity, bad_fn, what, remediation, *, scope=
 
 def _timeout_rule(rules, sec, title, names, default, remediation):
     def bad(block):
+        """The timeouts of a block that are missing, zero or longer than TIMEOUT_MAX seconds."""
         reasons = []
         for name in names:
             raw = effective_value(block, name)
@@ -217,6 +229,9 @@ def _timeout_rule(rules, sec, title, names, default, remediation):
 
 def _header_rule(rules, sec, title, severity, name, ok, what, remediation, scope="scopes", level="L1"):
     def bad(block):
+        """Why the header is wrong at this level (missing, or a value the rule does not accept), else
+        None.
+        """
         value = headers(block).get(name.lower())
         if value is None:
             return "not set"
@@ -226,6 +241,7 @@ def _header_rule(rules, sec, title, severity, name, ok, what, remediation, scope
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """Every rule of the module, in CIS NGINX Benchmark order."""
     r: List[BenchmarkRule] = []
     V = ("NGINX_VERSION",)
 
@@ -268,6 +284,8 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 2.2 Account ─────────────────────────────────────────────────────────
     def account_problems(d):
+        """What is wrong with the worker account: running as root, missing, a login shell, no lock.
+        """
         a, user = account(d), worker_user(d)
         out = []
         if user == "root" or a.get("uid") == "0":
@@ -303,6 +321,8 @@ def build_rules() -> List[BenchmarkRule]:
           "chown -R root:root /etc/nginx", ("FILES",))
 
     def loose(d):
+        """Configuration files and directories writable by group/others or files readable by others.
+        """
         out = []
         for _o, _g, mode, kind, p in files(d):
             if kind == "directory" and mode & 0o022:
@@ -328,6 +348,7 @@ def build_rules() -> List[BenchmarkRule]:
           "chown root:root <pid file>; chmod u-x,go-wx <pid file>", ("NGINX_T", "PATHS"))
 
     def core_dir(d):
+        """The working_directory (core dumps) and what is wrong with it."""
         wd = cfg(d).main_value("working_directory")
         if not wd:
             return None, []
@@ -356,6 +377,7 @@ def build_rules() -> List[BenchmarkRule]:
             lambda d: "listening on: " + _names(sorted({k for s in servers(d) for k, _p in listens(s)})))
 
     def catchall_missing(d):
+        """Listen addresses without a default server that rejects unknown hosts."""
         groups: Dict[str, List[Directive]] = {}
         for s in servers(d):
             for key, params in listens(s):
@@ -392,6 +414,7 @@ def build_rules() -> List[BenchmarkRule]:
           "Replace the stock index and 50x pages with pages that do not name the server software.", ("PAGES",))
 
     def no_hidden_guard(d):
+        """Servers without a location that denies hidden files (/.git, /.env)."""
         out = []
         for s in servers(d):
             guarded = any(loc.args[:1] in (["~"], ["~*"]) and "/\\." in " ".join(loc.args)
@@ -430,6 +453,7 @@ def build_rules() -> List[BenchmarkRule]:
           "error_log /var/log/nginx/error.log info;")
 
     def logrotate(d):
+        """What is missing from the nginx logrotate configuration."""
         text = section(d, "LOGROTATE")
         problems = []
         if "NO_LOGROTATE_FILE" in text:
@@ -462,6 +486,7 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 4 TLS ───────────────────────────────────────────────────────────────
     def plain_servers(d):
+        """Plain-HTTP servers that do not redirect to HTTPS."""
         out = []
         for s in servers(d):
             if is_ssl(s):
@@ -479,6 +504,7 @@ def build_rules() -> List[BenchmarkRule]:
             lambda d: "certificates: " + _names(sorted({x.args[0] for x in cfg(d).all("ssl_certificate") if x.args})))
 
     def key_problems(d):
+        """Private key files that are missing, not owned by root, or readable by group/others."""
         out = []
         for key in sorted({x.args[0] for x in cfg(d).all("ssl_certificate_key") if x.args and "$" not in x.args[0]}):
             info = paths(d).get(key)
@@ -561,6 +587,7 @@ def build_rules() -> List[BenchmarkRule]:
                   "client_body_timeout 10; client_header_timeout 10;")
 
     def body_size(block):
+        """Why the request body limit is wrong (unset or unlimited), else None."""
         v = effective_value(block, "client_max_body_size")
         if v is None:
             return "not set (1m default)"
@@ -593,6 +620,7 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 6 Mandatory access control ──────────────────────────────────────────
     def mac(d):
+        """(SELinux mode, AppArmor state, security contexts of the nginx processes)."""
         text = section(d, "MAC")
         selinux = re.search(r"selinux=(\S+)", text)
         apparmor = re.search(r"apparmor=(\S+)", text)
@@ -600,6 +628,7 @@ def build_rules() -> List[BenchmarkRule]:
         return (selinux.group(1) if selinux else "absent", apparmor.group(1) if apparmor else "absent", contexts)
 
     def confined(d):
+        """Whether nginx runs confined by SELinux (httpd_t) or an enforcing AppArmor profile."""
         selinux, _apparmor, contexts = mac(d)
         if selinux == "Enforcing":
             return any(":httpd_t:" in c for c in contexts) or not contexts
@@ -615,6 +644,9 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for this host. Raises when nginx is not installed or its configuration does not load,
+    so the session fails with that reason instead of a list of false findings.
+    """
     v = section(dump, "NGINX_VERSION")
     if not v or NOT_INSTALLED in v:
         raise ValueError("nginx is not installed on this host (nginx -V did not answer).")

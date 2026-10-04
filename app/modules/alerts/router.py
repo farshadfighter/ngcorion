@@ -41,6 +41,9 @@ BELL_ITEMS = 8
 
 
 def visible_modules(db: Session, user: User) -> List[str]:
+    """The alert modules a user may see: all for admins, otherwise those whose permission module they
+    can read.
+    """
     if user.role == UserRole.ADMIN:
         return list(MODULE_PERMISSION)
     readable = {(p.module.value if hasattr(p.module, "value") else str(p.module)).lower()
@@ -94,6 +97,7 @@ def list_alerts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Alerts of the modules the user may see, by status, filterable, with per-status counts."""
     modules = visible_modules(db, current_user)
     base = db.query(Alert).filter(Alert.module.in_(modules))
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -158,6 +162,7 @@ def alerts_summary(current_user: User = Depends(get_current_user), db: Session =
 
 @router.post("/seen")
 def mark_seen(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Record that the user opened the alerts list (clears the bell badge)."""
     row = db.get(AlertSeen, current_user.id)
     if row is None:
         db.add(AlertSeen(user_id=current_user.id, seen_at=datetime.utcnow()))
@@ -176,6 +181,7 @@ def _own_alert(db: Session, alert_id: int, user: User) -> Alert:
 
 @router.post("/{alert_id}/acknowledge")
 def acknowledge_alert(alert_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Acknowledge an active alert (one of a module the user may see); audit-logged."""
     alert = _own_alert(db, alert_id, current_user)
     if alert.status != ALERT_ACTIVE:
         raise HTTPException(status_code=409, detail=f"The alert is already {alert.status}")
@@ -207,12 +213,16 @@ _HHMM = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
 
 
 class AssetFilter(BaseModel):
+    """Assets a rule covers when its scope is "matching" (types, zones) or "specific" (asset ids).
+    """
     type_ids: List[int] = Field(default_factory=list, max_length=200)
     zone_ids: List[int] = Field(default_factory=list, max_length=100)   # Risk Intelligence zones
     asset_ids: List[int] = Field(default_factory=list, max_length=2000)
 
 
 class Recipients(BaseModel):
+    """Who a rule notifies: roles, users, extra addresses and phone numbers, and the asset's owner.
+    """
     roles: List[Literal["admin", "manager", "user", "guest"]] = Field(default_factory=list)
     user_ids: List[int] = Field(default_factory=list, max_length=500)
     emails: List[EmailStr] = Field(default_factory=list, max_length=50)
@@ -231,6 +241,9 @@ class Recipients(BaseModel):
 
 
 class RuleIn(BaseModel):
+    """Body of a notification rule: event, severity, thresholds, scope, recipients, channels, grouping,
+    quiet hours and repeats.
+    """
     name: str = Field(..., min_length=1, max_length=150)
     event_type: str
     enabled: bool = True
@@ -360,6 +373,7 @@ def _rule_context(db: Session):
 
 @admin_router.get("/events")
 def list_events(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read"))):
+    """Every event type a rule can watch, with its thresholds (for the rule editor)."""
     return [{
         "code": e.code, "module": e.module, "module_label": MODULE_LABELS[e.module], "name": e.name,
         "kind": e.kind, "uses_assets": e.uses_assets, "has_owner": e.has_owner,
@@ -371,6 +385,7 @@ def list_events(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read"
 
 @admin_router.get("/rules")
 def list_rules(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")), db: Session = Depends(get_db)):
+    """Notification rules grouped by module, with their open alerts and channel names."""
     engine.ensure_default_rules(db)
     users, open_counts, hooks = _rule_context(db)
     rules = db.query(NotificationRule).order_by(NotificationRule.builtin.desc(), NotificationRule.id).all()
@@ -404,6 +419,7 @@ def get_rule(rule_id: int, _user: User = Depends(require_permission("SYSTEM_CONF
 @admin_router.post("/rules", status_code=201)
 def create_rule(data: RuleIn, current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                 db: Session = Depends(get_db)):
+    """Create a notification rule (system configuration write); audit-logged."""
     values = _validate_rule(db, data)
     rule = NotificationRule(**values, builtin=False, updated_by=current_user.id)
     db.add(rule)
@@ -418,6 +434,7 @@ def create_rule(data: RuleIn, current_user: User = Depends(require_permission("S
 def update_rule(rule_id: int, data: RuleIn,
                 current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                 db: Session = Depends(get_db)):
+    """Change a rule (its event cannot change); audit-logged."""
     rule = _get_rule(db, rule_id)
     if data.event_type != rule.event_type:
         raise HTTPException(status_code=422, detail="The event of a rule cannot change; create a new rule")
@@ -436,6 +453,7 @@ def update_rule(rule_id: int, data: RuleIn,
 
 
 class EnabledIn(BaseModel):
+    """Body of turning a rule on or off."""
     enabled: bool
 
 
@@ -443,6 +461,7 @@ class EnabledIn(BaseModel):
 def set_rule_enabled(rule_id: int, data: EnabledIn,
                      current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                      db: Session = Depends(get_db)):
+    """Turn a rule on or off; turning it off resolves its open alerts."""
     rule = _get_rule(db, rule_id)
     if rule.enabled and not data.enabled:
         _close_rule_alerts(db, rule, current_user.id)
@@ -460,6 +479,7 @@ def set_rule_enabled(rule_id: int, data: EnabledIn,
 @admin_router.delete("/rules/{rule_id}")
 def delete_rule(rule_id: int, current_user: User = Depends(require_permission("SYSTEM_CONFIG", "delete")),
                 db: Session = Depends(get_db)):
+    """Delete a custom rule and resolve its alerts; built-in rules can only be turned off."""
     rule = _get_rule(db, rule_id)
     if rule.builtin:
         raise HTTPException(status_code=409, detail="Built-in rules can be turned off but not deleted")
@@ -544,6 +564,9 @@ def _webhook_out(h: NotificationWebhook, counts: Dict) -> dict:
 
 @admin_router.get("/channels")
 def get_channels(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")), db: Session = Depends(get_db)):
+    """State of each channel (email, SMS, syslog, webhooks): configured or not, and its last 24 hours
+    of deliveries.
+    """
     counts = _counts_24h(db)
     empty = {"sent": 0, "failed": 0, "pending": 0, "skipped": 0}
     smtp = ch.load_section(db, SECTION_SMTP)
@@ -572,6 +595,7 @@ def get_channels(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read
 
 
 class ChannelTestIn(BaseModel):
+    """Body of a channel test: which channel and the recipient."""
     channel: Literal["email", "sms", "syslog"]
     to: Optional[str] = Field(None, max_length=255)
 
@@ -579,6 +603,7 @@ class ChannelTestIn(BaseModel):
 @admin_router.post("/channels/test")
 def test_channel(data: ChannelTestIn, current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                  db: Session = Depends(get_db)):
+    """Send a test message on a channel to an address (default: the caller's own email or phone)."""
     now = datetime.utcnow()
     to = (data.to or "").strip()
     if data.channel == CHANNEL_EMAIL:
@@ -613,6 +638,8 @@ def test_channel(data: ChannelTestIn, current_user: User = Depends(require_permi
 
 
 class WebhookIn(BaseModel):
+    """Body of a webhook: name, URL (checked against SSRF targets) and whether to rotate its secret.
+    """
     name: str = Field(..., min_length=1, max_length=100)
     url: str = Field(..., min_length=8, max_length=500)
     enabled: bool = True
@@ -637,6 +664,7 @@ def _check_url(url: str) -> None:
 @admin_router.post("/webhooks", status_code=201)
 def create_webhook(data: WebhookIn, current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                    db: Session = Depends(get_db)):
+    """Add a webhook; its signing secret is generated, stored encrypted and shown once."""
     _check_url(data.url)
     secret = ch.new_secret()
     hook = NotificationWebhook(name=data.name, url=data.url, enabled=data.enabled,
@@ -653,6 +681,7 @@ def create_webhook(data: WebhookIn, current_user: User = Depends(require_permiss
 def update_webhook(hook_id: int, data: WebhookIn,
                    current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                    db: Session = Depends(get_db)):
+    """Change a webhook; with rotate_secret a new secret is generated and shown once."""
     hook = db.get(NotificationWebhook, hook_id)
     if hook is None:
         raise HTTPException(status_code=404, detail="Webhook not found")
@@ -675,6 +704,7 @@ def update_webhook(hook_id: int, data: WebhookIn,
 @admin_router.delete("/webhooks/{hook_id}")
 def delete_webhook(hook_id: int, current_user: User = Depends(require_permission("SYSTEM_CONFIG", "delete")),
                    db: Session = Depends(get_db)):
+    """Delete a webhook and remove it from every rule's channels."""
     hook = db.get(NotificationWebhook, hook_id)
     if hook is None:
         raise HTTPException(status_code=404, detail="Webhook not found")
@@ -693,6 +723,7 @@ def delete_webhook(hook_id: int, current_user: User = Depends(require_permission
 @admin_router.post("/webhooks/{hook_id}/test")
 def test_webhook(hook_id: int, current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                  db: Session = Depends(get_db)):
+    """Send a signed test payload to a webhook."""
     hook = db.get(NotificationWebhook, hook_id)
     if hook is None:
         raise HTTPException(status_code=404, detail="Webhook not found")
@@ -725,6 +756,7 @@ def list_deliveries(
     _user: User = Depends(require_permission("SYSTEM_CONFIG", "read")),
     db: Session = Depends(get_db),
 ):
+    """The notification log: deliveries by channel and status, searchable."""
     q = db.query(NotificationDelivery)
     if channel:
         q = q.filter(NotificationDelivery.channel == channel)
@@ -750,6 +782,7 @@ def list_deliveries(
 
 @admin_router.get("/options")
 def editor_options(_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")), db: Session = Depends(get_db)):
+    """Choices for the rule editor: roles, active users, asset types, zones and webhooks."""
     return {
         "roles": [{"key": r.value, "label": {"admin": "Admins", "manager": "Managers", "user": "Users",
                                               "guest": "Guests"}[r.value]} for r in UserRole],
