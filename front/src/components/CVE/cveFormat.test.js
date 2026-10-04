@@ -1,3 +1,6 @@
+/**
+ * Tests: package versions are ordered the way the distributions order them.
+ */
 import { describe, expect, it } from "vitest";
 import { versionCompare } from "./cveFormat.js";
 

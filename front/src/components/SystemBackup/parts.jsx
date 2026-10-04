@@ -1,3 +1,6 @@
+/**
+ * Small pieces shared by the system backup screens (health indicator, destination chips).
+ */
 import { t } from "../../i18n";
 import { tb } from "../../i18n/backendText";
 import { backupStep } from "./format.js";

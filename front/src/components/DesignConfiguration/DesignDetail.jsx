@@ -1,3 +1,6 @@
+/**
+ * One design: its versions and the canvas of the selected version.
+ */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";

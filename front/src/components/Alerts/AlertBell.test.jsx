@@ -1,3 +1,6 @@
+/**
+ * Tests: the header alert bell shows the unread count and lists the latest alerts.
+ */
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";

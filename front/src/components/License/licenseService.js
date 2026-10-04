@@ -1,3 +1,6 @@
+/**
+ * License API calls (status, activation) and the cached status in local storage.
+ */
 import api from "../../config/api.js";
 
 const STORAGE_KEY = 'ngcorion_license';

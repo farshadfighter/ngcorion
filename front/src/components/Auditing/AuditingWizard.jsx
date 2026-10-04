@@ -1,3 +1,6 @@
+/**
+ * The audit wizard: information, process and result steps.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { clearCurrentSession } from "../../store/auditSlice";

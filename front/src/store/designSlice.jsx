@@ -1,3 +1,6 @@
+/**
+ * Redux slice: designs, versions, components, relationships, templates and the suggestion.
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";

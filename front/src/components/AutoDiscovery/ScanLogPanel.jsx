@@ -1,3 +1,6 @@
+/**
+ * Event log of a discovery scan (started, hosts found, completed, failed).
+ */
 import React, { useRef, useEffect } from 'react';
 import { isNmapMissing, NMAP_INSTALL_COMMAND } from './scanErrorText.js';
 import { t, uiLocale } from "../../i18n";

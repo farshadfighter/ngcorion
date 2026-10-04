@@ -1,3 +1,7 @@
+/**
+ * Scheduled discoveries and audits: list, create, edit, enable, run now and run history. Audit
+ * credentials entered here are stored encrypted by the backend and never shown again.
+ */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {

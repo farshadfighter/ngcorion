@@ -1,3 +1,6 @@
+/**
+ * Dialog adding an operating system to the catalog.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createOS } from "../../store/requirementSlice";

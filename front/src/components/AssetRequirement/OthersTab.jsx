@@ -1,3 +1,7 @@
+/**
+ * Read-only tab showing the fixed value lists (status, confidentiality, risk level) the backend
+ * accepts.
+ */
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchEnums } from "../../store/requirementSlice";

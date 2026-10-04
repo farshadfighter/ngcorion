@@ -1,3 +1,6 @@
+/**
+ * Confirmation dialog before deleting a reference-data entry.
+ */
 import { t } from "../../i18n";
 export const DeleteConfirmModal = ({ title, message, onConfirm, onCancel }) => {
     return (

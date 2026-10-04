@@ -1,3 +1,6 @@
+/**
+ * Asset types tab: list, search, add, edit, bulk delete.
+ */
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssetTypes, deleteAssetType } from "../../store/requirementSlice";

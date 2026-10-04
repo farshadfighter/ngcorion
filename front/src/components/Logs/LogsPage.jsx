@@ -1,3 +1,7 @@
+/**
+ * Logs page: the audit log of every module (who did what, when, with what result) with filters and
+ * paging; users with the Logs delete permission can clear it.
+ */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {

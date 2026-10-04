@@ -1,3 +1,6 @@
+/**
+ * React Flow node types registered by the canvases.
+ */
 import DeviceNode from "./DeviceNode.jsx";
 
 // Kept in its own file (not exported alongside the DeviceNode component) so DeviceNode.jsx can

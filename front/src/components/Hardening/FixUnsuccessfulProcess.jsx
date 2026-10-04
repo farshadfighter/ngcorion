@@ -1,3 +1,6 @@
+/**
+ * Fix Unsuccessful wizard step while the audit results load.
+ */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkHardeningSessionStatus } from "../../store/hardeningSlice";

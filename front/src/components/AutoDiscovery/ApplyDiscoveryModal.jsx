@@ -1,3 +1,7 @@
+/**
+ * Dialog turning discovered hosts into assets: create new, merge into an existing asset or skip,
+ * with name, type and vendor prefilled from the scan.
+ */
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';

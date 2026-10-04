@@ -1,3 +1,6 @@
+/**
+ * Tests: API timestamps without a zone are read as UTC.
+ */
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { duration, parseUtc, relativeDays } from "./dates.js";
 

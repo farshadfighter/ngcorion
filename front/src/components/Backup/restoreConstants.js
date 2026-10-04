@@ -1,3 +1,7 @@
+/**
+ * Labels and status sets shared by the backup and restore screens (device families that can be
+ * restored, backup sources, restore statuses).
+ */
 import { uiLocale, t } from "../../i18n";
 /* Shared by the backup list and the restore wizard. Kept out of the .jsx
    files so they only export components (react-refresh). */

@@ -1,3 +1,7 @@
+/**
+ * Dialog editing an asset's network and system fields (IP, MAC, hostname, OS, serial); the backend
+ * validates them again.
+ */
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";

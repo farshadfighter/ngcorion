@@ -1,3 +1,8 @@
+/**
+ * CVE database page (administrators): state of the NVD/KEV/EPSS and distribution-advisory data,
+ * online update, signed offline packages (import, export, trusted keys), automatic update and the
+ * NVD API key.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";

@@ -1,3 +1,6 @@
+/**
+ * Confirmation dialog before deleting a user.
+ */
 import { t } from "../../i18n";
 import { tx } from "../../i18n/tx";
 export const DeleteConfirmModal = ({ user, onConfirm, onCancel }) => {

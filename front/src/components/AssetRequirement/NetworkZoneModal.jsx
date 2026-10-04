@@ -1,3 +1,6 @@
+/**
+ * Dialog adding or editing a network zone.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createZone } from "../../store/requirementSlice";

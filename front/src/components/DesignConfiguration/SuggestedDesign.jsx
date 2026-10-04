@@ -1,3 +1,7 @@
+/**
+ * A design suggested from the inventory, laid out in zones, which the user can save as a new
+ * design.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";

@@ -1,3 +1,6 @@
+/**
+ * The zones a suggested design is laid out in.
+ */
 import { t } from "../../i18n";
 // Mirrors app/modules/design/templates.py's ZONES dict exactly, so the
 // zone bands drawn behind Suggested Design's nodes use the same id/label

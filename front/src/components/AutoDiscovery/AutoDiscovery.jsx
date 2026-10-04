@@ -1,3 +1,7 @@
+/**
+ * Auto Discovery page: start an nmap scan of a network range, follow it, review the hosts it found
+ * and add them to the inventory.
+ */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {

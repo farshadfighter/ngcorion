@@ -1,3 +1,6 @@
+/**
+ * React Flow node of a device (icon, name, port count) used by the topology and design canvases.
+ */
 import { Handle, Position } from "@xyflow/react";
 import AssetIcon from "./AssetIcon.jsx";
 import "../../assets/AssetIcons.css";

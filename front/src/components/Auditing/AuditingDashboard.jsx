@@ -1,3 +1,7 @@
+/**
+ * Auditing dashboard: compliance by device type, trend, findings by severity, top failed controls
+ * and critical findings.
+ */
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../../config/api.js";

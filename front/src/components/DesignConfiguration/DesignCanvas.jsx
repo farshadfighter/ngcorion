@@ -1,3 +1,6 @@
+/**
+ * Design canvas (React Flow): place components, connect them, map them to real assets.
+ */
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";

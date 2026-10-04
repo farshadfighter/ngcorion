@@ -1,3 +1,6 @@
+/**
+ * Checkbox: back up the device configuration before hardening.
+ */
 import React from 'react';
 import { t } from "../../i18n";
 

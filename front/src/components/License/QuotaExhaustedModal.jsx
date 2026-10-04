@@ -1,3 +1,7 @@
+/**
+ * Dialog shown when the audit or hardening quota is used up (opened by the api.js
+ * "quota-exhausted" event).
+ */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { t } from "../../i18n";
 

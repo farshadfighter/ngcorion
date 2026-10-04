@@ -1,3 +1,6 @@
+/**
+ * Dialog editing a user: details, role, per-module permissions and, optionally, a new password.
+ */
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateUser, fetchUser } from "../../store/userSlice";

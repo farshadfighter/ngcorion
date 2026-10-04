@@ -1,3 +1,7 @@
+/**
+ * Fix Unsuccessful wizard first step: choose one of the caller's audit jobs whose failed checks
+ * will be fixed.
+ */
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditSessions, getDeviceName } from "../../store/hardeningSlice";

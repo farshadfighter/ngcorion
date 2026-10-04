@@ -1,3 +1,6 @@
+/**
+ * Redux slice: scheduled jobs and their runs.
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";

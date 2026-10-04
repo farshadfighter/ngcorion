@@ -1,3 +1,7 @@
+/**
+ * Progress of a CVE database job (update, import, export) with cancel and, for exports, the
+ * download.
+ */
 import { useEffect, useRef, useState } from "react";
 import api from "../../config/api.js";
 import { ACTIVE, ADV_STEP_LABEL, KIND_LABEL, STEP_LABEL, formatBytes, formatWhen, isAdvisoryJob, num, releaseLabel } from "./cveFormat.js";

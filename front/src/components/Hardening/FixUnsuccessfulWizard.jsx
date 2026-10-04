@@ -1,3 +1,6 @@
+/**
+ * The Fix Unsuccessful wizard: fix the failed checks of an earlier audit.
+ */
 import { useState } from "react";
 import { FixUnsuccessfulConnectionForm } from "./FixUnsuccessfulConnectionForm";
 import { FixUnsuccessfulProcess } from "./FixUnsuccessfulProcess";

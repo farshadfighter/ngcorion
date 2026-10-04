@@ -1,3 +1,7 @@
+/**
+ * Audit wizard first step: pick the target (TargetPicker) and asset, enter the connection
+ * credentials of that target (sent for this run only, never stored), and start the audit.
+ */
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import TargetPicker from "../shared/TargetPicker.jsx";

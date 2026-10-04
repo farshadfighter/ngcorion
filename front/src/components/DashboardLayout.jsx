@@ -1,3 +1,8 @@
+/**
+ * The application shell: sidebar menu (each entry shown only with its read permission), header
+ * with the alert bell, language switch and user menu, the forced password-change dialog,
+ * maintenance overlay, license and quota dialogs, and the page itself in <Outlet/>.
+ */
 import React, { Suspense } from 'react';
 import { useSelector, useDispatch } from "react-redux";
 import { logoutUser } from "../store/authSlice";

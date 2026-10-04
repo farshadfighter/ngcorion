@@ -1,3 +1,6 @@
+/**
+ * Dialog adding or editing a location (site, room, rack).
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createLocation } from "../../store/requirementSlice";

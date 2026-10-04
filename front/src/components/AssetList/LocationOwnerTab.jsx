@@ -1,3 +1,6 @@
+/**
+ * Asset table tab: location and owner columns.
+ */
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";

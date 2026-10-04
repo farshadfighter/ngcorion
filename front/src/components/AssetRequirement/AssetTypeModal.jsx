@@ -1,3 +1,6 @@
+/**
+ * Dialog adding or editing an asset type (name, category, icon).
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAssetType } from "../../store/requirementSlice";

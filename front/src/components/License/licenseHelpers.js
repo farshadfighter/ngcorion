@@ -1,3 +1,6 @@
+/**
+ * Helpers reading limits and usage out of the license status.
+ */
 import { LICENSE_TYPES, API_FIELD_MAP } from "./licenseConfig";
 
 import { uiLocale } from "../../i18n";

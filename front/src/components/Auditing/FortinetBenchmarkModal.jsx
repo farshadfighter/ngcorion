@@ -1,3 +1,6 @@
+/**
+ * The CIS FortiGate benchmark checklist the FortiGate audit covers.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchFortinetBenchmark } from "../../store/auditSlice";

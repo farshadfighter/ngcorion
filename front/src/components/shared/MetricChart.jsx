@@ -1,3 +1,6 @@
+/**
+ * Line chart of one NOC metric over the selected time range.
+ */
 import { t as tr } from "../../i18n";
 // Small dependency-free SVG line chart for one metric's time series (as
 // returned by GET /api/noc/hosts/:id/metrics). No charting library in this

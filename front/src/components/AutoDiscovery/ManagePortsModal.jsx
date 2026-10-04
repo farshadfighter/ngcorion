@@ -1,3 +1,6 @@
+/**
+ * Dialog reviewing a discovered host's ports before they are saved on its asset.
+ */
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {

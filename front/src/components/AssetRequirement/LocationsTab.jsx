@@ -1,3 +1,6 @@
+/**
+ * Locations tab: list, search, add, edit, bulk delete.
+ */
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchLocations, deleteLocation } from "../../store/requirementSlice";

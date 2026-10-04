@@ -1,3 +1,6 @@
+/**
+ * Fix All wizard result step: the audit's failed checks with fix, view-fix and Harden All.
+ */
 import { Fragment, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults } from "../../store/hardeningSlice";

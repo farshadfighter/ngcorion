@@ -1,3 +1,6 @@
+/**
+ * Dialog adding or editing an asset owner.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createOwner } from "../../store/requirementSlice";

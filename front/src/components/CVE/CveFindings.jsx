@@ -1,3 +1,7 @@
+/**
+ * CVE findings page: CVEs affecting the inventory by finding or by asset, with priority (KEV,
+ * EPSS, CVSS), fix versions and the asset products they were matched on.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";

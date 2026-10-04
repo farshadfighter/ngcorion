@@ -1,3 +1,6 @@
+/**
+ * Full-screen license activation shown while no valid license is installed.
+ */
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { activateLicenseThunk, clearMessages } from "../../store/licenseSlice";

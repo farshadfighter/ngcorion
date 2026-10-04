@@ -1,3 +1,6 @@
+/**
+ * Header of the license page with its state and expiry.
+ */
 import { MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 import { getLicenseInfo, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
 import { t, n } from "../../i18n";

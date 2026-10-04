@@ -1,3 +1,7 @@
+/**
+ * Results of one audit session: score, checks by section with status, evidence and remediation,
+ * and the way into hardening the failed checks.
+ */
 import { useEffect, useState, Fragment } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchAuditSession } from "../../store/auditSlice";

@@ -1,3 +1,9 @@
+/**
+ * Application routes. Public pages (login, password reset, license activation) first; everything
+ * else sits inside DashboardLayout behind ProtectedRoute, and each page is wrapped in
+ * RequirePermission with the backend module it reads, so a user without access sees "Access
+ * denied" instead of a broken page. Pages are lazy-loaded from components/routePages.jsx.
+ */
 import { lazy, useEffect, useState } from "react";
 import "./assets/Login.css";
 import "./assets/Dashboard.css";

@@ -1,3 +1,7 @@
+/**
+ * Hardening dashboard: coverage by asset type, by vendor, assets requiring hardening and the risk
+ * reduced by fixes.
+ */
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {

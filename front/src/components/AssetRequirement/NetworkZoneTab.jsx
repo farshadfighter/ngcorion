@@ -1,3 +1,6 @@
+/**
+ * Network zones tab: list, search, add, edit, bulk delete, and the assets in each zone.
+ */
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchZones, deleteZone } from "../../store/requirementSlice";

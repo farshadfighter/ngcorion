@@ -1,3 +1,7 @@
+/**
+ * Sends a visitor without a session to the login page (remembering where they were going).
+ * Permissions are checked by RequirePermission and, authoritatively, by the backend.
+ */
 import { Navigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 

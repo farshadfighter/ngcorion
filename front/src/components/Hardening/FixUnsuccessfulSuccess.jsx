@@ -1,3 +1,6 @@
+/**
+ * Fix Unsuccessful wizard step shown when the audit results were loaded.
+ */
 import { t } from "../../i18n";
 export const FixUnsuccessfulSuccess = ({ sessionData, onNext }) => {
     return (

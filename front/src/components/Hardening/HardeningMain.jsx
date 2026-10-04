@@ -1,3 +1,7 @@
+/**
+ * Hardening landing page: Fix All (audit then harden) or Fix Unsuccessful (harden an earlier
+ * audit).
+ */
 import { useState } from "react";
 import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";

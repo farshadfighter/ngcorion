@@ -1,3 +1,6 @@
+/**
+ * The Fix All wizard: audit a device, then harden its failed checks.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { clearCurrentSession } from "../../store/hardeningSlice";

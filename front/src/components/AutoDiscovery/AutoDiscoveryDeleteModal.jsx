@@ -1,3 +1,6 @@
+/**
+ * Confirmation dialog before deleting a scan.
+ */
 import React from 'react';
 import '../../assets/autoDiscoveryStyle/AutoDiscoveryDeleteModal.css';
 import { t } from "../../i18n";

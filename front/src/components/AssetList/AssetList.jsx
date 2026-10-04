@@ -1,3 +1,8 @@
+/**
+ * Asset List page: the inventory table with its tabs (overview, network, location, security,
+ * software), search and filters, Excel import/export, and the edit, ports and change-history
+ * dialogs of each asset.
+ */
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets, deleteAsset, clearMessages } from "../../store/assetSlice";

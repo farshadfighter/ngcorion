@@ -1,3 +1,7 @@
+/**
+ * Forgot-password page: asks for the account's e-mail address and has a reset code sent (the
+ * answer is the same whether or not an account exists, so addresses cannot be probed).
+ */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../config/api";

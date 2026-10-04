@@ -1,3 +1,7 @@
+/**
+ * Redux slice: audit runs and sessions of every device family (AUDIT_FAMILIES maps a family to its
+ * API path).
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";

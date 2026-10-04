@@ -1,3 +1,6 @@
+/**
+ * Dialog editing an asset's location and owner.
+ */
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";

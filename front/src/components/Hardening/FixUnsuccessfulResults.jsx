@@ -1,3 +1,7 @@
+/**
+ * Fix Unsuccessful wizard result step: the failed checks of the audit with fix, view-fix and
+ * Harden All.
+ */
 import { Fragment, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAuditResults, fetchFortinetTemplatedChecks, getDeviceName } from "../../store/hardeningSlice";

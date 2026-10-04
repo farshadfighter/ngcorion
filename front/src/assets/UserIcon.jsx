@@ -1,3 +1,6 @@
+/**
+ * User icon of the login form's username field.
+ */
 function UserIcon() {
     return (
         <svg

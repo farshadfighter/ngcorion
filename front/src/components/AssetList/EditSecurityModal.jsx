@@ -1,3 +1,6 @@
+/**
+ * Dialog editing an asset's security fields (confidentiality, criticality, value).
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";

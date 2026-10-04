@@ -1,3 +1,7 @@
+/**
+ * Asset Management dashboard: inventory totals and charts by type, status, location and
+ * criticality.
+ */
 import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets } from "../../store/assetSlice";

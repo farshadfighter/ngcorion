@@ -1,3 +1,6 @@
+/**
+ * Audit wizard result step when the audit completed.
+ */
 import { t } from "../../i18n";
 export const AuditingSuccess = ({ sessionData, jobName, onBackToHome, onSeeResult }) => {
     return (

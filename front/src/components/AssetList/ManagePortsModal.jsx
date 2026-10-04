@@ -1,3 +1,6 @@
+/**
+ * Dialog listing an asset's ports with add, edit and delete.
+ */
 import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssetPorts, deleteAssetPort } from "../../store/assetSlice";

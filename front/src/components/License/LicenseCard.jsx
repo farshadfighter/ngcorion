@@ -1,3 +1,6 @@
+/**
+ * Card summarising the license (type, expiry, usage).
+ */
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
 import { getModuleLimit, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
 import { t, n } from "../../i18n";

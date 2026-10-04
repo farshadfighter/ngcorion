@@ -1,3 +1,6 @@
+/**
+ * Topology canvas (React Flow): assets as nodes, links as edges, draggable positions.
+ */
 import { useEffect, useMemo, useCallback } from "react";
 import { ReactFlow, Background, Controls, MiniMap, Panel, useNodesState } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";

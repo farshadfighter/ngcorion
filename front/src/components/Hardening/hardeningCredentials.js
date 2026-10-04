@@ -1,3 +1,7 @@
+/**
+ * Per device family: which credential fields the forms show, their labels and defaults,
+ * validation, and how they are turned into the request body.
+ */
 import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
 import { t } from "../../i18n";
 // Shared helpers for hardening credentials, used by HardenAllModal and

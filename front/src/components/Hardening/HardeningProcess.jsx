@@ -1,3 +1,6 @@
+/**
+ * Fix All wizard step while the audit runs.
+ */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkHardeningSessionStatus, getDeviceName } from "../../store/hardeningSlice";

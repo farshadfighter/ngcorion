@@ -1,3 +1,7 @@
+/**
+ * Architecture Validation page: runs the rule engine over the inventory and topology and lists the
+ * findings, which can be accepted or ignored with a reason.
+ */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {

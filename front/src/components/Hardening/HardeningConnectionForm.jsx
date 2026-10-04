@@ -1,3 +1,7 @@
+/**
+ * Fix All wizard first step: target, asset and credentials of a new audit whose failed checks are
+ * then hardened.
+ */
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import TargetPicker from "../shared/TargetPicker.jsx";

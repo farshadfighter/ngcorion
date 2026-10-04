@@ -1,3 +1,6 @@
+/**
+ * Asset table tab: security and last-audit columns.
+ */
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";

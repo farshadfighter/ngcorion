@@ -1,3 +1,7 @@
+/**
+ * Redux slice: reference data (asset types, owners, locations, zones, OS and vendor catalogs,
+ * dependencies, enums).
+ */
 import { createSlice, createAsyncThunk, isAnyOf } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";

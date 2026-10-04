@@ -1,3 +1,6 @@
+/**
+ * Dialog adding a vendor to the catalog.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createVendor } from "../../store/requirementSlice";

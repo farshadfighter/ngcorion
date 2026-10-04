@@ -1,3 +1,6 @@
+/**
+ * Redux slice: NOC hosts, credentials, polling and metrics.
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";

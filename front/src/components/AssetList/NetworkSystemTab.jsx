@@ -1,3 +1,6 @@
+/**
+ * Asset table tab: network and system columns.
+ */
 import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { ManagePortsModal } from "./ManagePortsModal";

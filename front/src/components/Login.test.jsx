@@ -1,3 +1,6 @@
+/**
+ * Tests: the login error banner appears on a failed login and can be closed.
+ */
 import { describe, expect, it } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";

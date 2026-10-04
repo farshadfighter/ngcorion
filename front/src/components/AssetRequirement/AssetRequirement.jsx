@@ -1,3 +1,7 @@
+/**
+ * Asset Requirement page: the reference data assets use (types, owners, locations, network zones,
+ * OS and vendor catalogs, enums) in tabs, with Excel import/export.
+ */
 import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { clearMessages } from "../../store/requirementSlice";

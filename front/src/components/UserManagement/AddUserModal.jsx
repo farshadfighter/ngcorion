@@ -1,3 +1,7 @@
+/**
+ * Dialog creating a user (password policy checked here and on the backend); the user must change
+ * the password at first login.
+ */
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createUser, fetchUsers } from "../../store/userSlice";

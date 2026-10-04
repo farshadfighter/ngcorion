@@ -1,3 +1,6 @@
+/**
+ * Redux slice: license status and activation.
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
     getLicenseStatus,

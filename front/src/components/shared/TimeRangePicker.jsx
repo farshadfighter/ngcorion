@@ -1,3 +1,6 @@
+/**
+ * Time-range selector of the metric charts.
+ */
 import { useState } from "react";
 import { t as tr } from "../../i18n";
 

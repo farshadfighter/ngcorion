@@ -1,3 +1,7 @@
+/**
+ * Audit history: the caller's audit sessions of every device family, with result view, report
+ * shortcut, delete and clear.
+ */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";

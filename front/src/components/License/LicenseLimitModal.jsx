@@ -1,3 +1,6 @@
+/**
+ * Dialog shown when a module's license limit is reached.
+ */
 import { LICENSE_TYPES } from "./licenseConfig";
 import { useSelector } from "react-redux";
 import { t } from "../../i18n";

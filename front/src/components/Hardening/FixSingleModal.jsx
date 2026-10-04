@@ -1,3 +1,7 @@
+/**
+ * Fix one failed check: preview of the commands with their parameters, credentials, then execute
+ * and verify.
+ */
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {

@@ -1,3 +1,6 @@
+/**
+ * Tests: the restore detail drawer shows the result and the changed lines.
+ */
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Changes, RestoreResult } from "./RestoreDetailDrawer.jsx";

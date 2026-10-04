@@ -1,3 +1,6 @@
+/**
+ * Open ports of one asset as found by discovery.
+ */
 import { useEffect, useState } from "react";
 import api from "../../config/api";
 import { t } from "../../i18n";

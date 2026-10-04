@@ -1,3 +1,6 @@
+/**
+ * User Management page (administrators): list, search, add, edit, delete.
+ */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUsers, deleteUser, clearMessages } from "../../store/userSlice";

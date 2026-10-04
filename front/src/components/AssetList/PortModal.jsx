@@ -1,3 +1,6 @@
+/**
+ * Dialog adding or editing one port of an asset (number, protocol, service, state).
+ */
 import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createAssetPort, updateAssetPort, fetchAssetPorts } from "../../store/assetSlice";

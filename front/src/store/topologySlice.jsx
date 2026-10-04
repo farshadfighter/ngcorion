@@ -1,3 +1,6 @@
+/**
+ * Redux slice: topology graph, links, node positions and checks.
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";

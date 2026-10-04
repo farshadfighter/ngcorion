@@ -1,5 +1,9 @@
+/**
+ * Redux slice: users (administration).
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import api from "../config/api";
+import api from "../config/api";
+
 import { t } from "../i18n";
 
 // ==========================================

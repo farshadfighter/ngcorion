@@ -1,3 +1,6 @@
+/**
+ * License page: status, type, expiry and module usage of the installed license.
+ */
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {

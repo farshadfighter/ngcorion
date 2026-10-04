@@ -1,3 +1,7 @@
+/**
+ * Reset-password page: the code sent by e-mail or SMS and the new password (same policy as the
+ * backend).
+ */
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../config/api";

@@ -1,3 +1,7 @@
+/**
+ * Audit wizard result step when the audit could not run (connection, credentials), with likely
+ * causes.
+ */
 import { t } from "../../i18n";
 export const AuditingFailed = ({ sessionData, jobName, errorMessage, onBackToHome }) => {
     return (

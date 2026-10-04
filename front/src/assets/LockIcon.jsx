@@ -1,3 +1,6 @@
+/**
+ * Padlock icon of the login form's password field.
+ */
 function LockIcon() {
     return (
         <svg

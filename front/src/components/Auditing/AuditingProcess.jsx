@@ -1,3 +1,6 @@
+/**
+ * Audit wizard progress step while the audit runs.
+ */
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuditStatus } from "../../store/auditSlice";

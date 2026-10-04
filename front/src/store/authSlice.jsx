@@ -1,3 +1,8 @@
+/**
+ * Redux slice: login, logout (the server revokes the token), token check and the cached role and
+ * permissions. The token is kept in localStorage; the backend re-checks role and permissions on
+ * every request.
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";

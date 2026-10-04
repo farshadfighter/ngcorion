@@ -1,3 +1,6 @@
+/**
+ * Change history of one asset: who changed which field and when, grouped like the asset tabs.
+ */
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssetChangeHistory } from "../../store/assetSlice";

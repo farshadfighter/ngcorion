@@ -1,3 +1,6 @@
+/**
+ * Dialog with the license details and module limits.
+ */
 import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS } from "./licenseConfig";
 import { getModuleLimit } from "./licenseHelpers";
 import { t } from "../../i18n";

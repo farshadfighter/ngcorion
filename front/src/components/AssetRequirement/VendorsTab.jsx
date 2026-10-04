@@ -1,3 +1,6 @@
+/**
+ * Vendor catalog tab: list, search, add, bulk delete.
+ */
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchVendors, deleteVendor } from "../../store/requirementSlice";

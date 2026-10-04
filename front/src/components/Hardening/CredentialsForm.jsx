@@ -1,3 +1,7 @@
+/**
+ * Connection credential fields for the device family of a hardening run (SSH, enable secret,
+ * WinRM, database, API); values live in component state only and are sent with the request.
+ */
 import {
     usesWinRM,
     isMssql,

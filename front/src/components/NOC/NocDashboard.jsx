@@ -1,3 +1,6 @@
+/**
+ * NOC dashboard: reachability of monitored hosts, interfaces up and down, and poll-all.
+ */
 import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";

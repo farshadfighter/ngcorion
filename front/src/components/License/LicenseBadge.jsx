@@ -1,3 +1,6 @@
+/**
+ * Header badge with the license state and module usage.
+ */
 import React from "react";
 import { useSelector } from "react-redux";
 import { n, t } from "../../i18n";

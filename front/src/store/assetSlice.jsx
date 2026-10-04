@@ -1,3 +1,6 @@
+/**
+ * Redux slice: assets, asset types, ports and change history (CRUD and Excel import/export).
+ */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api.js";
 import { t } from "../i18n";

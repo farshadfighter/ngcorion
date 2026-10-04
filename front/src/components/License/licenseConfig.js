@@ -1,3 +1,6 @@
+/**
+ * License types, module labels and icons, and the mapping of API fields.
+ */
 import { t } from "../../i18n";
 // Asset Management has no license entitlement — plans only track Auditing
 // and Hardening. Keep this in sync with the backend catalog:

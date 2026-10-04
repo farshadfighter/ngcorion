@@ -1,3 +1,6 @@
+/**
+ * Fix All wizard step shown when the connection and audit succeeded.
+ */
 import { t } from "../../i18n";
 export const HardeningSuccess = ({ sessionData, onNext }) => {
     return (

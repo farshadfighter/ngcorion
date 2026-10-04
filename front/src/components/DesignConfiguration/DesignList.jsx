@@ -1,3 +1,6 @@
+/**
+ * List of designs with create (empty, from a template or from the suggestion).
+ */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";

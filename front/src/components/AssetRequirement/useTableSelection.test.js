@@ -1,3 +1,6 @@
+/**
+ * Tests: paging and selection of the reference-data tables.
+ */
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useTableSelection } from "./useTableSelection.js";

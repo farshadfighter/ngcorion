@@ -1,3 +1,6 @@
+/**
+ * Shows the stored configuration of one device backup.
+ */
 import React, { useEffect, useState } from 'react';
 import api from '../../config/api.js';
 import { t, uiLocale } from "../../i18n";

@@ -1,3 +1,7 @@
+/**
+ * Topology page: the canvas, link editing and the topology checks (isolated nodes, single points
+ * of failure).
+ */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {

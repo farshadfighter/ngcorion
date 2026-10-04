@@ -1,3 +1,9 @@
+/**
+ * The one axios instance every request goes through. It attaches the bearer token and turns error
+ * answers into application events: 401 logs out, 503 with "maintenance" shows the restore overlay,
+ * 403 becomes the license, quota or permission dialog. Never create another axios instance: these
+ * rules would be bypassed.
+ */
 import axios from 'axios';
 import { t } from "../i18n";
 
