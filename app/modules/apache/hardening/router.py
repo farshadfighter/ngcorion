@@ -56,6 +56,7 @@ router = APIRouter(prefix="/api/hardening/apache", tags=["Hardening - Apache"])
 
 
 class ApachePreviewRequest(BaseModel):
+    """Body of previewing a Apache fix: the check and parameter values (defaults when omitted)."""
     check_id: str = Field(..., description="CIS check ID, e.g. APACHE-L1-2.1")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
     distro: Optional[str] = Field("debian", description="Target distro family: 'debian' (Ubuntu/Debian) or 'rhel' (RHEL/Rocky)")

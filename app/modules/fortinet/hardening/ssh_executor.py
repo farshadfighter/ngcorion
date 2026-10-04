@@ -74,6 +74,7 @@ class FortiGateHardeningExecutor:
 
     # ------------------------------------------------------------------
     def backup_config(self) -> str:
+        """The full running configuration (show full-configuration), taken before any change."""
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
@@ -295,6 +296,7 @@ class FortiGateHardeningExecutor:
         return passed, "\n\n".join(evidence_parts), sync_pending
 
     def save_config(self) -> str:
+        """Save the configuration to flash."""
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
@@ -304,6 +306,7 @@ class FortiGateHardeningExecutor:
             raise FortiGateHardeningExecutionError(f"Failed to verify config save: {e}")
 
     def test_connectivity(self) -> bool:
+        """Whether the device answers a system-status request."""
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:
@@ -321,6 +324,7 @@ class FortiGateHardeningExecutor:
             raise FortiGateHardeningExecutionError(f"Device not responding: {e}")
 
     def get_system_info(self) -> Dict[str, object]:
+        """The device's system status (model, version, serial, hostname)."""
         if not self.ssh_client:
             raise FortiGateHardeningExecutionError("Not connected to device")
         try:

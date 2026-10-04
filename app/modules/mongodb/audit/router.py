@@ -231,6 +231,7 @@ def list_audit_sessions(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """MongoDB audit sessions, newest first; a non-admin sees only their own (owner_scope)."""
     limit = min(limit, 100)
     sessions = MongoDBSHAuditService.get_all_sessions(db, limit, offset, owner_id=owner_scope(current_user))
     summaries = [MongoDBSHAuditService.get_session_summary(db, s.id) for s in sessions]
@@ -242,6 +243,7 @@ def get_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Number of MongoDB audit sessions the caller can see."""
     return {"total": MongoDBSHAuditService.get_sessions_count(db, owner_id=owner_scope(current_user))}
 
 
@@ -251,6 +253,7 @@ def get_audit_session(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """One MongoDB audit session with its summary (404 for someone else's session)."""
     summary = MongoDBSHAuditService.get_session_summary(db, session_id)
     if not summary:
         raise HTTPException(
@@ -270,6 +273,7 @@ def get_audit_results(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """The check results of a MongoDB audit session (404 for someone else's session)."""
     session = MongoDBSHAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -299,6 +303,7 @@ def get_asset_audit_history(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Recent MongoDB audit sessions of one asset that the caller can see."""
     consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
 
@@ -320,6 +325,7 @@ def delete_audit_session(
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
+    """Delete a MongoDB audit session and its results (404 for someone else's session); logged."""
     session = MongoDBSHAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 

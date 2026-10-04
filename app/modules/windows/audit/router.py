@@ -136,6 +136,10 @@ def execute_windows_audit(
     db: Session = Depends(get_db),
     #_quota_check: None = Depends(require_quota("audit"))
 ):
+    """Run a Windows audit now: connect over WinRM with the given credentials (not stored), collect,
+    evaluate every rule and store the session and results; uses one audit from the license quota on
+    success.
+    """
     consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
 
@@ -248,6 +252,7 @@ def list_audit_sessions(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Windows audit sessions, newest first; a non-admin sees only their own (owner_scope)."""
     limit = min(limit, 100)
 
     # Non-admins see only their own sessions — the listing counterpart of the
@@ -264,6 +269,7 @@ def get_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Number of Windows audit sessions the caller can see."""
     return {
         "total": WindowsAuditService.get_sessions_count(
             db, owner_id=owner_scope(current_user)
@@ -277,6 +283,7 @@ def get_audit_session(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """One Windows audit session with its summary (404 for someone else's session)."""
     summary = WindowsAuditService.get_session_summary(db, session_id)
     if not summary:
         raise HTTPException(
@@ -296,6 +303,7 @@ def get_audit_results(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """The check results of a Windows audit session (404 for someone else's session)."""
     session = WindowsAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -326,6 +334,7 @@ def get_asset_audit_history(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Recent Windows audit sessions of one asset that the caller can see."""
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -348,6 +357,7 @@ def delete_audit_session(
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
+    """Delete a Windows audit session and its results (404 for someone else's session); logged."""
     session = WindowsAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 

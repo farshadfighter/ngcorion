@@ -348,6 +348,7 @@ class WindowsAuditService:
 
     @staticmethod
     def get_audit_results(db: Session, session_id: int) -> List[AuditResult]:
+        """All check results of a session."""
         return (
             db.query(AuditResult)
             .filter(AuditResult.session_id == session_id)
@@ -378,6 +379,7 @@ class WindowsAuditService:
 
     @staticmethod
     def get_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
+        """Number of Windows sessions (``owner_id``: only that user's)."""
         query = db.query(AuditSession).filter(
             AuditSession.device_type == DeviceType.WINDOWS
         )
@@ -392,6 +394,7 @@ class WindowsAuditService:
         limit: int = 10,
         owner_id: Optional[int] = None,
     ) -> List[AuditSession]:
+        """Recent Windows sessions of one asset (``owner_id``: only that user's)."""
         query = db.query(AuditSession).filter(
             AuditSession.asset_id == asset_id,
             AuditSession.device_type == DeviceType.WINDOWS,
@@ -457,6 +460,7 @@ class WindowsAuditService:
 
     @staticmethod
     def delete_audit_session(db: Session, session_id: int) -> bool:
+        """Delete a session (its results cascade); ValueError when it does not exist."""
         session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
         if not session:
             raise ValueError(f"Audit session {session_id} not found")

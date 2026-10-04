@@ -38,6 +38,7 @@ try:
     from netmiko.exceptions import ReadTimeout
 except ImportError:  # pragma: no cover - older netmiko layouts
     class ReadTimeout(Exception):
+        """The device did not send the expected prompt in time."""
         pass
 
 # Import paramiko exceptions for algorithm/key errors
@@ -291,6 +292,7 @@ class FortiGateSSHClient:
                          self.host, exc_info=True)
 
     def disconnect(self) -> None:
+        """Close the SSH connection; cleanup errors are ignored."""
         if self._connection:
             try:
                 self._connection.disconnect()

@@ -79,6 +79,7 @@ class MSSQLHardeningExecutionResult:
         self.manual_only: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """The result as JSON for the API."""
         return {
             "check_id": self.check_id,
             "success": self.success,

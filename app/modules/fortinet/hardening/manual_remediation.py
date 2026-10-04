@@ -64,6 +64,7 @@ class ManualParam:
     multi_join: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """The result as JSON for the API."""
         return {
             "name": self.name,
             "label": self.label,

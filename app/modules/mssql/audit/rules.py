@@ -409,6 +409,7 @@ def build_mssql_2022_cis_rules() -> List[MSSQLCISRule]:
 
     def add(id, section, title, severity, level, check_fn, evidence_fn,
             remediation, description="", manual=False):
+        """Register one CIS SQL Server rule."""
         rules.append(MSSQLCISRule(
             id=id, section=section, title=title,
             description=description or title,
@@ -419,6 +420,9 @@ def build_mssql_2022_cis_rules() -> List[MSSQLCISRule]:
 
     def add_config_zero(id, section, title, option, severity="medium",
                         level="L1", advanced=True):
+        """Register a rule requiring an sp_configure option to be 0, with the T-SQL that sets it as
+        remediation.
+        """
         recon = (
             "EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE;\n"
             if advanced else ""

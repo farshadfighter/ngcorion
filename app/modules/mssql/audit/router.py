@@ -107,6 +107,9 @@ def execute_mssql_audit(
     db: Session = Depends(get_db),
     #_quota_check: None = Depends(require_quota("audit"))
 ):
+    """Run a SQL Server audit now: connect with the given credentials (not stored), collect, evaluate
+    every rule and store the session and results; uses one audit from the license quota on success.
+    """
     consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
 
@@ -213,6 +216,7 @@ def list_audit_sessions(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """SQL Server audit sessions, newest first; a non-admin sees only their own (owner_scope)."""
     limit = min(limit, 100)
     sessions = MSSQLAuditService.get_all_sessions(db, limit, offset, owner_id=owner_scope(current_user))
     summaries = [MSSQLAuditService.get_session_summary(db, s.id) for s in sessions]
@@ -224,6 +228,7 @@ def get_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Number of SQL Server audit sessions the caller can see."""
     return {"total": MSSQLAuditService.get_sessions_count(db, owner_id=owner_scope(current_user))}
 
 
@@ -233,6 +238,7 @@ def get_audit_session(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """One SQL Server audit session with its summary (404 for someone else's session)."""
     summary = MSSQLAuditService.get_session_summary(db, session_id)
     if not summary:
         raise HTTPException(
@@ -252,6 +258,7 @@ def get_audit_results(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """The check results of a SQL Server audit session (404 for someone else's session)."""
     session = MSSQLAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -281,6 +288,7 @@ def get_asset_audit_history(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Recent SQL Server audit sessions of one asset that the caller can see."""
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -301,6 +309,8 @@ def delete_audit_session(
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
+    """Delete a SQL Server audit session and its results (404 for someone else's session); logged.
+    """
     session = MSSQLAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 

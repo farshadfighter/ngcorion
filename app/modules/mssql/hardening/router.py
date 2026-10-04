@@ -62,6 +62,8 @@ router = APIRouter(
 
 
 class MSSQLPreviewRequest(BaseModel):
+    """Body of previewing a SQL Server fix: the check and parameter values (defaults when omitted).
+    """
     check_id: str = Field(..., description="CIS check ID, e.g. MSSQL-AHDQ")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
 

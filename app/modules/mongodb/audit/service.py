@@ -305,6 +305,7 @@ class MongoDBSHAuditService:
 
     @staticmethod
     def get_audit_results(db: Session, session_id: int) -> List[AuditResult]:
+        """All check results of a session."""
         return (
             db.query(AuditResult)
             .filter(AuditResult.session_id == session_id)
@@ -315,6 +316,7 @@ class MongoDBSHAuditService:
     def get_all_sessions(
         db: Session, limit: int = 50, offset: int = 0, owner_id: Optional[int] = None
     ) -> List[AuditSession]:
+        """MongoDB sessions, newest first, with paging (``owner_id``: only that user's)."""
         return (
             owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.MONGODB)
@@ -326,6 +328,7 @@ class MongoDBSHAuditService:
 
     @staticmethod
     def get_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
+        """Number of MongoDB sessions (``owner_id``: only that user's)."""
         return (
             owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.MONGODB)
@@ -336,6 +339,7 @@ class MongoDBSHAuditService:
     def get_asset_audit_history(
         db: Session, asset_id: int, limit: int = 10, owner_id: Optional[int] = None
     ) -> List[AuditSession]:
+        """Recent MongoDB sessions of one asset (``owner_id``: only that user's)."""
         return (
             owned_sessions(db.query(AuditSession), owner_id)
             .filter(
@@ -399,6 +403,7 @@ class MongoDBSHAuditService:
 
     @staticmethod
     def delete_audit_session(db: Session, session_id: int) -> bool:
+        """Delete a session (its results cascade); ValueError when it does not exist."""
         session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
         if not session:
             raise ValueError(f"Audit session {session_id} not found")

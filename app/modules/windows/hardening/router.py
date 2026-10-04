@@ -94,6 +94,7 @@ def _assert_windows_session(db: Session, session_id: Optional[int], current_user
 
 
 class WindowsPreviewRequest(BaseModel):
+    """Body of previewing a Windows fix: the check and parameter values (defaults when omitted)."""
     check_id: str = Field(..., description="CIS check ID, e.g. WIN-2025-2.3.11.7")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
 

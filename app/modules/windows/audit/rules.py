@@ -985,6 +985,8 @@ def _add(rules, id, section, title, severity, level, check_fn, evidence_fn,
 def _build_section1(rules):
     """1.x Account Policies — secedit [System Access]."""
     def secpol_rule(sec, title, key, ok, sev="high", remediation=None):
+        """Add a rule on one numeric value of the exported security policy (secedit), judged by `ok`.
+        """
         _add(rules, f"WIN-2025-{sec}", sec, title, sev, "L1",
              check_fn=(lambda d, k=key, f=ok: f(_secpol_int(d, k))),
              evidence_fn=(lambda d, k=key: f"{k} = {_secpol_value(d, k)}"),
@@ -1222,6 +1224,7 @@ def _build_firewall(rules):
     for prof, (base, logfile, _) in specs.items():
         n = 1
         def fwrule(sub, title, fn, sev="medium"):
+            """Add a rule on one setting of this firewall profile."""
             _add(rules, f"WIN-2025-{base}.{sub}", f"{base}.{sub}",
                  f"Ensure 'Windows Firewall: {prof}: {title}'", sev, "L1",
                  check_fn=fn,

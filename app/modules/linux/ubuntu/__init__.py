@@ -255,6 +255,7 @@ def build_ubuntu2204_cis_rules() -> List[LinuxCISRule]:
 
     def add(section, title, severity, level, rationale, remediation, check, evidence,
             expected=None):
+        """Register one CIS Ubuntu 22.04 rule (id LNX-UBUNTU22-<level>-<section>)."""
         rules.append(LinuxCISRule(
             id=f"LNX-UBUNTU22-{level}-{section}",
             cis_section=section,
@@ -486,6 +487,7 @@ def build_ubuntu2404_cis_rules() -> List[LinuxCISRule]:
 
     def add(section, title, severity, level, rationale, remediation, check, evidence,
             expected=None):
+        """Register one CIS Ubuntu 24.04 rule (id LNX-UBUNTU24-<level>-<section>)."""
         rules.append(LinuxCISRule(
             id=f"LNX-UBUNTU24-{level}-{section}",
             cis_section=section,
@@ -718,6 +720,9 @@ def build_ubuntu_hardening_templates() -> List[Any]:
     t: List[Any] = []
 
     def auto(check_id, description, commands, verify_commands, requires_service_restart=None):
+        """Register an automatic fix for the Ubuntu family: commands, and verify commands that must
+        print PASS.
+        """
         t.append(LinuxHardeningTemplate(
             check_id=check_id,
             description=description,
@@ -728,6 +733,8 @@ def build_ubuntu_hardening_templates() -> List[Any]:
         ))
 
     def manual(check_id, description, guidance):
+        """Register a check that can only be fixed by hand, with the guidance shown to the operator.
+        """
         t.append(LinuxHardeningTemplate(
             check_id=check_id,
             description=description,

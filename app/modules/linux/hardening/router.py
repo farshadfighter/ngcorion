@@ -66,6 +66,7 @@ router = APIRouter(prefix="/api/hardening/linux", tags=["Hardening - Linux"])
 
 
 class LinuxPreviewRequest(BaseModel):
+    """Body of previewing a Linux fix: the check and parameter values (defaults when omitted)."""
     check_id: str = Field(..., description="CIS check ID, e.g. LNX-L1-5.2.10")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
 

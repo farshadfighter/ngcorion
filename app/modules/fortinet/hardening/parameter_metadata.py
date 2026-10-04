@@ -139,6 +139,8 @@ def is_fortigate_check_auto_fixable(check_id: str) -> bool:
 
 
 def aggregate_fortigate_parameters_for_checks(check_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    """The parameters of several checks merged by name (each listed once, with the checks that use it).
+    """
     aggregated: Dict[str, Dict[str, Any]] = {}
     for check_id in check_ids:
         for param in get_fortigate_parameters_for_check(check_id):
@@ -156,6 +158,7 @@ def aggregate_fortigate_parameters_for_checks(check_ids: List[str]) -> Dict[str,
 
 
 def categorize_fortigate_checks_by_fixability(check_ids: List[str]) -> Dict[str, List[str]]:
+    """Split checks into those fixable without input and those that need parameters."""
     auto_fixable, needs_params = [], []
     for check_id in check_ids:
         (auto_fixable if is_fortigate_check_auto_fixable(check_id) else needs_params).append(check_id)

@@ -98,6 +98,7 @@ class WindowsHardeningExecutionResult:
         self.manual_only: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """The result as JSON for the API."""
         return {
             "check_id": self.check_id,
             "success": self.success,
@@ -226,6 +227,7 @@ class WindowsWinRMExecutor:
     # ---------------------------------------------------------------- #
 
     def is_connected(self) -> bool:
+        """Whether the WinRM session still answers a trivial command."""
         if not self._session:
             return False
         try:

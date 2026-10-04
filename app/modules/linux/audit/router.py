@@ -239,6 +239,7 @@ def list_linux_sessions(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """Linux audit sessions, newest first; a non-admin sees only their own (owner_scope)."""
     limit = min(limit, 100)
     sessions = LinuxAuditService.get_linux_sessions(db, limit, offset, owner_id=owner_scope(current_user))
 
@@ -256,6 +257,7 @@ def get_linux_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """Number of Linux audit sessions the caller can see."""
     count = LinuxAuditService.get_linux_sessions_count(db, owner_id=owner_scope(current_user))
     return {"total": count}
 
@@ -266,6 +268,7 @@ def get_linux_session(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """One Linux audit session with its summary (404 for someone else's session)."""
     summary = LinuxAuditService.get_session_summary(db, session_id)
 
     if not summary:
@@ -291,6 +294,7 @@ def get_linux_results(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """The check results of a Linux audit session (404 for someone else's session)."""
     session = LinuxAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -328,6 +332,9 @@ def get_linux_failed_checks(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """The failed checks of a Linux audit session with their remediation (404 for someone else's
+    session).
+    """
     session = LinuxAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -342,6 +349,7 @@ def get_asset_linux_history(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """Recent Linux audit sessions of one asset that the caller can see."""
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -368,6 +376,7 @@ def delete_linux_session(
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db)
 ):
+    """Delete a Linux audit session and its results (404 for someone else's session); logged."""
     session = LinuxAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -403,6 +412,9 @@ def get_linux_statistics(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
+    """Totals over the Linux audit sessions the caller can see (optionally of one asset): status
+    counts, average compliance, failures.
+    """
     stats = LinuxAuditService.get_audit_statistics(db, asset_id, owner_id=owner_scope(current_user))
     return stats
 
@@ -411,6 +423,7 @@ def get_linux_statistics(
 def get_supported_distros(
     current_user: User = Depends(require_permission("AUDITING", "read"))
 ):
+    """The Linux distributions and versions the Linux audit has rules for."""
     return {
         "supported_distributions": [
             {

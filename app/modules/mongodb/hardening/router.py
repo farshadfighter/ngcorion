@@ -64,6 +64,7 @@ router = APIRouter(
 
 
 class MongoDBPreviewRequest(BaseModel):
+    """Body of previewing a MongoDB fix: the check and parameter values (defaults when omitted)."""
     check_id: str = Field(..., description="CIS check ID, e.g. MONGO-L1-003")
     parameters: Optional[Dict[str, str]] = Field(None, description="Parameter values (uses defaults if omitted)")
 

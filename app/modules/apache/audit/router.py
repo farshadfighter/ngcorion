@@ -288,6 +288,7 @@ def get_apache_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Number of Apache audit sessions the caller can see."""
     count = ApacheAuditService.get_apache_sessions_count(db, owner_id=owner_scope(current_user))
     return {"total": count}
 
@@ -298,6 +299,7 @@ def get_apache_session(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """One Apache audit session with its summary (404 for someone else's session)."""
     summary = ApacheAuditService.get_session_summary(db, session_id)
 
     if not summary:
@@ -326,6 +328,7 @@ def get_apache_results(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """The check results of a Apache audit session (404 for someone else's session)."""
     session = ApacheAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -359,6 +362,9 @@ def get_apache_failed_checks(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """The failed checks of a Apache audit session with their remediation (404 for someone else's
+    session).
+    """
     session = ApacheAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -375,6 +381,7 @@ def get_asset_apache_history(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Recent Apache audit sessions of one asset that the caller can see."""
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
@@ -400,6 +407,7 @@ def delete_apache_session(
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
 ):
+    """Delete a Apache audit session and its results (404 for someone else's session); logged."""
     session = ApacheAuditService.get_audit_session(db, session_id)
     assert_session_access(session, current_user)
 
@@ -440,6 +448,9 @@ def get_apache_statistics(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
+    """Totals over the Apache audit sessions the caller can see (optionally of one asset): status
+    counts, average compliance, failures.
+    """
     stats = ApacheAuditService.get_audit_statistics(db, asset_id, owner_id=owner_scope(current_user))
     return stats
 
@@ -448,6 +459,7 @@ def get_apache_statistics(
 def get_benchmark_info(
     current_user: User = Depends(require_permission("AUDITING", "read")),
 ):
+    """Name and version of the Apache benchmark the rules follow."""
     from .cis_benchmark_map import get_benchmark_summary
 
     return get_benchmark_summary()
@@ -457,6 +469,7 @@ def get_benchmark_info(
 def get_supported_configs(
     current_user: User = Depends(require_permission("AUDITING", "read")),
 ):
+    """The Apache layouts (paths of configuration and binaries) the audit understands."""
     return {
         "supported_distributions": [
             {

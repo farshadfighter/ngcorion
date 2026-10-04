@@ -46,6 +46,7 @@ class MongoDBHardeningExecutionResult:
         self.requires_service_restart: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """The result as JSON for the API."""
         return {
             "check_id": self.check_id,
             "check_title": self.check_title,

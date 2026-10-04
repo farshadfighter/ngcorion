@@ -342,6 +342,7 @@ def build_rhel10_cis_rules() -> List[LinuxCISRule]:
 
     def add(section, title, severity, level, rationale, remediation, check, evidence,
             expected=None):
+        """Register one CIS RHEL rule (id LNX-RHEL10-<level>-<section>)."""
         rules.append(LinuxCISRule(
             id=f"LNX-RHEL10-{level}-{section}",
             cis_section=section,

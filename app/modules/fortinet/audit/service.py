@@ -1516,6 +1516,7 @@ class FortinetAuditService:
     @staticmethod
     def discover_vdoms(db: Session, asset_id: int, ssh_username: str, ssh_password: str,
                        ssh_port: int = 22) -> List[str]:
+        """The VDOMs of a FortiGate (one connection), or the root VDOM when VDOMs are disabled."""
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
             raise ValueError(f"Asset ID {asset_id} not found")
@@ -1540,6 +1541,7 @@ class FortinetAuditService:
     @staticmethod
     def get_all_sessions(db: Session, device_type: Optional[DeviceType] = None,
                          limit: int = 50, offset: int = 0, owner_id: Optional[int] = None) -> List[AuditSession]:
+        """FortiGate sessions, newest first, with paging (``owner_id``: only that user's)."""
         query = owned_sessions(db.query(AuditSession), owner_id)
         if device_type:
             query = query.filter(AuditSession.device_type == device_type)
@@ -1551,6 +1553,9 @@ class FortinetAuditService:
 
     @staticmethod
     def get_session_summary(db: Session, session_id: int) -> Optional[Dict[str, Any]]:
+        """A session as the API returns it: asset, counts, compliance and duration; None when it does
+        not exist.
+        """
         session = FortinetAuditService.get_audit_session(db, session_id)
         if not session:
             return None
@@ -1580,6 +1585,7 @@ class FortinetAuditService:
 
     @staticmethod
     def delete_audit_session(db: Session, session_id: int) -> bool:
+        """Delete a session (its results cascade); ValueError when it does not exist."""
         session = FortinetAuditService.get_audit_session(db, session_id)
         if not session:
             return False
