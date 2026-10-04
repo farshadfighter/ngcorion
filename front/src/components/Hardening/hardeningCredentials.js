@@ -23,15 +23,16 @@ export const isCisco    = (dt) => dt === "cisco";
 export const isFortinet = (dt) => dt === "fortinet";
 export const isApache   = (dt) => dt === "apache";
 export const isMongo    = (dt) => dt === "mongodb";
+export const isMySQL    = (dt) => dt === "mysql";
 export const isMssql    = (dt) => dt === "mssql" || dt?.startsWith("mssql-");
 export const isWindows  = (dt) => dt === "windows" || dt?.startsWith("windows-");
-export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || isLinuxRole(dt);
+export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || isMySQL(dt) || isLinuxRole(dt);
 
 // Windows Server roles audited as their own target (app/core/target_catalog.py).
 // They connect the way Windows Server does: WinRM with a Windows account.
 export const WINDOWS_ROLES = ["active_directory", "dns_server", "dhcp_server", "iis"];
 // Names and benchmarks of the benchmark-engine targets (Windows roles and Linux platforms).
-export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes" };
+export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8" };
 // What each target is audited against (shown as "Benchmark" on result pages).
 export const roleBenchmark = (dt) => ({
     active_directory: t("CIS domain controller + domain checks"),
@@ -40,6 +41,7 @@ export const roleBenchmark = (dt) => ({
     iis: t("CIS Microsoft IIS 10"),
     docker: t("CIS Docker Benchmark"),
     kubernetes: t("CIS Kubernetes Benchmark"),
+    mysql: t("CIS MySQL 8.0 Community Server"),
 })[dt];
 export const isWindowsRole = (dt) => WINDOWS_ROLES.includes(dt);
 export const usesWinRM     = (dt) => isWindows(dt) || isWindowsRole(dt);
@@ -57,6 +59,9 @@ export const defaultCredentialsState = {
     mongo_username:   "",
     mongo_password:   "",
     mongo_port:       "27017",
+    mysql_username:   "root",
+    mysql_password:   "",
+    mysql_port:       "3306",
     // MSSQL
     mssql_username:   "",
     mssql_password:   "",
@@ -81,6 +86,7 @@ export function validateCredentials(deviceType, creds) {
     } else {
         if (!creds.ssh_username?.trim()) errors.ssh_username = "SSH Username is required";
         if (!creds.ssh_password?.trim()) errors.ssh_password = "SSH Password is required";
+        if (isMySQL(deviceType) && !creds.mysql_password?.trim()) errors.mysql_password = t("MySQL Password is required");
     }
     return errors;
 }
@@ -113,5 +119,8 @@ export function buildCredentials(deviceType, creds, { vdomEnabled = false } = {}
         ...(isMongo(deviceType)    && creds.mongo_username && { mongo_username: creds.mongo_username }),
         ...(isMongo(deviceType)    && creds.mongo_password && { mongo_password: creds.mongo_password }),
         ...(isMongo(deviceType)    && { mongo_port: parseInt(creds.mongo_port) || 27017 }),
+        ...(isMySQL(deviceType)    && { mysql_username: creds.mysql_username || "root",
+                                        mysql_password: creds.mysql_password,
+                                        mysql_port: parseInt(creds.mysql_port) || 3306 }),
     };
 }

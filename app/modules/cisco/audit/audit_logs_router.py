@@ -56,6 +56,7 @@ _AUDIT_FEED_MODULES = {
     "dhcp_server_audit",
     "docker_cis",
     "kubernetes_cis",
+    "mysql_cis",
     "iis_cis",
 }
 

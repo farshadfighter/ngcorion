@@ -82,6 +82,8 @@ TARGETS: Tuple[Target, ...] = (
            keywords=("mssql", "microsoft", "sql")),
     Target("mongodb", "MongoDB", "Document database", "databases", "mongodb", "database", "MG",
            "SSH + MongoDB login", device_type="mongodb", keywords=("mongo", "nosql")),
+    Target("mysql", "MySQL 8", "Open-source database · CIS", "databases", "mysql", "database", "MY",
+           "SSH + MySQL login", device_type="mysql", keywords=("mysql", "sql", "oracle", "database", "innodb")),
     Target("apache", "Apache", "HTTP server", "web", "apache", "web", "AP", "SSH",
            device_type="apache", keywords=("httpd", "web server")),
     Target("iis", "IIS 10", "Microsoft web server", "web", "iis", "web", "IS", "WinRM",

@@ -509,6 +509,13 @@ msg("DHCP role · Microsoft guidance");
 msg("Microsoft web server");
 msg("Container host · CIS");
 msg("Cluster node · CIS");
+msg("Open-source database · CIS");
+msg("SSH + MySQL login");
+msg("MySQL Username");
+msg("MySQL Password");
+msg("MySQL Port");
+msg("Connections per account");
+msg("Maximum simultaneous connections for one MySQL account (0 = unlimited).");
 // Harden All: credential fields (app/modules/hardening/harden_all/families.py,
 // app/modules/benchmark/connectors.py) and remediation parameters
 msg("SSH Username");

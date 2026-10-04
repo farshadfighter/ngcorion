@@ -7,6 +7,7 @@ import {
     isCisco,
     isFortinet,
     isMongo,
+    isMySQL,
     isMssql,
     usesWinRM,
     needsSudo,
@@ -44,6 +45,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         mongo_username:   "",
         mongo_password:   "",
         mongo_port:       "27017",
+        mysql_username:   "root",
+        mysql_password:   "",
+        mysql_port:       "3306",
         mssql_username:   "",
         mssql_password:   "",
         mssql_port:       "1433",
@@ -124,6 +128,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
         } else {
             if (!formData.ssh_username?.trim()) errs.ssh_username = t("Username is required");
             if (!formData.ssh_password?.trim()) errs.ssh_password = t("Password is required");
+            if (isMySQL(dt) && !formData.mysql_password?.trim()) errs.mysql_password = t("Password is required");
         }
 
         setErrors(errs);
@@ -168,6 +173,9 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                 ...(isMongo(dt)    && formData.mongo_username && { mongo_username: formData.mongo_username }),
                 ...(isMongo(dt)    && formData.mongo_password && { mongo_password: formData.mongo_password }),
                 ...(isMongo(dt)    && { mongo_port: parseInt(formData.mongo_port) || 27017 }),
+                ...(isMySQL(dt)    && { mysql_username: formData.mysql_username || "root",
+                                        mysql_password: formData.mysql_password,
+                                        mysql_port: parseInt(formData.mysql_port) || 3306 }),
             };
         }
 
@@ -393,6 +401,49 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                             value={formData.mongo_port}
                                             onChange={handleChange}
                                             placeholder="27017"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {isMySQL(dt) && (
+                                <>
+                                    <div className="form-group">
+                                        <label>{t("MySQL Username")}</label>
+                                        <input
+                                            type="text"
+                                            name="mysql_username"
+                                            value={formData.mysql_username}
+                                            onChange={handleChange}
+                                            placeholder="root"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>
+                                            {t("MySQL Password")}
+                                            <span className="required" style={{ color: "#ef4444" }}>*</span>
+                                        </label>
+                                        <input
+                                            type="password"
+                                            name="mysql_password"
+                                            value={formData.mysql_password}
+                                            onChange={handleChange}
+                                            className={errors.mysql_password ? "error" : ""}
+                                            placeholder={t("MySQL password")}
+                                            autoComplete="off"
+                                        />
+                                        {errors.mysql_password && <span className="error-message">{errors.mysql_password}</span>}
+                                    </div>
+                                    <div className="form-group">
+                                        <label>{t("MySQL Port")}</label>
+                                        <input
+                                            type="number"
+                                            name="mysql_port"
+                                            value={formData.mysql_port}
+                                            onChange={handleChange}
+                                            placeholder="3306"
                                             autoComplete="off"
                                         />
                                     </div>

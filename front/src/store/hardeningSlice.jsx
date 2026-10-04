@@ -137,6 +137,7 @@ export const getDeviceName = (deviceType) => {
         "iis":              "IIS 10",
         "docker":           "Docker",
         "kubernetes":       "Kubernetes",
+        "mysql":            "MySQL 8",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -213,6 +214,17 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
                 ssh_password: credentials.ssh_password,
                 ssh_port:     credentials.ssh_port || 22,
                 ...(credentials.sudo_password && { sudo_password: credentials.sudo_password }),
+            };
+
+        case "mysql":
+            return {
+                ssh_username:   credentials.ssh_username,
+                ssh_password:   credentials.ssh_password,
+                ssh_port:       credentials.ssh_port || 22,
+                ...(credentials.sudo_password && { sudo_password: credentials.sudo_password }),
+                mysql_username: credentials.mysql_username || "root",
+                mysql_password: credentials.mysql_password,
+                mysql_port:     credentials.mysql_port || 3306,
             };
 
         case "mssql":

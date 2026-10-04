@@ -80,9 +80,15 @@ const TECH_FIELDS = {
     iis: WINRM_FIELDS,
     docker: SSH_SUDO_FIELDS,
     kubernetes: SSH_SUDO_FIELDS,
+    mysql: [
+        ...SSH_SUDO_FIELDS,
+        { key: "mysql_username", label: tr("MySQL Username"), type: "text", default: "root" },
+        { key: "mysql_password", label: tr("MySQL Password"), type: "password", required: true },
+        { key: "mysql_port", label: tr("MySQL Port"), type: "number", default: 3306 },
+    ],
 };
 
-const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes" };
+const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 

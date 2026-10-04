@@ -13,7 +13,8 @@ def specs() -> List[ModuleSpec]:
     from app.modules.docker.spec import SPEC as docker
     from app.modules.iis.spec import SPEC as iis
     from app.modules.kubernetes.spec import SPEC as kubernetes
-    return [active_directory, dns_server, dhcp_server, iis, docker, kubernetes]
+    from app.modules.mysql.spec import SPEC as mysql
+    return [active_directory, dns_server, dhcp_server, iis, docker, kubernetes, mysql]
 
 
 def spec_map() -> Dict[str, ModuleSpec]:

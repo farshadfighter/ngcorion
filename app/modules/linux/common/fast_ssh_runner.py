@@ -211,6 +211,32 @@ class HardeningSSHRunner:
             out = f"{out}\n{err}" if out else err
         return out, exit_status
 
+    def run_with_input(self, command: str, data: str, timeout: int = DEFAULT_CMD_TIMEOUT) -> tuple:
+        """
+        ``run_with_status`` with ``data`` written to the command's stdin.
+
+        For secrets a remote command needs (a database password): stdin
+        never appears in the remote process list or shell history, unlike
+        anything placed in the command line.
+        """
+        if not self.is_connected():
+            raise RuntimeError("Not connected. Call connect() first.")
+        try:
+            stdin, stdout, stderr = self._client.exec_command(command, timeout=timeout)
+            stdin.write(data)
+            stdin.flush()
+            stdin.channel.shutdown_write()
+            out = stdout.read().decode("utf-8", errors="replace")
+            err = stderr.read().decode("utf-8", errors="replace")
+            exit_status = stdout.channel.recv_exit_status()
+        except socket.timeout:
+            raise RuntimeError(f"Command timed out after {timeout}s")
+        except Exception as e:
+            raise RuntimeError(f"Command execution failed: {type(e).__name__}")
+        if err.strip():
+            out = f"{out}\n{err}" if out else err
+        return out, exit_status
+
     def send_command(
         self,
         command: str,

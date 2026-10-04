@@ -19,7 +19,7 @@ export const sortNewestFirst = (sessions) =>
     [...sessions].sort((a, b) => String(b.started_at || "").localeCompare(String(a.started_at || "")));
 
 // Every family with its own /api/audit/{family}/sessions listing.
-export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes"];
+export const AUDIT_FAMILIES = ["cisco", "fortinet", "linux", "apache", "mongodb", "mssql", "windows", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "mysql"];
 
 // =====================
 // Thunks
@@ -44,6 +44,11 @@ export const executeAudit = createAsyncThunk(
             if (formData.mongo_username) payload.mongo_username = formData.mongo_username;
             if (formData.mongo_password) payload.mongo_password = formData.mongo_password;
             if (formData.mongo_port)     payload.mongo_port     = parseInt(formData.mongo_port);
+            if (deviceType === "mysql") {
+                payload.mysql_username = formData.mysql_username || "root";
+                payload.mysql_password = formData.mysql_password;
+                payload.mysql_port     = parseInt(formData.mysql_port) || 3306;
+            }
             if (formData.mssql_username) payload.mssql_username = formData.mssql_username;
             if (formData.mssql_password) payload.mssql_password = formData.mssql_password;
             if (formData.mssql_port)     payload.mssql_port     = parseInt(formData.mssql_port);

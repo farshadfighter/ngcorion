@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
-FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "windows", "linux")
+FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "mysql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "windows", "linux")
 
 # Windows Server roles audited as their own target. A host carrying one of
 # these roles is still a Windows Server: it stays in the Windows target's
@@ -44,7 +44,7 @@ _HOST_FAMILIES = {"linux", "windows"}
 # Service families that legitimately run on top of a host OS. When one of these
 # is requested we also keep host-OS assets (they may run that service), rather
 # than excluding them.
-_SERVICE_FAMILIES = {"apache", "mongodb", "mssql"}
+_SERVICE_FAMILIES = {"apache", "mongodb", "mssql", "mysql"}
 
 # Keyword signals per family, checked in priority order (most specific first so
 # e.g. "MongoDB on Ubuntu" resolves to mongodb, not linux).
@@ -52,6 +52,8 @@ _FAMILY_KEYWORDS = [
     ("fortinet", ("fortinet", "fortigate", "fortios")),
     ("cisco", ("cisco", "catalyst", "nexus", "ios-xe", "ios xe", "nx-os")),
     ("mongodb", ("mongodb", "mongo")),
+    # Before mssql: "MySQL Server" contains "sql server".
+    ("mysql", ("mysql",)),
     ("mssql", ("mssql", "sql server", "sqlserver", "microsoft sql")),
     ("apache", ("apache", "httpd")),
     ("active_directory", ("active directory", "activedirectory", "domain controller")),

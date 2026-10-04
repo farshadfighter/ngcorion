@@ -17,6 +17,7 @@ connection and never stored.
 """
 
 import logging
+import re
 import shlex
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -199,7 +200,113 @@ class SSHConnector(Connector):
             runner.disconnect()
 
 
-CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector()}
+# ── SSH + MySQL login (MySQL servers) ────────────────────────────────────
+
+SQL_PREFIX = "SQL:"
+# "SQL[ok=3529]:..." - SQL that may fail with the listed MySQL error codes
+# (e.g. "already installed"); the fix's verification still decides.
+_SQL_HEAD = re.compile(r"^SQL(?:\[ok=(\d+(?:,\d+)*)\])?:")
+_MYSQL_ERROR = re.compile(r"ERROR (\d+) \(")
+
+
+def split_sql(script: str) -> Tuple[Optional[str], Tuple[str, ...]]:
+    """(SQL text, tolerated error codes), or (None, ()) for a shell script."""
+    m = _SQL_HEAD.match(script)
+    if not m:
+        return None, ()
+    return script[m.end():], tuple(m.group(1).split(",")) if m.group(1) else ()
+
+
+def mysql_client_script(sql: str, user: str, port: int, password: str) -> Tuple[str, str]:
+    """(shell script, stdin) running `sql` with the mysql client on the host.
+
+    The password travels on stdin and reaches the client as an option file
+    on file descriptor 3 (a here-document): it never appears in a command
+    line, the process list, the environment or a file on disk."""
+    client = (f"mysql --protocol=TCP -h 127.0.0.1 -P {int(port)} -u {shlex.quote(user)} -N -B -r "
+              f"-e {shlex.quote(sql)}")
+    if '"' not in password or "'" not in password:
+        quote = '"' if '"' not in password else "'"
+        script = ("IFS= read -r pw; " + client.replace("mysql ", "mysql --defaults-extra-file=/dev/fd/3 ", 1)
+                  + f" 3<<EOF\n[client]\npassword={quote}$pw{quote}\nEOF")
+        # Option files read \\ as one backslash.
+        return script, password.replace("\\", "\\\\") + "\n"
+    # Both quote characters: the option-file syntax cannot hold it; use the
+    # client's environment variable, still never on a command line.
+    return "IFS= read -r MYSQL_PWD; export MYSQL_PWD; " + client, password + "\n"
+
+
+class MySQLConnection:
+    """Shell scripts run as root through the SSH connection; scripts starting
+    with "SQL:" run as SQL through the mysql client with the MySQL login."""
+
+    def __init__(self, shell: SSHConnection, user: str, port: int, password: str):
+        self._shell = shell
+        self._user, self._port, self._password = user, port, password
+        self.ip = shell.ip
+
+    def _sql(self, sql: str):
+        script, data = mysql_client_script(sql, self._user, self._port, self._password)
+        return self._shell._runner.run_with_input(f"sh -c {shlex.quote(script)}", data, timeout=120)
+
+    def run(self, script: str) -> str:
+        text, _tolerated = split_sql(script)
+        if text is None:
+            return self._shell.run(script)
+        try:
+            out, status = self._sql(text)
+        except Exception as exc:  # noqa: BLE001 - reported per section
+            return f"SSH_ERROR: {str(exc)[:300]}"
+        if status != 0:
+            return f"CMD_ERROR: exit {status}: {_first_line(out)}"
+        return out if out.strip() else "(no output)"
+
+    def execute(self, script: str) -> str:
+        text, tolerated = split_sql(script)
+        if text is None:
+            return self._shell.execute(script)
+        out, status = self._sql(text)
+        m = _MYSQL_ERROR.search(out or "")
+        if status != 0 and m and m.group(1) in tolerated:
+            return f"(tolerated MySQL error {m.group(1)})"
+        if status != 0:
+            raise RuntimeError(_first_line(out) or f"mysql exited with status {status}")
+        return out if out.strip() else "(ok)"
+
+
+class MySQLConnector(SSHConnector):
+    key = "ssh_mysql"
+    request_fields = {
+        **SSHConnector.request_fields,
+        "mysql_username": (str, Field("root", min_length=1, description="MySQL account, not stored")),
+        "mysql_password": (str, Field(..., min_length=1, description="MySQL password, not stored")),
+        "mysql_port": (int, Field(3306, ge=1, le=65535)),
+    }
+    credential_fields = SSHConnector.credential_fields + [
+        CredentialField(name="mysql_username", label="MySQL Username", type="text", default="root"),
+        CredentialField(name="mysql_password", label="MySQL Password", type="password", required=True),
+        CredentialField(name="mysql_port", label="MySQL Port", type="number", default="3306"),
+    ]
+    required_for_schedule = frozenset({"ssh_username", "ssh_password", "mysql_password"})
+
+    @contextmanager
+    def open(self, ip: str, creds: Dict[str, Any]):
+        if "\n" in (creds.get("mysql_password") or ""):
+            raise PermissionError("The MySQL password cannot contain a line break")
+        with SSHConnector.open(self, ip, creds) as shell:
+            conn = MySQLConnection(shell, creds.get("mysql_username") or "root",
+                                   int(creds.get("mysql_port") or 3306), creds["mysql_password"])
+            probe = conn.run(SQL_PREFIX + "SELECT 1")
+            if probe.strip() != "1":
+                if "Access denied" in probe:
+                    raise PermissionError(f"MySQL login rejected: {probe.split(':', 2)[-1].strip()}")
+                if "not found" in probe:
+                    raise ConnectionError("The mysql client is not installed on this host")
+                raise ConnectionError(f"Cannot reach MySQL on 127.0.0.1:{conn._port}: {probe[:200]}")
+            yield conn
+
+
+CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector(), "ssh_mysql": MySQLConnector()}
 
 
 def get_connector(key: str) -> Connector:

@@ -4,6 +4,7 @@ import {
     isCisco,
     isFortinet,
     isMongo,
+    isMySQL,
     needsSudo,
 } from "./hardeningCredentials";
 import { DEFAULT_WINRM_PORT } from "./winrmDefaults";
@@ -199,6 +200,24 @@ export default function CredentialsForm({
                     <input type="password" name="sudo_password" value={value.sudo_password} onChange={onChange} placeholder={t("Sudo password (optional)")} autoComplete="off" style={inputStyle} />
                     <span style={hintStyle}>{t("Required for root access (defaults to SSH password)")}</span>
                 </div>
+            )}
+
+            {/* MySQL: database login */}
+            {isMySQL(deviceType) && (
+                <>
+                    <div className="hardening-form-group">
+                        <label>{t("MySQL Username")}</label>
+                        <input type="text" name="mysql_username" value={value.mysql_username} onChange={onChange} placeholder="root" autoComplete="off" style={inputStyle} />
+                    </div>
+                    <div className="hardening-form-group">
+                        <label>{t("MySQL Password")} *</label>
+                        <input type="password" name="mysql_password" value={value.mysql_password} onChange={onChange} placeholder={t("MySQL password")} autoComplete="off" style={inputStyle} />
+                    </div>
+                    <div className="hardening-form-group">
+                        <label>{t("MySQL Port")}</label>
+                        <input type="number" name="mysql_port" value={value.mysql_port} onChange={onChange} placeholder="3306" autoComplete="off" style={inputStyle} />
+                    </div>
+                </>
             )}
 
             {/* MongoDB: extra DB credentials */}
