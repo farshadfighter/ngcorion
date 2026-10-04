@@ -1,0 +1,24 @@
+# Weekly pull requests for outdated dependencies, and immediate ones for
+# security advisories. Each one runs through CI (tests, lint, build and the
+# vulnerability check) before it can be merged.
+version: 2
+updates:
+  - package-ecosystem: uv            # pyproject.toml + uv.lock
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    ignore:
+      # Paramiko 5 drops SHA-1 SSH algorithms that older audited devices still
+      # need (see SECURITY.md, "Dependency exceptions"); move to it deliberately.
+      - dependency-name: paramiko
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: npm
+    directory: "/front"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly

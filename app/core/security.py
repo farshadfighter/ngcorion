@@ -9,7 +9,7 @@ NOTE: For user authentication dependency, use `get_current_user` from
 """
 import hashlib
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+import jwt  # PyJWT
 from passlib.context import CryptContext
 
 from .config import settings

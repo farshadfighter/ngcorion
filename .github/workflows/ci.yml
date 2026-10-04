@@ -1,6 +1,11 @@
 # Runs on every push and pull request: backend tests against a real Postgres
-# (with every Alembic migration applied), and the frontend's lint, tests and
-# production build. A red check here means the change is not ready to merge.
+# (with every Alembic migration applied), the frontend's lint, tests and
+# production build, and a known-vulnerability check of every locked
+# dependency (Python and npm). A red check here means the change is not
+# ready to merge.
+#
+# The runner image is pinned (ubuntu-24.04, not ubuntu-latest) so that a
+# GitHub image change cannot turn CI red on its own; move it deliberately.
 name: CI
 
 on:
@@ -18,7 +23,7 @@ permissions:
 jobs:
   backend:
     name: Backend (pytest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -35,8 +40,8 @@ jobs:
       DATABASE_URL: postgresql+psycopg://netease:ci-only-password@localhost:5432/netease_db
       SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.13"
           enable-cache: true
@@ -53,14 +58,14 @@ jobs:
 
   frontend:
     name: Frontend (lint, test, build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
         working-directory: front
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -74,3 +79,30 @@ jobs:
         run: npm run i18n:check
       - name: Production build
         run: npm run build
+
+  dependencies:
+    name: Dependencies (known vulnerabilities)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+      - name: Python packages (pip-audit, against uv.lock)
+        # Exceptions, each reviewed (see SECURITY.md, "Dependency exceptions"):
+        #   PYSEC-2026-2858 / CVE-2026-44405 - paramiko 4 still allows SHA-1
+        #     (ssh-rsa signatures, sha1 key exchange) as a fallback. Paramiko 5
+        #     removes it, which would make older network devices (IOS 12/15.0,
+        #     old ESXi) unreachable for audit; SHA-2 is preferred whenever the
+        #     device offers it.
+        run: |
+          uv export --frozen --format requirements-txt --no-hashes --no-emit-project > /tmp/requirements.txt
+          uvx pip-audit --disable-pip --no-deps --strict -r /tmp/requirements.txt \
+            --ignore-vuln PYSEC-2026-2858
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: npm packages (npm audit)
+        working-directory: front
+        run: npm audit --audit-level=moderate
