@@ -103,6 +103,9 @@ def get_overview(db: Session = Depends(get_db), _: User = Depends(require_admin)
 
 
 class SettingsIn(BaseModel):
+    """Body of PUT /settings: schedule, which optional parts to include, and how many backups of each
+    tier to keep.
+    """
     enabled: bool
     frequency: Literal["daily", "weekly"] = "daily"
     time: str
@@ -123,6 +126,7 @@ def get_settings(db: Session = Depends(get_db), _: User = Depends(require_admin)
 
 @router.put("/settings")
 def put_settings(body: SettingsIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Save the backup schedule and retention (admin)."""
     try:
         out = service.save_settings(db, body.model_dump(), user.id)
     except BackupError as e:
@@ -132,12 +136,16 @@ def put_settings(body: SettingsIn, db: Session = Depends(get_db), user: User = D
 
 
 class PassphraseIn(BaseModel):
+    """Body of POST /passphrase: the new passphrase and, when one is set, the current one."""
     passphrase: str = Field(max_length=256)
     current: Optional[str] = Field(default=None, max_length=256)
 
 
 @router.post("/passphrase")
 def set_passphrase(body: PassphraseIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Set or change the passphrase that encrypts new backups (admin); changing it needs the current
+    one. Refusals are audit-logged.
+    """
     try:
         out = service.set_passphrase(db, body.passphrase, user.id, body.current, user.username)
     except BackupError as e:
@@ -148,6 +156,7 @@ def set_passphrase(body: PassphraseIn, db: Session = Depends(get_db), user: User
 
 
 class CheckIn(BaseModel):
+    """Body of the passphrase check: a passphrase to compare with the stored one."""
     passphrase: str = Field(max_length=256)
 
 
@@ -161,6 +170,7 @@ def check_passphrase(body: CheckIn, db: Session = Depends(get_db), _: User = Dep
 @router.get("/backups")
 def list_backups(kind: Optional[str] = Query(None), status: Optional[str] = Query(None),
                  db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """The backup catalog, newest first, with each backup's retention reason (admin)."""
     q = db.query(SystemBackup)
     if kind:
         q = q.filter(SystemBackup.kind == kind)
@@ -172,6 +182,7 @@ def list_backups(kind: Optional[str] = Query(None), status: Optional[str] = Quer
 
 
 class BackupIn(BaseModel):
+    """Body of POST /backups: parts to include, destinations to copy to, and a note."""
     contents: List[str] = Field(default_factory=lambda: ["essential"])
     destination_ids: Optional[List[int]] = None
     note: Optional[str] = Field(default=None, max_length=300)
@@ -179,6 +190,7 @@ class BackupIn(BaseModel):
 
 @router.post("/backups", status_code=201)
 def create_backup(body: BackupIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Queue a manual backup (admin); the worker runs it."""
     unknown = [c for c in body.contents if c not in CONTENTS]
     if unknown:
         raise HTTPException(status_code=400, detail="Unknown backup content")
@@ -198,6 +210,7 @@ def get_backup(backup_id: int, db: Session = Depends(get_db), _: User = Depends(
 
 @router.get("/backups/{backup_id}/download")
 def download_backup(backup_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Download a ready backup file (admin). The file is encrypted with the backup passphrase."""
     b = _get_backup(db, backup_id)
     if b.status != BK_READY:
         raise HTTPException(status_code=409, detail="The backup is not ready")
@@ -212,11 +225,13 @@ def download_backup(backup_id: int, db: Session = Depends(get_db), user: User = 
 
 
 class PassIn(BaseModel):
+    """Body with an optional passphrase (the stored one is used when omitted)."""
     passphrase: Optional[str] = Field(default=None, max_length=256)
 
 
 @router.post("/backups/{backup_id}/verify")
 def verify_backup(backup_id: int, body: PassIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Check a backup file: checksum, passphrase, every entry's hash (admin)."""
     b = _get_backup(db, backup_id)
     if b.status != BK_READY:
         raise HTTPException(status_code=409, detail="The backup is not ready")
@@ -268,11 +283,13 @@ def inspect_backup(backup_id: int, body: PassIn, db: Session = Depends(get_db), 
 
 
 class ResendIn(BaseModel):
+    """Body of the resend: which destinations (all configured ones when omitted)."""
     destination_ids: Optional[List[int]] = None
 
 
 @router.post("/backups/{backup_id}/resend")
 def resend_backup(backup_id: int, body: ResendIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Copy a ready backup to destinations again (admin)."""
     b = _get_backup(db, backup_id)
     if b.status != BK_READY:
         raise HTTPException(status_code=409, detail="The backup is not ready")
@@ -286,6 +303,9 @@ def resend_backup(backup_id: int, body: ResendIn, db: Session = Depends(get_db),
 
 @router.post("/backups/{backup_id}/test", status_code=202)
 def test_backup(backup_id: int, body: PassIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Start a restore test: the backup is loaded into a separate schema and checked, the running
+    system is untouched (admin; one job at a time).
+    """
     b = _get_backup(db, backup_id)
     if b.status != BK_READY:
         raise HTTPException(status_code=409, detail="The backup is not ready")
@@ -304,6 +324,7 @@ def test_backup(backup_id: int, body: PassIn, db: Session = Depends(get_db), use
 @router.delete("/backups/{backup_id}", status_code=204)
 def delete_backup(backup_id: int, remote: bool = Query(True), db: Session = Depends(get_db),
                   user: User = Depends(require_admin)):
+    """Delete a backup, locally and (unless remote=false) at its destinations (admin)."""
     b = _get_backup(db, backup_id)
     name = b.filename or f"#{b.id}"
     try:
@@ -345,6 +366,7 @@ async def upload_backup(request: Request, db: Session = Depends(get_db), user: U
 
 @router.get("/restores")
 def list_restores(kind: Optional[str] = Query(None), db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """Restores and restore tests, newest first (admin)."""
     q = db.query(SystemRestore)
     if kind:
         q = q.filter(SystemRestore.kind == kind)
@@ -353,6 +375,7 @@ def list_restores(kind: Optional[str] = Query(None), db: Session = Depends(get_d
 
 @router.get("/restores/{restore_id}")
 def get_restore(restore_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """One restore with its step-by-step progress (admin); the restore wizard polls this."""
     r = db.get(SystemRestore, restore_id)
     if r is None:
         raise HTTPException(status_code=404, detail="Restore not found")
@@ -360,6 +383,9 @@ def get_restore(restore_id: int, db: Session = Depends(get_db), _: User = Depend
 
 
 class RestoreIn(BaseModel):
+    """Body of POST /restores: the backup, its passphrase if not stored, the word RESTORE and the
+    administrator's own password.
+    """
     backup_id: int
     passphrase: Optional[str] = Field(default=None, max_length=256)
     confirm: str
@@ -368,6 +394,9 @@ class RestoreIn(BaseModel):
 
 @router.post("/restores", status_code=202)
 def create_restore(body: RestoreIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Start restoring NGCorion from a backup. Needs the typed confirmation and the administrator's
+    password (re-authentication for an irreversible action); audit-logged before it starts.
+    """
     if body.confirm.strip().upper() != "RESTORE":
         raise HTTPException(status_code=400, detail="Type RESTORE to confirm")
     if not verify_password(body.password, user.hashed_password):
@@ -385,6 +414,7 @@ def create_restore(body: RestoreIn, db: Session = Depends(get_db), user: User = 
 # ── destinations ──────────────────────────────────────────────────────────
 
 class DestinationIn(BaseModel):
+    """Body of a destination: SFTP or SMB server, credentials (stored encrypted) and folder."""
     name: str = Field(min_length=1, max_length=120)
     type: Literal["sftp", "smb"]
     host: str = Field(min_length=1, max_length=255)
@@ -425,6 +455,7 @@ def list_destinations(db: Session = Depends(get_db), _: User = Depends(require_a
 
 @router.post("/destinations", status_code=201)
 def create_destination(body: DestinationIn, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Add a backup destination (admin)."""
     d = BackupDestination(host="")
     _apply(d, body)
     db.add(d)
@@ -437,6 +468,7 @@ def create_destination(body: DestinationIn, db: Session = Depends(get_db), user:
 @router.put("/destinations/{dest_id}")
 def update_destination(dest_id: int, body: DestinationIn, db: Session = Depends(get_db),
                        user: User = Depends(require_admin)):
+    """Change a destination (admin); an empty secret keeps the stored one."""
     d = db.get(BackupDestination, dest_id)
     if d is None:
         raise HTTPException(status_code=404, detail="Destination not found")
@@ -448,6 +480,7 @@ def update_destination(dest_id: int, body: DestinationIn, db: Session = Depends(
 
 @router.delete("/destinations/{dest_id}", status_code=204)
 def delete_destination(dest_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Remove a destination (admin); backups already copied there stay."""
     d = db.get(BackupDestination, dest_id)
     if d is None:
         raise HTTPException(status_code=404, detail="Destination not found")
@@ -459,6 +492,9 @@ def delete_destination(dest_id: int, db: Session = Depends(get_db), user: User =
 
 @router.post("/destinations/{dest_id}/test")
 def test_destination(dest_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Connect, log in and write a test file (admin). For SFTP the first successful test pins the
+    server's host key.
+    """
     d = db.get(BackupDestination, dest_id)
     if d is None:
         raise HTTPException(status_code=404, detail="Destination not found")
@@ -478,6 +514,9 @@ def test_destination(dest_id: int, db: Session = Depends(get_db), user: User = D
 
 @router.post("/destinations/{dest_id}/clear-host-key")
 def clear_host_key(dest_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Forget the pinned SFTP host key of a destination (after the server was legitimately
+    reinstalled); the next test pins the new one.
+    """
     d = db.get(BackupDestination, dest_id)
     if d is None:
         raise HTTPException(status_code=404, detail="Destination not found")

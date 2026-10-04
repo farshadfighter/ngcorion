@@ -22,6 +22,9 @@ from typing import List, Optional
 
 @dataclass(frozen=True)
 class Identity:
+    """A product an asset runs, as CPE vendor/product/version, with where it came from (inferred from
+    the asset's OS/model, entered by hand, or from the software inventory).
+    """
     vendor: str
     product: str
     version: Optional[str]
@@ -97,6 +100,9 @@ def label_for(vendor: str, product: str) -> str:
 
 
 def infer_identities(asset) -> List[Identity]:
+    """The products an asset can be matched on, guessed from its OS name/version and model (Windows
+    Server, FortiOS, Cisco IOS, ESXi, Linux distributions, ...).
+    """
     os_name = (getattr(asset, "os_name", None) or "").strip()
     os_version = (getattr(asset, "os_version", None) or "").strip()
     model = (getattr(asset, "model", None) or "").strip()

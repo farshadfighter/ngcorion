@@ -64,6 +64,8 @@ INCLUDE_CHOICES = ("always", "weekly", "never")
 
 
 class BackupError(Exception):
+    """A backup operation was refused or failed; `status` is the HTTP status the router answers with.
+    """
     def __init__(self, message: str, status: int = 400):
         super().__init__(message)
         self.status = status
@@ -91,6 +93,8 @@ def _write(db: Session, data: Dict, user_id: Optional[int]) -> None:
 
 
 def get_settings(db: Session) -> Dict:
+    """Backup settings with their defaults, whether a passphrase is set, and the next scheduled run.
+    """
     stored = _stored(db)
     out = {k: stored.get(k, v) for k, v in DEFAULT_SETTINGS.items()}
     out["passphrase_set"] = bool(stored.get("key_id"))
@@ -102,6 +106,7 @@ def get_settings(db: Session) -> Dict:
 
 
 def save_settings(db: Session, payload: Dict, user_id: Optional[int]) -> Dict:
+    """Validate and store the schedule and retention settings."""
     stored = _stored(db)
     clean = {}
     clean["enabled"] = bool(payload.get("enabled"))
@@ -133,6 +138,7 @@ def save_settings(db: Session, payload: Dict, user_id: Optional[int]) -> Dict:
 
 
 def validate_passphrase(passphrase: str) -> None:
+    """Refuse a passphrase shorter than MIN_PASSPHRASE or longer than 256 characters."""
     if not passphrase or len(passphrase) < MIN_PASSPHRASE:
         raise BackupError(f"The passphrase must be at least {MIN_PASSPHRASE} characters")
     if len(passphrase) > 256:
@@ -159,6 +165,8 @@ def set_passphrase(db: Session, passphrase: str, user_id: Optional[int], current
 
 
 def passphrase_for(db: Session, key_id: Optional[str]) -> Optional[str]:
+    """The stored passphrase of a key id (decrypted), or None when it is not stored on this server.
+    """
     if not key_id:
         return None
     value = _stored(db).get(f"key:{key_id}")
@@ -195,6 +203,7 @@ def file_path(b: SystemBackup) -> Path:
 
 
 def disk(path: Optional[Path] = None) -> Dict:
+    """Total, free and used bytes of the backup folder's disk (None when unknown)."""
     try:
         usage = shutil.disk_usage(path or backup_dir())
         return {"total": usage.total, "free": usage.free, "used": usage.used}
@@ -223,6 +232,8 @@ class JobLock:
         self.conn = None
 
     def acquire(self) -> bool:
+        """Take the job lock without waiting; False when another backup, restore or test holds it.
+        """
         conn = dbdump.connect(autocommit=True)
         if conn.execute("SELECT pg_try_advisory_lock(%s)", (self.KEY,)).fetchone()[0]:
             self.conn = conn
@@ -231,6 +242,7 @@ class JobLock:
         return False
 
     def release(self) -> None:
+        """Release the job lock and close its connection."""
         if self.conn is not None:
             try:
                 self.conn.execute("SELECT pg_advisory_unlock(%s)", (self.KEY,))
@@ -249,6 +261,7 @@ class JobLock:
 
 
 def job_running() -> bool:
+    """Whether any worker holds the backup job lock in this database."""
     key = JobLock.KEY & 0xFFFFFFFFFFFFFFFF
     with dbdump.connect(autocommit=True) as conn:
         # Only this database's lock: another installation on the same
@@ -263,6 +276,9 @@ def job_running() -> bool:
 # ── progress, written on short sessions so a restore's swap never strands one
 
 def update_row(model, row_id: int, **fields) -> None:
+    """Write progress fields of a backup or restore row in a short session of its own, so progress is
+    visible while the job's own work is in flight.
+    """
     db = SessionLocal()
     try:
         db.query(model).filter(model.id == row_id).update(fields, synchronize_session=False)
@@ -275,6 +291,7 @@ def update_row(model, row_id: int, **fields) -> None:
 
 
 class Throttle:
+    """Call a function at most every `every` seconds (progress updates), unless forced."""
     def __init__(self, fn: Callable, every: float = 2.0):
         self.fn, self.every, self.last = fn, every, 0.0
 
@@ -321,6 +338,9 @@ def _has_recent(db: Session, part: str, since: datetime) -> bool:
 
 def queue_backup(db: Session, kind: str, contents: Optional[Iterable[str]] = None, note: Optional[str] = None,
                  user=None, destination_ids: Optional[List[int]] = None) -> SystemBackup:
+    """Queue a backup with the current passphrase's key. Refused without a passphrase, or when two of
+    the same kind are already waiting.
+    """
     passphrase, key_id = current_passphrase(db)
     if not passphrase:
         raise BackupError("Set the backup passphrase first", 409)
@@ -340,6 +360,9 @@ def queue_backup(db: Session, kind: str, contents: Optional[Iterable[str]] = Non
 
 
 def claim_next(db: Session) -> Optional[SystemBackup]:
+    """Take the oldest queued backup for this worker (FOR UPDATE SKIP LOCKED, so two workers never take
+    the same one).
+    """
     b = (db.query(SystemBackup).filter(SystemBackup.status == BK_QUEUED).order_by(SystemBackup.id)
          .with_for_update(skip_locked=True).first())
     if b is None:
@@ -503,6 +526,8 @@ def fail_stale(db: Session) -> int:
 
 
 def mark_missing(db: Session) -> int:
+    """Mark ready backups whose file is no longer in the backup folder as missing; returns how many.
+    """
     n = 0
     for b in db.query(SystemBackup).filter(SystemBackup.status == BK_READY).all():
         try:
@@ -537,6 +562,7 @@ def open_manifest(path: Path, passphrase: str) -> dict:
 
 
 def sha256_file(path: Path) -> str:
+    """SHA-256 of a file, read in 1 MB blocks."""
     import hashlib
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -575,6 +601,9 @@ def verify_file(path: Path, passphrase: str, progress: Optional[Callable[[int], 
 
 
 def verify(db: Session, b: SystemBackup, passphrase: Optional[str] = None) -> SystemBackup:
+    """Verify a backup: the file's checksum, then the passphrase and every entry's hash. Stores the
+    result on the backup.
+    """
     path = file_path(b)
     if not path.is_file():
         raise BackupError("The backup file is missing", 404)
@@ -672,6 +701,9 @@ def deliver(db: Session, b: SystemBackup, only: Optional[List[int]] = None,
 
 
 def delete_backup(db: Session, b: SystemBackup, remote: bool = True) -> None:
+    """Delete a backup's file (and its copies at destinations when remote) and its catalog row; refused
+    while it is being written.
+    """
     if b.status in BK_PENDING:
         raise BackupError("The backup is still being written", 409)
     if b.filename:
@@ -722,6 +754,7 @@ def _slot_days(cfg: Dict) -> Callable[[date], bool]:
 
 
 def next_scheduled(db: Session, after_utc: datetime, cfg: Optional[Dict] = None) -> datetime:
+    """The next scheduled run after a time (UTC), computed in the server's local time zone."""
     cfg = cfg or get_settings(db)
     hh, mm = (int(x) for x in cfg["time"].split(":"))
     runs_on = _slot_days(cfg)
@@ -735,6 +768,7 @@ def next_scheduled(db: Session, after_utc: datetime, cfg: Optional[Dict] = None)
 
 
 def last_slot(db: Session, now_utc: datetime, cfg: Dict) -> Optional[datetime]:
+    """The most recent scheduled slot at or before now (UTC), or None."""
     hh, mm = (int(x) for x in cfg["time"].split(":"))
     runs_on = _slot_days(cfg)
     local_now = _local(db, now_utc)
@@ -788,6 +822,9 @@ def retention_plan(db: Session, now: Optional[datetime] = None) -> Tuple[List[Sy
     keep: Dict[int, List[str]] = {}
 
     def pick(keyfn, limit, newest: bool, why: str):
+        """Keep one backup per period (the newest or oldest of each) for the newest `limit` periods,
+        recording why it is kept.
+        """
         groups: Dict = {}
         for b in rows:
             groups.setdefault(keyfn(_local(db, b.created_at)), []).append(b)
@@ -803,6 +840,7 @@ def retention_plan(db: Session, now: Optional[datetime] = None) -> Tuple[List[Sy
 
 
 def apply_retention(db: Session) -> int:
+    """Delete the scheduled backups the retention plan does not keep; returns how many."""
     doomed, _ = retention_plan(db)
     for b in doomed:
         delete_backup(db, b)
@@ -837,6 +875,9 @@ def estimates() -> Dict[str, int]:
 
 
 def overview(db: Session) -> Dict:
+    """Figures for the backup overview page: last successful and last attempted backup, totals, last
+    restore test, disk space and warnings.
+    """
     cfg = get_settings(db)
     q = db.query(SystemBackup)
     last_ok = q.filter(SystemBackup.status == BK_READY).order_by(SystemBackup.created_at.desc()).first()

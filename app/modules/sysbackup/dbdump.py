@@ -48,10 +48,16 @@ TEST_STAGING = "ngtest"
 
 
 class RestoreError(Exception):
+    """The backup's data cannot be loaded into this database (unknown revision, constraint violations,
+    ...).
+    """
     pass
 
 
 def category_of(table: str) -> str:
+    """Which backup part a table belongs to (cve, noc_history, reports), "essential" for every other
+    table.
+    """
     for cat, tables in CATEGORY_TABLES.items():
         if table in tables:
             return cat
@@ -85,6 +91,9 @@ def _cols(columns: Iterable[str]) -> sql.Composable:
 # ── catalog queries ──────────────────────────────────────────────────────
 
 def tables(cur, schema: str) -> List[str]:
+    """Ordinary and partitioned tables of a schema (partitions themselves are copied through their
+    parent).
+    """
     cur.execute("""SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
                    WHERE n.nspname = %s AND c.relkind IN ('r', 'p') AND NOT c.relispartition
                    ORDER BY c.relname""", (schema,))
@@ -92,6 +101,7 @@ def tables(cur, schema: str) -> List[str]:
 
 
 def columns(cur, schema: str, table: str) -> List[str]:
+    """The stored columns of a table, in order (generated and dropped columns excluded)."""
     cur.execute("""SELECT a.attname FROM pg_attribute a
                    JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace
                    WHERE n.nspname = %s AND c.relname = %s AND a.attnum > 0
@@ -106,6 +116,7 @@ def schema_exists(cur, schema: str) -> bool:
 
 
 def revision(cur, schema: str = "public") -> Optional[str]:
+    """The Alembic revision of a schema, or None when it has no alembic_version table."""
     try:
         cur.execute(sql.SQL("SELECT version_num FROM {}").format(_q(schema, "alembic_version")))
         row = cur.fetchone()
@@ -164,6 +175,7 @@ def begin_snapshot(conn: psycopg.Connection) -> None:
 
 
 def copy_out(conn: psycopg.Connection, table: str, cols: List[str]) -> Iterator[bytes]:
+    """Stream a table's rows in COPY text format."""
     cur = conn.cursor()
     stmt = sql.SQL("COPY {} ({}) TO STDOUT").format(_q("public", table), _cols(cols))
     with cur.copy(stmt) as copy:
@@ -174,6 +186,7 @@ def copy_out(conn: psycopg.Connection, table: str, cols: List[str]) -> Iterator[
 # ── staging schema ────────────────────────────────────────────────────────
 
 def known_revision(rev: str) -> bool:
+    """Whether this code knows an Alembic revision (a backup from a newer NGCorion is refused)."""
     from alembic.script import ScriptDirectory
     from alembic.config import Config
     cfg = Config()
@@ -185,6 +198,7 @@ def known_revision(rev: str) -> bool:
 
 
 def head_revision() -> str:
+    """The Alembic head of this code."""
     from alembic.script import ScriptDirectory
     from alembic.config import Config
     cfg = Config()
@@ -254,6 +268,7 @@ def drop_schema(schema: str) -> None:
 
 
 def truncate_all(cur, schema: str) -> None:
+    """Empty every table of a schema (except alembic_version), resetting sequences."""
     names = [t for t in tables(cur, schema) if t != "alembic_version"]
     if names:
         cur.execute(sql.SQL("TRUNCATE {} RESTART IDENTITY CASCADE").format(
@@ -261,6 +276,9 @@ def truncate_all(cur, schema: str) -> None:
 
 
 def drop_foreign_keys(cur, schema: str) -> List[Tuple[str, str, str]]:
+    """Drop every foreign key of a schema so tables can be loaded in any order; returns their
+    definitions to recreate them afterwards.
+    """
     cur.execute("""SELECT t.relname, c.conname, pg_get_constraintdef(c.oid)
                    FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
                    JOIN pg_namespace n ON n.oid = t.relnamespace
@@ -285,6 +303,7 @@ def add_foreign_keys(cur, schema: str, fks: List[Tuple[str, str, str]]) -> None:
 
 
 def copy_in(cur, schema: str, table: str, cols: List[str], blocks: Iterator[bytes]) -> None:
+    """Load a table from COPY text blocks."""
     stmt = sql.SQL("COPY {} ({}) FROM STDIN").format(_q(schema, table), _cols(cols))
     with cur.copy(stmt) as copy:
         for data in blocks:
@@ -364,6 +383,9 @@ def repair_orphans(cur, schema: str) -> Dict[str, int]:
 
 
 def validate_foreign_keys(cur, schema: str) -> None:
+    """Validate the foreign keys recreated NOT VALID after loading; a violation becomes RestoreError
+    naming the table and constraint.
+    """
     cur.execute("""SELECT t.relname, c.conname FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid
                    JOIN pg_namespace n ON n.oid = t.relnamespace
                    WHERE n.nspname = %s AND c.contype = 'f' AND NOT c.convalidated""", (schema,))
@@ -452,6 +474,9 @@ def swap(staging: str = STAGING, local_tables: Iterable[str] = LOCAL_TABLES) -> 
 
 
 def leftover_schemas() -> List[str]:
+    """Staging and old schemas left behind by an interrupted restore or restore test (shown in the
+    health detail, removed by housekeeping).
+    """
     with connect(autocommit=True) as conn:
         cur = conn.execute("""SELECT nspname FROM pg_namespace
                               WHERE nspname LIKE 'ngold\\_%%' OR nspname IN (%s, %s)""", (STAGING, TEST_STAGING))

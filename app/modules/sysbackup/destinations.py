@@ -25,6 +25,7 @@ BLOCK = 1 << 20
 
 
 class DestinationError(Exception):
+    """A destination could not be reached, authenticated or written to; the message says which."""
     pass
 
 
@@ -42,6 +43,7 @@ def _secret(dest) -> str:
 
 
 def fingerprint(host_key: Optional[str]) -> Optional[str]:
+    """SHA256 fingerprint ("SHA256:...") of an OpenSSH public key line, as ssh-keygen prints it."""
     if not host_key or " " not in host_key:
         return None
     raw = base64.b64decode(host_key.split(" ", 1)[1])
@@ -67,6 +69,9 @@ def _private_key(text: str):
 
 class _Sftp:
     def __init__(self, dest):
+        """Connect to the SFTP server, check its host key against the pinned one (pinning it on the
+        first test), and log in with a password or private key.
+        """
         import paramiko
         self.dest = dest
         try:
@@ -100,6 +105,7 @@ class _Sftp:
             raise DestinationError(f"SFTP connection failed: {exc}")
 
     def close(self):
+        """Close the SSH transport, ignoring errors."""
         try:
             self.transport.close()
         except Exception:
@@ -114,6 +120,7 @@ class _Sftp:
         return posixpath.join(base, name) if base else name
 
     def ensure_folder(self):
+        """Create the destination folder, one level at a time, if it does not exist."""
         base = self._base()
         if not base:
             return
@@ -126,6 +133,9 @@ class _Sftp:
                 self.sftp.mkdir(current)
 
     def put(self, local: str, name: str, progress: Optional[Callable[[int], None]]) -> int:
+        """Upload a file as NAME.part and rename it when complete, so a half-written copy never has the
+        final name; returns the bytes sent.
+        """
         self.ensure_folder()
         final = self._path(name)
         part = final + ".part"
@@ -149,12 +159,14 @@ class _Sftp:
         return size
 
     def remove(self, name: str):
+        """Delete a backup file on the destination; a missing file is not an error."""
         try:
             self.sftp.remove(self._path(name))
         except IOError:
             pass
 
     def probe(self):
+        """Prove the folder is writable by writing and deleting a small test file."""
         self.ensure_folder()
         probe = self._path(".ngcorion-write-test")
         with self.sftp.open(probe, "wb") as f:
@@ -166,6 +178,7 @@ class _Sftp:
 
 class _Smb:
     def __init__(self, dest):
+        """Open an SMB session (domain\\user when a domain is set) to the share."""
         import smbclient
         from smbprotocol.exceptions import SMBException
         self.smb = smbclient
@@ -189,6 +202,7 @@ class _Smb:
             raise DestinationError(f"Windows share connection failed: {text}")
 
     def close(self):
+        """Close the SMB session, ignoring errors."""
         try:
             self.smb.delete_session(self.dest.host, port=self.dest.port or 445)
         except Exception:
@@ -208,6 +222,7 @@ class _Smb:
             self.smb.makedirs(self._unc(), exist_ok=True, **self.kw)
 
     def put(self, local: str, name: str, progress: Optional[Callable[[int], None]]) -> int:
+        """Upload a file as NAME.part and rename it when complete; returns the bytes sent."""
         from smbprotocol.exceptions import SMBException
         try:
             self.ensure_folder()
@@ -233,6 +248,7 @@ class _Smb:
             raise DestinationError(f"Writing to the share failed: {exc}")
 
     def remove(self, name: str):
+        """Delete a backup file on the share; a missing file is not an error."""
         from smbprotocol.exceptions import SMBException
         try:
             self.smb.remove(self._unc(name), **self.kw)
@@ -240,6 +256,7 @@ class _Smb:
             pass
 
     def probe(self):
+        """Prove the share folder is writable by writing and deleting a small test file."""
         from smbprotocol.exceptions import SMBException
         try:
             self.ensure_folder()
@@ -294,6 +311,7 @@ def upload(dest, local: str, name: str, expected_size: int,
 
 
 def remove(dest, name: str) -> None:
+    """Delete a backup file at a destination (retention, deleting a backup)."""
     conn = _open(dest)
     try:
         conn.remove(name)

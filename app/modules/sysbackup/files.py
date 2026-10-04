@@ -57,6 +57,9 @@ def target(entry: str) -> Path:
 
 
 def write(entry: str, data: bytes, mode: int) -> Path:
+    """Restore one file: written to a temporary name, synced and renamed into place, with its original
+    permission bits (0600 when unknown).
+    """
     path = target(entry)
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".ngrestore")

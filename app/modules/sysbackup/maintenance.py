@@ -39,6 +39,7 @@ def on(**info) -> None:
 
 
 def update(**info) -> None:
+    """Merge progress information into the maintenance flag file and refresh its heartbeat."""
     path = flag_path()
     try:
         current = json.loads(path.read_text()) if path.exists() else {}
@@ -53,6 +54,7 @@ def update(**info) -> None:
 
 
 def off() -> None:
+    """Leave maintenance mode (remove the flag file)."""
     try:
         flag_path().unlink()
     except FileNotFoundError:
@@ -91,7 +93,11 @@ def state() -> Optional[dict]:
 
 
 class MaintenanceMiddleware(BaseHTTPMiddleware):
+    """While a restore swaps the database, answer API requests with 503 and a retry hint instead of
+    letting them reach a half-loaded database. The status endpoint reports the restore's progress.
+    """
     async def dispatch(self, request, call_next):
+        """Refuse /api/ requests (except the pass-through paths) while maintenance mode is on."""
         path = request.url.path
         if path.startswith("/api/") and path not in PASS_THROUGH:
             current = state()

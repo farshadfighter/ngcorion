@@ -76,6 +76,7 @@ def apply_cve_batch(db: Session, records: List[dict]) -> dict:
 
 
 def apply_cves(db: Session, records: Iterable[dict], on_batch=None) -> dict:
+    """Upsert CVE records in batches; returns how many were new, changed and removed (rejected)."""
     total = {"new": 0, "changed": 0, "removed": 0}
     batch: List[dict] = []
     for r in records:

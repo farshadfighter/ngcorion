@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class CveFinding(BaseModel):
+    """One CVE affecting one product of one asset, with its scores, priority and fix version."""
     asset_id: int
     asset_name: Optional[str] = None
     asset_icon: Optional[str] = None
@@ -38,6 +39,7 @@ class CveFinding(BaseModel):
 
 
 class AssetProduct(BaseModel):
+    """A product an asset is matched on and where it came from."""
     vendor: str
     product: str
     version: Optional[str] = None
@@ -47,6 +49,7 @@ class AssetProduct(BaseModel):
 
 
 class AssetFindings(BaseModel):
+    """An asset's finding count and products, for the by-asset view."""
     asset_id: int
     asset_name: Optional[str] = None
     asset_icon: Optional[str] = None
@@ -59,6 +62,7 @@ class AssetFindings(BaseModel):
 
 
 class FindingsSummary(BaseModel):
+    """Counts at the top of the CVE page."""
     total: int
     fix_now: int
     affected_assets: int
@@ -72,6 +76,7 @@ class FindingsSummary(BaseModel):
 
 
 class FindingsResponse(BaseModel):
+    """The CVE page's data: summary, findings, assets, and whether the databases are loaded."""
     summary: FindingsSummary
     findings: List[CveFinding]
     assets: List[AssetFindings]
@@ -80,6 +85,7 @@ class FindingsResponse(BaseModel):
 
 
 class CveEntryDetail(BaseModel):
+    """One CVE as the detail drawer shows it."""
     cve_id: str
     published: Optional[datetime] = None
     last_modified: Optional[datetime] = None
@@ -104,12 +110,16 @@ class CveEntryDetail(BaseModel):
 
 
 class ProductSuggestion(BaseModel):
+    """A vendor/product known to the CVE database, suggested while typing."""
     vendor: str
     product: str
     cves: int
 
 
 class SoftwareCreate(BaseModel):
+    """Body of adding a product to an asset. Values are trimmed and may not contain CPE separators
+    or wildcards (':', '*', '?'); vendor and product are normalised like CPE names.
+    """
     vendor: str = Field(..., min_length=1, max_length=120)
     product: str = Field(..., min_length=1, max_length=160)
     version: str = Field(..., min_length=1, max_length=80)
@@ -132,6 +142,7 @@ class SoftwareCreate(BaseModel):
 
 
 class SoftwareOut(BaseModel):
+    """A manually added product of an asset."""
     id: int
     asset_id: int
     vendor: str
@@ -143,6 +154,7 @@ class SoftwareOut(BaseModel):
 
 
 class JobOut(BaseModel):
+    """A database job: kind, trigger, status, progress and statistics."""
     id: int
     kind: str
     trigger: str
@@ -159,11 +171,13 @@ class JobOut(BaseModel):
 
 
 class AutoUpdate(BaseModel):
+    """Automatic update setting: on/off and the daily time."""
     enabled: bool
     time: str
 
 
 class DbStatus(BaseModel):
+    """State of the CVE database for the database page."""
     loaded: bool
     cves: int
     with_cpe: int
@@ -183,6 +197,7 @@ class DbStatus(BaseModel):
 
 
 class DbSettingsUpdate(BaseModel):
+    """Body of the database settings: NVD API key and automatic update."""
     nvd_api_key: Optional[str] = Field(None, max_length=64)
     clear_api_key: bool = False
     auto_update_enabled: Optional[bool] = None
@@ -190,32 +205,38 @@ class DbSettingsUpdate(BaseModel):
 
 
 class ConnectionCheck(BaseModel):
+    """Reachability of one feed."""
     name: str
     ok: bool
     detail: str
 
 
 class ConnectionResult(BaseModel):
+    """Reachability of every feed."""
     ok: bool
     checks: List[ConnectionCheck]
 
 
 class UpdateRequest(BaseModel):
+    """Body of an online update: full or incremental."""
     full: bool = False
 
 
 class ExportRequest(BaseModel):
+    """Body of an export: full package, or the changes since a date."""
     kind: str = Field("delta", pattern="^(full|delta)$")
     since: Optional[datetime] = None
 
 
 class PackageCheck(BaseModel):
+    """One verification check of an uploaded package."""
     name: str
     status: str
     detail: str
 
 
 class PackageVerified(BaseModel):
+    """An uploaded package's verification result and the token to import it with."""
     token: Optional[str] = None
     file_name: str
     size: int
@@ -226,11 +247,13 @@ class PackageVerified(BaseModel):
 
 
 class TrustedKeyCreate(BaseModel):
+    """Body of trusting a public key: a name and the base64 Ed25519 key."""
     name: str = Field(..., min_length=1, max_length=120)
     public_key: str = Field(..., min_length=40, max_length=100)
 
 
 class TrustedKeyOut(BaseModel):
+    """A trusted public key (built-in release key or added by an admin)."""
     id: Optional[int] = None
     name: str
     public_key: str

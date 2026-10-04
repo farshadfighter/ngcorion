@@ -49,6 +49,7 @@ class BackupFormatError(Exception):
 
 
 class WrongPassphrase(Exception):
+    """The passphrase does not open this backup (the header check value does not match)."""
     pass
 
 
@@ -125,6 +126,9 @@ class Writer:
             self._seal(False)
 
     def begin(self, name: str) -> None:
+        """Start a new entry (file) in the archive; names must be unique and only one entry can be
+        open.
+        """
         if self._entry is not None:
             raise RuntimeError("entry %s still open" % self._entry)
         if name in self.entries:
@@ -134,6 +138,7 @@ class Writer:
         self._entry, self._entry_hash, self._entry_size = name, hashlib.sha256(), 0
 
     def write(self, data: bytes) -> None:
+        """Append data to the open entry, in chunks, updating its size and SHA-256."""
         if self._entry is None:
             raise RuntimeError("no open entry")
         view = memoryview(data)
@@ -144,6 +149,7 @@ class Writer:
             self._entry_size += len(part)
 
     def end(self) -> dict:
+        """Close the open entry and return its size and SHA-256 (recorded in the manifest)."""
         self._plain(b"Z")
         info = {"size": self._entry_size, "sha256": self._entry_hash.hexdigest()}
         self.entries[self._entry] = info
@@ -193,6 +199,9 @@ def read_header(f: BinaryIO) -> Tuple[dict, bytes]:
 
 
 def unlock(header: dict, passphrase: str) -> bytes:
+    """Derive the key from the passphrase with the header's scrypt parameters and check it against the
+    header; raises WrongPassphrase or BackupFormatError.
+    """
     kdf = header.get("kdf") or {}
     try:
         salt = base64.b64decode(kdf["salt"])
@@ -290,6 +299,9 @@ class Reader:
                 raise BackupFormatError("archive is damaged")
 
     def entries(self) -> Iterator[Tuple[str, Iterator[bytes]]]:
+        """Yield (name, data blocks) for every entry, in order. The end-of-archive marker and the final
+        authenticated chunk are checked, so a truncated or appended file is rejected.
+        """
         while True:
             tag = self._take(1)
             if tag == b"X":
@@ -311,6 +323,9 @@ class Reader:
 
 
 def read_entry(blocks: Iterator[bytes], limit: int = 64 * 1024 * 1024) -> bytes:
+    """Read a whole entry into memory, refusing one larger than `limit` (for small entries such as the
+    manifest).
+    """
     out = bytearray()
     for data in blocks:
         out += data

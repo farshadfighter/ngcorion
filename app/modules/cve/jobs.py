@@ -65,14 +65,17 @@ _cancel: Dict[int, threading.Event] = {}
 
 
 class JobBusy(RuntimeError):
+    """Another CVE database job is already running."""
     pass
 
 
 class Cancelled(RuntimeError):
+    """The job was cancelled by a user; raised inside the job to stop it cleanly."""
     pass
 
 
 def data_dir(sub: str) -> str:
+    """A private (0700) working folder under CVE_DATA_DIR for uploads, exports and downloads."""
     base = os.getenv("CVE_DATA_DIR") or os.path.join(tempfile.gettempdir(), "ngcorion-cve")
     path = os.path.join(base, sub)
     os.makedirs(path, mode=0o700, exist_ok=True)
@@ -111,6 +114,9 @@ def create_job(db: Session, kind: str, user_id: Optional[int], trigger: str = "m
 
 
 def request_cancel(db: Session, job: CveUpdateJob) -> bool:
+    """Ask a running job to stop (it checks between batches); a job whose process is gone is marked
+    cancelled at once. False when the job already ended.
+    """
     if job.status not in CVE_JOB_ACTIVE:
         return False
     if not runner_is_alive(job.runner):
@@ -179,6 +185,9 @@ class _Job:
 
     def progress(self, step: str, done: Optional[int] = None, total: Optional[int] = None,
                  message: Optional[str] = None, force: bool = False):
+        """Record the job's current step and counts (at most every PROGRESS_INTERVAL seconds for the
+        same step unless forced); the page polls this.
+        """
         now = datetime.utcnow().timestamp()
         if not force and step == (self.row.progress or {}).get("step") and now - self._last < PROGRESS_INTERVAL:
             return
@@ -188,6 +197,9 @@ class _Job:
         self.db.commit()
 
     def finish(self, status: str, error: Optional[str] = None):
+        """Close the job with its final status, error and statistics (after rolling back whatever the
+        failed step left uncommitted).
+        """
         self.db.rollback()
         self.row = self.db.get(CveUpdateJob, self.id)
         self.row.status = status
@@ -388,6 +400,7 @@ def _import(j: _Job, db: Session, path: str) -> None:
 
 
 def run_import(job_id: int, path: str, remove_after: bool = True, session_factory: Callable = SessionLocal) -> None:
+    """Run an offline package import job; the uploaded file is removed afterwards."""
     try:
         _run(job_id, session_factory, lambda j, db: _import(j, db, path))
     finally:
@@ -398,6 +411,7 @@ def run_import(job_id: int, path: str, remove_after: bool = True, session_factor
 # ── export ───────────────────────────────────────────────────────────────
 
 def export_file(job: CveUpdateJob) -> Optional[str]:
+    """Path of a finished export's package file, or None when it is not (or no longer) available."""
     if job.kind != "export" or job.status != "succeeded" or not job.file_name:
         return None
     path = os.path.join(data_dir("exports"), os.path.basename(job.file_name))
@@ -428,6 +442,7 @@ def _export(j: _Job, db: Session, kind: str, since: Optional[datetime]) -> None:
 
 
 def run_advisories(job_id: int, session_factory: Callable = SessionLocal) -> None:
+    """Run a distribution-advisory update job (OSV online)."""
     from app.modules.advisories import jobs as adv
 
     def body(j, db):
@@ -438,6 +453,7 @@ def run_advisories(job_id: int, session_factory: Callable = SessionLocal) -> Non
 
 def run_adv_import(job_id: int, path: str, remove_after: bool = True,
                    session_factory: Callable = SessionLocal) -> None:
+    """Run an advisory import job from an uploaded OSV zip; the file is removed afterwards."""
     from app.modules.advisories import jobs as adv
 
     def body(j, db):
@@ -463,6 +479,7 @@ def upload_path(token: str) -> str:
 
 
 def new_upload() -> tuple:
+    """A fresh upload token and its file path; uploads older than UPLOAD_TTL are removed first."""
     folder = data_dir("uploads")
     cutoff = datetime.utcnow() - UPLOAD_TTL
     for f in os.listdir(folder):
@@ -595,6 +612,7 @@ class _AutoUpdater:
             self._task = asyncio.create_task(self._loop(), name="cve-auto-update")
 
     async def stop(self):
+        """Stop the automatic-update loop."""
         if self._task is None:
             return
         self._stop.set()
@@ -609,6 +627,8 @@ _updater: Optional[_AutoUpdater] = None
 
 
 def start_auto_updater() -> None:
+    """Start the daily automatic CVE/KEV/EPSS and advisory update loop (in the leader worker only).
+    """
     global _updater
     if _updater is None:
         _updater = _AutoUpdater()

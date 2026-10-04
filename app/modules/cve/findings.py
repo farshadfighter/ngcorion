@@ -56,6 +56,9 @@ def _inventory(db: Session, asset_id: Optional[int] = None):
 
 
 def priority(entry: CveEntry) -> int:
+    """Fix order of a CVE: 1 known exploited (KEV), 2 CVSS >= 9 or EPSS >= 0.5, 3 CVSS >= 7 or EPSS >=
+    0.1, 4 the rest.
+    """
     score = entry.cvss_score or 0
     epss = entry.epss or 0
     if entry.kev:
@@ -76,6 +79,10 @@ def _fixed_in(m: CveCpeMatch) -> Optional[str]:
 
 
 def compute(db: Session, asset_id: Optional[int] = None) -> Dict:
+    """CVE findings of every asset (or one): each asset's products (inferred, manual, inventory)
+    matched against the local CVE database and the distribution advisories, with the summary counts
+    and per-asset totals the CVE page shows.
+    """
     q = db.query(Asset).options(joinedload(Asset.asset_type))
     if asset_id is not None:
         q = q.filter(Asset.id == asset_id)

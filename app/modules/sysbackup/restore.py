@@ -59,6 +59,7 @@ class _Progress:
             maintenance.update(step=self.current, progress=self.pct)
 
     def start(self, key: str, pct: int):
+        """Mark the current step done and start the next one at the given progress percentage."""
         for s in self.steps:
             if s["key"] == self.current and s["status"] == "running":
                 s["status"] = "done"
@@ -70,6 +71,7 @@ class _Progress:
         self._save()
 
     def detail(self, text: str):
+        """Set the detail line of the running step."""
         for s in self.steps:
             if s["key"] == self.current:
                 s["detail"] = text
@@ -84,6 +86,9 @@ class _Progress:
             self._save()
 
     def finish(self, ok: bool, **extra):
+        """Close the run: the running step done (or failed), pending steps skipped on success, and the
+        restore row's final status.
+        """
         for s in self.steps:
             if s["status"] == "running":
                 s["status"] = "done" if ok else "failed"
@@ -420,6 +425,7 @@ def run_test(backup_id: int, passphrase: Optional[str] = None, requested_by=None
 
 
 def fail_stale(db) -> int:
+    """Mark restores whose worker process is gone as failed; returns how many."""
     n = 0
     for r in db.query(SystemRestore).filter(SystemRestore.status.in_((RS_QUEUED, RS_RUNNING))).all():
         if not runner_is_alive(r.runner):

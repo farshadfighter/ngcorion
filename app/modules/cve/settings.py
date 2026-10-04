@@ -21,6 +21,9 @@ _ENCRYPTED = {NVD_API_KEY, SIGNING_KEY}
 
 
 def get(db: Session, key: str, default: Any = None) -> Any:
+    """A CVE setting, decrypted when it is a secret (the NVD API key); `default` when unset or
+    unreadable.
+    """
     row = db.get(CveSetting, key)
     if row is None or row.value is None:
         return default

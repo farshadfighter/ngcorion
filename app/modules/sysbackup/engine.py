@@ -36,6 +36,9 @@ def _with_session(fn):
 def build_next() -> bool:
     """Make one queued backup. True when there was one."""
     def work(db):
+        """Claim the next queued backup and run it; after a scheduled one succeeds, apply retention.
+        False when nothing was queued.
+        """
         b = service.claim_next(db)
         if b is None:
             return False
@@ -66,6 +69,7 @@ def _test_due(db, b: SystemBackup) -> bool:
 
 
 def queue_scheduled() -> None:
+    """Queue the scheduled backup when its time slot has come and it has not run yet."""
     def work(db):
         if service.due_scheduled(db):
             b = service.queue_backup(db, KIND_SCHEDULED)
@@ -74,6 +78,7 @@ def queue_scheduled() -> None:
 
 
 def housekeeping() -> None:
+    """Mark jobs whose worker died as failed, and backups whose file disappeared as missing."""
     def work(db):
         service.fail_stale(db)
         restore.fail_stale(db)
@@ -82,6 +87,9 @@ def housekeeping() -> None:
 
 
 class BackupWorker:
+    """The background loop of system backups (one worker only, see app/core/singleton.py): runs queued
+    backups, queues scheduled ones and does housekeeping.
+    """
     def __init__(self):
         self._task: Optional[asyncio.Task] = None
         self._stop = asyncio.Event()
@@ -109,6 +117,7 @@ class BackupWorker:
             self._task = asyncio.create_task(self._loop(), name="system-backup")
 
     async def stop(self) -> None:
+        """Stop the loop, letting a running backup finish for up to 2 minutes."""
         if self._task is None:
             return
         self._stop.set()
@@ -123,6 +132,7 @@ _worker: Optional[BackupWorker] = None
 
 
 def start_backup_worker() -> None:
+    """Start the backup loop (called by the SingletonTask of this worker when it becomes leader)."""
     global _worker
     if _worker is None:
         _worker = BackupWorker()

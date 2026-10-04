@@ -25,6 +25,9 @@ from app.modules.cve import settings
 
 
 class KeyError_(ValueError):
+    """A public key is not a valid Ed25519 key (named with a trailing underscore to avoid the builtin
+    KeyError).
+    """
     pass
 
 
@@ -33,6 +36,7 @@ def fingerprint(public_b64: str) -> str:
 
 
 def load_public(public_b64: str) -> Ed25519PublicKey:
+    """Parse a base64 Ed25519 public key (32 bytes)."""
     try:
         raw = base64.b64decode(public_b64, validate=True)
         if len(raw) != 32:

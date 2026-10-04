@@ -41,6 +41,7 @@ _PREFERRED_REF_TAGS = ("Vendor Advisory", "Patch", "Mitigation", "Release Notes"
 
 
 class FeedError(RuntimeError):
+    """A vulnerability feed could not be read (unreachable, HTTP error, malformed data)."""
     pass
 
 
@@ -143,6 +144,9 @@ def _date(value: Optional[str]) -> Optional[str]:
 
 
 def parse_kev(payload: dict) -> dict:
+    """CISA KEV catalog JSON to {"version", "released", "items": [{id, added, due, ransomware,
+    action}]}.
+    """
     items = []
     for v in payload.get("vulnerabilities", []):
         if not v.get("cveID"):
@@ -179,7 +183,11 @@ def _fmt(dt: datetime) -> str:
 
 
 class NvdClient:
+    """Client of the NVD CVE API 2.0 with NVD's rate limits (one request per 6.5 s without an API key,
+    0.7 s with one) and retries on throttling.
+    """
     def __init__(self, api_key: Optional[str] = None, session=None, sleep: Callable = time.sleep):
+        """`api_key` raises the rate limit; `sleep` is injectable so tests do not wait."""
         self.session = session or requests.Session()
         self.api_key = api_key
         self.sleep = sleep
@@ -244,6 +252,7 @@ class NvdClient:
 
 
 def fetch_kev(session=None) -> dict:
+    """Download and parse the CISA Known Exploited Vulnerabilities catalog."""
     s = session or requests.Session()
     try:
         resp = s.get(KEV_URL, timeout=TIMEOUT)
@@ -255,6 +264,7 @@ def fetch_kev(session=None) -> dict:
 
 
 def fetch_epss(session=None) -> dict:
+    """Download the daily EPSS scores (gzip CSV) as {cve: (score, percentile)}."""
     s = session or requests.Session()
     try:
         resp = s.get(EPSS_URL, timeout=TIMEOUT * 3)
@@ -272,6 +282,7 @@ def utcnow() -> datetime:
 
 
 def iso_to_dt(value: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO timestamp, None when missing or malformed."""
     if not value:
         return None
     try:

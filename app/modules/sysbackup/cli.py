@@ -33,6 +33,7 @@ def _size(n) -> str:
 
 
 def cmd_list(args) -> int:
+    """`list`: print every backup in the catalog (id, date, kind, status, size, contents, file)."""
     from app.core.database import SessionLocal
     from app.models.system_backup import SystemBackup
     db = SessionLocal()
@@ -46,6 +47,9 @@ def cmd_list(args) -> int:
 
 
 def cmd_create(args) -> int:
+    """`create`: make a manual backup now, in this process (essential data and reports, plus the parts
+    named with --with).
+    """
     from app.core.database import SessionLocal
     from app.modules.sysbackup import service
     db = SessionLocal()
@@ -67,6 +71,9 @@ def cmd_create(args) -> int:
 
 
 def cmd_verify(args) -> int:
+    """`verify FILE`: open a backup file with the passphrase and check every entry's checksum; exit
+    code 0 when it is intact.
+    """
     from app.modules.sysbackup import container, service
     path = Path(args.file)
     try:
@@ -86,6 +93,9 @@ def cmd_verify(args) -> int:
 
 
 def cmd_restore(args) -> int:
+    """`restore FILE`: restore NGCorion from a backup file, for when the web interface is not
+    available. Asks for the passphrase and a typed confirmation.
+    """
     from app.core.database import SessionLocal
     from app.models.system_backup import SystemRestore
     from app.modules.sysbackup import restore, service
@@ -131,6 +141,9 @@ def cmd_restore(args) -> int:
 
 
 def main(argv=None) -> int:
+    """Entry point of `python -m app.modules.sysbackup.cli`: parse the sub-command and run it; returns
+    the exit code.
+    """
     p = argparse.ArgumentParser(prog="python -m app.modules.sysbackup.cli", description="NGCorion self-backup")
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="list backups")

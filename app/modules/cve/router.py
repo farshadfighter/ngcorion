@@ -79,6 +79,7 @@ def _busy(exc: jobs.JobBusy):
 
 @router.get("/findings", response_model=FindingsResponse)
 def get_findings(asset_id: Optional[int] = None, current_user: User = Depends(_read), db: Session = Depends(get_db)):
+    """CVE findings of all assets or one, and whether the CVE and advisory databases are loaded."""
     if asset_id is not None and db.get(Asset, asset_id) is None:
         raise HTTPException(status_code=404, detail="Asset not found")
     result = findings.compute(db, asset_id)
@@ -90,6 +91,7 @@ def get_findings(asset_id: Optional[int] = None, current_user: User = Depends(_r
 
 @router.get("/entries/{cve_id}", response_model=CveEntryDetail)
 def get_entry(cve_id: str, current_user: User = Depends(_read), db: Session = Depends(get_db)):
+    """One CVE from the local database with its affected products and references."""
     entry = db.get(CveEntry, cve_id.upper())
     if entry is None:
         raise HTTPException(status_code=404, detail="CVE not found in the local database")
@@ -121,6 +123,7 @@ def suggest_products(q: str = Query(..., min_length=2, max_length=80), current_u
 @router.post("/assets/{asset_id}/software", response_model=SoftwareOut, status_code=201)
 def add_software(asset_id: int, body: SoftwareCreate, current_user: User = Depends(_write),
                  db: Session = Depends(get_db)):
+    """Add a product an asset runs, for CVE matching (audit-logged)."""
     asset = db.get(Asset, asset_id)
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -142,6 +145,7 @@ def add_software(asset_id: int, body: SoftwareCreate, current_user: User = Depen
 @router.delete("/assets/{asset_id}/software/{software_id}", status_code=204)
 def remove_software(asset_id: int, software_id: int, current_user: User = Depends(_write),
                     db: Session = Depends(get_db)):
+    """Remove a manually added product of an asset (audit-logged)."""
     row = db.get(AssetSoftware, software_id)
     if row is None or row.asset_id != asset_id:
         raise HTTPException(status_code=404, detail="Not found")
@@ -156,6 +160,9 @@ def remove_software(asset_id: int, software_id: int, current_user: User = Depend
 
 @router.get("/db/status", response_model=DbStatus)
 def db_status(current_user: User = Depends(_read), db: Session = Depends(get_db)):
+    """State of the CVE database: counts, size, last job, watermark, KEV/EPSS dates, settings and any
+    running job.
+    """
     cves = db.query(func.count(CveEntry.cve_id)).scalar() or 0
     size = 0
     for table in ("cve_entries", "cve_cpe_matches"):
@@ -191,6 +198,7 @@ def list_jobs(limit: int = Query(30, ge=1, le=200), current_user: User = Depends
 
 @router.get("/db/jobs/{job_id}", response_model=JobOut)
 def get_job(job_id: int, current_user: User = Depends(_read), db: Session = Depends(get_db)):
+    """One database job with its progress (polled by the page)."""
     job = db.get(CveUpdateJob, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -199,6 +207,7 @@ def get_job(job_id: int, current_user: User = Depends(_read), db: Session = Depe
 
 @router.post("/db/jobs/{job_id}/cancel", response_model=JobOut)
 def cancel_job(job_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Cancel a running database job (admin)."""
     job = db.get(CveUpdateJob, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -214,6 +223,9 @@ def cancel_job(job_id: int, current_user: User = Depends(require_admin), db: Ses
 @router.put("/db/settings", response_model=DbStatus)
 def update_settings(body: DbSettingsUpdate, current_user: User = Depends(require_admin),
                     db: Session = Depends(get_db)):
+    """Set or clear the NVD API key (stored encrypted) and the automatic update time (admin,
+    audit-logged).
+    """
     changes = []
     if body.clear_api_key:
         settings.put(db, settings.NVD_API_KEY, None)
@@ -240,6 +252,7 @@ def update_settings(body: DbSettingsUpdate, current_user: User = Depends(require
 
 @router.post("/db/test-connection", response_model=ConnectionResult)
 def test_connection(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Check that NVD, CISA KEV and EPSS are reachable from the server (admin)."""
     checks = []
     try:
         jobs.make_client(settings.api_key(db)).ping()
@@ -260,6 +273,7 @@ def test_connection(current_user: User = Depends(require_admin), db: Session = D
 @router.post("/db/update", response_model=JobOut, status_code=202)
 def start_update(body: UpdateRequest = UpdateRequest(), current_user: User = Depends(require_admin),
                  db: Session = Depends(get_db)):
+    """Start an online update: incremental since the last one, or full (admin)."""
     try:
         job = jobs.create_job(db, "full" if body.full else "online", current_user.id)
     except jobs.JobBusy as exc:
@@ -270,6 +284,7 @@ def start_update(body: UpdateRequest = UpdateRequest(), current_user: User = Dep
 
 @router.post("/db/bundle/load", response_model=JobOut, status_code=202)
 def load_bundle(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Load the CVE database snapshot shipped with this release (admin)."""
     path = jobs.bundle_path()
     if not os.path.isfile(path):
         raise HTTPException(status_code=404, detail="No CVE database snapshot is installed with this release")
@@ -337,6 +352,7 @@ async def upload_package(request: Request, file_name: str = Query("package.ngcve
 
 @router.post("/db/packages/{token}/import", response_model=JobOut, status_code=202)
 def import_package(token: str, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Import an uploaded package that passed verification (admin)."""
     try:
         path = jobs.upload_path(token)
     except package.PackageError:
@@ -360,6 +376,9 @@ def import_package(token: str, current_user: User = Depends(require_admin), db: 
 
 @router.post("/db/export", response_model=JobOut, status_code=202)
 def start_export(body: ExportRequest, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Export the local database as a signed package for an offline server: full, or changes since a
+    date (admin).
+    """
     if settings.get(db, settings.WATERMARK) is None:
         raise HTTPException(status_code=409, detail="The CVE database has not been loaded yet")
     if body.kind == "delta" and body.since is None:
@@ -375,6 +394,7 @@ def start_export(body: ExportRequest, current_user: User = Depends(require_admin
 
 @router.get("/db/export/{job_id}/file")
 def download_export(job_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Download a finished export package (admin)."""
     job = db.get(CveUpdateJob, job_id)
     path = jobs.export_file(job) if job else None
     if path is None:
@@ -391,6 +411,8 @@ def list_keys(current_user: User = Depends(require_admin), db: Session = Depends
 
 @router.post("/db/keys", response_model=TrustedKeyOut, status_code=201)
 def add_key(body: TrustedKeyCreate, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Trust another NGCorion's public key, so packages it signs can be imported (admin, audit-logged).
+    """
     public = body.public_key.strip()
     try:
         keys.load_public(public)
@@ -409,6 +431,7 @@ def add_key(body: TrustedKeyCreate, current_user: User = Depends(require_admin),
 
 @router.delete("/db/keys/{key_id}", status_code=204)
 def remove_key(key_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Stop trusting a public key (admin, audit-logged)."""
     row = db.get(CveTrustedKey, key_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Key not found")
@@ -421,12 +444,14 @@ def remove_key(key_id: int, current_user: User = Depends(require_admin), db: Ses
 # ── distribution advisories (app/modules/advisories) ─────────────────────
 
 class AdvisorySettings(BaseModel):
+    """Body of the advisory settings: automatic updates on/off and extra releases to keep."""
     auto: Optional[bool] = None
     releases: Optional[List[str]] = Field(None, max_length=50)
 
 
 @router.get("/advisories")
 def advisories_status(current_user: User = Depends(_read), db: Session = Depends(get_db)):
+    """State of the distribution-advisory database and any running job."""
     from app.modules.advisories.service import status
     out = status(db)
     out["job"] = _job_out(db, jobs.active_job(db))
@@ -437,6 +462,7 @@ def advisories_status(current_user: User = Depends(_read), db: Session = Depends
 @router.put("/advisories/settings")
 def advisories_settings(body: AdvisorySettings, current_user: User = Depends(require_admin),
                         db: Session = Depends(get_db)):
+    """Change advisory settings (admin, audit-logged)."""
     from app.modules.advisories.service import set_settings
     try:
         changes = set_settings(db, body.auto, body.releases)
@@ -449,6 +475,7 @@ def advisories_settings(body: AdvisorySettings, current_user: User = Depends(req
 
 @router.post("/advisories/update", response_model=JobOut, status_code=202)
 def advisories_update(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Start an online advisory update (admin)."""
     try:
         job = jobs.create_job(db, "advisories", current_user.id)
     except jobs.JobBusy as exc:
@@ -499,6 +526,9 @@ async def advisories_import(request: Request, file_name: str = Query("all.zip", 
 
 @router.delete("/advisories/releases/{release}", status_code=204)
 def advisories_remove(release: str, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Remove a release's advisories (admin); refused while an asset runs that release or a job is
+    running.
+    """
     from app.modules.advisories.service import remove_release
     if jobs.active_job(db) is not None:
         raise HTTPException(status_code=409, detail="Wait for the running database job to finish.")

@@ -46,11 +46,13 @@ EXTENSION = ".ngcve"
 
 
 class PackageError(ValueError):
+    """The file is not a usable offline update package (wrong format, too large, damaged)."""
     pass
 
 
 @dataclass
 class Check:
+    """One check of package verification, shown to the admin before import."""
     name: str
     status: str      # ok | warn | fail
     detail: str
@@ -58,6 +60,9 @@ class Check:
 
 @dataclass
 class Verified:
+    """Result of verifying a package: its manifest, the trusted key that signed it, and every check;
+    importable only if no check failed.
+    """
     manifest: dict
     signer: str
     checks: List[Check] = field(default_factory=list)
@@ -268,6 +273,7 @@ def verify(db: Session, path: str) -> Verified:
 
 
 def read_cves(path: str) -> Iterator[dict]:
+    """Stream the CVE records of a verified package."""
     with _open(path) as zf, zf.open("cves.jsonl.gz") as raw, gzip.open(raw, "rt", encoding="utf-8") as fh:
         for line in fh:
             if line.strip():
@@ -279,6 +285,9 @@ def read_cves(path: str) -> Iterator[dict]:
 
 
 def read_advisories(path: str) -> Iterator[dict]:
+    """Stream the distribution-advisory records of a verified package (packages from older versions
+    have none).
+    """
     with _open(path) as zf:
         if "advisories.jsonl.gz" not in zf.namelist():
             return
