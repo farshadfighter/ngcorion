@@ -134,6 +134,7 @@ export const getDeviceName = (deviceType) => {
         "active_directory": "Active Directory",
         "dns_server":       "Windows DNS Server",
         "dhcp_server":      "Windows DHCP Server",
+        "iis":              "IIS 10",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -214,6 +215,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
         case "active_directory":
         case "dns_server":
         case "dhcp_server":
+        case "iis":
             return {
                 windows_username: credentials.windows_username,
                 windows_password: credentials.windows_password,

@@ -64,6 +64,7 @@
   "Choose what to harden": "انتخاب موارد مقاوم‌سازی",
   "CIS {{cis_id}}": "CIS {{cis_id}}",
   "CIS domain controller + domain checks": "CIS کنترلر دامنه + بررسی‌های دامنه",
+  "CIS Microsoft IIS 10": "CIS Microsoft IIS 10",
   "CLI Commands": "دستورهای CLI",
   "Click \"Show VDOMs\" to list virtual domains, then pick the target VDOM.": "روی «نمایش VDOMها» کلیک کنید تا دامنه‌های مجازی فهرست شوند، سپس VDOM مقصد را انتخاب کنید.",
   "Commands executed": "دستورهای اجراشده",

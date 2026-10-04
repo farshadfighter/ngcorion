@@ -26,6 +26,7 @@ class DeviceType(str, enum.Enum):
     ACTIVE_DIRECTORY = "active_directory"
     DNS_SERVER = "dns_server"
     DHCP_SERVER = "dhcp_server"
+    IIS = "iis"
 
 
 class CheckStatus(str, enum.Enum):

@@ -506,6 +506,7 @@ msg("HTTP server");
 msg("Domain controllers");
 msg("DNS role · DISA STIG");
 msg("DHCP role · Microsoft guidance");
+msg("Microsoft web server");
 // Harden All: credential fields (app/modules/hardening/harden_all/families.py,
 // app/modules/benchmark/connectors.py) and remediation parameters
 msg("SSH Username");

@@ -84,6 +84,8 @@ TARGETS: Tuple[Target, ...] = (
            "SSH + MongoDB login", device_type="mongodb", keywords=("mongo", "nosql")),
     Target("apache", "Apache", "HTTP server", "web", "apache", "web", "AP", "SSH",
            device_type="apache", keywords=("httpd", "web server")),
+    Target("iis", "IIS 10", "Microsoft web server", "web", "iis", "web", "IS", "WinRM",
+           device_type="iis", keywords=("iis", "internet information services", "asp.net", "web server", "microsoft")),
     Target("active_directory", "Active Directory", "Domain controllers", "services", "active_directory",
            "directory", "AD", "WinRM", device_type="active_directory",
            keywords=("ad", "ad ds", "domain controller", "dc", "kerberos", "ldap", "microsoft")),

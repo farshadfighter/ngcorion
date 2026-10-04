@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
-FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "dns_server", "dhcp_server", "windows", "linux")
+FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "windows", "linux")
 
 # Windows Server roles audited as their own target. A host carrying one of
 # these roles is still a Windows Server: it stays in the Windows target's
 # asset list (and gets its Windows version), and Windows hosts stay in the
 # role's list, since the role may run on any of them.
-WINDOWS_ROLE_FAMILIES = {"active_directory", "dns_server", "dhcp_server"}
+WINDOWS_ROLE_FAMILIES = {"active_directory", "dns_server", "dhcp_server", "iis"}
 
 # Families that are network/OS "hosts" a service can run on top of.
 _HOST_FAMILIES = {"linux", "windows"}
@@ -52,6 +52,7 @@ _FAMILY_KEYWORDS = [
     ("active_directory", ("active directory", "activedirectory", "domain controller")),
     ("dns_server", ("dns server", "dns-server", "name server", "nameserver", "dns")),
     ("dhcp_server", ("dhcp",)),
+    ("iis", ("iis", "internet information services")),
     ("windows", ("windows",)),
     ("linux", ("linux", "ubuntu", "red hat", "redhat", "rhel", "rocky",
                "centos", "debian", "fedora", "suse", "almalinux")),
