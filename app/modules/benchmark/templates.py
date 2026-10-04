@@ -172,12 +172,22 @@ class TemplateSet:
         error = self.validate(check_id, params)
         if error:
             raise ParameterSecurityError(error)
-        names = {p.name for p in self.params_for(check_id)}
+        metas = {p.name: p for p in self.params_for(check_id)}
+        values = {}
+        for name, meta in metas.items():
+            if name not in params:
+                continue
+            value = str(params[name])
+            if meta.input_type == "number" and not meta.options:
+                # Validated by int(), which also accepts surrounding whitespace
+                # (a newline would reach the shell) and Persian digits; the
+                # device gets the canonical ASCII form only.
+                value = str(int(value))
+            values[name] = value
         out = []
         for stmt in statements:
-            for name in names:
-                if name in params:
-                    stmt = stmt.replace("{" + name + "}", params[name])
+            for name, value in values.items():
+                stmt = stmt.replace("{" + name + "}", value)
             out.append(stmt)
         return out
 

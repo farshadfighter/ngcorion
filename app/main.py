@@ -373,7 +373,7 @@ app.add_middleware(
     allow_credentials=True,
     # Narrowed from "*" to the verbs this API actually exposes. A new verb
     # (e.g. PATCH) must be added here as well as to its router.
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # Narrowed from "*": the frontend sends a bearer token and JSON, plus the
     # headers axios/browsers add for uploads and content negotiation.
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],

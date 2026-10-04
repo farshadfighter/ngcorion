@@ -323,11 +323,21 @@ def _validated_parameters(parameters: Dict[str, str]) -> Dict[str, str]:
     time, so a top-level import here would be circular.
     """
     from .tsql_executor import _validate_mssql_parameters
+    from .parameter_metadata import get_mssql_parameter_metadata
 
     error = _validate_mssql_parameters(parameters)
     if error:
         raise ParameterSecurityError(error)
-    return parameters
+    # Numbers are substituted in canonical form: int() also accepted
+    # surrounding whitespace (a line break would reach the statement) and
+    # non-ASCII digits.
+    out = {}
+    for name, value in parameters.items():
+        meta = get_mssql_parameter_metadata(name)
+        if meta and meta.input_type in ("number", "select") and not meta.options:
+            value = str(int(str(value)))
+        out[name] = value
+    return out
 
 
 def get_mssql_template_statements(

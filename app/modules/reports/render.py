@@ -73,12 +73,37 @@ def _prepare(sections: List[dict]) -> List[dict]:
     return out
 
 
+def _fetcher():
+    """WeasyPrint may load only the bundled fonts (file: URLs inside FONTS) and
+    the data: URL of the logo - never the network or another local file, even
+    if a value ever reached the HTML unescaped (defence in depth: every value
+    is autoescaped by the templates)."""
+    from urllib.parse import unquote, urlparse
+
+    from weasyprint.urls import URLFetcher
+
+    fonts = FONTS.resolve()
+
+    class LocalOnly(URLFetcher):
+        def fetch(self, url, headers=None):
+            parsed = urlparse(url)
+            if parsed.scheme == "data":
+                return super().fetch(url, headers)
+            if parsed.scheme == "file":
+                path = Path(unquote(parsed.path)).resolve()
+                if path.is_relative_to(fonts):
+                    return super().fetch(url, headers)
+            raise ValueError(f"blocked resource in a report: {url[:80]}")
+
+    return LocalOnly(allowed_protocols=("file", "data"), allow_redirects=False)
+
+
 def pdf(meta: Dict, sections: List[dict]) -> Tuple[bytes, int]:
     from weasyprint import HTML
     html = _env.get_template("report.html").render(
         **meta, sections=_prepare(sections), classification_color=CLASSIFICATION_COLORS.get(meta["classification"],
                                                                                            "#1e3a5f"))
-    document = HTML(string=html, base_url=str(FONTS) + "/").render()
+    document = HTML(string=html, base_url=str(FONTS) + "/", url_fetcher=_fetcher()).render()
     buf = io.BytesIO()
     document.write_pdf(buf)
     return buf.getvalue(), len(document.pages)

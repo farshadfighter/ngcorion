@@ -41,7 +41,7 @@ from app.core.config import (  # noqa: E402
 
 # Kept in lockstep with app/main.py; asserted against the real app below so the
 # two cannot drift apart silently.
-ALLOWED_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 ALLOWED_HEADERS = ["Authorization", "Content-Type", "Accept", "X-Requested-With"]
 EXPOSED_HEADERS = ["Content-Disposition"]
 

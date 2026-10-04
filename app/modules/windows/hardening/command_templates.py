@@ -367,11 +367,21 @@ def _validated_parameters(parameters: Dict[str, str]) -> Dict[str, str]:
     time, so a top-level import here would be circular.
     """
     from .winrm_executor import _validate_windows_parameters
+    from .parameter_metadata import get_windows_parameter_metadata
 
     error = _validate_windows_parameters(parameters)
     if error:
         raise ParameterSecurityError(error)
-    return parameters
+    # Numbers are substituted in canonical form: int() also accepted
+    # surrounding whitespace (a line break would reach the statement) and
+    # non-ASCII digits.
+    out = {}
+    for name, value in parameters.items():
+        meta = get_windows_parameter_metadata(name)
+        if meta and meta.input_type in ("number", "select") and not meta.options:
+            value = str(int(str(value)))
+        out[name] = value
+    return out
 
 
 def get_windows_template_statements(
