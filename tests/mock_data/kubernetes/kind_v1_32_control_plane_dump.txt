@@ -1,0 +1,600 @@
+===SECTION:NODE===
+kubelet_version=v1.32.2
+control_plane=yes
+admin_kubeconfig=yes
+hostname=ngk-control-plane
+
+===SECTION:OS_RELEASE===
+PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+NAME="Debian GNU/Linux"
+VERSION_ID="12"
+VERSION="12 (bookworm)"
+VERSION_CODENAME=bookworm
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+
+===SECTION:PROCS===
+### kube-apiserver
+### kube-controller-manager
+### kube-scheduler
+### etcd
+### kubelet
+/usr/bin/kubelet --bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib/kubelet/config.yaml --container-runtime-endpoint=unix:///run/containerd/containerd.sock --node-ip=172.18.0.2 --node-labels= --pod-infra-container-image=registry.k8s.io/pause:3.10 --provider-id=kind://docker/ngk/ngk-control-plane --runtime-cgroups=/system.slice/containerd.service
+### kube-proxy
+
+===SECTION:MANIFESTS===
+### kube-apiserver
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubeadm.kubernetes.io/kube-apiserver.advertise-address.endpoint: 172.18.0.2:6443
+  creationTimestamp: null
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=172.18.0.2
+    - --allow-privileged=true
+    - --authorization-mode=Node,RBAC
+    - --client-ca-file=/etc/kubernetes/pki/ca.crt
+    - --enable-admission-plugins=NodeRestriction
+    - --enable-bootstrap-token-auth=true
+    - --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
+    - --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
+    - --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
+    - --etcd-servers=https://127.0.0.1:2379
+    - --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
+    - --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
+    - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+    - --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
+    - --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
+    - --requestheader-allowed-names=front-proxy-client
+    - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+    - --requestheader-extra-headers-prefix=X-Remote-Extra-
+    - --requestheader-group-headers=X-Remote-Group
+    - --requestheader-username-headers=X-Remote-User
+    - --runtime-config=
+    - --secure-port=6443
+    - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+    - --service-account-key-file=/etc/kubernetes/pki/sa.pub
+    - --service-account-signing-key-file=/etc/kubernetes/pki/sa.key
+    - --service-cluster-ip-range=10.96.0.0/16
+    - --tls-cert-file=/etc/kubernetes/pki/apiserver.crt
+    - --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+    env:
+    - name: HTTPS_PROXY
+      value: http://127.0.0.1:43967
+    - name: NO_PROXY
+      value: 172.18.0.0/16,localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local,10.96.0.0/16,10.244.0.0/16,ngk-control-plane,.svc,.svc.cluster,.svc.cluster.local
+    - name: https_proxy
+      value: http://127.0.0.1:43967
+    - name: no_proxy
+      value: 172.18.0.0/16,localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local,10.96.0.0/16,10.244.0.0/16,ngk-control-plane,.svc,.svc.cluster,.svc.cluster.local
+    image: registry.k8s.io/kube-apiserver:v1.32.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 172.18.0.2
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-apiserver
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        host: 172.18.0.2
+        path: /readyz
+        port: 6443
+        scheme: HTTPS
+      periodSeconds: 1
+      timeoutSeconds: 15
+    resources:
+      requests:
+        cpu: 250m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 172.18.0.2
+        path: /livez
+        port: 6443
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/ca-certificates
+      name: etc-ca-certificates
+      readOnly: true
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+    - mountPath: /usr/local/share/ca-certificates
+      name: usr-local-share-ca-certificates
+      readOnly: true
+    - mountPath: /usr/share/ca-certificates
+      name: usr-share-ca-certificates
+      readOnly: true
+  hostNetwork: true
+  priority: 2000001000
+  priorityClassName: system-node-critical
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+  - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/ca-certificates
+      type: DirectoryOrCreate
+    name: etc-ca-certificates
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: DirectoryOrCreate
+    name: k8s-certs
+  - hostPath:
+      path: /usr/local/share/ca-certificates
+      type: DirectoryOrCreate
+    name: usr-local-share-ca-certificates
+  - hostPath:
+      path: /usr/share/ca-certificates
+      type: DirectoryOrCreate
+    name: usr-share-ca-certificates
+status: {}
+### kube-controller-manager
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+  name: kube-controller-manager
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-controller-manager
+    - --allocate-node-cidrs=true
+    - --authentication-kubeconfig=/etc/kubernetes/controller-manager.conf
+    - --authorization-kubeconfig=/etc/kubernetes/controller-manager.conf
+    - --bind-address=127.0.0.1
+    - --client-ca-file=/etc/kubernetes/pki/ca.crt
+    - --cluster-cidr=10.244.0.0/16
+    - --cluster-name=ngk
+    - --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt
+    - --cluster-signing-key-file=/etc/kubernetes/pki/ca.key
+    - --controllers=*,bootstrapsigner,tokencleaner
+    - --enable-hostpath-provisioner=true
+    - --kubeconfig=/etc/kubernetes/controller-manager.conf
+    - --leader-elect=true
+    - --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+    - --root-ca-file=/etc/kubernetes/pki/ca.crt
+    - --service-account-private-key-file=/etc/kubernetes/pki/sa.key
+    - --service-cluster-ip-range=10.96.0.0/16
+    - --use-service-account-credentials=true
+    env:
+    - name: HTTPS_PROXY
+      value: http://127.0.0.1:43967
+    - name: NO_PROXY
+      value: 172.18.0.0/16,localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local,10.96.0.0/16,10.244.0.0/16,ngk-control-plane,.svc,.svc.cluster,.svc.cluster.local
+    - name: https_proxy
+      value: http://127.0.0.1:43967
+    - name: no_proxy
+      value: 172.18.0.0/16,localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local,10.96.0.0/16,10.244.0.0/16,ngk-control-plane,.svc,.svc.cluster,.svc.cluster.local
+    image: registry.k8s.io/kube-controller-manager:v1.32.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-controller-manager
+    resources:
+      requests:
+        cpu: 200m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /healthz
+        port: 10257
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/ssl/certs
+      name: ca-certs
+      readOnly: true
+    - mountPath: /etc/ca-certificates
+      name: etc-ca-certificates
+      readOnly: true
+    - mountPath: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      name: flexvolume-dir
+    - mountPath: /etc/kubernetes/pki
+      name: k8s-certs
+      readOnly: true
+    - mountPath: /etc/kubernetes/controller-manager.conf
+      name: kubeconfig
+      readOnly: true
+    - mountPath: /usr/local/share/ca-certificates
+      name: usr-local-share-ca-certificates
+      readOnly: true
+    - mountPath: /usr/share/ca-certificates
+      name: usr-share-ca-certificates
+      readOnly: true
+  hostNetwork: true
+  priority: 2000001000
+  priorityClassName: system-node-critical
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+  - hostPath:
+      path: /etc/ssl/certs
+      type: DirectoryOrCreate
+    name: ca-certs
+  - hostPath:
+      path: /etc/ca-certificates
+      type: DirectoryOrCreate
+    name: etc-ca-certificates
+  - hostPath:
+      path: /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+      type: DirectoryOrCreate
+    name: flexvolume-dir
+  - hostPath:
+      path: /etc/kubernetes/pki
+      type: DirectoryOrCreate
+    name: k8s-certs
+  - hostPath:
+      path: /etc/kubernetes/controller-manager.conf
+      type: FileOrCreate
+    name: kubeconfig
+  - hostPath:
+      path: /usr/local/share/ca-certificates
+      type: DirectoryOrCreate
+    name: usr-local-share-ca-certificates
+  - hostPath:
+      path: /usr/share/ca-certificates
+      type: DirectoryOrCreate
+    name: usr-share-ca-certificates
+status: {}
+### kube-scheduler
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+  name: kube-scheduler
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-scheduler
+    - --authentication-kubeconfig=/etc/kubernetes/scheduler.conf
+    - --authorization-kubeconfig=/etc/kubernetes/scheduler.conf
+    - --bind-address=127.0.0.1
+    - --kubeconfig=/etc/kubernetes/scheduler.conf
+    - --leader-elect=true
+    env:
+    - name: HTTPS_PROXY
+      value: http://127.0.0.1:43967
+    - name: NO_PROXY
+      value: 172.18.0.0/16,localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local,10.96.0.0/16,10.244.0.0/16,ngk-control-plane,.svc,.svc.cluster,.svc.cluster.local
+    - name: https_proxy
+      value: http://127.0.0.1:43967
+    - name: no_proxy
+      value: 172.18.0.0/16,localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local,10.96.0.0/16,10.244.0.0/16,ngk-control-plane,.svc,.svc.cluster,.svc.cluster.local
+    image: registry.k8s.io/kube-scheduler:v1.32.2
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /livez
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: kube-scheduler
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        host: 127.0.0.1
+        path: /readyz
+        port: 10259
+        scheme: HTTPS
+      periodSeconds: 1
+      timeoutSeconds: 15
+    resources:
+      requests:
+        cpu: 100m
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /livez
+        port: 10259
+        scheme: HTTPS
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /etc/kubernetes/scheduler.conf
+      name: kubeconfig
+      readOnly: true
+  hostNetwork: true
+  priority: 2000001000
+  priorityClassName: system-node-critical
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/scheduler.conf
+      type: FileOrCreate
+    name: kubeconfig
+status: {}
+### etcd
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    kubeadm.kubernetes.io/etcd.advertise-client-urls: https://172.18.0.2:2379
+  creationTimestamp: null
+  labels:
+    component: etcd
+    tier: control-plane
+  name: etcd
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - etcd
+    - --advertise-client-urls=https://172.18.0.2:2379
+    - --cert-file=/etc/kubernetes/pki/etcd/server.crt
+    - --client-cert-auth=true
+    - --data-dir=/var/lib/etcd
+    - --experimental-initial-corrupt-check=true
+    - --experimental-watch-progress-notify-interval=5s
+    - --initial-advertise-peer-urls=https://172.18.0.2:2380
+    - --initial-cluster=ngk-control-plane=https://172.18.0.2:2380
+    - --key-file=/etc/kubernetes/pki/etcd/server.key
+    - --listen-client-urls=https://127.0.0.1:2379,https://172.18.0.2:2379
+    - --listen-metrics-urls=http://127.0.0.1:2381
+    - --listen-peer-urls=https://172.18.0.2:2380
+    - --name=ngk-control-plane
+    - --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
+    - --peer-client-cert-auth=true
+    - --peer-key-file=/etc/kubernetes/pki/etcd/peer.key
+    - --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+    - --snapshot-count=10000
+    - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+    image: registry.k8s.io/etcd:3.5.16-0
+    imagePullPolicy: IfNotPresent
+    livenessProbe:
+      failureThreshold: 8
+      httpGet:
+        host: 127.0.0.1
+        path: /livez
+        port: 2381
+        scheme: HTTP
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    name: etcd
+    readinessProbe:
+      failureThreshold: 3
+      httpGet:
+        host: 127.0.0.1
+        path: /readyz
+        port: 2381
+        scheme: HTTP
+      periodSeconds: 1
+      timeoutSeconds: 15
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    startupProbe:
+      failureThreshold: 24
+      httpGet:
+        host: 127.0.0.1
+        path: /readyz
+        port: 2381
+        scheme: HTTP
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 15
+    volumeMounts:
+    - mountPath: /var/lib/etcd
+      name: etcd-data
+    - mountPath: /etc/kubernetes/pki/etcd
+      name: etcd-certs
+  hostNetwork: true
+  priority: 2000001000
+  priorityClassName: system-node-critical
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+  - hostPath:
+      path: /etc/kubernetes/pki/etcd
+      type: DirectoryOrCreate
+    name: etcd-certs
+  - hostPath:
+      path: /var/lib/etcd
+      type: DirectoryOrCreate
+    name: etcd-data
+status: {}
+
+===SECTION:KUBELET_CONFIG===
+# /var/lib/kubelet/config.yaml
+apiVersion: kubelet.config.k8s.io/v1beta1
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    cacheTTL: 0s
+    enabled: true
+  x509:
+    clientCAFile: /etc/kubernetes/pki/ca.crt
+authorization:
+  mode: Webhook
+  webhook:
+    cacheAuthorizedTTL: 0s
+    cacheUnauthorizedTTL: 0s
+cgroupDriver: systemd
+cgroupRoot: /kubelet
+clusterDNS:
+- 10.96.0.10
+clusterDomain: cluster.local
+containerRuntimeEndpoint: ""
+cpuManagerReconcilePeriod: 0s
+crashLoopBackOff: {}
+evictionHard:
+  imagefs.available: 0%
+  nodefs.available: 0%
+  nodefs.inodesFree: 0%
+evictionPressureTransitionPeriod: 0s
+failSwapOn: false
+fileCheckFrequency: 0s
+healthzBindAddress: 127.0.0.1
+healthzPort: 10248
+httpCheckFrequency: 0s
+imageGCHighThresholdPercent: 100
+imageMaximumGCAge: 0s
+imageMinimumGCAge: 0s
+kind: KubeletConfiguration
+logging:
+  flushFrequency: 0
+  options:
+    json:
+      infoBufferSize: "0"
+    text:
+      infoBufferSize: "0"
+  verbosity: 0
+memorySwap: {}
+nodeStatusReportFrequency: 0s
+nodeStatusUpdateFrequency: 0s
+rotateCertificates: true
+runtimeRequestTimeout: 0s
+shutdownGracePeriod: 0s
+shutdownGracePeriodCriticalPods: 0s
+staticPodPath: /etc/kubernetes/manifests
+streamingConnectionIdleTimeout: 0s
+syncFrequency: 0s
+volumeStatsAggPeriod: 0s
+
+===SECTION:FILES===
+apiserver_manifest|/etc/kubernetes/manifests/kube-apiserver.yaml|root|root|600|regular file
+controller_manager_manifest|/etc/kubernetes/manifests/kube-controller-manager.yaml|root|root|600|regular file
+scheduler_manifest|/etc/kubernetes/manifests/kube-scheduler.yaml|root|root|600|regular file
+etcd_manifest|/etc/kubernetes/manifests/etcd.yaml|root|root|600|regular file
+etcd_data|/var/lib/etcd|root|root|700|directory
+admin_conf|/etc/kubernetes/admin.conf|root|root|600|regular file
+admin_conf|/etc/kubernetes/super-admin.conf|root|root|600|regular file
+scheduler_conf|/etc/kubernetes/scheduler.conf|root|root|600|regular file
+controller_manager_conf|/etc/kubernetes/controller-manager.conf|root|root|600|regular file
+pki_all|/etc/kubernetes/pki|root|root|755|directory
+pki_all|/etc/kubernetes/pki/apiserver-kubelet-client.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/ca.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/etcd|root|root|755|directory
+pki_all|/etc/kubernetes/pki/etcd/ca.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/etcd/server.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/etcd/peer.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/etcd/server.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/etcd/ca.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/etcd/healthcheck-client.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/etcd/healthcheck-client.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/etcd/peer.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/apiserver-etcd-client.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/apiserver.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/front-proxy-ca.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/sa.pub|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/front-proxy-ca.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/front-proxy-client.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/ca.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/apiserver-etcd-client.crt|root|root|644|regular file
+pki_all|/etc/kubernetes/pki/apiserver.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/sa.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/apiserver-kubelet-client.key|root|root|600|regular file
+pki_all|/etc/kubernetes/pki/front-proxy-client.key|root|root|600|regular file
+pki_crt|/etc/kubernetes/pki/apiserver-kubelet-client.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/etcd/server.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/etcd/peer.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/etcd/ca.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/etcd/healthcheck-client.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/apiserver.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/front-proxy-ca.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/front-proxy-client.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/ca.crt|root|root|644|regular file
+pki_crt|/etc/kubernetes/pki/apiserver-etcd-client.crt|root|root|644|regular file
+pki_key|/etc/kubernetes/pki/ca.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/etcd/ca.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/etcd/server.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/etcd/healthcheck-client.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/etcd/peer.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/apiserver-etcd-client.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/front-proxy-ca.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/apiserver.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/sa.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/apiserver-kubelet-client.key|root|root|600|regular file
+pki_key|/etc/kubernetes/pki/front-proxy-client.key|root|root|600|regular file
+kubelet_service|/etc/systemd/system/kubelet.service|root|root|644|regular file
+kubelet_service|/etc/systemd/system/kubelet.service.d/10-kubeadm.conf|root|root|644|regular file
+kubelet_service|/etc/systemd/system/kubelet.service.d/11-kind.conf|root|root|644|regular file
+kubelet_kubeconfig|/etc/kubernetes/kubelet.conf|root|root|600|regular file
+kubelet_ca|/etc/kubernetes/pki/ca.crt|root|root|644|regular file
+kubelet_config|/var/lib/kubelet/config.yaml|root|root|644|regular file
+END
+
+===SECTION:AUDIT_POLICY===
+NONE
+
+===SECTION:ENCRYPTION===
+NONE
+
+===SECTION:CNI===
+(no output)
+===SECTION:K8S_RBAC===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_NAMESPACES===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_SERVICEACCOUNTS===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_NETPOL===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_WEBHOOKS===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_PODS===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_DEFAULT_NS===
+CMD_ERROR: exit 1: The connection to the server ngk-control-plane:6443 was refused - did you specify the right host or port?
+===SECTION:K8S_PROXY_CONFIG===
+CMD_ERROR: E1004 04:51:39.556123   13961 memcache.go:265] "Unhandled Error" err="couldn't get current server API group list: Get \"https://ngk-control-plane:6443/api?timeout=30s\": dial tcp 172.18.0.2:6443: connect: connection refused"

@@ -72,7 +72,7 @@ def get_catalog(
         # A domain controller (or another Windows role) is a Windows Server too.
         if family in WINDOWS_ROLE_FAMILIES:
             families["windows"] += 1
-        # A Docker host is a Linux server too.
+        # A Docker host or Kubernetes node is a Linux server too.
         if family in LINUX_ROLE_FAMILIES:
             families["linux"] += 1
         variants[infer_device_variant(asset)] += 1

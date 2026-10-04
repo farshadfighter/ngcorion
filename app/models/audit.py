@@ -28,6 +28,7 @@ class DeviceType(str, enum.Enum):
     DHCP_SERVER = "dhcp_server"
     IIS = "iis"
     DOCKER = "docker"
+    KUBERNETES = "kubernetes"
 
 
 class CheckStatus(str, enum.Enum):

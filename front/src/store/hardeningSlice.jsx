@@ -136,6 +136,7 @@ export const getDeviceName = (deviceType) => {
         "dhcp_server":      "Windows DHCP Server",
         "iis":              "IIS 10",
         "docker":           "Docker",
+        "kubernetes":       "Kubernetes",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -206,6 +207,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
             };
 
         case "docker":
+        case "kubernetes":
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,

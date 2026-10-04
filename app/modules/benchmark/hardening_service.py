@@ -82,7 +82,10 @@ def run_template(spec: ModuleSpec, conn, check_id: str, parameters: Optional[Dic
         if "FAIL" in text:
             result["success"] = False
         elif "PASS" in text:
-            result["success"] = True
+            # A statement that failed means the fix was not applied, even when
+            # the setting happens to read as compliant (e.g. it is set
+            # somewhere the fix refused to touch).
+            result["success"] = not errors
         else:
             result["error_message"] = "Verification produced no PASS/FAIL signal — fix not confirmed"
     else:

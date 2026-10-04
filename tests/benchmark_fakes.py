@@ -3,6 +3,7 @@ A simulated host for benchmark-module tests: answers each collection
 script with a prepared section, and applies fixes - a template's
 statements mark its check fixed, its verification then prints PASS.
 """
+import re
 from contextlib import contextmanager
 
 from app.modules.benchmark import connectors
@@ -23,15 +24,19 @@ class FakeHost:
 
     _run_ps = run
 
+    @staticmethod
+    def _matches(template_text, script):
+        """A rendered statement matches its template with any parameter values."""
+        pattern = re.sub(r"\\\{[A-Z][A-Z0-9_]*\\\}", ".+?", re.escape(template_text))
+        return re.fullmatch(pattern, script, re.S) is not None
+
     def execute(self, script):
         self.executed.append(script)
-        ts = self.templates
-        for cid in ts.templates:
-            params = {p.name: (p.options[0] if p.options else "x") for p in ts.params_for(cid)}
-            if script in ts.statements(cid, params):
+        for cid, t in self.templates.templates.items():
+            if any(self._matches(s, script) for s in t.statements):
                 self.applied.add(cid)
                 return "(ok)"
-            if script in ts.verify_statements(cid, params):
+            if any(self._matches(s, script) for s in t.verify_statements):
                 return "PASS" if cid in self.applied else "FAIL"
         return "(ok)"
 

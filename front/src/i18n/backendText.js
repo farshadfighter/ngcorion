@@ -508,6 +508,7 @@ msg("DNS role · DISA STIG");
 msg("DHCP role · Microsoft guidance");
 msg("Microsoft web server");
 msg("Container host · CIS");
+msg("Cluster node · CIS");
 // Harden All: credential fields (app/modules/hardening/harden_all/families.py,
 // app/modules/benchmark/connectors.py) and remediation parameters
 msg("SSH Username");
@@ -526,6 +527,10 @@ msg("Windows Password");
 msg("WinRM Port");
 msg("Transport");
 msg("Confirm the change");
+msg("Terminated pod GC threshold");
+msg("How many terminated pods the cluster keeps before garbage collection (Kubernetes default 12500).");
+msg("Pod PIDs limit");
+msg("Maximum number of processes per pod on this node.");
 msg("This change has side effects described in the check's warning. Choose 'yes' to apply it.");
 msg("yes");
 msg("New Administrator Account Name");

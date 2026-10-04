@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
-FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "windows", "linux")
+FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "windows", "linux")
 
 # Windows Server roles audited as their own target. A host carrying one of
 # these roles is still a Windows Server: it stays in the Windows target's
@@ -34,9 +34,9 @@ FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "apache", "active_directory
 WINDOWS_ROLE_FAMILIES = {"active_directory", "dns_server", "dhcp_server", "iis"}
 
 # Platforms that run on a Linux host and are audited as their own target. A
-# Docker host stays in the Linux target's list, and Linux hosts stay in the
+# Docker host or Kubernetes node stays in the Linux target's list, and Linux hosts stay in the
 # platform's list, as with the Windows roles.
-LINUX_ROLE_FAMILIES = {"docker"}
+LINUX_ROLE_FAMILIES = {"docker", "kubernetes"}
 
 # Families that are network/OS "hosts" a service can run on top of.
 _HOST_FAMILIES = {"linux", "windows"}
@@ -58,6 +58,7 @@ _FAMILY_KEYWORDS = [
     ("dns_server", ("dns server", "dns-server", "name server", "nameserver", "dns")),
     ("dhcp_server", ("dhcp",)),
     ("iis", ("iis", "internet information services")),
+    ("kubernetes", ("kubernetes", "k8s", "kubeadm", "kubelet")),
     ("docker", ("docker", "container host")),
     ("windows", ("windows",)),
     ("linux", ("linux", "ubuntu", "red hat", "redhat", "rhel", "rocky",

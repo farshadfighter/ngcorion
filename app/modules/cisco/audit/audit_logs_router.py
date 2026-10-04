@@ -55,6 +55,7 @@ _AUDIT_FEED_MODULES = {
     "dns_server_stig",
     "dhcp_server_audit",
     "docker_cis",
+    "kubernetes_cis",
     "iis_cis",
 }
 
