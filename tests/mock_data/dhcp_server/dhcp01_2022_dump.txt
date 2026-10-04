@@ -1,0 +1,8 @@
+===SECTION:OS_VERSION===
+{"Caption":"Microsoft Windows Server 2022 Standard","Version":"10.0.20348","BuildNumber":"20348","OSArchitecture":"64-bit"}
+===SECTION:DOMAIN_ROLE===
+{"DomainRole":3,"Domain":"corp.example.com","PartOfDomain":true}
+===SECTION:DHCP_SETTINGS===
+{"IsDomainJoined":true,"IsAuthorized":true,"ConflictDetectionAttempts":0,"AuditEnabled":true,"AuditPath":"C:\\Windows\\system32\\dhcp","BackupIntervalMinutes":60,"BackupPath":"C:\\Windows\\system32\\dhcp\\backup","NameProtection":false,"DeleteOnExpiry":true,"DynamicUpdates":"OnClientRequest","DnsCredentialUser":null,"Scopes":[{"ScopeId":"10.20.0.0","Name":"HQ users","State":"Active","LeaseDays":8,"InUsePercent":71.4,"NameProtection":true},{"ScopeId":"10.20.8.0","Name":"HQ voice","State":"Active","LeaseDays":8,"InUsePercent":34.0,"NameProtection":true},{"ScopeId":"10.30.0.0","Name":"Branch Tabriz","State":"Active","LeaseDays":30,"InUsePercent":96.5,"NameProtection":false},{"ScopeId":"10.40.0.0","Name":"Old lab","State":"Inactive","LeaseDays":1,"InUsePercent":0.0,"NameProtection":true}],"Failover":[{"Name":"dhcp01-dhcp02","Mode":"LoadBalance","EnableAuth":false,"Scopes":["10.20.0.0","10.20.8.0"]}]}
+===SECTION:DHCP_HOST===
+{"ServiceStatus":"Running","ServiceStartType":"Automatic","DhcpAdministrators":["CORP\\net-admins"],"DhcpUsers":["CORP\\helpdesk","NT AUTHORITY\\Authenticated Users"]}

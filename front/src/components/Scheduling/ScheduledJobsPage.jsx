@@ -69,9 +69,10 @@ const TECH_FIELDS = {
     ],
     active_directory: WINRM_FIELDS,
     dns_server: WINRM_FIELDS,
+    dhcp_server: WINRM_FIELDS,
 };
 
-const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server" };
+const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 

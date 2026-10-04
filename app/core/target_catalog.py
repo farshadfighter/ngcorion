@@ -90,6 +90,9 @@ TARGETS: Tuple[Target, ...] = (
     Target("dns_server", "Windows DNS Server", "DNS role · DISA STIG", "services", "dns_server",
            "dns", "DN", "WinRM", device_type="dns_server",
            keywords=("dns", "name server", "zone", "dnssec", "stig", "microsoft")),
+    Target("dhcp_server", "Windows DHCP Server", "DHCP role · Microsoft guidance", "services", "dhcp_server",
+           "dhcp", "DH", "WinRM", device_type="dhcp_server",
+           keywords=("dhcp", "scope", "lease", "ip address", "microsoft")),
 )
 
 ALL_DEVICE_TYPES = frozenset(dt for t in TARGETS for dt in t.device_types)

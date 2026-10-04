@@ -25,6 +25,7 @@ class DeviceType(str, enum.Enum):
     MSSQL = "mssql"
     ACTIVE_DIRECTORY = "active_directory"
     DNS_SERVER = "dns_server"
+    DHCP_SERVER = "dhcp_server"
 
 
 class CheckStatus(str, enum.Enum):
