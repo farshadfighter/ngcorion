@@ -3,6 +3,9 @@ Drift Router
 
 Analyzes one asset's live configuration against its most recent backup and
 manages the resulting drift findings (open -> accepted | ignored).
+
+Not mounted: app/main.py does not include this router (no UI uses it yet), so
+the API is unreachable until it is added there together with a page.
 """
 import logging
 from typing import Optional
@@ -32,6 +35,9 @@ def analyze(
     current_user: User = Depends(require_permission("drift", "write")),
     db: Session = Depends(get_db),
 ):
+    """Compare an asset's live configuration (read over SSH with the given credentials, not stored)
+    with its latest backup and record the differences.
+    """
     asset = db.query(Asset).filter(Asset.id == request.asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -48,6 +54,7 @@ def list_runs(
     current_user: User = Depends(require_permission("drift", "read")),
     db: Session = Depends(get_db),
 ):
+    """Drift analyses, newest first."""
     return DriftService.list_runs(db)
 
 
@@ -58,6 +65,7 @@ def list_results(
     current_user: User = Depends(require_permission("drift", "read")),
     db: Session = Depends(get_db),
 ):
+    """Drift findings, optionally by status and severity."""
     return DriftService.list_results(db, status=status, severity=severity)
 
 
@@ -67,6 +75,7 @@ def get_result(
     current_user: User = Depends(require_permission("drift", "read")),
     db: Session = Depends(get_db),
 ):
+    """One drift finding with its diff."""
     result = DriftService.get_result(db, result_id)
     if not result:
         raise HTTPException(status_code=404, detail="Drift result not found")
@@ -79,6 +88,7 @@ def accept_result(
     current_user: User = Depends(require_permission("drift", "write")),
     db: Session = Depends(get_db),
 ):
+    """Accept a drift as intended."""
     result = DriftService.get_result(db, result_id)
     if not result:
         raise HTTPException(status_code=404, detail="Drift result not found")
@@ -92,6 +102,7 @@ def ignore_result(
     current_user: User = Depends(require_permission("drift", "write")),
     db: Session = Depends(get_db),
 ):
+    """Ignore a drift, with an optional reason."""
     result = DriftService.get_result(db, result_id)
     if not result:
         raise HTTPException(status_code=404, detail="Drift result not found")

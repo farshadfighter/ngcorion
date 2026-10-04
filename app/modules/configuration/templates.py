@@ -50,6 +50,9 @@ def _other_component(relationship: DesignRelationship, component_id: int):
 
 
 def generate_cisco_commands(component: DesignComponent, relationships: list[DesignRelationship]) -> list[str]:
+    """IOS interface commands for a component's links (description, VLAN access port), with every value
+    sanitised.
+    """
     lines = []
     for relationship in relationships:
         interface = _interface_for_component(relationship, component.id)
@@ -68,6 +71,7 @@ def generate_cisco_commands(component: DesignComponent, relationships: list[Desi
 
 
 def generate_fortinet_commands(component: DesignComponent, relationships: list[DesignRelationship]) -> list[str]:
+    """FortiOS interface commands for a component's links, with every value sanitised."""
     lines = []
     for relationship in relationships:
         interface = _interface_for_component(relationship, component.id)
@@ -94,6 +98,9 @@ GENERATORS = {
 
 
 def generate_commands(component: DesignComponent, relationships: list[DesignRelationship], device_type: str) -> list[str]:
+    """The configuration commands of a component for its device type (a comment line for unsupported
+    types).
+    """
     generator = GENERATORS.get(device_type)
     if generator is None:
         return [f"# Configuration generation is not implemented yet for device type '{_safe_text(device_type)}'."]

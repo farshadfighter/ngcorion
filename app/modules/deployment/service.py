@@ -42,6 +42,9 @@ class DeploymentService:
 
     @staticmethod
     def create_job(db: Session, configuration_object: ConfigurationObject, user_id: Optional[int]) -> DeploymentJob:
+        """Queue a deployment; ValueError for an unsupported device type or an object without a target
+        asset.
+        """
         if configuration_object.device_type not in SUPPORTED_DEVICE_TYPES:
             raise ValueError(f"Deployment is not supported for device type '{configuration_object.device_type}'")
         if not configuration_object.asset_id:

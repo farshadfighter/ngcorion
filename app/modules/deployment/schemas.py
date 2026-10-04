@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class DeploymentJobSummary(BaseModel):
+    """A deployment job and its status."""
     id: int
     configuration_object_id: Optional[int]
     asset_id: Optional[int]
@@ -22,6 +23,7 @@ class DeploymentJobSummary(BaseModel):
 
 
 class DeploymentJobDetail(DeploymentJobSummary):
+    """A deployment job with each step's output."""
     precheck_output: Optional[str]
     apply_output: Optional[str]
     verify_output: Optional[str]
@@ -29,10 +31,12 @@ class DeploymentJobDetail(DeploymentJobSummary):
 
 
 class CreateJobRequest(BaseModel):
+    """Body of queuing a deployment."""
     configuration_object_id: int
 
 
 class DeviceCredentialsRequest(BaseModel):
+    """SSH credentials for a deployment step; used once and not stored."""
     ssh_username: str
     ssh_password: str
     ssh_secret: Optional[str] = None

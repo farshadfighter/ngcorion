@@ -1007,6 +1007,7 @@ def create_zone(
     current_user: User = Depends(require_permission("RISK", "write")),
     db: Session = Depends(get_db),
 ):
+    """Create a risk zone (a network area with its exposure score)."""
     exists = db.query(RiskZone).filter(RiskZone.name == data.name).first()
     if exists:
         raise HTTPException(status_code=400, detail="Zone name already exists")
@@ -1038,6 +1039,7 @@ def update_zone(
     current_user: User = Depends(require_permission("RISK", "write")),
     db: Session = Depends(get_db),
 ):
+    """Change a zone; a score change recomputes the risk of its assets in the background."""
     zone = db.query(RiskZone).filter(RiskZone.id == zone_id).first()
     if zone is None:
         raise HTTPException(status_code=404, detail="Zone not found")
@@ -1089,6 +1091,7 @@ def delete_zone(
     current_user: User = Depends(require_permission("RISK", "delete")),
     db: Session = Depends(get_db),
 ):
+    """Delete a zone that no asset is assigned to."""
     zone = db.query(RiskZone).filter(RiskZone.id == zone_id).first()
     if zone is None:
         raise HTTPException(status_code=404, detail="Zone not found")
@@ -1124,6 +1127,7 @@ def list_asset_ports(
     _current_user: User = Depends(require_permission("RISK", "read")),
     db: Session = Depends(get_db),
 ):
+    """An asset's open ports with their severity and whether they count towards risk."""
     _get_asset_or_404(db, asset_id)
     ports = (
         db.query(AssetOpenPort)
@@ -1141,6 +1145,8 @@ def update_port(
     current_user: User = Depends(require_permission("RISK", "write")),
     db: Session = Depends(get_db),
 ):
+    """Set a port's severity, approval or inclusion in the risk score; the asset's risk is recomputed.
+    """
     port = db.query(AssetOpenPort).filter(AssetOpenPort.id == port_id).first()
     if port is None:
         raise HTTPException(status_code=404, detail="Port not found")
@@ -1215,6 +1221,7 @@ def get_settings(
     _current_user: User = Depends(require_permission("RISK", "read")),
     db: Session = Depends(get_db),
 ):
+    """The risk-scoring weights and thresholds."""
     return _settings_dict(db)
 
 
@@ -1333,6 +1340,7 @@ def get_asset_history(
     _current_user: User = Depends(require_permission("RISK", "read")),
     db: Session = Depends(get_db),
 ):
+    """An asset's risk scores over time, newest first."""
     _get_asset_or_404(db, asset_id)
     history = (
         db.query(AssetRiskHistory)

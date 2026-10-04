@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class ConfigurationObjectSummary(BaseModel):
+    """The generated configuration of one component and the asset it targets."""
     id: int
     configuration_job_id: int
     design_component_id: Optional[int]
@@ -21,6 +22,7 @@ class ConfigurationObjectSummary(BaseModel):
 
 
 class ConfigurationJobSummary(BaseModel):
+    """A configuration job."""
     id: int
     design_version_id: Optional[int]
     name: str
@@ -33,16 +35,19 @@ class ConfigurationJobSummary(BaseModel):
 
 
 class ConfigurationJobDetail(BaseModel):
+    """A configuration job with its objects."""
     job: ConfigurationJobSummary
     objects: list[ConfigurationObjectSummary]
 
 
 class GenerateJobRequest(BaseModel):
+    """Body of generating configurations from a design version."""
     design_version_id: int
     name: str
 
 
 class ApplyObjectRequest(BaseModel):
+    """SSH credentials for applying a configuration; used once and not stored."""
     ssh_username: str
     ssh_password: str
     ssh_secret: Optional[str] = None

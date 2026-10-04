@@ -49,6 +49,7 @@ class DriftService:
 
     @staticmethod
     def list_results(db: Session, status: Optional[str] = None, severity: Optional[str] = None):
+        """Drift findings, newest first, optionally by status and severity."""
         query = db.query(DriftResult)
         if status:
             query = query.filter(DriftResult.status == status)
@@ -62,6 +63,7 @@ class DriftService:
 
     @staticmethod
     def resolve_result(db: Session, result: DriftResult, status: str, user_id: int, reason: str = None):
+        """Close a finding as accepted or ignored, recording who and when."""
         result.status = status
         result.ignored_reason = reason
         result.resolved_by = user_id

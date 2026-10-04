@@ -3,6 +3,9 @@ Configuration Router
 
 Generates per-device configuration from a design version's mapped
 components, and applies a generated configuration object to its real device.
+
+Not mounted: app/main.py does not include this router (no UI uses it yet), so
+the API is unreachable until it is added there together with a page.
 """
 import logging
 from fastapi import APIRouter, Depends, HTTPException
@@ -38,6 +41,7 @@ def list_jobs(
     current_user: User = Depends(require_permission("design_configuration", "read")),
     db: Session = Depends(get_db),
 ):
+    """Configuration jobs, newest first."""
     return [_job_summary(job) for job in ConfigurationService.list_jobs(db)]
 
 
@@ -47,6 +51,7 @@ def generate_job(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Generate the device configurations of a design version's mapped components."""
     version = DesignService.get_version(db, request.design_version_id)
     if not version:
         raise HTTPException(status_code=404, detail="Design version not found")
@@ -60,6 +65,7 @@ def get_job(
     current_user: User = Depends(require_permission("design_configuration", "read")),
     db: Session = Depends(get_db),
 ):
+    """One configuration job with its generated objects."""
     job = ConfigurationService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Configuration job not found")
@@ -73,6 +79,7 @@ def apply_object(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Apply one generated configuration to its device over SSH (credentials not stored)."""
     obj = ConfigurationService.get_object(db, object_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Configuration object not found")

@@ -10,6 +10,7 @@ PORT_SEVERITIES = ("low", "medium", "high", "critical")
 
 
 class ProfileUpdateRequest(BaseModel):
+    """Body of changing an asset's risk profile: criticality, zone and a reason."""
     criticality_level: Optional[str] = Field(
         None, description="One of: low, medium, high, critical"
     )
@@ -18,18 +19,21 @@ class ProfileUpdateRequest(BaseModel):
 
 
 class ZoneCreateRequest(BaseModel):
+    """Body of creating a risk zone."""
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     score: float = Field(..., ge=0, le=100)
 
 
 class ZoneUpdateRequest(BaseModel):
+    """Body of changing a risk zone; omitted fields stay as they are."""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     score: Optional[float] = Field(None, ge=0, le=100)
 
 
 class PortUpdateRequest(BaseModel):
+    """Body of changing an open port's assessment."""
     severity: Optional[str] = Field(
         None, description="One of: low, medium, high, critical"
     )

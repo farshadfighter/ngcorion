@@ -129,6 +129,7 @@ def seed_risk_defaults(db: Session) -> dict:
 
 
 def main():
+    """Command-line entry: seed the default risk settings and zones."""
     logging.basicConfig(level=logging.INFO)
     db = SessionLocal()
     try:

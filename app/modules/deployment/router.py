@@ -5,6 +5,9 @@ Queues and runs precheck -> backup -> apply -> verify deployment jobs for an
 already-generated configuration object, plus a manual rollback action.
 Deployment is gated by role only (admin/manager), per the user's decision -
 there is no separate approval-request workflow.
+
+Not mounted: app/main.py does not include this router (no UI uses it yet), so
+the API is unreachable until it is added there together with a page.
 """
 import logging
 from fastapi import APIRouter, Depends, HTTPException
@@ -31,6 +34,7 @@ def list_jobs(
     current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db),
 ):
+    """Deployment jobs, newest first (admin or manager)."""
     return DeploymentService.list_jobs(db)
 
 
@@ -40,6 +44,7 @@ def create_job(
     current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db),
 ):
+    """Queue the deployment of a generated configuration object to its asset."""
     config_object = db.query(ConfigurationObject).filter(ConfigurationObject.id == request.configuration_object_id).first()
     if not config_object:
         raise HTTPException(status_code=404, detail="Configuration object not found")
@@ -55,6 +60,7 @@ def get_job(
     current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db),
 ):
+    """One deployment job with the output of each step."""
     job = DeploymentService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Deployment job not found")
@@ -68,6 +74,7 @@ def start_job(
     current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db),
 ):
+    """Run a queued job: precheck, backup, apply, verify (credentials used for this run only)."""
     job = DeploymentService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Deployment job not found")
@@ -88,6 +95,7 @@ def rollback_job(
     current_user: User = Depends(require_admin_or_manager),
     db: Session = Depends(get_db),
 ):
+    """Restore the pre-deployment backup of a job that failed to apply or verify."""
     job = DeploymentService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Deployment job not found")
