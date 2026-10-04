@@ -13,6 +13,7 @@ class ArchitectureValidationService:
 
     @staticmethod
     def get_findings(db: Session, status: Optional[str] = None, severity: Optional[str] = None):
+        """Findings, newest first, optionally by status and severity."""
         query = db.query(ArchitectureFinding)
         if status:
             query = query.filter(ArchitectureFinding.status == status)
@@ -26,6 +27,7 @@ class ArchitectureValidationService:
 
     @staticmethod
     def resolve_finding(db: Session, finding: ArchitectureFinding, status: str, user_id: int, reason: str = None):
+        """Close a finding as accepted or ignored, recording who and when."""
         finding.status = status
         finding.ignored_reason = reason
         finding.resolved_by = user_id

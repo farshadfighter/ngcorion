@@ -15,6 +15,7 @@ from app.models import User, DiscoveryAuditLog
 
 
 class DiscoveryLogResponse(BaseModel):
+    """One entry of the discovery log."""
     id: int
     user_id: Optional[int] = None
     username: Optional[str] = None

@@ -80,6 +80,9 @@ def _manual(rules, rid, title, severity, guidance):
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """The DHCP Server rules (Microsoft guidance): authorisation, audit logging, failover, DNS updates,
+    conflict detection.
+    """
     r: List[BenchmarkRule] = []
     S, H = ["DHCP_SETTINGS"], ["DHCP_HOST"]
 
@@ -179,6 +182,7 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when the DHCP Server role is not installed."""
     raw = section(dump, "DHCP_SETTINGS")
     if raw.startswith("PS_ERROR") and ("DhcpServer" in raw or "Get-DhcpServer" in raw):
         raise ValueError("The DHCP Server role is not installed on this host "

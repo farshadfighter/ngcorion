@@ -149,6 +149,10 @@ def redact_option_files(text: str) -> str:
 
 
 def collect(conn) -> str:
+    """Collect the MySQL audit dump: server version first (a host without the mysql client yields a
+    dump saying so), then variables, accounts, privileges, plugins, option files, file permissions
+    and the mysqld process.
+    """
     cmds = mysql_commands()
     version = conn.run(cmds["MYSQL_VERSION"])
     if "command not found" in version or "not found" in version.lower().split(":")[-1]:

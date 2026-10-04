@@ -49,6 +49,9 @@ def _fail(name, detail, **extra):
 
 @public_router.get("/health")
 def health():
+    """Public liveness check for load balancers and the container healthcheck: the overall status
+    and whether the database answers, nothing else (no versions or internals for anonymous callers).
+    """
     db = SessionLocal()
     try:
         db.execute(text("SELECT 1"))
@@ -92,6 +95,9 @@ def _migrations(db: Session):
 
 @router.get("/health")
 def health_detail(request: Request, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """Admin readiness detail: database latency, migration head, whether each background task runs
+    (and in which worker), overdue scheduled jobs, CVE database freshness and the license.
+    """
     checks = []
 
     started = time.perf_counter()

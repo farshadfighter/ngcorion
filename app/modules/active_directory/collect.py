@@ -198,6 +198,10 @@ AD_SECTIONS = ("AD_DOMAIN", "AD_PRIVILEGED", "AD_ACCOUNTS", "AD_TRUSTS", "AD_GPP
 
 
 def ad_commands() -> Dict[str, str]:
+    """Section name -> PowerShell command of the Active Directory dump: the Windows host sections plus
+    domain, privileged groups, accounts, trusts, GPO and DC settings (each guarded so a failure
+    becomes PS_ERROR text).
+    """
     win = get_windows_audit_commands()
     cmds: Dict[str, str] = {name: win[name] for name in HOST_SECTIONS}
     cmds.update({

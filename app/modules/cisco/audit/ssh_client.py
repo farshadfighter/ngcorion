@@ -738,6 +738,7 @@ class CiscoSSHClient:
                 batch: list = []
 
                 def flush_batch() -> None:
+                    """Send the queued configuration lines in one config session."""
                     if not batch:
                         return
                     outputs.append(self.connection.send_config_set(

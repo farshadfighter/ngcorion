@@ -28,6 +28,7 @@ def _backup(conn) -> str:
 
 
 def collect_software(conn) -> Optional[dict]:
+    """The MySQL server version as a software item for the inventory, or None."""
     m = re.match(r"^(\d+\.\d+\.\d+)", conn.run(C.SQL_COMMANDS["MYSQL_VERSION"]).strip())
     if not m:
         return None

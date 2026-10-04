@@ -20,11 +20,13 @@ class TopologyNode(BaseModel):
 
 
 class TopologyNodePositionUpdate(BaseModel):
+    """Body of moving a node on the topology canvas."""
     pos_x: float
     pos_y: float
 
 
 class TopologyLinkSummary(BaseModel):
+    """A link between two assets."""
     id: int
     source_asset_id: int
     destination_asset_id: int
@@ -43,11 +45,13 @@ class TopologyLinkSummary(BaseModel):
 
 
 class TopologyGraph(BaseModel):
+    """Every asset as a node and every link, for the canvas."""
     nodes: list[TopologyNode]
     links: list[TopologyLinkSummary]
 
 
 class TopologyLinkCreate(BaseModel):
+    """Body of linking two assets."""
     source_asset_id: int
     destination_asset_id: int
     source_interface: Optional[str] = None
@@ -60,6 +64,7 @@ class TopologyLinkCreate(BaseModel):
 
 
 class TopologyLinkUpdate(BaseModel):
+    """Body of changing a link; omitted fields stay as they are."""
     source_interface: Optional[str] = None
     destination_interface: Optional[str] = None
     link_type: Optional[str] = None
@@ -79,6 +84,7 @@ class TopologyFinding(BaseModel):
 
 
 class TopologyValidationResult(BaseModel):
+    """Findings of the topology check (isolated nodes, single points of failure)."""
     findings: list[TopologyFinding]
     asset_count: int
     link_count: int

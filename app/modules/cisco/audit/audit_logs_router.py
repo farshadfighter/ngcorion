@@ -15,6 +15,7 @@ from app.models import User, AuditLog
 
 
 class AuditModuleLogResponse(BaseModel):
+    """One entry of the audit-module log."""
     id: int
     user_id: Optional[int] = None
     username: Optional[str] = None

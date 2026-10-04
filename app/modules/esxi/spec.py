@@ -37,6 +37,7 @@ def _backup(conn) -> str:
 
 
 def collect_software(conn) -> Optional[dict]:
+    """The ESXi version and build as a firmware item for the inventory, or None."""
     m = re.search(r"VMware ESXi (\d+\.\d+\.\d+)(?: build-(\d+))?", conn.run("vmware -v"))
     if not m:
         return None

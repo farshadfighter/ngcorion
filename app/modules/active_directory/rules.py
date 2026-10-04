@@ -141,6 +141,7 @@ def _allowed_pipes(d: str) -> bool:
 
 
 def cis_extra_rules() -> List[BenchmarkRule]:
+    """CIS domain-controller-only rules that the Windows member-server set does not have."""
     return [
         BenchmarkRule(
             id="AD-CIS-2.2.5", section="2.2.5",
@@ -178,6 +179,9 @@ def cis_extra_rules() -> List[BenchmarkRule]:
 
 
 def cis_rules(gate: str = "win_2025") -> List[BenchmarkRule]:
+    """The CIS domain-controller profile: the Windows Server rules for this version with DC values,
+    plus the DC-only rules, in section order.
+    """
     win = W.filter_rules_by_scope(W.build_windows_cis_rules_for_version(gate), True)
     rules = [_from_windows(r) for r in win if r.section not in _REPLACED]
     rules.extend(cis_extra_rules())
@@ -214,6 +218,7 @@ def _missing(*keys):
 
 def _group_members_ev(name):
     def ev(d):
+        """Members of a privileged group, or why they could not be read."""
         g = groups(d).get(name) or {}
         if g.get("Error"):
             return f"{name}: could not be read — {g['Error']}"
@@ -287,6 +292,9 @@ def _rid_user(d, key) -> Dict[str, Any]:
 
 
 def domain_rules() -> List[BenchmarkRule]:
+    """Domain checks beyond CIS: privileged groups, stale and risky accounts, Kerberos delegation,
+    password policy, trusts, KRBTGT age.
+    """
     r: List[BenchmarkRule] = []
     P = ["AD_PRIVILEGED"]
     A = ["AD_ACCOUNTS"]
@@ -495,6 +503,7 @@ def domain_rules() -> List[BenchmarkRule]:
 # ── selection ──────────────────────────────────────────────────────────────
 
 def role_of(dump: str) -> Optional[int]:
+    """The machine's DomainRole (4 and 5 are domain controllers), or None."""
     data = json_section(dump, "DOMAIN_ROLE")
     try:
         return int(data.get("DomainRole")) if isinstance(data, dict) else None
@@ -503,6 +512,7 @@ def role_of(dump: str) -> Optional[int]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when the target is not a domain controller."""
     role = role_of(dump)
     if role is not None and role < 4:
         raise ValueError(

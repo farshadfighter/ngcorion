@@ -73,6 +73,9 @@ DNS_SECTIONS = ("DNS_SETTINGS", "DNS_ZONES", "DNS_HOST", "DNS_REGISTRY")
 
 
 def dns_commands() -> Dict[str, str]:
+    """Section name -> PowerShell command of the DNS Server dump: the Windows host sections plus DNS
+    settings, zones, registry and host data.
+    """
     win = get_windows_audit_commands()
     cmds = {name: win[name] for name in HOST_SECTIONS}
     cmds.update({

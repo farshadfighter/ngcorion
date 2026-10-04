@@ -81,6 +81,7 @@ class TopologyService:
 
     @staticmethod
     def create_link(db: Session, data: dict, user_id: Optional[int]) -> TopologyLink:
+        """Store a link and record who made it."""
         link = TopologyLink(**data, created_by=user_id)
         db.add(link)
         db.commit()
@@ -89,6 +90,7 @@ class TopologyService:
 
     @staticmethod
     def update_link(db: Session, link: TopologyLink, changes: dict) -> TopologyLink:
+        """Apply the changed fields (already restricted by TopologyLinkUpdate) to a link."""
         for field, value in changes.items():
             setattr(link, field, value)
         db.commit()

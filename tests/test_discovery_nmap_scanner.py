@@ -117,3 +117,16 @@ class TestParseVendor:
         assert host_vendor(SimpleNamespace(additional_info={"vendor": None})) is None
         assert host_vendor(SimpleNamespace(additional_info=None)) is None
         assert host_vendor(SimpleNamespace(additional_info="not a dict")) is None
+
+
+def test_scan_ports_are_canonicalised_before_they_reach_nmap():
+    import pytest
+    from app.modules.discovery.schemas import ScanRequest
+
+    f = ScanRequest.validate_ports
+    assert f("80, 443") == "80,443"
+    assert f(" 22 ") == "22"
+    assert f("1-1000") == "1-1000"
+    for bad in ("١٢", "0", "70000", "10-5", "1-2-3", "80;id"):
+        with pytest.raises(ValueError):
+            f(bad)

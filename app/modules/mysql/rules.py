@@ -77,6 +77,7 @@ def non_admins_with(d, name) -> List[str]:
 
 
 def proc(d) -> Tuple[Optional[str], str]:
+    """(owner, command line) of the running mysqld, or (None, "")."""
     for line in section(d, "MYSQLD_PROC").splitlines():
         if "|" in line and line != "END":
             owner, cmd = line.split("|", 1)
@@ -85,6 +86,7 @@ def proc(d) -> Tuple[Optional[str], str]:
 
 
 def option_files(d) -> Dict[str, str]:
+    """The option files (my.cnf and its includes) by path."""
     out, cur, buf = {}, None, []
     for line in section(d, "MYCNF").split("\n"):
         if line.startswith("### "):
@@ -123,6 +125,7 @@ def startup_option(d, name) -> Optional[str]:
 
 
 def files(d) -> Dict[str, List[Tuple[str, str, str, str, str]]]:
+    """The FILES section: per tag, (path, owner, group, mode, kind) of each file."""
     out: Dict[str, List[Tuple[str, str, str, str, str]]] = {}
     for line in section(d, "FILES").splitlines():
         parts = line.split("|")
@@ -132,6 +135,7 @@ def files(d) -> Dict[str, List[Tuple[str, str, str, str, str]]]:
 
 
 def mounts(d) -> Dict[str, Tuple[str, str]]:
+    """Mount point and options of the data and log directories."""
     out = {}
     for line in section(d, "MOUNTS").splitlines():
         parts = line.split("|")
@@ -141,6 +145,7 @@ def mounts(d) -> Dict[str, Tuple[str, str]]:
 
 
 def host(d) -> Dict[str, List[str]]:
+    """The HOST section: key -> values."""
     out: Dict[str, List[str]] = {}
     for line in section(d, "HOST").splitlines():
         if "=" in line:
@@ -223,6 +228,8 @@ def _file_rule(rules, sec, tag, label, mode, severity):
         return [e for e in files(d).get(tag, []) if e[4] != "missing"]
 
     def bad(d):
+        """Files of this tag not owned by mysql:mysql (root:mysql allowed for the plugin directory).
+        """
         out = []
         for path, o, g, m, _k in entries(d):
             if (o, g) != ("mysql", "mysql") and not (tag == "plugin_dir" and o == "root" and g == "mysql"):
@@ -238,6 +245,9 @@ def _file_rule(rules, sec, tag, label, mode, severity):
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """All CIS MySQL 8 rules, in the benchmark's order: operating system, installation, file
+    permissions, general, permissions, auditing and logging, authentication, network, replication.
+    """
     r: List[BenchmarkRule] = []
     V, U, H = ["MYSQL_VARS"], ["MYSQL_USERS"], ["HOST"]
 
@@ -346,6 +356,7 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 5 MySQL permissions ─────────────────────────────────────────────────
     def full_access(d):
+        """Non-admin accounts with every data privilege globally or on a database."""
         out = [account(u) for u in users(d) if not is_admin(u)
                and all(priv(u, p) for p in FULL_DATA)]
         out += [f"'{p.get('user')}'@'{p.get('host')}' on {p.get('db')}" for p in _list(d, "MYSQL_DB_PRIVS")
@@ -407,6 +418,7 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 7 Authentication ────────────────────────────────────────────────────
     def auth_plugin(d):
+        """The default authentication plugin in effect."""
         v = var(d, "default_authentication_plugin")
         if v:
             return v
@@ -508,6 +520,8 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when the mysql client is missing or the server did not answer.
+    """
     v = section(dump, "MYSQL_VERSION").strip()
     if v == NO_MYSQL:
         raise ValueError("The mysql client was not found on this host.")

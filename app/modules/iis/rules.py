@@ -59,6 +59,7 @@ def false(v) -> bool:
 
 
 def num(v) -> Optional[int]:
+    """An integer value, or None."""
     try:
         return int(str(v).strip())
     except (TypeError, ValueError):
@@ -136,6 +137,7 @@ def _server_value(rules, sec, title, severity, key, ok, remediation, level="L1")
 def _server_and_sites(rules, sec, title, severity, key, bad, remediation, level="L1"):
     """A value checked at the server and in every site's effective configuration."""
     def offenders(d):
+        """The server and sites whose setting is not acceptable."""
         out = []
         if bad(server(d).get(key)):
             out.append(f"server ({server(d).get(key)})")
@@ -147,6 +149,7 @@ def _server_and_sites(rules, sec, title, severity, key, bad, remediation, level=
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """All CIS IIS 10 rules, in the benchmark's order."""
     r: List[BenchmarkRule] = []
     S, ST, H = ["IIS_SERVER"], ["IIS_SITES"], ["IIS_HOST"]
 
@@ -313,6 +316,7 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when IIS is not installed."""
     raw = section(dump, "IIS_SERVER")
     if raw.startswith("PS_ERROR") and ("WebAdministration" in raw or "InetStp" in raw):
         raise ValueError("IIS is not installed on this host (the WebAdministration module is missing).")

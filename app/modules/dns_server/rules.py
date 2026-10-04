@@ -57,6 +57,7 @@ def signable_zones(d: str) -> List[Dict[str, Any]]:
 
 
 def socket_pool(d: str) -> int:
+    """The DNS socket pool size (registry), or the Windows default."""
     v = registry_value(json_section(d, "DNS_REGISTRY"), DNS_PARAMS, "SocketPoolSize")
     try:
         return int(v)
@@ -125,6 +126,7 @@ def _manual(rules, rid, title, severity, guidance):
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """The DNS Server rules (DISA STIG), grouped by control family."""
     r: List[BenchmarkRule] = []
     S, Z, H = ["DNS_SETTINGS"], ["DNS_ZONES"], ["DNS_HOST"]
 
@@ -259,6 +261,7 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when the DNS Server role is not installed."""
     from app.modules.benchmark.rules import section
     raw = section(dump, "DNS_SETTINGS")
     if raw.startswith("PS_ERROR") and ("DnsServer" in raw or "Get-DnsServer" in raw):

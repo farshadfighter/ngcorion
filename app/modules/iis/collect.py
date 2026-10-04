@@ -127,6 +127,9 @@ HOST_SECTIONS = ("OS_VERSION",)
 
 
 def iis_commands() -> Dict[str, str]:
+    """Section name -> PowerShell command of the IIS dump: the Windows host sections plus server-level
+    and per-site IIS configuration (each guarded so a failure becomes PS_ERROR text).
+    """
     win = get_windows_audit_commands()
     cmds = {name: win[name] for name in HOST_SECTIONS}
     cmds.update({

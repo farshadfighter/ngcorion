@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api/audit", tags=["Audit - Shared"])
 
 
 class SharedAuditSessionResponse(BaseModel):
+    """An audit session of any device family, as the shared session endpoints return it."""
     session_id: int
     job_name: Optional[str] = None
     asset_id: Optional[int] = None
@@ -43,6 +44,7 @@ class SharedAuditSessionResponse(BaseModel):
 
 
 class SharedAuditResultResponse(BaseModel):
+    """One check result, as the shared session endpoints return it."""
     id: int
     check_number: str
     check_title: str

@@ -96,6 +96,9 @@ def esxi_commands() -> Dict[str, str]:
 
 
 def collect(conn) -> str:
+    """Collect the ESXi audit dump (esxcli and vim-cmd output: version, advanced settings, services,
+    firewall, accounts, VMs, iSCSI); a host that is not ESXi yields a dump saying so.
+    """
     version = conn.run(COMMANDS["ESXI_VERSION"])
     if NOT_ESXI in version or "VMware ESXi" not in version:
         return assemble({"ESXI_VERSION": NOT_ESXI})

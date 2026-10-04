@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/targets", tags=["Targets"])
 
 
 class CatalogVersion(BaseModel):
+    """A version (device type) of a target, with how many assets match it."""
     device_type: str
     label: str
     group: Optional[str] = None
@@ -29,6 +30,7 @@ class CatalogVersion(BaseModel):
 
 
 class CatalogTarget(BaseModel):
+    """A target the audit or hardening forms offer, with its versions."""
     id: str
     label: str
     description: str
@@ -44,11 +46,13 @@ class CatalogTarget(BaseModel):
 
 
 class CatalogCategory(BaseModel):
+    """A group of targets in the picker."""
     id: str
     label: str
 
 
 class Catalog(BaseModel):
+    """The target picker's content for audit or hardening."""
     mode: str
     categories: List[CatalogCategory]
     targets: List[CatalogTarget]
@@ -60,6 +64,9 @@ def get_catalog(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """The targets for the audit or hardening picker, with asset counts; needs the same read permission
+    as the form that shows it.
+    """
     if mode not in MODES:
         raise HTTPException(status_code=400, detail="mode must be 'audit' or 'hardening'")
     # Same gate as the form that shows the picker (raises 403 otherwise).

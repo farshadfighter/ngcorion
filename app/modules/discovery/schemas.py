@@ -60,6 +60,7 @@ class ScanRequest(BaseModel):
     @field_validator('scan_type')
     @classmethod
     def validate_scan_type(cls, v):
+        """Accept only the known scan types."""
         allowed = ['all_ports', 'well_known_ports', 'custom_ports']
         if v not in allowed:
             raise ValueError(f'scan_type must be one of: {allowed}')
@@ -68,6 +69,7 @@ class ScanRequest(BaseModel):
     @field_validator('protocol')
     @classmethod
     def validate_protocol(cls, v):
+        """Accept TCP, UDP or BOTH (any case)."""
         allowed = ['TCP', 'UDP', 'BOTH']
         if v.upper() not in allowed:
             raise ValueError(f'protocol must be one of: {allowed}')
@@ -76,8 +78,33 @@ class ScanRequest(BaseModel):
     @field_validator('ports')
     @classmethod
     def validate_ports(cls, v):
+        """Accept a port list such as "80,443", a range "1-1000" or a single port, every port within
+        1-65535, and return it in canonical ASCII form (no spaces, no non-ASCII digits) - the value is
+        passed to nmap as typed here.
+        """
         if v is None:
             return v
+
+        def port(text: str) -> int:
+            text = text.strip()
+            if not (text.isascii() and text.isdigit()) or not (1 <= int(text) <= 65535):
+                raise ValueError(f'Invalid port: {text[:20]}')
+            return int(text)
+
+        if ',' in v:
+            # Comma-separated: "80,443,8080"
+            return ','.join(str(port(p)) for p in v.split(','))
+        if '-' in v:
+            # Range: "1-1000"
+            parts = v.split('-')
+            if len(parts) != 2:
+                raise ValueError('Port range must be in format: 1-1000')
+            start, end = port(parts[0]), port(parts[1])
+            if start >= end:
+                raise ValueError('Start port must be less than end port')
+            return f'{start}-{end}'
+        # Single port
+        return str(port(v))
         # Allow: "80,443,8080", "1-1000", or single port
         # Validate comma-separated or range
         if ',' in v:
@@ -262,6 +289,7 @@ class ApproveHostRequest(BaseModel):
     @field_validator('action')
     @classmethod
     def validate_action(cls, v):
+        """Accept only create_new, merge_with_existing or skip."""
         allowed = ['create_new', 'merge_with_existing', 'skip']
         if v not in allowed:
             raise ValueError(f'action must be one of: {allowed}')
@@ -389,6 +417,7 @@ class ApplyDiscoveryMode(BaseModel):
     @field_validator('mode')
     @classmethod
     def validate_mode(cls, v):
+        """Accept only overwrite, merge or create_new."""
         allowed = ['overwrite', 'merge', 'create_new']
         if v not in allowed:
             raise ValueError(f'mode must be one of: {allowed}')

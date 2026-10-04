@@ -49,6 +49,9 @@ HOST_SECTIONS = ("OS_VERSION", "DOMAIN_ROLE")
 
 
 def dhcp_commands() -> Dict[str, str]:
+    """Section name -> PowerShell command of the DHCP Server dump: the Windows host sections plus DHCP
+    settings and host data.
+    """
     win = get_windows_audit_commands()
     cmds = {name: win[name] for name in HOST_SECTIONS}
     cmds.update({"DHCP_SETTINGS": guarded(DHCP_SETTINGS), "DHCP_HOST": guarded(DHCP_HOST)})

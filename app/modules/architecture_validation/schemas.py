@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class ArchitectureFindingSummary(BaseModel):
+    """A finding of the architecture rules."""
     id: int
     rule_code: str
     title: str
@@ -23,10 +24,12 @@ class ArchitectureFindingSummary(BaseModel):
 
 
 class AnalyzeResult(BaseModel):
+    """Result of an architecture analysis."""
     findings: list[ArchitectureFindingSummary]
     asset_count: int
     finding_count: int
 
 
 class ResolveFindingRequest(BaseModel):
+    """Body of ignoring a finding: an optional reason."""
     reason: Optional[str] = None

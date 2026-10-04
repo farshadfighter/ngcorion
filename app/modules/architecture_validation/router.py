@@ -42,6 +42,7 @@ def list_findings(
     current_user: User = Depends(require_permission("architecture_validation", "read")),
     db: Session = Depends(get_db),
 ):
+    """Architecture findings, optionally by status and severity."""
     return ArchitectureValidationService.get_findings(db, status=status, severity=severity)
 
 

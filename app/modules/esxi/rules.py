@@ -54,6 +54,7 @@ def adv(d, path) -> Optional[str]:
 
 
 def adv_int(d, path) -> Optional[int]:
+    """An advanced setting as an integer, or None."""
     try:
         return int(adv(d, path))
     except (TypeError, ValueError):
@@ -65,6 +66,7 @@ def kv_section(d, name) -> Dict[str, str]:
 
 
 def services(d) -> Dict[str, Tuple[str, str]]:
+    """Services by key: (running state, startup policy)."""
     out = {}
     for line in section(d, "SERVICES").splitlines():
         parts = line.split("|", 2)
@@ -93,6 +95,7 @@ def _table_rows(text):
 
 
 def firewall(d) -> Tuple[Dict[str, str], Dict[str, bool], Dict[str, str]]:
+    """The firewall: global settings, enabled state per ruleset, allowed IPs per ruleset."""
     text = section(d, "FIREWALL")
     head, _, rest = text.partition("### rulesets")
     rulesets_text, _, allowed_text = rest.partition("### allowedip")
@@ -123,6 +126,7 @@ def vswitch_policies(d) -> List[Tuple[str, str, Dict[str, str], Optional[int]]]:
 
 
 def vms(d) -> Dict[str, Dict[str, str]]:
+    """Per VM, its .vmx settings (lower-case keys)."""
     out = {}
     for name, lines in _blocks(d, "VMS").items():
         keys = {}
@@ -172,6 +176,7 @@ def _adv_rule(rules, sec, title, severity, path, ok, remediation, level="L1"):
 
 def _int_between(lo, hi):
     def ok(v):
+        """Whether a setting value lies in the allowed range."""
         try:
             return lo <= int(v) <= hi
         except (TypeError, ValueError):
@@ -183,6 +188,7 @@ def _vm_rule(rules, sec, title, severity, key, ok, default_ok, remediation, leve
     """A .vmx setting every VM must have; `default_ok` when the key is absent
     and VMware's default is already the secure value."""
     def offenders(d):
+        """VMs whose setting is missing (when the default is not acceptable) or out of range."""
         out = []
         for name, keys in vms(d).items():
             v = keys.get(key.lower())
@@ -211,6 +217,9 @@ def _policy_rule(rules, sec, title, field, remediation):
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """All CIS ESXi rules, in the benchmark's order: install, communication, logging, access, console,
+    storage, network, virtual machines.
+    """
     r: List[BenchmarkRule] = []
     A = ["ADVANCED"]
 
@@ -400,6 +409,7 @@ def build_rules() -> List[BenchmarkRule]:
 
     # 6 Storage ───────────────────────────────────────────────────────────
     def chap(d):
+        """iSCSI adapters without mutual CHAP."""
         out = []
         for adapter, lines in _blocks(d, "ISCSI").items():
             info = _kv(lines)
@@ -494,6 +504,7 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump (ESXi 7 or 8); ValueError when the host is not ESXi."""
     v = version(dump)
     if not v or v == NOT_ESXI:
         raise ValueError("This host is not VMware ESXi (vmware -v did not answer).")
