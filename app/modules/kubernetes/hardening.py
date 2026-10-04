@@ -120,6 +120,10 @@ RESTARTS = ("The kubelet restarts {comp} with the new setting (about half a minu
 
 
 def manifest_edit(comp, flag, op, value) -> str:
+    """Shell statement that edits one flag of a kubeadm static-pod manifest with an embedded Python
+    script (set a value, add to or remove from a comma list); the kubelet restarts the component
+    when the file changes. Flags and values are module constants or validated parameters.
+    """
     path = MANIFESTS[comp]
     return (f"f={path}; [ -f $f ] || {{ echo \"$f not found: {comp} does not run as a kubeadm static pod on this node\" >&2; "
             "exit 1; }; command -v python3 >/dev/null 2>&1 || { echo 'python3 is needed to edit the manifest' >&2; exit 1; }; "
@@ -127,6 +131,8 @@ def manifest_edit(comp, flag, op, value) -> str:
 
 
 def manifest_check(comp, flag, op, value) -> str:
+    """Verify statement for manifest_edit: prints PASS when the manifest carries the flag as asked.
+    """
     path = MANIFESTS[comp]
     line = f"grep -E -- '^[[:space:]]*- --{flag}=' {path}"
     if op == "set":
@@ -200,6 +206,9 @@ KUBELET_RESTART = (
 
 
 def kubelet_edit(key, value, flag) -> str:
+    """Shell statement that sets one key of the kubelet config file and restarts the kubelet; refused
+    when the same setting is given as a command-line flag (the flag would win).
+    """
     return (f"f={KUBELET_CONFIG_PATH}; [ -f \"$f\" ] || {{ echo \"kubelet config file $f not found\" >&2; exit 1; }}; "
             "ps -eo args= | grep -E '^(\\S*/)?kubelet( |$)' | grep -qE -- "
             f"'--{flag}([= ]|$)' && {{ echo '--{flag} is set on the kubelet command line and would override the config "

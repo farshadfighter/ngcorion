@@ -31,6 +31,7 @@ def _backup(conn) -> str:
 
 
 def collect_software(conn) -> Optional[dict]:
+    """The kubelet version as a software item for the inventory, or None."""
     out = conn.run("kubelet --version 2>/dev/null").strip()
     m = re.search(r"v(\d+\.\d+\.\d+)", out)
     if not m:

@@ -40,6 +40,7 @@ def _backup(conn) -> str:
 
 
 def collect_software(conn) -> Optional[dict]:
+    """The Docker Engine version as a software item for the inventory, or None."""
     out = conn.run("docker version --format '{{.Server.Version}}'").strip()
     m = re.match(r"^(\d+\.\d+\.\d+)", out)
     if not m:

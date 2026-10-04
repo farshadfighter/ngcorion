@@ -36,6 +36,7 @@ POLICY_ENGINES = re.compile(r"kyverno|gatekeeper|kubewarden|polaris|jspolicy", r
 # ── node data ────────────────────────────────────────────────────────────
 
 def node(d) -> Dict[str, str]:
+    """The NODE section as a dict (role, versions, paths)."""
     out = {}
     for line in section(d, "NODE").splitlines():
         if "=" in line:
@@ -59,6 +60,8 @@ def _blocks(d, name) -> Dict[str, str]:
 
 
 def manifest(d, comp) -> Dict[str, Any]:
+    """A component's static-pod manifest, parsed with yaml.safe_load ({} when missing or invalid).
+    """
     text = _blocks(d, "MANIFESTS").get(comp, "")
     if not text or text == "MISSING":
         return {}
@@ -81,6 +84,9 @@ def _argv(d, comp) -> Tuple[List[str], Optional[str]]:
 
 
 def args(d, comp) -> Dict[str, str]:
+    """A component's effective command-line flags (from the running process, or from its manifest), as
+    {flag: value}.
+    """
     out: Dict[str, str] = {}
     argv, _src = _argv(d, comp)
     i = 0
@@ -108,6 +114,7 @@ def source(d, comp) -> str:
 
 
 def kubelet_config(d) -> Dict[str, Any]:
+    """The kubelet config file, parsed ({} when missing or invalid)."""
     text = section(d, "KUBELET_CONFIG")
     if not text or text.strip() == "MISSING":
         return {}
@@ -143,6 +150,7 @@ def _s(v) -> str:
 
 
 def files(d) -> Dict[str, List[Tuple[str, str, str, str, str]]]:
+    """The FILES section: per tag, (path, owner, group, mode, kind) of each file."""
     out: Dict[str, List[Tuple[str, str, str, str, str]]] = {}
     for line in section(d, "FILES").splitlines():
         parts = line.split("|")
@@ -159,6 +167,7 @@ def _mode_ok(mode: str, maximum: int) -> bool:
 
 
 def proxy_config(d) -> Optional[Dict[str, Any]]:
+    """The kube-proxy configuration from its ConfigMap, or None when there is none."""
     text = section(d, "K8S_PROXY_CONFIG").strip()
     if not text or text == "NONE":
         return None
@@ -247,6 +256,9 @@ def _csc(c):
 
 
 def runs_as_root(p, c) -> bool:
+    """Whether a container may run as root (neither runAsNonRoot nor a non-zero runAsUser on the
+    container or pod).
+    """
     psc, csc = p.get("securityContext") or {}, _csc(c)
     non_root = csc.get("runAsNonRoot", psc.get("runAsNonRoot"))
     user = csc.get("runAsUser", psc.get("runAsUser"))
@@ -284,6 +296,7 @@ def _file_rule(rules, sec, tag, label, owner=None, mode=None, severity="medium")
         return [e for e in files(d).get(tag, []) if e[4] != "missing"]
 
     def bad(d):
+        """Files of this tag whose owner or mode is not as required."""
         out = []
         for path, o, g, m, _kind in entries(d):
             if owner and f"{o}:{g}" != owner:
@@ -302,6 +315,7 @@ def _file_rule(rules, sec, tag, label, owner=None, mode=None, severity="medium")
 
 def _arg_rule(rules, sec, comp, title, severity, ok, remediation, level="L1", shown=()):
     def evidence(d):
+        """The flags of the component this rule looks at, as found."""
         a = args(d, comp)
         keys = shown or ()
         vals = ", ".join(f"--{k}={a[k]}" if k in a else f"--{k} not set" for k in keys)
@@ -344,6 +358,7 @@ def _pod_rule(rules, sec, title, severity, bad, describe, remediation, level="L1
         return [p for p in workload_pods(d) if bad(p)]
 
     def evidence(d):
+        """Pods that break the rule, and which namespaces enforce Pod Security."""
         enforced = [f"{n['name']}={psa_level(n)}" for n in namespaces(d)
                     if psa_level(n) and n.get("name") not in SYSTEM_NAMESPACES]
         return (f"{len(workload_pods(d))} pods outside kube-system; not compliant: "
@@ -589,6 +604,7 @@ def _node_rules(r: List[BenchmarkRule]) -> None:
        lambda d: kubelet(d, "read-only-port", "readOnlyPort", 0, "10255"),
        lambda v: str(v) == "0", "Set readOnlyPort: 0 in the kubelet config.")
     def idle_timeout(d):
+        """The kubelet's effective streaming idle timeout."""
         # The kubelet replaces a zero duration in its config file with the 4h
         # default (kubeadm writes "0s"); only an explicit 0 flag disables it.
         a = args(d, "kubelet")
@@ -628,6 +644,7 @@ def _node_rules(r: List[BenchmarkRule]) -> None:
        lambda v: str(v).lstrip("-").isdigit() and int(v) > 0, "Set podPidsLimit in the kubelet config.")
 
     def metrics(d):
+        """kube-proxy's metrics bind address and where it was read from."""
         a = args(d, "kube-proxy")
         if a:
             return a.get("metrics-bind-address", "127.0.0.1:10249"), "kube-proxy process"
@@ -649,6 +666,7 @@ def _policy_rules(r: List[BenchmarkRule]) -> None:
     R = ["K8S_RBAC"]
 
     def admin_subjects(d):
+        """Subjects bound to cluster-admin, apart from the default system:masters group."""
         out = []
         for b in bindings(d):
             if b.get("roleRef") == "cluster-admin" and b.get("roleKind") == "ClusterRole":
@@ -672,6 +690,7 @@ def _policy_rules(r: List[BenchmarkRule]) -> None:
                "Remove create on pods from roles that do not need it.")
 
     def default_sa(d):
+        """Default service accounts that mount their token automatically or are bound to roles."""
         out = [f"{s.get('namespace')}/default" for s in _list(d, "K8S_SERVICEACCOUNTS")
                if s.get("name") == "default" and s.get("automount") is not False]
         out += [f"bound by {b.get('name')}" for b in bindings(d) for s in b.get("subjects") or []
@@ -806,6 +825,9 @@ def _policy_rules(r: List[BenchmarkRule]) -> None:
 
 
 def build_rules(control_plane=True, etcd=True) -> List[BenchmarkRule]:
+    """The CIS Kubernetes rules for a node: control plane (and etcd) sections only on nodes that run
+    them, worker-node and policy sections always.
+    """
     r: List[BenchmarkRule] = []
     if control_plane:
         _control_plane_rules(r)
@@ -819,6 +841,9 @@ def build_rules(control_plane=True, etcd=True) -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump, by the node's role; ValueError when Kubernetes is not installed or the
+    node cannot be read.
+    """
     if section(dump, "NODE").strip() == NO_KUBERNETES:
         raise ValueError("Kubernetes is not installed on this host (no kubelet and no /etc/kubernetes).")
     n = node(dump)

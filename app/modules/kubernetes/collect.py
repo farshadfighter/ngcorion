@@ -141,6 +141,10 @@ CLUSTER_COMMANDS = {
 
 
 def kubernetes_commands() -> Dict[str, str]:
+    """Section name -> read-only shell command of the Kubernetes audit dump (node role, processes,
+    manifests, kubelet and proxy configuration, file permissions, and cluster objects through
+    kubectl when an admin kubeconfig is available).
+    """
     cmds = {
         "OS_RELEASE": "cat /etc/os-release 2>/dev/null || uname -sr",
         "NODE": NODE,
@@ -172,6 +176,9 @@ def _items(raw: str) -> List[Dict[str, Any]]:
 
 
 def slim_rbac(raw: str) -> str:
+    """RBAC objects reduced to what the rules read (kind, name, rules, roleRef, subjects), as one
+    compact JSON array.
+    """
     out = []
     for o in _items(raw):
         if "kind" not in o:
@@ -224,6 +231,10 @@ def _container(c: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def slim_pods(raw: str) -> str:
+    """Pods reduced to their security-relevant fields (host namespaces, privileges, capabilities,
+    users, host paths, names of secrets used as environment) as one compact JSON array; values of
+    environment variables are never kept.
+    """
     out = []
     for o in _items(raw):
         spec = o.get("spec") or {}
@@ -262,6 +273,7 @@ def _slim(name: str, text: str) -> str:
 
 
 def collect(conn) -> str:
+    """Collect the Kubernetes audit dump; a host without Kubernetes yields a dump saying so."""
     cmds = kubernetes_commands()
     node = conn.run(cmds["NODE"])
     if node.strip() == NO_KUBERNETES:

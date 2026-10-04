@@ -58,6 +58,7 @@ def images(d) -> List[Dict[str, Any]]:
 
 
 def dockerd_args(d) -> List[str]:
+    """The arguments the Docker daemon was started with."""
     text = section(d, "DOCKERD_ARGS").strip()
     if not text or text == "NONE":
         return []
@@ -89,6 +90,7 @@ def setting(d, key, flag_name=None):
 
 
 def bool_setting(d, key, flag_name=None) -> Optional[bool]:
+    """A daemon setting as a boolean, or None when it is not set."""
     v = setting(d, key, flag_name)
     if v is None:
         return None
@@ -96,6 +98,7 @@ def bool_setting(d, key, flag_name=None) -> Optional[bool]:
 
 
 def files(d) -> Dict[str, List[Tuple[str, str, str, str, str]]]:
+    """The FILES section: per tag, (path, owner, group, mode, kind) of each file."""
     out: Dict[str, List[Tuple[str, str, str, str, str]]] = {}
     for line in section(d, "FILES").splitlines():
         parts = line.split("|")
@@ -105,6 +108,7 @@ def files(d) -> Dict[str, List[Tuple[str, str, str, str, str]]]:
 
 
 def audit_paths(d) -> Dict[str, Tuple[str, bool]]:
+    """Docker files and directories auditd should watch: path and whether it exists."""
     out = {}
     for line in section(d, "AUDIT_PATHS").splitlines():
         parts = line.split("|")
@@ -114,6 +118,7 @@ def audit_paths(d) -> Dict[str, Tuple[str, bool]]:
 
 
 def host(d) -> Dict[str, str]:
+    """The HOST section as a dict."""
     out = {}
     for line in section(d, "HOST").splitlines():
         if "=" in line:
@@ -123,6 +128,7 @@ def host(d) -> Dict[str, str]:
 
 
 def procs(d) -> Dict[str, List[str]]:
+    """Processes per running container."""
     out, cur = {}, None
     for line in section(d, "CONTAINER_PROCS").splitlines():
         if line.startswith("### "):
@@ -134,6 +140,7 @@ def procs(d) -> Dict[str, List[str]]:
 
 
 def history(d) -> Dict[str, List[str]]:
+    """Build history lines per image."""
     out, cur = {}, None
     for line in section(d, "IMAGE_HISTORY").splitlines():
         if line.startswith("### "):
@@ -145,6 +152,7 @@ def history(d) -> Dict[str, List[str]]:
 
 
 def networks(d) -> Dict[str, Dict[str, Any]]:
+    """Docker networks by name."""
     out = {}
     for line in section(d, "NETWORKS").splitlines():
         n = parse_json(line)
@@ -180,6 +188,7 @@ def _mode_ok(mode: str, maximum: int) -> bool:
 
 
 def image_label(d, image_id: str) -> str:
+    """The first tag of an image, or its id when it has none."""
     for i in images(d):
         if str(i.get("Id", "")).replace("sha256:", "").startswith(image_id):
             tags = i.get("Tags") or []
@@ -222,12 +231,14 @@ def _audit_rule(rules, sec, tag, label):
         return bool(re.search(r"(-w |path=|dir=)" + re.escape(path.rstrip("/")) + r"/?( |$)", text, re.M))
 
     def check(d):
+        """Pass when the path does not exist or auditd watches it."""
         path, exists = state(d)
         if not exists:
             return True
         return section(d, "AUDIT_RULES").strip() != "NO_AUDITCTL" and watched(d, path)
 
     def evidence(d):
+        """Whether the path exists and whether an audit rule watches it."""
         path, exists = state(d)
         if not exists:
             return f"{path or label}: not present on this host (nothing to audit)"
@@ -242,6 +253,7 @@ def _audit_rule(rules, sec, tag, label):
 
 def _file_rule(rules, sec, tag, label, owner=None, group=None, mode=None, severity="medium"):
     def bad_entries(d):
+        """Files of this tag whose owner or mode is not as required."""
         out = []
         for path, o, g, m, kind in files(d).get(tag, []):
             if kind == "missing":
@@ -397,6 +409,9 @@ SECRET_IN_HISTORY = re.compile(r"\b[A-Z0-9_]*(PASSWORD|PASSWD|SECRET|TOKEN|API_K
 
 
 def build_rules() -> List[BenchmarkRule]:
+    """All CIS Docker rules, in the benchmark's order: host, daemon, daemon files, images, container
+    runtime, operations, Swarm.
+    """
     r: List[BenchmarkRule] = []
     C = ["CONTAINERS"]
 
@@ -657,6 +672,8 @@ def build_rules() -> List[BenchmarkRule]:
 
 
 def rules_for(dump: str) -> List[BenchmarkRule]:
+    """The rules for a dump; ValueError when Docker is not installed or the daemon does not answer.
+    """
     if section(dump, "DOCKER_VERSION").strip() == NO_DOCKER:
         raise ValueError("Docker is not installed on this host (the docker command was not found).")
     if not (version(dump).get("Server")):
@@ -669,6 +686,9 @@ def all_rules() -> List[BenchmarkRule]:
 
 
 def describe(dump: str) -> str:
+    """One-line description of the audited host for the session (engine version, OS, running
+    containers).
+    """
     os_name = next((ln.split("=", 1)[1].strip('"') for ln in section(dump, "OS_RELEASE").splitlines()
                     if ln.startswith("PRETTY_NAME=")), "Linux")
     return (f"Docker Engine {(version(dump).get('Server') or {}).get('Version')} on {os_name}, "

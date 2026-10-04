@@ -126,6 +126,9 @@ OS_RELEASE = "cat /etc/os-release 2>/dev/null || uname -sr"
 
 
 def docker_commands() -> Dict[str, str]:
+    """Section name -> read-only shell command of the Docker audit dump (version, info, daemon.json,
+    dockerd arguments, file permissions, audit rules, containers, images, networks).
+    """
     return {
         "OS_RELEASE": OS_RELEASE,
         "DOCKER_VERSION": DOCKER_VERSION,
@@ -161,6 +164,9 @@ def _pick(obj, keys):
 
 
 def slim_containers(raw: str) -> str:
+    """docker inspect output of containers reduced to the security-relevant fields; environment
+    variables are dropped (they often hold secrets).
+    """
     data = parse_json(raw)
     if not isinstance(data, list):
         return raw
@@ -188,6 +194,7 @@ def slim_containers(raw: str) -> str:
 
 
 def slim_images(raw: str) -> str:
+    """docker image inspect output reduced to id, tags, user and health check."""
     data = parse_json(raw)
     if not isinstance(data, list):
         return raw
@@ -205,6 +212,7 @@ SLIM = {"CONTAINERS": slim_containers, "IMAGES": slim_images}
 
 
 def collect(conn) -> str:
+    """Collect the Docker audit dump; a host without Docker yields a dump saying so."""
     cmds = docker_commands()
     version = conn.run(cmds["DOCKER_VERSION"])
     if version.strip() == NO_DOCKER:
