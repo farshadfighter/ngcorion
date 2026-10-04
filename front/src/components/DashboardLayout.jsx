@@ -75,6 +75,7 @@ export const DashboardLayout = () => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
+    const mustChangePassword = useSelector((state) => state.auth.mustChangePassword);
     const dropdownRef = useRef(null);
 
     // ── Permissions ───────────────────────────────────────────────────────────
@@ -640,11 +641,14 @@ export const DashboardLayout = () => {
                 {/* Active route renders here */}
                 {/* Pages are loaded on first visit; the layout stays while one loads. */}
                 <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">{t("Loading…")}</div>}>
-                    <Outlet />
+                    {/* Until a password chosen by someone else is replaced, the
+                        backend refuses every page's requests: show none. */}
+                    {!mustChangePassword && <Outlet />}
                 </Suspense>
             </main>
 
-            {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
+            {showChangePassword && !mustChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
+            {mustChangePassword && <ChangePasswordModal forced onClose={() => {}} />}
         </div>
     );
 };

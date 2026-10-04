@@ -53,9 +53,15 @@ def license_error_detail(exc: requests.HTTPError, fallback: str) -> str:
     return fallback
 
 
+# What an account whose password was chosen by someone else may still reach
+# (User.must_change_password): set its own password, see who it is, sign out.
+PASSWORD_CHANGE_ALLOWED = frozenset({"/auth/me", "/auth/me/password", "/auth/me/language", "/auth/logout"})
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None,
 ) -> User:
     """
     Validate JWT token and return the authenticated user.
@@ -116,6 +122,16 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
+        )
+
+    # A password someone else chose must be replaced before anything else.
+    # (request is None only when code calls this function directly, never for
+    # an HTTP route.)
+    if user.must_change_password and request is not None and request.url.path not in PASSWORD_CHANGE_ALLOWED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password change required: choose your own password before continuing.",
+            headers={"X-Password-Change-Required": "1"},
         )
 
     return user

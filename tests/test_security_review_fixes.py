@@ -13,6 +13,7 @@ from app.core.database import Base
 from app.core.dependencies import get_current_user
 from app.core.security import create_access_token, get_password_hash, password_fingerprint
 from app.models import User, UserRole
+from app.models.revoked_token import RevokedToken
 from app.models.security_audit_log import AuditLog
 from app.models.user_permission import ModuleEnum, UserPermission
 from app.modules.users.service import UserService
@@ -27,7 +28,8 @@ def db():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
-    tables = [User.__table__, UserPermission.__table__, AuditLog.__table__]
+    # revoked_tokens: get_current_user looks up the token id (server-side logout)
+    tables = [User.__table__, UserPermission.__table__, AuditLog.__table__, RevokedToken.__table__]
     Base.metadata.create_all(bind=engine, tables=tables)
     session = sessionmaker(bind=engine)()
     try:

@@ -3,18 +3,22 @@ Database Initialization Script for NETEASE
 ==========================================
 This script:
 1. Creates all database tables
-2. Creates default admin user (admin / 123456)
+2. Creates the first admin user. Its password is taken from
+   NGCORION_ADMIN_PASSWORD, or generated at random and printed once; it must
+   pass the same password policy as every other account. There is no
+   built-in default password.
 3. Creates default asset types
 4. Sets up admin permissions
 
-Run: python init_db.py
+Run from the project root, after `alembic upgrade head`:
+    NGCORION_ADMIN_PASSWORD='...' uv run python scripts/init_db.py
 """
 
 import sys
 import os
 
-# Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# The project root (this file lives in scripts/), so `app` imports resolve.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import engine, Base, SessionLocal
 from app.models import (
@@ -24,7 +28,25 @@ from app.models import (
     NetworkZone, OSCatalog, VendorCatalog
 )
 from app.models.user import UserRole
+from app.schemas.user import validate_password_strength
 import bcrypt
+import secrets
+import string
+
+
+def _admin_password() -> str:
+    """NGCORION_ADMIN_PASSWORD, or a random password that meets the policy
+    (upper, lower, digit, special, 20 characters)."""
+    given = os.environ.get("NGCORION_ADMIN_PASSWORD")
+    if given:
+        return validate_password_strength(given)
+    alphabet = string.ascii_letters + string.digits + "!@#%^*-_=+"
+    while True:
+        candidate = "".join(secrets.choice(alphabet) for _ in range(20))
+        try:
+            return validate_password_strength(candidate)
+        except ValueError:
+            continue
 
 
 def create_tables():
@@ -44,8 +66,7 @@ def create_admin_user(db):
         print("✓ Admin user already exists (skipping)")
         return existing_admin
     
-    # Hash password
-    password = "123456"
+    password = _admin_password()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
     # Create admin user
@@ -54,16 +75,23 @@ def create_admin_user(db):
         email="admin@netease.local",
         hashed_password=hashed_password,
         role=UserRole.ADMIN,
-        is_active=True
+        is_active=True,
+        # Whoever ran this script knows the password; the admin picks their own
+        # at the first login.
+        must_change_password=True,
     )
     db.add(admin)
     db.commit()
     db.refresh(admin)
     
     print(f"✓ Admin user created!")
-    print(f"  Username: admin")
-    print(f"  Password: 123456")
-    print(f"  Role: admin")
+    print("  Username: admin")
+    if os.environ.get("NGCORION_ADMIN_PASSWORD"):
+        print("  Password: the one given in NGCORION_ADMIN_PASSWORD")
+    else:
+        print(f"  Password: {password}")
+        print("  (generated now and shown only this once - store it safely or change it after the first login)")
+    print("  Role: admin")
     
     return admin
 
@@ -246,9 +274,8 @@ def main():
         print("\n" + "=" * 50)
         print("✓ Database initialization complete!")
         print("=" * 50)
-        print("\nYou can now login with:")
-        print("  Username: admin")
-        print("  Password: 123456")
+        print("\nSign in as 'admin' with the password shown above; you will be")
+        print("asked to choose your own password at the first login.")
         print("=" * 50)
         
     except Exception as e:

@@ -46,13 +46,17 @@ const SOURCES = {
     securityScore: { url: "/api/dashboard/security-score" },
 };
 
+/** rejectWithValue marker: the user may read none of the dashboard's sources. */
+export const NO_ACCESS = "no-access";
+
 export const fetchOverviewDashboard = createAsyncThunk(
     "overviewDashboard/fetch",
     async (_, { rejectWithValue }) => {
         const keys = Object.keys(SOURCES);
         const results = await Promise.allSettled(
             keys.map((key) =>
-                api.get(SOURCES[key].url, { params: SOURCES[key].params })
+                // the page reports missing permissions itself: no toast per panel
+                api.get(SOURCES[key].url, { params: SOURCES[key].params, skipPermissionToast: true })
             )
         );
 
@@ -71,6 +75,11 @@ export const fetchOverviewDashboard = createAsyncThunk(
         // Everything failing is a real page-level error; one panel failing is not.
         if (failed.length === keys.length) {
             const first = results[0].reason;
+            // Every source refused for lack of permission: not an error, the
+            // account simply has no access to what this page shows.
+            if (results.every((r) => r.reason?.response?.status === 403)) {
+                return rejectWithValue(NO_ACCESS);
+            }
             return rejectWithValue(
                 first?.response?.data?.detail ||
                     first?.message ||

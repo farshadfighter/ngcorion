@@ -1,5 +1,14 @@
+/* global process */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+
+// Development server only (`npm run dev`): /auth and /api go to the backend.
+// Inside docker-compose the backend answers as http://backend; running the
+// backend on the same machine instead, start Vite with
+//   VITE_BACKEND_URL=http://127.0.0.1:8000 npm run dev
+// The production build is served by the backend itself (same origin), so
+// none of this applies there.
+const BACKEND = process.env.VITE_BACKEND_URL || "http://backend";
 
 export default defineConfig({
   plugins: [react()],
@@ -22,14 +31,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      "/auth": {
-        target: "http://backend", // TODO: ofc its only for dev. 
-        changeOrigin: true,
-      },
-      "/api": {
-        target: "http://backend",
-        changeOrigin: true,
-      },
+      "/auth": { target: BACKEND, changeOrigin: true },
+      "/api": { target: BACKEND, changeOrigin: true },
     },
   },
 });

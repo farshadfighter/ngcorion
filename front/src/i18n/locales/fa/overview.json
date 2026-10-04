@@ -22,5 +22,6 @@
   "Some inputs are incomplete, so this score is provisional.": "برخی ورودی‌ها ناقص است، بنابراین این امتیاز موقت است.",
   "Top 20 Risky Assets": "۲۰ دارایی پرریسک",
   "Vulnerability": "آسیب‌پذیری",
-  "Waiting on a backend endpoint": "در انتظار سرویس سمت سرور"
+  "Waiting on a backend endpoint": "در انتظار سرویس سمت سرور",
+  "Your account has no access to the data this dashboard shows (risk, auditing, hardening). Ask an administrator to grant it.": "حساب شما به داده‌هایی که این داشبورد نشان می‌دهد (ریسک، ممیزی، مقاوم‌سازی) دسترسی ندارد. از مدیر سیستم بخواهید این دسترسی را بدهد."
 }

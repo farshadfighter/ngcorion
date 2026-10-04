@@ -127,6 +127,14 @@ api.interceptors.response.use(
                 return Promise.reject(error);
             }
 
+            // The account must choose its own password first: the dashboard is
+            // already showing the change-password dialog, so no toast.
+            // A caller that reports missing permissions itself (the dashboard's
+            // panels) passes skipPermissionToast in the request config.
+            if (error.response.headers?.["x-password-change-required"] || error.config?.skipPermissionToast) {
+                return Promise.reject(error);
+            }
+
             // حالت ۳: Permission Denied — اضافه شد
             // بک‌اند 403 برگردونده ولی نه به خاطر لایسنس
             window.dispatchEvent(new CustomEvent('permission-denied', {

@@ -514,7 +514,7 @@ verifiable and revertible.
 - **Acceptance criteria**: Backend container runs unprivileged with minimum
   required capabilities; Traefik management plane is not reachable unauthenticated
   from outside the trusted network.
-- **Status**: [ ]
+- **Status**: [x] — Verified 2026-10-04 (v2 review): no `privileged:` on any service; the backend drops to UID 10001 in entrypoint.sh with only CAP_SYS_TIME added; Traefik runs without `--api.insecure` and its port 8080 is bound to loopback.
 
 ### 2.3 — `SECRET_KEY` insecure default with no startup guard
 
@@ -542,7 +542,7 @@ verifiable and revertible.
     confirm this continues to satisfy the new guard.
 - **Acceptance criteria**: A deployment cannot boot with the default/empty/short
   `SECRET_KEY`; existing test suite's `SECRET_KEY` override continues to pass.
-- **Status**: [ ]
+- **Status**: [x] — Verified 2026-10-04: `require_secure_secret_key()` (app/core/config.py) is called at import in app/main.py and refuses to start on the published placeholder.
 
 ### 2.4 — No session revocation / no logout endpoint
 
@@ -580,7 +580,7 @@ verifiable and revertible.
 - **Acceptance criteria**: `/auth/logout` exists and works; a compromised token can
   be killed server-side without waiting out its natural expiry; password change
   invalidates prior sessions.
-- **Status**: [ ]
+- **Status**: [x] — Implemented 2026-10-04: every token carries a `jti`; POST /auth/logout records it in `revoked_tokens` (migration e8b1c3d5f7a2) and get_current_user refuses it; the UI's logout calls it. Changing the password still invalidates every older token (pwv). Tests: tests/test_jwt_tokens.py.
 
 ### 2.5 — Unreliable client IP behind reverse proxy (rate-limit bypass + audit log integrity)
 
@@ -613,7 +613,7 @@ verifiable and revertible.
 - **Acceptance criteria**: Real client IP is recorded in audit logs and used for
   rate limiting in the deployed (behind-Traefik) configuration; spoofed forwarded
   headers from untrusted sources are ignored.
-- **Status**: [ ]
+- **Status**: [x] — Verified 2026-10-04: docker-compose.yml sets `FORWARDED_ALLOW_IPS` for uvicorn (port 8000 is only `expose`d, so only Traefik can reach it); `request.client.host` is the real client, used by the login/password-reset rate limiters and LoginLog.
 
 ### 2.6 — Excel formula injection on asset export
 
@@ -641,7 +641,7 @@ verifiable and revertible.
     `-` for negative numbers stored as text, if any) still render correctly.
 - **Acceptance criteria**: No exported cell value can be interpreted as a formula
   by a spreadsheet application regardless of the source asset field content.
-- **Status**: [ ]
+- **Status**: [x] — Verified 2026-10-04: every cell written to Excel/CSV exports goes through `neutralize_formula` (app/utils/excel_utils.py, app/modules/risk/router.py); tests in tests/test_security_review_fixes.py.
 
 ---
 
@@ -672,7 +672,7 @@ verifiable and revertible.
     password value.
 - **Acceptance criteria**: No code path creates a privileged account with a fixed,
   publicly-known password that remains usable indefinitely.
-- **Status**: [ ]
+- **Status**: [x] — Implemented 2026-10-04: scripts/init_db.py takes the first admin's password from NGCORION_ADMIN_PASSWORD or generates a random one that passes the password policy and prints it once; the account is created with `must_change_password` (3.5). (The license server's `ADMIN_PASSWORD` default lives in its own repository now.)
 
 ### 3.2 — Non-constant-time credential comparison (license admin panel)
 
@@ -690,7 +690,7 @@ verifiable and revertible.
   - Optional: timing-variance smoke test (not required to be rigorous, just
     confirm `compare_digest` is actually in the code path).
 - **Acceptance criteria**: Credential comparison uses a constant-time function.
-- **Status**: [ ]
+- **Status**: [n/a] — The license server and its admin panel moved to a separate repository (see deploy/docker-compose.license.yml); track it there.
 
 ### 3.3 — Swagger UI / OpenAPI schema reachable without authentication
 
@@ -711,7 +711,7 @@ verifiable and revertible.
     intended behavior (documented, not accidental).
 - **Acceptance criteria**: API schema/docs are not publicly enumerable in the
   production deployment configuration.
-- **Status**: [ ]
+- **Status**: [x] — Verified 2026-10-04: FastAPI's own docs/openapi routes are disabled; /openapi.json requires a bearer token; /docs is static chrome that loads the gated schema.
 
 ### 3.4 — SSRF surface via admin-configurable SMS provider URL
 
@@ -733,7 +733,7 @@ verifiable and revertible.
   - Test: a legitimate external SMS provider URL still works.
 - **Acceptance criteria**: The SMS test-send path cannot be used to reach internal/
   metadata-service network targets.
-- **Status**: [ ]
+- **Status**: [x] — Verified 2026-10-04: SMS and webhook URLs pass `reject_ssrf_target`/`check_webhook_url` and requests are sent with `allow_redirects=False` (app/modules/alerts/channels.py).
 
 ### 3.5 — No forced password-change-on-first-login for any bootstrap/admin-created account
 
@@ -751,7 +751,7 @@ verifiable and revertible.
     the app until the password is changed.
 - **Acceptance criteria**: Every account creation path (bootstrap and
   admin-created) results in a forced password change before first real use.
-- **Status**: [ ]
+- **Status**: [x] — Implemented 2026-10-04: `users.must_change_password` (migration f9c2d4e6a8b0) is set for the bootstrap admin and for every account an administrator creates; until the user sets their own password through PUT /auth/me/password, get_current_user allows only /auth/me, /auth/me/password, /auth/me/language and /auth/logout, and the UI shows a non-dismissable change-password dialog. Tests: tests/test_forced_password_change.py.
 
 ### 3.6 — Dependency currency — establish an ongoing process control
 
@@ -771,7 +771,7 @@ verifiable and revertible.
     flags on new high/critical CVEs.
 - **Acceptance criteria**: A repeatable dependency-vulnerability check exists and
   is scheduled, not just a one-time snapshot.
-- **Status**: [ ]
+- **Status**: [x] — Implemented 2026-10-04: CI job *Dependencies* runs pip-audit over uv.lock and npm audit over package-lock.json on every push; Dependabot (.github/dependabot.yml) opens update PRs for uv, npm and GitHub Actions. Accepted exceptions are listed in SECURITY.md.
 
 ### 3.7 — Deeper logging-for-secrets sweep
 
@@ -794,7 +794,7 @@ verifiable and revertible.
     credential/token appears.
 - **Acceptance criteria**: No code path logs credentials, tokens, or secrets in
   plaintext, verified by both static review and a runtime log-capture test.
-- **Status**: [ ]
+- **Status**: [x] — Swept 2026-10-04: no log statement writes a password, token, community string or key; device output is redacted by app/core/secret_redaction.py before storage.
 
 ### 3.8 — `package.json`/`package-lock.json` at repo root (cleanup carryover)
 
@@ -812,7 +812,7 @@ verifiable and revertible.
     after removal.
 - **Acceptance criteria**: File removed with no build/import breakage, or a
   documented reason found for keeping it.
-- **Status**: [ ]
+- **Status**: [x] — Done 2026-10-04: the stray root package.json/package-lock.json were removed (`git rm`); front/ builds and the backend imports unchanged.
 
 ---
 

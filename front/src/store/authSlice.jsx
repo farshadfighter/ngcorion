@@ -98,6 +98,10 @@ const authSlice = createSlice({
         // stored token has been confirmed valid against the backend.
         authChecked:     false,
         isAuthenticating: false,
+        // The password was chosen by someone else (an administrator, the
+        // installer): the dashboard shows only the change-password form, and
+        // the backend refuses everything else until it is done.
+        mustChangePassword: false,
     },
     reducers: {
         logout: (state) => {
@@ -116,6 +120,14 @@ const authSlice = createSlice({
         clearError: (state) => {
             state.error = null;
         },
+
+        // PUT /auth/me/password answered with a fresh token (the old one stops
+        // working once the password changes).
+        passwordChanged: (state, action) => {
+            state.token = action.payload.access_token;
+            state.mustChangePassword = false;
+            localStorage.setItem("token", action.payload.access_token);
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -131,6 +143,7 @@ const authSlice = createSlice({
                 state.permissions = action.payload.permissions || {};
                 state.language    = action.payload.language || null;
                 state.languageChosen = !!action.payload.language_chosen;
+                state.mustChangePassword = !!action.payload.must_change_password;
 
                 localStorage.setItem("token",       action.payload.access_token);
                 localStorage.setItem("username",    action.payload.username);
@@ -156,6 +169,7 @@ const authSlice = createSlice({
                 state.permissions = action.payload.permissions || {};
                 state.language    = action.payload.language || null;
                 state.languageChosen = !!action.payload.language_chosen;
+                state.mustChangePassword = !!action.payload.must_change_password;
 
                 localStorage.setItem("username",    action.payload.username);
                 localStorage.setItem("role",        action.payload.role);
@@ -179,5 +193,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, passwordChanged } = authSlice.actions;
 export default authSlice.reducer;

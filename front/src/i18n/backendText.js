@@ -97,6 +97,8 @@ const TEMPLATES = [
     msg("Building the report failed: {{error}}"),
     msg("SMTP error: {{error}}"),
     msg("{{name}} - {{error}}"),
+    // app/core/dependencies.py require_permission
+    msg("Insufficient permission: {{permission}} access required for {{module}}"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -601,6 +603,11 @@ msg("Data Center Switch");
 msg("Data Center Server");
 msg("Wireless AP");
 msg("Access Switch {{n}}");
+// sessions and passwords (app/modules/auth/router.py, app/core/dependencies.py)
+msg("The current password is incorrect.");
+msg("The new password must be different from the current one.");
+msg("Password change required: choose your own password before continuing.");
+msg("Session has ended. Please login again.");
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

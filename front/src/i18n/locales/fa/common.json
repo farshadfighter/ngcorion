@@ -19,6 +19,7 @@
   "Backup Overview": "نمای کلی پشتیبان‌گیری",
   "Change Password": "تغییر رمز عبور",
   "Checking license...": "در حال بررسی لایسنس...",
+  "Choose your own password": "رمز عبور خودتان را انتخاب کنید",
   "Confirm new password": "تکرار رمز عبور جدید",
   "Confirm New Password": "تکرار رمز عبور جدید",
   "Contact your administrator to request access.": "برای دریافت دسترسی با مدیر سیستم تماس بگیرید.",
@@ -99,9 +100,9 @@
   "Topology": "توپولوژی",
   "Total Users": "تعداد کاربران",
   "User Management": "مدیریت کاربران",
-  "User not found. Please refresh the page.": "کاربر پیدا نشد. لطفاً صفحه را تازه‌سازی کنید.",
   "Yesterday {{time}}": "دیروز {{time}}",
   "You don't have permission to view {{page}}.": "شما اجازهٔ مشاهدهٔ {{page}} را ندارید.",
   "Your password has been reset. Redirecting to login...": "رمز عبور شما بازنشانی شد. در حال انتقال به صفحهٔ ورود...",
-  "Your password has been updated. Use your new password next time you log in.": "رمز عبور شما به‌روز شد. از این پس با رمز عبور جدید وارد شوید."
+  "Your password has been updated. Use your new password next time you log in.": "رمز عبور شما به‌روز شد. از این پس با رمز عبور جدید وارد شوید.",
+  "Your password was set by an administrator. Choose your own password to continue.": "رمز عبور شما را مدیر سیستم تعیین کرده است. برای ادامه، رمز عبور خودتان را انتخاب کنید."
 }

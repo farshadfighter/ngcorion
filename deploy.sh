@@ -33,7 +33,7 @@ git merge --ff-only "origin/$BRANCH"
 echo "[deploy] Building frontend (front/dist)..."
 (
     cd front
-    npm install
+    npm ci        # exactly the versions in package-lock.json
     npm run build
 )
 

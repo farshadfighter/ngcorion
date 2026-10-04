@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { updateUser, fetchUsers } from "../store/userSlice.jsx";
+import { useState } from "react";
+import { useDispatch } from "react-redux";
+import api from "../config/api";
+import { passwordChanged } from "../store/authSlice";
 import { t } from "../i18n";
+import { tb } from "../i18n/backendText";
 
 const MessageBox = ({ type, message, onClose }) => {
     if (!message) return null;
@@ -66,11 +68,14 @@ const MessageBox = ({ type, message, onClose }) => {
     );
 };
 
-export const ChangePasswordModal = ({ onClose }) => {
+/**
+ * The signed-in user changes their own password (PUT /auth/me/password; no
+ * user-management permission needed). With `forced`, the password was chosen
+ * by someone else: the dialog cannot be dismissed, and after the change the
+ * session continues with the fresh token the server returns.
+ */
+export const ChangePasswordModal = ({ onClose, forced = false }) => {
     const dispatch = useDispatch();
-    const { username } = useSelector((state) => state.auth);
-    const users = useSelector((state) => state.users.users);
-    const currentUser = users.find(u => u.username === username);
 
     const [formData, setFormData] = useState({
         current_password: "",
@@ -80,12 +85,7 @@ export const ChangePasswordModal = ({ onClose }) => {
 
     const [errors, setErrors] = useState({});
     const [msgBox, setMsgBox] = useState({ type: "", message: "" });
-
-    useEffect(() => {
-        if (users.length === 0) {
-            dispatch(fetchUsers());
-        }
-    }, [users.length, dispatch]);
+    const [busy, setBusy] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -106,34 +106,34 @@ export const ChangePasswordModal = ({ onClose }) => {
         e.preventDefault();
         setMsgBox({ type: "", message: "" });
         if (!validate()) return;
-
-        if (!currentUser?.id) {
-            setMsgBox({ type: "error", message: t("User not found. Please refresh the page.") });
-            return;
-        }
-
-        const result = await dispatch(updateUser({
-            userId: currentUser.id,
-            userData: {
-                password: formData.new_password,
+        setBusy(true);
+        try {
+            const { data } = await api.put("/auth/me/password", {
                 current_password: formData.current_password,
-            },
-        }));
-
-        if (result.meta.requestStatus === "fulfilled") {
+                new_password: formData.new_password,
+            });
+            dispatch(passwordChanged(data));
             setMsgBox({ type: "success", message: t("Your password has been updated. Use your new password next time you log in.") });
-            setTimeout(onClose, 2500);
-        } else {
-            setMsgBox({ type: "error", message: result.payload || t("Something went wrong. Please try again.") });
+            setTimeout(onClose, forced ? 1200 : 2500);
+        } catch (err) {
+            const detail = err.response?.data?.detail;
+            const message = typeof detail === "string" ? tb(detail)
+                : Array.isArray(detail) ? detail.map((d) => tb(String(d.msg || "").replace(/^Value error, /, ""))).join(" ")
+                : t("Something went wrong. Please try again.");
+            setMsgBox({ type: "error", message });
+        } finally {
+            setBusy(false);
         }
     };
 
+    const close = forced ? undefined : onClose;
+
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay" onClick={close}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>{t("Change Password")}</h2>
-                    <button className="modal-close" onClick={onClose}>✕</button>
+                    <h2>{forced ? t("Choose your own password") : t("Change Password")}</h2>
+                    {!forced && <button className="modal-close" onClick={onClose}>✕</button>}
                 </div>
 
                 <form onSubmit={handleSubmit} className="modal-body">
@@ -142,6 +142,11 @@ export const ChangePasswordModal = ({ onClose }) => {
                         message={msgBox.message}
                         onClose={() => setMsgBox({ type: "", message: "" })}
                     />
+                    {forced && (
+                        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
+                            {t("Your password was set by an administrator. Choose your own password to continue.")}
+                        </p>
+                    )}
 
                     <div className="form-group">
                         <label>{t("Current Password")}</label>
@@ -189,8 +194,8 @@ export const ChangePasswordModal = ({ onClose }) => {
                     </div>
 
                     <div className="modal-footer">
-                        <button type="button" className="btn-cancel" onClick={onClose}>{t("Cancel")}</button>
-                        <button type="submit" className="btn-submit">{t("Change Password")}</button>
+                        {!forced && <button type="button" className="btn-cancel" onClick={onClose}>{t("Cancel")}</button>}
+                        <button type="submit" className="btn-submit" disabled={busy}>{t("Change Password")}</button>
                     </div>
                 </form>
             </div>

@@ -2,7 +2,8 @@ import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
-import { fetchOverviewDashboard } from "../../store/overviewDashboardSlice";
+import { fetchOverviewDashboard, NO_ACCESS } from "../../store/overviewDashboardSlice";
+import { tb } from "../../i18n/backendText";
 import {
     headlineMetrics,
     moduleCards,
@@ -336,8 +337,10 @@ export const OverviewDashboard = () => {
     if (error) {
         return (
             <div className="ov-page">
-                <p className="ov-state ov-state-error">
-                    {t("Failed to load dashboard: {{error}}", { error })}
+                <p className={error === NO_ACCESS ? "ov-state" : "ov-state ov-state-error"}>
+                    {error === NO_ACCESS
+                        ? t("Your account has no access to the data this dashboard shows (risk, auditing, hardening). Ask an administrator to grant it.")
+                        : t("Failed to load dashboard: {{error}}", { error: tb(error) })}
                 </p>
             </div>
         );

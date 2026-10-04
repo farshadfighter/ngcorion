@@ -12,7 +12,7 @@ import jwt
 from app.core.config import settings
 from app.core.dependencies import get_current_user, security
 from app.models.revoked_token import RevokedToken
-from app.core.security import create_access_token, password_fingerprint
+from app.core.security import create_access_token, get_password_hash, password_fingerprint, verify_password
 from app.core.auth_rate_limiter import (
     check_login_rate_limit,
     check_password_reset_rate_limit,
@@ -28,7 +28,8 @@ from app.schemas.auth import (
 from app.models import LoginLog, UserRole, User
 from app.models.security_audit_log import log_action
 from app.core.locale import LANGUAGES, user_language
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+from app.schemas.user import validate_password_strength
 from typing import Literal
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
@@ -242,6 +243,7 @@ def login(
         "permissions": permissions,
         "language": user_language(db, user),
         "language_chosen": bool(user.language),
+        "must_change_password": bool(user.must_change_password),
     }
 
 
@@ -267,6 +269,60 @@ def read_current_user(
         "permissions": get_user_permissions(db, current_user.id, current_user.role),
         "language": user_language(db, current_user),
         "language_chosen": bool(current_user.language),
+        "must_change_password": bool(current_user.must_change_password),
+    }
+
+
+class OwnPasswordChange(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=256)
+    new_password: str = Field(..., max_length=256)
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong(cls, v: str) -> str:
+        return validate_password_strength(v)
+
+
+@router.put("/me/password", response_model=Token)
+def change_own_password(
+    data: OwnPasswordChange,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The signed-in user changes their own password; no user-management
+    permission is needed. The current password must be given (a stolen
+    session alone cannot take the account over). Every token issued before
+    the change stops working (their password fingerprint no longer matches),
+    so the response carries a fresh token for this session.
+    """
+    client_ip = request.client.host if request.client else None
+    if not verify_password(data.current_password, current_user.hashed_password):
+        log_action(db, user_id=current_user.id, username=current_user.username, action="auth.password_change",
+                   module="auth", target_id=current_user.id, ip_address=client_ip, result="failed",
+                   detail="Current password was wrong")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The current password is incorrect.")
+    if verify_password(data.new_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="The new password must be different from the current one.")
+    current_user.hashed_password = get_password_hash(data.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    log_action(db, user_id=current_user.id, username=current_user.username, action="auth.password_change",
+               module="auth", target_id=current_user.id, ip_address=client_ip, result="success",
+               detail="Password changed by the user")
+    token = create_access_token(data={"sub": current_user.username, "role": current_user.role.value,
+                                      "pwv": password_fingerprint(current_user.hashed_password)})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "username": current_user.username,
+        "role": current_user.role.value,
+        "permissions": get_user_permissions(db, current_user.id, current_user.role),
+        "language": user_language(db, current_user),
+        "language_chosen": bool(current_user.language),
+        "must_change_password": False,
     }
 
 

@@ -130,7 +130,10 @@ class UserService:
             phone=user_data.phone,
             hashed_password=get_password_hash(user_data.password),
             role=user_role,
-            is_active=user_data.is_active
+            is_active=user_data.is_active,
+            # The administrator chose this password; the user replaces it at
+            # first login.
+            must_change_password=True,
         )
         
         self.db.add(new_user)

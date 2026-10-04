@@ -66,6 +66,8 @@ class Token(BaseModel):
     permissions: Dict[str, PermissionDetail]
     language: str = "en"
     language_chosen: bool = False
+    # The password was chosen by someone else; the UI asks for a new one first.
+    must_change_password: bool = False
 
 
 class TokenData(BaseModel):

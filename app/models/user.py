@@ -1,3 +1,4 @@
+"""Application user accounts and their roles."""
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -22,6 +23,11 @@ class User(Base):
     language = Column(String(5), nullable=True)
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    # Set when someone other than the user chose the password (the first admin
+    # from scripts/init_db.py, an account created by an administrator). Until
+    # the user picks their own, get_current_user lets them reach only the
+    # password-change and session endpoints (PASSWORD_CHANGE_ALLOWED).
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

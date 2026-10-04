@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "../../i18n";
+import { tb } from "../../i18n/backendText";
 
 /**
  * PermissionToast
@@ -16,7 +17,7 @@ export const PermissionToast = () => {
 
     useEffect(() => {
         const handlePermissionDenied = (e) => {
-            const message = e.detail?.message || t("You do not have permission to perform this action.");
+            const message = e.detail?.message ? tb(e.detail.message) : t("You do not have permission to perform this action.");
 
             setToast({ message });
             setVisible(true);
