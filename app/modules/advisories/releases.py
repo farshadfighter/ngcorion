@@ -52,6 +52,7 @@ def is_lts(version: str) -> bool:
 
 
 def label(release: str) -> str:
+    """Display name of a release, e.g. "ubuntu:22.04" -> "Ubuntu 22.04 LTS"."""
     distro, version = split(release)
     d = DISTROS.get(distro)
     if d is None:
@@ -60,6 +61,7 @@ def label(release: str) -> str:
 
 
 def valid(release: str) -> bool:
+    """Whether a release key is well formed for a supported distribution."""
     distro, version = split(release)
     if distro == "ubuntu":
         return bool(re.match(r"^\d{2}\.\d{2}$", version))

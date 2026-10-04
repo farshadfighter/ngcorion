@@ -86,6 +86,7 @@ def get_host_detail(
     current_user: User = Depends(require_permission("noc", "read")),
     db: Session = Depends(get_db),
 ):
+    """One monitored host: credential (without secrets), last status and interfaces."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -120,6 +121,7 @@ def set_host_credential(
     current_user: User = Depends(require_permission("noc", "write")),
     db: Session = Depends(get_db),
 ):
+    """Set a host's SNMP v2c or v3 credential; secrets are stored encrypted and never returned."""
     asset = db.query(Asset).filter(Asset.id == asset_id).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -136,6 +138,7 @@ def delete_host_credential(
     current_user: User = Depends(require_permission("noc", "delete")),
     db: Session = Depends(get_db),
 ):
+    """Remove a host's SNMP credential; it is no longer polled."""
     if not NocService.delete_credential(db, asset_id):
         raise HTTPException(status_code=404, detail="No SNMP credential configured for this asset")
 
@@ -146,6 +149,7 @@ async def poll_host_now(
     current_user: User = Depends(require_permission("noc", "write")),
     db: Session = Depends(get_db),
 ):
+    """Poll one host now and return whether it answered."""
     try:
         status = await NocService.poll_one(db, asset_id)
     except ValueError as exc:
@@ -163,6 +167,7 @@ async def poll_all_now(
     current_user: User = Depends(require_permission("noc", "write")),
     db: Session = Depends(get_db),
 ):
+    """Poll every host with a credential now."""
     count = await NocService.poll_all(db)
     return PollAllResponse(polled_count=count)
 

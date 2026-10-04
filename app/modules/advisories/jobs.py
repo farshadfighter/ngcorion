@@ -46,6 +46,9 @@ class _Loader:
         self.written = 0
 
     def add(self, rows: List[dict]) -> None:
+        """Queue rows for insertion, skipping exact duplicates (the same range can appear in several
+        records); writes a batch when it is full.
+        """
         for r in rows:
             key = hash((r["release"], r["stream"], r["package"], r["record_id"], r["introduced"], r["fixed"],
                         r["last_affected"]))
@@ -61,6 +64,7 @@ class _Loader:
             self.flush()
 
     def flush(self) -> None:
+        """Write the queued rows (after checking the job was not cancelled)."""
         if self.batch:
             self.check()
             self.written += store.insert_rows(self.db, self.batch)
@@ -79,6 +83,9 @@ def _load_zip(loader: _Loader, path: str, wanted: Set[str], on_record: Optional[
 # ── online ───────────────────────────────────────────────────────────────
 
 def online(j, db: Session, spool_dir: str) -> None:
+    """Online update from OSV.dev for every release an asset runs: a full load of a release's archive
+    the first time, then only the records changed since its watermark.
+    """
     j.progress("connect", force=True)
     wanted = sorted(store.tracked(db))
     j.stats.update({"releases": wanted, "loaded": [], "updated": [], "records": 0, "rows": 0})
@@ -167,6 +174,9 @@ def _full(j, db: Session, client: osv.OsvClient, rels: List[str], spool_dir: str
 # ── OSV archive import ───────────────────────────────────────────────────
 
 def import_zip(j, db: Session, path: str) -> None:
+    """Import an OSV zip archive downloaded elsewhere (offline networks): find which releases and
+    streams it covers, then replace those releases' data with it.
+    """
     j.progress("verify", force=True)
     present: Dict[str, Set[str]] = defaultdict(set)       # release -> streams in the file
     mentions: Dict[str, int] = defaultdict(int)           # release -> records naming it

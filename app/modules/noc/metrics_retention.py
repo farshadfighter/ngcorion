@@ -215,6 +215,9 @@ def enforce_storage_budget(db: Session) -> None:
 
 
 def run_once(db: Session, now: datetime | None = None) -> None:
+    """One retention pass: roll raw samples up into 5-minute, hourly and daily tiers, drop data past
+    each tier's age, then enforce the storage budget.
+    """
     now = now or datetime.utcnow()
     run_rollups(db, now)
     apply_time_based_retention(db, now)
@@ -231,6 +234,7 @@ RETENTION_INTERVAL_SECONDS = 300
 
 
 class MetricsRetentionWorker:
+    """Background loop running the retention pass periodically (leader worker only)."""
     def __init__(self, interval_seconds: int = RETENTION_INTERVAL_SECONDS):
         self.interval_seconds = interval_seconds
         self._task: Optional[asyncio.Task] = None
@@ -257,6 +261,7 @@ class MetricsRetentionWorker:
         return self._task is not None and not self._task.done()
 
     def start(self) -> None:
+        """Start the loop (no-op if it is running)."""
         if self.is_running():
             return
         self._stop_event.clear()
@@ -264,6 +269,7 @@ class MetricsRetentionWorker:
         logger.info("[NOC metrics] Retention worker started (interval: %ds)", self.interval_seconds)
 
     async def stop(self) -> None:
+        """Stop the loop, waiting up to 5 seconds before cancelling it."""
         if self._task is None:
             return
         self._stop_event.set()
@@ -279,6 +285,7 @@ _worker: Optional[MetricsRetentionWorker] = None
 
 
 def start_metrics_retention_worker() -> None:
+    """Start the retention loop (once per process)."""
     global _worker
     if _worker is None:
         _worker = MetricsRetentionWorker()

@@ -57,6 +57,9 @@ MAX_CACHE = 400_000
 
 @dataclass
 class Hit:
+    """One CVE fixed (or not yet fixed) in a package of an asset's release, per the distribution's
+    advisories.
+    """
     cve: str
     package: str              # the published name (source package / rpm name)
     fixed: Optional[str]      # None: no fix yet
@@ -68,6 +71,9 @@ class Hit:
 
 @dataclass
 class AssetAdvisories:
+    """The advisory result of one asset: release, whether its advisories are loaded, the hits per
+    installed package, and whether a newer kernel is installed but not running.
+    """
     asset_id: int
     platform: dict
     release: Optional[str]
@@ -201,6 +207,10 @@ class _RpmKey:
 
 
 def analyse(db: Session, asset_ids: Optional[Iterable[int]] = None) -> Dict[int, AssetAdvisories]:
+    """Compare each asset's installed packages with its release's advisories (dpkg or rpm version
+    order) and return the hits per asset; assets without a known or loaded release get a status
+    saying why.
+    """
     plats = store.platforms(db, asset_ids)
     if not plats:
         return {}

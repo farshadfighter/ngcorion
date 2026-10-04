@@ -32,6 +32,7 @@ class SnmpCredentialInfo(BaseModel):
 
 
 class HostSummary(BaseModel):
+    """A host in the NOC list: reachability, uptime and interface counts."""
     asset_id: int
     asset_name: str
     ip_address: Optional[str] = None
@@ -45,6 +46,7 @@ class HostSummary(BaseModel):
 
 
 class InterfaceInfo(BaseModel):
+    """One interface of a host with its last counters and status."""
     id: int  # AssetSnmpInterface.id - what GET /hosts/{id}/metrics?interface_id= expects, not if_index
     if_index: int
     if_descr: Optional[str] = None
@@ -63,6 +65,7 @@ class InterfaceInfo(BaseModel):
 
 
 class HostDetail(BaseModel):
+    """A host's detail page: credential (without secrets), system information and interfaces."""
     asset_id: int
     asset_name: str
     ip_address: Optional[str] = None
@@ -81,12 +84,14 @@ class HostDetail(BaseModel):
 
 
 class PollNowResponse(BaseModel):
+    """Result of polling one host."""
     asset_id: int
     reachable: bool
     message: str
 
 
 class PollAllResponse(BaseModel):
+    """How many hosts were polled."""
     polled_count: int
 
 
@@ -102,6 +107,7 @@ class MetricPoint(BaseModel):
 
 
 class MetricSeriesResponse(BaseModel):
+    """A metric's time series at the granularity chosen for the requested range."""
     metric: str
     granularity: str  # "raw" | "5m" | "1h" | "1d"
     interface_id: Optional[int] = None

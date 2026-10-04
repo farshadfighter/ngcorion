@@ -19,6 +19,9 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
 
 
 def status(db: Session) -> Dict:
+    """State of the advisory database per release: which assets run it, whether it is loaded, when it
+    was updated and how many records it holds.
+    """
     use = store.in_use(db)
     extra = store.extra(db)
     feeds = {f.release: f for f in db.query(DistroFeed)}
@@ -73,6 +76,9 @@ def _group_command(family: str, groups: List[dict], reboot: bool) -> List[str]:
 
 
 def security_updates(db: Session, asset_id: int) -> Dict:
+    """The security-updates tab of an asset: pending fixes per package with their CVEs, KEV and EPSS
+    data, and whether a reboot is needed for an installed kernel.
+    """
     from app.modules.cve import findings as cve_findings
     res = match.analyse(db, [asset_id]).get(asset_id)
     if res is None:
@@ -135,6 +141,9 @@ def security_updates(db: Session, asset_id: int) -> Dict:
 
 
 def set_settings(db: Session, auto: Optional[bool], extra: Optional[List[str]]) -> List[str]:
+    """Save automatic updates on/off and the extra releases to keep loaded; returns a description of
+    the changes for the audit log.
+    """
     from app.modules.cve import settings as cve_settings
     changes = []
     if auto is not None:

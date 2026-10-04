@@ -42,6 +42,7 @@ def platforms(db: Session, asset_ids: Optional[Iterable[int]] = None) -> Dict[in
 
 
 def in_use(db: Session) -> Dict[str, List[int]]:
+    """Releases run by assets, with the asset ids of each."""
     out = defaultdict(list)
     for aid, platform in platforms(db).items():
         release, status = releases.from_platform(platform)
@@ -76,6 +77,7 @@ def insert_rows(db: Session, rows: List[dict]) -> int:
 
 
 def clear(db: Session, release: str, streams: Optional[Set[str]] = None) -> None:
+    """Delete a release's advisory rows (only the given streams, if any)."""
     q = delete(DistroVuln).where(DistroVuln.release == release)
     if streams is not None:
         q = q.where(DistroVuln.stream.in_(list(streams)))
@@ -89,6 +91,7 @@ def clear_records(db: Session, record_ids: List[str], release_set: Set[str]) -> 
 
 
 def feed(db: Session, release: str) -> DistroFeed:
+    """The feed row of a release, created on first use."""
     row = db.query(DistroFeed).filter(DistroFeed.release == release).first()
     if row is None:
         row = DistroFeed(release=release, rows=0, records=0)
@@ -99,6 +102,7 @@ def feed(db: Session, release: str) -> DistroFeed:
 
 def refresh_counts(db: Session, release: str, *, source: str, watermark: Optional[datetime], full: bool,
                    changes: Optional[int] = None) -> DistroFeed:
+    """Recount a release's rows and records after a load and move its watermark forward."""
     db.flush()
     row = feed(db, release)
     row.rows = db.query(func.count(DistroVuln.id)).filter(DistroVuln.release == release).scalar() or 0

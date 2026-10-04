@@ -66,6 +66,9 @@ def _roundup(x: float) -> float:
 
 
 def cvss3_score(vector: str) -> Optional[float]:
+    """The CVSS 3.x base score of a vector string (the specification's formula), or None if it cannot
+    be parsed.
+    """
     try:
         m = dict(p.split(":", 1) for p in vector.split("/")[1:])
         scope_changed = m["S"] == "C"
@@ -82,6 +85,7 @@ def cvss3_score(vector: str) -> Optional[float]:
 
 
 def severity_of_score(score: Optional[float]) -> Optional[str]:
+    """The CVSS qualitative severity of a score (critical >= 9, high >= 7, medium >= 4, low > 0)."""
     if score is None:
         return None
     return "critical" if score >= 9 else "high" if score >= 7 else "medium" if score >= 4 else "low" if score > 0 \
@@ -193,6 +197,7 @@ def rows_from(rec: dict, wanted: Optional[Set[str]] = None) -> List[dict]:
 
 
 def releases_in(rec: dict) -> Set[str]:
+    """The releases an OSV record mentions in its affected packages."""
     out = set()
     for a in (rec.get("affected") or []) if isinstance(rec, dict) else []:
         if isinstance(a, dict):
@@ -227,12 +232,14 @@ def iter_zip(path: str) -> Iterator[dict]:
 # ── download ─────────────────────────────────────────────────────────────
 
 class OsvClient:
+    """HTTP client of the OSV.dev data bucket (archives per ecosystem and single records)."""
     def __init__(self, session: Optional[requests.Session] = None, base: str = OSV_BASE_URL):
         self.s = session or requests.Session()
         self.base = base
 
     def _url(self, ecosystem: str, name: str) -> str:
-        return f"{self.base}/{quote(ecosystem)}/{quote(name)}"
+        # safe="": a record id from the feed can never add path segments to the URL.
+        return f"{self.base}/{quote(ecosystem, safe='')}/{quote(name, safe='')}"
 
     def download(self, ecosystem: str, dest: str, on_progress: Optional[Callable[[int, int], None]] = None,
                  cancelled: Callable[[], bool] = lambda: False) -> bool:
@@ -286,6 +293,9 @@ class OsvClient:
         return list(reversed(out))
 
     def record(self, ecosystem: str, rid: str) -> Optional[dict]:
+        """One record by id, or None if the bucket does not have it; FeedError when OSV.dev cannot be
+        reached.
+        """
         try:
             resp = self.s.get(self._url(ecosystem, f"{rid}.json"), timeout=TIMEOUT)
         except requests.RequestException as exc:
@@ -301,6 +311,9 @@ class OsvClient:
 
     def records(self, ecosystem: str, ids: Iterable[str], cancelled: Callable[[], bool] = lambda: False,
                 on_progress: Optional[Callable[[int], None]] = None) -> Iterator[Tuple[str, Optional[dict]]]:
+        """Fetch many records in parallel, yielding (id, record) in order; stops with FeedError when
+        cancelled.
+        """
         ids = list(ids)
         with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as pool:
             for n, (rid, rec) in enumerate(zip(ids, pool.map(lambda i: self.record(ecosystem, i), ids)), 1):

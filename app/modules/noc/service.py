@@ -72,6 +72,7 @@ class NocService:
 
     @staticmethod
     def delete_credential(db: Session, asset_id: int) -> bool:
+        """Delete a host's SNMP credential; False if it had none."""
         row = NocService.get_credential(db, asset_id)
         if row is None:
             return False
@@ -89,6 +90,7 @@ class NocService:
 
     @staticmethod
     def get_interfaces(db: Session, asset_id: int) -> list[AssetSnmpInterface]:
+        """A host's interfaces in ifIndex order."""
         return (
             db.query(AssetSnmpInterface)
             .filter(AssetSnmpInterface.asset_id == asset_id)

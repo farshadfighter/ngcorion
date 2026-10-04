@@ -52,6 +52,7 @@ DEFAULT_TIMEOUT_SECONDS = 3.0
 
 @dataclass
 class InterfacePollResult:
+    """What one poll read about one interface (IF-MIB)."""
     if_index: int
     if_descr: str | None = None
     if_name: str | None = None
@@ -66,6 +67,7 @@ class InterfacePollResult:
 
 @dataclass
 class DevicePollResult:
+    """What one poll read about a device: reachability, system group (SNMPv2-MIB) and interfaces."""
     reachable: bool
     sys_descr: str | None = None
     sys_name: str | None = None

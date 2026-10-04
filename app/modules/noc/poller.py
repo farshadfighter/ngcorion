@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class NocPoller:
+    """Background loop polling every host with an SNMP credential each NOC_POLL_INTERVAL_SECONDS
+    (leader worker only).
+    """
     def __init__(self, interval_seconds: Optional[int] = None):
         self.interval_seconds = interval_seconds if interval_seconds is not None else settings.NOC_POLL_INTERVAL_SECONDS
         self._task: Optional[asyncio.Task] = None
@@ -47,6 +50,7 @@ class NocPoller:
         return self._task is not None and not self._task.done()
 
     def start(self) -> None:
+        """Start the loop (no-op if it is running)."""
         if self.is_running():
             return
         self._stop_event.clear()
@@ -54,6 +58,7 @@ class NocPoller:
         logger.info("[NOC] Poller started (interval: %ds)", self.interval_seconds)
 
     async def stop(self) -> None:
+        """Stop the loop, waiting up to 5 seconds before cancelling it."""
         if self._task is None:
             return
         self._stop_event.set()
@@ -69,6 +74,7 @@ _poller: Optional[NocPoller] = None
 
 
 def start_noc_poller() -> None:
+    """Start the poller (once per process)."""
     global _poller
     if _poller is None:
         _poller = NocPoller()

@@ -69,6 +69,7 @@ def _verrevcmp(a: str, b: str) -> int:
 
 
 def deb_compare(a: str, b: str) -> int:
+    """Compare two Debian versions (epoch, upstream, revision) exactly as dpkg does: -1, 0 or 1."""
     ea, ua, ra = _deb_split(a)
     eb, ub, rb = _deb_split(b)
     if ea != eb:
@@ -83,6 +84,7 @@ def _alnum(c: str) -> bool:
 
 
 def rpmvercmp(a: str, b: str) -> int:
+    """RPM's version segment comparison (rpmvercmp, including "~" and "^"): -1, 0 or 1."""
     if a == b:
         return 0
     i = j = 0
@@ -152,6 +154,7 @@ def _rpm_split(v: str) -> Tuple[int, str, str]:
 
 
 def rpm_compare(a: str, b: str) -> int:
+    """Compare two RPM epoch:version-release strings: -1, 0 or 1."""
     ea, va, ra = _rpm_split(a)
     eb, vb, rb = _rpm_split(b)
     if ea != eb:
