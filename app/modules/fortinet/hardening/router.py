@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.dependencies import (
-    require_own_action, require_own_result,
+    owner_scope, require_own_action, require_own_result,
     get_current_user,
     require_permission,
     check_quota_available,
@@ -859,7 +859,9 @@ def list_fortinet_hardening_actions(
         audit_session_id=session_id,
         status=status_filter,
         limit=limit,
-        offset=offset
+        offset=offset,
+        # A non-admin sees only the actions they ran themselves.
+        user_id=owner_scope(current_user),
     )
 
     return [

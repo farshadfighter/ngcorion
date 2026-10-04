@@ -153,3 +153,31 @@ def test_dashboard_recent_sessions_are_scoped(db, two_users):
     alice, bob, admin, sessions = two_users
     names = {i["job_name"] for i in recent_sessions(limit=100, current_user=alice, db=db)["items"]}
     assert PREFIX + alice.username in names and PREFIX + bob.username not in names
+
+
+def test_fortigate_action_history_can_be_limited_to_one_user(db, two_users):
+    from app.models import Asset, AssetType
+    from app.models.hardening import HardeningAction
+    from app.modules.fortinet.hardening.service import FortiGateHardeningService
+
+    alice, bob, admin, sessions = two_users
+    mine, theirs = sessions[DeviceType.FORTINET]
+    t = AssetType(type_name=PREFIX + "firewall", category="network")
+    db.add(t)
+    db.flush()
+    a = Asset(asset_name=PREFIX + "fw", asset_type_id=t.id, ip_address="192.0.2.10")
+    db.add(a)
+    db.flush()
+    for user, sess in ((alice, mine), (bob, theirs)):
+        r = AuditResult(session_id=sess.id, check_number="FG-SYS-001", status=CheckStatus.FAIL)
+        db.add(r)
+        db.flush()
+        db.add(HardeningAction(audit_result_id=r.id, user_id=user.id, asset_id=a.id, audit_session_id=sess.id,
+                               check_number="FG-SYS-001", check_title="probe", action_type="preview", commands_json="[]",
+                               status="pending"))
+    db.flush()
+    mine_only = FortiGateHardeningService.get_action_history(db, asset_id=a.id, user_id=alice.id, limit=100)
+    everyone = FortiGateHardeningService.get_action_history(db, asset_id=a.id, limit=100)
+    assert {x.user_id for x in mine_only} == {alice.id}
+    assert {x.user_id for x in everyone} == {alice.id, bob.id}
+    db.rollback()

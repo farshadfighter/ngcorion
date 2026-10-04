@@ -19,7 +19,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import (
-    require_own_action, require_own_result, require_own_session,
+    owner_scope, require_own_action, require_own_result, require_own_session,
     get_current_user,
     require_permission,
     require_quota,
@@ -622,6 +622,9 @@ def list_hardening_actions(
     """
     # Cap limit at 100
     limit = min(limit, 100)
+    # A non-admin sees only the actions they ran themselves, whatever user_id asks for.
+    if owner_scope(current_user) is not None:
+        user_id = current_user.id
 
     actions = HardeningService.get_action_history(
         db=db,

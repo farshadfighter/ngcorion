@@ -1496,10 +1496,11 @@ class FortiGateHardeningService:
         audit_session_id: Optional[int] = None,
         status: Optional[str] = None,
         limit: int = 50,
-        offset: int = 0
+        offset: int = 0,
+        user_id: Optional[int] = None,
     ) -> List[HardeningAction]:
         """
-        Get filtered FortiGate hardening action history.
+        Get filtered FortiGate hardening action history (``user_id``: only that user's actions).
 
         Args:
             db: Database session
@@ -1516,6 +1517,8 @@ class FortiGateHardeningService:
 
         # Filter to FortiGate checks (FG-* prefix)
         query = query.filter(HardeningAction.check_number.like("FG-%"))
+        if user_id is not None:
+            query = query.filter(HardeningAction.user_id == user_id)
 
         if asset_id:
             query = query.filter(HardeningAction.asset_id == asset_id)
