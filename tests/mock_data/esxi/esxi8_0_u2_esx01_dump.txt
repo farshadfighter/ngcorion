@@ -1,0 +1,262 @@
+===SECTION:ESXI_VERSION===
+VMware ESXi 8.0.2 build-22380479
+VMware ESXi 8.0 Update 2
+===SECTION:ADVANCED===
+### /UserVars/DcuiTimeOut
+   Type: integer
+   Int Value: 600
+   String Value: 
+### /UserVars/ESXiShellInteractiveTimeOut
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /UserVars/ESXiShellTimeOut
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /UserVars/HostClientSessionTimeout
+   Type: integer
+   Int Value: 900
+   String Value: 
+### /UserVars/HostClientCEIPOptIn
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /UserVars/SuppressShellWarning
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /UserVars/SuppressHyperthreadWarning
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Security/AccountLockFailures
+   Type: integer
+   Int Value: 5
+   String Value: 
+### /Security/AccountUnlockTime
+   Type: integer
+   Int Value: 900
+   String Value: 
+### /Security/PasswordQualityControl
+   Type: string
+   Int Value: 0
+   String Value: retry=3 min=disabled,disabled,disabled,7,7
+### /Security/PasswordHistory
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Security/PasswordMaxDays
+   Type: integer
+   Int Value: 99999
+   String Value: 
+### /Config/HostAgent/plugins/solo/enableMob
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Config/HostAgent/log/level
+   Type: string
+   Int Value: 0
+   String Value: info
+### /Net/BlockGuestBPDU
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Net/DVFilterBindIpAddress
+   Type: string
+   Int Value: 0
+   String Value: 
+### /DCUI/Access
+   Type: string
+   Int Value: 0
+   String Value: root
+### /Annotations/WelcomeMessage
+   Type: string
+   Int Value: 0
+   String Value: 
+### /Config/Etc/issue
+   Type: string
+   Int Value: 0
+   String Value: 
+### /Syslog/global/logHost
+   Type: string
+   Int Value: 0
+   String Value: 
+### /Syslog/global/auditRecord/storageEnable
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Syslog/global/auditRecord/remoteEnable
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Syslog/global/logFilteringEnabled
+   Type: integer
+   Int Value: 0
+   String Value: 
+### /Syslog/global/certificate/checkSSLCerts
+   Type: integer
+   Int Value: 1
+   String Value: 
+### /Mem/ShareForceSalting
+   Type: integer
+   Int Value: 2
+   String Value: 
+### /VMkernel/Boot/execInstalledOnly
+   Type: integer
+   Int Value: 0
+   String Value: 
+===SECTION:SERVICES===
+SSH|on|SSH is running
+ESXShell|off|ESXShell is not running
+slpd|off|slpd is not running
+sfcbd-watchdog|on|sfcbd is running
+snmpd|off|snmpd is not running
+ntpd|off|ntpd is not running
+===SECTION:NTP===
+   Enabled: false
+   Loglevel: warning
+   Server: 
+===SECTION:SYSLOG===
+   Check Certificate Revocation: false
+   Default Network Retry Timeout: 180
+   Enforce SSLCertificates: true
+   Local Log Output: /scratch/log
+   Local Log Output Is Configured: false
+   Local Log Output Is Persistent: true
+   Log Level: error
+   Log Filtering: false
+   Remote Host: <none>
+===SECTION:COREDUMP===
+   Enabled: false
+   Host VNic: 
+   Network Server IP: 
+   Network Server Port: 0
+===SECTION:FIREWALL===
+   Default Action: DROP
+   Enabled: true
+   Loaded: true
+### rulesets
+Name            Enabled
+--------------  -------
+sshServer       true
+sshClient       false
+nfsClient       false
+dhcp            true
+dns             true
+snmp            false
+ntpClient       false
+CIMHttpServer   true
+CIMHttpsServer  true
+CIMSLP          false
+vSphereClient   true
+webAccess       true
+syslog          false
+vMotion         true
+### allowedip
+Ruleset         Allowed IP Addresses
+--------------  --------------------
+sshServer       10.10.0.0/24
+sshClient       All
+nfsClient       All
+dhcp            All
+dns             All
+snmp            All
+ntpClient       All
+CIMHttpServer   All
+CIMHttpsServer  All
+CIMSLP          All
+vSphereClient   All
+webAccess       All
+syslog          All
+vMotion         10.10.0.0/24
+===SECTION:SNMP===
+   Authentication: 
+   Communities: 
+   Enable: false
+   Engineid: 
+   Hwsrc: indications
+   Port: 161
+   Privacy: 
+   Syscontact: 
+   Syslocation: 
+   Targets: 
+   Users: 
+===SECTION:ACCEPTANCE===
+PartnerSupported
+===SECTION:VIBS===
+esx-base|8.0.2-0.0.22380479|VMware|VMwareCertified
+vsan|8.0.2-0.0.22380479|VMware|VMwareCertified
+lsi-mr3|7.727.02.00-1OEM.800.1.0.20613240|BCM|VMwareCertified
+nvidia-vgpu|535.104.06-1OEM.800.1.0.20613240|NVD|PartnerSupported
+net-usbnic|1.12-2vmw.800.1.0.20613240|VFrontDe|CommunitySupported
+===SECTION:ENCRYPTION===
+   Mode: NONE
+   Require Executables Only From Installed VIBs: false
+   Require Secure Boot: false
+===SECTION:FIPS===
+ssh=true
+rhttpproxy=true
+===SECTION:LOCKDOWN===
+lockdownMode = "lockdownDisabled"
+===SECTION:SSH_KEYS===
+1
+===SECTION:ACCOUNTS===
+root
+dcui
+vpxuser
+opsadmin
+===SECTION:VSWITCH===
+### vswitch|vSwitch0
+   Allow Promiscuous: false
+   Allow MAC Address Changes: false
+   Allow Forged Transmits: false
+### vswitch|vSwitch1
+   Allow Promiscuous: false
+   Allow MAC Address Changes: true
+   Allow Forged Transmits: true
+### portgroup|Management Network|vSwitch0|0
+   Allow Promiscuous: false
+   Allow MAC Address Changes: false
+   Allow Forged Transmits: false
+### portgroup|VM Network|vSwitch0|20
+   Allow Promiscuous: false
+   Allow MAC Address Changes: false
+   Allow Forged Transmits: false
+### portgroup|Backup Network|vSwitch1|30
+   Allow Promiscuous: false
+   Allow MAC Address Changes: true
+   Allow Forged Transmits: true
+### portgroup|Trunk-Monitor|vSwitch1|4095
+   Allow Promiscuous: true
+   Allow MAC Address Changes: true
+   Allow Forged Transmits: true
+===SECTION:ISCSI===
+### vmhba64
+   Level: prohibited
+   Mutual Level: prohibited
+END
+===SECTION:VMS===
+### db01
+isolation.tools.copy.disable = "TRUE"
+isolation.tools.paste.disable = "TRUE"
+isolation.tools.dnd.disable = "TRUE"
+isolation.tools.diskShrink.disable = "TRUE"
+isolation.tools.diskWiper.disable = "TRUE"
+isolation.device.connectable.disable = "TRUE"
+tools.setInfo.sizeLimit = "1048576"
+RemoteDisplay.maxConnections = "1"
+log.keepOld = "10"
+log.rotateSize = "2048000"
+tools.guestlib.enableHostInfo = "FALSE"
+mks.enable3d = "FALSE"
+### web01
+tools.guestlib.enableHostInfo = "FALSE"
+scsi0:0.mode = "persistent"
+### lab-nested
+usb.present = "TRUE"
+serial0.present = "TRUE"
+scsi0:1.mode = "independent-nonpersistent"
+isolation.tools.copy.disable = "FALSE"
+pciPassthru0.present = "TRUE"
+END

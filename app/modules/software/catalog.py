@@ -153,12 +153,13 @@ _add("openjdk", "OpenJDK", ("oracle", "openjdk"))
 _add("java|java runtime environment", "Java Runtime", ("oracle", "jre"))
 _add("java se development kit|java(tm) se development kit", "Java SE Development Kit", ("oracle", "jdk"))
 
-# ── device firmware, as the Cisco and Fortinet audits name it ────────────
+# ── device firmware, as the Cisco, Fortinet and ESXi audits name it ──────
 _add("cisco ios xe", "Cisco IOS XE", ("cisco", "ios_xe"))
 _add("cisco ios", "Cisco IOS", ("cisco", "ios"))
 _add("cisco nx-os", "Cisco NX-OS", ("cisco", "nx-os"))
 _add("cisco asa", "Cisco ASA", ("cisco", "adaptive_security_appliance_software"))
 _add("fortinet fortios", "Fortinet FortiOS", ("fortinet", "fortios"))
+_add("vmware esxi", "VMware ESXi", ("vmware", "esxi"))
 
 # ── families ─────────────────────────────────────────────────────────────
 _pat(r"^postgresql-\d+(\.\d+)?$|^postgresql\d+-server$|^postgresql \d+$", "PostgreSQL", ("postgresql", "postgresql"))

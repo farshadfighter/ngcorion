@@ -92,6 +92,8 @@ TARGETS: Tuple[Target, ...] = (
            device_type="docker", keywords=("docker", "container", "containers", "moby", "engine")),
     Target("kubernetes", "Kubernetes", "Cluster node · CIS", "platforms", "kubernetes", "cluster", "K8", "SSH",
            device_type="kubernetes", keywords=("kubernetes", "k8s", "kubeadm", "kubelet", "cluster", "control plane")),
+    Target("esxi", "VMware ESXi", "Hypervisor host · CIS", "platforms", "esxi", "hypervisor", "EX", "SSH",
+           device_type="esxi", keywords=("esxi", "vmware", "vsphere", "hypervisor", "esxcli", "virtualization")),
     Target("active_directory", "Active Directory", "Domain controllers", "services", "active_directory",
            "directory", "AD", "WinRM", device_type="active_directory",
            keywords=("ad", "ad ds", "domain controller", "dc", "kerberos", "ldap", "microsoft")),

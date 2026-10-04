@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Canonical device families. These line up with the audit/hardening DeviceType
 # enum (cisco/linux/windows/fortinet/apache/mongodb/mssql).
-FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "mysql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "windows", "linux")
+FAMILIES = ("fortinet", "cisco", "mongodb", "mssql", "mysql", "apache", "active_directory", "dns_server", "dhcp_server", "iis", "docker", "kubernetes", "esxi", "windows", "linux")
 
 # Windows Server roles audited as their own target. A host carrying one of
 # these roles is still a Windows Server: it stays in the Windows target's
@@ -50,6 +50,8 @@ _SERVICE_FAMILIES = {"apache", "mongodb", "mssql", "mysql"}
 # e.g. "MongoDB on Ubuntu" resolves to mongodb, not linux).
 _FAMILY_KEYWORDS = [
     ("fortinet", ("fortinet", "fortigate", "fortios")),
+    # Not plain "vmware": a VM's model is "VMware Virtual Platform".
+    ("esxi", ("esxi", "vmware esx", "vsphere host", "vmkernel")),
     ("cisco", ("cisco", "catalyst", "nexus", "ios-xe", "ios xe", "nx-os")),
     ("mongodb", ("mongodb", "mongo")),
     # Before mssql: "MySQL Server" contains "sql server".

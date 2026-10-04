@@ -10,6 +10,7 @@ import {
     isFortinet,
     isMongo,
     isMySQL,
+    isESXi,
     isMssql,
     usesWinRM,
     needsSudo,
@@ -349,6 +350,14 @@ export const AuditingForm = ({ onSubmit, onCancel, onError }) => {
                                             {t("Enter credentials, then click “Detect VDOMs” to list active VDOMs. Leave blank to audit every VDOM.")}
                                         </small>
                                     )}
+                                </div>
+                            )}
+
+                            {isESXi(dt) && (
+                                <div className="form-group form-group-full">
+                                    <small className="form-hint">
+                                        {t("ESXi has no sudo: sign in as root or an account with the Administrator role. SSH must be running on the host while the audit or hardening runs.")}
+                                    </small>
                                 </div>
                             )}
 

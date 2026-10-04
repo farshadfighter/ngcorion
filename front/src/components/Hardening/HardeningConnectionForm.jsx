@@ -8,6 +8,7 @@ import {
     isFortinet,
     isMongo,
     isMySQL,
+    isESXi,
     isMssql,
     usesWinRM,
     needsSudo,
@@ -352,6 +353,14 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
                                             {t("Enter credentials, then click “Detect VDOMs” to list active VDOMs.")}
                                         </small>
                                     )}
+                                </div>
+                            )}
+
+                            {isESXi(dt) && (
+                                <div className="form-group form-group-full">
+                                    <small className="form-hint">
+                                        {t("ESXi has no sudo: sign in as root or an account with the Administrator role. SSH must be running on the host while the audit or hardening runs.")}
+                                    </small>
                                 </div>
                             )}
 

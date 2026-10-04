@@ -24,6 +24,8 @@ export const isFortinet = (dt) => dt === "fortinet";
 export const isApache   = (dt) => dt === "apache";
 export const isMongo    = (dt) => dt === "mongodb";
 export const isMySQL    = (dt) => dt === "mysql";
+// ESXi: SSH as root or an Administrator-role account; the host has no sudo.
+export const isESXi     = (dt) => dt === "esxi";
 export const isMssql    = (dt) => dt === "mssql" || dt?.startsWith("mssql-");
 export const isWindows  = (dt) => dt === "windows" || dt?.startsWith("windows-");
 export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || isMySQL(dt) || isLinuxRole(dt);
@@ -32,7 +34,7 @@ export const needsSudo  = (dt) => isLinux(dt) || isApache(dt) || isMongo(dt) || 
 // They connect the way Windows Server does: WinRM with a Windows account.
 export const WINDOWS_ROLES = ["active_directory", "dns_server", "dhcp_server", "iis"];
 // Names and benchmarks of the benchmark-engine targets (Windows roles and Linux platforms).
-export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8" };
+export const ROLE_NAMES = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi" };
 // What each target is audited against (shown as "Benchmark" on result pages).
 export const roleBenchmark = (dt) => ({
     active_directory: t("CIS domain controller + domain checks"),
@@ -42,6 +44,7 @@ export const roleBenchmark = (dt) => ({
     docker: t("CIS Docker Benchmark"),
     kubernetes: t("CIS Kubernetes Benchmark"),
     mysql: t("CIS MySQL 8.0 Community Server"),
+    esxi: t("CIS VMware ESXi 7/8"),
 })[dt];
 export const isWindowsRole = (dt) => WINDOWS_ROLES.includes(dt);
 export const usesWinRM     = (dt) => isWindows(dt) || isWindowsRole(dt);

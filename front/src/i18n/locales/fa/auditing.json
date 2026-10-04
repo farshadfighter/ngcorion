@@ -72,6 +72,7 @@
   "Enter SSH username": "نام کاربری SSH را وارد کنید",
   "Error": "خطا",
   "Error:": "خطا:",
+  "ESXi has no sudo: sign in as root or an account with the Administrator role. SSH must be running on the host while the audit or hardening runs.": "ESXi دستور sudo ندارد: با root یا حسابی با نقش Administrator وارد شوید. سرویس SSH باید در طول ممیزی یا مقاوم‌سازی روی میزبان روشن باشد.",
   "Evidence / Remediation": "شواهد / اصلاح",
   "Executive Summary": "خلاصهٔ مدیریتی",
   "Failed Controls": "کنترل‌های ناموفق",

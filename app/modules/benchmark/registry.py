@@ -14,7 +14,8 @@ def specs() -> List[ModuleSpec]:
     from app.modules.iis.spec import SPEC as iis
     from app.modules.kubernetes.spec import SPEC as kubernetes
     from app.modules.mysql.spec import SPEC as mysql
-    return [active_directory, dns_server, dhcp_server, iis, docker, kubernetes, mysql]
+    from app.modules.esxi.spec import SPEC as esxi
+    return [active_directory, dns_server, dhcp_server, iis, docker, kubernetes, mysql, esxi]
 
 
 def spec_map() -> Dict[str, ModuleSpec]:

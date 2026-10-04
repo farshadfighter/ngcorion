@@ -306,7 +306,48 @@ class MySQLConnector(SSHConnector):
             yield conn
 
 
-CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector(), "ssh_mysql": MySQLConnector()}
+# ── SSH to an ESXi host (busybox shell, no sudo) ─────────────────────────
+
+class ESXiConnector(SSHConnector):
+    """ESXi has no sudo: the account itself needs the Administrator role
+    (root, or a local user granted it), and scripts run directly."""
+    key = "ssh_esxi"
+    request_fields = {
+        "ssh_username": (str, Field("root", min_length=1, description="ESXi account with the Administrator role, not stored")),
+        "ssh_password": (str, Field(..., min_length=1, description="Password, not stored")),
+        "ssh_port": (int, Field(22, ge=1, le=65535)),
+    }
+    credential_fields = [
+        CredentialField(name="ssh_username", label="SSH Username", type="text", required=True, default="root"),
+        CredentialField(name="ssh_password", label="SSH Password", type="password", required=True),
+        CredentialField(name="ssh_port", label="SSH Port", type="number", default="22"),
+    ]
+    required_for_schedule = frozenset({"ssh_username", "ssh_password"})
+
+    @contextmanager
+    def open(self, ip: str, creds: Dict[str, Any]):
+        from app.core.ssh_exceptions import SSHAuthenticationError, SSHConnectionError
+        from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
+        runner = HardeningSSHRunner(ip=ip, username=creds.get("ssh_username") or "root",
+                                    password=creds["ssh_password"], port=self.port_of(creds), max_retries=2)
+        try:
+            runner.connect()
+        except SSHAuthenticationError as exc:
+            raise PermissionError(str(exc)) from exc
+        except SSHConnectionError as exc:
+            raise ConnectionError(str(exc)) from exc
+        try:
+            conn = SSHConnection(runner, as_root=True)
+            version = conn.run("vmware -v")
+            if "VMware ESXi" not in version:
+                raise ConnectionError(f"{ip} is not an ESXi host: {_first_line(version)[:120]}")
+            yield conn
+        finally:
+            runner.disconnect()
+
+
+CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector(), "ssh_mysql": MySQLConnector(),
+                                    "ssh_esxi": ESXiConnector()}
 
 
 def get_connector(key: str) -> Connector:
