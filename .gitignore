@@ -30,6 +30,8 @@ Thumbs.db
 # Test files
 test/
 *-test/
+# ...but not the frontend's test setup (vite.config.js setupFiles); CI needs it.
+!front/src/test/
 
 # Coverage / pytest artifacts
 .coverage
