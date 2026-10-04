@@ -49,8 +49,9 @@ def _fail(name, detail, **extra):
 
 @public_router.get("/health")
 def health():
-    """Public liveness check for load balancers and the container healthcheck: the overall status
-    and whether the database answers, nothing else (no versions or internals for anonymous callers).
+    """Public liveness check for load balancers and the container healthcheck: the overall status,
+    the product version and whether the database answers - nothing internal (workers, tasks, paths);
+    that detail is admin-only at /api/system/health.
     """
     db = SessionLocal()
     try:
