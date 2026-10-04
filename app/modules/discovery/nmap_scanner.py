@@ -343,6 +343,7 @@ class NmapScanner:
             {
                 "ip": "192.168.1.100",
                 "mac": "00:11:22:33:44:55",
+                "vendor": "Dell",          # nmap's OUI lookup of the MAC, if any
                 "hostname": "server01.local",
                 "state": "up",
                 "os": {
@@ -393,6 +394,7 @@ class NmapScanner:
             host_data = {
                 "ip": None,
                 "mac": None,
+                "vendor": None,
                 "hostname": None,
                 "state": None,
                 "os": {"name": None, "accuracy": None, "all_matches": []},
@@ -414,6 +416,10 @@ class NmapScanner:
                     host_data["ip"] = addr_value
                 elif addr_type == "mac":
                     host_data["mac"] = addr_value
+                    # nmap resolves the MAC's OUI to the manufacturer itself
+                    # (nmap-mac-prefixes); only hosts on the scanner's own
+                    # network segment have a MAC, and so a vendor.
+                    host_data["vendor"] = (addr.get("vendor") or "").strip()[:200] or None
 
             # Hostnames
             hostnames_elem = host.find("hostnames")

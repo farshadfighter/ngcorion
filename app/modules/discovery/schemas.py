@@ -228,6 +228,7 @@ class PendingHostResponse(BaseModel):
     scan_id: str
     ip_address: str
     mac_address: Optional[str] = None
+    vendor: Optional[str] = None  # manufacturer from the MAC address (nmap OUI lookup)
     hostname: Optional[str] = None
     os_info: Optional[str] = None
     os_accuracy: Optional[int] = None

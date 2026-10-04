@@ -30,14 +30,14 @@ export const License = () => {
             dispatch(getLicenseStatusThunk());
         }, 5 * 60 * 1000);
         return () => clearInterval(interval);
-    }, [isValid]);
+    }, [isValid, dispatch]);
 
     useEffect(() => {
         if (error || successMessage) {
             const timer = setTimeout(() => dispatch(clearMessages()), 4000);
             return () => clearTimeout(timer);
         }
-    }, [error, successMessage]);
+    }, [error, successMessage, dispatch]);
 
     const handleActivate = async () => {
         if (!licenseKey.trim()) return;

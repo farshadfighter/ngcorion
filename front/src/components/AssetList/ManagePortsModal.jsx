@@ -24,7 +24,7 @@ export const ManagePortsModal = ({ asset, onClose }) => {
             dispatch(fetchAssetPorts(asset.id));
             hasFetchedPorts.current = true;
         }
-    }, []);
+    }, [asset?.id, dispatch]);
 
     const handleAddPort = () => {
         setEditingPort(null);

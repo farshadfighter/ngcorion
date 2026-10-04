@@ -51,22 +51,16 @@ const AutoDiscovery = () => {
 
     const pollIntervalRef = useRef(null);
     const prevScanStatusRef = useRef(null);
+    // The effects below depend on these two values only, not on the whole
+    // scan object (which is replaced on every poll).
+    const scanId = currentScan?.scan_id;
+    const scanStatus = currentScan?.status;
 
     useEffect(() => {
         dispatch(fetchScanHistory());
         dispatch(fetchPendingHosts());
         dispatch(fetchAssetTypes());
-
-        if (currentScan && (currentScan.status === "running" || currentScan.status === "pending")) {
-            dispatch(checkScanStatus(currentScan.scan_id));
-        }
-
-        return () => {
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-            }
-        };
-    }, []);
+    }, [dispatch]);
 
     const handleStartScan = useCallback(
         (scanData) => {
@@ -94,7 +88,7 @@ const AutoDiscovery = () => {
     // Detect transition to completed/failed/cancelled
     useEffect(() => {
         const prevStatus = prevScanStatusRef.current;
-        const newStatus = currentScan?.status;
+        const newStatus = scanStatus;
         prevScanStatusRef.current = newStatus;
 
         if (
@@ -105,19 +99,22 @@ const AutoDiscovery = () => {
         ) {
             dispatch(fetchPendingHosts());
             dispatch(fetchScanHistory());
-            if (currentScan) {
-                setTimeout(() => handleViewResults(currentScan), 0);
+            if (scanId) {
+                setTimeout(() => handleViewResults({ scan_id: scanId }), 0);
             }
         }
-    }, [currentScan?.status, dispatch]);
+    }, [scanStatus, scanId, dispatch, handleViewResults]);
 
     // Poll for scan status and logs when running or pending
     useEffect(() => {
-        if (currentScan && (currentScan.status === "running" || currentScan.status === "pending")) {
-            dispatch(fetchScanLogs(currentScan.scan_id));
+        if (scanId && (scanStatus === "running" || scanStatus === "pending")) {
+            // Check at once (a scan still running when the page was opened),
+            // then every 3 seconds until it ends.
+            dispatch(checkScanStatus(scanId));
+            dispatch(fetchScanLogs(scanId));
             pollIntervalRef.current = setInterval(() => {
-                dispatch(checkScanStatus(currentScan.scan_id));
-                dispatch(fetchScanLogs(currentScan.scan_id));
+                dispatch(checkScanStatus(scanId));
+                dispatch(fetchScanLogs(scanId));
             }, 3000);
         } else {
             if (pollIntervalRef.current) {
@@ -132,7 +129,7 @@ const AutoDiscovery = () => {
                 clearInterval(pollIntervalRef.current);
             }
         };
-    }, [currentScan?.status, currentScan?.scan_id, dispatch]);
+    }, [scanStatus, scanId, dispatch]);
 
     const handleDeleteScan = (scanId) => {
         setDeleteModal({ isOpen: true, type: "SINGLE_SCAN", scanId: scanId });

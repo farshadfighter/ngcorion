@@ -251,7 +251,10 @@ class JobLock:
 def job_running() -> bool:
     key = JobLock.KEY & 0xFFFFFFFFFFFFFFFF
     with dbdump.connect(autocommit=True) as conn:
+        # Only this database's lock: another installation on the same
+        # Postgres server holds its own key in its own database.
         row = conn.execute("SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND granted "
+                           "AND database = (SELECT oid FROM pg_database WHERE datname = current_database()) "
                            "AND classid = %s AND objid = %s AND objsubid = 1",
                            (key >> 32, key & 0xFFFFFFFF)).fetchone()
         return row is not None

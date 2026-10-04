@@ -90,3 +90,30 @@ class TestBuildNmapCommandHostTimeout:
             assert "--host-timeout=600s" in cmd
         finally:
             monkeypatched_root.undo()
+
+
+class TestParseVendor:
+    """nmap's OUI lookup of a MAC address ends up as the host's vendor and,
+    through additional_info, in the scan results and the assets made from
+    them."""
+
+    XML = """<?xml version="1.0"?><nmaprun>
+<host><status state="up"/><address addr="10.0.0.5" addrtype="ipv4"/>
+<address addr="00:1B:21:AA:BB:CC" addrtype="mac" vendor="Intel Corporate"/><ports><port protocol="tcp" portid="22"><state state="open"/><service name="ssh"/></port></ports></host>
+<host><status state="up"/><address addr="10.9.0.7" addrtype="ipv4"/><ports><port protocol="tcp" portid="22"><state state="open"/><service name="ssh"/></port></ports></host>
+</nmaprun>"""
+
+    def test_vendor_from_mac_address(self):
+        local, remote = NmapScanner.parse_nmap_xml(self.XML)
+        assert local["mac"] == "00:1B:21:AA:BB:CC"
+        assert local["vendor"] == "Intel Corporate"
+        assert remote["mac"] is None and remote["vendor"] is None
+
+    def test_host_vendor_reads_additional_info(self):
+        from types import SimpleNamespace
+
+        from app.modules.discovery.service import host_vendor
+        assert host_vendor(SimpleNamespace(additional_info={"vendor": "Cisco Systems"})) == "Cisco Systems"
+        assert host_vendor(SimpleNamespace(additional_info={"vendor": None})) is None
+        assert host_vendor(SimpleNamespace(additional_info=None)) is None
+        assert host_vendor(SimpleNamespace(additional_info="not a dict")) is None

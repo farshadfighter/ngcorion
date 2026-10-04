@@ -58,7 +58,7 @@ export const FortinetBenchmarkModal = ({ onClose }) => {
         if (!data) dispatch(fetchFortinetBenchmark());
     }, [dispatch, data]);
 
-    const controls = data?.controls || [];
+    const controls = useMemo(() => data?.controls || [], [data]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();

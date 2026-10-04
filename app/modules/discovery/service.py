@@ -30,6 +30,14 @@ from .schemas import ScanRequest
 logger = logging.getLogger(__name__)
 
 
+def host_vendor(host: DiscoveredHost) -> Optional[str]:
+    """The manufacturer nmap reported for the host's MAC address (its OUI
+    lookup), kept in additional_info by the scan; None when the host was not
+    on the scanner's own network segment."""
+    info = host.additional_info if isinstance(host.additional_info, dict) else {}
+    return info.get("vendor") or None
+
+
 class DiscoveryService:
     """Service layer for asset discovery operations"""
 
@@ -734,7 +742,7 @@ class DiscoveryService:
                 "ip_address": host.ip_address,
                 "hostname": host.hostname,
                 "mac_address": host.mac_address,
-                "vendor": None,  # TODO: Add vendor lookup
+                "vendor": host_vendor(host),
                 "os_name": host.os_info,
                 "os_version": None,
                 "os_accuracy": host.os_accuracy,

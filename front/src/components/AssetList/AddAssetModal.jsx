@@ -146,10 +146,14 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
             .then(applyDropdownOptions)
             .catch(() => setError(tr("Failed to load form options.")))
             .finally(() => setIsLoadingOptions(false));
-        if (osCatalog.length === 0) {
+    }, [isOpen]);
+
+    // The OS catalog is shared through the store; load it once.
+    useEffect(() => {
+        if (isOpen && osCatalog.length === 0) {
             dispatch(fetchOSCatalog());
         }
-    }, [isOpen]);
+    }, [isOpen, osCatalog.length, dispatch]);
 
 
     const handleChange = (e) => {

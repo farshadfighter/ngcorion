@@ -85,7 +85,7 @@ export const ChangePasswordModal = ({ onClose }) => {
         if (users.length === 0) {
             dispatch(fetchUsers());
         }
-    }, []);
+    }, [users.length, dispatch]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

@@ -159,6 +159,12 @@ const ApplyDiscoveryModal = ({ host, assetTypes, onClose }) => {
                         <code className="value">{host.mac_address}</code>
                     </div>
                 )}
+                {host.vendor && (
+                    <div className="detail-item">
+                        <span className="label">{t("Manufacturer")}</span>
+                        <span className="value">{host.vendor}</span>
+                    </div>
+                )}
                 {host.os_info && (
                     <div className="detail-item">
                         <span className="label">{t("OS Info")}</span>

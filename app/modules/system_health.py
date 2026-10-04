@@ -62,9 +62,14 @@ def health():
 
 
 def _lock_held(db: Session, name: str) -> bool:
+    """Whether some session holds the named advisory lock in this database.
+    pg_locks lists every database of the server; advisory locks are per
+    database, so another installation sharing the Postgres server (a second
+    environment, a test run) must not count."""
     key = lock_key(name) & 0xFFFFFFFFFFFFFFFF
     return bool(db.execute(text(
         "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted "
+        "AND database = (SELECT oid FROM pg_database WHERE datname = current_database()) "
         "AND classid = :hi AND objid = :lo AND objsubid = 1"
     ), {"hi": key >> 32, "lo": key & 0xFFFFFFFF}).scalar())
 

@@ -5,7 +5,8 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { rejectHost, bulkApproveHosts, fetchPendingHosts } from '../../store/discoverySlice.jsx';
-import { t, n } from "../../i18n";
+import { t, n } from "../../i18n";
+
 import { tx } from "../../i18n/tx";
 
 const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
@@ -184,7 +185,10 @@ const PendingHostsTable = ({ hosts, loading, onApprove, assetTypes }) => {
                         <td>{host.hostname || <span className="text-muted">-</span>}</td>
                         <td>
                             {host.mac_address ? (
-                                <code className="mac-address">{host.mac_address}</code>
+                                <>
+                                    <code className="mac-address">{host.mac_address}</code>
+                                    {host.vendor && <div className="text-muted">{host.vendor}</div>}
+                                </>
                             ) : (
                                 <span className="text-muted">-</span>
                             )}

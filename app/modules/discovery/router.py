@@ -38,7 +38,7 @@ from .schemas import (
     AddPortsRequest, OverwritePortsRequest, PortManagementResponse,
     ApplyDiscoveryMode, ApplyDiscoveryModeResponse, DiscoveryPreviewResponse
 )
-from .service import DiscoveryService
+from .service import DiscoveryService, host_vendor
 from .port_service import PortService
 
 logger = logging.getLogger(__name__)
@@ -309,6 +309,7 @@ async def get_pending_hosts(
             "scan_id": host.scan_id,
             "ip_address": host.ip_address,
             "mac_address": host.mac_address,
+            "vendor": host_vendor(host),
             "hostname": host.hostname,
             "os_info": host.os_info,
             "os_accuracy": host.os_accuracy,
@@ -484,6 +485,9 @@ async def approve_discovered_host(
         if host.os_info and not asset.os_name:
             asset.os_name = host.os_info
             updated_fields.append("os_name")
+        if host_vendor(host) and not asset.manufacturer:
+            asset.manufacturer = host_vendor(host)
+            updated_fields.append("manufacturer")
 
         # Mark host as approved
         host.status = "merged"
@@ -511,13 +515,15 @@ async def approve_discovered_host(
             ip_address=host.ip_address,
             mac_address=host.mac_address,
             os_name=host.os_info,
+            manufacturer=host_vendor(host),
             asset_type_id=asset_data.get("asset_type_id"),
             user_id=current_user.id,
             discovered_fields={
                 "hostname": True,
                 "ip_address": True,
                 "mac_address": True,
-                "os_name": True
+                "os_name": True,
+                **({"manufacturer": True} if host_vendor(host) else {}),
             }
         )
 
@@ -629,6 +635,7 @@ async def bulk_approve_hosts(
                 ip_address=host.ip_address,
                 mac_address=host.mac_address,
                 os_name=host.os_info,
+                manufacturer=host_vendor(host),
                 asset_type_id=default_asset_type_id,
                 location_id=default_location_id,
                 owner_id=default_owner_id,
@@ -637,7 +644,8 @@ async def bulk_approve_hosts(
                     "hostname": True,
                     "ip_address": True,
                     "mac_address": True,
-                    "os_name": True
+                    "os_name": True,
+                    **({"manufacturer": True} if host_vendor(host) else {}),
                 }
             )
 

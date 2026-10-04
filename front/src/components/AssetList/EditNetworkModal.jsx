@@ -47,7 +47,7 @@ export const EditNetworkModal = ({ asset, isOpen, onClose }) => {
         if (osCatalog.length === 0) {
             dispatch(fetchOSCatalog());
         }
-    }, []);
+    }, [osCatalog.length, dispatch]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

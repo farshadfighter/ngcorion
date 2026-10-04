@@ -79,3 +79,31 @@ def test_detail_sees_a_running_background_task(db):
 
     check = asyncio.run(scenario())
     assert check["status"] == "ok" and "this worker" in check["detail"]
+
+
+def test_lock_in_another_database_does_not_count(db):
+    """Advisory locks are per database: another installation on the same
+    Postgres server holding the same key must not look like our task."""
+    from sqlalchemy import create_engine, text
+
+    from app.core.singleton import lock_key
+    other = create_engine(engine.url.set(database="postgres"))
+    try:
+        conn = other.connect()
+    except Exception:  # noqa: BLE001
+        pytest.skip("cannot connect to the 'postgres' database")
+    try:
+        conn.execute(text("SELECT pg_advisory_lock(:k)"), {"k": lock_key("health-probe-other-db")})
+        assert not system_health._lock_held(db, "health-probe-other-db")
+        own = engine.connect()
+        try:
+            own.execute(text("SELECT pg_advisory_lock(:k)"), {"k": lock_key("health-probe-other-db")})
+            assert system_health._lock_held(db, "health-probe-other-db")
+        finally:
+            # Session-level locks outlive close() on a pooled connection.
+            own.execute(text("SELECT pg_advisory_unlock_all()"))
+            own.close()
+    finally:
+        conn.execute(text("SELECT pg_advisory_unlock_all()"))
+        conn.close()
+        other.dispose()
