@@ -33,6 +33,9 @@ SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 @dataclass
 class Section:
+    """A section of a report template; it needs read access to its module and can be switched off by
+    the user.
+    """
     key: str
     title: str
     module: Optional[str]            # read permission needed (ModuleEnum value), None = none
@@ -43,6 +46,7 @@ class Section:
 
 @dataclass
 class Option:
+    """A template option shown in the report builder."""
     key: str
     label: str
     kind: str                        # bool | choice | multi | int (set by the page that links here)
@@ -52,6 +56,9 @@ class Option:
 
 @dataclass
 class Template:
+    """A report template: what it shows, who may use it, its sections and options, and the function
+    that builds it.
+    """
     id: str
     title: str
     description: str
@@ -105,6 +112,7 @@ class Ctx:
         return key in self.sections
 
     def local(self, dt: Optional[datetime]) -> Optional[datetime]:
+        """A UTC time in the report's time zone."""
         if dt is None:
             return None
         from app.modules.reports.periods import local_now
@@ -136,6 +144,7 @@ class Ctx:
         return self.cached(("cis", prev), lambda: data.compliance_at(self.db, self.ids, p.end))
 
     def cve(self) -> List[dict]:
+        """CVE findings of the report's assets (computed once per report)."""
         def load():
             from app.modules.cve import findings
             return [f for f in findings.compute(self.db)["findings"] if f["asset_id"] in self.ids]

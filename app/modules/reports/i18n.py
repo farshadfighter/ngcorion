@@ -33,6 +33,9 @@ USED: set = set()
 
 
 class Tr:
+    """Translator of one report: tr("English text", name=value) returns the Persian or English
+    sentence, and formats numbers, percentages and dates the way that language writes them.
+    """
     def __init__(self, lang: str):
         self.lang = lang if lang in ("fa", "en") else "en"
         self.rtl = self.lang == "fa"
@@ -56,6 +59,7 @@ class Tr:
         return text
 
     def num(self, value, decimals: int = 0) -> str:
+        """A number with thousands separators (Persian digits in Persian); "—" for none."""
         if value is None:
             return "—"
         if isinstance(value, float) and decimals == 0 and not float(value).is_integer():

@@ -227,3 +227,30 @@ def test_license_activation_open_while_unlicensed(db, monkeypatch):
     monkeypatch.setattr(license_router, "_activate", lambda data, request: "activated")
     data = license_router.LicenseActivateRequest(license_key="KEY")
     assert license_router.activate_license(data, request=None, credentials=None, db=db) == "activated"
+
+
+def test_xlsx_rows_never_store_a_formula():
+    """Report and software exports: text from devices or users that starts
+    with '=' is stored as text (openpyxl would otherwise write a formula)."""
+    from openpyxl import Workbook
+
+    from app.utils.excel_utils import append_text_safe
+    ws = Workbook().active
+    append_text_safe(ws, ['=HYPERLINK("http://x","y")', "+3", 7, None, "web01"])
+    assert [(c.value, c.data_type) for c in ws[1]][:2] == [('=HYPERLINK("http://x","y")', "s"), ("+3", "s")]
+    assert ws.cell(row=1, column=3).value == 7
+
+
+def test_report_excel_keeps_formula_text_as_text():
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from app.modules.reports.render import xlsx
+    sections = [{"title": "Assets", "blocks": [{"type": "table", "sheet": "Assets", "title": None, "empty": "-",
+                 "columns": [{"label": "Name"}], "rows": [[{"text": "=1+1", "value": "=1+1"}]]}]}]
+    data = xlsx({"title": "T", "t_summary": "Summary", "about": [("Asset", "=2+2")]}, sections, rtl=False)
+    wb = load_workbook(BytesIO(data))
+    values = [c.value for ws in wb.worksheets for row in ws.iter_rows() for c in row]
+    assert "=1+1" in values and not any(c.data_type == "f" for ws in wb.worksheets for row in ws.iter_rows()
+                                        for c in row)

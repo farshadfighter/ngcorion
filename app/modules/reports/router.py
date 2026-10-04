@@ -93,6 +93,9 @@ def _template_out(db: Session, user: User, t, last: Dict[str, datetime]) -> dict
 
 @router.get("/catalog")
 def catalog(user: User = Depends(_read), db: Session = Depends(get_db)):
+    """The report catalog: templates the user may use (with the date of their last report) and the
+    user's three latest reports.
+    """
     q = service.visible_reports(db, user)
     last = dict(q.with_entities(Report.template, func.max(Report.finished_at))
                 .filter(Report.status == REPORT_READY).group_by(Report.template).all())
@@ -113,6 +116,9 @@ def scope_options(_user: User = Depends(_read), db: Session = Depends(get_db)):
 # ── building ─────────────────────────────────────────────────────────────
 
 class ReportRequest(BaseModel):
+    """Body of building a report: template, title, language, formats, classification and the template's
+    parameters (period, scope, options).
+    """
     template: str = Field(..., max_length=40)
     title: Optional[str] = Field(None, max_length=200)
     language: Literal["fa", "en"] = "fa"
@@ -123,6 +129,7 @@ class ReportRequest(BaseModel):
 
 @router.post("")
 def create_report(data: ReportRequest, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Queue a report (reports write permission; at most 3 pending per user); audit-logged."""
     try:
         r = service.create(db, user, data.template, data.title, data.language, data.formats, data.classification,
                            data.params)
@@ -174,6 +181,9 @@ def _view(q, view: str, user: User):
 def list_reports(view: str = Query("all"), q: Optional[str] = Query(None, max_length=100),
                  offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200),
                  user: User = Depends(_read), db: Session = Depends(get_db)):
+    """The archive: reports the user may see (their own and their schedules'; all for admins), by view,
+    searchable, with per-view counts.
+    """
     if view not in VIEWS:
         raise HTTPException(status_code=400, detail="Unknown view")
     base = service.visible_reports(db, user)
@@ -202,6 +212,7 @@ def get_report(report_id: int, user: User = Depends(_read), db: Session = Depend
 @router.get("/{report_id}/files/{kind}")
 def download(report_id: int, kind: Literal["pdf", "xlsx"], user: User = Depends(_read),
              db: Session = Depends(get_db)):
+    """Download a report's PDF or Excel file (audit-logged)."""
     r = _get(db, user, report_id)
     f = db.query(ReportFile).filter(ReportFile.report_id == r.id, ReportFile.kind == kind).first()
     if f is None:
@@ -215,6 +226,7 @@ def download(report_id: int, kind: Literal["pdf", "xlsx"], user: User = Depends(
 
 @router.post("/{report_id}/rerun")
 def rerun(report_id: int, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Build a report again with the same template and parameters (for the current data)."""
     old = _get(db, user, report_id)
     try:
         r = service.create(db, user, old.template, old.title, old.language, old.formats, old.classification,
@@ -227,11 +239,13 @@ def rerun(report_id: int, user: User = Depends(_write), db: Session = Depends(ge
 
 
 class PinRequest(BaseModel):
+    """Body of pinning: pinned reports are never removed by retention."""
     pinned: bool
 
 
 @router.post("/{report_id}/pin")
 def pin(report_id: int, data: PinRequest, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Pin or unpin a report."""
     r = _get(db, user, report_id)
     r.pinned = data.pinned
     db.commit()
@@ -240,6 +254,7 @@ def pin(report_id: int, data: PinRequest, user: User = Depends(_write), db: Sess
 
 @router.post("/{report_id}/cancel")
 def cancel(report_id: int, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Cancel a report that has not started yet."""
     r = _get(db, user, report_id)
     try:
         service.cancel(db, r)
@@ -250,6 +265,7 @@ def cancel(report_id: int, user: User = Depends(_write), db: Session = Depends(g
 
 @router.delete("/{report_id}")
 def delete_report(report_id: int, user: User = Depends(_delete), db: Session = Depends(get_db)):
+    """Delete a finished report and its files (reports delete permission); audit-logged."""
     r = _get(db, user, report_id)
     if r.status in REPORT_PENDING:
         raise HTTPException(status_code=409, detail="Wait for the report to finish, or cancel it")
@@ -263,6 +279,9 @@ def delete_report(report_id: int, user: User = Depends(_delete), db: Session = D
 
 @router.post("/verify")
 async def verify(file: UploadFile = File(...), user: User = Depends(_read), db: Session = Depends(get_db)):
+    """Check whether an uploaded file is an unaltered report from this NGCorion (its SHA-256 matches a
+    stored report file).
+    """
     content = await file.read(MAX_VERIFY_BYTES + 1)
     if len(content) > MAX_VERIFY_BYTES:
         raise HTTPException(status_code=413, detail="File too large (max 50 MB)")
@@ -279,6 +298,7 @@ async def verify(file: UploadFile = File(...), user: User = Depends(_read), db: 
 # ── schedules ────────────────────────────────────────────────────────────
 
 class ScheduleRequest(BaseModel):
+    """Body of a report schedule: report settings, frequency and email recipients."""
     name: str = Field(..., max_length=200)
     template: str = Field(..., max_length=40)
     title: Optional[str] = Field(None, max_length=200)
@@ -323,6 +343,7 @@ def _own_schedule(db: Session, user: User, schedule_id: int) -> ReportSchedule:
 
 @router.get("/schedules/list")
 def list_schedules(user: User = Depends(_read), db: Session = Depends(get_db)):
+    """Report schedules (the user's own; all for admins)."""
     q = db.query(ReportSchedule)
     if service._role(user) != "admin":
         q = q.filter(ReportSchedule.owner_id == user.id)
@@ -337,6 +358,7 @@ def recipient_options(_user: User = Depends(_read), db: Session = Depends(get_db
 
 @router.post("/schedules")
 def create_schedule(data: ScheduleRequest, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Create a report schedule (audit-logged)."""
     try:
         s = service.save_schedule(db, user, data.model_dump())
     except ReportError as e:
@@ -349,6 +371,7 @@ def create_schedule(data: ScheduleRequest, user: User = Depends(_write), db: Ses
 @router.put("/schedules/{schedule_id}")
 def update_schedule(schedule_id: int, data: ScheduleRequest, user: User = Depends(_write),
                     db: Session = Depends(get_db)):
+    """Change a schedule (its owner or an admin); it keeps running as its owner."""
     s = _own_schedule(db, user, schedule_id)
     owner = db.get(User, s.owner_id) or user
     try:
@@ -362,6 +385,7 @@ def update_schedule(schedule_id: int, data: ScheduleRequest, user: User = Depend
 
 @router.post("/schedules/{schedule_id}/run")
 def run_schedule(schedule_id: int, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Run a schedule now, outside its timetable."""
     s = _own_schedule(db, user, schedule_id)
     r = service.queue_schedule(db, s)
     db.refresh(s)
@@ -374,6 +398,7 @@ def run_schedule(schedule_id: int, user: User = Depends(_write), db: Session = D
 
 @router.delete("/schedules/{schedule_id}")
 def delete_schedule(schedule_id: int, user: User = Depends(_write), db: Session = Depends(get_db)):
+    """Delete a schedule (reports already built stay); audit-logged."""
     s = _own_schedule(db, user, schedule_id)
     name = s.name
     db.delete(s)
@@ -386,6 +411,9 @@ def delete_schedule(schedule_id: int, user: User = Depends(_write), db: Session 
 # ── settings ─────────────────────────────────────────────────────────────
 
 class SettingsRequest(BaseModel):
+    """Body of report settings: organisation name and unit, logo (PNG/JPEG data URL), default
+    classification, footer, retention.
+    """
     org_name: str = Field("", max_length=120)
     org_unit: str = Field("", max_length=120)
     logo: Optional[str] = Field(None, max_length=300_000)
@@ -402,6 +430,7 @@ def get_settings(_user: User = Depends(_read), db: Session = Depends(get_db)):
 @router.put("/settings/current")
 def put_settings(data: SettingsRequest, user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
                  db: Session = Depends(get_db)):
+    """Save report settings (system configuration write permission); audit-logged."""
     try:
         out = service.save_settings(db, data.model_dump(), user)
     except ReportError as e:

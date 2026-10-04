@@ -33,6 +33,7 @@ def _with_session(fn):
 def build_next() -> bool:
     """Build one queued report. True when there was one."""
     def work(db):
+        """Build the next queued report, if any; False when the queue is empty."""
         r = service.claim_next(db)
         if r is None:
             return False
@@ -46,7 +47,11 @@ def run_schedules() -> None:
 
 
 def housekeeping() -> None:
+    """Fail reports whose worker died and delete reports past the retention period (pinned ones are
+    kept).
+    """
     def work(db):
+        """The housekeeping itself, in one database session."""
         service.fail_stale(db)
         n = service.purge_old(db)
         if n:
@@ -55,6 +60,9 @@ def housekeeping() -> None:
 
 
 class ReportWorker:
+    """The background loop of reports (one worker only): builds queued reports, queues scheduled ones
+    when due, and does housekeeping.
+    """
     def __init__(self):
         self._task: Optional[asyncio.Task] = None
         self._stop = asyncio.Event()
@@ -83,6 +91,7 @@ class ReportWorker:
             self._task = asyncio.create_task(self._loop(), name="report-worker")
 
     async def stop(self) -> None:
+        """Stop the loop, letting a report being built finish for up to a minute."""
         if self._task is None:
             return
         self._stop.set()
@@ -97,6 +106,7 @@ _worker: Optional[ReportWorker] = None
 
 
 def start_report_worker() -> None:
+    """Start the report loop (called when this worker becomes leader)."""
     global _worker
     if _worker is None:
         _worker = ReportWorker()

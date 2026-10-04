@@ -288,6 +288,7 @@ def _hardening(ctx: Ctx) -> Dict[str, List[dict]]:
     failed = [a for a in acts if a.status != "success"]
 
     def backup_cell(a):
+        """Table cell naming the backup taken before a hardening change, if any."""
         bs = backups.get(a.id)
         if bs:
             b = bs[0]
@@ -297,6 +298,7 @@ def _hardening(ctx: Ctx) -> Dict[str, List[dict]]:
         return cell("—")
 
     def result_cell(a):
+        """Table cell with a hardening action's outcome and whether its verification passed."""
         if a.status == "success":
             if a.verification_passed:
                 return cell(tr("Succeeded · verified"), cls="up")
@@ -392,6 +394,7 @@ def _coverage_rows(ctx: Ctx) -> Dict[int, Dict[str, Tuple[str, str]]]:
                     .group_by(SoftwareCollection.asset_id).all())
 
     def aged(when, limit):
+        """(status, text) for how long ago something happened compared with a limit in days."""
         if when is None:
             return MISSING, tr("Never")
         age = _ago(ctx, when)
@@ -650,6 +653,7 @@ def _noc(ctx: Ctx) -> Dict[str, List[dict]]:
     measured = [s for s in stats.values() if s["avail"] is not None]
 
     def fmt_pct(v):
+        """An availability percentage with enough decimals to tell 99.9 from 99.99."""
         if v is None:
             return "—"
         if v >= 99.9995:

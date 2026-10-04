@@ -17,10 +17,14 @@ MODES = ("all", "types", "sites", "owners", "zones", "assets")
 
 
 class ScopeError(ValueError):
+    """The asset filter of a report is invalid."""
     pass
 
 
 def normalize(scope: Dict) -> Dict:
+    """Validate and normalise a report's asset filter (all, or by types, sites, owners, criticality or
+    a list of assets).
+    """
     scope = dict(scope or {})
     mode = scope.get("mode") or "all"
     if mode not in MODES:
@@ -39,6 +43,7 @@ def normalize(scope: Dict) -> Dict:
 
 
 def assets(db: Session, scope: Dict) -> List[Asset]:
+    """The assets a report covers under its filter."""
     scope = normalize(scope)
     q = db.query(Asset).options(joinedload(Asset.asset_type), joinedload(Asset.location))
     mode, values = scope["mode"], scope["values"]

@@ -29,6 +29,9 @@ from app.models.risk import AssetRiskHistory
 # ── risk ─────────────────────────────────────────────────────────────────
 
 def risk_at(db: Session, asset_ids: Iterable[int], when: datetime) -> Dict[int, float]:
+    """Each asset's risk score as it was at a moment (its latest history entry before it), for "change
+    since" figures.
+    """
     ids = list(asset_ids)
     if not ids:
         return {}
@@ -87,6 +90,9 @@ def accepted_at(db: Session, when: datetime) -> List[RiskAcceptance]:
 
 @dataclass
 class Remediation:
+    """Remediation items of a report's assets and period, grouped (open, overdue, accepted, new, fixed)
+    with on-time counts.
+    """
     open: List[RemediationItem] = field(default_factory=list)
     overdue: List[RemediationItem] = field(default_factory=list)
     accepted: List[RemediationItem] = field(default_factory=list)
@@ -142,6 +148,7 @@ def remediation(db: Session, asset_ids: Set[int], start: datetime, end: datetime
 
 
 def count_by(items: Iterable, key) -> Dict:
+    """Count items by a key function."""
     out = defaultdict(int)
     for i in items:
         out[key(i)] += 1

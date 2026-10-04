@@ -85,7 +85,9 @@ def _fetcher():
     fonts = FONTS.resolve()
 
     class LocalOnly(URLFetcher):
+        """URL fetcher that serves only data: URLs and files inside the font folder."""
         def fetch(self, url, headers=None):
+            """Fetch an allowed URL; anything else raises, so WeasyPrint leaves the resource out."""
             parsed = urlparse(url)
             if parsed.scheme == "data":
                 return super().fetch(url, headers)
@@ -99,6 +101,9 @@ def _fetcher():
 
 
 def pdf(meta: Dict, sections: List[dict]) -> Tuple[bytes, int]:
+    """Render the report as PDF and return (bytes, page count). Templates autoescape every value; fonts
+    come from the bundled folder only.
+    """
     from weasyprint import HTML
     html = _env.get_template("report.html").render(
         **meta, sections=_prepare(sections), classification_color=CLASSIFICATION_COLORS.get(meta["classification"],
@@ -132,7 +137,16 @@ def _value(c):
     return c
 
 
+def _add(sheet, values) -> None:
+    """Append a row; a value such as '=HYPERLINK(...)' (an asset name) stays text, never a formula."""
+    from app.utils.excel_utils import append_text_safe
+    append_text_safe(sheet, values)
+
+
 def xlsx(meta: Dict, sections: List[dict], rtl: bool) -> bytes:
+    """Render the report as an Excel workbook: one sheet per table, right-to-left for Persian; cell
+    values are neutralised against formula injection.
+    """
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
@@ -144,41 +158,41 @@ def xlsx(meta: Dict, sections: List[dict], rtl: bool) -> bytes:
     used = set()
     summary.title = _sheet_name(meta["t_summary"], used)
     summary.sheet_view.rightToLeft = rtl
-    summary.append([meta["title"]])
+    _add(summary, [meta["title"]])
     summary["A1"].font = Font(bold=True, size=14, color="1E3A5F")
     for k, v in meta["about"]:
-        summary.append([k, v])
-    summary.append([])
+        _add(summary, [k, v])
+    _add(summary, [])
 
     for s in sections:
         tables = [b for b in s["blocks"] if b and b.get("type") == "table"]
         other = [b for b in s["blocks"] if b and b.get("type") in ("kpis", "bullets", "note", "heading", "bars")]
         if other:
-            summary.append([s["title"]])
+            _add(summary, [s["title"]])
             summary.cell(row=summary.max_row, column=1).font = head_font
             for b in other:
                 if b["type"] == "kpis":
                     for k in b["items"]:
-                        summary.append([k["label"], k["value"], k.get("delta") or "", k.get("sub") or ""])
+                        _add(summary, [k["label"], k["value"], k.get("delta") or "", k.get("sub") or ""])
                 elif b["type"] == "bullets":
                     for i in b["items"]:
-                        summary.append(["•", i])
+                        _add(summary, ["•", i])
                 elif b["type"] == "bars":
                     for r in b["rows"]:
-                        summary.append([r["label"], r["text"], r.get("change") or ""])
+                        _add(summary, [r["label"], r["text"], r.get("change") or ""])
                 elif b["type"] in ("note", "heading"):
-                    summary.append([b["text"]])
-            summary.append([])
+                    _add(summary, [b["text"]])
+            _add(summary, [])
         for b in tables:
             ws = wb.create_sheet(_sheet_name(b.get("sheet") or b.get("title") or s["title"], used))
             ws.sheet_view.rightToLeft = rtl
-            ws.append([c["label"] for c in b["columns"]])
+            _add(ws, [c["label"] for c in b["columns"]])
             for cell in ws[1]:
                 cell.font, cell.fill = head_font, head_fill
             for row in b["rows"]:
-                ws.append([_value(c) for c in row])
+                _add(ws, [_value(c) for c in row])
             if not b["rows"]:
-                ws.append([b["empty"]])
+                _add(ws, [b["empty"]])
             ws.freeze_panes = "A2"
             if b["rows"]:
                 ws.auto_filter.ref = ws.dimensions

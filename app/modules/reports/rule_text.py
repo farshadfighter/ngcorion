@@ -86,6 +86,9 @@ def _benchmark_loader(key: str):
 
 @lru_cache(maxsize=None)
 def catalog(device_type: str) -> Dict[str, Text]:
+    """Title and remediation text of every check of a device type, from that module's rules (cached);
+    empty when the module's catalog cannot be loaded.
+    """
     out: Dict[str, Text] = {}
     loader = LOADERS.get(device_type) or _benchmark_loader(device_type)
     if loader:
@@ -97,6 +100,7 @@ def catalog(device_type: str) -> Dict[str, Text]:
 
 
 def text_for(device_type, check_number: Optional[str]) -> Text:
+    """(title, remediation) of one check, or (None, None)."""
     raw = str(device_type.value if hasattr(device_type, "value") else device_type or "").lower()
     if not check_number:
         return None, None

@@ -25,6 +25,9 @@ def fa_digits(value) -> str:
 # ── Solar Hijri ⇄ Gregorian ──────────────────────────────────────────────
 
 def to_jalali(d: date) -> Tuple[int, int, int]:
+    """Gregorian date to Jalali (Solar Hijri) (year, month, day), by the standard arithmetic
+    conversion.
+    """
     gy, gm, gd = d.year, d.month, d.day
     g_d_m = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
     gy2 = gy + 1 if gm > 2 else gy
@@ -44,6 +47,7 @@ def to_jalali(d: date) -> Tuple[int, int, int]:
 
 
 def from_jalali(jy: int, jm: int, jd: int) -> date:
+    """Jalali (year, month, day) to a Gregorian date."""
     jy += 1595
     days = -355668 + 365 * jy + (jy // 33) * 8 + ((jy % 33) + 3) // 4 + jd
     days += (jm - 1) * 31 if jm < 7 else (jm - 7) * 30 + 186
@@ -83,6 +87,9 @@ def month_start(d: date, lang: str, offset: int = 0) -> date:
 
 
 def quarter_start(d: date, lang: str, offset: int = 0) -> date:
+    """First day of the quarter containing `d` (shifted by `offset` quarters), in the Jalali calendar
+    for Persian reports and the Gregorian one otherwise.
+    """
     if lang == "fa":
         y, m, _ = to_jalali(d)
         q0 = ((m - 1) // 3) * 3 + offset * 3
@@ -105,6 +112,9 @@ def with_day(first_of_month: date, day: int, lang: str) -> date:
 # ── formatting ───────────────────────────────────────────────────────────
 
 def fmt_date(d: Optional[date], lang: str, long: bool = False) -> str:
+    """A date as a report prints it: Jalali with Persian digits (optionally the month name) for
+    Persian, ISO-like for English; "—" for none.
+    """
     if d is None:
         return "—"
     if isinstance(d, datetime):
@@ -128,6 +138,7 @@ def fmt_short(d: Optional[date], lang: str) -> str:
 
 
 def fmt_datetime(dt: Optional[datetime], lang: str) -> str:
+    """A date and time as a report prints it, in the report's language and calendar."""
     if dt is None:
         return "—"
     text = f"{fmt_date(dt.date(), lang)}، {dt:%H:%M}" if lang == "fa" else f"{fmt_date(dt.date(), lang)}, {dt:%H:%M}"

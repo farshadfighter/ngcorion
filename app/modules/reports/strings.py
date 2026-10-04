@@ -16,6 +16,9 @@ def _literal(node) -> str:
 
 
 def collect() -> Set[str]:
+    """Every English sentence the report code translates (found by walking the source), for checking
+    that each has a Persian translation.
+    """
     from app.modules.reports import service, templates
     from app.modules.reports.i18n import Tr
     found: Set[str] = set()

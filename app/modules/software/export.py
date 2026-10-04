@@ -5,6 +5,7 @@ from typing import Dict
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from app.utils.excel_utils import append_text_safe
 
 _FA = {
     "Software": "نرم‌افزارها",
@@ -60,7 +61,8 @@ def products_workbook(data: Dict, lang: str = "en") -> BytesIO:
     for r in data["items"]:
         cve = r.get("cve") or {}
         versions = ", ".join(f"{v['version'] or '?'} ({v['assets']})" for v in r["versions"])
-        ws.append([
+        # Names and versions come from the audited hosts: never let one become a formula.
+        append_text_safe(ws, [
             r["label"], tr(STATUS.get(r["status"], r["status"])), ", ".join(r["cpes"]), ", ".join(r["names"]),
             r.get("publisher") or "", ", ".join(tr(SOURCE.get(s, s)) for s in r["sources"]),
             ", ".join(r["origins"]), versions, r["asset_count"], cve.get("count") or "",

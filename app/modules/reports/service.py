@@ -44,6 +44,7 @@ MIME = {"pdf": "application/pdf", "xlsx": "application/vnd.openxmlformats-office
 
 
 class ReportError(Exception):
+    """A report request was refused or failed; status_code is the HTTP status for the API."""
     def __init__(self, message: str, status_code: int = 400):
         super().__init__(message)
         self.message = message
@@ -59,6 +60,8 @@ def get_settings(db: Session) -> Dict:
 
 
 def save_settings(db: Session, payload: Dict, user: User) -> Dict:
+    """Validate and store report settings (logo type and size, retention between 30 and 3650 days).
+    """
     clean = dict(DEFAULT_SETTINGS)
     clean["org_name"] = (payload.get("org_name") or "").strip()[:120] or DEFAULT_SETTINGS["org_name"]
     clean["org_unit"] = (payload.get("org_unit") or "").strip()[:120]
@@ -94,6 +97,7 @@ def _role(user: User) -> str:
 
 
 def can_read(db: Session, user: User, module: Optional[str]) -> bool:
+    """Whether the user may read a permission module (admins always)."""
     if module is None or _role(user) == "admin":
         return True
     perm = (db.query(UserPermission)
@@ -102,6 +106,9 @@ def can_read(db: Session, user: User, module: Optional[str]) -> bool:
 
 
 def template_visible(db: Session, user: User, tpl) -> bool:
+    """Whether the user may use a template: admin-only templates for admins, otherwise read access to
+    its module or to at least one of its sections.
+    """
     if getattr(tpl, "admin_only", False):
         return _role(user) == "admin"
     if tpl.module:
@@ -110,6 +117,8 @@ def template_visible(db: Session, user: User, tpl) -> bool:
 
 
 def visible_reports(db: Session, user: User):
+    """Query of the reports a user may see: admins all, others their own and those of their schedules.
+    """
     q = db.query(Report)
     if _role(user) != "admin":
         own_schedules = [sid for (sid,) in db.query(ReportSchedule.id).filter(ReportSchedule.owner_id == user.id)]
@@ -118,6 +127,8 @@ def visible_reports(db: Session, user: User):
 
 
 def get_visible(db: Session, user: User, report_id: int) -> Report:
+    """One report the user may see, or ReportError 404 (not 403, so others' reports are not revealed).
+    """
     r = visible_reports(db, user).filter(Report.id == report_id).first()
     if r is None:
         raise ReportError("Report not found", 404)
@@ -128,6 +139,9 @@ def get_visible(db: Session, user: User, report_id: int) -> Report:
 
 def validate(db: Session, user: User, template: str, language: str, formats: List[str], classification: str,
              params: Dict, for_schedule: bool = False) -> Tuple[str, List[str], Dict]:
+    """Check a report request against the template (access, language, formats, classification, period,
+    scope, options) and return the normalised template id, formats and parameters.
+    """
     tpl = TEMPLATES.get(template)
     if tpl is None:
         raise ReportError("Unknown report" if template not in {p.id for p in PLANNED}
@@ -192,6 +206,9 @@ def validate(db: Session, user: User, template: str, language: str, formats: Lis
 
 def create(db: Session, user: User, template: str, title: str, language: str, formats: List[str],
            classification: str, params: Dict, schedule: Optional[ReportSchedule] = None) -> Report:
+    """Validate and queue a report (at most MAX_PENDING_PER_USER pending per user unless it comes from
+    a schedule).
+    """
     template, formats, params = validate(db, user, template, language, formats, classification, params)
     if schedule is None:
         pending = (db.query(Report).filter(Report.created_by == user.id, Report.status.in_(REPORT_PENDING),
@@ -345,6 +362,7 @@ def run(db: Session, report: Report) -> None:
 
 
 def claim_next(db: Session) -> Optional[Report]:
+    """Take the oldest queued report for this worker (FOR UPDATE SKIP LOCKED)."""
     r = (db.query(Report).filter(Report.status == REPORT_QUEUED).order_by(Report.id)
          .with_for_update(skip_locked=True).first())
     if r is None:
@@ -367,6 +385,7 @@ def fail_stale(db: Session, now: Optional[datetime] = None) -> int:
 
 
 def cancel(db: Session, report: Report) -> None:
+    """Cancel a report that has not started."""
     if report.status != REPORT_QUEUED:
         raise ReportError("Only a report that has not started can be cancelled", 409)
     report.status, report.finished_at = REPORT_CANCELLED, datetime.utcnow()
@@ -374,6 +393,7 @@ def cancel(db: Session, report: Report) -> None:
 
 
 def purge_old(db: Session, now: Optional[datetime] = None) -> int:
+    """Delete unpinned, finished reports older than the retention period; returns how many."""
     now = now or datetime.utcnow()
     days = int(get_settings(db)["retention_days"])
     rows = (db.query(Report).filter(Report.pinned.is_(False), Report.status.notin_(REPORT_PENDING),
@@ -431,6 +451,9 @@ def next_run(s: ReportSchedule, after_utc: datetime, tz) -> datetime:
 
 
 def save_schedule(db: Session, user: User, payload: Dict, schedule: Optional[ReportSchedule] = None) -> ReportSchedule:
+    """Validate and store a schedule (as `user`, whose permissions the scheduled reports run with) and
+    compute its next run.
+    """
     template, formats, params = validate(db, user, payload.get("template"), payload.get("language"),
                                          payload.get("formats"), payload.get("classification"),
                                          payload.get("params"), for_schedule=True)
@@ -498,6 +521,9 @@ def queue_schedule(db: Session, s: ReportSchedule, now: Optional[datetime] = Non
 
 
 def run_due_schedules(db: Session, now: Optional[datetime] = None) -> int:
+    """Queue a report for every schedule that is due and move each to its next run; returns how many
+    were queued.
+    """
     now = now or datetime.utcnow()
     due = (db.query(ReportSchedule).filter(ReportSchedule.enabled.is_(True), ReportSchedule.next_run_at.isnot(None),
                                            ReportSchedule.next_run_at <= now)

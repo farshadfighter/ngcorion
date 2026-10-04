@@ -17,11 +17,13 @@ PRESETS = ("last_7_days", "last_30_days", "previous_month", "previous_quarter", 
 
 
 class PeriodError(ValueError):
+    """The requested report period is invalid (unknown kind, end before start, too long)."""
     pass
 
 
 @dataclass
 class Period:
+    """A report period: UTC bounds for queries and the local first and last day for display."""
     start: datetime          # UTC, naive, inclusive
     end: datetime            # UTC, naive, exclusive
     first_day: date          # local, inclusive

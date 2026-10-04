@@ -29,6 +29,21 @@ def neutralize_formula(value):
     return value
 
 
+def append_text_safe(sheet, values) -> None:
+    """
+    Append a row to an openpyxl sheet so that no value can become a formula.
+
+    openpyxl stores any string that starts with "=" as a formula; such a
+    string (an asset name from discovery, a package name from a device) is
+    stored as plain text instead, exactly as it reads, without the leading
+    quote neutralize_formula adds. Other strings are stored as text anyway.
+    """
+    sheet.append(list(values))
+    for cell in sheet[sheet.max_row]:
+        if isinstance(cell.value, str) and cell.value.startswith("="):
+            cell.data_type = "s"
+
+
 def create_styled_workbook(title: str) -> Workbook:
     """Create a new workbook with basic styling"""
     wb = Workbook()
