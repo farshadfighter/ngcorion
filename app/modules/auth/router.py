@@ -6,7 +6,12 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from fastapi.security import HTTPAuthorizationCredentials
+import jwt
+
+from app.core.config import settings
+from app.core.dependencies import get_current_user, security
+from app.models.revoked_token import RevokedToken
 from app.core.security import create_access_token, password_fingerprint
 from app.core.auth_rate_limiter import (
     check_login_rate_limit,
@@ -279,6 +284,32 @@ def set_my_language(
     current_user.language = data.language
     db.commit()
     return {"language": data.language}
+
+
+@router.post("/logout", response_model=MessageResponse)
+def logout(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+):
+    """
+    End this session on the server: the presented token is revoked and
+    refused from now on, even if a copy of it is still around. Other
+    sessions of the same user are not affected. Expired revocations are
+    pruned here, since a token past its expiry is refused anyway.
+    """
+    current_user = get_current_user(credentials, db)
+    payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    now = datetime.now(timezone.utc)
+    db.query(RevokedToken).filter(RevokedToken.expires_at < now).delete(synchronize_session=False)
+    jti = payload.get("jti")
+    if jti:  # tokens issued before revocation existed have none; they simply expire
+        db.add(RevokedToken(jti=str(jti), user_id=current_user.id,
+                            expires_at=datetime.fromtimestamp(payload["exp"], tz=timezone.utc)))
+    db.commit()
+    log_action(db, user_id=current_user.id, username=current_user.username, action="logout", module="auth",
+               ip_address=request.client.host if request.client else None)
+    return {"message": "Logged out"}
 
 
 @router.post("/forgot-password", response_model=MessageResponse)

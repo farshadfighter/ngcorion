@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { useSelector, useDispatch } from "react-redux";
-import { logout } from "../store/authSlice";
+import { logoutUser } from "../store/authSlice";
 import { getLicenseStatusThunk } from "../store/licenseSlice";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
@@ -149,8 +149,8 @@ export const DashboardLayout = () => {
     };
     const currentModule = menuToModule[activeMenu] || "";
 
-    const handleLogout = () => {
-        dispatch(logout());
+    const handleLogout = async () => {
+        await dispatch(logoutUser());
         navigate("/");
     };
 

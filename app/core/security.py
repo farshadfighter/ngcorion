@@ -8,6 +8,7 @@ NOTE: For user authentication dependency, use `get_current_user` from
 `app.core.dependencies` instead.
 """
 import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 import jwt  # PyJWT
 from passlib.context import CryptContext
@@ -91,7 +92,9 @@ def create_access_token(data: dict) -> str:
         str: Encoded JWT token
     """
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # jti: a random id, so logout can revoke this one token (revoked_tokens).
+    to_encode.update({"exp": expire, "iat": now, "jti": secrets.token_hex(16)})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt

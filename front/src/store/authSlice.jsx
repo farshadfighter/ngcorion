@@ -43,6 +43,18 @@ export const loginUser = createAsyncThunk(
 // rejects (→ logout) if it is missing, expired, or otherwise invalid. This is
 // what stops an expired token from rendering the dashboard before the first
 // real API call bounces the user back to login.
+// Server-side logout: the backend revokes this token, so a copy of it stops
+// working at once. The local session is cleared whatever the server says
+// (offline, already expired), so the user is never stuck signed in.
+export const logoutUser = createAsyncThunk("auth/logoutUser", async (_, { dispatch }) => {
+    try {
+        await api.post("/auth/logout", null, { timeout: 5000 });
+    } catch {
+        // already invalid or unreachable: nothing more to revoke
+    }
+    dispatch(authSlice.actions.logout());
+});
+
 export const verifyToken = createAsyncThunk(
     "auth/verify",
     async (_, { rejectWithValue }) => {

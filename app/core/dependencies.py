@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.core.security import password_fingerprint
 from app.core.license_client import LicenseServerError, LicenseServerUnreachable
 from app.models import User
+from app.models.revoked_token import RevokedToken
 
 import logging
 import requests
@@ -91,6 +92,14 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # Logged out: the token's id was revoked (server-side logout).
+    if payload.get("jti") and db.get(RevokedToken, str(payload["jti"])) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has ended. Please login again.",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
