@@ -34,6 +34,9 @@ def _keys(items: Iterable) -> Dict[Tuple, object]:
 def save(db: Session, asset_id: int, collector: str, items: Optional[List[dict]], *, trigger: str = "audit",
          audit_session_id: Optional[int] = None, user_id: Optional[int] = None,
          error: Optional[str] = None) -> SoftwareCollection:
+    """Store one collection: the items, and the changes against the previous successful collection of
+    the same collector. A failed collection keeps its error and leaves the item list untouched.
+    """
     now = datetime.utcnow()
     col = SoftwareCollection(asset_id=asset_id, collector=collector, trigger=trigger,
                              audit_session_id=audit_session_id, collected_by=user_id, collected_at=now)

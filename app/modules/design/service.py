@@ -28,6 +28,7 @@ class DesignService:
 
     @staticmethod
     def create_design(db: Session, name: str, description: Optional[str], user_id: Optional[int]) -> ArchitectureDesign:
+        """Create a design together with its empty version 1."""
         design = ArchitectureDesign(name=name, description=description, created_by=user_id)
         db.add(design)
         db.flush()
@@ -40,6 +41,7 @@ class DesignService:
 
     @staticmethod
     def latest_version_number(db: Session, design_id: int) -> Optional[int]:
+        """The highest version number of a design, or None if it has none."""
         version = (
             db.query(ArchitectureDesignVersion)
             .filter(ArchitectureDesignVersion.design_id == design_id)
@@ -64,6 +66,9 @@ class DesignService:
         user_id: Optional[int],
         clone_from: Optional[ArchitectureDesignVersion] = None,
     ) -> ArchitectureDesignVersion:
+        """Add the next version; with `clone_from`, copy its components, relationships and asset
+        mappings (relationships are re-pointed at the copied components).
+        """
         next_number = (DesignService.latest_version_number(db, design.id) or 0) + 1
         new_version = ArchitectureDesignVersion(
             design_id=design.id, version_number=next_number, notes=notes, created_by=user_id
@@ -154,6 +159,7 @@ class DesignService:
 
     @staticmethod
     def create_component(db: Session, version: ArchitectureDesignVersion, data: dict) -> DesignComponent:
+        """Add a component to a version."""
         component = DesignComponent(design_version_id=version.id, **data)
         db.add(component)
         db.commit()
@@ -162,6 +168,7 @@ class DesignService:
 
     @staticmethod
     def update_component(db: Session, component: DesignComponent, changes: dict) -> DesignComponent:
+        """Apply the changed fields (already restricted by ComponentUpdate) to a component."""
         for field, value in changes.items():
             setattr(component, field, value)
         db.commit()
@@ -175,6 +182,7 @@ class DesignService:
 
     @staticmethod
     def map_component_to_asset(db: Session, component: DesignComponent, asset_id: int, user_id: Optional[int]) -> DesignAssetMapping:
+        """Map a component to an asset, replacing an earlier mapping, and record who did it."""
         mapping = component.asset_mapping
         if mapping is None:
             mapping = DesignAssetMapping(design_component_id=component.id)
@@ -201,6 +209,7 @@ class DesignService:
 
     @staticmethod
     def create_relationship(db: Session, version: ArchitectureDesignVersion, data: dict) -> DesignRelationship:
+        """Add a relationship to a version."""
         relationship = DesignRelationship(design_version_id=version.id, **data)
         db.add(relationship)
         db.commit()
@@ -209,6 +218,7 @@ class DesignService:
 
     @staticmethod
     def update_relationship(db: Session, relationship: DesignRelationship, changes: dict) -> DesignRelationship:
+        """Apply the changed fields (already restricted by RelationshipUpdate) to a relationship."""
         for field, value in changes.items():
             setattr(relationship, field, value)
         db.commit()

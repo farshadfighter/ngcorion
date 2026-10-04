@@ -23,6 +23,7 @@ SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 
 
 class SoftwareError(Exception):
+    """A software-inventory error with the HTTP status to answer with."""
     def __init__(self, message: str, status: int = 400):
         super().__init__(message)
         self.status = status
@@ -36,6 +37,7 @@ def _resolver(maps):
     cache: Dict[tuple, Resolved] = {}
 
     def get(it) -> Resolved:
+        """Resolve an item, cached by the fields identification depends on."""
         key = (it.kind, it.name, it.source_package, it.source, it.vkind, it.version)
         r = cache.get(key)
         if r is None:
@@ -190,6 +192,9 @@ def product_assets(db: Session, key: str, status: str, label: Optional[str] = No
 # ── one asset ─────────────────────────────────────────────────────────────
 
 def asset_inventory(db: Session, asset_id: int) -> Dict:
+    """One asset's software: the latest collection's items with identification, CVE counts and the
+    collection history.
+    """
     asset = db.get(Asset, asset_id)
     if asset is None:
         raise SoftwareError("Asset not found", 404)
@@ -269,6 +274,7 @@ def assets_overview(db: Session) -> List[dict]:
     rows: Dict[int, dict] = {}
 
     def row(aid):
+        """The summary row of an asset, created empty on first use."""
         r = rows.get(aid)
         if r is None:
             r = rows[aid] = {"asset_id": aid, "packages": 0, "hotfixes": 0, "outside_distro": 0, "unidentified": 0,
@@ -323,6 +329,7 @@ def _collection(c: SoftwareCollection) -> Dict:
 
 
 def changes(db: Session, asset_id: int, collection_id: Optional[int] = None, limit: int = 300) -> List[dict]:
+    """An asset's software changes, newest first, optionally of one collection."""
     q = db.query(SoftwareChange).filter(SoftwareChange.asset_id == asset_id)
     if collection_id:
         q = q.filter(SoftwareChange.collection_id == collection_id)
@@ -360,6 +367,9 @@ _CPE_PART = re.compile(r"^[a-z0-9_.\-\\+!~/()%]+$")
 
 def save_map(db: Session, match_key: str, status: str, vendor: Optional[str], product: Optional[str],
              label: Optional[str], user_id: Optional[int]) -> SoftwareProductMap:
+    """Create or replace the identification of a product match key; a CPE mapping needs vendor and
+    product in CPE form.
+    """
     key = (match_key or "").strip().lower()
     if not key or len(key) > 300:
         raise SoftwareError("Unknown product")

@@ -15,6 +15,8 @@ from app.models import User, AssetRequirementLog
 
 
 class AssetRequirementLogResponse(BaseModel):
+    """One entry of the change log of asset reference data (types, owners, locations, zones, catalogs).
+    """
     id: int
     user_id: Optional[int] = None
     username: Optional[str] = None

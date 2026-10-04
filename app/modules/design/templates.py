@@ -21,6 +21,7 @@ from typing import Any
 
 @dataclass
 class TemplateInfo:
+    """A standard design template: id, name, description and the framework it follows."""
     id: str
     name: str
     description: str

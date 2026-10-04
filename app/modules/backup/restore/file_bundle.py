@@ -50,6 +50,9 @@ FAMILY_SERVICES = {
 
 
 def family_paths(family: str) -> List[str]:
+    """The files a backup of this family contains (the same list the backup uses), which is also the
+    allowlist a restore may write.
+    """
     if family == "linux":
         from app.modules.linux.hardening.ssh_executor import LINUX_BACKUP_PATHS
         return LINUX_BACKUP_PATHS
@@ -69,6 +72,7 @@ def path_allowed(path: str, family: str) -> bool:
 
 
 def parse_bundle(text: str) -> Dict[str, str]:
+    """Split a file-bundle backup into {path: content}."""
     files: Dict[str, str] = {}
     lines = (text or "").split("\n")
     i = 0
@@ -94,6 +98,9 @@ def parse_bundle(text: str) -> Dict[str, str]:
 
 @dataclass
 class BundlePlan:
+    """Files a restore writes back and removes, files refused because they are outside the allowlist,
+    and the diff for the preview.
+    """
     write: Dict[str, str] = field(default_factory=dict)     # path -> backup content
     remove: List[str] = field(default_factory=list)          # added after the backup
     rejected: List[str] = field(default_factory=list)        # outside the allowlist
@@ -101,6 +108,9 @@ class BundlePlan:
 
 
 def plan_bundle(backup_text: str, live_text: str, family: str) -> BundlePlan:
+    """Compare backup and live bundles file by file; a path outside the family's allowlist is never
+    written, whatever the backup contains.
+    """
     backup, live = parse_bundle(backup_text), parse_bundle(live_text)
     plan = BundlePlan()
     for path in sorted(set(backup) | set(live)):

@@ -33,6 +33,7 @@ class RestoreApplyError(RuntimeError):
 
 @dataclass
 class Credentials:
+    """Connection details for one restore; held in memory for the run only, never stored."""
     host: str
     username: str
     password: str
@@ -43,6 +44,8 @@ class Credentials:
 
 @dataclass
 class RestorePlan:
+    """What a restore will do: the diff, the device commands (or file bundle) and the risks found.
+    """
     diff: config_tree.ConfigDiff
     commands: List[str] = field(default_factory=list)
     bundle: Optional[file_bundle.BundlePlan] = None
@@ -65,6 +68,9 @@ def _sock_ip(transport) -> Optional[str]:
 # --------------------------------------------------------------------------- #
 
 class CiscoDriver:
+    """Restores a Cisco IOS configuration line by line in configuration mode, under IOS's own
+    "configure terminal revert timer" when the archive feature is set up.
+    """
     family = "cisco"
 
     def __init__(self, creds: Credentials):
@@ -73,6 +79,7 @@ class CiscoDriver:
         self.armed = False
 
     def open(self):
+        """Connect over SSH (host key pinned by the executor)."""
         from app.modules.cisco.hardening.ssh_executor import CiscoHardeningExecutor
         self.executor = CiscoHardeningExecutor(
             ip=self.creds.host, username=self.creds.username, password=self.creds.password,
@@ -98,6 +105,7 @@ class CiscoDriver:
         return _sock_ip(self._conn.remote_conn.get_transport())
 
     def auto_revert_available(self) -> Tuple[bool, str]:
+        """Whether IOS can roll back on its own: the revert timer needs the archive feature."""
         out = self.executor.ssh_client.send_command("show archive", timeout=30)
         if re.search(r"not enabled|invalid input|% ?incomplete", out or "", re.I) or "archive" not in (out or "").lower():
             return False, ("The device's archive feature is not configured, so IOS cannot "
@@ -116,6 +124,9 @@ class CiscoDriver:
                 raise RestoreApplyError("Cannot enter privileged mode: provide the enable secret.")
 
     def apply(self, plan: RestorePlan, revert_minutes: Optional[int]):
+        """Enter configuration mode (with the revert timer if asked) and send the plan's commands; a
+        command the device rejects stops the run with RestoreApplyError.
+        """
         self._ensure_enable()
         conn = self._conn
         if revert_minutes:
@@ -152,6 +163,9 @@ _FORTI_BAD = re.compile(r"command fail|parse error|unknown action|permission den
 
 
 class FortiGateDriver:
+    """Restores a FortiGate configuration with the CLI, protected by FortiOS's "cfg-save revert" mode:
+    unless confirmed, the device reloads its saved configuration after the timeout.
+    """
     family = "fortinet"
 
     def __init__(self, creds: Credentials):
@@ -162,6 +176,9 @@ class FortiGateDriver:
         self.vdom_mode = False
 
     def open(self):
+        """Connect over SSH (host key pinned) and find out whether VDOMs are enabled, which changes how
+        global settings are entered.
+        """
         from app.modules.fortinet.hardening.ssh_executor import FortiGateHardeningExecutor
         self.executor = FortiGateHardeningExecutor(
             ip=self.creds.host, username=self.creds.username, password=self.creds.password,
@@ -182,6 +199,9 @@ class FortiGateDriver:
         return self.executor.ssh_client
 
     def read_live(self) -> str:
+        """The running configuration; also remembers the current cfg-save mode so confirm() can put it
+        back.
+        """
         text = self._client.send_raw("show full-configuration")
         m = re.search(r"set cfg-save (\w+)", text or "")
         if m:
@@ -213,6 +233,7 @@ class FortiGateDriver:
         return out
 
     def apply(self, plan: RestorePlan, revert_minutes: Optional[int]):
+        """Arm the revert timeout (cfg-save revert) if asked, then send the plan's commands."""
         if revert_minutes:
             for cmd in self._global([
                 "config system global",
@@ -226,6 +247,7 @@ class FortiGateDriver:
             self._send(cmd)
 
     def confirm(self):
+        """Keep the restored configuration: save it and put the original cfg-save mode back."""
         if self.armed:
             self._send("execute cfg save")
         for cmd in self._global(["config system global", f"set cfg-save {self.original_cfg_save}", "end"]):
@@ -234,6 +256,8 @@ class FortiGateDriver:
             self._send("execute cfg save")
 
     def revert_now(self):
+        """Undo now: reload the saved configuration (only possible when the revert mode was armed).
+        """
         if self.armed:
             conn = self._client._connection
             out = conn.send_command_timing("execute cfg reload", strip_prompt=False, strip_command=False)
@@ -246,6 +270,10 @@ class FortiGateDriver:
 # --------------------------------------------------------------------------- #
 
 class FileBundleDriver:
+    """Restores the configuration files of a Linux, Apache or MongoDB server from a file bundle:
+    snapshot of the current files, a timer on the host that puts them back unless disarmed, then the
+    writes.
+    """
     def __init__(self, family: str, creds: Credentials, job_id: int):
         self.family = family
         self.creds = creds
@@ -255,6 +283,7 @@ class FileBundleDriver:
         self._plan: Optional[file_bundle.BundlePlan] = None
 
     def open(self):
+        """Connect over SSH with sudo (host key pinned)."""
         from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
         self.runner = HardeningSSHRunner(
             ip=self.creds.host, username=self.creds.username, password=self.creds.password,
@@ -292,6 +321,9 @@ class FileBundleDriver:
         return True, "revert timer on the host"
 
     def plan(self, backup_text: str, live_text: str) -> RestorePlan:
+        """Compare the backup bundle with the live files (only allowlisted paths) and assess the
+        SSH-lockout risk of the result.
+        """
         bundle = file_bundle.plan_bundle(backup_text, live_text, self.family)
         after = {**file_bundle.parse_bundle(live_text), **bundle.write}
         for path in bundle.remove:
@@ -300,6 +332,9 @@ class FileBundleDriver:
             bundle.diff, after, self.family, self.creds.username, self.creds.port))
 
     def apply(self, plan: RestorePlan, revert_minutes: Optional[int]):
+        """Snapshot the current files, arm the auto-revert timer on the host if asked, then write and
+        remove files as planned.
+        """
         bundle = plan.bundle
         self._plan = bundle
         self._must(file_bundle.snapshot_command(bundle, self.workdir), "Saving the current files")
@@ -323,6 +358,7 @@ class FileBundleDriver:
         self._sudo(file_bundle.disarm_command(self.timer_pid, self.workdir))
 
     def revert_now(self):
+        """Put the snapshot back and disarm the timer."""
         if self._plan is None:
             return
         self._sudo(file_bundle.revert_script(self._plan, self.family, self.workdir), timeout=180)
@@ -330,6 +366,7 @@ class FileBundleDriver:
 
 
 def make_driver(family: str, creds: Credentials, job_id: int = 0):
+    """The restore driver for a device family; ValueError for a family that cannot be restored."""
     if family == "cisco":
         return CiscoDriver(creds)
     if family == "fortinet":

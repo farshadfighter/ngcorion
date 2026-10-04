@@ -15,6 +15,7 @@ from app.models import User, AssetLog
 
 
 class AssetLogResponse(BaseModel):
+    """One entry of the asset change log."""
     id: int
     user_id: Optional[int] = None
     username: Optional[str] = None

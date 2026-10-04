@@ -74,6 +74,7 @@ def get_product_assets(key: str = Query(..., max_length=300), status: str = Quer
 @router.get("/products/export")
 def export_products(lang: Literal["fa", "en"] = "en", db: Session = Depends(get_db),
                     user: User = Depends(_read)):
+    """Download the software products list as Excel."""
     data = service.products(db)
     stream = export.products_workbook(data, lang)
     _log(db, user, "software.export", f"Exported {len(data['items'])} software products")
@@ -91,6 +92,7 @@ def get_assets_overview(db: Session = Depends(get_db), _: User = Depends(_read))
 
 @router.get("/assets/{asset_id}")
 def get_asset_inventory(asset_id: int, db: Session = Depends(get_db), _: User = Depends(_read)):
+    """The software installed on one asset, with identification and CVE counts."""
     try:
         return service.asset_inventory(db, asset_id)
     except SoftwareError as e:
@@ -110,12 +112,15 @@ def get_asset_updates(asset_id: int, db: Session = Depends(get_db), _: User = De
 @router.get("/assets/{asset_id}/changes")
 def get_asset_changes(asset_id: int, collection_id: Optional[int] = None, db: Session = Depends(get_db),
                       _: User = Depends(_read)):
+    """What was installed, removed or updated on an asset, per collection."""
     if db.get(Asset, asset_id) is None:
         raise HTTPException(status_code=404, detail="Asset not found")
     return service.changes(db, asset_id, collection_id)
 
 
 class CollectIn(BaseModel):
+    """Body of collecting now: platform and credentials, used for this request only and never stored.
+    """
     platform: Literal["linux", "windows"]
     username: str = Field(..., min_length=1, max_length=200)
     password: str = Field(..., min_length=1, max_length=500)
@@ -141,6 +146,9 @@ def _connect_error(exc: Exception) -> HTTPException:
 
 @router.post("/assets/{asset_id}/collect")
 async def collect_now(asset_id: int, body: CollectIn, db: Session = Depends(get_db), user: User = Depends(_write)):
+    """Collect an asset's installed software now over SSH or WinRM (runs in a worker thread so the
+    server stays responsive).
+    """
     asset = db.get(Asset, asset_id)
     if asset is None:
         raise HTTPException(status_code=404, detail="Asset not found")
@@ -175,6 +183,7 @@ async def collect_now(asset_id: int, body: CollectIn, db: Session = Depends(get_
 # ── identifying products ──────────────────────────────────────────────────
 
 class MapIn(BaseModel):
+    """Body of identifying a product: either a CPE vendor/product or "internal" (not in NVD)."""
     match_key: str = Field(..., min_length=1, max_length=300)
     status: Literal["cpe", "internal"]
     vendor: Optional[str] = Field(None, max_length=120)
@@ -195,6 +204,7 @@ def get_suggestions(q: str = Query(..., min_length=1, max_length=200), db: Sessi
 
 @router.put("/maps")
 def put_map(body: MapIn, db: Session = Depends(get_db), user: User = Depends(require_admin_or_manager)):
+    """Save how a product is identified (admin or manager); findings follow on the next matching."""
     try:
         row = service.save_map(db, body.match_key, body.status, body.vendor, body.product, body.label, user.id)
     except SoftwareError as e:
@@ -207,6 +217,7 @@ def put_map(body: MapIn, db: Session = Depends(get_db), user: User = Depends(req
 
 @router.delete("/maps/{map_id}")
 def delete_map(map_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin_or_manager)):
+    """Remove an administrator's identification; the built-in catalog applies again."""
     row = db.get(SoftwareProductMap, map_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Mapping not found")

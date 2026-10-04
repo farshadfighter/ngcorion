@@ -60,6 +60,7 @@ def fingerprint(family: str, text: str) -> str:
 
 
 def serialize_plan(plan: RestorePlan) -> Dict:
+    """The plan as JSON for the preview, cut to MAX_PREVIEW_LINES lines."""
     sections, total = [], 0
     for s in plan.diff.sections:
         if total >= MAX_PREVIEW_LINES:
@@ -83,6 +84,10 @@ def serialize_plan(plan: RestorePlan) -> Dict:
 
 
 def preview(backup: DeviceBackup, creds: Credentials, driver_factory=make_driver) -> Dict:
+    """Connect, read the live configuration and return what a restore of this backup would change, the
+    risks, whether auto-revert is available and a fingerprint of the live configuration (the restore
+    refuses to run if it changes meanwhile).
+    """
     driver = driver_factory(backup.device_type, creds, 0)
     driver.open()
     try:
@@ -121,6 +126,9 @@ class _Job:
         self.db.commit()
 
     def event(self, step: str, status: str, message: str):
+        """Append a step to the job's event log (secrets scrubbed) and commit, so the UI can follow
+        along.
+        """
         events = list(self.job.events or [])
         events.append({"at": datetime.utcnow().isoformat() + "Z", "step": step,
                        "status": status, "message": self._clean(message)})
@@ -128,6 +136,7 @@ class _Job:
         self.db.commit()
 
     def finish(self, status: str, error: Optional[str] = None):
+        """Set the job's final status and error (secrets scrubbed)."""
         self.job.status = status
         self.job.error = self._clean(error)
         self.job.finished_at = datetime.utcnow()
@@ -138,6 +147,12 @@ def run_restore(job_id: int, creds: Credentials, expected_fingerprint: str,
                 acknowledged_lockout: bool = False, allow_without_auto_revert: bool = False,
                 driver_factory: Callable = make_driver, sleep: Callable = time.sleep,
                 session_factory: Callable = SessionLocal) -> None:
+    """Run a restore job end to end in its own database session: reconnect, check the live
+    configuration still matches the previewed fingerprint, re-check lockout risks, save the current configuration as a
+    new backup, apply with auto-revert,
+    verify the device is still reachable with a fresh connection, then confirm, or revert on any
+    failure. Credentials live only for this call.
+    """
     db = session_factory()
     driver = None
     try:
@@ -316,6 +331,8 @@ def _await_self_revert(j: _Job, driver, family, pre_text, armed, minutes, applie
 
 def start_restore(job_id: int, creds: Credentials, expected_fingerprint: str,
                   acknowledged_lockout: bool, allow_without_auto_revert: bool) -> None:
+    """Run the restore in a background thread; the request returns at once and the UI polls the job.
+    """
     threading.Thread(
         target=run_restore,
         args=(job_id, creds, expected_fingerprint, acknowledged_lockout, allow_without_auto_revert),

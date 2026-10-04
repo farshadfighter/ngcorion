@@ -32,6 +32,9 @@ RESTORE_GROUPS = {
 
 
 def compute_overview(db: Session, now: Optional[datetime] = None, stale_days: int = STALE_DAYS) -> Dict:
+    """Backup coverage of the devices that can be backed up: how many have a recent backup, an old one
+    or none, per device family, and which devices need attention.
+    """
     now = now or datetime.utcnow()
     stale_before = now - timedelta(days=stale_days)
     month_ago = now - timedelta(days=30)

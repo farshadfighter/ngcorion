@@ -46,6 +46,9 @@ SEVERITY = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "
 
 
 def products_workbook(data: Dict, lang: str = "en") -> BytesIO:
+    """Excel workbook of the software products page (Persian headers and right-to-left when lang is
+    "fa"); every cell is written as text, never as a formula.
+    """
     tr = (lambda s: _FA.get(s, s)) if lang == "fa" else (lambda s: s)
     wb = Workbook()
     ws = wb.active

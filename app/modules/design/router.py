@@ -63,6 +63,7 @@ def list_designs(
     current_user: User = Depends(require_permission("design_configuration", "read")),
     db: Session = Depends(get_db),
 ):
+    """List every architecture design with the number of its newest version."""
     designs = DesignService.list_designs(db)
     return [
         DesignSummary(
@@ -133,6 +134,9 @@ def create_design(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Create a design with an empty version 1, or with version 1 filled from a standard template when
+    `template_id` is given (400 for an unknown template or scale).
+    """
     design = DesignService.create_design(db, request.name, request.description, current_user.id)
     if request.template_id:
         try:
@@ -151,6 +155,7 @@ def get_design(
     current_user: User = Depends(require_permission("design_configuration", "read")),
     db: Session = Depends(get_db),
 ):
+    """One design and all its versions."""
     design = DesignService.get_design(db, design_id)
     if not design:
         raise HTTPException(status_code=404, detail="Design not found")
@@ -171,6 +176,9 @@ def create_version(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Add the next version of a design, empty or as a copy of one of the same design's versions (a
+    version of another design is refused).
+    """
     design = DesignService.get_design(db, design_id)
     if not design:
         raise HTTPException(status_code=404, detail="Design not found")
@@ -190,6 +198,8 @@ def get_version_detail(
     current_user: User = Depends(require_permission("design_configuration", "read")),
     db: Session = Depends(get_db),
 ):
+    """One version with its components (and their mapped assets) and relationships, for the canvas.
+    """
     version = DesignService.get_version(db, version_id)
     if not version:
         raise HTTPException(status_code=404, detail="Design version not found")
@@ -207,6 +217,7 @@ def create_component(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Place a component on a version's canvas."""
     version = DesignService.get_version(db, version_id)
     if not version:
         raise HTTPException(status_code=404, detail="Design version not found")
@@ -221,6 +232,7 @@ def update_component(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Change a component's type, label, notes or position; only the fields sent are changed."""
     component = DesignService.get_component(db, component_id)
     if not component:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -236,6 +248,7 @@ def delete_component(
     current_user: User = Depends(require_permission("design_configuration", "delete")),
     db: Session = Depends(get_db),
 ):
+    """Remove a component; its relationships and asset mapping go with it."""
     component = DesignService.get_component(db, component_id)
     if not component:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -249,6 +262,8 @@ def map_component(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Link a design component to the real asset that implements it (replaces an earlier mapping).
+    """
     component = DesignService.get_component(db, component_id)
     if not component:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -266,6 +281,7 @@ def unmap_component(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Remove the link between a component and its asset."""
     component = DesignService.get_component(db, component_id)
     if not component:
         raise HTTPException(status_code=404, detail="Component not found")
@@ -279,6 +295,9 @@ def create_relationship(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Connect two components of the same version; a component cannot connect to itself or to a
+    component of another version.
+    """
     version = DesignService.get_version(db, version_id)
     if not version:
         raise HTTPException(status_code=404, detail="Design version not found")
@@ -298,6 +317,8 @@ def update_relationship(
     current_user: User = Depends(require_permission("design_configuration", "write")),
     db: Session = Depends(get_db),
 ):
+    """Change a relationship's interfaces, link type, VLAN or subnet; only the fields sent are changed.
+    """
     relationship = DesignService.get_relationship(db, relationship_id)
     if not relationship:
         raise HTTPException(status_code=404, detail="Relationship not found")
@@ -313,6 +334,7 @@ def delete_relationship(
     current_user: User = Depends(require_permission("design_configuration", "delete")),
     db: Session = Depends(get_db),
 ):
+    """Remove a relationship."""
     relationship = DesignService.get_relationship(db, relationship_id)
     if not relationship:
         raise HTTPException(status_code=404, detail="Relationship not found")

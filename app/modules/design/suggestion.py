@@ -62,6 +62,7 @@ def determine_scale(total_assets: int) -> str:
 
 @dataclass
 class SuggestedComponent:
+    """One slot of the suggested design and the asset chosen for it, if any."""
     key: str
     component_type: str
     label: str
@@ -77,6 +78,7 @@ class SuggestedComponent:
 
 @dataclass
 class SuggestedRelationship:
+    """A link between two slots of the suggested design."""
     source_key: str
     destination_key: str
     link_type: str = "ethernet"
@@ -84,6 +86,7 @@ class SuggestedRelationship:
 
 @dataclass
 class DesignSuggestion:
+    """The suggested design for the current inventory."""
     scale: str
     scale_label: str
     total_assets: int
@@ -93,6 +96,10 @@ class DesignSuggestion:
 
 
 def suggest_design(db: Session) -> DesignSuggestion:
+    """Propose a reference design sized to the inventory (small, medium or large) and fill its slots
+    with real assets of a matching type, the most capable device for the most central slot. Nothing
+    is saved; the user creates a design from it.
+    """
     assets = db.query(Asset).options(joinedload(Asset.asset_type)).all()
     total_assets = len(assets)
     scale = determine_scale(total_assets)

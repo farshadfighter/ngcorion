@@ -21,18 +21,25 @@ from typing import Dict, List, Optional, Tuple
 
 @dataclass
 class DiffLine:
+    """One line of a configuration diff: "+" set by the restore, "-" removed by it, " " context."""
     op: str          # "+" set / added on the device, "-" removed, " " context
     text: str
 
 
 @dataclass
 class DiffSection:
+    """The diff lines of one configuration section (a FortiOS "config" block, an IOS top-level line, a
+    file).
+    """
     title: str
     lines: List[DiffLine] = field(default_factory=list)
 
 
 @dataclass
 class ConfigDiff:
+    """Difference between the live configuration and the backup: sections for the preview, the commands
+    that apply it, and what was compared but cannot be restored.
+    """
     sections: List[DiffSection] = field(default_factory=list)
     commands: List[str] = field(default_factory=list)
     skipped: List[str] = field(default_factory=list)   # things compared but not restorable
@@ -60,6 +67,7 @@ class Node:
         self.children: Dict[str, "Node"] = {}
 
     def child(self, key: str, line: str) -> "Node":
+        """The child for `key`, created from `line` the first time."""
         node = self.children.get(key)
         if node is None:
             node = Node(line)
@@ -67,6 +75,7 @@ class Node:
         return node
 
     def flatten(self, depth: int = 0) -> List[Tuple[int, str]]:
+        """The subtree as (depth, line) pairs in configuration order."""
         out = []
         for node in self.children.values():
             out.append((depth, node.line))
@@ -183,6 +192,7 @@ def _forti_diff(backup: Node, live: Node, path: List[str], diff: ConfigDiff) -> 
     section: Optional[DiffSection] = None
 
     def mark(op: str, text: str):
+        """Add a diff line to the current section, opening the section on its first line."""
         nonlocal section
         if section is None:
             section = DiffSection(title)
@@ -370,6 +380,7 @@ def _cisco_diff(backup: Node, live: Node, path: List[str], diff: ConfigDiff) -> 
     section: Optional[DiffSection] = None
 
     def mark(op: str, text: str):
+        """Add a diff line to the current section, opening the section on its first line."""
         nonlocal section
         if section is None:
             section = DiffSection(title)

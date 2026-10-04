@@ -46,6 +46,9 @@ def _flagged_lines(diff: ConfigDiff, pattern: re.Pattern, use_title: bool = True
 
 def fortios_risks(diff: ConfigDiff, backup_text: str, username: str,
                   source_ip: Optional[str], ssh_port: int) -> List[Dict[str, str]]:
+    """Warnings and blockers for a FortiGate restore: changes to management access, and whether the
+    restoring account, its trusted hosts and the SSH port would still let us in afterwards.
+    """
     risks: List[Dict[str, str]] = []
     n = _flagged_lines(diff, _FORTI_MGMT)
     if n:
@@ -103,6 +106,9 @@ def _find_scope(node, key):
 
 
 def cisco_risks(diff: ConfigDiff, backup_text: str, username: str) -> List[Dict[str, str]]:
+    """Warnings for a Cisco restore: changes to management access and a backup that lacks the restoring
+    user.
+    """
     risks: List[Dict[str, str]] = []
     n = _flagged_lines(diff, _CISCO_MGMT)
     if n:
@@ -117,6 +123,9 @@ def cisco_risks(diff: ConfigDiff, backup_text: str, username: str) -> List[Dict[
 
 def bundle_risks(diff: ConfigDiff, files_after: Dict[str, str], family: str,
                  username: str, ssh_port: int) -> List[Dict[str, str]]:
+    """Warnings for a Linux restore that changes SSH, PAM or login limits, or would leave the restoring
+    user without SSH access.
+    """
     if family != "linux":
         return []
     risks: List[Dict[str, str]] = []

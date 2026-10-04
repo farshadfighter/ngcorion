@@ -32,6 +32,7 @@ router = APIRouter(prefix="/api/backups", tags=["Backups"])
 # ============================================
 
 class BackupSummary(BaseModel):
+    """A stored backup without its content."""
     id: int
     asset_id: int
     asset_name: Optional[str]
@@ -48,10 +49,12 @@ class BackupSummary(BaseModel):
 
 
 class BackupDetail(BackupSummary):
+    """A stored backup with its configuration content."""
     config_content: str
 
 
 class ManualBackupRequest(BaseModel):
+    """Body of taking a backup now; the SSH credentials are used once and not stored."""
     asset_id: int
     device_type: str  # cisco | fortinet
     ssh_username: str
@@ -103,6 +106,7 @@ def list_backups(
 
 
 class BackupAssetGroup(BaseModel):
+    """Backups of one asset, counted by source, for the grouped list."""
     asset_id: int
     asset_name: Optional[str]
     device_ip: Optional[str]
@@ -190,6 +194,7 @@ def list_backups_by_asset(
 # Declared before "/{backup_id}" so "/restores" is not parsed as a backup id.
 
 class RestoreConnection(BaseModel):
+    """SSH credentials for a restore preview or run; used for that request only."""
     ssh_username: str = Field(..., min_length=1, max_length=255)
     ssh_password: str = Field(..., min_length=1, max_length=255)
     ssh_secret: Optional[str] = Field(None, max_length=255)
@@ -198,6 +203,10 @@ class RestoreConnection(BaseModel):
 
 
 class RestoreRequest(RestoreConnection):
+    """Body of a restore: a reason, the device name typed again as confirmation, the revert window, the
+    live-configuration fingerprint from the preview, and explicit consent for lockout risk or a
+    restore without auto-revert.
+    """
     reason: str = Field(..., min_length=5, max_length=1000)
     confirm_name: str = Field(..., max_length=255)
     revert_minutes: int = Field(10, ge=5, le=15)
@@ -207,6 +216,7 @@ class RestoreRequest(RestoreConnection):
 
 
 class RestoreJobResponse(BaseModel):
+    """A restore job with its status and step log."""
     id: int
     backup_id: Optional[int]
     asset_id: int
@@ -318,6 +328,7 @@ def list_restores(
     current_user: User = Depends(require_permission("backup", "read")),
     db: Session = Depends(get_db),
 ):
+    """Recent restore jobs, optionally for one asset."""
     query = db.query(BackupRestore)
     if asset_id:
         query = query.filter(BackupRestore.asset_id == asset_id)
@@ -329,6 +340,7 @@ def list_restores(
 # ============================================
 
 class AttentionDevice(BaseModel):
+    """A device with no backup or only an old one."""
     asset_id: int
     asset_name: Optional[str]
     ip_address: Optional[str]
@@ -339,6 +351,7 @@ class AttentionDevice(BaseModel):
 
 
 class FamilyCoverage(BaseModel):
+    """Backup coverage of one device family."""
     family: str
     label: str
     total: int
@@ -346,6 +359,7 @@ class FamilyCoverage(BaseModel):
 
 
 class BackupOverview(BaseModel):
+    """Backup coverage for the backup page header."""
     stale_days: int
     stale_before: datetime
     supported: int
@@ -374,6 +388,7 @@ def backup_overview(
 
 
 class RestoreHistoryPage(BaseModel):
+    """One page of restore history with counts per status."""
     items: List[RestoreJobResponse]
     total: int
     counts: dict
@@ -400,6 +415,7 @@ def get_restore(
     current_user: User = Depends(require_permission("backup", "read")),
     db: Session = Depends(get_db),
 ):
+    """One restore job, polled by the UI while it runs."""
     job = db.get(BackupRestore, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Restore not found")

@@ -102,6 +102,9 @@ def _host(source_line: str) -> str:
 
 
 def parse_debian(outputs: Dict[str, str]) -> List[dict]:
+    """Turn dpkg output into package items: name, version, architecture, source package and the
+    repository it came from (or "local" when no configured repository offers it).
+    """
     origins = _deb_repo_origins(outputs.get("deb_repos", ""))
     installed_src: Dict[str, List[str]] = {}
     other_src: Dict[str, List[str]] = {}
@@ -147,6 +150,7 @@ def parse_debian(outputs: Dict[str, str]) -> List[dict]:
 
 
 def parse_rhel(outputs: Dict[str, str]) -> List[dict]:
+    """Turn rpm output into package items with the repository each was installed from."""
     repos = {}
     for line in (outputs.get("rpm_repos") or "").splitlines():
         parts = line.split("\t")
@@ -192,6 +196,7 @@ def _dedupe(items: List[dict]) -> List[dict]:
 
 
 def parse_os_release(text: str) -> Dict[str, str]:
+    """Read /etc/os-release into a dict (quotes removed)."""
     out = {}
     for line in (text or "").splitlines():
         m = re.match(r"^([A-Z_]+)=(.*)$", line.strip())
@@ -243,6 +248,9 @@ $cv = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
 
 
 def parse_windows(output: str) -> List[dict]:
+    """Turn the tab-separated output of the Windows collector into items: installed programs (P),
+    hotfixes (H) and the operating system (O).
+    """
     items = []
     for line in (output or "").splitlines():
         parts = [p.strip() for p in line.rstrip("\r").split("\t")]
@@ -289,6 +297,7 @@ def apache_item(version_output: str) -> Optional[dict]:
 
 
 def mongodb_item(dump: str) -> Optional[dict]:
+    """The MongoDB server version from an audit dump, as a software item, or None."""
     m = re.search(r"(?:db version v|\"version\"\s*:\s*\"|^version[:=]\s*)(\d+\.\d+\.\d+)", dump or "", re.M)
     if not m:
         m = re.search(r"\b(\d+\.\d+\.\d+)\b", (dump or "").split("buildInfo", 1)[-1][:200])
@@ -313,6 +322,7 @@ _CISCO_VERSION = re.compile(r"Cisco (IOS[ -]XE|IOS|NX-OS|Adaptive Security Appli
 
 
 def cisco_item(dump: str) -> Optional[dict]:
+    """The IOS / IOS XE / NX-OS / ASA version from "show version", as a firmware item, or None."""
     m = _CISCO_VERSION.search(dump or "")
     if not m:
         return None
@@ -324,6 +334,7 @@ def cisco_item(dump: str) -> Optional[dict]:
 
 
 def fortinet_item(status: dict) -> Optional[dict]:
+    """The FortiOS version from the system status, as a firmware item, or None."""
     version = (status or {}).get("fortios_version")
     if not version or version == "0.0.0":
         return None

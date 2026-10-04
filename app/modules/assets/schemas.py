@@ -33,6 +33,7 @@ def _validate_icon(v):
 
 
 class AssetTypeBase(BaseModel):
+    """Fields shared by asset-type requests and responses."""
     type_name: str
     category: str
     description: Optional[str] = None
@@ -40,9 +41,11 @@ class AssetTypeBase(BaseModel):
     icon: Optional[str] = None
 
 class AssetTypeCreate(AssetTypeBase):
+    """Body of creating or editing an asset type; the icon must be one of the known icon keys."""
     @field_validator('type_name', 'category')
     @classmethod
     def validate_strings(cls, v):
+        """Trim the name and category and require at least two characters."""
         v = v.strip()
         if len(v) < 2:
             raise ValueError('Field must be at least 2 characters')
@@ -54,6 +57,7 @@ class AssetTypeCreate(AssetTypeBase):
         return _validate_icon(v)
 
 class AssetTypeResponse(AssetTypeBase):
+    """An asset type with the icon actually used (its own or the one suggested by its name)."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -67,6 +71,7 @@ class AssetTypeResponse(AssetTypeBase):
 
 # Asset Schemas
 class AssetBase(BaseModel):
+    """Fields shared by asset requests and responses."""
     asset_name: str
     hostname: Optional[str] = None
     asset_type_id: int
@@ -94,11 +99,13 @@ class AssetBase(BaseModel):
     description: Optional[str] = None
 
 class AssetCreate(AssetBase):
+    """Body of creating an asset; IP and MAC are format-checked, an admin may set the owner."""
     user_id: Optional[int] = None  # Admin specifies which user owns this
 
     @field_validator('ip_address')
     @classmethod
     def validate_ip(cls, v):
+        """Accept an empty value or a dotted IPv4 address."""
         if v is None or v == '':
             return v
         # IPv4 validation
@@ -110,6 +117,7 @@ class AssetCreate(AssetBase):
     @field_validator('mac_address')
     @classmethod
     def validate_mac(cls, v):
+        """Accept an empty value or a MAC address in colon, hyphen, Cisco-dot or plain form."""
         if v is None or v == '':
             return v
         # MAC address validation - supports multiple formats:
@@ -153,6 +161,7 @@ class AssetCreate(AssetBase):
         return v
 
 class AssetUpdate(BaseModel):
+    """Body of editing an asset; omitted fields stay as they are."""
     asset_name: Optional[str] = None
     hostname: Optional[str] = None
     asset_type_id: Optional[int] = None
@@ -182,6 +191,7 @@ class AssetUpdate(BaseModel):
     @field_validator('ip_address')
     @classmethod
     def validate_ip(cls, v):
+        """Accept an empty value or a dotted IPv4 address."""
         if v is None or v == '':
             return v
         # IPv4 validation
@@ -193,6 +203,7 @@ class AssetUpdate(BaseModel):
     @field_validator('mac_address')
     @classmethod
     def validate_mac(cls, v):
+        """Accept an empty value or a MAC address in colon, hyphen, Cisco-dot or plain form."""
         if v is None or v == '':
             return v
         # MAC address validation - supports multiple formats:
@@ -236,6 +247,7 @@ class AssetUpdate(BaseModel):
         return v
 
 class AssetResponse(AssetBase):
+    """An asset as the API returns it, with its related names and the inferred device family."""
     id: int
     user_id: int
     created_at: datetime
@@ -255,6 +267,7 @@ class AssetResponse(AssetBase):
 
 # Owner/Location Schemas
 class AssetOwnerCreate(BaseModel):
+    """Body of creating an asset owner (the person responsible for assets)."""
     full_name: str
     department: Optional[str] = None
     role: Optional[str] = None
@@ -265,6 +278,7 @@ class AssetOwnerCreate(BaseModel):
     @field_validator('full_name')
     @classmethod
     def validate_full_name(cls, v):
+        """Trim the name and require at least two characters."""
         v = v.strip()
         if len(v) < 2:
             raise ValueError('Full name must be at least 2 characters')
@@ -273,6 +287,7 @@ class AssetOwnerCreate(BaseModel):
     @field_validator('phone')
     @classmethod
     def validate_phone(cls, v):
+        """Accept an empty value or a phone number of at least seven characters."""
         if v is None or v == '':
             return v
         # Basic phone validation (allows various formats)
@@ -283,6 +298,7 @@ class AssetOwnerCreate(BaseModel):
 
 
 class AssetOwnerResponse(AssetOwnerCreate):
+    """An asset owner."""
     id: int
     user_id: int
     created_at: datetime
@@ -290,6 +306,7 @@ class AssetOwnerResponse(AssetOwnerCreate):
     model_config = ConfigDict(from_attributes=True)
 
 class AssetLocationCreate(BaseModel):
+    """Body of creating a location (site, room, rack)."""
     site_name: str
     rack_name: Optional[str] = None
     room: Optional[str] = None
@@ -299,12 +316,14 @@ class AssetLocationCreate(BaseModel):
     @field_validator('site_name')
     @classmethod
     def validate_site_name(cls, v):
+        """Trim the site name and require at least two characters."""
         v = v.strip()
         if len(v) < 2:
             raise ValueError('Site name must be at least 2 characters')
         return v
 
 class AssetLocationResponse(AssetLocationCreate):
+    """A location."""
     id: int
     user_id: int
     
@@ -312,32 +331,38 @@ class AssetLocationResponse(AssetLocationCreate):
                 
 # Network Zones
 class NetworkZoneCreate(BaseModel):
+    """Body of creating a network zone."""
     zone_name: str
     description: Optional[str] = None
 
 class NetworkZoneResponse(NetworkZoneCreate):
+    """A network zone."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 # OS Catalog
 class OSCatalogCreate(BaseModel):
+    """Body of adding an operating system to the catalog."""
     os_name: str
     os_version: Optional[str] = None
 
 class OSCatalogResponse(OSCatalogCreate):
+    """An operating system of the catalog."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 # Vendor Catalog
 class VendorCatalogCreate(BaseModel):
+    """Body of adding a vendor to the catalog."""
     vendor_name: str
     vendor_type: Optional[str] = None
     #website: Optional[str] = None
     #description: Optional[str] = None
 
 class VendorCatalogResponse(VendorCatalogCreate):
+    """A vendor of the catalog."""
     id: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -345,18 +370,21 @@ class VendorCatalogResponse(VendorCatalogCreate):
 
 # Asset Dependencies
 class AssetDependencyCreate(BaseModel):
+    """Body of recording that one asset depends on another."""
     asset_id: int
     depends_on_id: int
     relation_type: RelationTypeEnum
     description: Optional[str] = None
 
 class AssetDependencyResponse(AssetDependencyCreate):
+    """A dependency between two assets."""
     id: int
     
     model_config = ConfigDict(from_attributes=True)
 
 # Asset Security Status
 class AssetSecurityStatusCreate(BaseModel):
+    """Body of recording an asset's security status (antivirus, firewall, patching, backup)."""
     asset_id: int
     antivirus_installed: bool = False
     antivirus_status: Optional[str] = None
@@ -368,6 +396,7 @@ class AssetSecurityStatusCreate(BaseModel):
     notes: Optional[str] = None
 
 class AssetSecurityStatusResponse(AssetSecurityStatusCreate):
+    """An asset's recorded security status."""
     id: int
     
     model_config = ConfigDict(from_attributes=True)

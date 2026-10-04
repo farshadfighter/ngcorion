@@ -28,6 +28,9 @@ _WINDOWS_SERVER = re.compile(r"windows server (20\d\d)", re.I)
 
 @dataclass
 class Resolved:
+    """How an installed item was identified: its status, the CPE names it is matched against in NVD,
+    and who decided it (catalog or an administrator).
+    """
     status: str                         # known | unknown | internal | component | hotfix | os
     key: str                            # match key the status came from (or the group key)
     label: str
@@ -42,6 +45,9 @@ def load_maps(db: Session) -> Dict[str, SoftwareProductMap]:
 
 
 def keys_for(item) -> List[str]:
+    """The match keys of an item: its normalised name and, for distribution packages, its source
+    package.
+    """
     get = item.get if isinstance(item, dict) else (lambda f, _i=item: getattr(_i, f))
     windows = get("vkind") == "win" or get("kind") in ("program", "hotfix", "os")
     keys = [catalog.match_key(get("name"), windows=windows)]
@@ -54,6 +60,9 @@ def keys_for(item) -> List[str]:
 
 
 def resolve(item, maps: Dict[str, SoftwareProductMap]) -> Resolved:
+    """Identify an item: hotfixes are not products and the OS only when it is a known Windows Server;
+    an administrator's mapping wins over the built-in catalog; otherwise the item is unknown.
+    """
     get = item.get if isinstance(item, dict) else (lambda f, _i=item: getattr(_i, f))
     kind, name, source = get("kind"), get("name"), get("source")
     version = catalog.upstream_version(get("version"), get("vkind") or "")

@@ -36,6 +36,9 @@ def collect_linux(ssh_client, distro_id: str) -> dict:
 
 def save_linux(db: Session, asset_id: int, raw: Optional[dict], *, audit_session_id=None, user_id=None,
                trigger="audit"):
+    """Store a Linux collection taken during an audit (or a failed one with its error). Errors are
+    logged and never fail the audit itself.
+    """
     if not raw:
         return None
     try:
@@ -70,6 +73,9 @@ def collect_windows(client) -> dict:
 
 def save_windows(db: Session, asset_id: int, raw: Optional[dict], *, audit_session_id=None, user_id=None,
                  trigger="audit"):
+    """Store a Windows collection taken during an audit (or a failed one with its error). Errors are
+    logged and never fail the audit itself.
+    """
     if not raw:
         return None
     try:
@@ -124,6 +130,7 @@ def collect_now_linux(db: Session, asset, *, username: str, password: str, port:
 
 def collect_now_windows(db: Session, asset, *, username: str, password: str, port: int = 5985,
                         transport: str = "ntlm", user_id=None):
+    """Collect a Windows host's software now over WinRM with the given credentials (not stored)."""
     from app.core.config import settings
     from app.modules.windows.audit.winrm_client import WindowsWinRMClient
     with WindowsWinRMClient(ip=asset.ip_address, username=username, password=password, port=port,
