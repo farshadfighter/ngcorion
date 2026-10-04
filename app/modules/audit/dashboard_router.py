@@ -16,7 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_permission
+from app.core.dependencies import owner_scope, require_permission
 from app.models import User
 from app.models.audit import CheckStatus, DeviceType
 
@@ -323,11 +323,14 @@ def critical_findings(
 @router.get("/recent-sessions")
 def recent_sessions(
     limit: int = Query(10, ge=1, le=100),
-    _current_user: User = Depends(require_permission("AUDITING", "read")),
+    current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
-    """Latest audit sessions, newest first."""
-    rows = _rows(db, """
+    """Latest audit sessions, newest first: a non-admin sees only their own (like every other
+    session listing, see owner_scope); the aggregate figures of this dashboard stay organisation-wide.
+    """
+    owner = owner_scope(current_user)
+    rows = _rows(db, f"""
         SELECT
             s.id, s.job_name, s.status, s.device_type, s.target_ip,
             s.total_checks, s.passed_checks, s.failed_checks,
@@ -335,9 +338,10 @@ def recent_sessions(
             a.asset_name
         FROM audit_sessions s
         LEFT JOIN asset_inventory a ON a.id = s.asset_id
+        {"WHERE s.user_id = :owner" if owner is not None else ""}
         ORDER BY s.started_at DESC
         LIMIT :limit
-    """, {"limit": limit})
+    """, {"limit": limit, "owner": owner})
     return {
         "items": [
             {

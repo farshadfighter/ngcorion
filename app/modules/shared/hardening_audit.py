@@ -53,10 +53,10 @@ def _resolve_audit_result_context(db: Session, audit_result_id: Optional[int]):
         if audit_result:
             check_number = audit_result.check_number or ""
             check_title = audit_result.check_title or ""
-            if audit_result.audit_session is not None:
-                session_id = audit_result.audit_session.id
+            if audit_result.session is not None:
+                session_id = audit_result.session.id
                 asset = db.query(Asset).filter(
-                    Asset.id == audit_result.audit_session.asset_id
+                    Asset.id == audit_result.session.asset_id
                 ).first()
     except Exception as e:
         logger.warning(

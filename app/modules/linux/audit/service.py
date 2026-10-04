@@ -28,6 +28,7 @@ from .rules import (
     evaluate_compliance,
     LinuxCISRule
 )
+from app.core.dependencies import owned_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -356,10 +357,10 @@ class LinuxAuditService:
         return db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
 
     @staticmethod
-    def get_linux_sessions(db: Session, limit: int = 50, offset: int = 0) -> List[AuditSession]:
+    def get_linux_sessions(db: Session, limit: int = 50, offset: int = 0, owner_id: Optional[int] = None) -> List[AuditSession]:
         """Get all Linux audit sessions with pagination."""
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.LINUX)
             .order_by(AuditSession.started_at.desc())
             .offset(offset)
@@ -368,15 +369,15 @@ class LinuxAuditService:
         )
 
     @staticmethod
-    def get_linux_sessions_count(db: Session) -> int:
+    def get_linux_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
         """Get total count of Linux audit sessions."""
-        return db.query(AuditSession).filter(AuditSession.device_type == DeviceType.LINUX).count()
+        return owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == DeviceType.LINUX).count()
 
     @staticmethod
-    def get_asset_linux_history(db: Session, asset_id: int, limit: int = 10) -> List[AuditSession]:
+    def get_asset_linux_history(db: Session, asset_id: int, limit: int = 10, owner_id: Optional[int] = None) -> List[AuditSession]:
         """Get Linux audit history for a specific asset."""
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(
                 AuditSession.asset_id == asset_id,
                 AuditSession.device_type == DeviceType.LINUX
@@ -465,12 +466,12 @@ class LinuxAuditService:
     @staticmethod
     def get_audit_statistics(
         db: Session,
-        asset_id: Optional[int] = None
+        asset_id: Optional[int] = None, owner_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Get comprehensive statistics about Linux audit sessions."""
         from sqlalchemy import func
 
-        query = db.query(AuditSession).filter(AuditSession.device_type == DeviceType.LINUX)
+        query = owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == DeviceType.LINUX)
         if asset_id:
             query = query.filter(AuditSession.asset_id == asset_id)
 

@@ -15,6 +15,7 @@ from app.modules.software.hooks import save_single
 from .ssh_client import CiscoSSHClient, redact_sensitive_data
 from .rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
 from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
+from app.core.dependencies import owned_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +342,7 @@ class AuditService:
         return db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
 
     @staticmethod
-    def get_all_sessions(db: Session, limit: int = 50, offset: int = 0) -> List[AuditSession]:
+    def get_all_sessions(db: Session, limit: int = 50, offset: int = 0, owner_id: Optional[int] = None) -> List[AuditSession]:
         """
         Get all audit sessions with pagination.
 
@@ -354,7 +355,7 @@ class AuditService:
             List of audit sessions (most recent first)
         """
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.CISCO)
             .order_by(AuditSession.started_at.desc())
             .offset(offset)
@@ -363,7 +364,7 @@ class AuditService:
         )
 
     @staticmethod
-    def get_sessions_count(db: Session) -> int:
+    def get_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
         """
         Get total count of audit sessions.
 
@@ -373,10 +374,10 @@ class AuditService:
         Returns:
             Total number of audit sessions
         """
-        return db.query(AuditSession).filter(AuditSession.device_type == DeviceType.CISCO).count()
+        return owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == DeviceType.CISCO).count()
 
     @staticmethod
-    def get_asset_audit_history(db: Session, asset_id: int, limit: int = 10) -> List[AuditSession]:
+    def get_asset_audit_history(db: Session, asset_id: int, limit: int = 10, owner_id: Optional[int] = None) -> List[AuditSession]:
         """
         Get audit history for an asset.
 
@@ -389,7 +390,7 @@ class AuditService:
             List of audit sessions (most recent first)
         """
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(
                 AuditSession.asset_id == asset_id,
                 AuditSession.device_type == DeviceType.CISCO

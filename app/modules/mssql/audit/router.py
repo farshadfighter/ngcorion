@@ -15,7 +15,7 @@ from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
     require_permission,
-    assert_session_access,
+    assert_session_access, owner_scope,
     require_quota,
     check_quota_available,
     consume_quota_on_success)
@@ -214,7 +214,7 @@ def list_audit_sessions(
     db: Session = Depends(get_db),
 ):
     limit = min(limit, 100)
-    sessions = MSSQLAuditService.get_all_sessions(db, limit, offset)
+    sessions = MSSQLAuditService.get_all_sessions(db, limit, offset, owner_id=owner_scope(current_user))
     summaries = [MSSQLAuditService.get_session_summary(db, s.id) for s in sessions]
     return [s for s in summaries if s]
 
@@ -224,7 +224,7 @@ def get_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
-    return {"total": MSSQLAuditService.get_sessions_count(db)}
+    return {"total": MSSQLAuditService.get_sessions_count(db, owner_id=owner_scope(current_user))}
 
 
 @router.get("/sessions/{session_id}", response_model=MSSQLAuditSessionResponse)
@@ -290,7 +290,7 @@ def get_asset_audit_history(
             detail=f"Asset {asset_id} not found",
         )
 
-    sessions = MSSQLAuditService.get_asset_audit_history(db, asset_id, limit)
+    sessions = MSSQLAuditService.get_asset_audit_history(db, asset_id, limit, owner_id=owner_scope(current_user))
     summaries = [MSSQLAuditService.get_session_summary(db, s.id) for s in sessions]
     return [s for s in summaries if s]
 

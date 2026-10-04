@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission, require_quota
+from app.core.dependencies import assert_session_access, get_current_user, require_permission, require_quota
 from app.models import AuditSession, AuditResult, Asset, HardeningAction
 from app.models.audit import CheckStatus
 
@@ -264,11 +264,8 @@ async def get_hardening_form(
             session = db.query(AuditSession).filter(
                 AuditSession.id == request.session_id
             ).first()
-            if not session:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Audit session {request.session_id} not found"
-                )
+            # Another user's session answers 404, like every session endpoint.
+            assert_session_access(session, current_user)
 
             # Get all failed results from the session
             failed_results = db.query(AuditResult).filter(
@@ -434,6 +431,9 @@ async def execute_hardening_controls(
         audit_session = db.query(AuditSession).filter(
             AuditSession.id == request.session_id
         ).first()
+        # The fixes run against the session's target: only its owner (or an
+        # admin) may use it; anyone else gets 404.
+        assert_session_access(audit_session, current_user)
         if audit_session:
             device_ip = audit_session.target_ip
             if audit_session.asset_id:

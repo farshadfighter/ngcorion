@@ -209,6 +209,51 @@ def assert_session_access(session, current_user: User):
     return session
 
 
+def require_own_session(db: Session, session_id: Optional[int], current_user: User):
+    """Load an audit session a request refers to and enforce ownership
+    (assert_session_access: 404 for a missing or someone else's session).
+    None when the request names no session."""
+    if session_id is None:
+        return None
+    from app.models.audit import AuditSession
+    session = db.query(AuditSession).filter(AuditSession.id == session_id).first()
+    return assert_session_access(session, current_user)
+
+
+def require_own_result(db: Session, result_id: Optional[int], current_user: User):
+    """Load an audit result a request refers to and enforce ownership of its
+    session: a hardening request may only act on findings of the caller's own
+    audits (admins: any). 404 for a missing or someone else's result."""
+    if result_id is None:
+        return None
+    from app.models.audit import AuditResult
+    result = db.query(AuditResult).filter(AuditResult.id == result_id).first()
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audit result not found")
+    assert_session_access(result.session, current_user)
+    return result
+
+
+def require_own_action(db: Session, action_id: int, current_user: User):
+    """Load a hardening action and enforce that the caller created it (admins:
+    any). 404 for a missing or someone else's action."""
+    from app.models.hardening import HardeningAction
+    action = db.query(HardeningAction).filter(HardeningAction.id == action_id).first()
+    if action is None or (current_user.role.value != "admin" and action.user_id != current_user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hardening action not found")
+    return action
+
+
+def owned_sessions(query, owner_id: Optional[int]):
+    """Restrict an AuditSession query to one owner (``owner_id`` from
+    owner_scope); None leaves it unrestricted (admins). Every audit session
+    listing, count, history and statistic goes through this."""
+    if owner_id is None:
+        return query
+    from app.models.audit import AuditSession
+    return query.filter(AuditSession.user_id == owner_id)
+
+
 def owner_scope(current_user: User) -> Optional[int]:
     """
     The user id a *list* query must be filtered by, or None for admins.

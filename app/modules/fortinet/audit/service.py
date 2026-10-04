@@ -34,6 +34,7 @@ from .ssh_client import (
     FortiGateContextError,
     FortiGateSSHClient,
 )
+from app.core.dependencies import owned_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -1538,15 +1539,15 @@ class FortinetAuditService:
 
     @staticmethod
     def get_all_sessions(db: Session, device_type: Optional[DeviceType] = None,
-                         limit: int = 50, offset: int = 0) -> List[AuditSession]:
-        query = db.query(AuditSession)
+                         limit: int = 50, offset: int = 0, owner_id: Optional[int] = None) -> List[AuditSession]:
+        query = owned_sessions(db.query(AuditSession), owner_id)
         if device_type:
             query = query.filter(AuditSession.device_type == device_type)
         return query.order_by(AuditSession.started_at.desc()).offset(offset).limit(limit).all()
 
     @staticmethod
-    def get_sessions_count(db: Session, device_type: DeviceType = DeviceType.FORTINET) -> int:
-        return db.query(AuditSession).filter(AuditSession.device_type == device_type).count()
+    def get_sessions_count(db: Session, device_type: DeviceType = DeviceType.FORTINET, owner_id: Optional[int] = None) -> int:
+        return owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == device_type).count()
 
     @staticmethod
     def get_session_summary(db: Session, session_id: int) -> Optional[Dict[str, Any]]:

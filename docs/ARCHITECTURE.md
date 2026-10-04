@@ -56,7 +56,10 @@ Then the route's dependencies (`app/core/dependencies.py`):
 - `require_admin`, `require_admin_or_manager` are role checks for
   administration endpoints.
 - Audit sessions are owned: `assert_session_access` / `owner_scope` let a
-  non-admin see only their own sessions (404 for anyone else's).
+  non-admin see only their own sessions (404 for anyone else's). Listings,
+  counts, histories and statistics filter with `owned_sessions`; a hardening
+  request that names a session, a finding or an action goes through
+  `require_own_session`, `require_own_result` or `require_own_action`.
 - `check_quota_available` / `consume_quota_on_success` enforce the license
   quota for audits and hardening runs.
 

@@ -14,7 +14,7 @@ from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
     require_permission,
-    assert_session_access,
+    assert_session_access, owner_scope,
     check_quota_available,
     consume_quota_on_success,
 )
@@ -245,7 +245,7 @@ def list_audit_sessions(
     # Cap limit at 100 to prevent excessive queries
     limit = min(limit, 100)
 
-    sessions = AuditService.get_all_sessions(db, limit, offset)
+    sessions = AuditService.get_all_sessions(db, limit, offset, owner_id=owner_scope(current_user))
 
     # Build summaries efficiently (single call per session)
     summaries = []
@@ -269,7 +269,7 @@ def get_audit_sessions_count(
 
     **Permissions:** Requires AUDIT read permission
     """
-    count = AuditService.get_sessions_count(db)
+    count = AuditService.get_sessions_count(db, owner_id=owner_scope(current_user))
     return {"total": count}
 
 
@@ -360,7 +360,7 @@ def get_asset_audit_history(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Asset {asset_id} not found"
         )
 
-    sessions = AuditService.get_asset_audit_history(db, asset_id, limit)
+    sessions = AuditService.get_asset_audit_history(db, asset_id, limit, owner_id=owner_scope(current_user))
 
     # Build summaries efficiently
     summaries = []

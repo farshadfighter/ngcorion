@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import (get_current_user,
     require_permission,
-    assert_session_access,
+    assert_session_access, owner_scope,
     require_quota ,
     consume_quota_on_success ,
     check_quota_available)
@@ -305,7 +305,8 @@ def list_audit_sessions(
         db=db,
         device_type=DeviceType.FORTINET,
         limit=limit,
-        offset=offset
+        offset=offset,
+        owner_id=owner_scope(current_user),
     )
 
     summaries = []
@@ -326,7 +327,7 @@ def get_fortinet_sessions_count(
     Get total count of FortiGate audit sessions.
     """
     from app.models.audit import DeviceType
-    count = FortinetAuditService.get_sessions_count(db, DeviceType.FORTINET)
+    count = FortinetAuditService.get_sessions_count(db, DeviceType.FORTINET, owner_id=owner_scope(current_user))
     return {"total": count}
 
 

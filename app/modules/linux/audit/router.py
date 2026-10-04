@@ -15,7 +15,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import( get_current_user, require_permission, assert_session_access, require_quota,
+from app.core.dependencies import( get_current_user, require_permission, assert_session_access, owner_scope, require_quota,
     check_quota_available,
     consume_quota_on_success)
 
@@ -240,7 +240,7 @@ def list_linux_sessions(
     db: Session = Depends(get_db)
 ):
     limit = min(limit, 100)
-    sessions = LinuxAuditService.get_linux_sessions(db, limit, offset)
+    sessions = LinuxAuditService.get_linux_sessions(db, limit, offset, owner_id=owner_scope(current_user))
 
     summaries = []
     for s in sessions:
@@ -256,7 +256,7 @@ def get_linux_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
-    count = LinuxAuditService.get_linux_sessions_count(db)
+    count = LinuxAuditService.get_linux_sessions_count(db, owner_id=owner_scope(current_user))
     return {"total": count}
 
 
@@ -351,7 +351,7 @@ def get_asset_linux_history(
             detail=f"Asset {asset_id} not found"
         )
 
-    sessions = LinuxAuditService.get_asset_linux_history(db, asset_id, limit)
+    sessions = LinuxAuditService.get_asset_linux_history(db, asset_id, limit, owner_id=owner_scope(current_user))
 
     summaries = []
     for s in sessions:
@@ -403,7 +403,7 @@ def get_linux_statistics(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db)
 ):
-    stats = LinuxAuditService.get_audit_statistics(db, asset_id)
+    stats = LinuxAuditService.get_audit_statistics(db, asset_id, owner_id=owner_scope(current_user))
     return stats
 
 

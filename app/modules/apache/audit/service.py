@@ -27,6 +27,7 @@ from .rules import (
     evaluate_compliance,
     ApacheCISRule
 )
+from app.core.dependencies import owned_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -342,10 +343,10 @@ class ApacheAuditService:
         return db.query(AuditResult).filter(AuditResult.session_id == session_id).all()
 
     @staticmethod
-    def get_apache_sessions(db: Session, limit: int = 50, offset: int = 0) -> List[AuditSession]:
+    def get_apache_sessions(db: Session, limit: int = 50, offset: int = 0, owner_id: Optional[int] = None) -> List[AuditSession]:
         """Get all Apache audit sessions with pagination."""
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.APACHE)
             .order_by(AuditSession.started_at.desc())
             .offset(offset)
@@ -354,9 +355,9 @@ class ApacheAuditService:
         )
 
     @staticmethod
-    def get_apache_sessions_count(db: Session) -> int:
+    def get_apache_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
         """Get total count of Apache audit sessions."""
-        return db.query(AuditSession).filter(AuditSession.device_type == DeviceType.APACHE).count()
+        return owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == DeviceType.APACHE).count()
 
     @staticmethod
     def get_asset_apache_history(db: Session, asset_id: int, limit: int = 10) -> List[AuditSession]:
@@ -450,10 +451,10 @@ class ApacheAuditService:
     @staticmethod
     def get_audit_statistics(
         db: Session,
-        asset_id: Optional[int] = None
+        asset_id: Optional[int] = None, owner_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Get comprehensive statistics about Apache audit sessions."""
-        query = db.query(AuditSession).filter(AuditSession.device_type == DeviceType.APACHE)
+        query = owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == DeviceType.APACHE)
         if asset_id:
             query = query.filter(AuditSession.asset_id == asset_id)
 

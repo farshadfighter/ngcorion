@@ -31,6 +31,7 @@ from .rules import (
     evaluate_compliance,
     filter_rules_by_profile,
 )
+from app.core.dependencies import owned_sessions
 
 logger = logging.getLogger(__name__)
 
@@ -312,10 +313,10 @@ class MongoDBSHAuditService:
 
     @staticmethod
     def get_all_sessions(
-        db: Session, limit: int = 50, offset: int = 0
+        db: Session, limit: int = 50, offset: int = 0, owner_id: Optional[int] = None
     ) -> List[AuditSession]:
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.MONGODB)
             .order_by(AuditSession.started_at.desc())
             .offset(offset)
@@ -324,19 +325,19 @@ class MongoDBSHAuditService:
         )
 
     @staticmethod
-    def get_sessions_count(db: Session) -> int:
+    def get_sessions_count(db: Session, owner_id: Optional[int] = None) -> int:
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(AuditSession.device_type == DeviceType.MONGODB)
             .count()
         )
 
     @staticmethod
     def get_asset_audit_history(
-        db: Session, asset_id: int, limit: int = 10
+        db: Session, asset_id: int, limit: int = 10, owner_id: Optional[int] = None
     ) -> List[AuditSession]:
         return (
-            db.query(AuditSession)
+            owned_sessions(db.query(AuditSession), owner_id)
             .filter(
                 AuditSession.asset_id == asset_id,
                 AuditSession.device_type == DeviceType.MONGODB,

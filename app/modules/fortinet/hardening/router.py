@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
 from app.core.dependencies import (
+    require_own_action, require_own_result,
     get_current_user,
     require_permission,
     check_quota_available,
@@ -286,6 +287,8 @@ def get_fortinet_manual_guidance(
 
     **Permissions:** Requires HARDENING read permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_result(db, audit_result_id, current_user)
     try:
         control = FortiGateHardeningService._get_control_by_id(check_id)
     except ValueError:
@@ -404,6 +407,8 @@ async def execute_fortinet_manual_remediation(
 
     **Permissions:** Requires HARDENING write permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_result(db, request.audit_result_id, current_user)
     consume_quota = consume_quota_on_success("harden")
     # Read the id while the session is healthy: current_user may be expired, and
     # refreshing it inside an exception handler (after a failed flush) raises
@@ -519,6 +524,8 @@ def get_fortinet_device_options(
 
     **Permissions:** Requires HARDENING read permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_result(db, audit_result_id, current_user)
     try:
         options = FortiGateHardeningService.get_device_options(
             db=db,
@@ -633,6 +640,8 @@ def preview_fortinet_hardening(
 
     **Permissions:** Requires HARDENING write permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_result(db, request.audit_result_id, current_user)
     consume_quota = consume_quota_on_success("harden")
     # Read while the session is healthy — see execute_fortinet_manual_remediation.
     user_id = current_user.id
@@ -712,6 +721,8 @@ async def execute_fortinet_hardening(
     - 504: Connection timeout
     - 500: Other execution errors
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_action(db, request.action_id, current_user)
     consume_quota = consume_quota_on_success("harden")
     # Read while the session is healthy — see execute_fortinet_manual_remediation.
     user_id = current_user.id
@@ -881,6 +892,8 @@ def get_fortinet_hardening_action(
 
     **Permissions:** Requires HARDENING read permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_action(db, action_id, current_user)
     from app.models import HardeningAction
     import json
 

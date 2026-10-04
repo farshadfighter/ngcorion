@@ -15,7 +15,7 @@ from app.core.database import get_db
 from app.core.dependencies import (
     get_current_user,
     require_permission,
-    assert_session_access,
+    assert_session_access, owner_scope,
     require_quota,
     check_quota_available,
     consume_quota_on_success,
@@ -272,7 +272,7 @@ def list_apache_sessions(
     ...
     """
     limit = min(limit, 100)
-    sessions = ApacheAuditService.get_apache_sessions(db, limit, offset)
+    sessions = ApacheAuditService.get_apache_sessions(db, limit, offset, owner_id=owner_scope(current_user))
 
     summaries = []
     for s in sessions:
@@ -288,7 +288,7 @@ def get_apache_sessions_count(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
-    count = ApacheAuditService.get_apache_sessions_count(db)
+    count = ApacheAuditService.get_apache_sessions_count(db, owner_id=owner_scope(current_user))
     return {"total": count}
 
 
@@ -440,7 +440,7 @@ def get_apache_statistics(
     current_user: User = Depends(require_permission("AUDITING", "read")),
     db: Session = Depends(get_db),
 ):
-    stats = ApacheAuditService.get_audit_statistics(db, asset_id)
+    stats = ApacheAuditService.get_audit_statistics(db, asset_id, owner_id=owner_scope(current_user))
     return stats
 
 

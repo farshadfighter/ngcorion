@@ -13,7 +13,10 @@ and review will send a change back that breaks one of them.
    `require_admin` or `require_admin_or_manager`, never only
    `get_current_user` for something that changes state. Object-level
    ownership (audit sessions) goes through `assert_session_access` and
-   `owner_scope`.
+   `owner_scope`: list queries use `owned_sessions(query, owner_scope(user))`,
+   and any request body or path that names a session, audit result or
+   hardening action is checked with `require_own_session`,
+   `require_own_result` or `require_own_action` before anything else.
 2. **Device credentials are never stored** unless the feature is explicitly
    about keeping them (scheduled jobs, SNMP, notification channels, backup
    destinations), and then only encrypted with `app/core/credential_crypto.py`

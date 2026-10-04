@@ -19,6 +19,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.dependencies import (
+    require_own_action, require_own_result, require_own_session,
     get_current_user,
     require_permission,
     require_quota,
@@ -56,9 +57,9 @@ def _log_preview_outcome(
         asset = None
         session_id = None
         if audit_result:
-            if audit_result.audit_session is not None:
-                session_id = audit_result.audit_session.id
-                asset = db.query(Asset).filter(Asset.id == audit_result.audit_session.asset_id).first()
+            if audit_result.session is not None:
+                session_id = audit_result.session.id
+                asset = db.query(Asset).filter(Asset.id == audit_result.session.asset_id).first()
             check_number = check_number or audit_result.check_number or ""
             check_title = check_title or audit_result.check_title or ""
         log_hardening_preview(
@@ -396,6 +397,8 @@ async def preview_hardening(
     - 404: Audit result not found
     - 500: Internal error
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_result(db, request.audit_result_id, current_user)
     consume_quota = consume_quota_on_success("harden")
     # Read the id while the session is healthy: current_user may be expired, and
     # refreshing it inside an exception handler (after a failed flush) raises
@@ -487,6 +490,8 @@ def execute_hardening(
     - 504: Connection timeout
     - 500: Other execution errors
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_action(db, request.action_id, current_user)
     # Read the id while the session is healthy: current_user may be expired, and
     # refreshing it inside an exception handler (after a failed flush) raises
     # PendingRollbackError, masking the real error.
@@ -664,6 +669,8 @@ def get_hardening_action(
 
     **Permissions:** Requires HARDENING read permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_action(db, action_id, current_user)
     action = HardeningService.get_action_by_id(db, action_id)
 
     if not action:
@@ -710,6 +717,8 @@ def delete_hardening_action(
     **Note:** This only deletes the hardening action record.
     It does NOT revert any changes made to the device.
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_action(db, action_id, current_user)
     try:
         HardeningService.delete_action(db, action_id)
         return {"message": f"Hardening action {action_id} deleted successfully"}
@@ -854,6 +863,8 @@ def auto_fix_all_failures(
     - 504: Connection timeout
     - 500: Other execution errors
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_session(db, request.audit_session_id, current_user)
     try:
         result = HardeningService.auto_fix_all_failures(
             db=db,

@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import(get_current_user,
+from app.core.dependencies import(
+    require_own_session, get_current_user,
     require_permission,
     consume_quota_on_success,
     check_quota_available
@@ -132,6 +133,8 @@ async def execute_single_fix(
 
     **Permissions:** Requires HARDENING write permission
     """
+    # Object-level access: only the owner of the audit (or an admin) may act on it.
+    require_own_session(db, request.session_id, current_user)
     
     consume_quota = consume_quota_on_success("harden")
 
