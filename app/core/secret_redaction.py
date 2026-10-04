@@ -73,6 +73,9 @@ def _secret_values(parameters: Optional[Mapping[str, object]]) -> List[str]:
 
 
 def redact_text(text: str, parameters: Optional[Mapping[str, object]] = None) -> str:
+    """Hide secrets in text before it is stored or shown: every secret-typed parameter value given to
+    the run, then well-known secret patterns (passwords, keys, community strings) in device output.
+    """
     if not text:
         return text
     for value in _secret_values(parameters):

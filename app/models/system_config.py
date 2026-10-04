@@ -40,6 +40,9 @@ CONFIG_SECTIONS = (
 
 
 class SystemConfigSetting(Base):
+    """One section of System Configuration (SMTP, locale, reports, ...) as JSON; secret values inside
+    are encrypted.
+    """
     __tablename__ = "system_config_settings"
 
     id = Column(Integer, primary_key=True, index=True)

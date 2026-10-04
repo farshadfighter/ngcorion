@@ -19,6 +19,8 @@ def _utcnow():
 
 
 class PasswordResetToken(Base):
+    """One emailed password-reset code: only its hash, expiry, use and failed attempts are stored.
+    """
     __tablename__ = "password_reset_tokens"
 
     id = Column(Integer, primary_key=True, index=True)

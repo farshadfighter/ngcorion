@@ -15,6 +15,9 @@ def _identity(text: str) -> str:
 
 @dataclass
 class ModuleSpec:
+    """Everything a benchmark module declares about itself; the engine (routers, audit and hardening
+    services, Harden All, scheduling, reports) does the rest. See docs/ARCHITECTURE.md, section 4.
+    """
     key: str                     # DeviceType value and API path segment
     label: str                   # "Active Directory"
     device_type: DeviceType

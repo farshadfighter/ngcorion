@@ -44,6 +44,8 @@ MAP_INTERNAL = "internal"
 
 
 class SoftwareItem(Base):
+    """One installed package, program, hotfix, service or firmware found on an asset by a collector.
+    """
     __tablename__ = "software_items"
     __table_args__ = (Index("ix_software_items_asset_collector", "asset_id", "collector"),)
 
@@ -66,6 +68,7 @@ class SoftwareItem(Base):
 
 
 class SoftwareCollection(Base):
+    """One software collection run on an asset (during an audit or on demand) and what it found."""
     __tablename__ = "software_collections"
 
     id = Column(Integer, primary_key=True)
@@ -85,6 +88,7 @@ class SoftwareCollection(Base):
 
 
 class SoftwareChange(Base):
+    """A package added, removed or updated between two collections of an asset."""
     __tablename__ = "software_changes"
 
     id = Column(Integer, primary_key=True)
@@ -102,6 +106,9 @@ class SoftwareChange(Base):
 
 
 class SoftwareProductMap(Base):
+    """How a software name maps to a CPE vendor/product for CVE matching (or that it is internal
+    software with no CPE), set automatically or by a user.
+    """
     __tablename__ = "software_product_maps"
 
     id = Column(Integer, primary_key=True)

@@ -52,6 +52,9 @@ DEST_TYPES = ("sftp", "smb")
 
 
 class SystemBackup(Base):
+    """One backup of NGCorion itself (database and files): manual or scheduled, its tier, status, size,
+    checksum and where copies were sent.
+    """
     __tablename__ = "system_backups"
 
     id = Column(Integer, primary_key=True)
@@ -87,6 +90,8 @@ class SystemBackup(Base):
 
 
 class BackupDestination(Base):
+    """An SFTP or SMB destination that system backups are copied to; its password is stored encrypted.
+    """
     __tablename__ = "backup_destinations"
 
     id = Column(Integer, primary_key=True)
@@ -110,6 +115,9 @@ class BackupDestination(Base):
 
 
 class SystemRestore(Base):
+    """A restore of NGCorion from a system backup (or a restore test): status and steps. Kept on this
+    server across restores (LOCAL_TABLES).
+    """
     __tablename__ = "system_restores"
 
     id = Column(Integer, primary_key=True)

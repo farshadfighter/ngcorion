@@ -164,6 +164,11 @@ Base.metadata.create_all(bind=engine)
 # Lifespan context manager for startup/shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Startup and shutdown of the application: validate the license (without blocking startup on an
+    unreachable license server), seed defaults, mark jobs interrupted by a restart as failed, and
+    start the background loops, each in one worker only (SingletonTask). On shutdown the loops are
+    stopped.
+    """
     # Startup
     # Misconfiguration fails fast (there is no localhost fallback); an
     # unreachable server does not — those are different problems.
@@ -406,6 +411,9 @@ async def get_openapi_schema(current_user=Depends(get_current_user)):
 # their token to load the schema and try requests.
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
+    """Swagger UI page. It is static chrome: the schema it loads (/openapi.json) requires a bearer
+    token.
+    """
     return get_swagger_ui_html(
         openapi_url="/openapi.json",
         title=app.title + " - Swagger UI",
@@ -595,6 +603,10 @@ app.include_router(health_router)
 @app.get("/", include_in_schema=False)
 @app.get("/{full_path:path}", include_in_schema=False)
 def serve_spa(full_path: str = ""):
+    """Serve the built React app: a real file from front/dist when one exists (never outside it),
+    otherwise index.html so client-side routes work. API prefixes that reach this point get an
+    honest 404.
+    """
     # Reserved backend prefixes must 404 honestly rather than be masked by the
     # SPA shell — reaching here with one means no router above matched it.
     # "assets/" is NOT reserved: it is shared by the build output and by the

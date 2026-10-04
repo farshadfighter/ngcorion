@@ -237,6 +237,9 @@ def require_permission(module: str, permission_type: str):
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
     ) -> User:
+        """The dependency itself: admins pass, everyone else needs the module's permission row with the
+        requested flag set; otherwise 403.
+        """
         from app.models import UserPermission
 
         # Admin always has all permissions
@@ -295,6 +298,9 @@ def require_quota(operation_type: str, count: int = 1):
             ...
     """
     def check(request: Request, current_user: User = Depends(get_current_user)) -> None:
+        """Consume `count` units of the operation's license quota before the endpoint runs; 403 when
+        the quota is exhausted, 503 when the license server cannot answer.
+        """
         from app.core.license_state import update_usage
         
         client = request.app.state.license_client
@@ -388,6 +394,9 @@ def consume_quota_on_success(operation_type: str, count: int = 1):
         Function that consumes quota when called
     """
     def consume(request: Request) -> None:
+        """Consume `count` units of the operation's license quota; called by the endpoint after the
+        operation succeeded, so failed runs cost nothing.
+        """
         from app.core.license_state import update_usage
         
         client = request.app.state.license_client
@@ -476,6 +485,9 @@ def check_quota_available(operation_type: str, count: int = 1):
         Dependency function that checks quota availability
     """
     def check(request: Request, current_user: User = Depends(get_current_user)) -> None:
+        """Refuse (403) before any work starts when the cached license usage shows no quota left for
+        this operation; nothing is consumed here.
+        """
         from app.core.license_state import get_license_state
 
         state = get_license_state()

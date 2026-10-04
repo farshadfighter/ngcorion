@@ -24,6 +24,9 @@ from app.core.database import Base
 
 
 class CveEntry(Base):
+    """One CVE as loaded from NVD (plus CISA KEV and EPSS data): description, CVSS, dates, references
+    and affected products (CveCpeMatch).
+    """
     __tablename__ = "cve_entries"
 
     cve_id = Column(String(32), primary_key=True)

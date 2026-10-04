@@ -27,6 +27,8 @@ from app.core.database import Base
 
 # Configurable risk engine settings (weights, severity scores, defaults)
 class RiskSetting(Base):
+    """One tunable value of the risk model (factor weights, thresholds), editable in Risk settings.
+    """
     __tablename__ = "risk_settings"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -46,6 +48,8 @@ class RiskSetting(Base):
 
 # Network risk zones (DMZ, Internal, Internet-facing, ...)
 class RiskZone(Base):
+    """A network zone and its exposure score, used for the exposure factor of assets placed in it.
+    """
     __tablename__ = "risk_zones"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -69,6 +73,9 @@ class RiskZone(Base):
 
 # Per-asset risk inputs: business criticality + assigned network zone
 class AssetRiskProfile(Base):
+    """The risk inputs of one asset that are not derived from scans: its business criticality and
+    its network zone (each either chosen or the default).
+    """
     __tablename__ = "asset_risk_profiles"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -108,6 +115,9 @@ class AssetRiskProfile(Base):
 
 # Observed open ports per asset (from discovery scans or manual entry)
 class AssetOpenPort(Base):
+    """An open port of an asset (from discovery or entered by hand) with its service, counted in the
+    exposure factor.
+    """
     __tablename__ = "asset_open_ports"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -156,6 +166,8 @@ class AssetOpenPort(Base):
 
 # Latest computed risk score per asset (one row per asset, upserted)
 class AssetRiskScore(Base):
+    """The current risk score of one asset: each factor's sub-score, the weighted total and its level.
+    """
     __tablename__ = "asset_risk_scores"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -256,6 +268,7 @@ class AssetRiskScore(Base):
 
 # Time series of computed scores per asset
 class AssetRiskHistory(Base):
+    """A past risk score of an asset, for trends."""
     __tablename__ = "asset_risk_history"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -302,6 +315,7 @@ class AssetRiskHistory(Base):
 
 # Per-run calculation log for debugging/traceability
 class RiskCalculationLog(Base):
+    """A record of one risk calculation run: which asset, what triggered it, and the outcome."""
     __tablename__ = "risk_calculation_logs"
 
     id = Column(Integer, primary_key=True, index=True)

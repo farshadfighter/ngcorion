@@ -20,6 +20,7 @@ def _utcnow():
 
 
 class RevokedToken(Base):
+    """An access token ended by logout; kept until the token would have expired anyway."""
     __tablename__ = "revoked_tokens"
 
     jti = Column(String(64), primary_key=True)          # the token's "jti" claim

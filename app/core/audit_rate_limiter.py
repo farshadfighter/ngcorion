@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 from app.models import AuditSession
 
 class AuditRateLimiter:
+    """Per-user limits on audit runs (concurrent, per hour, per day), counted from the audit_sessions
+    table, so one account cannot tie up the server or hammer devices.
+    """
 
     # Configuration - can be overridden via environment variables
     MAX_CONCURRENT_AUDITS = 5  # Max concurrent audit operations per user

@@ -26,6 +26,12 @@ DEFAULT_SEVERITY_WEIGHT = 1
 
 @dataclass
 class BenchmarkRule:
+    """One audit check: its id and benchmark section, title, severity and level, a check function over
+    the dump (True = compliant), an evidence function that explains the outcome, and the remediation
+    text. A rule with manual=True cannot be decided from the dump and is reported for review;
+    unavailable_fn names the reason when its data could not be collected; source is the standard it
+    comes from (CIS, DISA STIG, vendor guide).
+    """
     id: str                       # "AD-CIS-2.3.5.3", "AD-DOM-1.1"
     section: str                  # benchmark numbering, "2.3.5.3"
     title: str
@@ -63,6 +69,7 @@ def section(dump: str, name: str) -> str:
 
 
 def parse_json(text: str) -> Any:
+    """JSON of a section, or None when the section holds an error message or nothing."""
     text = (text or "").strip()
     if not text or text[0] not in "[{\"0123456789-tfn":
         return None
@@ -86,6 +93,9 @@ def as_list(value: Any) -> List[Any]:
 
 
 def assemble(sections: Dict[str, str]) -> str:
+    """Join collected sections into one dump ("===SECTION:NAME===" headers); an empty section is
+    written as "(empty)".
+    """
     parts = []
     for key, content in sections.items():
         parts.append(f"===SECTION:{key}===")

@@ -43,6 +43,9 @@ def _status_for(finding: Dict[str, Any]) -> CheckStatus:
 
 
 class BenchmarkAuditService:
+    """Audit runs of one benchmark module: execute (connect, collect, evaluate, store), and the session
+    queries the routers serve.
+    """
     def __init__(self, spec: ModuleSpec):
         self.spec = spec
 
@@ -50,6 +53,12 @@ class BenchmarkAuditService:
 
     def execute(self, db: Session, asset_id: int, user_id: int, credentials: Dict[str, Any],
                 profile: str = "FULL", job_name: Optional[str] = None) -> AuditSession:
+        """Run an audit of one asset and return the stored session. Connects with the module's
+        connector and the given credentials (used for this run only), collects the dump, stores it
+        redacted, evaluates the rules for the requested profile (L1 or FULL) and saves the results
+        and score. Software found on the way is saved to the inventory; that part never fails the
+        audit. Connection or collection errors leave the session "failed" with the reason.
+        """
         spec = self.spec
         asset = db.query(Asset).filter(Asset.id == asset_id).first()
         if not asset:
@@ -174,6 +183,9 @@ class BenchmarkAuditService:
                 .order_by(AuditSession.started_at.desc()).limit(limit).all())
 
     def summary(self, db: Session, session_id: int) -> Optional[Dict[str, Any]]:
+        """The session as the session list and result header show it (counts per status, score,
+        target), or None if it does not exist.
+        """
         session = self.get_session(db, session_id)
         if not session:
             return None
@@ -203,6 +215,7 @@ class BenchmarkAuditService:
         }
 
     def delete(self, db: Session, session_id: int) -> None:
+        """Delete an audit session and its results (ownership is checked by the router)."""
         session = self.get_session(db, session_id)
         if not session:
             raise ValueError(f"Audit session {session_id} not found")

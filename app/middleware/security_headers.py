@@ -10,7 +10,11 @@ from starlette.responses import Response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Adds the browser security headers to every response: no MIME sniffing, no framing, a strict
+    Content-Security-Policy, HSTS over HTTPS, and no caching of API answers.
+    """
     async def dispatch(self, request: Request, call_next) -> Response:
+        """Set each header only if the route did not set its own (setdefault)."""
         response: Response = await call_next(request)
         headers = response.headers
 

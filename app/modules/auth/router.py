@@ -274,6 +274,9 @@ def read_current_user(
 
 
 class OwnPasswordChange(BaseModel):
+    """Body of PUT /auth/me/password: the current password and a new one that meets the password
+    policy.
+    """
     current_password: str = Field(..., min_length=1, max_length=256)
     new_password: str = Field(..., max_length=256)
 
@@ -327,6 +330,7 @@ def change_own_password(
 
 
 class LanguageUpdate(BaseModel):
+    """Body of PUT /auth/me/language."""
     language: Literal["en", "fa"]
 
 

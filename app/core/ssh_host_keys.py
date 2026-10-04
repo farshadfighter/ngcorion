@@ -253,6 +253,9 @@ def policy_mode() -> HostKeyPolicyMode:
 
 
 class VerificationResult(str, Enum):
+    """How a presented host key compares with the pinned one: the same key, a different key, or no key
+    pinned yet for that host.
+    """
     MATCH = "match"
     MISMATCH = "mismatch"
     UNKNOWN = "unknown"
@@ -495,6 +498,9 @@ class VerifyingHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         self.port = port
 
     def missing_host_key(self, client, hostname, key):  # noqa: D102 - paramiko API
+        """paramiko callback for a host whose key is not in the client's own store: apply NGCorion's
+        pinning policy (pin on first use, or refuse in strict mode; refuse a changed key).
+        """
         # `hostname` arrives as paramiko's server_hostkey_name, which is already
         # "[host]:port" when the port is not 22 — unpack it so the entry name is
         # derived once, consistently with the netmiko path.

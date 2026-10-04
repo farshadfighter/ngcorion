@@ -28,6 +28,10 @@ AVAILABILITY_PRO = "pro"         # only through an Ubuntu Pro (ESM) subscription
 
 
 class DistroVuln(Base):
+    """One fixed-in version from a distribution advisory (OSV): in this release, this source package is
+    vulnerable to these CVEs below this version. Matched against installed packages to find missing
+    updates.
+    """
     __tablename__ = "distro_vulns"
     __table_args__ = (
         Index("ix_distro_vulns_release_package", "release", "package"),
@@ -52,6 +56,9 @@ class DistroVuln(Base):
 
 
 class DistroFeed(Base):
+    """Load state of one distribution release's advisory feed: how many advisories and rows are loaded,
+    and the newest modification time seen (the watermark incremental updates continue from).
+    """
     __tablename__ = "distro_feeds"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

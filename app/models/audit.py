@@ -1,3 +1,10 @@
+"""
+Audit sessions and their per-check results, for every target family (DeviceType).
+
+An AuditSession is one audit run against one asset: who ran it, which
+profile/benchmark, its status, the stored dump (collected output) and the
+score. AuditResult rows hold each check's pass/fail/manual outcome and evidence.
+"""
 from sqlalchemy import (
     Column,
     Integer,
@@ -16,6 +23,10 @@ from app.core.database import Base
 
 
 class DeviceType(str, enum.Enum):
+    """Every target family an audit can run against; stored on sessions and used as the API path
+    segment of the benchmark modules. A new value needs a migration (ALTER TYPE devicetype ADD
+    VALUE).
+    """
     CISCO = "cisco"
     LINUX = "linux"
     WINDOWS = "windows"
@@ -36,6 +47,9 @@ class DeviceType(str, enum.Enum):
 
 
 class CheckStatus(str, enum.Enum):
+    """Outcome of one check: compliant, not compliant, not applicable to this target, or could not be
+    evaluated (connection or command error).
+    """
     PASS = "pass"  # Yes
     FAIL = "fail"  # No
     NOT_APPLICABLE = "not_applicable"
@@ -44,6 +58,9 @@ class CheckStatus(str, enum.Enum):
 
 # Template for check categories (CIS sections)
 class AuditTemplate(Base):
+    """A named benchmark definition (for example "CIS Cisco IOS Benchmark v4.1.1") for one device type.
+    Optional: most audits run their checks directly from code (template_id is then null).
+    """
     __tablename__ = "audit_templates"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -64,6 +81,7 @@ class AuditTemplate(Base):
 
 # Individual check items (1.1.1, 1.1.2, ...)
 class AuditCheck(Base):
+    """One check of an AuditTemplate: number, title, description and how it is verified."""
     __tablename__ = "audit_checks"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -82,6 +100,10 @@ class AuditCheck(Base):
 
 # Audit execution session
 class AuditSession(Base):
+    """One audit run against one asset: who started it and when, target and profile, status, the
+    collected dump and the resulting score. Owned by the user who ran it (only admins see
+    everyone's).
+    """
     __tablename__ = "audit_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -125,6 +147,9 @@ class AuditSession(Base):
 
 # Results of each check
 class AuditResult(Base):
+    """The result of one check in an audit session: status, severity and level, and the evidence
+    that decided it.
+    """
     __tablename__ = "audit_results"
 
     id = Column(Integer, primary_key=True, index=True)

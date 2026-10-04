@@ -32,18 +32,25 @@ _lock = threading.Lock()
 
 
 class TLSPinError(ConnectionError):
+    """A device's TLS certificate could not be trusted; nothing was sent to it."""
     pass
 
 
 class TLSPinUnknownError(TLSPinError):
+    """No certificate is pinned for the device and the policy (strict) does not pin on first use."""
     pass
 
 
 class TLSPinMismatchError(TLSPinError):
+    """The device presented a certificate other than the pinned one (possible interception, or the
+    device was reinstalled).
+    """
     pass
 
 
 def store_path() -> Path:
+    """Where the TLS pins are kept: SSL_PINS_FILE, or tls_pins.json next to the SSH known-hosts store.
+    """
     configured = os.environ.get("SSL_PINS_FILE", "").strip()
     if configured:
         return Path(configured).expanduser()
@@ -81,6 +88,9 @@ def pinned(host: str, port: int) -> Optional[str]:
 
 
 def forget(host: str, port: int) -> bool:
+    """Remove the pinned certificate of host:port (after a legitimate reinstall); True if there was
+    one.
+    """
     with _lock:
         pins = _load()
         if pins.pop(_key(host, port), None) is None:

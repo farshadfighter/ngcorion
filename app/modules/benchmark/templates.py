@@ -23,6 +23,9 @@ UNSAFE_TEXT_CHARS = ("'", '"', "`", "$", ";", "|", "&", "<", ">", "\n", "\r", "{
 
 @dataclass
 class ParamMeta:
+    """A typed hardening parameter: text (deny-listed characters, optional regex), number (range) or
+    select (fixed options), with its label, help and default as the UI shows them.
+    """
     name: str
     input_type: str            # text / number / select
     label: str
@@ -38,6 +41,9 @@ class ParamMeta:
 
 @dataclass
 class HardeningTemplate:
+    """The fix of one check: statements to run, statements that verify it (must print PASS), the
+    parameters it takes, and flags (restarts a service, manual only, warning to accept first).
+    """
     check_id: str
     description: str
     statements: List[str]
@@ -78,6 +84,7 @@ class TemplateSet:
         return sorted(self.templates)
 
     def params_for(self, check_id: str) -> List[ParamMeta]:
+        """The parameter definitions a check's template uses."""
         t = self.get(check_id)
         if not t:
             return []
@@ -104,6 +111,9 @@ class TemplateSet:
         return out
 
     def categorize(self, check_ids: List[str]) -> Dict[str, List[str]]:
+        """Sort checks for Harden All: fixable with defaults, needing parameters from the user, or
+        without an automatic fix.
+        """
         auto, needs, unsupported = [], [], []
         for cid in check_ids:
             if not self.has_fix(cid):
@@ -115,6 +125,9 @@ class TemplateSet:
         return {"auto_fixable": auto, "needs_params": needs, "not_supported": unsupported}
 
     def aggregate(self, check_ids: List[str]) -> Dict[str, Any]:
+        """The parameters of several checks merged into one form (each parameter once, with the checks
+        that use it).
+        """
         out: Dict[str, Any] = {}
         for cid in check_ids:
             for p in self.params_for(cid):
@@ -139,6 +152,10 @@ class TemplateSet:
 
     # ── validation + substitution ──
     def validate(self, check_id: str, parameters: Dict[str, str]) -> Optional[str]:
+        """The first problem with the given parameter values, or None. Unknown names are ignored (never
+        substituted); options must be one of the list; numbers must parse and be in range; text must
+        avoid shell metacharacters and match the parameter's regex.
+        """
         allowed = {p.name: p for p in self.params_for(check_id)}
         for name, value in parameters.items():
             meta = allowed.get(name)

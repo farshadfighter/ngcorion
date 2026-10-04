@@ -33,6 +33,9 @@ class LicenseMiddleware(BaseHTTPMiddleware):
     }
     
     async def dispatch(self, request: Request, call_next):
+        """Let the passthrough paths and everything outside /api/ through; answer every other API
+        request with 403 (license required) while no valid license is known.
+        """
         path = request.url.path
         
         # Allow passthrough paths

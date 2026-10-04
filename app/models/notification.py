@@ -38,6 +38,9 @@ CHANNELS = (CHANNEL_EMAIL, CHANNEL_SMS, CHANNEL_SYSLOG, CHANNEL_WEBHOOK)
 
 
 class NotificationRule(Base):
+    """When to raise an alert and whom to tell: the event type (app/modules/alerts/events.py), its
+    conditions, severity, channels and recipients, and how messages are grouped.
+    """
     __tablename__ = "notification_rules"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -74,6 +77,9 @@ class NotificationRule(Base):
 
 
 class Alert(Base):
+    """A raised alert. The fingerprint identifies the problem, so a problem has at most one open alert
+    (unique partial index) even with several workers evaluating rules.
+    """
     __tablename__ = "alerts"
     __table_args__ = (
         # One open alert per problem, even with several workers evaluating.
@@ -110,6 +116,9 @@ class Alert(Base):
 
 
 class NotificationDelivery(Base):
+    """One message to send (or sent) on one channel to one recipient, covering one or several alerts,
+    with retry state.
+    """
     __tablename__ = "notification_deliveries"
     __table_args__ = (Index("ix_notification_deliveries_pending", "status", "next_attempt_at"),)
 
@@ -134,6 +143,9 @@ class NotificationDelivery(Base):
 
 
 class NotificationWebhook(Base):
+    """A webhook endpoint for notifications. Payloads are signed with the secret, which is stored
+    encrypted.
+    """
     __tablename__ = "notification_webhooks"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -150,6 +162,9 @@ class NotificationWebhook(Base):
 
 
 class AlertSeen(Base):
+    """When each user last opened the alerts list; alerts newer than that count as unseen in the bell
+    badge.
+    """
     __tablename__ = "alert_seen"
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)

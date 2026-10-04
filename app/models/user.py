@@ -6,12 +6,18 @@ from app.core.database import Base
 import enum
 
 class UserRole(str, enum.Enum):
+    """Roles: admin (everything), manager and user (what their module permissions allow), guest
+    (read-only by default).
+    """
     ADMIN = "admin"
     USER = "user"
     MANAGER = "manager"
     GUEST = "guest"
 
 class User(Base):
+    """An account of NGCorion: identity, bcrypt password hash, role, language, and whether the password
+    must be changed at the next login. Per-module permissions are in UserPermission.
+    """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)

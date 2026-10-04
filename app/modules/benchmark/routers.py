@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 class BenchmarkSessionResponse(BaseModel):
+    """An audit session as the session list and result header show it."""
     session_id: int
     job_name: Optional[str] = None
     asset_id: Optional[int] = None
@@ -60,6 +61,7 @@ class BenchmarkSessionResponse(BaseModel):
 
 
 class BenchmarkResultResponse(BaseModel):
+    """One check result of an audit session."""
     id: int
     check_number: Optional[str] = None
     check_title: Optional[str] = None
@@ -71,6 +73,7 @@ class BenchmarkResultResponse(BaseModel):
 
 
 class PreviewRequest(BaseModel):
+    """Body of the hardening preview: which check and the parameters to render it with."""
     check_id: str = Field(..., max_length=100)
     parameters: Optional[Dict[str, str]] = None
 
@@ -85,6 +88,9 @@ def _credentials(body: BaseModel, spec: ModuleSpec) -> Dict[str, Any]:
 
 
 def build_audit_router(spec: ModuleSpec) -> APIRouter:
+    """The audit API of one module (/api/audit/{key}/...): execute, list, detail, results, history and
+    delete. The request model is built from the module connector's credential fields.
+    """
     service = BenchmarkAuditService(spec)
     connector = get_connector(spec.connector)
 
@@ -108,6 +114,10 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
     def execute(body: AuditRequest, request: Request,  # type: ignore[valid-type]
                 current_user: User = Depends(require_permission("AUDITING", "write")),
                 db: Session = Depends(get_db)):
+        """Run an audit. Needs auditing write permission and available audit quota; quota is consumed
+        only when the audit succeeds. Credential, connection and target errors are answered with
+        their own status codes and logged.
+        """
         consume_quota = consume_quota_on_success("audit")
         user_id = current_user.id
         asset = db.query(Asset).filter(Asset.id == body.asset_id).first()
@@ -145,6 +155,7 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
     def list_sessions(limit: int = Query(50, ge=1), offset: int = Query(0, ge=0),
                       current_user: User = Depends(require_permission("AUDITING", "read")),
                       db: Session = Depends(get_db)):
+        """Audit sessions of this module, newest first (only the caller's own unless admin)."""
         sessions = service.list_sessions(db, min(limit, 100), offset, owner_id=owner_scope(current_user))
         return [s for s in (service.summary(db, x.id) for x in sessions) if s]
 
@@ -170,6 +181,7 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
     @router.get("/sessions/{session_id}/results", response_model=List[BenchmarkResultResponse])
     def get_results(session_id: int, current_user: User = Depends(require_permission("AUDITING", "read")),
                     db: Session = Depends(get_db)):
+        """Per-check results of one session (owner or admin only)."""
         _own_session(db, session_id, current_user)
         return [{
             "id": r.id, "check_number": r.check_number, "check_title": r.check_title,
@@ -182,6 +194,7 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
     def asset_history(asset_id: int, limit: int = Query(10, ge=1, le=100),
                       current_user: User = Depends(require_permission("AUDITING", "read")),
                       db: Session = Depends(get_db)):
+        """Recent audit sessions of one asset (only the caller's own unless admin)."""
         if not db.query(Asset).filter(Asset.id == asset_id).first():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Asset {asset_id} not found")
         sessions = service.asset_history(db, asset_id, limit, owner_id=owner_scope(current_user))
@@ -190,6 +203,7 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
     @router.delete("/sessions/{session_id}")
     def delete_session(session_id: int, current_user: User = Depends(require_permission("AUDITING", "write")),
                        db: Session = Depends(get_db)):
+        """Delete one session (owner or admin) and record it in the audit log."""
         session = _own_session(db, session_id, current_user)
         user_id, asset_id, ip = current_user.id, session.asset_id, session.target_ip
         service.delete(db, session_id)
@@ -202,6 +216,10 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
 
 
 def build_hardening_router(spec: ModuleSpec) -> APIRouter:
+    """The hardening API of one module (/api/hardening/{key}/...): preview, single fix, supported
+    checks and a check's template. Harden All is served by app/modules/hardening/harden_all for
+    every module.
+    """
     service = BenchmarkHardeningService(spec)
     connector = get_connector(spec.connector)
     ts = spec.templates
@@ -227,6 +245,9 @@ def build_hardening_router(spec: ModuleSpec) -> APIRouter:
 
     @router.post("/preview")
     def preview(body: PreviewRequest, current_user: User = Depends(require_permission("HARDENING", "read"))):
+        """Render the statements a fix would run with the given parameters (validated exactly as for a
+        real run), without connecting to anything.
+        """
         template = ts.get(body.check_id)
         if not template:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
@@ -261,6 +282,10 @@ def build_hardening_router(spec: ModuleSpec) -> APIRouter:
     def execute_single(http_request: Request, body: SingleFixRequest,  # type: ignore[valid-type]
                        current_user: User = Depends(require_permission("HARDENING", "write")),
                        db: Session = Depends(get_db)):
+        """Run one fix. Needs hardening write permission and hardening quota (consumed only on
+        success); with a session id, the session must be the caller's and of this module, and the
+        check is marked passed when the fix verifies.
+        """
         consume_quota = consume_quota_on_success("harden")
         user_id = current_user.id
         if body.session_id is not None:
@@ -306,6 +331,9 @@ def build_hardening_router(spec: ModuleSpec) -> APIRouter:
 
     @router.get("/check/{check_id}/template")
     def check_template(check_id: str, current_user: User = Depends(require_permission("HARDENING", "read"))):
+        """A check's fix: description, statements, verification, parameters and warning, for the Fix
+        dialog.
+        """
         template = ts.get(check_id)
         if not template:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,

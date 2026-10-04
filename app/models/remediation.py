@@ -50,6 +50,9 @@ SCOPE_REF = "ref"        # this CVE / check / rule on every asset
 
 
 class RemediationItem(Base):
+    """One thing to fix on one asset (a CVE, a failed audit check or an architecture finding), kept in
+    step with the findings by the remediation sync: owner, deadline (SLA), status and history.
+    """
     __tablename__ = "remediation_items"
 
     id = Column(Integer, primary_key=True)
@@ -83,6 +86,8 @@ class RemediationItem(Base):
 
 
 class RemediationEvent(Base):
+    """One entry in a remediation item's history: status change, assignment, comment, deadline change.
+    """
     __tablename__ = "remediation_events"
 
     id = Column(Integer, primary_key=True)
@@ -94,6 +99,9 @@ class RemediationEvent(Base):
 
 
 class RiskAcceptance(Base):
+    """A decision to accept a risk instead of fixing it, for one item or for a finding across assets:
+    justification, requester, approver and expiry.
+    """
     __tablename__ = "risk_acceptances"
 
     id = Column(Integer, primary_key=True)

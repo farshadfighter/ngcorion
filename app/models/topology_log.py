@@ -65,6 +65,7 @@ class TopologyLog(Base):
 
 
 def log_topology_link_created(db, user_id: int, link_id: int, source_asset_id: int, destination_asset_id: int):
+    """Record in the topology log that a user created a link between two assets."""
     log = TopologyLog(
         user_id=user_id,
         action="create",
@@ -77,6 +78,7 @@ def log_topology_link_created(db, user_id: int, link_id: int, source_asset_id: i
 
 
 def log_topology_link_updated(db, user_id: int, link_id: int, changes: dict = None):
+    """Record in the topology log that a user changed a link (the names of the changed fields)."""
     log = TopologyLog(
         user_id=user_id,
         action="update",
@@ -89,6 +91,7 @@ def log_topology_link_updated(db, user_id: int, link_id: int, changes: dict = No
 
 
 def log_topology_link_deleted(db, user_id: int, link_id: int):
+    """Record in the topology log that a user deleted a link."""
     log = TopologyLog(
         user_id=user_id,
         action="delete",

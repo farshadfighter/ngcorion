@@ -97,6 +97,9 @@ def run_template(spec: ModuleSpec, conn, check_id: str, parameters: Optional[Dic
 
 
 class BenchmarkHardeningService:
+    """Hardening runs of one benchmark module: single fixes, Harden All batches, previews and the
+    supported-checks list. Each run opens one connection with credentials used only for that run.
+    """
     def __init__(self, spec: ModuleSpec):
         self.spec = spec
 
@@ -136,6 +139,10 @@ class BenchmarkHardeningService:
     def batch_execute_selected(self, db: Session, session_id: int, asset_id: int, credentials: Dict[str, Any],
                                checks: List[Dict[str, Any]], create_backup: bool = False,
                                user_id: Optional[int] = None) -> Dict[str, Any]:
+        """Harden All: run the selected checks (each with its parameters) over one connection, after an
+        optional configuration backup. Checks that verify as PASS are marked passed in the audit
+        session. Returns per-check results and the backup outcome.
+        """
         spec = self.spec
         self._check_session(db, session_id)
         asset = self._asset(db, asset_id)
@@ -176,6 +183,9 @@ class BenchmarkHardeningService:
     def execute_single(self, db: Session, asset_id: int, credentials: Dict[str, Any], check_id: str,
                        parameters: Optional[Dict[str, Any]] = None,
                        session_id: Optional[int] = None) -> Dict[str, Any]:
+        """Run one fix (with its parameters) and its verification; on success the check is marked
+        passed in the given audit session.
+        """
         spec = self.spec
         asset = self._asset(db, asset_id)
         with get_connector(spec.connector).open(asset.ip_address, credentials) as conn:
@@ -187,6 +197,9 @@ class BenchmarkHardeningService:
         return result
 
     def supported_checks(self) -> Dict[str, Any]:
+        """Every check the module can fix, with whether it runs without parameters, whether it is
+        manual only, whether it restarts something, its defaults and its warning.
+        """
         ts = self.spec.templates
         checks = []
         for cid in ts.supported():

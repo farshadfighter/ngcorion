@@ -32,6 +32,9 @@ MODES = ("audit", "hardening")
 
 @dataclass(frozen=True)
 class TargetVersion:
+    """One selectable version of a target (for example Ubuntu 22.04) and the device type its audit runs
+    with.
+    """
     device_type: str
     label: str                 # "22.04 LTS"
     group: Optional[str] = None  # "Ubuntu" - versions are grouped by it in the picker
@@ -39,6 +42,9 @@ class TargetVersion:
 
 @dataclass(frozen=True)
 class Target:
+    """One entry of the target picker: what can be audited/hardened, how it is reached, which device
+    types and versions it covers, and the words it is found by.
+    """
     id: str
     label: str
     description: str
@@ -117,6 +123,7 @@ def targets_for(mode: str) -> Tuple[Target, ...]:
 
 
 def target_for_device_type(device_type: str) -> Optional[Target]:
+    """The catalog entry that covers a device type, or None."""
     for t in TARGETS:
         if device_type in t.device_types:
             return t

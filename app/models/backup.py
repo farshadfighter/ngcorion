@@ -1,3 +1,7 @@
+"""
+Device configuration backups (DeviceBackup): snapshots taken by hand or
+automatically before a hardening run, used by Backup / Restore.
+"""
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from datetime import datetime

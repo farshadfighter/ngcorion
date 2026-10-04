@@ -21,6 +21,10 @@ RESTORE_FINAL_STATUSES = ("succeeded", "reverted", "failed")
 
 
 class BackupRestore(Base):
+    """A restore of a device backup to its device: which backup, which asset, who asked, the steps and
+    their outcome. Credentials are never stored; a restore interrupted by a restart is marked
+    failed.
+    """
     __tablename__ = "backup_restores"
 
     id = Column(Integer, primary_key=True, index=True)

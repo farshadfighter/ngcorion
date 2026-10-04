@@ -31,6 +31,9 @@ RECURRENCE_WEEKLY = "weekly"
 
 
 class ScheduledJob(Base):
+    """A discovery scan or audit that runs on a schedule. Credentials it needs are stored encrypted
+    (credential_crypto) because nobody is there to type them.
+    """
     __tablename__ = "scheduled_jobs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -68,6 +71,9 @@ class ScheduledJob(Base):
 
 
 class ScheduledJobRun(Base):
+    """One execution of a scheduled job: when it ran, its outcome, and a reference to what it
+    produced (the audit session or discovery scan).
+    """
     __tablename__ = "scheduled_job_runs"
 
     id = Column(Integer, primary_key=True, index=True)

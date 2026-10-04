@@ -36,6 +36,9 @@ FREQUENCIES = ("daily", "weekly", "monthly", "quarterly")
 
 
 class Report(Base):
+    """One generated (or queued) report: template, title, language, period and scope, who asked,
+    status, and its verification code.
+    """
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True)
@@ -65,6 +68,8 @@ class Report(Base):
 
 
 class ReportFile(Base):
+    """A file of a report (PDF or Excel) with its size and SHA-256, so a copy can be verified later.
+    """
     __tablename__ = "report_files"
 
     id = Column(Integer, primary_key=True)
@@ -78,6 +83,9 @@ class ReportFile(Base):
 
 
 class ReportSchedule(Base):
+    """A report produced on a schedule and optionally emailed: template, options, frequency,
+    recipients.
+    """
     __tablename__ = "report_schedules"
 
     id = Column(Integer, primary_key=True)

@@ -7,6 +7,9 @@ from .spec import ModuleSpec
 
 
 def specs() -> List[ModuleSpec]:
+    """Every benchmark module's spec, in menu order. Imported lazily so this module can be imported
+    anywhere without circular imports.
+    """
     from app.modules.active_directory.spec import SPEC as active_directory
     from app.modules.dhcp_server.spec import SPEC as dhcp_server
     from app.modules.dns_server.spec import SPEC as dns_server

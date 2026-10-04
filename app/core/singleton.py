@@ -146,6 +146,9 @@ class SingletonTask:
             self._task = asyncio.create_task(self._run(), name=f"singleton-{self.name}")
 
     async def stop(self) -> None:
+        """Stop competing for the lock and, if this worker is the leader, stop the loop (waiting up to
+        5 seconds before cancelling it). Called at shutdown.
+        """
         self._stopping.set()
         if self._task is not None:
             try:

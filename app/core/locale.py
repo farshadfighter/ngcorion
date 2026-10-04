@@ -13,6 +13,9 @@ FALLBACK = "en"
 
 
 def default_language(db: Session) -> str:
+    """The installation's default interface language (System Configuration), or the built-in fallback
+    when none is set.
+    """
     from app.models.system_config import SECTION_LOCALE, SystemConfigSetting
     row = db.query(SystemConfigSetting).filter(SystemConfigSetting.section == SECTION_LOCALE).first()
     lang = (row.config_json or {}).get("default_language") if row else None

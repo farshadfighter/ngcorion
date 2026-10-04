@@ -65,6 +65,9 @@ class WinRMConnection:
         return self._ex._execute(script)
 
     def run(self, script: str) -> str:
+        """Run one collection script; an error comes back as text ("PS_ERROR: ...") so that one failing
+        section does not stop the audit.
+        """
         try:
             out = self._ex._execute(script)
         except Exception as exc:  # noqa: BLE001 - reported per section
@@ -76,6 +79,9 @@ class WinRMConnection:
 
 
 class WinRMConnector(Connector):
+    """Windows targets over WinRM (PowerShell): AD, DNS, DHCP, IIS. Credentials are request fields
+    only, never stored.
+    """
     key = "winrm"
     request_fields = {
         "windows_username": (str, Field(..., min_length=1, description="Windows admin account (DOMAIN\\user), not stored")),
@@ -98,6 +104,9 @@ class WinRMConnector(Connector):
 
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]):
+        """Connect over WinRM and yield a WinRMConnection; authentication and connection failures
+        become PermissionError / ConnectionError for the routers.
+        """
         from app.modules.windows.hardening.winrm_executor import WindowsWinRMExecutor
         verify = creds.get("verify_ssl")
         executor = WindowsWinRMExecutor(
@@ -141,6 +150,9 @@ class SSHConnection:
         return self._runner.send_command_with_status(command, use_sudo=True, timeout=timeout)
 
     def run(self, script: str) -> str:
+        """Run one collection command; SSH errors and non-zero exits come back as text ("SSH_ERROR:
+        ...", "CMD_ERROR: ...") so the audit records them per section.
+        """
         try:
             out, status = self._exec(script)
         except Exception as exc:  # noqa: BLE001 - reported per section
@@ -150,6 +162,7 @@ class SSHConnection:
         return out if out.strip() else "(no output)"
 
     def execute(self, script: str) -> str:
+        """Run one hardening statement; a non-zero exit raises, so the fix is reported as failed."""
         out, status = self._exec(script)
         if status != 0:
             raise RuntimeError(_first_line(out) or f"command exited with status {status}")
@@ -157,6 +170,9 @@ class SSHConnection:
 
 
 class SSHConnector(Connector):
+    """Linux-style targets over SSH with sudo (Docker, Kubernetes nodes). The SSH host key is pinned;
+    the sudo password defaults to the SSH password. Nothing is stored.
+    """
     key = "ssh"
     request_fields = {
         "ssh_username": (str, Field(..., min_length=1, description="SSH account with sudo, not stored")),
@@ -178,6 +194,9 @@ class SSHConnector(Connector):
 
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]):
+        """Connect over SSH and yield an SSHConnection (root or sudo); authentication and connection
+        failures become PermissionError / ConnectionError.
+        """
         from app.core.ssh_exceptions import SSHAuthenticationError, SSHConnectionError
         from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
         runner = HardeningSSHRunner(
@@ -250,6 +269,9 @@ class MySQLConnection:
         return self._shell._runner.run_with_input(f"sh -c {shlex.quote(script)}", data, timeout=120)
 
     def run(self, script: str) -> str:
+        """Run one collection script: SQL statements (SQL_PREFIX) go to the mysql client with the
+        password passed on stdin, anything else to the shell. Errors come back as text.
+        """
         text, _tolerated = split_sql(script)
         if text is None:
             return self._shell.run(script)
@@ -262,6 +284,9 @@ class MySQLConnection:
         return out if out.strip() else "(no output)"
 
     def execute(self, script: str) -> str:
+        """Run one hardening statement (SQL or shell). MySQL error codes the statement lists as
+        tolerated (for example "already exists") count as success; any other error raises.
+        """
         text, tolerated = split_sql(script)
         if text is None:
             return self._shell.execute(script)
@@ -275,6 +300,9 @@ class MySQLConnection:
 
 
 class MySQLConnector(SSHConnector):
+    """MySQL over SSH: the mysql client runs on the database host, so the database port need not be
+    reachable from NGCorion. Both the SSH and the MySQL credentials are request fields only.
+    """
     key = "ssh_mysql"
     request_fields = {
         **SSHConnector.request_fields,
@@ -291,6 +319,9 @@ class MySQLConnector(SSHConnector):
 
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]):
+        """Connect over SSH, then prove the MySQL login with SELECT 1 before yielding the
+        MySQLConnection; a rejected login becomes PermissionError.
+        """
         if "\n" in (creds.get("mysql_password") or ""):
             raise PermissionError("The MySQL password cannot contain a line break")
         with SSHConnector.open(self, ip, creds) as shell:
@@ -326,6 +357,9 @@ class ESXiConnector(SSHConnector):
 
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]):
+        """Connect to an ESXi host over SSH as root or an Administrator-role account. ESXi has no sudo,
+        so commands run as that account directly.
+        """
         from app.core.ssh_exceptions import SSHAuthenticationError, SSHConnectionError
         from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
         runner = HardeningSSHRunner(ip=ip, username=creds.get("ssh_username") or "root",
@@ -356,11 +390,18 @@ class NginxConnector(SSHConnector):
 
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]):
+        """Connect over SSH and yield an NginxConnection that can also write configuration files:
+        content is sent on stdin after a marker line (and after the sudo password when needed),
+        never through the command line.
+        """
         from app.modules.nginx.edit import MARK, NginxConnection, stdin_write_script
         with SSHConnector.open(self, ip, creds) as shell:
             runner = shell._runner
 
             def write(path: str, content: str) -> None:
+                """Write one file on the target through stdin_write_script; raises when the write
+                fails.
+                """
                 script = stdin_write_script(path)
                 if shell._as_root:
                     command, data = f"sh -c {shlex.quote(script)}", f"{MARK}\n{content}"
@@ -400,6 +441,9 @@ class SophosConnector(Connector):
 
     @contextmanager
     def open(self, ip: str, creds: Dict[str, Any]):
+        """Log in to the Sophos XML API (HTTPS, certificate pinned before the password is sent) and
+        yield a SophosConnection.
+        """
         from app.modules.sophos.api import SophosAPI, SophosAPIError
         from app.modules.sophos.edit import SophosConnection
         api = SophosAPI(ip, self.port_of(creds), creds["sophos_username"], creds["sophos_password"])

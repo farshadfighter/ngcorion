@@ -1,3 +1,8 @@
+"""
+Pydantic request/response models of the asset inventory API: assets, asset
+types, owners, locations, network zones, OS and vendor catalogs, dependencies
+and security status. Validation of user input (IP/MAC formats, lengths) lives here.
+"""
 from pydantic import BaseModel, field_validator, EmailStr, ConfigDict, computed_field
 from typing import Optional, Generic, TypeVar, List
 import re
