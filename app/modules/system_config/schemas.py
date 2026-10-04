@@ -103,6 +103,7 @@ class _ConfigBase(BaseModel):
 # ----------------------------------------------------------------------
 
 class TimeConfig(_ConfigBase):
+    """Time zone and either an NTP server or a manual time."""
     timezone: str = Field(..., min_length=1, max_length=100, examples=["Asia/Tehran"])
     use_ntp: bool = True
     ntp_server: Optional[str] = Field(None, max_length=255)
@@ -156,6 +157,9 @@ class TimeConfig(_ConfigBase):
 # ----------------------------------------------------------------------
 
 class SnmpConfig(_ConfigBase):
+    """SNMP agent settings of this server; every value written into snmpd.conf is checked to be a
+    single token (no spaces or line breaks).
+    """
     version: SnmpVersionEnum
     # The address snmpd binds to (agentAddress in snmpd.conf) — required so the
     # daemon listens on a known management interface rather than silently
@@ -227,6 +231,7 @@ class SnmpConfig(_ConfigBase):
 # ----------------------------------------------------------------------
 
 class SyslogConfig(_ConfigBase):
+    """Where to forward this server's logs."""
     server_ip: str = Field(..., min_length=1, max_length=255)
     port: int = Field(514, ge=1, le=65535)
     protocol: SyslogProtocolEnum = SyslogProtocolEnum.UDP
@@ -246,6 +251,9 @@ class SyslogConfig(_ConfigBase):
 # ----------------------------------------------------------------------
 
 class SmsConfig(_ConfigBase):
+    """SMS gateway used for notifications and password reset; the gateway address must resolve to
+    public addresses only (SSRF check when saved and again before every request).
+    """
     provider: str = Field(..., min_length=1, max_length=100)
     server_address: str = Field(..., min_length=1, max_length=500)
     api_key: str = Field(..., min_length=1, max_length=500)
@@ -285,6 +293,7 @@ class SmsConfig(_ConfigBase):
 
 
 class SmsTestRequest(BaseModel):
+    """Body of sending a test SMS."""
     phone: str = Field(..., min_length=3, max_length=32, examples=["09121234567"])
 
     @field_validator("phone")
@@ -301,6 +310,7 @@ class SmsTestRequest(BaseModel):
 # ----------------------------------------------------------------------
 
 class SmtpConfig(_ConfigBase):
+    """Mail server used for notifications, reports and password reset."""
     host: str = Field(..., min_length=1, max_length=255)
     port: int = Field(587, ge=1, le=65535)
     username: str = Field(..., max_length=255)
@@ -320,4 +330,5 @@ class SmtpConfig(_ConfigBase):
 
 
 class SmtpTestRequest(BaseModel):
+    """Body of sending a test e-mail."""
     to: EmailStr

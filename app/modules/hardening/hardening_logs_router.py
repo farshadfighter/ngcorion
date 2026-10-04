@@ -15,6 +15,7 @@ from app.models import User, HardeningLog
 
 
 class HardeningLogResponse(BaseModel):
+    """One entry of the hardening log."""
     id: int
     user_id: Optional[int] = None
     username: Optional[str] = None

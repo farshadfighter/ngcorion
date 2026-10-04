@@ -280,6 +280,7 @@ def get_syslog_config(
     _current_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")),
     db: Session = Depends(get_db),
 ):
+    """The stored syslog forwarding settings."""
     return {
         "config": _load(db, SECTION_SYSLOG) or None,
         "updated_at": _updated_at(db, SECTION_SYSLOG),
@@ -451,6 +452,7 @@ def test_smtp(
 # ======================================================================
 
 class LocaleConfig(BaseModel):
+    """The default interface language for users who have not chosen one."""
     default_language: Literal["en", "fa"] = "en"
 
 
@@ -459,6 +461,7 @@ def get_locale_config(
     _current_user: User = Depends(require_permission("SYSTEM_CONFIG", "read")),
     db: Session = Depends(get_db),
 ):
+    """The default interface language."""
     stored = _load(db, SECTION_LOCALE)
     return {"config": stored or {"default_language": "en"}, "updated_at": _updated_at(db, SECTION_LOCALE)}
 
@@ -469,6 +472,7 @@ def update_locale_config(
     current_user: User = Depends(require_permission("SYSTEM_CONFIG", "write")),
     db: Session = Depends(get_db),
 ):
+    """Set the default interface language."""
     user_id, username = current_user.id, current_user.username
     payload = data.model_dump()
     _save(db, SECTION_LOCALE, payload, current_user)

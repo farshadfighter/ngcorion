@@ -29,6 +29,7 @@ class ValidationError:
         self.control_id = control_id
 
     def to_dict(self) -> Dict[str, Any]:
+        """The error as JSON for the API."""
         return {
             "field": self.field,
             "message": self.message,

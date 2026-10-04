@@ -98,6 +98,9 @@ class HardenAllPlan(BaseModel):
 # ============================================================
 
 class HardenAllRequest(BaseModel):
+    """Body of running Harden All: the audit session, the connection credentials (used for this run
+    only) and the parameters of checks that need them.
+    """
     session_id: int
     credentials: Dict[str, str] = Field(
         default_factory=dict,
@@ -116,6 +119,7 @@ class HardenAllRequest(BaseModel):
 
 
 class CheckOutcome(BaseModel):
+    """Result of one check in a Harden All run."""
     result_id: Optional[int] = None
     check_number: str
     check_title: Optional[str] = None
@@ -126,6 +130,7 @@ class CheckOutcome(BaseModel):
 
 
 class HardenAllResult(BaseModel):
+    """Totals and per-check outcomes of a Harden All run."""
     session_id: int
     device_family: str
     dry_run: bool = False

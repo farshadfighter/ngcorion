@@ -68,6 +68,9 @@ class SchedulingService:
 
     @staticmethod
     def create_job(db: Session, data: ScheduledJobCreate, user_id: int) -> ScheduledJob:
+        """Validate and store a job: discovery targets are checked with the scan request's own rules,
+        audit credentials are encrypted, and the first run time is computed.
+        """
         _validate_create(data)
 
         if data.job_type == JOB_TYPE_DISCOVERY:
@@ -102,6 +105,7 @@ class SchedulingService:
 
     @staticmethod
     def update_job(db: Session, job: ScheduledJob, data: ScheduledJobUpdate) -> ScheduledJob:
+        """Apply the changed fields; a schedule change recomputes the next run."""
         if data.job_name is not None:
             job.job_name = data.job_name
         if data.enabled is not None:
@@ -158,6 +162,7 @@ class SchedulingService:
 
     @staticmethod
     def list_jobs(db: Session, job_type: Optional[str] = None) -> list[ScheduledJob]:
+        """Jobs, optionally of one type, by next run time."""
         query = db.query(ScheduledJob)
         if job_type:
             query = query.filter(ScheduledJob.job_type == job_type)
@@ -174,6 +179,7 @@ class SchedulingService:
 
     @staticmethod
     def list_runs(db: Session, job_id: int) -> list[ScheduledJobRun]:
+        """A job's runs, newest first."""
         return (
             db.query(ScheduledJobRun)
             .filter(ScheduledJobRun.job_id == job_id)
@@ -183,6 +189,7 @@ class SchedulingService:
 
     @staticmethod
     def due_jobs(db: Session, now: datetime) -> list[ScheduledJob]:
+        """Enabled jobs whose next run time has come."""
         return (
             db.query(ScheduledJob)
             .filter(ScheduledJob.enabled.is_(True), ScheduledJob.next_run_at <= now)

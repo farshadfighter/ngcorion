@@ -38,6 +38,9 @@ def _run_job_in_thread(job_id: int) -> None:
 
 
 class JobScheduler:
+    """Background loop that claims due jobs and runs them every SCHEDULER_SWEEP_INTERVAL_SECONDS
+    (leader worker only; a claim is atomic, so a job never runs twice).
+    """
     def __init__(self, interval_seconds: Optional[int] = None):
         self.interval_seconds = interval_seconds if interval_seconds is not None else SCHEDULER_SWEEP_INTERVAL_SECONDS
         self._task: Optional[asyncio.Task] = None
@@ -71,6 +74,7 @@ class JobScheduler:
         return self._task is not None and not self._task.done()
 
     def start(self) -> None:
+        """Start the loop (no-op if it is running)."""
         if self.is_running():
             return
         self._stop_event.clear()
@@ -78,6 +82,7 @@ class JobScheduler:
         logger.info("[Scheduler] Started (interval: %ds)", self.interval_seconds)
 
     async def stop(self) -> None:
+        """Stop the loop, waiting up to 5 seconds before cancelling it."""
         if self._task is None:
             return
         self._stop_event.set()
@@ -93,6 +98,7 @@ _scheduler: Optional[JobScheduler] = None
 
 
 def start_job_scheduler() -> None:
+    """Start the scheduler (once per process)."""
     global _scheduler
     if _scheduler is None:
         _scheduler = JobScheduler()

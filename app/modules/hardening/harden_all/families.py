@@ -117,6 +117,9 @@ def _normalize_success_rows(raw: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 @dataclass(frozen=True)
 class FamilySpec:
+    """How Harden All works for one device family: label, which checks have a fix template, the
+    credential fields to ask for, and the function that runs the batch.
+    """
     key: str
     label: str
     device_type: DeviceType
@@ -150,12 +153,14 @@ class ExecutionContext:
     dry_run: bool = False
 
     def cred(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        """A credential value from the request, or `default` when it is missing or empty."""
         value = self.credentials.get(name)
         if value is None or value == "":
             return default
         return value
 
     def int_cred(self, name: str, default: int) -> int:
+        """A credential value as an integer (ports), or `default`."""
         try:
             return int(self.cred(name) or default)
         except (TypeError, ValueError):
@@ -221,6 +226,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
     # ---- execute adapters -------------------------------------------------
 
     def cisco_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected Cisco fixes in one SSH session."""
         return CiscoService.batch_execute_selected(
             db=ctx.db,
             audit_session_id=ctx.session.id,
@@ -235,6 +241,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
         )
 
     def fortinet_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected FortiGate fixes in one SSH session."""
         return FortiGateHardeningService.batch_execute_selected(
             db=ctx.db,
             audit_session_id=ctx.session.id,
@@ -249,6 +256,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
         )
 
     def linux_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected Linux fixes in one SSH session (sudo)."""
         return LinuxHardeningService.batch_execute_selected(
             db=ctx.db,
             session_id=ctx.session.id,
@@ -264,6 +272,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
         )
 
     def apache_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected Apache fixes in one SSH session (sudo)."""
         return ApacheHardeningService.batch_execute_selected(
             db=ctx.db,
             session_id=ctx.session.id,
@@ -278,6 +287,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
         )
 
     def mongo_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected MongoDB fixes in one SSH session."""
         return MongoDBHardeningService.batch_execute_selected(
             db=ctx.db,
             session_id=ctx.session.id,
@@ -292,6 +302,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
         )
 
     def mssql_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected SQL Server fixes in one connection."""
         return MSSQLHardeningService.batch_execute_selected(
             db=ctx.db,
             session_id=ctx.session.id,
@@ -305,6 +316,7 @@ def _build_registry() -> Dict[str, FamilySpec]:
         )
 
     def windows_execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected Windows fixes in one WinRM session."""
         return WindowsHardeningService.batch_execute_selected(
             db=ctx.db,
             session_id=ctx.session.id,
@@ -429,6 +441,9 @@ def _benchmark_family(module) -> FamilySpec:
     service = BenchmarkHardeningService(module)
 
     def execute(ctx: ExecutionContext) -> Dict[str, Any]:
+        """Run the selected fixes of a benchmark module through the engine, with the connector's
+        credential fields taken from the request.
+        """
         creds: Dict[str, Any] = {}
         for name in connector.request_fields:
             value = ctx.cred(name)

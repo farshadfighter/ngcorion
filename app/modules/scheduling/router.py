@@ -52,6 +52,9 @@ def create_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Create a scheduled discovery or audit. The permission checked depends on the job type (discovery
+    or auditing, write); credentials in the job are stored encrypted.
+    """
     _require_job_type_permission(data.job_type, "write", current_user, db)
     if data.job_type == JOB_TYPE_AUDIT and data.asset_id:
         asset = db.query(Asset).filter(Asset.id == data.asset_id).first()
@@ -69,6 +72,9 @@ def list_jobs(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Scheduled jobs the caller may see: discovery jobs with discovery read permission, audit jobs
+    with auditing read permission; ordered by next run.
+    """
     jobs = []
     try:
         require_permission("asset_auto_discovery", "read")(current_user=current_user, db=db)
@@ -90,6 +96,7 @@ def get_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """One scheduled job (permission by job type)."""
     job = SchedulingService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Scheduled job not found")
@@ -104,6 +111,7 @@ def update_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Change a job's name, schedule, parameters or enabled state (permission by job type)."""
     job = SchedulingService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Scheduled job not found")
@@ -121,6 +129,7 @@ def delete_job(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Delete a scheduled job and its run history (permission by job type)."""
     job = SchedulingService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Scheduled job not found")
@@ -135,6 +144,7 @@ def run_job_now(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Run a job now, in this request, and return the run record (permission by job type)."""
     job = SchedulingService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Scheduled job not found")
@@ -149,6 +159,7 @@ def list_runs(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """The run history of a job, newest first."""
     job = SchedulingService.get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Scheduled job not found")

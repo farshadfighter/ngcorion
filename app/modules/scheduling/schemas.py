@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field
 
 
 class ScheduledJobCreate(BaseModel):
+    """Body of creating a scheduled job: type, recurrence and time, and either discovery targets or the
+    asset, technology and credentials of an audit.
+    """
     job_name: str = Field(..., min_length=1, max_length=200)
     job_type: str = Field(..., pattern="^(discovery|audit)$")
     recurrence: str = Field("daily", pattern="^(once|hourly|daily|weekly)$")
@@ -47,6 +50,7 @@ class ScheduledJobUpdate(BaseModel):
 
 
 class ScheduledJobSummary(BaseModel):
+    """A scheduled job as the API returns it; credentials are never included."""
     id: int
     job_name: str
     job_type: str
@@ -69,6 +73,7 @@ class ScheduledJobSummary(BaseModel):
 
 
 class ScheduledJobRunSummary(BaseModel):
+    """One run of a scheduled job and its outcome."""
     id: int
     job_id: int
     started_at: Optional[datetime]

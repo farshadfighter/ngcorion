@@ -83,6 +83,9 @@ REQUIRED_PARAMS = {
 # connector's credential fields plus profile/job_name.
 def _benchmark_dispatch(key: str) -> Callable:
     def dispatch(db: Session, asset_id: int, user_id: int, params: dict):
+        """Run a scheduled audit of a benchmark module: rebuild the connector's request from the job's
+        decrypted parameters and run the module's normal audit.
+        """
         from app.modules.benchmark.audit_service import BenchmarkAuditService
         from app.modules.benchmark.connectors import get_connector
         from app.modules.benchmark.registry import spec_for

@@ -125,6 +125,9 @@ def _as_str(value: Any) -> Optional[str]:
 # ============================================================
 
 def build_plan(db: Session, session_id: int) -> HardenAllPlan:
+    """What Harden All would do for a session: the failed checks that have a fix, those that need
+    parameters (with their metadata) and those that can only be fixed by hand.
+    """
     session, asset, spec = _load_session(db, session_id)
     rows = _failed_results(db, session_id)
 
@@ -274,6 +277,10 @@ def execute_plan(
     request: HardenAllRequest,
     user_id: int,
 ) -> HardenAllResult:
+    """Run Harden All: rebuild the plan, check the request supplies every required credential and
+    parameter (parameters are validated by the module), then run the family's batch and report
+    per-check outcomes.
+    """
     session, asset, spec = _load_session(db, request.session_id)
     plan = build_plan(db, request.session_id)
 

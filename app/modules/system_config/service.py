@@ -421,6 +421,9 @@ def render_agent_address(server_ip: Optional[str], port: int) -> str:
 
 
 def render_snmpd_conf(config: Dict[str, Any]) -> str:
+    """The snmpd.conf this server writes for the SNMP settings (v2c read-only community or a v3 user,
+    bound to the configured address).
+    """
     lines = [MANAGED_HEADER.rstrip("\n"), ""]
     server_ip = config.get("server_ip")
     if config.get("version") == "v2c":
@@ -456,6 +459,7 @@ def apply_snmp_config(config: Dict[str, Any]) -> List[str]:
 
 
 def mask_snmp(config: Dict[str, Any]) -> Dict[str, Any]:
+    """SNMP settings with the community and passwords masked, for the API."""
     masked = dict(config)
     masked["v2_community"] = _masked(config.get("v2_community"))
     masked["v3_auth_password"] = _masked(config.get("v3_auth_password"))
@@ -502,6 +506,7 @@ def apply_syslog_config(config: Dict[str, Any]) -> List[str]:
 # ======================================================================
 
 def mask_sms(config: Dict[str, Any]) -> Dict[str, Any]:
+    """SMS settings with the API key and password masked, for the API."""
     masked = dict(config)
     masked["api_key"] = _masked(config.get("api_key"))
     masked["password"] = _masked(config.get("password"))
@@ -666,6 +671,7 @@ def _load_certificate(data: bytes) -> x509.Certificate:
 
 
 def get_certificate_info() -> Dict[str, Any]:
+    """Subject, issuer and expiry of the installed HTTPS certificate (or that there is none)."""
     if not CERT_FILE.is_file():
         return {
             "has_cert": False,
@@ -726,6 +732,7 @@ def validate_private_key(data: bytes) -> bytes:
 
 
 def save_certificate(cert_pem: bytes, key_pem: Optional[bytes]) -> None:
+    """Install a new HTTPS certificate (and key, mode 0600); the reverse proxy picks it up."""
     try:
         CERT_DIR.mkdir(parents=True, exist_ok=True)
         CERT_FILE.write_bytes(cert_pem)
