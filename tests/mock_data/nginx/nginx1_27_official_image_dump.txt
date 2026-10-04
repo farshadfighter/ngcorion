@@ -1,0 +1,156 @@
+===SECTION:NGINX_VERSION===
+nginx version: nginx/1.27.5
+built by gcc 12.2.0 (Debian 12.2.0-14) 
+built with OpenSSL 3.0.15 3 Sep 2024 (running with OpenSSL 3.0.16 11 Feb 2025)
+TLS SNI support enabled
+configure arguments: --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/run/nginx.pid --lock-path=/run/nginx.lock --http-client-body-temp-path=/var/cache/nginx/client_temp --http-proxy-temp-path=/var/cache/nginx/proxy_temp --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp --http-scgi-temp-path=/var/cache/nginx/scgi_temp --user=nginx --group=nginx --with-compat --with-file-aio --with-threads --with-http_addition_module --with-http_auth_request_module --with-http_dav_module --with-http_flv_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_mp4_module --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_sub_module --with-http_v2_module --with-http_v3_module --with-mail --with-mail_ssl_module --with-stream --with-stream_realip_module --with-stream_ssl_module --with-stream_ssl_preread_module --with-cc-opt='-g -O2 -ffile-prefix-map=/home/builder/debuild/nginx-1.27.5/debian/debuild-base/nginx-1.27.5=. -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' --with-ld-opt='-Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie'
+
+===SECTION:NGINX_T===
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+# configuration file /etc/nginx/nginx.conf:
+
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+
+# configuration file /etc/nginx/mime.types:
+types {
+    # (MIME type list omitted)
+}
+# configuration file /etc/nginx/conf.d/default.conf:
+server {
+    listen       80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .htaccess files, if Apache's document root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+
+
+===SECTION:ACCOUNT===
+nginx:x:101:101:nginx user:/nonexistent:/bin/false
+shadow=!
+groups=nginx
+
+===SECTION:PATHS===
+root|root|644|regular file|/run/nginx.pid
+END
+
+===SECTION:PAGES===
+/usr/share/nginx/html/index.html
+/usr/share/nginx/html/50x.html
+END
+
+===SECTION:PROCS===
+1|0|0|nginx: master process nginx -g daemon off; |kernel
+20|101|1|nginx: worker process |kernel
+21|101|1|nginx: worker process |kernel
+22|101|1|nginx: worker process |kernel
+23|101|1|nginx: worker process |kernel
+END
+
+===SECTION:FILES===
+root|root|755|directory|/etc/nginx
+root|root|777|symbolic link|/etc/nginx/modules
+root|root|644|regular file|/etc/nginx/scgi_params
+root|root|755|directory|/etc/nginx/conf.d
+root|root|644|regular file|/etc/nginx/conf.d/default.conf
+root|root|644|regular file|/etc/nginx/fastcgi_params
+root|root|644|regular file|/etc/nginx/uwsgi_params
+root|root|644|regular file|/etc/nginx/mime.types
+root|root|644|regular file|/etc/nginx/nginx.conf
+END
+
+===SECTION:LOGROTATE===
+/var/log/nginx/*.log {
+        daily
+        missingok
+        rotate 52
+        compress
+        delaycompress
+        notifempty
+        create 640 nginx adm
+        sharedscripts
+        postrotate
+                if [ -f /run/nginx.pid ]; then
+                        kill -USR1 `cat /run/nginx.pid`
+                fi
+        endscript
+}
+### logrotate missing
+
+===SECTION:MAC===
+selinux=absent
+apparmor=absent
+
+===SECTION:PACKAGE===
+nginx 1.27.5-1~bookworm
+nginx-module-geoip 1.27.5-1~bookworm
+nginx-module-image-filter 1.27.5-1~bookworm
+nginx-module-njs 1.27.5+0.8.10-1~bookworm
+nginx-module-xslt 1.27.5-1~bookworm

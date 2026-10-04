@@ -515,6 +515,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                         type="text"
                         value={paramValues[p.name] ?? ''}
                         onChange={(e) => handleParamChange(p.name, e.target.value)}
+                        dir="auto"
                         placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : tr("Enter {{label}}", { label: p.label }))}
                         style={inputStyle}
                     />
@@ -596,6 +597,7 @@ const ViewFixModal = ({ checkId, checkTitle, resultId, assetId, onClose, onSucce
                             type={p.type === 'password' ? 'password' : (p.type === 'number' ? 'number' : 'text')}
                             value={paramValues[p.name] ?? ''}
                             onChange={(e) => handleParamChange(p.name, e.target.value)}
+                            dir="auto"
                             placeholder={p.placeholder || (p.default != null ? `default: ${p.default}` : tr("Enter {{label}}", { label: p.label }))}
                             autoComplete={p.secret ? 'new-password' : 'off'}
                             style={inputStyle}

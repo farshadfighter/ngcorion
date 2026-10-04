@@ -68,6 +68,7 @@
   "CIS Kubernetes Benchmark": "CIS Kubernetes Benchmark",
   "CIS Microsoft IIS 10": "CIS Microsoft IIS 10",
   "CIS MySQL 8.0 Community Server": "CIS MySQL 8.0 Community Server",
+  "CIS NGINX Benchmark": "CIS NGINX Benchmark",
   "CIS VMware ESXi 7/8": "CIS VMware ESXi 7/8",
   "CLI Commands": "دستورهای CLI",
   "Click \"Show VDOMs\" to list virtual domains, then pick the target VDOM.": "روی «نمایش VDOMها» کلیک کنید تا دامنه‌های مجازی فهرست شوند، سپس VDOM مقصد را انتخاب کنید.",

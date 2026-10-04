@@ -58,6 +58,7 @@ _AUDIT_FEED_MODULES = {
     "kubernetes_cis",
     "mysql_cis",
     "esxi_cis",
+    "nginx_cis",
     "iis_cis",
 }
 

@@ -80,6 +80,7 @@ const TECH_FIELDS = {
     iis: WINRM_FIELDS,
     docker: SSH_SUDO_FIELDS,
     kubernetes: SSH_SUDO_FIELDS,
+    nginx: SSH_SUDO_FIELDS,
     esxi: [
         { key: "ssh_username", label: tr("SSH Username"), type: "text", required: true, default: "root" },
         { key: "ssh_password", label: tr("SSH Password"), type: "password", required: true },
@@ -93,7 +94,7 @@ const TECH_FIELDS = {
     ],
 };
 
-const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi" };
+const TECH_LABELS = { active_directory: "Active Directory", dns_server: "Windows DNS Server", dhcp_server: "Windows DHCP Server", iis: "IIS 10", docker: "Docker", kubernetes: "Kubernetes", mysql: "MySQL 8", esxi: "VMware ESXi", nginx: "NGINX" };
 
 const RECURRENCE_LABELS = { once: tr("Once"), hourly: tr("Hourly"), daily: tr("Daily"), weekly: tr("Weekly") };
 

@@ -139,6 +139,7 @@ export const getDeviceName = (deviceType) => {
         "kubernetes":       "Kubernetes",
         "mysql":            "MySQL 8",
         "esxi":             "VMware ESXi",
+        "nginx":            "NGINX",
     };
     return names[deviceType] || deviceType || t("Unknown Device");
 };
@@ -211,6 +212,7 @@ export const buildCredentialsPayload = (deviceType, credentials) => {
         case "docker":
         case "kubernetes":
         case "esxi":
+        case "nginx":
             return {
                 ssh_username: credentials.ssh_username,
                 ssh_password: credentials.ssh_password,

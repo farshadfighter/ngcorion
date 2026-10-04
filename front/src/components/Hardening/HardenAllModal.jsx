@@ -267,6 +267,7 @@ const HardenAllModal = ({ sessionId, onClose, onSuccess }) => {
                         className={error ? 'has-error' : ''}
                         value={value}
                         onChange={onChange}
+                        dir="auto"
                         placeholder={field.placeholder || field.default || ''}
                         autoComplete={field.type === 'password' ? 'new-password' : 'off'}
                     />

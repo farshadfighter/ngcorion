@@ -31,6 +31,7 @@ class DeviceType(str, enum.Enum):
     KUBERNETES = "kubernetes"
     MYSQL = "mysql"
     ESXI = "esxi"
+    NGINX = "nginx"
 
 
 class CheckStatus(str, enum.Enum):

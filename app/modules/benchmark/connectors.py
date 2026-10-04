@@ -346,8 +346,38 @@ class ESXiConnector(SSHConnector):
             runner.disconnect()
 
 
+# ── SSH + nginx configuration edits ──────────────────────────────────────
+
+class NginxConnector(SSHConnector):
+    """SSH with sudo, like Linux; the connection also performs the "NGX:"
+    configuration edits (app/modules/nginx/edit.py), writing files through
+    stdin so their content never appears on a command line."""
+    key = "ssh_nginx"
+
+    @contextmanager
+    def open(self, ip: str, creds: Dict[str, Any]):
+        from app.modules.nginx.edit import MARK, NginxConnection, stdin_write_script
+        with SSHConnector.open(self, ip, creds) as shell:
+            runner = shell._runner
+
+            def write(path: str, content: str) -> None:
+                script = stdin_write_script(path)
+                if shell._as_root:
+                    command, data = f"sh -c {shlex.quote(script)}", f"{MARK}\n{content}"
+                else:
+                    # sudo reads the password line when it asks for one; the
+                    # script drops everything up to MARK either way.
+                    command = f"sudo -S -p '' sh -c {shlex.quote(script)}"
+                    data = f"{runner.sudo_password}\n{MARK}\n{content}"
+                out, status = runner.run_with_input(command, data, timeout=120)
+                if status != 0:
+                    raise RuntimeError(f"writing {path} failed: {_first_line(out)}")
+
+            yield NginxConnection(shell, write)
+
+
 CONNECTORS: Dict[str, Connector] = {"winrm": WinRMConnector(), "ssh": SSHConnector(), "ssh_mysql": MySQLConnector(),
-                                    "ssh_esxi": ESXiConnector()}
+                                    "ssh_esxi": ESXiConnector(), "ssh_nginx": NginxConnector()}
 
 
 def get_connector(key: str) -> Connector:

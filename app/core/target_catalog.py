@@ -86,6 +86,8 @@ TARGETS: Tuple[Target, ...] = (
            "SSH + MySQL login", device_type="mysql", keywords=("mysql", "sql", "oracle", "database", "innodb")),
     Target("apache", "Apache", "HTTP server", "web", "apache", "web", "AP", "SSH",
            device_type="apache", keywords=("httpd", "web server")),
+    Target("nginx", "NGINX", "Web server and reverse proxy · CIS", "web", "nginx", "web", "NX", "SSH",
+           device_type="nginx", keywords=("nginx", "reverse proxy", "load balancer", "web server", "openresty")),
     Target("iis", "IIS 10", "Microsoft web server", "web", "iis", "web", "IS", "WinRM",
            device_type="iis", keywords=("iis", "internet information services", "asp.net", "web server", "microsoft")),
     Target("docker", "Docker", "Container host · CIS", "platforms", "docker", "container", "DK", "SSH",
