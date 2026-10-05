@@ -157,7 +157,7 @@ export const HardeningConnectionForm = ({ onSubmit, onCancel }) => {
             return;
         }
 
-        let credentials = {};
+        let credentials;
 
         if (usesWinRM(dt)) {
             credentials = {

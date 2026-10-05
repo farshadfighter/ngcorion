@@ -22,13 +22,7 @@ export const dropUnscoredRiskLevels = (options) =>
     options.filter((opt) => !UNSCORED_RISK_LEVELS.has(String(opt.value).toLowerCase()));
 
 function mapEnumOptions(raw, fallbackArray) {
-    let source = [];
-
-    if (Array.isArray(raw) && raw.length > 0) {
-        source = raw;
-    } else {
-        source = fallbackArray || [];
-    }
+    const source = Array.isArray(raw) && raw.length > 0 ? raw : fallbackArray || [];
 
     return source.map((item) => {
         if (typeof item === "string") {
