@@ -1,7 +1,7 @@
 """Tests for the Configuration Drift module (live-vs-baseline diff analysis
 and the resulting findings workflow). No real hardware is available in this
-environment, so the per-tech executors are mocked - the same way NGFabric's
-own drivers are documented as hardware-untested.
+environment, so the per-tech executors are mocked; the device path itself
+is not covered here and needs a lab device.
 
 Needs a migrated PostgreSQL database; each test runs inside a transaction
 that is rolled back, so nothing here touches real rows (same pattern as
