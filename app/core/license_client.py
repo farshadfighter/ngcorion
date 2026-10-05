@@ -3,21 +3,32 @@ License Client for Main App
 
 Communicates with the license server to activate, validate, and consume license quotas.
 Stores license data encrypted in ~/.license using SecureStorage.
+
+Every answer is trusted only through its signed token (app/core/license_token.py):
+the methods below return the state the verified token describes and never the
+unsigned fields next to it, so a server that is not the NGCorion license server
+cannot unlock the product. The machine fingerprint is computed on this machine
+(app/core/machine_fingerprint.py), never asked from the server.
 """
 import requests
 import hmac
 import hashlib
+import ipaddress
 import json
 import logging
 import os
+import secrets
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 from cryptography.fernet import Fernet
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from app.core.config import settings
+from app.core.license_token import LicenseTokenError, claims_to_state, verify_token
+from app.core.machine_fingerprint import compute_fingerprint
 
 logger = logging.getLogger(__name__)
 
@@ -80,10 +91,25 @@ class LicenseRejected(Exception):
     operator actually needs to see.
     """
 
-    def __init__(self, detail: str, status_code: int = 400):
+    def __init__(self, detail: str, status_code: Optional[int] = 400):
         super().__init__(detail)
         self.detail = detail
         self.status_code = status_code
+
+
+class LicenseAnswerUntrusted(LicenseRejected):
+    """
+    The license server answered, but the answer is not signed by a trusted key,
+    is not about this license or this machine, or does not match the request
+    (see app/core/license_token.py).
+
+    A rejection, not an outage: such an answer must never unlock anything, and
+    the offline grace window - meant for an unreachable server - must not cover
+    a server that answers with something we cannot trust.
+    """
+
+    def __init__(self, detail: str):
+        super().__init__(f"Untrusted license answer: {detail}", status_code=None)
 
 
 class SecureStorage:
@@ -224,8 +250,9 @@ class LicenseClient:
         retries: Optional[int] = None,
         ca_bundle: Optional[str] = None,
     ):
-        self.server_url = server_url.rstrip('/')
+        self.server_url = self._require_https(server_url.rstrip('/'))
         self.storage = SecureStorage(storage_dir)
+        self._fingerprint: Optional[str] = None
         self.timeout = (
             connect_timeout if connect_timeout is not None else settings.LICENSE_CONNECT_TIMEOUT,
             read_timeout if read_timeout is not None else settings.LICENSE_READ_TIMEOUT,
@@ -250,6 +277,63 @@ class LicenseClient:
         if self.ca_bundle:
             self.session.verify = self.ca_bundle
             self.idempotent_session.verify = self.ca_bundle
+
+    @staticmethod
+    def _require_https(url: str) -> str:
+        """Refuse a plain-HTTP license server unless it is on this host.
+
+        The answers are signed, so HTTP could not unlock the product, but the
+        requests carry the license key and organization token, which must not
+        cross the network in clear text.
+        """
+        parsed = urlparse(url)
+        if parsed.scheme == "https":
+            return url
+        host = (parsed.hostname or "").strip("[]")
+        loopback = host == "localhost"
+        try:
+            loopback = loopback or ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            pass
+        if parsed.scheme == "http" and loopback:
+            return url
+        raise RuntimeError(
+            f"LICENSE_SERVER_URL must use https:// (got {url!r}). The license key and organization "
+            f"token are sent with every request; for a self-signed license server certificate set "
+            f"LICENSE_SERVER_CA_BUNDLE."
+        )
+
+    @property
+    def machine_fingerprint(self) -> str:
+        """This machine's fingerprint, computed once per process."""
+        if self._fingerprint is None:
+            self._fingerprint = compute_fingerprint(self.storage.storage_dir)
+        return self._fingerprint
+
+    @staticmethod
+    def _nonce() -> str:
+        return secrets.token_hex(16)
+
+    def _verified(self, payload: dict, *, license_key: str, typ: str, nonce: str) -> dict:
+        """Claims of the signed token in a response; LicenseAnswerUntrusted when it does not verify."""
+        token = payload.get("signed_token")
+        try:
+            claims = verify_token(token, license_key=license_key, vm_fingerprint=self.machine_fingerprint,
+                                  typ=typ, nonce=nonce)
+        except LicenseTokenError as exc:
+            raise LicenseAnswerUntrusted(str(exc)) from exc
+        return claims, token
+
+    def verify_cached_token(self, token: Optional[str]) -> dict:
+        """The state a previously stored token describes, if it still verifies for this license and
+        machine (used to restore the offline-grace state at startup); LicenseTokenError otherwise.
+        """
+        license_data = self.get_license_data()
+        if not license_data:
+            raise LicenseTokenError("No license is activated on this machine.")
+        claims = verify_token(token, license_key=license_data["license_key"],
+                              vm_fingerprint=self.machine_fingerprint)
+        return claims_to_state(claims, token)
 
     @staticmethod
     def _resolve_ca_bundle(configured: str) -> Optional[str]:
@@ -382,44 +466,69 @@ class LicenseClient:
             )
         return payload
 
-    def get_fingerprint(self) -> str:
-        """Get VM fingerprint from license server"""
-        response = self._request("GET", "/api/fingerprint", idempotent=True)
-        payload = self._json(response)
-        fingerprint = payload.get("fingerprint")
-        if not fingerprint:
-            raise LicenseServerError(
-                "License server response did not contain a fingerprint.",
-                status_code=response.status_code,
-            )
-        return fingerprint
-    
     def activate(self, license_key: str) -> dict:
-        """Activate license with the server"""
-        # Get fingerprint from license server
-        vm_fingerprint = self.get_fingerprint()
-        
-        data = {
-            "license_key": license_key,
-            "vm_fingerprint": vm_fingerprint
-        }
+        """Activate a license key on this machine and store it.
+
+        The license server binds the key to this machine's fingerprint (one
+        machine per license). Returns the state of the verified answer plus
+        the organization token. A refusal is requests.HTTPError (400) as
+        before; an answer that does not verify is LicenseAnswerUntrusted and
+        nothing is stored.
+        """
+        vm_fingerprint = self.machine_fingerprint
+        nonce = self._nonce()
+        data = {"license_key": license_key, "vm_fingerprint": vm_fingerprint, "nonce": nonce}
 
         response = self._request("POST", "/api/licenses/activate", json=data)
-
         result = self._json(response)
-        
-        # Save license data locally
+        claims, token = self._verified(result, license_key=license_key, typ="activate", nonce=nonce)
+        if not claims.get("valid"):
+            raise LicenseAnswerUntrusted("the activation answer does not confirm the license")
+        organization_token = result.get("organization_token")
+        if not organization_token:
+            raise LicenseServerError("The activation answer has no organization token.",
+                                     status_code=response.status_code)
+
         license_data = {
             "license_key": license_key,
-            "organization_token": result.get("organization_token"),
+            "organization_token": organization_token,
             "vm_fingerprint": vm_fingerprint,
-            "plan_type": result.get("plan_type"),
+            "plan_type": claims.get("plan"),
             "activated_at": datetime.utcnow().isoformat()
         }
         self.storage.save_license(license_data)
-        
-        return result
-    
+
+        return dict(claims_to_state(claims, token), organization_token=organization_token)
+
+    def _bound_license_data(self) -> dict:
+        """The stored license, re-activated first if it was bound to another fingerprint.
+
+        Installations activated by releases before signed licensing stored the
+        license SERVER's fingerprint. Re-activating sends this machine's real
+        one; the license server lets such a license move once. A license bound
+        to a different real machine is refused (LicenseRejected).
+        """
+        license_data = self.get_license_data()
+        if not license_data:
+            raise LicenseNotActivated(
+                "No license is activated on this machine. Activate a license key "
+                "via POST /api/license/activate first."
+            )
+        if license_data.get("vm_fingerprint") == self.machine_fingerprint:
+            return license_data
+
+        logger.warning("[License] The stored license was bound to another fingerprint; re-activating it "
+                       "for this machine.")
+        try:
+            self.activate(license_data["license_key"])
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            raise LicenseRejected(
+                self._error_detail(exc.response, "The license could not be moved to this machine"),
+                status_code=status,
+            ) from exc
+        return self.get_license_data()
+
     def get_license_data(self) -> Optional[dict]:
         """Load license data from storage"""
         return self.storage.load_license()
@@ -431,50 +540,47 @@ class LicenseClient:
         return signature, timestamp
     
     def validate(self) -> dict:
-        """Validate license with the server"""
-        license_data = self.get_license_data()
-        if not license_data:
-            raise LicenseNotActivated(
-                "No license is activated on this machine. Activate a license key "
-                "via POST /api/license/activate first."
-            )
-        
+        """Validate the license with the server; the state of the verified answer (which may say
+        valid=False - a signed "no" is still an answer).
+        """
+        license_data = self._bound_license_data()
+        nonce = self._nonce()
         request_data = {
             "license_key": license_data["license_key"],
             "organization_token": license_data["organization_token"],
             "vm_fingerprint": license_data["vm_fingerprint"]
         }
-        
+
         signature, timestamp = self._sign_request(
             request_data,
             license_data["organization_token"]
         )
-        
+
         headers = {
             "X-Signature": signature,
             "X-Timestamp": timestamp
         }
-        
+
         response = self._request(
             "POST", "/api/licenses/validate",
-            json=request_data, headers=headers, idempotent=True,
+            json=dict(request_data, nonce=nonce), headers=headers, idempotent=True,
         )
 
-        return self._json(response)
+        claims, token = self._verified(self._json(response), license_key=license_data["license_key"],
+                                       typ="validate", nonce=nonce)
+        return claims_to_state(claims, token)
 
     def heartbeat(self) -> dict:
-        """Send heartbeat to server"""
-        license_data = self.get_license_data()
-        if not license_data:
-            raise LicenseNotActivated(
-                "No license is activated on this machine. Activate a license key "
-                "via POST /api/license/activate first."
-            )
-        
+        """Send the hourly heartbeat. Returns success, message, should_downgrade and the verified
+        state, all taken from the signed answer.
+        """
+        license_data = self._bound_license_data()
+        nonce = self._nonce()
         data = {
             "license_key": license_data["license_key"],
             "organization_token": license_data["organization_token"],
-            "vm_fingerprint": license_data["vm_fingerprint"]
+            "vm_fingerprint": license_data["vm_fingerprint"],
+            "nonce": nonce,
         }
 
         try:
@@ -495,7 +601,14 @@ class LicenseClient:
                 ) from exc
             raise
 
-        return self._json(response)
+        claims, token = self._verified(self._json(response), license_key=license_data["license_key"],
+                                       typ="heartbeat", nonce=nonce)
+        return {
+            "success": True,
+            "message": str(claims.get("msg") or ""),
+            "should_downgrade": bool(claims.get("down")),
+            "state": claims_to_state(claims, token),
+        }
 
     @staticmethod
     def _error_detail(response: Optional[requests.Response], fallback: str) -> str:
@@ -512,14 +625,12 @@ class LicenseClient:
         return body[:200] if body else fallback
     
     def consume(self, operation_type: str, count: int = 1) -> dict:
-        """Consume operation quota"""
-        license_data = self.get_license_data()
-        if not license_data:
-            raise LicenseNotActivated(
-                "No license is activated on this machine. Activate a license key "
-                "via POST /api/license/activate first."
-            )
-        
+        """Use quota on the license server. Returns the verified state after the consumption; the
+        signed answer must name this operation and count, or it does not count (LicenseAnswerUntrusted).
+        """
+        license_data = self._bound_license_data()
+        nonce = self._nonce()
+
         request_data = {
             "license_key": license_data["license_key"],
             "organization_token": license_data["organization_token"],
@@ -539,10 +650,14 @@ class LicenseClient:
         }
         
         response = self._request(
-            "POST", "/api/licenses/consume", json=request_data, headers=headers
+            "POST", "/api/licenses/consume", json=dict(request_data, nonce=nonce), headers=headers
         )
 
-        return self._json(response)
+        claims, token = self._verified(self._json(response), license_key=license_data["license_key"],
+                                       typ="consume", nonce=nonce)
+        if not claims.get("valid") or claims.get("op") != operation_type or claims.get("count") != count:
+            raise LicenseAnswerUntrusted("the consume answer does not confirm this operation")
+        return claims_to_state(claims, token)
 
     def deactivate(self):
         """Remove local license data"""

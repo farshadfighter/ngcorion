@@ -10,9 +10,10 @@ which is different from how it behaves when a license is genuinely invalid:
 - a licensing verdict from the server — HTTP 200 with `valid: false` on
   validate, or HTTP 400 on the heartbeat — must fail closed immediately, with
   no grace window: the grace window covers outages, not rejections;
-- the last validated state is cached on disk so a restart during an outage
-  resumes inside the offline grace window instead of refusing every request,
-  while a cache older than the grace window is refused;
+- the last validated state is cached on disk (as the license server's signed
+  token) so a restart during an outage resumes inside the offline grace window
+  instead of refusing every request, while a cache older than the grace
+  window, an edited cache, or a clock set back is refused;
 - the heartbeat retries with backoff, survives failures, and never leaves a
   dead thread marked as running.
 
@@ -44,6 +45,15 @@ from app.core.license_client import (
     LicenseRejected,
     LicenseServerError,
     LicenseServerUnreachable,
+)
+from app.core.license_token import claims_to_state, verify_token
+from tests.license_signing_helpers import (  # noqa: F401  (fixture)
+    FINGERPRINT,
+    LICENSE_KEY,
+    OTHER_KEY,
+    TEST_KID,
+    make_token,
+    trusted_test_key,
 )
 
 VALID_RESPONSE = {
@@ -91,14 +101,37 @@ class StubClient:
         return self.heartbeat_result
 
 
+def _reset():
+    st._license_state.__init__()
+    st._state_cache = None
+    st._token_verifier = None
+    st._signed_token = None
+    st._max_seen = None
+
+
 @pytest.fixture(autouse=True)
 def clean_license_state():
     """Reset the module-level singleton and cache around every test."""
-    st._license_state.__init__()
-    st._state_cache = None
+    _reset()
     yield
-    st._license_state.__init__()
-    st._state_cache = None
+    _reset()
+
+
+def verifier(token):
+    """What the license client's verify_cached_token does, for this test's license and machine."""
+    return claims_to_state(verify_token(token, license_key=LICENSE_KEY, vm_fingerprint=FINGERPRINT), token)
+
+
+def signed_state(**claims):
+    """A license state as the client returns it from a verified answer."""
+    token = make_token(**claims)
+    return verifier(token)
+
+
+def restart(cache):
+    """Simulate a process restart: memory is empty, the cache is not."""
+    _reset()
+    st.attach_state_cache(cache, verifier=verifier)
 
 
 def _seed_valid_state():
@@ -189,18 +222,18 @@ def test_rejection_clears_the_plan_and_quota_snapshot():
     assert state.usage is None
 
 
-def test_rejection_is_written_through_to_the_cache():
+def test_rejection_is_written_through_to_the_cache(trusted_test_key):
     """A restart must not resurrect the pre-rejection "valid" snapshot."""
     cache = FakeCache()
-    st.attach_state_cache(cache)
-    _seed_valid_state()
+    st.attach_state_cache(cache, verifier=verifier)
+    st.set_license_state(signed_state())
+    assert cache.state["signed_token"]
 
     st.mark_license_rejected("Invalid VM fingerprint")
-    assert cache.state["valid"] is False
+    assert cache.state["signed_token"] is None
 
-    st._license_state.__init__()          # restart
-    st.attach_state_cache(cache)
-    st.restore_cached_state()
+    restart(cache)
+    assert st.restore_cached_state() is False
     assert st.get_license_state().valid is False
 
 
@@ -258,15 +291,13 @@ def test_hard_rejection_invalidates_and_reraises():
 
 # ==================== the cached state survives a restart ====================
 
-def test_cached_state_is_restored_within_the_grace_window():
+def test_cached_state_is_restored_within_the_grace_window(trusted_test_key):
     cache = FakeCache()
-    st.attach_state_cache(cache)
-    _seed_valid_state()
+    st.attach_state_cache(cache, verifier=verifier)
+    st.set_license_state(signed_state())
     assert cache.state is not None, "a validated state must be persisted"
 
-    # Simulate a process restart: memory is empty, the cache is not.
-    st._license_state.__init__()
-    st.attach_state_cache(cache)
+    restart(cache)
 
     assert st.restore_cached_state() is True
     restored = st.get_license_state()
@@ -276,34 +307,74 @@ def test_cached_state_is_restored_within_the_grace_window():
     assert restored.offline is True
 
 
-def test_restored_state_keeps_the_original_validation_timestamp():
-    """A restart must not silently reset the offline grace window."""
-    validated_at = datetime.utcnow() - timedelta(hours=40)
-    cache = FakeCache({**VALID_RESPONSE, "last_validated_at": validated_at.isoformat()})
-    st.attach_state_cache(cache)
+def test_restored_state_keeps_the_signed_issue_time(trusted_test_key):
+    """A restart must not silently reset the offline grace window: it counts from the signed iat."""
+    issued = int(time.time()) - 40 * 3600
+    cache = FakeCache({"signed_token": make_token(iat=issued), "last_seen": None})
+    st.attach_state_cache(cache, verifier=verifier)
 
     assert st.restore_cached_state() is True
-    assert abs(
-        (st.get_license_state().last_validated_at - validated_at).total_seconds()
-    ) < 1
+    assert abs((st.get_license_state().issued_at - datetime.utcfromtimestamp(issued)).total_seconds()) < 1
 
 
-def test_cached_state_past_the_grace_window_is_refused():
-    stale = datetime.utcnow() - timedelta(hours=72)
-    cache = FakeCache({**VALID_RESPONSE, "last_validated_at": stale.isoformat()})
-    st.attach_state_cache(cache)
+def test_cached_state_past_the_grace_window_is_refused(trusted_test_key):
+    cache = FakeCache({"signed_token": make_token(iat=int(time.time()) - 72 * 3600)})
+    st.attach_state_cache(cache, verifier=verifier)
 
     assert st.restore_cached_state() is False
     assert st.get_license_state().valid is False
 
 
-def test_cached_state_without_a_timestamp_is_refused():
-    """Without a timestamp the grace window cannot be enforced — fail closed."""
-    cache = FakeCache({**VALID_RESPONSE, "last_validated_at": None})
-    st.attach_state_cache(cache)
+def test_plain_cached_state_without_a_signed_token_is_refused(trusted_test_key):
+    """The pre-signing cache format (plain fields) could be edited into a license: never restore it."""
+    cache = FakeCache({**VALID_RESPONSE, "last_validated_at": datetime.utcnow().isoformat()})
+    st.attach_state_cache(cache, verifier=verifier)
 
     assert st.restore_cached_state() is False
     assert st.get_license_state().valid is False
+
+
+@pytest.mark.parametrize("token", [
+    make_token(key=OTHER_KEY),                                   # signed by someone else
+    make_token(fp="0" * 64),                                     # another machine's answer
+    make_token(lic="OTHER-LICE-NSEK-EY00"),                      # another license
+])
+def test_edited_or_foreign_cached_token_is_refused(trusted_test_key, token):
+    cache = FakeCache({"signed_token": token})
+    st.attach_state_cache(cache, verifier=verifier)
+
+    assert st.restore_cached_state() is False
+
+
+def test_tampered_cached_token_is_refused(trusted_test_key):
+    body, sig = make_token().split(".")
+    import base64, json
+    claims = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+    claims["limits"] = {"max_audits": None, "max_hardens": None}
+    forged = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
+    cache = FakeCache({"signed_token": f"{forged}.{sig}"})
+    st.attach_state_cache(cache, verifier=verifier)
+
+    assert st.restore_cached_state() is False
+
+
+def test_cache_from_a_clock_set_back_is_refused(trusted_test_key):
+    """The clock reads earlier than the last time recorded before the restart."""
+    later = (datetime.utcnow() + timedelta(hours=10)).isoformat()
+    cache = FakeCache({"signed_token": make_token(), "last_seen": later})
+    st.attach_state_cache(cache, verifier=verifier)
+
+    assert st.restore_cached_state() is False
+
+
+def test_clock_set_back_while_running_invalidates(trusted_test_key):
+    st.set_license_state(signed_state())
+    assert st.get_license_state().valid is True
+    st._max_seen = datetime.utcnow() + timedelta(hours=3)      # time seen before the clock went back
+
+    state = st.get_license_state()
+    assert state.valid is False
+    assert "clock was set back" in state.message
 
 
 def test_state_cache_write_failure_never_breaks_validation():
@@ -317,9 +388,8 @@ def test_state_cache_write_failure_never_breaks_validation():
     assert st.get_license_state().valid is True
 
 
-def test_grace_window_still_expires_in_memory():
-    _seed_valid_state()
-    st._license_state.last_validated_at = datetime.utcnow() - timedelta(hours=49)
+def test_grace_window_still_expires_in_memory(trusted_test_key):
+    st.set_license_state(signed_state(iat=int(time.time()) - 49 * 3600))
 
     state = st.get_license_state()
 

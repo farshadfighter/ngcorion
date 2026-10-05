@@ -36,7 +36,7 @@ Middleware, outermost first (`app/main.py`):
 3. **LicenseMiddleware** (`app/middleware/license_middleware.py`): refuses
    `/api/*` while no valid license is known (login, health and license
    endpoints pass through). The license state comes from the license server
-   and is cached on disk, with an offline grace window.
+   and is cached on disk, with an offline grace window. See section 9.
 4. **MaintenanceMiddleware**: turns requests away while a system-backup
    restore swaps the database.
 
@@ -199,3 +199,33 @@ state). `/api/system/health` (admin) shows whether each task is running.
   the translation check and the production build.
 - `.github/workflows/ci.yml` runs all of it plus the dependency
   vulnerability check on every push; Dependabot proposes updates.
+
+## 9. Licensing
+
+The license server (separate repository) decides; NGCorion only acts on
+answers it can prove came from it.
+
+- **Signed answers.** Every answer (activate, validate, heartbeat, consume)
+  carries a token signed with the license server's Ed25519 private key.
+  `app/core/license_token.py` verifies it against the public keys built into
+  `app/core/license_keys.py` (code, not configuration, so it cannot be swapped
+  in `.env`), and checks that it is about this license key and this machine and
+  echoes the nonce of the request. The license state is built from the signed
+  claims only (`claims_to_state`); the unsigned fields beside the token are
+  ignored. An answer that does not verify is a rejection
+  (`LicenseAnswerUntrusted`), never an outage.
+- **Machine binding.** `app/core/machine_fingerprint.py` computes the
+  fingerprint here, from the hardware/VM UUID (copied by `entrypoint.sh` as
+  root) and the host's `/etc/machine-id` (mounted by docker-compose). The
+  license server binds a license to one fingerprint. Installations activated
+  by releases before signing carried the license server's own fingerprint; the
+  client re-activates them once with the real one.
+- **Offline grace and the cache.** The on-disk cache stores the last signed
+  token, re-verified at startup; the 48h grace window counts from the token's
+  signed issue time. A clock that goes backwards (to stretch the window) makes
+  the state invalid.
+- **Transport.** `LICENSE_SERVER_URL` must be https (loopback excepted): the
+  requests carry the license key and organization token.
+- **Limits.** Someone who can change NGCorion's own code on the server can
+  still remove these checks; signing stops configuration-level bypasses (a
+  fake server, an edited cache), not code modification.

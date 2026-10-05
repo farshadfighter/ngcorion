@@ -43,6 +43,16 @@ if [ "$(id -u)" = "0" ]; then
     }
 
     mkdir -p /var/lib/ngcorion/license /var/lib/ngcorion/tz /var/lib/ngcorion/backups
+    # Hardware/VM UUID for the license machine fingerprint
+    # (app/core/machine_fingerprint.py). /sys/class/dmi/id/product_uuid is
+    # readable by root only, so it is copied here, root-owned and read-only,
+    # before privileges are dropped.
+    mkdir -p /run/ngcorion/hw
+    chmod 0755 /run/ngcorion /run/ngcorion/hw
+    if [ -r /sys/class/dmi/id/product_uuid ]; then
+        cat /sys/class/dmi/id/product_uuid > /run/ngcorion/hw/product_uuid 2>/dev/null || true
+        chmod 0444 /run/ngcorion/hw/product_uuid 2>/dev/null || true
+    fi
     own /var/lib/ngcorion /etc/ngcorion /app/traefik/certs /app/traefik/dynamic
     own_file /etc/snmp/snmpd.conf 0640
     own_file /etc/rsyslog.d/99-ngcorion.conf 0644

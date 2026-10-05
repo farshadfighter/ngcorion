@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import password_fingerprint
-from app.core.license_client import LicenseServerError, LicenseServerUnreachable
+from app.core.license_client import LicenseRejected, LicenseServerError, LicenseServerUnreachable
 from app.models import User
 from app.models.revoked_token import RevokedToken
 
@@ -346,13 +346,19 @@ def require_quota(operation_type: str, count: int = 1):
         """Consume `count` units of the operation's license quota before the endpoint runs; 403 when
         the quota is exhausted, 503 when the license server cannot answer.
         """
-        from app.core.license_state import update_usage
-        
+        from app.core.license_state import set_license_state
+
         client = request.app.state.license_client
         try:
             result = client.consume(operation_type, count)
-            # Optimistic update of local usage counter
-            update_usage(operation_type, count)
+            # The verified answer carries the license server's own usage
+            # counters after this consumption: take them as they are.
+            set_license_state(result)
+        except LicenseRejected as e:
+            # The answer did not verify (or the server refused): the operation
+            # is not authorized, and must not be counted as if it were.
+            logger.error(f"[License] consume({operation_type}) not authorized: {e.detail}")
+            raise HTTPException(status_code=403, detail=e.detail)
         except LicenseServerError as e:
             # The license server answered, but with a 5xx/429 — it is broken or
             # overloaded, not saying anything about this license.
@@ -442,13 +448,19 @@ def consume_quota_on_success(operation_type: str, count: int = 1):
         """Consume `count` units of the operation's license quota; called by the endpoint after the
         operation succeeded, so failed runs cost nothing.
         """
-        from app.core.license_state import update_usage
-        
+        from app.core.license_state import set_license_state
+
         client = request.app.state.license_client
         try:
             result = client.consume(operation_type, count)
-            # Optimistic update of local usage counter
-            update_usage(operation_type, count)
+            # The verified answer carries the license server's own usage
+            # counters after this consumption: take them as they are.
+            set_license_state(result)
+        except LicenseRejected as e:
+            # The answer did not verify (or the server refused): the operation
+            # is not authorized, and must not be counted as if it were.
+            logger.error(f"[License] consume({operation_type}) not authorized: {e.detail}")
+            raise HTTPException(status_code=403, detail=e.detail)
         except LicenseServerError as e:
             # The license server answered, but with a 5xx/429 — it is broken or
             # overloaded, not saying anything about this license.

@@ -16,7 +16,7 @@ import requests
 from app.core.license_state import get_license_state, refresh_license_state
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, license_error_detail, require_admin
-from app.core.license_client import LicenseServerError, LicenseServerUnreachable
+from app.core.license_client import LicenseRejected, LicenseServerError, LicenseServerUnreachable
 from app.core.heartbeat import start_heartbeat
 
 logger = logging.getLogger(__name__)
@@ -187,6 +187,12 @@ def _activate(data: LicenseActivateRequest, request: Request):
             ),
             headers={"Retry-After": "30"},
         )
+
+    except LicenseRejected as e:
+        # The answer did not verify (not signed by the NGCorion license server,
+        # or not about this license or machine), or the license was refused.
+        logger.warning(f"License activation not accepted: {e.detail}")
+        raise HTTPException(status_code=400, detail=e.detail)
 
     except requests.HTTPError as e:
         # License server rejected the request (4xx) — a real answer about this

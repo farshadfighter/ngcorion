@@ -86,6 +86,11 @@ services:
       # the image directory, which Dockerfile.ngcorion already creates owned by
       # 10001.
       - license_client_data:/var/lib/ngcorion/license
+      # The license is bound to this machine. Its identity comes from the
+      # host's machine-id (here) and the hardware/VM UUID, which entrypoint.sh
+      # reads as root - see app/core/machine_fingerprint.py. Without them the
+      # fingerprint falls back to weaker sources.
+      - /etc/machine-id:/host/machine-id:ro
       # NGCorion self-backups (Settings > NGCorion backup): encrypted .ngbak
       # archives of the database and the certificate / SSH host keys. A named
       # volume, so Docker seeds it owned by UID 10001 from the image. Keep

@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.1.0 — unreleased
+
+### Licensing can no longer be bypassed by configuration
+
+- Every answer of the license server is signed (Ed25519). NGCorion accepts an
+  answer only if it verifies against a key built into the code, is about this
+  license and this machine, and echoes the request's nonce. A stand-in server
+  that answers "valid" no longer unlocks anything.
+- The machine fingerprint is computed on the licensed machine (hardware/VM
+  UUID and the host's machine-id). Before, it came from the license server
+  itself, so every installation had the same fingerprint and one license could
+  run on any number of servers.
+- The offline cache stores the signed token and is verified again on restart;
+  the 48h grace window counts from the signed issue time, and a clock set
+  back invalidates the license.
+- `LICENSE_SERVER_URL` must use https (loopback excepted).
+
+### Upgrade notes
+
+- Requires the matching license server release (signed answers, migration
+  005). Upgrade the license server first; older NGCorion releases keep working
+  against it.
+- Put the license server's public key into `app/core/license_keys.py`
+  (license server: `scripts/generate_signing_key.py`). Without it NGCorion
+  refuses every license.
+- docker-compose now mounts the host's `/etc/machine-id`. On the first
+  validation after the upgrade each installation re-activates once, binding
+  its license to the real machine; a second copy of the same installation is
+  then refused. To move a license to new hardware later, use "Release
+  machine" in the license admin UI.
+
 ## 2.0.0 — 2026-10-04
 
 ### New audit and hardening targets

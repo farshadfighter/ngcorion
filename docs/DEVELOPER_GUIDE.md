@@ -40,7 +40,11 @@ and review will send a change back that breaks one of them.
 8. **The schema changes only through Alembic migrations**, one head
    (`uv run alembic heads` must print one line).
 9. **No license or authentication bypass**, not even "temporarily" or behind
-   a flag.
+   a flag. Licensing decisions come only from verified signed tokens
+   (`app/core/license_token.py`); never act on an unsigned field of a license
+   server answer, and never make the trusted keys configurable. For local
+   development run the real license server with a development key and add its
+   public key to `app/core/license_keys.py` in your working copy only.
 
 ## 2. Code conventions
 

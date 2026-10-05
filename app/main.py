@@ -180,13 +180,20 @@ async def lifespan(app: FastAPI):
 
     client = LicenseClient(license_server_url, settings.LICENSE_STORAGE_DIR)
     app.state.license_client = client
+    from app.core.license_keys import TRUSTED_LICENSE_KEYS
+    if not TRUSTED_LICENSE_KEYS:
+        logger.critical(
+            "[Startup] No license signing key is built in (app/core/license_keys.py): no license "
+            "can be validated and every licensed request will be refused. Add the license "
+            "server's public key (license server: scripts/generate_signing_key.py)."
+        )
     logger.info(f"[Startup] license server: {license_server_url}")
 
     # Seed the in-memory state from the on-disk cache *before* the first
     # validation. If the license server is unreachable right now, the app comes
     # up on the last validated state (still bounded by the offline grace
     # window) instead of 403/503-ing every request until connectivity returns.
-    attach_state_cache(client.storage)
+    attach_state_cache(client.storage, verifier=client.verify_cached_token)
     restored = restore_cached_state()
 
     try:
