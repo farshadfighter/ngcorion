@@ -167,7 +167,11 @@ services:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"]
       interval: 30s
       timeout: 10s
-      start_period: 60s
+      # The first start applies every migration to an empty database before
+      # the server listens; on a slow VM that takes minutes. Failures in this
+      # period do not count, so the container is not marked unhealthy (and
+      # Traefik does not refuse to route to it) while it is still starting.
+      start_period: 600s
       retries: 3
     depends_on:
       postgres:

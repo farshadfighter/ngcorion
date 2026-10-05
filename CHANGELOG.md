@@ -29,6 +29,10 @@
 - A `.dockerignore` keeps `.env`, TLS keys under `traefik/certs`, the git
   history, tests and local environments out of the image. Before, the whole
   checkout was copied in, including `.env`.
+- Slow first starts: Postgres gets 5 minutes to create its database and
+  the backend 10 minutes to apply every migration before their health checks
+  count, and uvicorn waits 2 minutes for a starting worker (it killed every
+  worker after 5 seconds on a slow VM, in a loop).
 - The installation's `.env` (SECRET_KEY, SMTP, ...) is handed to the backend
   as environment variables (`env_file` in docker-compose.yml); the app used to
   find it only because it had been copied into the image.
