@@ -118,5 +118,11 @@ RUN chmod +x /app/entrypoint.sh
 # change it. What it does write lives in volumes (license, backups) and in the
 # host configuration paths entrypoint.sh hands over. The server is started
 # from the virtualenv directly; `uv run` would try to re-sync it.
+#
+# --timeout-worker-healthcheck: uvicorn's supervisor kills a worker that does
+# not answer its ping within 5 seconds (the default). Importing the app takes
+# longer than that on a slow or busy VM, so every worker was killed while
+# starting, in a loop, and the server never came up (found on the appliance).
+# Two minutes still replaces a hung worker.
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--timeout-worker-healthcheck", "120"]
