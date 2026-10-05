@@ -48,7 +48,6 @@ PostgreSQL 16, and nmap for discovery.
 uv sync --group dev
 export DATABASE_URL=postgresql+psycopg://netease:<password>@localhost/netease_db
 export SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")
-export LICENSE_SERVER_URL=https://<your license server>
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8000
 

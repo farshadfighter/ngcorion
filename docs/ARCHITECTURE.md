@@ -228,8 +228,10 @@ answers it can prove came from it.
   token, re-verified at startup; the 48h grace window counts from the token's
   signed issue time. A clock that goes backwards (to stretch the window) makes
   the state invalid.
-- **Transport.** `LICENSE_SERVER_URL` must be https (loopback excepted): the
-  requests carry the license key and organization token.
+- **Address.** The license server is `https://lic.ngcorion.com`, built into
+  the code next to the signing keys (`app/core/license_keys.py`) and verified
+  against the public certificate authorities; it cannot be configured. The
+  requests carry the license key and organization token, so only https is used.
 - **Limits.** Someone who can change NGCorion's own code on the server can
   still remove these checks; signing stops configuration-level bypasses (a
   fake server, an edited cache), not code modification.
@@ -242,7 +244,8 @@ LTS, Docker, the four container images preloaded, and the same
 forbidding pulls). See `appliance/README.md`.
 
 - **First start** (`appliance/ngcorion_appliance`, standard-library Python on
-  tty1): network, host name, NTP, license server and the web administrator;
+  tty1): network, host name, NTP and the web administrator (the license
+  server is built in; the setup only checks it can be reached);
   the appliance generates its own `.env` secrets and web certificate. vCenter
   OVF properties can supply the same values.
 - **Console**: a menu, never a shell. No SSH server, no login prompts, root

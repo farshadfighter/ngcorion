@@ -20,8 +20,6 @@ KEYS = (
     "ngcorion.gateway",
     "ngcorion.dns",
     "ngcorion.ntp",
-    "ngcorion.license_server",
-    "ngcorion.license_server_sha256",   # pins a self-signed license server certificate
     "ngcorion.admin_password",
 )
 
@@ -53,7 +51,7 @@ def parse(document: str) -> Dict[str, str]:
 
 def complete(props: Dict[str, str]) -> bool:
     """Enough to configure the appliance unattended."""
-    return all(k in props for k in ("ngcorion.hostname", "ngcorion.license_server", "ngcorion.admin_password"))
+    return all(k in props for k in ("ngcorion.hostname", "ngcorion.admin_password"))
 
 
 def to_settings(props: Dict[str, str], interface: str) -> Tuple[S.ApplianceSettings, str]:
@@ -77,6 +75,5 @@ def to_settings(props: Dict[str, str], interface: str) -> Tuple[S.ApplianceSetti
         hostname=field("ngcorion.hostname", S.hostname),
         network=network,
         ntp=field("ngcorion.ntp", S.server_list),
-        license_server_url=field("ngcorion.license_server", S.license_server_url),
     )
     return settings, field("ngcorion.admin_password", S.admin_password)

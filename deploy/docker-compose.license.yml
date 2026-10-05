@@ -143,8 +143,8 @@ services:
   # OPTIONAL — only started with:  docker compose --profile tls up -d
   # Terminates HTTPS in front of the license server. Requires a certificate in
   # ./traefik/certs and a matching ./traefik/dynamic/tls.yml (copy both from the
-  # app server). When TLS is on, set LICENSE_SERVER_URL on the app server to
-  # https://<LICENSE_HOSTNAME>:443 instead of http://<IP>:8001.
+  # app server). NGCorion always connects to https://lic.ngcorion.com:443, so
+  # in production this must serve that name with a publicly trusted certificate.
   traefik:
     profiles: ["tls"]
     restart: always

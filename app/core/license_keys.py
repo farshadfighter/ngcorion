@@ -1,5 +1,10 @@
 """
-Public keys of the NGCorion license server, by key id.
+The NGCorion license server: its address and its public keys, by key id.
+
+LICENSE_SERVER_URL is fixed: every NGCorion installation talks to
+lic.ngcorion.com, over https, verified against the publicly trusted
+certificate authorities. Like the keys below it is part of the code and cannot
+be changed by configuration.
 
 NGCorion acts only on licensing answers signed by one of these keys (see
 app/core/license_token.py). They are public halves - safe to publish - and are
@@ -20,6 +25,8 @@ While this is empty no license can be validated: every answer is refused with
 a message saying no signing key is built in.
 """
 from typing import Dict
+
+LICENSE_SERVER_URL = "https://lic.ngcorion.com"
 
 TRUSTED_LICENSE_KEYS: Dict[str, str] = {
 }

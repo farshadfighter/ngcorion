@@ -181,9 +181,9 @@ def _activate(data: LicenseActivateRequest, request: Request):
         raise HTTPException(
             status_code=503,
             detail=(
-                "License server is unreachable. Check that LICENSE_SERVER_URL "
-                "points at the license server and that the network/firewall "
-                "allows it, then try again."
+                "The license server (lic.ngcorion.com) is unreachable. Check that "
+                "this server resolves lic.ngcorion.com (DNS) and may connect to it "
+                "on port 443 (firewall, proxy), then try again."
             ),
             headers={"Retry-After": "30"},
         )

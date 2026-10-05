@@ -6,12 +6,11 @@ The console is plain text on purpose: it works on every hypervisor console,
 serial line and screen size, and needs nothing beyond Python.
 """
 import getpass
-import ssl
 from typing import Callable, List, Optional
 
+from . import LICENSE_SERVER_HOST
 from . import settings as S
-from .system import (LICENSE_CA_IN_CONTAINER, CommandFailed, System,
-                     license_server_certificate, verify_pinned)
+from .system import CommandFailed, System, check_license_server
 
 
 class Console:
@@ -90,9 +89,8 @@ def questions(console: Console, system: System):
     name = ask_valid(console, "Host name", S.hostname, "ngcorion")
     network = ask_network(console, interface)
     ntp = ask_valid(console, "NTP servers (comma-separated, empty: from DHCP / Ubuntu's pool)", S.server_list, "")
-    license_url = ask_valid(console, "License server address (https://...)", S.license_server_url)
     password = ask_password(console)
-    return S.ApplianceSettings(hostname=name, network=network, ntp=ntp, license_server_url=license_url), password
+    return S.ApplianceSettings(hostname=name, network=network, ntp=ntp), password
 
 
 def summary(settings: S.ApplianceSettings) -> List[str]:
@@ -111,56 +109,24 @@ def summary(settings: S.ApplianceSettings) -> List[str]:
         ]
     lines += [
         f"  NTP:             {', '.join(settings.ntp) or 'from DHCP / default pool'}",
-        f"  License server:  {settings.license_server_url}",
     ]
     return lines
 
 
-def license_trust(console: Optional[Console], system: System, url: str,
-                  expected_fingerprint: str = "") -> str:
-    """Decide how NGCorion will trust the license server's certificate.
-
-    Returns the CA bundle path for LICENSE_SERVER_CA_BUNDLE ("" when the
-    system's CAs already trust it). A self-signed certificate is pinned only
-    when its SHA-256 fingerprint matches the one given (OVF) or the operator
-    confirms it matches the one the license server shows.
-    """
-    def norm(fp):
-        return fp.replace(":", "").replace(" ", "").upper()
-
-    while True:
-        try:
-            trusted, pem, fingerprint = license_server_certificate(url)
-            break
-        except (OSError, ssl.SSLError) as exc:
-            if console is None:
-                raise CommandFailed(f"license server {url} is not reachable: {exc}")
-            console.say(f"  ! Could not reach {url}: {exc}")
-            if not console.confirm("Try again? (No: continue without it; set it later from the menu)"):
-                return ""
-    if trusted:
-        return ""
-
-    if expected_fingerprint:
-        ok = norm(expected_fingerprint) == norm(fingerprint)
-    elif console is not None:
-        console.say("")
-        console.say("The license server uses its own (self-signed) certificate. Its SHA-256 fingerprint:")
-        console.say(f"  {fingerprint}")
-        console.say("Compare it with the license server's, shown there by:")
-        console.say("  openssl x509 -in <certificate> -noout -fingerprint -sha256")
-        ok = console.confirm("Do they match?", default=False)
+def report_license_server(say: Callable[[str], None]) -> bool:
+    """Check the connection to lic.ngcorion.com and say what to fix. Never stops the setup:
+    the network team may still have to open the way, and NGCorion retries on its own."""
+    ok, detail = check_license_server()
+    if ok:
+        say(f"  {detail}.")
     else:
-        ok = False
-    if not ok:
-        raise CommandFailed("the license server's certificate was not confirmed; it is not trusted")
-    verify_pinned(url, pem)          # host name / IP must match the certificate too
-    system.trust_license_server_certificate(pem)
-    return LICENSE_CA_IN_CONTAINER
+        say(f"  ! The license server is not reachable: {detail}.")
+        say(f"    NGCorion needs {LICENSE_SERVER_HOST} on port 443 to activate and check its license.")
+        say("    The setup continues; check again later from the menu.")
+    return ok
 
 
 def apply(system: System, settings: S.ApplianceSettings, password: str,
-          console: Optional[Console] = None, license_fingerprint: str = "",
           say: Callable[[str], None] = print) -> None:
     """Configure the machine and bring NGCorion up. Used by the wizard and by OVF properties."""
     say("Applying network settings...")
@@ -168,11 +134,11 @@ def apply(system: System, settings: S.ApplianceSettings, password: str,
     system.apply_hostname(settings.hostname)
     system.apply_ntp(settings.ntp)
 
-    say("Checking the license server...")
-    ca = license_trust(console, system, settings.license_server_url, license_fingerprint)
+    say(f"Checking the connection to the license server ({LICENSE_SERVER_HOST})...")
+    report_license_server(say)
 
     say("Writing this installation's secrets and certificate...")
-    system.ensure_env(settings, ca)
+    system.ensure_env()
     system.ensure_tls_certificate(settings.hostname)
 
     say("Starting NGCorion (the first start applies the database schema; this takes a few minutes)...")
@@ -202,7 +168,7 @@ def run(console: Console, system: System) -> bool:
             break
         console.say("Starting over.\n")
     try:
-        apply(system, settings, password, console=console, say=console.say)
+        apply(system, settings, password, say=console.say)
     except CommandFailed as exc:
         console.say(f"\n  ! Setup stopped: {exc}")
         console.say("  Fix the cause and choose the first-start setup again from the menu.")

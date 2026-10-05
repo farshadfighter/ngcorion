@@ -130,26 +130,13 @@ class Settings(BaseSettings):
     # Max wrong-code attempts before the OTP is invalidated and a new one is needed.
     PASSWORD_RESET_MAX_ATTEMPTS: int = 5
 
-    # License Server
-    # NO default host on purpose: the license server may live on a completely
-    # different machine, and a "http://localhost:8001" fallback silently points
-    # a misconfigured production deployment at nothing (or worse, at whatever
-    # else listens on 8001 locally). LICENSE_SERVER_URL must be supplied via the
-    # environment / .env; startup fails loudly when it is missing
-    # (see require_license_server_url()).
+    # License server: the address is fixed in app/core/license_keys.py
+    # (https://lic.ngcorion.com) and is not configurable. These two settings
+    # only remain so an existing .env that still sets them is accepted; they
+    # are ignored, with a warning at startup.
     LICENSE_SERVER_URL: str = ""
-    LICENSE_STORAGE_DIR: str = "~/.license"
-
-    # Path to a PEM certificate to verify the license server's HTTPS listener
-    # against. The license server is internal and reached by IP, so it cannot
-    # have a publicly-issued certificate; it serves a self-signed one instead.
-    # Pointing this at that certificate makes verification *succeed properly*
-    # rather than be switched off — there is deliberately no "skip verify"
-    # option here, because disabling verification on the one channel that
-    # authorises the whole product is exactly the wrong trade.
-    # Empty (the default) = plain HTTP, or HTTPS against a publicly trusted CA;
-    # either way requests uses its normal certifi bundle.
     LICENSE_SERVER_CA_BUNDLE: str = ""
+    LICENSE_STORAGE_DIR: str = "~/.license"
 
     # HTTP behaviour for calls to the license server. Explicit connect/read
     # timeouts matter much more once the license server is a remote host: with
@@ -222,22 +209,10 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-def require_license_server_url() -> str:
-    """
-    Return LICENSE_SERVER_URL, or raise if it was never configured.
-
-    Called at application startup so a deployment that forgot to set the
-    variable fails immediately with an actionable message, instead of running
-    and 403-ing every request because "localhost:8001" answers nothing.
-    """
-    url = (settings.LICENSE_SERVER_URL or "").strip()
-    if not url:
-        raise RuntimeError(
-            "LICENSE_SERVER_URL is not set. Point it at the license server, "
-            "e.g. LICENSE_SERVER_URL=http://10.0.0.20:8001 in the environment "
-            "or .env file. There is deliberately no localhost default."
-        )
-    return url.rstrip("/")
+def ignored_license_settings() -> List[str]:
+    """Names of the old license-server settings that are set although they have no effect."""
+    return [name for name in ("LICENSE_SERVER_URL", "LICENSE_SERVER_CA_BUNDLE")
+            if (getattr(settings, name) or "").strip()]
 
 
 _INSECURE_DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production-min-32-chars"
@@ -251,7 +226,7 @@ def require_secure_secret_key() -> str:
     checked into the repository and public, so leaving it in place lets
     anyone forge a valid token for any user, admin included, with no need to
     ever guess a password. Same fail-fast philosophy as
-    require_license_server_url() / resolve_cors_origins(): stop at startup
+    resolve_cors_origins(): stop at startup
     with an actionable message rather than run in a silently compromised
     state.
     """

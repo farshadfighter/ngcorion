@@ -5,7 +5,6 @@ the few commands that make them take effect.
 Everything goes through System, whose `root` and `runner` tests replace: with
 root=<tmpdir> and a recording runner nothing on the real machine is touched.
 """
-import hashlib
 import json
 import os
 import socket
@@ -15,17 +14,13 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
-from urllib.parse import urlsplit
 
-from . import APPLIANCE_DIR, STATE_DIR, render
-from .settings import ApplianceSettings, Network
+from . import APPLIANCE_DIR, LICENSE_SERVER_HOST, STATE_DIR, render
+from .settings import Network
 
 NETWORK_FILE = "/etc/systemd/network/10-ngcorion.network"
 ENV_FILE = f"{APPLIANCE_DIR}/.env"
 CERT_DIR = f"{APPLIANCE_DIR}/traefik/certs"
-LICENSE_CA_FILE = f"{CERT_DIR}/license-server.crt"
-# Where the backend container sees ./traefik/certs (docker-compose.yml).
-LICENSE_CA_IN_CONTAINER = "/app/traefik/certs/license-server.crt"
 CONFIGURED_MARK = f"{STATE_DIR}/configured"
 VERSION_FILE = f"{APPLIANCE_DIR}/VERSION"
 
@@ -153,7 +148,7 @@ class System:
         self.write("/etc/systemd/timesyncd.conf", render.timesyncd(servers))
         self.run(["systemctl", "restart", "systemd-timesyncd"], check=False)
 
-    def ensure_env(self, settings: ApplianceSettings, ca_in_container: str = "") -> Dict[str, str]:
+    def ensure_env(self) -> Dict[str, str]:
         """Write /opt/ngcorion/.env. The secrets are made on the first run only: the
         database was initialised with POSTGRES_PASSWORD, so a later run keeps them."""
         existing = render.parse_env(self.read(ENV_FILE) or "")
@@ -161,7 +156,7 @@ class System:
         for k in keys:
             if existing.get(k):
                 keys[k] = existing[k]
-        self.write(ENV_FILE, render.env_file(settings, keys, ca_in_container), mode=0o600)
+        self.write(ENV_FILE, render.env_file(keys), mode=0o600)
         return keys
 
     def ensure_tls_certificate(self, name: str) -> bool:
@@ -180,9 +175,6 @@ class System:
         ])
         os.chmod(self.path(key), 0o600)
         return True
-
-    def trust_license_server_certificate(self, pem: str) -> None:
-        self.write(LICENSE_CA_FILE, pem, mode=0o644)
 
     # ---------- the NGCorion stack ----------
 
@@ -247,37 +239,25 @@ class System:
         self.run(["systemctl", action])
 
 
-# ---------- the license server's certificate ----------
+# ---------- the license server ----------
 
-def license_server_certificate(url: str, timeout: float = 10.0) -> Tuple[bool, Optional[str], str]:
-    """Look at the license server's TLS certificate.
-
-    Returns (trusted_by_system_cas, pem, sha256 fingerprint). A certificate the
-    system already trusts needs nothing more; a self-signed one can be pinned
-    after the operator compares its fingerprint with the license server's.
-    """
-    parts = urlsplit(url)
-    host, port = parts.hostname, parts.port or 443
+def check_license_server(host: str = LICENSE_SERVER_HOST, port: int = 443,
+                         timeout: float = 10.0, cafile: Optional[str] = None) -> Tuple[bool, str]:
+    """Can this machine reach the license server the way NGCorion will: name resolution,
+    a connection on port 443 and a certificate the public CAs vouch for (with the host name
+    checked)? Returns (ok, what happened) - a description the operator can act on."""
     try:
-        ctx = ssl.create_default_context()
+        socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError as exc:
+        return False, f"{host} cannot be resolved ({exc}); check the DNS servers"
+    try:
         with socket.create_connection((host, port), timeout=timeout) as sock:
-            with ctx.wrap_socket(sock, server_hostname=host):
+            # cafile: tests only (a local server with its own CA); otherwise the system's CAs.
+            with ssl.create_default_context(cafile=cafile).wrap_socket(sock, server_hostname=host):
                 pass
-        trusted = True
-    except ssl.SSLError:
-        trusted = False
-    pem = ssl.get_server_certificate((host, port), timeout=timeout)
-    der = ssl.PEM_cert_to_DER_cert(pem)
-    fp = hashlib.sha256(der).hexdigest().upper()
-    return trusted, pem, ":".join(fp[i:i + 2] for i in range(0, len(fp), 2))
-
-
-def verify_pinned(url: str, pem: str, timeout: float = 10.0) -> None:
-    """Connect to the license server trusting only `pem`, with host name checking, as
-    NGCorion will. Raises ssl.SSLError / OSError when it would fail."""
-    parts = urlsplit(url)
-    host, port = parts.hostname, parts.port or 443
-    ctx = ssl.create_default_context(cadata=pem)
-    with socket.create_connection((host, port), timeout=timeout) as sock:
-        with ctx.wrap_socket(sock, server_hostname=host):
-            pass
+    except ssl.SSLError as exc:
+        return False, (f"{host} answered, but its certificate is not trusted ({exc.reason or exc}); "
+                       "a proxy or filter may be intercepting the connection")
+    except OSError as exc:
+        return False, f"cannot connect to {host} on port {port} ({exc}); check the gateway and firewall"
+    return True, f"{host} is reachable"

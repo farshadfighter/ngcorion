@@ -53,11 +53,12 @@ Open the VM's console after the first power-on. The setup asks for:
 - host name
 - management interface, DHCP or a static address (address/prefix, gateway, DNS)
 - NTP servers
-- the license server's address (`https://...`). A self-signed license server
-  certificate is shown with its SHA-256 fingerprint; compare it with the one
-  the license server shows (`openssl x509 -in <cert> -noout -fingerprint -sha256`)
-  before accepting it.
 - the password of the web administrator `admin` (changed at first login)
+
+The license server is not asked for: it is always `lic.ngcorion.com`, built
+into NGCorion. The setup checks that the appliance can reach it (DNS, port
+443, a publicly trusted certificate) and says what to fix if not, without
+stopping; the menu can check again later.
 
 Nothing changes until the summary is confirmed. Then the appliance writes its
 network settings, generates its own secrets (`SECRET_KEY`, the database
@@ -65,14 +66,15 @@ password) and a self-signed web certificate, starts NGCorion, creates the
 administrator, and shows the web address. The license is activated on the
 first page of the web interface.
 
-On vSphere the same values can be given on the "Deploy OVF Template" screen
-(including the license server fingerprint). When host name, license server
-and admin password are filled in there, the first start runs unattended.
+On vSphere the same values can be given on the "Deploy OVF Template" screen.
+When host name and admin password are filled in there, the first start runs
+unattended.
 
 ## The console
 
 After the first start, the console shows the status and a menu: network,
-host name, NTP, license server, restart, the application log, resetting the
+host name, NTP, a check of the connection to the license server, restart,
+the application log, resetting the
 web administrator's password, reboot and shut down. There is no shell and no
 login prompt on any terminal; Ctrl-C only returns to the menu.
 
@@ -99,7 +101,7 @@ filesystem and signed appliance updates.
 | `settings.py` | what can be configured, and its validation |
 | `render.py` | the files those settings become (networkd, hosts, timesyncd, `.env`) |
 | `ovf.py` | reading vCenter's OVF properties |
-| `system.py` | applying settings to the machine; the license server certificate |
+| `system.py` | applying settings to the machine; the license server connection check |
 | `wizard.py` | the first-start questions and the setup sequence |
 | `console.py` | the menu |
 

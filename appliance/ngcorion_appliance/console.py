@@ -5,10 +5,10 @@ with no way to a shell. systemd restarts it if it ever exits
 """
 from typing import Callable, List, Tuple
 
-from . import render
+from . import LICENSE_SERVER_HOST
 from . import settings as S
 from . import wizard
-from .system import ENV_FILE, CommandFailed, System
+from .system import CommandFailed, System
 
 
 def _status(console: wizard.Console, system: System) -> None:
@@ -46,15 +46,8 @@ def _ntp(console, system):
 
 
 def _license_server(console, system):
-    env = render.parse_env(system.read(ENV_FILE) or "")
-    url = wizard.ask_valid(console, "License server address (https://...)", S.license_server_url,
-                           env.get("LICENSE_SERVER_URL"))
-    ca = wizard.license_trust(console, system, url)
-    env.update({"LICENSE_SERVER_URL": url, "LICENSE_SERVER_CA_BUNDLE": ca})
-    system.write(ENV_FILE, render.HEADER + "".join(f'{k}="{v}"\n' for k, v in env.items()), mode=0o600)
-    console.say("Restarting NGCorion...")
-    system.restart_stack()
-    console.say("License server changed.")
+    console.say(f"Checking the connection to {LICENSE_SERVER_HOST}...")
+    wizard.report_license_server(console.say)
 
 
 def _restart(console, system):
@@ -94,7 +87,7 @@ def menu_items(system: System) -> List[Tuple[str, Callable]]:
         ("Network settings", _network),
         ("Host name", _hostname),
         ("NTP servers", _ntp),
-        ("License server address", _license_server),
+        ("Check the connection to the license server", _license_server),
         ("Restart NGCorion", _restart),
         ("Show the application log", _logs),
         ("Reset the web administrator's password", _reset_password),

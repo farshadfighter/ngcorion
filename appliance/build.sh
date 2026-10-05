@@ -68,11 +68,13 @@ find "$B/appliance" -name __pycache__ -prune -exec rm -rf {} +
 echo "$VERSION" > "$B/VERSION"
 
 echo "[appliance] Building the VM image (Packer)..."
-BUILD_PASSWORD="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
+# Passed through the environment, not the command line, so it does not show
+# in the build host's process list.
+PKR_VAR_build_password="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
+export PKR_VAR_build_password
 packer init "$HERE/packer"
 PACKER_ARGS=(
     -var "version=$VERSION"
-    -var "build_password=$BUILD_PASSWORD"
     -var "stage_dir=$STAGE"
     -var "output_dir=$OUT/qemu"
     -var "accelerator=${PACKER_ACCELERATOR:-kvm}"

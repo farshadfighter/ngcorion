@@ -18,4 +18,6 @@ Modules:
 """
 
 APPLIANCE_DIR = "/opt/ngcorion"
+# Fixed, like in NGCorion itself (app/core/license_keys.py): never asked, never configurable.
+LICENSE_SERVER_HOST = "lic.ngcorion.com"
 STATE_DIR = "/var/lib/ngcorion-appliance"

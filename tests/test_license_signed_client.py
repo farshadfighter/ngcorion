@@ -280,3 +280,24 @@ def test_unverified_consume_is_403_and_does_not_count(client):
         consume_quota_on_success("audit")(request)
     assert exc.value.status_code == 403
     assert st.get_license_state().usage == before
+
+
+# ==================== the license server's address ====================
+
+def test_the_license_server_address_is_built_in(tmp_path):
+    assert license_keys.LICENSE_SERVER_URL == "https://lic.ngcorion.com"
+    assert LicenseClient(license_keys.LICENSE_SERVER_URL, str(tmp_path)).server_url == "https://lic.ngcorion.com"
+
+
+def test_old_license_server_settings_are_ignored_and_named(monkeypatch):
+    from app.core import config
+
+    monkeypatch.setattr(config.settings, "LICENSE_SERVER_URL", "https://10.0.0.5")
+    monkeypatch.setattr(config.settings, "LICENSE_SERVER_CA_BUNDLE", "")
+    assert config.ignored_license_settings() == ["LICENSE_SERVER_URL"]
+
+    import inspect
+
+    from app import main
+    source = inspect.getsource(main.lifespan)
+    assert "settings.LICENSE_SERVER_URL" not in source and "LICENSE_SERVER_CA_BUNDLE" not in source

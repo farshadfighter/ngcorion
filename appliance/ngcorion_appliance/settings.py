@@ -9,7 +9,6 @@ import ipaddress
 import re
 from dataclasses import dataclass, field
 from typing import List, Optional
-from urllib.parse import urlsplit
 
 _HOST_LABEL = re.compile(r"^(?!-)[a-z0-9-]{1,63}(?<!-)$")
 
@@ -81,17 +80,6 @@ def server_list(value: str) -> List[str]:
     return out
 
 
-def license_server_url(value: str) -> str:
-    """The license server's address. NGCorion only talks to it over https."""
-    value = (value or "").strip().rstrip("/")
-    parts = urlsplit(value)
-    if parts.scheme != "https" or not parts.hostname:
-        raise ValueError("The license server address must start with https://, e.g. https://10.0.0.5")
-    if parts.path or parts.query or parts.fragment or parts.username:
-        raise ValueError("Give only https://host[:port], without a path")
-    return value
-
-
 # The special characters NGCorion's password policy counts
 # (app/schemas/user.py, validate_password_strength).
 _SPECIAL = r"[!@#$%^&*()_+=\-[\]{};':\"\\|,.<>/?]"
@@ -140,5 +128,3 @@ class ApplianceSettings:
     hostname: str
     network: Network
     ntp: List[str]
-    license_server_url: str
-    license_server_ca: str = ""          # PEM of the license server's certificate, when self-signed

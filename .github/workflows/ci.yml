@@ -102,7 +102,6 @@ jobs:
           printf 'SECRET_KEY=ci-only-secret-key-not-used-anywhere-else-0123456789\n' > ci.env
           docker run -d --name ngcorion --network host --env-file ci.env \
             -e DATABASE_URL=postgresql+psycopg://netease:ci-only-password@127.0.0.1:5432/netease_db \
-            -e LICENSE_SERVER_URL=https://license.invalid \
             -e LICENSE_STORAGE_DIR=/var/lib/ngcorion/license \
             ngcorion/backend:ci uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
           for i in $(seq 1 60); do

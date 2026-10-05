@@ -69,8 +69,8 @@ def verify_token(
     """
     if not token or not isinstance(token, str) or token.count(".") != 1:
         raise LicenseTokenError(
-            "The license server's answer is not signed. Update the license server, or check that "
-            "LICENSE_SERVER_URL points at the NGCorion license server."
+            "The license server's answer is not signed: something other than the NGCorion license "
+            "server answered (a proxy, a filter, or an outdated license server)."
         )
     body, signature = token.split(".")
     try:

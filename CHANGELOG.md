@@ -15,7 +15,10 @@
 - The offline cache stores the signed token and is verified again on restart;
   the 48h grace window counts from the signed issue time, and a clock set
   back invalidates the license.
-- `LICENSE_SERVER_URL` must use https (loopback excepted).
+- The license server's address is fixed: `https://lic.ngcorion.com`, part of
+  the code next to its signing key, verified against the public certificate
+  authorities. `LICENSE_SERVER_URL` and `LICENSE_SERVER_CA_BUNDLE` are no
+  longer read (a leftover value only logs a warning).
 
 ### Release images carry the code
 
@@ -42,13 +45,13 @@
   VMware (EFI, Secure Boot, pvscsi, vmxnet3, deploy-time settings in
   vCenter), a VHDX for Hyper-V and a qcow2 for KVM/Proxmox. Ubuntu 24.04 LTS
   with Docker and every container image preloaded; no internet access needed.
-- First start on the console: host name, network, NTP, license server (a
-  self-signed certificate is trusted only after its fingerprint is
-  confirmed) and the web administrator's password. Each appliance makes its
+- First start on the console: host name, network, NTP and the web
+  administrator's password; the connection to lic.ngcorion.com is checked. Each appliance makes its
   own secrets, database password, certificate and machine-id. The same
   values can come from vCenter's OVF properties for an unattended start.
 - Afterwards the console shows a menu (status, network, host name, NTP,
-  license server, restart, log, admin password reset, reboot, shut down).
+  license server connection check, restart, log, admin password reset,
+  reboot, shut down).
   No shell, no SSH, no login prompt on any terminal, root locked, GRUB
   entries cannot be edited.
 

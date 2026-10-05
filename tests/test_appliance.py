@@ -2,8 +2,8 @@
 The virtual appliance's first-boot wizard and console (appliance/ngcorion_appliance).
 
 Nothing here touches the machine running the tests: System gets a temporary
-root and a recording command runner. The license-server certificate checks
-run against a real local TLS server with a self-signed certificate.
+root and a recording command runner. The license-server connection check
+runs against a real local TLS server.
 """
 import datetime
 import ipaddress
@@ -115,14 +115,10 @@ def test_addresses_and_gateway():
         S.gateway("192.168.10.20", iface)
 
 
-def test_lists_and_license_url():
+def test_lists():
     assert S.address_list("10.0.0.53, 10.0.0.54") == ["10.0.0.53", "10.0.0.54"]
     assert S.server_list("") == []
     assert S.server_list("ntp.corp.example 10.0.0.1") == ["ntp.corp.example", "10.0.0.1"]
-    assert S.license_server_url("https://10.0.0.5:8443/") == "https://10.0.0.5:8443"
-    for bad in ("http://10.0.0.5", "10.0.0.5", "https://10.0.0.5/api", "https://user@10.0.0.5"):
-        with pytest.raises(ValueError):
-            S.license_server_url(bad)
 
 
 def test_admin_password_follows_ngcorions_policy():
@@ -150,12 +146,12 @@ def test_networkd_static_and_dhcp():
 
 
 def test_env_file_round_trip_and_fresh_secrets():
-    st = S.ApplianceSettings("ngc", S.Network("ens192"), [], "https://10.0.0.5")
     a, b = render.new_secrets(), render.new_secrets()
     assert a != b and len(a["SECRET_KEY"]) == 64
-    env = render.parse_env(render.env_file(st, a, "/app/traefik/certs/license-server.crt"))
-    assert env["SECRET_KEY"] == a["SECRET_KEY"] and env["LICENSE_SERVER_URL"] == "https://10.0.0.5"
-    assert env["LICENSE_SERVER_CA_BUNDLE"] == "/app/traefik/certs/license-server.crt"
+    env = render.parse_env(render.env_file(a))
+    assert env["SECRET_KEY"] == a["SECRET_KEY"] and env["POSTGRES_PASSWORD"] == a["POSTGRES_PASSWORD"]
+    # The license server is built into NGCorion: nothing about it in the installation's settings.
+    assert not any(k.startswith("LICENSE") for k in env)
 
 
 # ==================== OVF properties ====================
@@ -170,7 +166,6 @@ OVF_ENV = """<?xml version="1.0" encoding="UTF-8"?>
     <Property oe:key="ngcorion.gateway" oe:value="192.168.10.1"/>
     <Property oe:key="ngcorion.dns" oe:value="10.0.0.53"/>
     <Property oe:key="ngcorion.ntp" oe:value=""/>
-    <Property oe:key="ngcorion.license_server" oe:value="https://10.0.0.5"/>
     <Property oe:key="ngcorion.admin_password" oe:value="{pw}"/>
     <Property oe:key="other.key" oe:value="ignored"/>
   </PropertySection>
@@ -197,13 +192,10 @@ def test_ovf_dhcp_and_errors_name_the_property():
 
 def test_secrets_are_made_once(machine):
     system, _, root = machine
-    st = S.ApplianceSettings("ngc", S.Network("ens192"), [], "https://10.0.0.5")
-    first = system.ensure_env(st)
-    st.license_server_url = "https://10.0.0.6"
-    second = system.ensure_env(st)
+    first = system.ensure_env()
+    second = system.ensure_env()
     assert first == second                      # the database was initialised with this password
     env_path = root / "opt/ngcorion/.env"
-    assert "https://10.0.0.6" in env_path.read_text()
     assert oct(env_path.stat().st_mode & 0o777) == "0o600"
 
 
@@ -224,26 +216,25 @@ def test_interfaces_skip_docker_and_loopback(machine):
 
 def test_wizard_end_to_end(machine, monkeypatch):
     system, rec, root = machine
-    monkeypatch.setattr(wizard, "license_server_certificate", lambda url: (True, "PEM", "AA"))
+    monkeypatch.setattr(wizard, "check_license_server", lambda: (True, "lic.ngcorion.com is reachable"))
     con = Scripted([
         "ngc01",                        # host name
         "2",                            # static
         "192.168.10.20/24", "", "",     # address, gateway (default .1), DNS (default gateway)
         "",                             # NTP
-        "http://10.0.0.5",              # rejected: not https
-        "https://10.0.0.5",
         "weak", GOOD_PASSWORD, GOOD_PASSWORD,
         "y",                            # apply
     ])
     assert wizard.run(con, system)
-    assert any("must start with https" in line for line in con.output)
     assert any("At least 12" in line for line in con.output)
+    assert not any("License server address" in line for line in con.output)   # never asked
+    assert any("lic.ngcorion.com is reachable" in line for line in con.output)
 
     net = (root / "etc/systemd/network/10-ngcorion.network").read_text()
     assert "Address=192.168.10.20/24" in net and "Gateway=192.168.10.1" in net and "DNS=192.168.10.1" in net
     assert (root / "etc/hostname").read_text() == "ngc01\n"
     env = render.parse_env((root / "opt/ngcorion/.env").read_text())
-    assert env["LICENSE_SERVER_URL"] == "https://10.0.0.5" and env["LICENSE_SERVER_CA_BUNDLE"] == ""
+    assert env["SECRET_KEY"] and not any(k.startswith("LICENSE") for k in env)
     assert (root / "opt/ngcorion/traefik/certs/ngcorion.local.key").exists()
     assert system.configured()
 
@@ -254,24 +245,24 @@ def test_wizard_end_to_end(machine, monkeypatch):
 
 def test_wizard_can_start_over_before_changing_anything(machine, monkeypatch):
     system, rec, root = machine
-    monkeypatch.setattr(wizard, "license_server_certificate", lambda url: (True, "PEM", "AA"))
-    con = Scripted(["a", "1", "", "https://10.0.0.5", GOOD_PASSWORD, GOOD_PASSWORD, "n",
-                    "b", "1", "", "https://10.0.0.5", GOOD_PASSWORD, GOOD_PASSWORD, "y"])
+    monkeypatch.setattr(wizard, "check_license_server", lambda: (True, "lic.ngcorion.com is reachable"))
+    con = Scripted(["a", "1", "", GOOD_PASSWORD, GOOD_PASSWORD, "n",
+                    "b", "1", "", GOOD_PASSWORD, GOOD_PASSWORD, "y"])
     assert wizard.run(con, system)
     assert (root / "etc/hostname").read_text() == "b\n"
 
 
 def test_failed_start_is_reported_and_not_marked_configured(machine, monkeypatch):
     system, _, _ = machine
-    monkeypatch.setattr(wizard, "license_server_certificate", lambda url: (True, "PEM", "AA"))
+    monkeypatch.setattr(wizard, "check_license_server", lambda: (True, "lic.ngcorion.com is reachable"))
     monkeypatch.setattr(System, "wait_healthy", lambda self, **kw: False)
-    con = Scripted(["ngc", "1", "", "https://10.0.0.5", GOOD_PASSWORD, GOOD_PASSWORD, "y"])
+    con = Scripted(["ngc", "1", "", GOOD_PASSWORD, GOOD_PASSWORD, "y"])
     assert not wizard.run(con, system)
     assert any("Setup stopped" in line for line in con.output)
     assert not system.configured()
 
 
-# ==================== license server certificate (real TLS) ====================
+# ==================== license server connection check (real TLS) ====================
 
 @pytest.fixture
 def tls_server(tmp_path):
@@ -316,42 +307,39 @@ def tls_server(tmp_path):
 
     t = threading.Thread(target=serve, daemon=True)
     t.start()
-    fp = cert.fingerprint(hashes.SHA256()).hex().upper()
-    yield f"https://127.0.0.1:{sock.getsockname()[1]}", pem, ":".join(fp[i:i + 2] for i in range(0, len(fp), 2))
+    (tmp_path / "ca.pem").write_text(pem)
+    yield sock.getsockname()[1], str(tmp_path / "ca.pem")
     stop.set()
     t.join()
     sock.close()
 
 
-def test_self_signed_license_server_is_pinned_after_the_fingerprint_matches(machine, tls_server):
-    system, _, root = machine
-    url, pem, fingerprint = tls_server
-    trusted, got_pem, got_fp = sysmod.license_server_certificate(url)
-    assert (trusted, got_fp) == (False, fingerprint)
-
-    con = Scripted(["y"])
-    assert wizard.license_trust(con, system, url) == sysmod.LICENSE_CA_IN_CONTAINER
-    assert any(fingerprint in line for line in con.output)
-    assert (root / "opt/ngcorion/traefik/certs/license-server.crt").read_text().strip() == pem.strip()
-
-
-def test_unconfirmed_or_wrong_fingerprint_is_not_trusted(machine, tls_server):
-    system, _, root = machine
-    url, _, fingerprint = tls_server
-    with pytest.raises(CommandFailed):
-        wizard.license_trust(Scripted(["n"]), system, url)
-    with pytest.raises(CommandFailed):
-        wizard.license_trust(None, system, url, expected_fingerprint="00" * 32)
-    # The right fingerprint from OVF needs no question.
-    assert wizard.license_trust(None, system, url, expected_fingerprint=fingerprint.lower())
-    assert (root / "opt/ngcorion/traefik/certs/license-server.crt").exists()
+def test_unreachable_license_server_is_explained(machine, monkeypatch):
+    ok, detail = sysmod.check_license_server("no-such-host.invalid")
+    assert not ok and "DNS" in detail
+    closed = socket.socket()
+    closed.bind(("127.0.0.1", 0))
+    port = closed.getsockname()[1]
+    closed.close()
+    ok, detail = sysmod.check_license_server("127.0.0.1", port)
+    assert not ok and "firewall" in detail
 
 
-def test_pinned_certificate_must_also_match_the_address(tls_server):
-    url, pem, _ = tls_server
-    sysmod.verify_pinned(url, pem)
-    with pytest.raises(ssl.SSLCertVerificationError):
-        sysmod.verify_pinned(url.replace("127.0.0.1", "localhost"), pem)
+def test_license_server_certificate_must_be_trusted(tls_server):
+    port, ca = tls_server
+    ok, detail = sysmod.check_license_server("127.0.0.1", port)       # system CAs: not trusted
+    assert not ok and "not trusted" in detail
+    assert sysmod.check_license_server("127.0.0.1", port, cafile=ca) == (True, "127.0.0.1 is reachable")
+
+
+def test_setup_goes_on_when_the_license_server_is_unreachable(machine, monkeypatch):
+    system, _, _ = machine
+    monkeypatch.setattr(wizard, "check_license_server",
+                        lambda: (False, "lic.ngcorion.com cannot be resolved (x); check the DNS servers"))
+    con = Scripted(["ngc", "1", "", GOOD_PASSWORD, GOOD_PASSWORD, "y"])
+    assert wizard.run(con, system)
+    assert any("not reachable" in line and "DNS" in line for line in con.output)
+    assert system.configured()
 
 
 # ==================== console menu ====================

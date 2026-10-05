@@ -21,9 +21,7 @@ def first_boot(con: wizard.Console, system: System) -> None:
         try:
             nics = system.interfaces() or ["eth0"]
             settings, password = ovf.to_settings(props, nics[0])
-            wizard.apply(system, settings, password,
-                         license_fingerprint=props.get("ngcorion.license_server_sha256", ""),
-                         say=con.say)
+            wizard.apply(system, settings, password, say=con.say)
             con.say("Configured from the OVF properties.")
             return
         except (CommandFailed, ValueError) as exc:

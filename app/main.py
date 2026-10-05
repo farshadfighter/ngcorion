@@ -16,7 +16,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from app.core.database import Base, engine, SessionLocal
 from app.core.config import (
     settings,
-    require_license_server_url,
+    ignored_license_settings,
     require_secure_secret_key,
     resolve_cors_origins,
 )
@@ -170,17 +170,16 @@ async def lifespan(app: FastAPI):
     stopped.
     """
     # Startup
-    # Misconfiguration fails fast (there is no localhost fallback); an
-    # unreachable server does not — those are different problems.
-    try:
-        license_server_url = require_license_server_url()
-    except RuntimeError as exc:
-        logger.critical("[Startup] %s", exc)
-        raise
+    # The license server's address is part of the code (app/core/license_keys.py).
+    from app.core.license_keys import LICENSE_SERVER_URL as license_server_url, TRUSTED_LICENSE_KEYS
+    for name in ignored_license_settings():
+        logger.warning(
+            "[Startup] %s is set but ignored: the license server is always %s. "
+            "Remove it from .env.", name, license_server_url,
+        )
 
     client = LicenseClient(license_server_url, settings.LICENSE_STORAGE_DIR)
     app.state.license_client = client
-    from app.core.license_keys import TRUSTED_LICENSE_KEYS
     if not TRUSTED_LICENSE_KEYS:
         logger.critical(
             "[Startup] No license signing key is built in (app/core/license_keys.py): no license "

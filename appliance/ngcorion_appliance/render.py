@@ -6,7 +6,7 @@ machine.
 import secrets
 from typing import Dict, List
 
-from .settings import ApplianceSettings, Network
+from .settings import Network
 
 HEADER = "# Written by the NGCorion appliance console. Change it there, not here.\n"
 
@@ -62,13 +62,12 @@ def new_secrets() -> Dict[str, str]:
     }
 
 
-def env_file(settings: ApplianceSettings, keys: Dict[str, str], ca_bundle_path: str = "") -> str:
-    """/opt/ngcorion/.env: read by docker compose for interpolation and passed to the backend (env_file)."""
+def env_file(keys: Dict[str, str]) -> str:
+    """/opt/ngcorion/.env: read by docker compose for interpolation and passed to the backend
+    (env_file). Only this installation's secrets: the license server is built into NGCorion."""
     values = {
         "SECRET_KEY": keys["SECRET_KEY"],
         "POSTGRES_PASSWORD": keys["POSTGRES_PASSWORD"],
-        "LICENSE_SERVER_URL": settings.license_server_url,
-        "LICENSE_SERVER_CA_BUNDLE": ca_bundle_path,
         "NGCORION_TAG": "latest",
     }
     for k, v in values.items():

@@ -2,8 +2,8 @@
 <!--
   NGCorion virtual appliance descriptor. appliance/make-ova.sh fills in the
   @...@ placeholders. The ProductSection properties appear on vCenter's
-  "Deploy OVF Template" screen; when hostname, license server and admin
-  password are given, the appliance configures itself on first boot
+  "Deploy OVF Template" screen; when host name and admin password are
+  given, the appliance configures itself on first boot
   (appliance/ngcorion_appliance/ovf.py), otherwise it asks on its console.
 -->
 <Envelope xmlns="http://schemas.dmtf.org/ovf/envelope/1"
@@ -62,15 +62,7 @@
         <Label>NTP servers</Label>
         <Description>Comma-separated host names or addresses. Empty: from DHCP or Ubuntu's pool.</Description>
       </Property>
-      <Category>License and access</Category>
-      <Property ovf:key="ngcorion.license_server" ovf:type="string" ovf:userConfigurable="true" ovf:value="">
-        <Label>License server address</Label>
-        <Description>https://host[:port] of your NGCorion license server</Description>
-      </Property>
-      <Property ovf:key="ngcorion.license_server_sha256" ovf:type="string" ovf:userConfigurable="true" ovf:value="">
-        <Label>License server certificate fingerprint (SHA-256)</Label>
-        <Description>Only for a self-signed license server certificate: its SHA-256 fingerprint, so the appliance can trust it unattended</Description>
-      </Property>
+      <Category>Access</Category>
       <Property ovf:key="ngcorion.admin_password" ovf:password="true" ovf:type="string" ovf:userConfigurable="true" ovf:value="">
         <Label>Password of the web administrator 'admin'</Label>
         <Description>At least 12 characters with upper and lower case, a digit and a special character. Must be changed at the first login.</Description>

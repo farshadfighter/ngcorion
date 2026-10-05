@@ -265,15 +265,11 @@ class LicenseClient:
         self.session = self._build_session(self.retries, idempotent=False)
         self.idempotent_session = self._build_session(self.retries, idempotent=True)
 
-        # The license server runs on an internal host reached by IP, so it
-        # serves a self-signed certificate that certifi knows nothing about.
-        # Trusting that certificate explicitly keeps full verification on
-        # (hostname/IP match, expiry, signature) — the alternative people reach
-        # for, verify=False, would leave the licensing channel open to anyone
-        # on the path who can answer on that address.
-        self.ca_bundle = self._resolve_ca_bundle(
-            ca_bundle if ca_bundle is not None else settings.LICENSE_SERVER_CA_BUNDLE
-        )
+        # The license server (lic.ngcorion.com) has a publicly trusted
+        # certificate, verified with requests' normal CA bundle. `ca_bundle` is
+        # for tests against a local server with its own certificate; there is
+        # no setting for it, and never a way to switch verification off.
+        self.ca_bundle = self._resolve_ca_bundle(ca_bundle or "")
         if self.ca_bundle:
             self.session.verify = self.ca_bundle
             self.idempotent_session.verify = self.ca_bundle
@@ -298,9 +294,8 @@ class LicenseClient:
         if parsed.scheme == "http" and loopback:
             return url
         raise RuntimeError(
-            f"LICENSE_SERVER_URL must use https:// (got {url!r}). The license key and organization "
-            f"token are sent with every request; for a self-signed license server certificate set "
-            f"LICENSE_SERVER_CA_BUNDLE."
+            f"The license server must be reached over https:// (got {url!r}): the license key "
+            f"and organization token are sent with every request."
         )
 
     @property
@@ -338,7 +333,7 @@ class LicenseClient:
     @staticmethod
     def _resolve_ca_bundle(configured: str) -> Optional[str]:
         """
-        Validate LICENSE_SERVER_CA_BUNDLE and return an absolute path, or None.
+        Validate a CA bundle path given to the client and return an absolute path, or None.
 
         A missing or mistyped path is fatal on purpose. Left to requests, a bad
         bundle surfaces as an OSError from deep inside the first TLS handshake,
@@ -354,10 +349,7 @@ class LicenseClient:
         resolved = Path(path).expanduser()
         if not resolved.is_file():
             raise RuntimeError(
-                f"LICENSE_SERVER_CA_BUNDLE points at {resolved}, which is not a "
-                f"readable file. It must be the PEM certificate the license "
-                f"server presents (copy license-server.crt from the license "
-                f"host), so HTTPS verification can succeed."
+                f"The license server CA bundle {resolved} is not a readable file."
             )
         return str(resolved)
 
@@ -453,9 +445,9 @@ class LicenseClient:
         except ValueError as exc:
             raise LicenseServerError(
                 f"License server at {self.server_url} returned a non-JSON "
-                f"response (HTTP {response.status_code}): {exc}. Check that "
-                f"LICENSE_SERVER_URL points at the license server itself and "
-                f"not at a proxy or another service.",
+                f"response (HTTP {response.status_code}): {exc}. A proxy or "
+                f"filter between this server and the license server may be "
+                f"answering instead of it.",
                 status_code=response.status_code,
             ) from exc
         if not isinstance(payload, dict):
