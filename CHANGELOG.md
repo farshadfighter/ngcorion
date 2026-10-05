@@ -26,6 +26,9 @@
 - A `.dockerignore` keeps `.env`, TLS keys under `traefik/certs`, the git
   history, tests and local environments out of the image. Before, the whole
   checkout was copied in, including `.env`.
+- The installation's `.env` (SECRET_KEY, SMTP, ...) is handed to the backend
+  as environment variables (`env_file` in docker-compose.yml); the app used to
+  find it only because it had been copied into the image.
 - `deploy.sh` no longer needs Node.js on the host; it builds
   `ngcorion/backend:<version>` and keeps the previous image for rollback.
 - Base images and the Python package index are build arguments

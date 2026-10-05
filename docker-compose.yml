@@ -76,6 +76,15 @@ services:
     # ./deploy.sh rebuilds it. For development with live code, add
     # docker-compose.dev.yml (see that file).
     image: ngcorion/backend:${NGCORION_TAG:-latest}
+    # The installation's own settings and secrets - .env next to this file:
+    # SECRET_KEY, SMTP_*, ... (app/core/config.py). They reach the app as
+    # environment variables at run time and are never part of the image.
+    # (Before .dockerignore existed, `COPY . .` baked .env into the image and
+    # the app read it from /app/.env.) Values under `environment:` below
+    # take precedence over the file.
+    env_file:
+      - path: .env
+        required: false
     volumes:
       # License activation data (Fernet key + encrypted license/state files).
       # Moved off /root/.license for item 2.2: the backend no longer runs as
