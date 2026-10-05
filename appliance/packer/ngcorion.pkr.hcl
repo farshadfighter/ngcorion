@@ -90,7 +90,8 @@ build {
   sources = ["source.qemu.ngcorion"]
 
   provisioner "shell" {
-    inline = ["cloud-init status --wait || true"]
+    # A file provisioner whose source ends in "/" copies into an existing directory.
+    inline = ["cloud-init status --wait || true", "mkdir -p /tmp/stage /tmp/rootfs"]
   }
 
   provisioner "file" {
