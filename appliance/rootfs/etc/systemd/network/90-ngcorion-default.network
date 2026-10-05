@@ -1,0 +1,11 @@
+# Until the first-start setup writes 10-ngcorion.network for the management
+# interface: DHCP on every Ethernet interface, so the appliance is reachable
+# and vCenter shows an address.
+[Match]
+Type=ether
+Name=en* eth*
+
+[Network]
+DHCP=ipv4
+IPv6AcceptRA=no
+LinkLocalAddressing=no

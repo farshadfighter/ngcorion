@@ -36,6 +36,22 @@
   Iranian mirrors. CI builds the image and checks it starts, answers and
   contains nothing it should not.
 
+### Virtual appliance
+
+- `appliance/build.sh` builds NGCorion as a virtual appliance: an OVA for
+  VMware (EFI, Secure Boot, pvscsi, vmxnet3, deploy-time settings in
+  vCenter), a VHDX for Hyper-V and a qcow2 for KVM/Proxmox. Ubuntu 24.04 LTS
+  with Docker and every container image preloaded; no internet access needed.
+- First start on the console: host name, network, NTP, license server (a
+  self-signed certificate is trusted only after its fingerprint is
+  confirmed) and the web administrator's password. Each appliance makes its
+  own secrets, database password, certificate and machine-id. The same
+  values can come from vCenter's OVF properties for an unattended start.
+- Afterwards the console shows a menu (status, network, host name, NTP,
+  license server, restart, log, admin password reset, reboot, shut down).
+  No shell, no SSH, no login prompt on any terminal, root locked, GRUB
+  entries cannot be edited.
+
 ### Dependencies
 
 - React 19, Vite 8, ESLint 10; FastAPI 0.142, Alembic 1.20, Netmiko 4.8,

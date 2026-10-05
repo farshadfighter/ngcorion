@@ -33,7 +33,8 @@ venv/
 front/node_modules/
 front/dist/
 
-# Not needed at run time
+# Not needed at run time (appliance/ also holds the large VM build output)
+appliance/
 tests/
 docs/
 deploy/

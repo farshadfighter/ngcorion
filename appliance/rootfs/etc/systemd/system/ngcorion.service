@@ -1,0 +1,20 @@
+# The NGCorion containers (docker compose). Enabled and first started by the
+# first-start setup, once /opt/ngcorion/.env exists; the containers also
+# carry restart: always, so Docker brings them back after a reboot.
+[Unit]
+Description=NGCorion
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/opt/ngcorion/.env
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/ngcorion
+ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.appliance.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.appliance.yml down
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target

@@ -24,6 +24,10 @@ builds on it with conventions and step-by-step recipes.
   but each background loop runs in exactly one of them (section 5).
 - `entrypoint.sh` drops root to UID 10001, applies `alembic upgrade head`,
   then starts the server.
+- The backend image carries all code and the built frontend, root-owned and
+  read-only for UID 10001; nothing of a checkout is mounted. The
+  installation's settings and secrets come from its `.env` as environment
+  variables (`env_file` in `docker-compose.yml`).
 
 ## 2. A request, end to end
 
@@ -229,3 +233,20 @@ answers it can prove came from it.
 - **Limits.** Someone who can change NGCorion's own code on the server can
   still remove these checks; signing stops configuration-level bypasses (a
   fake server, an edited cache), not code modification.
+
+## 10. The virtual appliance
+
+`appliance/` builds NGCorion as a VM image (OVA, VHDX, qcow2): Ubuntu 24.04
+LTS, Docker, the four container images preloaded, and the same
+`docker-compose.yml` under `/opt/ngcorion` (with `docker-compose.appliance.yml`
+forbidding pulls). See `appliance/README.md`.
+
+- **First start** (`appliance/ngcorion_appliance`, standard-library Python on
+  tty1): network, host name, NTP, license server and the web administrator;
+  the appliance generates its own `.env` secrets and web certificate. vCenter
+  OVF properties can supply the same values.
+- **Console**: a menu, never a shell. No SSH server, no login prompts, root
+  locked, GRUB entries not editable; the build account and SSH are removed
+  when the image is sealed.
+- **Identity**: the machine-id is emptied when the image is sealed, so every
+  deployed appliance gets its own, and with it its own license fingerprint.

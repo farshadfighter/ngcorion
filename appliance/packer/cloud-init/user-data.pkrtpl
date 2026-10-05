@@ -1,0 +1,15 @@
+#cloud-config
+# Build time only: a temporary account Packer logs in with over SSH. The
+# finalizer (provision/30-harden.sh) deletes it, cloud-init and the SSH server
+# before the image is sealed. The password is random per build (build.sh).
+users:
+  - name: packer
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    plain_text_passwd: "${password}"
+ssh_pwauth: true
+growpart:
+  mode: auto
+  devices: ["/"]
+package_update: false

@@ -116,6 +116,43 @@ jobs:
           # The PDF libraries are present (WeasyPrint loads Pango).
           docker exec ngcorion python -c "import weasyprint"
 
+  appliance:
+    name: Appliance (Packer template, OVA packaging)
+    # The VM build itself needs a hypervisor and runs with appliance/build.sh;
+    # here: the Packer template is valid and formatted, the provisioning
+    # scripts parse, and make-ova.sh packs a (blank) disk into an OVA whose
+    # descriptor and manifest are right. The console code is tested by pytest
+    # (tests/test_appliance.py) in the backend job.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PACKER_VERSION: "1.16.1"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Packer and qemu-img
+        run: |
+          curl -fsSLo /tmp/packer.zip "https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip"
+          sudo unzip -o /tmp/packer.zip -d /usr/local/bin
+          sudo apt-get update && sudo apt-get install -y qemu-utils
+      - name: Packer template
+        working-directory: appliance
+        run: |
+          packer init "$PWD/packer"
+          packer fmt -check -diff packer
+          mkdir -p /tmp/stage
+          packer validate -var version=ci -var build_password=ci -var stage_dir=/tmp/stage \
+            -var output_dir=/tmp/qemu-out "$PWD/packer"
+      - name: Provisioning scripts parse
+        run: for f in appliance/provision/*.sh; do sh -n "$f"; done; bash -n appliance/build.sh appliance/make-ova.sh
+      - name: OVA packaging
+        run: |
+          qemu-img create -f qcow2 /tmp/disk.qcow2 2G
+          appliance/make-ova.sh /tmp/disk.qcow2 ci /tmp/ova
+          mkdir /tmp/ova/x && tar -C /tmp/ova/x -xf /tmp/ova/ngcorion-ci.ova
+          test "$(tar tf /tmp/ova/ngcorion-ci.ova | head -n1)" = ngcorion-ci.ovf
+          cd /tmp/ova/x && sed -E 's/^SHA256\((.*)\)= (.*)$/\2  \1/' ngcorion-ci.mf | sha256sum -c -
+          grep -q 'ovf:capacity="2147483648"' ngcorion-ci.ovf
+
   frontend:
     name: Frontend (lint, test, build)
     runs-on: ubuntu-24.04

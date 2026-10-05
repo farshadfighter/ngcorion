@@ -1,0 +1,12 @@
+# Appliance override (used together with docker-compose.yml): every image was
+# loaded into the appliance when it was built, so nothing is pulled from a
+# registry or built here - the appliance works without internet access.
+services:
+  traefik:
+    pull_policy: never
+  backend:
+    pull_policy: never
+  postgres:
+    pull_policy: never
+  redis:
+    pull_policy: never

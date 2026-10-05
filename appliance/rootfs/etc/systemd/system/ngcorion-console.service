@@ -1,0 +1,25 @@
+# The appliance console on tty1: first-start setup, then the menu. There is no
+# login prompt on any terminal (getty@tty1 is masked, logind starts no other
+# VTs) and the menu offers no shell; if it ever exits, systemd starts it again.
+[Unit]
+Description=NGCorion appliance console
+After=systemd-user-sessions.service plymouth-quit-wait.service docker.service
+Conflicts=getty@tty1.service
+Before=getty.target
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=/opt/ngcorion/appliance PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m ngcorion_appliance console
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
