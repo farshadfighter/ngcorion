@@ -1,4 +1,24 @@
-FROM docker.arvancloud.ir/python:3.13-slim AS base
+# The frontend bundle is built here, inside the image build, so the backend
+# image carries everything it serves: no host checkout, no host Node.js and no
+# bind-mounted source at run time.
+#
+# Base images come from the Docker Hub mirror used for installations in Iran;
+# elsewhere build with --build-arg BASE_REGISTRY=docker.io (CI does).
+ARG BASE_REGISTRY=docker.arvancloud.ir
+
+FROM ${BASE_REGISTRY}/node:22-slim AS frontend
+
+# Optional npm mirror (e.g. --build-arg NPM_REGISTRY=https://...). npm swaps
+# the registry host of the lockfile's registry.npmjs.org URLs for it.
+ARG NPM_REGISTRY=
+WORKDIR /front
+COPY front/package.json front/package-lock.json ./
+RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+    && npm ci --no-audit --no-fund
+COPY front/ ./
+RUN npm run build
+
+FROM ${BASE_REGISTRY}/python:3.13-slim AS base
 
 WORKDIR /app
 
@@ -8,7 +28,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy \
     PATH="/app/.venv/bin:$PATH"
 
-RUN pip install --no-cache-dir uv -i https://mirror-pypi.runflare.com/simple
+# Python package index for pip/uv. The default is the mirror used for
+# installations in Iran; elsewhere: --build-arg PYPI_INDEX=https://pypi.org/simple
+ARG PYPI_INDEX=https://mirror-pypi.runflare.com/simple
+RUN pip install --no-cache-dir uv -i "$PYPI_INDEX"
 # tzdata provides /usr/share/zoneinfo. Without it the image has no zone
 # database at all, so the Time settings fall back to the /etc/localtime symlink
 # and reject every zone ("not a known zone under /usr/share/zoneinfo") --
@@ -50,20 +73,21 @@ ENV NMAP_PRIVILEGED=1 \
 FROM base AS development
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project -i https://mirror-pypi.runflare.com/simple
+RUN uv sync --frozen --no-install-project -i "$PYPI_INDEX"
 
 COPY . .
-RUN uv sync --frozen -i https://mirror-pypi.runflare.com/simple
+RUN uv sync --frozen -i "$PYPI_INDEX"
+
+COPY --from=frontend /front/dist /app/front/dist
 
 EXPOSE 8000
 
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
 
-# The virtualenv is the only image path the runtime writes (`uv run` re-syncs it
-# when the bind-mounted pyproject.toml/uv.lock differ from the baked-in ones).
-# Source files stay root-owned and world-readable, so the app can read but not
-# rewrite its own code.
+# Development only (docker-compose.dev.yml bind-mounts the source over the
+# baked copy): `uv run` re-syncs the virtualenv when pyproject.toml/uv.lock
+# change, so the venv is writable here. Source files stay root-owned.
 RUN chown -R 10001:10001 /app/.venv
 
 ENTRYPOINT ["/app/entrypoint.sh"]
@@ -72,21 +96,27 @@ CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "800
 FROM base AS production
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project -i https://mirror-pypi.runflare.com/simple
+RUN uv sync --frozen --no-dev --no-install-project -i "$PYPI_INDEX"
 
 COPY . .
-RUN uv sync --frozen --no-dev -i https://mirror-pypi.runflare.com/simple
+RUN uv sync --frozen --no-dev -i "$PYPI_INDEX" \
+    && python -m compileall -q app alembic scripts \
+    && rm -rf front
+COPY --from=frontend /front/dist /app/front/dist
+
+ARG NGCORION_VERSION=dev
+LABEL org.opencontainers.image.title="NGCorion" \
+      org.opencontainers.image.version="$NGCORION_VERSION"
 
 EXPOSE 8000
 
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh
 
-# The virtualenv is the only image path the runtime writes (`uv run` re-syncs it
-# when the bind-mounted pyproject.toml/uv.lock differ from the baked-in ones).
-# Source files stay root-owned and world-readable, so the app can read but not
-# rewrite its own code.
-RUN chown -R 10001:10001 /app/.venv
-
+# Everything under /app - code, virtualenv, frontend bundle - is baked into the
+# image and stays root-owned: the app (UID 10001) can read and run it, never
+# change it. What it does write lives in volumes (license, backups) and in the
+# host configuration paths entrypoint.sh hands over. The server is started
+# from the virtualenv directly; `uv run` would try to re-sync it.
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

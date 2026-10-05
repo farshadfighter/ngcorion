@@ -189,6 +189,8 @@ list in the lifespan of `app/main.py`. Add its name to the health detail
 
 1. `VERSION` in `app/core/config.py` (shown in `/health` and the UI).
 2. Green CI on `main`.
-3. Deploy with `deploy.sh` (pulls, builds `front/dist` with `npm ci`,
-   rebuilds the backend container; the container applies migrations on
-   start).
+3. Deploy with `deploy.sh`: it pulls, builds the backend image
+   `ngcorion/backend:<VERSION>` (the image builds the frontend and carries all
+   code; nothing is mounted from the checkout), tags it `latest` and restarts
+   the container, which applies migrations on start. The previous version's
+   image stays on the host for a rollback.

@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Deploy the latest code to this server: pull, rebuild the frontend bundle,
-# rebuild/restart the backend container, and let entrypoint.sh apply pending
-# Alembic migrations on startup.
+# Deploy the latest code to this server: pull, build a new backend image (the
+# image builds the frontend bundle itself and carries all code - nothing of
+# this checkout is mounted into the container), restart it, and let
+# entrypoint.sh apply pending Alembic migrations on startup.
 #
-# The backend container mounts front/dist read-only (docker-compose.yml) and
-# never builds the frontend itself, so that step has to happen here, outside
-# Docker, before the container picks up the new bundle.
+# This host needs git and Docker only; Node.js is no longer required.
 #
 # Usage: ./deploy.sh [branch]   (default branch: main)
 set -euo pipefail
@@ -30,15 +29,20 @@ git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git merge --ff-only "origin/$BRANCH"
 
-echo "[deploy] Building frontend (front/dist)..."
-(
-    cd front
-    npm ci        # exactly the versions in package-lock.json
-    npm run build
-)
+# Tag the image with the release version (app/core/config.py), so
+# `docker images` shows which release is installed and the previous image
+# stays available to roll back to.
+NGCORION_TAG="$(sed -n 's/^ *VERSION: str = "\(.*\)"/\1/p' app/core/config.py | head -n1)"
+export NGCORION_TAG="${NGCORION_TAG:-latest}"
 
-echo "[deploy] Rebuilding and restarting the backend container..."
-docker compose up -d --build backend
+echo "[deploy] Building the backend image ngcorion/backend:$NGCORION_TAG (frontend included)..."
+docker compose build backend
+# "latest" follows the deployed release, so a plain `docker compose up -d`
+# (no NGCORION_TAG set) keeps running this image instead of building one.
+docker tag "ngcorion/backend:$NGCORION_TAG" ngcorion/backend:latest
+
+echo "[deploy] Restarting the backend container..."
+docker compose up -d backend
 
 echo "[deploy] Waiting for the backend to report healthy..."
 DEADLINE=$((SECONDS + 60))

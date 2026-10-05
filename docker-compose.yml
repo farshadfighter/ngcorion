@@ -49,6 +49,13 @@ services:
       # This stack sits behind Traefik with real TLS and serves real traffic,
       # so it should not run the development image/entrypoint.
       target: production
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.arvancloud.ir}
+        NGCORION_VERSION: ${NGCORION_TAG:-latest}
+        # Optional npm mirror for the frontend build stage.
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+        # Python package index (default in the Dockerfile: the Iranian mirror).
+        PYPI_INDEX: ${PYPI_INDEX:-https://mirror-pypi.runflare.com/simple}
     container_name: backend
     # No `user:` here on purpose. The container starts as root only so
     # entrypoint.sh can hand the paths the app writes (license volume,
@@ -64,11 +71,12 @@ services:
       # No NET_ADMIN: nothing uses it. UDP discovery needs only NET_RAW (in
       # Docker's default set), granted to nmap as a file capability; every
       # iptables/ip-link reference is a remote command sent to an audited device.
+    # The image carries the code and the built frontend (Dockerfile.ngcorion);
+    # nothing of the checkout is mounted. A new release is a new image:
+    # ./deploy.sh rebuilds it. For development with live code, add
+    # docker-compose.dev.yml (see that file).
+    image: ngcorion/backend:${NGCORION_TAG:-latest}
     volumes:
-      - ./app:/app/app
-      - ./front/dist:/app/front/dist:ro
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./uv.lock:/app/uv.lock
       # License activation data (Fernet key + encrypted license/state files).
       # Moved off /root/.license for item 2.2: the backend no longer runs as
       # root, and /root is 0700 root-owned, so the old mount point was

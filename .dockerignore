@@ -1,0 +1,43 @@
+# What the backend image must never contain. Without this file `COPY . .`
+# took the whole checkout: .env with the real secrets, the TLS private keys
+# under traefik/certs, the git history, local virtualenvs and node_modules.
+
+# Secrets and per-installation state (mounted at run time, never baked)
+.env
+.env.*
+!.env.example
+traefik/certs/
+traefik/dynamic/
+.license/
+license_data*
+*.key
+*.pem
+*.ngbak
+
+# Version control, editors, caches
+.git/
+.github/
+.vscode/
+.idea/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage*
+htmlcov/
+
+# Local environments and build output (the image builds its own)
+.venv/
+venv/
+front/node_modules/
+front/dist/
+
+# Not needed at run time
+tests/
+docs/
+deploy/
+data/
+*.tar
+*.tar.gz
+*.tgz

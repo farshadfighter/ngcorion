@@ -61,8 +61,12 @@ VITE_BACKEND_URL=http://127.0.0.1:8000 npm run dev      # http://localhost:5173
 The first administrator is created with `scripts/init_db.py`.
 
 With Docker: `docker compose up -d --build` runs Traefik, Postgres and the
-backend (which serves the built frontend from `front/dist`); see
-`docker-compose.yml` for the required environment.
+backend; see `docker-compose.yml` for the required environment. The backend
+image carries all code and builds the frontend itself, so nothing of the
+checkout is mounted into it. For live code during development add
+`-f docker-compose.dev.yml`. Outside Iran, build with
+`BASE_REGISTRY=docker.io PYPI_INDEX=https://pypi.org/simple` (the defaults
+are the Iranian mirrors).
 
 ## Checks
 

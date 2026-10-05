@@ -17,8 +17,33 @@
   back invalidates the license.
 - `LICENSE_SERVER_URL` must use https (loopback excepted).
 
+### Release images carry the code
+
+- The backend image contains all code and the built frontend; the checkout is
+  no longer mounted into the container (`./app`, `front/dist`, `pyproject.toml`,
+  `uv.lock`). Inside the image the code is root-owned and read-only for the
+  application user. Development with live code: `docker-compose.dev.yml`.
+- A `.dockerignore` keeps `.env`, TLS keys under `traefik/certs`, the git
+  history, tests and local environments out of the image. Before, the whole
+  checkout was copied in, including `.env`.
+- `deploy.sh` no longer needs Node.js on the host; it builds
+  `ngcorion/backend:<version>` and keeps the previous image for rollback.
+- Base images and the Python package index are build arguments
+  (`BASE_REGISTRY`, `PYPI_INDEX`, `NPM_REGISTRY`); the defaults stay the
+  Iranian mirrors. CI builds the image and checks it starts, answers and
+  contains nothing it should not.
+
+### Dependencies
+
+- React 19, Vite 8, ESLint 10; FastAPI 0.142, Alembic 1.20, Netmiko 4.8,
+  cryptography 50.0.2.
+
 ### Upgrade notes
 
+- Images built before this release contain the `.env` of the checkout they
+  were built from, if it had one. After upgrading, delete the old backend
+  image (Compose named it after the folder, e.g. `ngcorion-backend`; see
+  `docker images`), and rotate those secrets if such an image ever left the host.
 - Requires the matching license server release (signed answers, migration
   005). Upgrade the license server first; older NGCorion releases keep working
   against it.

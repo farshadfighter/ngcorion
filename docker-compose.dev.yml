@@ -1,0 +1,17 @@
+# Development override: the backend runs the development image with the source
+# bind-mounted and uvicorn --reload, so code edits apply without a rebuild.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Never use it for a customer installation: there the code comes only from the
+# image (docker-compose.yml alone).
+services:
+  backend:
+    image: ngcorion/backend:dev
+    build:
+      target: development
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock

@@ -56,6 +56,64 @@ jobs:
       - name: Run tests
         run: uv run pytest -q -p no:warnings
 
+  image:
+    name: Backend image (build and smoke test)
+    # The production image as customers get it (Dockerfile.ngcorion, target
+    # production): built from docker.io and pypi.org instead of the Iranian
+    # mirrors, started against a real Postgres, then checked from outside.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: netease
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: netease_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U netease -d netease_db"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          docker build -f Dockerfile.ngcorion --target production \
+            --build-arg BASE_REGISTRY=docker.io \
+            --build-arg PYPI_INDEX=https://pypi.org/simple \
+            --build-arg NGCORION_VERSION=ci \
+            -t ngcorion/backend:ci .
+      - name: Nothing secret or unneeded is baked in
+        run: |
+          docker run --rm --entrypoint sh ngcorion/backend:ci -c '
+            set -e
+            for f in .env .git traefik/certs tests front/src front/node_modules; do
+              if [ -e "/app/$f" ]; then echo "image contains /app/$f"; exit 1; fi
+            done
+            test -f /app/front/dist/index.html
+            test "$(stat -c %U /app/app/main.py)" = root
+            if setpriv --reuid=10001 --regid=10001 --clear-groups touch /app/app/x 2>/dev/null; then
+              echo "the app user can write its own code"; exit 1
+            fi'
+      - name: Start and answer
+        run: |
+          docker run -d --name ngcorion --network host \
+            -e DATABASE_URL=postgresql+psycopg://netease:ci-only-password@127.0.0.1:5432/netease_db \
+            -e SECRET_KEY=ci-only-secret-key-not-used-anywhere-else-0123456789 \
+            -e LICENSE_SERVER_URL=https://license.invalid \
+            -e LICENSE_STORAGE_DIR=/var/lib/ngcorion/license \
+            ngcorion/backend:ci uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8000/health && break
+            sleep 2
+          done
+          docker logs ngcorion 2>&1 | tail -20
+          curl -sf http://127.0.0.1:8000/health | grep -q '"database":"ok"'
+          curl -sf http://127.0.0.1:8000/ | grep -q '<div id="root">'
+          docker logs ngcorion 2>&1 | grep -q "Running as uid 10001"
+          # The PDF libraries are present (WeasyPrint loads Pango).
+          docker exec ngcorion python -c "import weasyprint"
+
   frontend:
     name: Frontend (lint, test, build)
     runs-on: ubuntu-24.04
