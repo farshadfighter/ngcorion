@@ -1,9 +1,11 @@
 # The appliance console on tty1: first-start setup, then the menu. There is no
 # login prompt on any terminal (getty@tty1 is masked, logind starts no other
 # VTs) and the menu offers no shell; if it ever exits, systemd starts it again.
+# It does not wait for Docker: the questions come first, and the setup starts
+# ngcorion.service (which does wait for Docker) only at the end.
 [Unit]
 Description=NGCorion appliance console
-After=systemd-user-sessions.service plymouth-quit-wait.service docker.service
+After=systemd-user-sessions.service plymouth-quit-wait.service
 Conflicts=getty@tty1.service
 Before=getty.target
 

@@ -192,8 +192,10 @@ class System:
     def restart_stack(self) -> None:
         self.run(["systemctl", "restart", "ngcorion.service"], timeout=900)
 
-    def wait_healthy(self, timeout: int = 600, sleep: Callable = time.sleep) -> bool:
-        """Wait until the backend container reports healthy (database migrated, app up)."""
+    def wait_healthy(self, timeout: int = 1200, sleep: Callable = time.sleep) -> bool:
+        """Wait until the backend container reports healthy (database migrated, app up).
+        The first start creates the database and applies every migration, which
+        takes minutes on a slow host."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             out = self.run(["docker", "inspect", "-f", "{{.State.Health.Status}}", "backend"], check=False)
