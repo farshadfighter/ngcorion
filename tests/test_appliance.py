@@ -248,7 +248,7 @@ def test_wizard_end_to_end(machine, monkeypatch):
     assert system.configured()
 
     order = [c[:3] for c in rec.commands()]
-    assert order.index(["networkctl", "reload"]) < order.index(["systemctl", "enable", "--now"])
+    assert order.index(["networkctl", "reload"]) < order.index(["systemctl", "start", "ngcorion.service"])
     assert any("init_db.py" in " ".join(c) for c in rec.commands())
 
 
@@ -378,3 +378,28 @@ def test_menu_reset_password_and_errors_stay_in_the_menu(machine, monkeypatch):
     con = Scripted([str(labels.index("Host name") + 1), "ngc02"])
     menu.run_once(con, system)                   # no exception escapes to a shell
     assert any("permission denied" in line for line in con.output)
+
+
+def test_a_failed_start_reports_the_compose_error(machine):
+    system, rec, _ = machine
+
+    def runner(args, input=None, capture_output=True, text=True, timeout=None):
+        if args[:2] == ["systemctl", "start"]:
+            return subprocess.CompletedProcess(args, 1, "", "Job for ngcorion.service failed because the control process exited with error code.")
+        return rec(args, input=input)
+    system.runner = runner
+    with pytest.raises(CommandFailed, match="Job for ngcorion.service failed"):
+        system.start_stack()
+
+
+def test_log_shows_why_the_stack_did_not_start(machine):
+    system, rec, _ = machine
+
+    def runner(args, input=None, capture_output=True, text=True, timeout=None):
+        if args[:2] == ["docker", "ps"]:
+            return subprocess.CompletedProcess(args, 0, "backend\tCreated\npostgres\tUp 2 minutes (healthy)\n", "")
+        if args[0] == "journalctl":
+            return subprocess.CompletedProcess(args, 0, "dependency failed to start: container postgres is unhealthy\n", "")
+        return rec(args, input=input)
+    system.runner = runner
+    assert "container postgres is unhealthy" in system.logs()

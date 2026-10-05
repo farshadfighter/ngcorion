@@ -187,7 +187,10 @@ class System:
     # ---------- the NGCorion stack ----------
 
     def start_stack(self) -> None:
-        self.run(["systemctl", "enable", "--now", "ngcorion.service"], timeout=900)
+        # Separately: `start` of the oneshot unit fails when `docker compose up`
+        # does, and that error is what the operator needs to see.
+        self.run(["systemctl", "enable", "ngcorion.service"])
+        self.run(["systemctl", "start", "ngcorion.service"], timeout=1800)
 
     def restart_stack(self) -> None:
         self.run(["systemctl", "restart", "ngcorion.service"], timeout=900)
@@ -228,7 +231,13 @@ class System:
         return rows
 
     def logs(self, lines: int = 40) -> str:
-        return self.run(COMPOSE + ["logs", "--no-color", "--tail", str(lines), "backend"], check=False).stdout
+        """The backend's log; while the backend is not running, also why the stack did not start."""
+        out = self.run(COMPOSE + ["logs", "--no-color", "--tail", str(lines), "backend"], check=False).stdout or ""
+        if not any(name == "backend" and state.startswith("Up") for name, state in self.service_status()):
+            journal = self.run(["journalctl", "-u", "ngcorion.service", "-n", "25", "--no-pager", "-o", "cat"],
+                               check=False).stdout or ""
+            out = f"{out}\n--- ngcorion.service ---\n{journal}"
+        return out
 
     def mark_configured(self) -> None:
         self.write(CONFIGURED_MARK, time.strftime("%Y-%m-%dT%H:%M:%SZ\n", time.gmtime()))

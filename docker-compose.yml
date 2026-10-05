@@ -233,6 +233,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+      # The very first start creates the database cluster (initdb), which can
+      # take minutes on slow storage; failures during this period do not
+      # count, so the backend (depends_on: service_healthy) is not given up on.
+      start_period: 300s
     networks:
       - app
 
@@ -251,6 +255,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 60s
     networks:
       - app
 
