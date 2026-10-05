@@ -12,7 +12,9 @@ apt-get install -y --no-install-recommends \
     open-vm-tools qemu-guest-agent \
     snmpd rsyslog openssl ca-certificates python3
 # Not needed on an appliance.
-apt-get purge -y snapd lxd-installer landscape-common ubuntu-pro-client motd-news-config 2>/dev/null || true
+for pkg in snapd lxd-installer landscape-common; do
+    if dpkg -s "$pkg" >/dev/null 2>&1; then apt-get purge -y "$pkg"; fi
+done
 apt-get autoremove -y --purge
 
 systemctl enable docker.service
