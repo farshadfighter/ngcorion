@@ -93,6 +93,20 @@ RUN chown -R 10001:10001 /app/.venv
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
+# The app package compiled to native modules (scripts/compile_app.py): the
+# production image carries no .py source of the licensing, permission or
+# feature code. The compiler stays in this stage; the production image only
+# copies the result. Same interpreter as at run time (the base image).
+FROM base AS compiled
+
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev binutils \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir -i "$PYPI_INDEX" "cython==3.2.4" "setuptools>=75"
+WORKDIR /build
+COPY app/ app/
+COPY scripts/compile_app.py scripts/
+RUN CFLAGS="-O2 -g0" python scripts/compile_app.py --jobs "$(nproc)" .
+
 FROM base AS production
 
 COPY pyproject.toml uv.lock ./
@@ -100,8 +114,9 @@ RUN uv sync --frozen --no-dev --no-install-project -i "$PYPI_INDEX"
 
 COPY . .
 RUN uv sync --frozen --no-dev -i "$PYPI_INDEX" \
-    && python -m compileall -q app alembic scripts \
-    && rm -rf front
+    && rm -rf front app
+COPY --from=compiled /build/app /app/app
+RUN python -m compileall -q app alembic scripts
 COPY --from=frontend /front/dist /app/front/dist
 
 ARG NGCORION_VERSION=dev

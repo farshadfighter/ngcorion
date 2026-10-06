@@ -25,7 +25,10 @@ builds on it with conventions and step-by-step recipes.
 - `entrypoint.sh` drops root to UID 10001, applies `alembic upgrade head`,
   then starts the server.
 - The backend image carries all code and the built frontend, root-owned and
-  read-only for UID 10001; nothing of a checkout is mounted. The
+  read-only for UID 10001; nothing of a checkout is mounted. The `app`
+  package in it is compiled to native modules (Cython,
+  `scripts/compile_app.py`), with no `.py` source of the licensing,
+  permission or feature code; three schema-only modules stay source. The
   installation's settings and secrets come from its `.env` as environment
   variables (`env_file` in `docker-compose.yml`).
 

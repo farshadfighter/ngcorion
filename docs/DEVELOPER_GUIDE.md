@@ -64,6 +64,20 @@ and review will send a change back that breaks one of them.
   Every visible string goes through `t()`.
 - Tests next to the behaviour they protect: a bug fix comes with a test that
   fails without it.
+- The production image runs the `app` package compiled with Cython
+  (`scripts/compile_app.py`); development and the tests use the source. Code
+  must behave the same both ways, so:
+  - no logic that reads its own source (`inspect.getsource`) or a closure's
+    cells (`__closure__`); attach what callers need as an attribute instead
+    (see `require_permission`);
+  - modules are not reloaded at run time (`importlib.reload` cannot re-run a
+    compiled module);
+  - a Pydantic model with a plain method or a `computed_field` cannot be
+    compiled: put such models in one of the modules listed in
+    `KEEP_AS_SOURCE`, or add the module there. Licensing, permission and
+    quota code may never be added to it (`MUST_COMPILE`; the build fails).
+  To try a compiled tree locally: `pip install cython==3.2.4 setuptools`, then
+  `python scripts/compile_app.py --keep-sources` in a copy of the checkout.
 
 ## 3. Running things locally
 

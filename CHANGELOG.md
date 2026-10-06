@@ -59,6 +59,16 @@
   No shell, no SSH, no login prompt on any terminal, root locked, GRUB
   entries cannot be edited.
 
+### Compiled backend
+
+- The production image runs the `app` package compiled to native modules
+  (Cython 3.2), stripped of symbols; the `.py` sources are not in the image.
+  Licensing, permissions, quotas and every feature module can no longer be
+  read or edited in place on an installation. Three schema-only modules
+  stay source (a Pydantic limitation); the build refuses to leave any
+  licensing module uncompiled. Tests and development use the source; CI
+  checks the image contains no other source and starts it.
+
 ### Dependencies
 
 - React 19, Vite 8, ESLint 10; FastAPI 0.142, Alembic 1.20, Netmiko 4.8,

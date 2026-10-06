@@ -76,20 +76,14 @@ def test_frontend_permission_list_matches_the_backend():
 # ----------------------------------------------------------------------
 
 def _dependency_modules(func) -> list:
-    """The (module, action) pairs of every require_permission on a route.
-
-    require_permission returns a closure, so the arguments are read off its
-    cell contents rather than the function object.
-    """
+    """The (module, action) pairs of every require_permission on a route
+    (require_permission labels the dependency it returns with them)."""
     found = []
     for param in inspect.signature(func).parameters.values():
         dependency = getattr(param.default, "dependency", None)
-        if dependency is None or not dependency.__closure__:
-            continue
-        cells = [cell.cell_contents for cell in dependency.__closure__]
-        strings = [c for c in cells if isinstance(c, str)]
-        if len(strings) == 2:
-            found.append(tuple(strings))
+        permission = getattr(dependency, "permission", None)
+        if permission is not None:
+            found.append(tuple(permission))
     return found
 
 

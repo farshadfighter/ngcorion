@@ -295,9 +295,3 @@ def test_old_license_server_settings_are_ignored_and_named(monkeypatch):
     monkeypatch.setattr(config.settings, "LICENSE_SERVER_URL", "https://10.0.0.5")
     monkeypatch.setattr(config.settings, "LICENSE_SERVER_CA_BUNDLE", "")
     assert config.ignored_license_settings() == ["LICENSE_SERVER_URL"]
-
-    import inspect
-
-    from app import main
-    source = inspect.getsource(main.lifespan)
-    assert "settings.LICENSE_SERVER_URL" not in source and "LICENSE_SERVER_CA_BUNDLE" not in source

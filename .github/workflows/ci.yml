@@ -61,8 +61,9 @@ jobs:
     # The production image as customers get it (Dockerfile.ngcorion, target
     # production): built from docker.io and pypi.org instead of the Iranian
     # mirrors, started against a real Postgres, then checked from outside.
+    # Compiling the app package (scripts/compile_app.py) is most of the time.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:16
@@ -94,7 +95,15 @@ jobs:
             test "$(stat -c %U /app/app/main.py)" = root
             if setpriv --reuid=10001 --regid=10001 --clear-groups touch /app/app/x 2>/dev/null; then
               echo "the app user can write its own code"; exit 1
-            fi'
+            fi
+            # Compiled: no module source but package markers and the schema
+            # modules scripts/compile_app.py keeps (KEEP_AS_SOURCE).
+            left=$(cd /app && find app -name "*.py" ! -name "__init__.py" | sort | tr "\n" " ")
+            test "$left" = "app/modules/assets/schemas.py app/modules/hardening/schemas/base.py app/modules/shared/schemas/base.py " \
+              || { echo "source left in the image: $left"; exit 1; }
+            for m in main core/license_client core/license_state core/license_token core/dependencies middleware/license_middleware; do
+              ls /app/app/$m.cpython-*.so >/dev/null || { echo "app/$m is not compiled"; exit 1; }
+            done'
       - name: Start and answer
         run: |
           # Settings arrive the way docker-compose.yml passes them: the

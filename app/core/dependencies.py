@@ -320,6 +320,10 @@ def require_permission(module: str, permission_type: str):
 
         return current_user
 
+    # What this dependency checks, readable from the route (tests audit every
+    # route with it); works the same whether this module runs as source or
+    # compiled, where a closure's cells are not inspectable.
+    check_permission.permission = (module, permission_type)
     return check_permission
 
 
