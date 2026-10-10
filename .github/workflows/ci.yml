@@ -92,7 +92,8 @@ jobs:
               if [ -e "/app/$f" ]; then echo "image contains /app/$f"; exit 1; fi
             done
             test -f /app/front/dist/index.html
-            test "$(stat -c %U /app/app/main.py)" = root
+            test "$(stat -c %U /app/app)" = root
+            test "$(stat -c %U /app/app/main.cpython-*.so)" = root
             if setpriv --reuid=10001 --regid=10001 --clear-groups touch /app/app/x 2>/dev/null; then
               echo "the app user can write its own code"; exit 1
             fi
