@@ -5,11 +5,13 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { activateLicenseThunk, clearMessages } from "../../store/licenseSlice";
 import { t } from "../../i18n";
+import { OfflineActivation } from "./OfflineActivation";
 
 export const LicenseActivationScreen = () => {
     const dispatch = useDispatch();
     const { isActivating, error, isValid } = useSelector((state) => state.license);
     const [licenseKey, setLicenseKey] = useState("");
+    const [showOffline, setShowOffline] = useState(false);
 
     // پاک کردن پیام‌های خطا بعد از 5 ثانیه
     useEffect(() => {
@@ -208,6 +210,22 @@ export const LicenseActivationScreen = () => {
                         {t("Contact your system administrator to obtain one.")}
                     </div>
                 </div>
+
+                {/* No internet access: offline activation by file */}
+                <div style={{ marginTop: "18px", textAlign: "center" }}>
+                    <button
+                        onClick={() => setShowOffline((v) => !v)}
+                        style={{ background: "none", border: "none", color: "#1e3a5f", fontSize: "13.5px",
+                                 fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+                    >
+                        {t("No internet access? Offline activation")}
+                    </button>
+                </div>
+                {showOffline && (
+                    <div style={{ marginTop: "12px" }}>
+                        <OfflineActivation initialKey={licenseKey} />
+                    </div>
+                )}
             </div>
 
             {/* CSS Animation */}

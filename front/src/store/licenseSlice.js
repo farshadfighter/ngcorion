@@ -70,6 +70,8 @@ function applyStatus(data) {
         offline: !!data.offline,
         offlinePilot: !!data.offline_pilot,
         offlinePilotUntil: data.offline_pilot_until ?? null,
+        offlineLicense: !!data.offline_license,
+        offlineUntil: data.offline_until ?? null,
         message: data.message ?? "",
     };
 }
@@ -92,6 +94,8 @@ const licenseSlice = createSlice({
         offline: false,           // the license server cannot be reached right now
         offlinePilot: false,      // no contact for > 48h: pilot entitlement until offlinePilotUntil
         offlinePilotUntil: null,
+        offlineLicense: false,    // an offline (air-gapped) license file is installed
+        offlineUntil: null,       // ...valid until
         message: "",
         // The inventory against the limit (GET /api/license/usage):
         // { used, max_assets, unlimited, over_limit, remaining, licensed_through_id }

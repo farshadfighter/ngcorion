@@ -6,14 +6,14 @@ Frontend talks to these endpoints instead of directly to the license server.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 import logging
 import requests
 
-from app.core.asset_entitlement import usage as asset_usage
+from app.core.asset_entitlement import count_assets, usage as asset_usage
 from app.core.license_state import get_license_state, refresh_license_state
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, license_error_detail, require_admin
@@ -60,6 +60,25 @@ class LicenseStatusResponse(BaseModel):
     # until `offline_pilot_until` (then locked), or until the server is reached.
     offline_pilot: bool = False
     offline_pilot_until: Optional[datetime] = None
+    # An offline (air-gapped) license file is installed: no contact at all,
+    # valid until offline_until; renewed by a new file.
+    offline_license: bool = False
+    offline_until: Optional[datetime] = None
+
+
+class OfflineRequestBody(BaseModel):
+    """The license key for a new offline license; empty for a renewal of the installed one."""
+    license_key: Optional[str] = Field(default=None, max_length=32)
+
+
+class OfflineRequestResponse(BaseModel):
+    filename: str
+    content: str
+
+
+class OfflineInstallBody(BaseModel):
+    """The license file the license server's administrator signed for this machine."""
+    content: str = Field(min_length=1, max_length=16384)
 
 
 class LicenseUsageResponse(BaseModel):
@@ -88,6 +107,8 @@ def _status(state) -> LicenseStatusResponse:
         offline=state.offline,
         offline_pilot=state.offline_pilot,
         offline_pilot_until=state.offline_pilot_until,
+        offline_license=state.offline_license,
+        offline_until=state.offline_until,
     )
 
 
@@ -154,6 +175,13 @@ def activate_license(
     license is valid, replacing it is an admin action; otherwise anyone who can
     reach the server could swap the installed key out from under the operator.
     """
+    _require_admin_while_licensed(credentials, db)
+    return _activate(data, request)
+
+
+def _require_admin_while_licensed(credentials, db) -> None:
+    """Without a valid license these endpoints are open (the first-run screen, shown before anyone
+    can log in); with one, changing the license is an administrator's action."""
     if get_license_state().valid:
         if credentials is None:
             raise HTTPException(
@@ -162,7 +190,53 @@ def activate_license(
                 headers={"WWW-Authenticate": "Bearer"},
             )
         require_admin(get_current_user(credentials, db))
-    return _activate(data, request)
+
+
+# ---------- offline (air-gapped) licenses ----------
+
+@router.post("/offline/request", response_model=OfflineRequestResponse)
+def offline_license_request(
+    data: OfflineRequestBody,
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
+    db: Session = Depends(get_db),
+):
+    """The request file for an offline license (or for renewing the installed one): license key,
+    this machine's fingerprint and the asset count. The license administrator signs a license file
+    for it. Same access rule as activation."""
+    _require_admin_while_licensed(credentials, db)
+    client = request.app.state.license_client
+    try:
+        assets = count_assets(db)
+    except Exception:  # noqa: BLE001  (the count is information; the request works without it)
+        assets = None
+    try:
+        content = client.offline_request(data.license_key, assets)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    key = (data.license_key or (client.get_license_data() or {}).get("license_key") or "license").strip().upper()
+    return OfflineRequestResponse(filename=f"ngcorion-{key}.ngcreq", content=content)
+
+
+@router.post("/offline/install", response_model=LicenseStatusResponse)
+def offline_license_install(
+    data: OfflineInstallBody,
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_optional_bearer),
+    db: Session = Depends(get_db),
+):
+    """Install an offline license file: verified (signature, this machine, still valid) and stored;
+    from then on NGCorion runs without contacting the license server until the file ends."""
+    _require_admin_while_licensed(credentials, db)
+    client = request.app.state.license_client
+    try:
+        client.install_offline_license(data.content)
+    except LicenseRejected as exc:
+        logger.warning("Offline license file not accepted: %s", exc.detail)
+        raise HTTPException(status_code=400, detail=exc.detail)
+    refresh_license_state(client)
+    start_heartbeat(client)
+    return _status(get_license_state())
 
 
 def _activate(data: LicenseActivateRequest, request: Request):

@@ -19,7 +19,11 @@ Without contact with the license server (licensing v3):
     after that                                  locked
 
 counted from the answer's signed issue time. The next signed answer puts the
-license's own plan back; nothing on the license server changes. These numbers
+license's own plan back; nothing on the license server changes.
+
+An offline (air-gapped) license is the exception: its signed license file
+(typ "offline") says itself how long it holds without contact
+(offline_until, one year), and the windows above do not apply to it. These numbers
 are part of the code (OFFLINE_GRACE, PILOT_FALLBACK_*), not configuration. A
 system clock that goes backwards (to stretch the windows) invalidates the
 state, and a license past its signed expiry is not valid offline either.
@@ -75,6 +79,10 @@ class LicenseState:
     # more than OFFLINE_GRACE); `offline_pilot_until` is when it ends.
     offline_pilot: bool = False
     offline_pilot_until: Optional[datetime] = None
+    # An offline (air-gapped) license file is installed: valid without any
+    # contact until offline_until.
+    offline_license: bool = False
+    offline_until: Optional[datetime] = None
 
 
 # Module-level singleton
@@ -173,6 +181,17 @@ def restore_cached_state() -> bool:
     if not cached:
         return False
 
+    # The latest time seen before the restart counts whatever happens to the token below: a clock
+    # set back while the process was down must still be noticed.
+    try:
+        seen = datetime.fromisoformat(cached["last_seen"]) if cached.get("last_seen") else None
+    except (TypeError, ValueError):
+        seen = None
+    if seen is not None:
+        with _state_lock:
+            if _max_seen is None or seen > _max_seen:
+                _max_seen = seen
+
     token = cached.get("signed_token")
     if not token or _token_verifier is None:
         # Caches written before signed licensing hold plain fields that
@@ -204,7 +223,12 @@ def restore_cached_state() -> bool:
         return False
 
     age = now - issued
-    if age > OFFLINE_GRACE + timedelta(days=PILOT_FALLBACK_DAYS):
+    offline_until = _utc_from_epoch(state.get("offline_until")) if state.get("offline_license") else None
+    if offline_until is not None:
+        if now > offline_until:
+            logger.warning("[License] Cached offline license file has ended; ignoring it.")
+            return False
+    elif age > OFFLINE_GRACE + timedelta(days=PILOT_FALLBACK_DAYS):
         logger.warning(
             "[License] Cached license state is %.1f days old, past the offline grace and pilot "
             "fallback windows; ignoring it.", age.total_seconds() / 86400,
@@ -260,6 +284,8 @@ def _apply(state: dict) -> None:
     except (TypeError, ValueError):
         _license_state.addon_packs = 0
     _license_state.expires_at = _utc_from_epoch(state.get("expires_at"))
+    _license_state.offline_license = bool(state.get("offline_license"))
+    _license_state.offline_until = _utc_from_epoch(state.get("offline_until"))
 
 
 def _clear_entitlement() -> None:
@@ -270,6 +296,8 @@ def _clear_entitlement() -> None:
     _license_state.max_assets = None
     _license_state.addon_packs = 0
     _license_state.expires_at = None
+    _license_state.offline_license = False
+    _license_state.offline_until = None
 
 
 def get_license_state() -> LicenseState:
@@ -291,6 +319,8 @@ def get_license_state() -> LicenseState:
             max_assets=_license_state.max_assets,
             addon_packs=_license_state.addon_packs,
             expires_at=_license_state.expires_at,
+            offline_license=_license_state.offline_license,
+            offline_until=_license_state.offline_until,
             message=_license_state.message,
             last_validated_at=_license_state.last_validated_at,
             offline=_license_state.offline,
@@ -310,9 +340,25 @@ def get_license_state() -> LicenseState:
             "is re-validated with the license server."
         )
         return current
+    if current.issued_at is not None and now < current.issued_at - CLOCK_ROLLBACK_TOLERANCE:
+        current.valid = False
+        current.message = (
+            "The system clock reads earlier than the license was issued; it was set back. "
+            "Correct the date and time."
+        )
+        return current
     if current.expires_at is not None and now > current.expires_at:
         current.valid = False
         current.message = "The license has expired."
+        return current
+    if current.offline_license:
+        # An offline license file holds until its own end date; no grace, no pilot.
+        if current.offline_until is None or now > current.offline_until:
+            current.valid = False
+            current.message = (
+                "The offline license file has ended. Request a renewed license file on the "
+                "License page and upload it."
+            )
         return current
     if reference is None or now - reference <= OFFLINE_GRACE:
         return current

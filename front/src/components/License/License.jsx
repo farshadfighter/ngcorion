@@ -16,6 +16,7 @@ import {
     clearMessages,
 } from "../../store/licenseSlice";
 import { LicenseCard } from "./LicenseCard";
+import { OfflineActivation } from "./OfflineActivation";
 import { ADDON, OFFLINE_GRACE_HOURS, PILOT, PLANS, planLabel } from "./licenseConfig";
 import { t, n, uiLocale } from "../../i18n";
 import { tx } from "../../i18n/tx";
@@ -67,11 +68,13 @@ export const License = () => {
     const dispatch = useDispatch();
     const {
         isValid, planCode, planName, isPilotMode, maxAssets, addonPacks, expiresAt,
-        lastContactAt, offline, offlinePilot, offlinePilotUntil, usage,
+        lastContactAt, offline, offlinePilot, offlinePilotUntil, offlineLicense, offlineUntil, usage,
         isActivating, isValidating, error, successMessage,
     } = useSelector((state) => state.license);
 
     const [licenseKey, setLicenseKey] = useState("");
+    // "Now" for the days left of an offline license file: taken once, when the page opens.
+    const [openedAt] = useState(() => Date.now());
 
     useEffect(() => {
         if (!isValid) return;
@@ -99,6 +102,7 @@ export const License = () => {
     const unlimited = maxAssets === null || maxAssets === undefined;
     const percent = !unlimited && maxAssets > 0 && used !== null ? Math.min((used / maxAssets) * 100, 100) : 0;
     const overLimit = !!usage?.over_limit;
+    const offlineDaysLeft = offlineUntil ? Math.floor((asDate(offlineUntil).getTime() - openedAt) / 86400000) : null;
     const graceEnds = lastContactAt ? new Date(asDate(lastContactAt).getTime() + OFFLINE_GRACE_HOURS * 3600 * 1000) : null;
 
     return (
@@ -122,7 +126,14 @@ export const License = () => {
                     })}
                 </Banner>
             )}
-            {isValid && offline && !offlinePilot && (
+            {isValid && offlineLicense && offlineDaysLeft !== null && offlineDaysLeft <= 30 && (
+                <Banner tone="warn" icon="fa-hourglass-half" title={t("The offline license file ends soon")}>
+                    {tx("It ends on {{date}} ({{days}} days left). Renew it below: download a request file and upload the new license file.", {
+                        date: fmtDate(offlineUntil), days: Math.max(offlineDaysLeft, 0),
+                    })}
+                </Banner>
+            )}
+            {isValid && offline && !offlinePilot && !offlineLicense && (
                 <Banner tone="info" icon="fa-wifi" title={t("The license server cannot be reached")}>
                     {tx("The license keeps working as it is until {{date}}. After that, without contact, NGCorion runs as a pilot license ({{assets}} assets) for {{days}} days.", {
                         date: fmtDate(graceEnds, true), assets: PILOT.assets, days: PILOT.days,
@@ -183,7 +194,7 @@ export const License = () => {
                             backgroundColor: "rgba(255,255,255,0.15)", borderRadius: "30px", padding: "8px 18px",
                             fontSize: "13px", fontWeight: 600,
                         }}>
-                            {offlinePilot ? t("Pilot (offline)") : isPilotMode ? t("Pilot licence") : t("✅ Active")}
+                            {offlinePilot ? t("Pilot (offline)") : offlineLicense ? t("Offline license") : isPilotMode ? t("Pilot licence") : t("✅ Active")}
                         </div>
                     </div>
 
@@ -211,7 +222,9 @@ export const License = () => {
                         <Stat label={t("Add-on packs")} value={n(addonPacks || 0)}
                               sub={tx("{{assets}} assets each", { assets: ADDON.assets })} />
                         <Stat label={t("Expires")} value={fmtDate(expiresAt)} />
-                        <Stat label={t("Last contact with the license server")} value={fmtDate(lastContactAt, true)} />
+                        {offlineLicense
+                            ? <Stat label={t("Offline license file valid until")} value={fmtDate(offlineUntil)} sub={t("no contact with the license server")} />
+                            : <Stat label={t("Last contact with the license server")} value={fmtDate(lastContactAt, true)} />}
                     </div>
                 </div>
             ) : (
@@ -280,6 +293,17 @@ export const License = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {isValid && offlineLicense && (
+                <div style={{ marginTop: "-28px", marginBottom: "40px" }}>
+                    <OfflineActivation renewal />
+                </div>
+            )}
+            {!isValid && !isValidating && (
+                <div style={{ marginTop: "-28px", marginBottom: "40px" }}>
+                    <OfflineActivation />
                 </div>
             )}
 

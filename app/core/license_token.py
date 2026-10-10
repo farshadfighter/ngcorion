@@ -1,7 +1,8 @@
 """
 Verification of the license server's signed answers.
 
-The license server signs every answer (activate, validate, heartbeat)
+The license server signs every answer (activate, validate, heartbeat) and every offline license
+file (typ "offline")
 with its Ed25519 private key; the token is
 
     base64url(claims JSON) "." base64url(signature over those exact bytes)
@@ -117,5 +118,8 @@ def claims_to_state(claims: Dict[str, Any], token: str) -> Dict[str, Any]:
         "limits": claims.get("limits"),
         "expires_at": claims.get("exp"),
         "issued_at": claims.get("iat"),
+        # An offline (air-gapped) license file: valid without contact until offline_until.
+        "offline_license": claims.get("typ") == "offline",
+        "offline_until": claims.get("offline_until"),
         "signed_token": token,
     }

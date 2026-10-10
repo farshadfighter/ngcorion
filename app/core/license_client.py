@@ -17,9 +17,13 @@ import hmac
 import hashlib
 import ipaddress
 import json
+import base64
+import binascii
 import logging
 import os
+import re
 import secrets
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -40,6 +44,14 @@ logger = logging.getLogger(__name__)
 # is always an infrastructure problem and must be treated like an outage —
 # not like a revoked license.
 SERVER_SIDE_ERROR_STATUSES = (429, 500, 502, 503, 504)
+
+# Offline (air-gapped) licenses: the request file this installation writes and
+# the license file the license server's admin signs for it (license server:
+# app/offline.py). The formats must match there.
+OFFLINE_REQUEST_HEADER = "NGCORION-OFFLINE-REQUEST-1"
+OFFLINE_LICENSE_HEADER = "NGCORION-OFFLINE-LICENSE-1"
+MAX_OFFLINE_FILE_BYTES = 16384
+LICENSE_KEY_RE = re.compile(r"^[A-Z0-9]{4}(-[A-Z0-9]{4}){3}$")
 
 
 class LicenseServerUnreachable(Exception):
@@ -321,6 +333,89 @@ class LicenseClient:
             raise LicenseAnswerUntrusted(str(exc)) from exc
         return claims, token
 
+    # ---------- offline (air-gapped) licenses ----------
+
+    def is_offline(self) -> bool:
+        """Whether the installed license is an offline license file (no contact with the server)."""
+        data = self.get_license_data()
+        return bool(data and data.get("mode") == "offline")
+
+    def offline_request(self, license_key: Optional[str] = None, asset_count: Optional[int] = None) -> str:
+        """The request file for an offline license: the license key (or the installed one, for a
+        renewal), this machine's fingerprint, the asset count, a nonce and the time. The license
+        server's admin signs a license file for it. Not secret and not signed: it only says what
+        the file must contain."""
+        key = (license_key or "").strip().upper()
+        if not key:
+            stored = self.get_license_data() or {}
+            key = (stored.get("license_key") or "").strip().upper()
+        if not LICENSE_KEY_RE.match(key):
+            raise ValueError("Enter the license key (XXXX-XXXX-XXXX-XXXX).")
+        body = {
+            "lic": key,
+            "fp": self.machine_fingerprint,
+            "assets": asset_count,
+            "nonce": self._nonce(),
+            "created": int(time.time()),
+        }
+        encoded = base64.urlsafe_b64encode(json.dumps(body, separators=(",", ":")).encode()).rstrip(b"=").decode()
+        return f"{OFFLINE_REQUEST_HEADER}\n{encoded}\n"
+
+    @staticmethod
+    def _offline_token(text: str) -> str:
+        if not text or len(text) > MAX_OFFLINE_FILE_BYTES:
+            raise LicenseAnswerUntrusted("this is not an NGCorion offline license file")
+        lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+        if len(lines) != 2 or lines[0] != OFFLINE_LICENSE_HEADER:
+            if lines and lines[0] == OFFLINE_REQUEST_HEADER:
+                raise LicenseAnswerUntrusted(
+                    "this is the request file; upload the license file the license administrator returned")
+            raise LicenseAnswerUntrusted("this is not an NGCorion offline license file")
+        return lines[1]
+
+    def _offline_state(self, token: str, license_key: str) -> dict:
+        """The state an offline license file describes, after full verification: signed by a
+        trusted key, of type "offline", for this license and THIS machine, still within its
+        offline_until. LicenseAnswerUntrusted otherwise."""
+        try:
+            claims = verify_token(token, license_key=license_key, vm_fingerprint=self.machine_fingerprint,
+                                  typ="offline")
+        except LicenseTokenError as exc:
+            raise LicenseAnswerUntrusted(str(exc)) from exc
+        until = claims.get("offline_until")
+        if not claims.get("valid") or not isinstance(until, int):
+            raise LicenseAnswerUntrusted("the license file does not grant a license")
+        return claims_to_state(claims, token)
+
+    def install_offline_license(self, text: str) -> dict:
+        """Install an offline license file (replacing any license stored here) and return the state
+        it describes. LicenseAnswerUntrusted when the file is not genuine, not for this machine, or
+        already ended; nothing is stored then."""
+        token = self._offline_token(text)
+        # The license key comes from the file itself; the signature, checked next, vouches for it.
+        try:
+            body = token.split(".")[0]
+            license_key = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4))).get("lic")
+        except (binascii.Error, ValueError, UnicodeDecodeError, AttributeError) as exc:
+            raise LicenseAnswerUntrusted("the license file is damaged") from exc
+        if not isinstance(license_key, str):
+            raise LicenseAnswerUntrusted("the license file is damaged")
+        state = self._offline_state(token, license_key)
+        if state["offline_until"] <= time.time():
+            raise LicenseAnswerUntrusted("this license file has already ended; ask for a renewed one")
+        self.storage.save_license({
+            "license_key": license_key,
+            "organization_token": None,
+            "vm_fingerprint": self.machine_fingerprint,
+            "mode": "offline",
+            "offline_token": token,
+            "plan_type": state.get("plan_code"),
+            "activated_at": datetime.utcnow().isoformat(),
+        })
+        logger.info("[License] Offline license file installed for %s (valid until %s)",
+                    license_key, datetime.utcfromtimestamp(state["offline_until"]).isoformat())
+        return state
+
     def verify_cached_token(self, token: Optional[str]) -> dict:
         """The state a previously stored token describes, if it still verifies for this license and
         machine (used to restore the offline-grace state at startup); LicenseTokenError otherwise.
@@ -509,6 +604,10 @@ class LicenseClient:
             )
         if license_data.get("vm_fingerprint") == self.machine_fingerprint:
             return license_data
+        if license_data.get("mode") == "offline":
+            # A file bound to another machine cannot move by itself: a new one is needed.
+            raise LicenseRejected("The offline license file was issued for another machine; "
+                                  "request a new one from this server.", status_code=None)
 
         logger.warning("[License] The stored license was bound to another fingerprint; re-activating it "
                        "for this machine.")
@@ -537,6 +636,9 @@ class LicenseClient:
         valid=False - a signed "no" is still an answer).
         """
         license_data = self._bound_license_data()
+        if license_data.get("mode") == "offline":
+            # No contact: the installed file, verified again, is the answer.
+            return self._offline_state(license_data.get("offline_token"), license_data["license_key"])
         nonce = self._nonce()
         request_data = {
             "license_key": license_data["license_key"],
@@ -569,6 +671,10 @@ class LicenseClient:
         signed answer.
         """
         license_data = self._bound_license_data()
+        if license_data.get("mode") == "offline":
+            # Nothing to send: an offline license never contacts the license server.
+            state = self._offline_state(license_data.get("offline_token"), license_data["license_key"])
+            return {"success": True, "message": "offline license", "state": state}
         nonce = self._nonce()
         data = {
             "license_key": license_data["license_key"],

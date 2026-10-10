@@ -27,6 +27,19 @@
   pilot; the asset pages show the same in the header. The heartbeat reports
   the asset count to the license server.
 
+### Offline (air-gapped) licenses
+
+- For a server without internet access: on the first-run screen or the
+  License page, download a request file, have the license administrator sign
+  it (license server admin console: the license must be marked offline), and
+  upload the license file you get back. It is bound to this server and valid
+  one year (never past the license's expiry); NGCorion then runs without any
+  contact with the license server. Renewal is the same two-file exchange; the
+  License page warns 30 days before the file ends.
+- A file cannot be edited, forged or used on another server. A clock set back
+  (before the file's issue time, or below the last time seen, also across a
+  restart) invalidates the license.
+
 ### Licensing can no longer be bypassed by configuration
 
 - Every answer of the license server is signed (Ed25519). NGCorion accepts an

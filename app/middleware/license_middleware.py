@@ -20,6 +20,7 @@ class LicenseMiddleware(BaseHTTPMiddleware):
     - GET /
     - POST /api/license/activate
     - GET /api/license/status
+    - POST /api/license/offline/request, /api/license/offline/install
     
     All other /api/* paths require valid license.
     """
@@ -30,6 +31,9 @@ class LicenseMiddleware(BaseHTTPMiddleware):
         "/",
         "/api/license/activate",
         "/api/license/status",
+        # Offline (air-gapped) activation, from the same first-run screen.
+        "/api/license/offline/request",
+        "/api/license/offline/install",
     }
     
     async def dispatch(self, request: Request, call_next):

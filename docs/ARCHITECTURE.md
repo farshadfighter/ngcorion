@@ -246,6 +246,17 @@ answers it can prove came from it.
   the token's signed issue time; the on-disk cache stores that token and is
   re-verified at startup. A clock that goes backwards (to stretch the window)
   or a license past its signed expiry makes the state invalid.
+- **Offline (air-gapped) licenses.** For a server that never reaches the
+  license server: the License page (or the first-run screen) writes a request
+  file (license key, this machine's fingerprint, asset count); the license
+  server's admin signs a license file for it (typ `offline`, bound to this
+  machine, `offline_until` one year, never past the license's expiry); the
+  uploaded file is verified like any signed answer and stored. From then on
+  validation and the heartbeat answer from the file without any network call
+  (`LicenseClient.validate`/`heartbeat`), the 48-hour/pilot rule does not
+  apply, and the license ends at `offline_until` until a renewed file is
+  installed. `/api/license/offline/request` and `/offline/install` follow the
+  activation rule: open while no license is valid, administrators only after.
 - **Address.** The license server is `https://lic.ngcorion.com`, built into
   the code next to the signing keys (`app/core/license_keys.py`) and verified
   against the public certificate authorities; it cannot be configured. The
