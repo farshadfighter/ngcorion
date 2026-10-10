@@ -247,7 +247,7 @@ def _activate(data: LicenseActivateRequest, request: Request):
     1. Call license server to activate
     2. Save license data locally
     3. Validate and update in-memory state
-    4. Start heartbeat service
+    4. Start the heartbeat service and send a heartbeat at once
     5. Return license status
     """
     client = request.app.state.license_client
@@ -259,8 +259,11 @@ def _activate(data: LicenseActivateRequest, request: Request):
         # Immediately validate to populate state
         refresh_license_state(client)
         
-        # Start heartbeat
-        start_heartbeat(client)
+        # Start the heartbeat, and send one now: it carries the asset count,
+        # which the license server should see from the moment of activation
+        # rather than at the next hourly beat. It runs on the heartbeat thread;
+        # this request does not wait for it.
+        start_heartbeat(client, beat_now=True)
         
         # Return current state
         return _status(get_license_state())

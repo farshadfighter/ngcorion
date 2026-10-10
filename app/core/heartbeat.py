@@ -16,7 +16,9 @@ Reliability rules this service follows:
 * nothing here ever propagates out of the thread into the app.
 
 Each heartbeat reports how many assets the inventory holds; the license
-administrator sees it next to the license's limit.
+administrator sees it next to the license's limit. Activating a license sends
+one at once (beat_now), so that count reaches the license server right away
+rather than up to an interval later.
 """
 import logging
 import threading
@@ -94,6 +96,8 @@ class HeartbeatService:
         # immediate instead of waiting out a 1-second tick, and so an idle
         # heartbeat thread does not wake up 3600 times an hour.
         self._stop_event = threading.Event()
+        # Set by beat_now() (and by stop()): ends the current sleep early.
+        self._wake_event = threading.Event()
         self._consecutive_failures = 0
 
     def _run_once(self) -> bool:
@@ -188,12 +192,16 @@ class HeartbeatService:
         """Background thread loop"""
         try:
             while not self._stop_event.is_set():
+                # Cleared before the beat: a beat_now() that arrives while this
+                # one is in flight still gets a beat of its own afterwards (this
+                # one may have counted the assets before the change it reports).
+                self._wake_event.clear()
                 succeeded = self._run_once()
                 delay = self._next_delay(succeeded)
                 if not succeeded:
                     logger.info("[Heartbeat] Retrying in %ds", delay)
-                # Event-based sleep: wakes immediately on stop().
-                self._stop_event.wait(delay)
+                # Event-based sleep: wakes immediately on stop() or beat_now().
+                self._wake_event.wait(delay)
         except BaseException:
             # A thread that dies here stops all license refreshing for the
             # lifetime of the process, and the old code left `running = True`
@@ -219,6 +227,7 @@ class HeartbeatService:
             )
 
         self._stop_event.clear()
+        self._wake_event.clear()
         self._consecutive_failures = 0
         self.running = True
         self.thread = threading.Thread(
@@ -230,6 +239,12 @@ class HeartbeatService:
             self.interval_seconds, self.retry_seconds,
         )
 
+    def beat_now(self):
+        """Send the next heartbeat now instead of at the end of the current wait. Returns at once:
+        the heartbeat itself runs on the service's thread, so the caller (an HTTP request) never
+        waits for the license server."""
+        self._wake_event.set()
+
     def stop(self):
         """Stop the heartbeat service"""
         if not self.running and not self.is_alive():
@@ -237,6 +252,7 @@ class HeartbeatService:
 
         self.running = False
         self._stop_event.set()
+        self._wake_event.set()
         if self.thread:
             self.thread.join(timeout=5)
             if self.thread.is_alive():
@@ -252,12 +268,17 @@ _heartbeat: Optional[HeartbeatService] = None
 _heartbeat_lock = threading.Lock()
 
 
-def start_heartbeat(client):
+def start_heartbeat(client, beat_now: bool = False):
     """
     Start heartbeat service (singleton).
 
     Restarts the worker when a previous thread died, so a one-off crash in the
     loop does not leave the process without any license refreshing at all.
+
+    beat_now: also send a heartbeat right away when the service is already
+    running (a service that is only starting sends one first thing anyway).
+    Used after an activation, so the license server learns the asset count
+    at once instead of at the next hourly beat.
     """
     global _heartbeat
     with _heartbeat_lock:
@@ -266,6 +287,8 @@ def start_heartbeat(client):
         _heartbeat.client = client
         if not _heartbeat.running or not _heartbeat.is_alive():
             _heartbeat.start()
+        elif beat_now:
+            _heartbeat.beat_now()
 
 
 def stop_heartbeat():

@@ -26,6 +26,8 @@
   packs, expiry, the last contact with the license server, and the offline
   pilot; the asset pages show the same in the header. The heartbeat reports
   the asset count to the license server.
+- Activating a license sends a heartbeat at once, so the license server sees
+  the asset count from the moment of activation, not up to an hour later.
 
 ### Offline (air-gapped) licenses
 
@@ -96,6 +98,11 @@
   reboot, shut down).
   No shell, no SSH, no login prompt on any terminal, root locked, GRUB
   entries cannot be edited.
+- Built on GitHub too (`.github/workflows/appliance.yml`): a version tag
+  (`v2.1.0`) or a manual run builds the OVA, VHDX and qcow2 on GitHub's
+  servers (KVM) and attaches them to a draft release, with SHA256SUMS.
+  Images over GitHub's 2 GiB per-file limit come in parts; the release notes
+  give the commands to join them.
 
 ### Compiled backend
 

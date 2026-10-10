@@ -100,6 +100,7 @@ class StubClient:
 
     def heartbeat(self, asset_count=None):
         self.asset_count = asset_count
+        self.heartbeats = getattr(self, "heartbeats", 0) + 1
         if self.heartbeat_error:
             raise self.heartbeat_error
         return self.heartbeat_result
@@ -572,3 +573,75 @@ def test_a_dead_heartbeat_thread_is_not_reported_as_running():
         assert service.is_alive()
     finally:
         service.stop()
+
+
+def _wait_for(predicate, timeout=3.0):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_beat_now_sends_the_next_heartbeat_without_waiting_out_the_interval():
+    client = StubClient(validate_result=VALID_RESPONSE)
+    service = HeartbeatService(client, interval_seconds=3600)
+    service.start()
+    try:
+        # The first beat goes out as the service starts; the next would be an hour away.
+        assert _wait_for(lambda: getattr(client, "heartbeats", 0) == 1)
+        time.sleep(0.1)
+        assert client.heartbeats == 1
+
+        service.beat_now()
+        assert _wait_for(lambda: client.heartbeats == 2)
+        # One beat per request, then back to the interval.
+        time.sleep(0.1)
+        assert client.heartbeats == 2
+    finally:
+        service.stop()
+
+
+def test_start_heartbeat_can_ask_a_running_service_for_a_beat(monkeypatch):
+    import app.core.heartbeat as hb
+    monkeypatch.setattr(hb, "_asset_count", lambda: 7)
+    monkeypatch.setattr(hb, "_heartbeat", None)
+    client = StubClient(validate_result=VALID_RESPONSE)
+    try:
+        hb.start_heartbeat(client)
+        assert _wait_for(lambda: getattr(client, "heartbeats", 0) == 1)
+
+        # Already running: a plain start does not send another beat...
+        hb.start_heartbeat(client)
+        time.sleep(0.1)
+        assert client.heartbeats == 1
+
+        # ...one with beat_now does, carrying the asset count.
+        hb.start_heartbeat(client, beat_now=True)
+        assert _wait_for(lambda: client.heartbeats == 2)
+        assert client.asset_count == 7
+    finally:
+        hb.stop_heartbeat()
+        monkeypatch.setattr(hb, "_heartbeat", None)
+
+
+def test_activation_sends_a_heartbeat_at_once(monkeypatch):
+    """After an activation the license server should see the asset count right away, not after
+    up to an hour: the activation asks the heartbeat for an immediate beat."""
+    import importlib
+    from types import SimpleNamespace
+
+    router = importlib.import_module("app.modules.license.router")
+    calls = []
+    monkeypatch.setattr(router, "start_heartbeat", lambda client, **kw: calls.append(kw))
+    monkeypatch.setattr(router, "refresh_license_state", lambda client: None)
+
+    class Activating:
+        def activate(self, key):
+            return {"success": True}
+
+    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(license_client=Activating())))
+    router._activate(SimpleNamespace(license_key="AAAA-BBBB-CCCC-DDDD"), request)
+
+    assert calls == [{"beat_now": True}]

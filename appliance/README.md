@@ -46,6 +46,25 @@ What happens:
    and the build account, clears the machine-id and logs, and powers off.
 6. `make-ova.sh` converts the disk into the OVA and the VHDX.
 
+### On GitHub
+
+`.github/workflows/appliance.yml` runs the same `build.sh` on a GitHub runner
+(with KVM, `BASE_REGISTRY=docker.io`, PyPI and npmjs instead of the Iranian
+mirrors) and attaches the result to a **draft** release:
+
+* push a version tag, e.g. `git tag v2.1.0 && git push origin v2.1.0` (the
+  tag must match `VERSION` in `app/core/config.py`), or
+* Actions → Appliance → Run workflow (the tag defaults to `v<VERSION>`).
+
+A draft is visible only to people with write access to the repository; publish
+it once the images have been tried. GitHub takes at most 2 GiB per release
+file, so larger images are uploaded in parts (`*.part00`, `*.part01`, ...);
+the release notes give the command to join them (`cat` on Linux/macOS,
+`copy /b` on Windows), and `SHA256SUMS` checks the joined files. Docker Hub
+credentials in the repository secrets `DOCKERHUB_USERNAME` /
+`DOCKERHUB_TOKEN` are used when present (they avoid Docker Hub's anonymous
+pull limit); the build works without them.
+
 ## First start
 
 Open the VM's console after the first power-on. The setup asks for:

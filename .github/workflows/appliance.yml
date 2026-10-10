@@ -1,0 +1,182 @@
+# Builds the NGCorion virtual appliance - OVA (VMware), VHDX (Hyper-V), qcow2
+# (KVM / Proxmox) - with appliance/build.sh and attaches it to a DRAFT GitHub
+# Release. A draft is visible only to people with write access to the
+# repository; publish it by hand once the images have been tried.
+#
+#   * push a version tag (v2.0.0)  -> release for that tag; the tag must match
+#                                     VERSION in app/core/config.py
+#   * Actions -> Appliance -> Run   -> release for the tag given, or
+#                                     v<VERSION> when left empty
+#
+# GitHub limits one release file to 2 GiB; larger images are uploaded in parts
+# (*.partNN) with the commands to join them in the release notes. SHA256SUMS
+# is over the joined files.
+#
+# Runs on GitHub's servers, so it uses docker.io / pypi.org / npmjs instead of
+# the Iranian mirrors build.sh defaults to.
+name: Appliance
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (empty: v<VERSION> from app/core/config.py)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write  # create the draft release and upload to it
+
+concurrency:
+  group: appliance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build OVA / VHDX / qcow2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      PACKER_VERSION: "1.16.1"
+      BASE_REGISTRY: docker.io
+      PYPI_INDEX: https://pypi.org/simple
+      NPM_REGISTRY: ""
+      PACKER_ACCELERATOR: kvm
+      # packer init downloads the qemu plugin through the GitHub API; with a
+      # token it is not subject to the anonymous rate limit.
+      PACKER_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Optional: Docker Hub credentials (repository secrets) avoid the
+      # anonymous pull limit. The build works without them.
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version and release tag
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          version="$(sed -n 's/^ *VERSION: str = "\(.*\)"/\1/p' app/core/config.py | head -n1)"
+          test -n "$version" || { echo "::error::No VERSION in app/core/config.py"; exit 1; }
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            tag="$GITHUB_REF_NAME"
+            if [ "$tag" != "v$version" ]; then
+              echo "::error::Tag $tag does not match VERSION $version in app/core/config.py"
+              exit 1
+            fi
+          else
+            tag="${INPUT_TAG:-v$version}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "NGCorion $version -> release $tag (draft)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Free disk space
+        # The build needs ~25 GB (images, the VM disk, three formats, their
+        # parts); a fresh runner has ~20 GB free. Drop toolchains not used here.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+                      /opt/hostedtoolcache/CodeQL /usr/share/swift
+          docker system prune -af >/dev/null
+          df -h /
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -w /dev/kvm || { echo "::error::/dev/kvm is not available on this runner"; exit 1; }
+
+      - name: Install Packer, QEMU, xorriso
+        run: |
+          curl -fsSLo /tmp/packer.zip "https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip"
+          sudo unzip -o /tmp/packer.zip -d /usr/local/bin
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 qemu-utils xorriso
+          packer version && qemu-system-x86_64 --version | head -n1
+
+      - name: Docker Hub login
+        if: env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
+        run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+
+      - name: Build the appliance
+        run: appliance/build.sh
+
+      - name: Split files over 2 GiB
+        id: files
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd "appliance/output/$VERSION"
+          limit=$((2000 * 1024 * 1024))
+          split_list=""
+          for f in ngcorion-"$VERSION".*; do
+            if [ "$(stat -c %s "$f")" -gt "$limit" ]; then
+              split -b 1900M -d -a 2 "$f" "$f.part"
+              rm "$f"
+              split_list="$split_list $f"
+            fi
+          done
+          sha256sum ngcorion-"$VERSION".*.part* > PARTS.sha256 2>/dev/null || true
+          [ -s PARTS.sha256 ] || rm -f PARTS.sha256
+          echo "split=${split_list# }" >> "$GITHUB_OUTPUT"
+          ls -lh
+
+      - name: Release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SPLIT: ${{ steps.files.outputs.split }}
+        run: |
+          {
+            echo "NGCorion $VERSION virtual appliance, built from \`${GITHUB_SHA::12}\`."
+            echo
+            echo "| File | For |"
+            echo "|---|---|"
+            echo "| \`ngcorion-$VERSION.ova\` | VMware vSphere / ESXi / Workstation |"
+            echo "| \`ngcorion-$VERSION.vhdx\` | Microsoft Hyper-V (Generation 2) |"
+            echo "| \`ngcorion-$VERSION.qcow2\` | KVM / Proxmox |"
+            echo
+            echo "First start and console: \`appliance/README.md\`."
+            if [ -n "$SPLIT" ]; then
+              echo
+              echo "### Files in parts"
+              echo "GitHub allows 2 GiB per file, so these come in parts. Download all parts of a file, then join them:"
+              echo
+              echo '```sh'
+              for f in $SPLIT; do echo "cat $f.part* > $f"; done
+              echo '```'
+              echo
+              echo "Windows (Command Prompt, in the download folder):"
+              echo
+              echo '```bat'
+              for f in $SPLIT; do
+                parts="$(cd "appliance/output/$VERSION" && ls "$f".part* | paste -sd+)"
+                echo "copy /b $parts $f"
+              done
+              echo '```'
+            fi
+            echo
+            echo "Check the joined files: \`sha256sum -c SHA256SUMS\`."
+          } > /tmp/notes.md
+          cat /tmp/notes.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          cd "appliance/output/$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists: replacing its files"
+            gh release edit "$TAG" --notes-file /tmp/notes.md
+          else
+            gh release create "$TAG" --draft --target "$GITHUB_SHA" \
+              --title "NGCorion $VERSION appliance" --notes-file /tmp/notes.md
+          fi
+          gh release upload "$TAG" --clobber ./*
+          echo "Uploaded to the draft release $TAG" >> "$GITHUB_STEP_SUMMARY"

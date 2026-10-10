@@ -237,7 +237,9 @@ answers it can prove came from it.
   (after the offline fallback, or a smaller plan), audits and hardening run
   only on the first `max_assets` assets by id (the oldest), from the API and
   from the scheduler. Audits and hardening runs are not counted. The hourly
-  heartbeat reports the asset count to the license server.
+  heartbeat reports the asset count to the license server; an activation
+  sends one at once (`start_heartbeat(client, beat_now=True)`), so the count
+  is there from the start.
 - **Offline, and the cache.** Without a signed answer the license's own plan
   holds for 48 hours; then NGCorion runs as a pilot license (5 assets) for 30
   days; then it locks. The next signed answer puts the plan back; the license
