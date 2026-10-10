@@ -106,6 +106,24 @@ jobs:
       - name: Build the appliance
         run: appliance/build.sh
 
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Software bill of materials (CycloneDX)
+        # What the appliance's application is built from, for the customer's
+        # and the evaluator's records: the Python packages (uv.lock) and the
+        # web UI's npm packages. Added to SHA256SUMS like the images.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          out="$PWD/appliance/output/$VERSION"
+          uv export --frozen --no-dev --no-hashes -q > /tmp/requirements.txt
+          uvx --from cyclonedx-bom==7.1.0 cyclonedx-py requirements /tmp/requirements.txt \
+            --output-format JSON -o "$out/ngcorion-$VERSION-sbom-python.cdx.json"
+          (cd front && npm ci --ignore-scripts --no-audit --no-fund >/dev/null \
+            && npx --yes @cyclonedx/cyclonedx-npm@4.0.0 --omit dev --output-format JSON \
+                 --output-file "$out/ngcorion-$VERSION-sbom-frontend.cdx.json")
+          (cd "$out" && sha256sum ngcorion-"$VERSION"-sbom-*.cdx.json >> SHA256SUMS)
+
       - name: Split files over 2 GiB
         id: files
         env:
@@ -140,7 +158,8 @@ jobs:
             echo "| \`ngcorion-$VERSION.vhdx\` | Microsoft Hyper-V (Generation 2) |"
             echo "| \`ngcorion-$VERSION.qcow2\` | KVM / Proxmox |"
             echo
-            echo "First start and console: \`appliance/README.md\`."
+            echo "First start and console: \`appliance/README.md\`. Software bill of materials:"
+            echo "\`ngcorion-$VERSION-sbom-python.cdx.json\` and \`ngcorion-$VERSION-sbom-frontend.cdx.json\` (CycloneDX)."
             if [ -n "$SPLIT" ]; then
               echo
               echo "### Files in parts"

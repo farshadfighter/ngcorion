@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0 — unreleased
+## 2.1.0-rc.1 — 2026-10-11 (release candidate)
 
 ### Licensing by number of assets
 
