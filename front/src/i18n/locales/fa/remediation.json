@@ -45,6 +45,7 @@
   "every asset ({{count}} now)": "همهٔ دارایی‌ها (اکنون {{count, number}})",
   "Every exception with its reason, compensating control, approver and end date. An accepted finding does not count in the risk score until the acceptance ends.": "هر استثنا با دلیل، کنترل جبرانی، تأییدکننده و تاریخ پایان. یافتهٔ پذیرفته‌شده تا پایان پذیرش در امتیاز ریسک حساب نمی‌شود.",
   "Every open finding from CVE, audits and architecture validation, with an owner and a deadline. A finding closes by itself when the next audit or CVE check no longer reports it.": "همهٔ یافته‌های باز از CVE، ممیزی و اعتبارسنجی معماری، با مسئول و مهلت. وقتی ممیزی یا بررسی CVE بعدی یافته‌ای را دیگر گزارش نکند، خودکار بسته می‌شود.",
+  "Expired": "منقضی‌شده",
   "Expired or withdrawn": "منقضی یا لغوشده",
   "Filter findings": "فیلتر یافته‌ها",
   "Filter risk acceptances": "فیلتر پذیرش‌های ریسک",

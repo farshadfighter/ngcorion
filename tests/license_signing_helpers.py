@@ -32,9 +32,8 @@ def make_token(key=TEST_KEY, kid=TEST_KID, **overrides) -> str:
     claims = {
         "v": 1, "kid": kid, "typ": "validate", "lic": LICENSE_KEY, "fp": FINGERPRINT,
         "valid": True, "msg": "license is valid", "nonce": None, "iat": int(time.time()),
-        "plan": "plan_100", "pilot": False,
-        "limits": {"max_audits": 100, "max_hardens": 100},
-        "usage": {"used_audits": 3, "used_hardens": 1},
+        "plan": "NGC-BUS-250-1Y", "plan_name": "NGCorion Business", "pilot": False,
+        "limits": {"max_assets": 350, "addon_packs": 2},
         "exp": int(time.time()) + 86400 * 300,
     }
     claims.update(overrides)

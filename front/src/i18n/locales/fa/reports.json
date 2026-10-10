@@ -1,7 +1,6 @@
 {
   "“Build again” runs the same settings on today's data and makes a new report with a new ID; the earlier file is kept.": "«ساخت دوباره» همان تنظیمات را با دادهٔ امروز اجرا می‌کند و گزارش تازه‌ای با شناسهٔ جدید می‌سازد؛ فایل قبلی دست نمی‌خورد.",
   "{{code}} is being built and will be emailed when it is ready.": "{{code}} در حال ساخت است و وقتی آماده شد ایمیل می‌شود.",
-  "{{count}} assets": "{{count, number}} دارایی",
   "{{count}} chosen": "{{count, number}} مورد انتخاب‌شده",
   "{{count}} pages": "{{count, number}} صفحه",
   "{{count}} recipients": "{{count, number}} گیرنده",

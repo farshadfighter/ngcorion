@@ -14,6 +14,9 @@ Reliability rules this service follows:
 * an explicit rejection from the server (HTTP 400) blocks the product
   immediately — the offline grace window covers outages, not verdicts;
 * nothing here ever propagates out of the thread into the app.
+
+Each heartbeat reports how many assets the inventory holds; the license
+administrator sees it next to the license's limit.
 """
 import logging
 import threading
@@ -31,10 +34,26 @@ from .license_state import (
     mark_license_rejected,
     mark_license_server_offline,
     refresh_license_state,
-    set_license_state,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _asset_count() -> Optional[int]:
+    """How many assets the inventory holds, for the heartbeat; None when it cannot be counted (the
+    heartbeat goes out anyway: it is what keeps the license current)."""
+    try:
+        from app.core.asset_entitlement import count_assets
+        from app.core.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            return count_assets(db)
+        finally:
+            db.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[Heartbeat] Could not count assets: %s", exc)
+        return None
 
 
 class HeartbeatService:
@@ -86,7 +105,7 @@ class HeartbeatService:
         stop all license refreshing.
         """
         try:
-            result = self.client.heartbeat()
+            result = self.client.heartbeat(asset_count=_asset_count())
         except LicenseServerError as e:
             # The server is up but broken (5xx/429). Same handling as an
             # outage — it is not a licensing verdict.
@@ -145,19 +164,6 @@ class HeartbeatService:
             logger.error(
                 "[Heartbeat] Failed to refresh license state after heartbeat: %s", e
             )
-
-        # Check if downgraded
-        if result.get("should_downgrade"):
-            logger.warning(
-                "[Heartbeat] License downgraded to Pilot mode due to connectivity issues"
-            )
-            # Mark as invalid to force re-validation
-            set_license_state({
-                "valid": False,
-                "message": "License downgraded to Pilot mode",
-                "plan_type": "pilot",
-                "is_pilot_mode": True
-            })
 
         return True
 

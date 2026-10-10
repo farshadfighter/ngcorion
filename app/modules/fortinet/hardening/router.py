@@ -23,13 +23,14 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 from app.core.database import get_db
+from app.core.asset_entitlement import require_licensed_asset, asset_of_result, asset_of_action
 from app.core.dependencies import (
-    owner_scope, require_own_action, require_own_result,
+    owner_scope,
+    require_own_action,
+    require_own_result,
     get_current_user,
     require_permission,
-    check_quota_available,
-    consume_quota_on_success,
-    )
+)
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
@@ -394,8 +395,7 @@ async def execute_fortinet_manual_remediation(
     http_request: Request,
     request: FortiGateManualExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden")),
+    db: Session = Depends(get_db)
 ):
     """
     Execute a MANUAL FortiGate check's remediation over SSH.
@@ -409,7 +409,7 @@ async def execute_fortinet_manual_remediation(
     """
     # Object-level access: only the owner of the audit (or an admin) may act on it.
     require_own_result(db, request.audit_result_id, current_user)
-    consume_quota = consume_quota_on_success("harden")
+    require_licensed_asset(db, asset_of_result(db, request.audit_result_id))
     # Read the id while the session is healthy: current_user may be expired, and
     # refreshing it inside an exception handler (after a failed flush) raises
     # PendingRollbackError, masking the real error.
@@ -437,7 +437,6 @@ async def execute_fortinet_manual_remediation(
             skip_backup=request.skip_backup,
             ssh_port=request.ssh_port,
         )
-        consume_quota(http_request)
         log_execute_outcome(
             db, device_type="fortinet",
             action_id=None, user_id=user_id,
@@ -625,8 +624,7 @@ def preview_fortinet_hardening(
     http_request: Request,
     request: FortiGatePreviewRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden")),
+    db: Session = Depends(get_db)
 ):
     """
     Preview hardening commands for a failed FortiGate check.
@@ -642,7 +640,7 @@ def preview_fortinet_hardening(
     """
     # Object-level access: only the owner of the audit (or an admin) may act on it.
     require_own_result(db, request.audit_result_id, current_user)
-    consume_quota = consume_quota_on_success("harden")
+    require_licensed_asset(db, asset_of_result(db, request.audit_result_id))
     # Read while the session is healthy — see execute_fortinet_manual_remediation.
     user_id = current_user.id
 
@@ -668,7 +666,6 @@ def preview_fortinet_hardening(
             check_number=preview.get("check_number", "") if isinstance(preview, dict) else "",
             check_title=preview.get("check_title", "") if isinstance(preview, dict) else "",
         )
-        consume_quota(http_request)
         return preview
 
     except (FortiGateCheckAlreadyPassingError, FortiGateNotAutoFixableError) as e:
@@ -697,8 +694,7 @@ async def execute_fortinet_hardening(
     http_request: Request,
     request: FortiGateExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden"))
+    db: Session = Depends(get_db)
 ):
     """
     Execute hardening commands on FortiGate device.
@@ -723,7 +719,7 @@ async def execute_fortinet_hardening(
     """
     # Object-level access: only the owner of the audit (or an admin) may act on it.
     require_own_action(db, request.action_id, current_user)
-    consume_quota = consume_quota_on_success("harden")
+    require_licensed_asset(db, asset_of_action(db, request.action_id))
     # Read while the session is healthy — see execute_fortinet_manual_remediation.
     user_id = current_user.id
 
@@ -749,7 +745,6 @@ async def execute_fortinet_hardening(
             skip_backup=request.skip_backup,
             ssh_port=request.ssh_port,
         )
-        consume_quota(http_request)
         verification_passed = result.get("verification_passed") if isinstance(result, dict) else None
         succeeded = (
             isinstance(result, dict)

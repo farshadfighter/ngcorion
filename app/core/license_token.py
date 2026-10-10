@@ -1,7 +1,7 @@
 """
 Verification of the license server's signed answers.
 
-The license server signs every answer (activate, validate, heartbeat, consume)
+The license server signs every answer (activate, validate, heartbeat)
 with its Ed25519 private key; the token is
 
     base64url(claims JSON) "." base64url(signature over those exact bytes)
@@ -110,10 +110,11 @@ def claims_to_state(claims: Dict[str, Any], token: str) -> Dict[str, Any]:
     return {
         "valid": bool(claims.get("valid")),
         "message": str(claims.get("msg") or ""),
-        "plan_type": claims.get("plan"),
+        "plan_code": claims.get("plan"),
+        "plan_name": claims.get("plan_name"),
         "is_pilot_mode": bool(claims.get("pilot")),
+        # {"max_assets": N or None, "addon_packs": k} (license_state._max_assets)
         "limits": claims.get("limits"),
-        "usage": claims.get("usage"),
         "expires_at": claims.get("exp"),
         "issued_at": claims.get("iat"),
         "signed_token": token,

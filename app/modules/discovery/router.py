@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from datetime import datetime, timezone
 
+from app.core.asset_entitlement import capacity_message, check_asset_capacity, remaining_capacity
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, owner_scope
 
@@ -509,6 +510,7 @@ async def approve_discovered_host(
             raise HTTPException(status_code=400, detail="asset_data required for create_new action")
 
         # Create new asset
+        check_asset_capacity(db)
         asset = Asset(
             asset_name=asset_data.get("asset_name"),
             hostname=host.hostname,
@@ -617,6 +619,9 @@ async def bulk_approve_hosts(
 
     created_assets = []
     errors = []
+    # New assets the license still covers (None = no limit): hosts past it are
+    # reported, not added.
+    room = remaining_capacity(db)
 
     for host_id in host_ids:
         try:
@@ -629,6 +634,11 @@ async def bulk_approve_hosts(
             asset_name = host.hostname or f"Host-{host.ip_address}"
 
             # Create new asset
+            if room is not None:
+                if room <= 0:
+                    errors.append(f"Host {host_id}: {capacity_message()}")
+                    continue
+                room -= 1
             asset = Asset(
                 asset_name=asset_name,
                 hostname=host.hostname,
@@ -881,6 +891,7 @@ async def create_asset_from_discovery(
         discovered_fields['manufacturer'] = True
     
     # Create asset
+    check_asset_capacity(db)
     asset = Asset(
         asset_name=request.asset_name,
         hostname=host.hostname,
@@ -1513,6 +1524,7 @@ async def apply_discovery_with_mode(
             )
 
         # Create new asset
+        check_asset_capacity(db)
         asset = Asset(
             asset_name=request.asset_name,
             hostname=host.hostname,

@@ -1,7 +1,9 @@
 """
 License Client for Main App
 
-Communicates with the license server to activate, validate, and consume license quotas.
+Communicates with the license server to activate and validate the license, and sends the hourly
+heartbeat (with the number of managed assets). The entitlement itself - a number of assets - is
+enforced locally (app/core/asset_entitlement.py) from the signed answers.
 Stores license data encrypted in ~/.license using SecureStorage.
 
 Every answer is trusted only through its signed token (app/core/license_token.py):
@@ -360,11 +362,10 @@ class LicenseClient:
 
         Two policies, because the calls are not equally safe to repeat:
 
-        * idempotent=False (activate, consume): only *connection* failures are
-          retried. A read timeout on POST is never retried —
-          /api/licenses/consume has already decremented the quota server-side by
-          the time a read times out, so retrying would charge the customer twice
-          for one audit.
+        * idempotent=False (activate): only *connection* failures are retried.
+          A read timeout on POST is never retried: activation binds the
+          license to this machine, and a retry after the server already did
+          that only muddies the answer.
         * idempotent=True (fingerprint, validate, heartbeat): read timeouts and
           server-side error statuses are retried too. These calls only read or
           refresh a timestamp, so repeating one is free — and not retrying them
@@ -406,7 +407,7 @@ class LicenseClient:
           "your license is invalid" locked the whole product out on a transient
           server fault;
         * 4xx -> requests.HTTPError, unchanged: those carry a real answer from
-          the server (e.g. quota exhausted on /consume).
+          the server (e.g. the license key is unknown or bound elsewhere).
         """
         url = f"{self.server_url}{path}"
         session = self.idempotent_session if idempotent else self.session
@@ -562,9 +563,10 @@ class LicenseClient:
                                        typ="validate", nonce=nonce)
         return claims_to_state(claims, token)
 
-    def heartbeat(self) -> dict:
-        """Send the hourly heartbeat. Returns success, message, should_downgrade and the verified
-        state, all taken from the signed answer.
+    def heartbeat(self, asset_count: Optional[int] = None) -> dict:
+        """Send the hourly heartbeat, with how many assets this installation manages (shown to the
+        license administrator). Returns success, message and the verified state, all taken from the
+        signed answer.
         """
         license_data = self._bound_license_data()
         nonce = self._nonce()
@@ -574,6 +576,8 @@ class LicenseClient:
             "vm_fingerprint": license_data["vm_fingerprint"],
             "nonce": nonce,
         }
+        if asset_count is not None:
+            data["asset_count"] = int(asset_count)
 
         try:
             response = self._request(
@@ -598,7 +602,6 @@ class LicenseClient:
         return {
             "success": True,
             "message": str(claims.get("msg") or ""),
-            "should_downgrade": bool(claims.get("down")),
             "state": claims_to_state(claims, token),
         }
 
@@ -616,41 +619,6 @@ class LicenseClient:
         body = (response.text or "").strip()
         return body[:200] if body else fallback
     
-    def consume(self, operation_type: str, count: int = 1) -> dict:
-        """Use quota on the license server. Returns the verified state after the consumption; the
-        signed answer must name this operation and count, or it does not count (LicenseAnswerUntrusted).
-        """
-        license_data = self._bound_license_data()
-        nonce = self._nonce()
-
-        request_data = {
-            "license_key": license_data["license_key"],
-            "organization_token": license_data["organization_token"],
-            "vm_fingerprint": license_data["vm_fingerprint"],
-            "operation_type": operation_type,
-            "count": count
-        }
-        
-        signature, timestamp = self._sign_request(
-            request_data,
-            license_data["organization_token"]
-        )
-        
-        headers = {
-            "X-Signature": signature,
-            "X-Timestamp": timestamp
-        }
-        
-        response = self._request(
-            "POST", "/api/licenses/consume", json=dict(request_data, nonce=nonce), headers=headers
-        )
-
-        claims, token = self._verified(self._json(response), license_key=license_data["license_key"],
-                                       typ="consume", nonce=nonce)
-        if not claims.get("valid") or claims.get("op") != operation_type or claims.get("count") != count:
-            raise LicenseAnswerUntrusted("the consume answer does not confirm this operation")
-        return claims_to_state(claims, token)
-
     def deactivate(self):
         """Remove local license data"""
         self.storage.delete_license()

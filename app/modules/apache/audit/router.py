@@ -12,13 +12,12 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
+from app.core.asset_entitlement import require_licensed_asset
 from app.core.dependencies import (
     get_current_user,
     require_permission,
-    assert_session_access, owner_scope,
-    require_quota,
-    check_quota_available,
-    consume_quota_on_success,
+    assert_session_access,
+    owner_scope,
 )
 from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, log_action
@@ -136,14 +135,12 @@ router = APIRouter(prefix="/api/audit/apache", tags=["Audit - Apache CIS"])
 @router.post(
     "/execute",
     response_model=ApacheAuditSessionResponse,
-    dependencies=[Depends(check_quota_available("audit"))],
 )
 def execute_apache_audit(
     audit_request: ApacheAuditRequest,
     request: Request,
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
-    # _quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute CIS compliance audit on Apache HTTP Server.
@@ -168,7 +165,7 @@ def execute_apache_audit(
     **Note:** SSH credentials are used only for the audit session and never stored.
     The sudo password defaults to the SSH password if not provided.
     """
-    consume_quota = consume_quota_on_success("audit")
+    require_licensed_asset(db, audit_request.asset_id)
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
@@ -205,7 +202,6 @@ def execute_apache_audit(
             result="success",
             detail=f"Asset ID: {audit_request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%",
         )
-        consume_quota(request)
 
         return summary
 

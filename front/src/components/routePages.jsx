@@ -82,7 +82,6 @@ export const HardeningRoute = () => {
     return (
         <HardeningMain
             onNavigateToAuditing={() => navigate("/audit/sessions")}
-            onNavigateToLicence={() => navigate("/settings/license")}
         />
     );
 };

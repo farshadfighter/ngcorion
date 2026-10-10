@@ -6,7 +6,7 @@ import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
 import { t, n } from "../../i18n";
 
-export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
+export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, isOutsideLicense = () => false, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
     const [sortDirection, setSortDirection] = useState("asc");
 
@@ -76,6 +76,11 @@ export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsse
                                 <span className="asset-name-cell">
                                     <AssetIcon icon={asset.resolved_icon} size={28} />
                                     {asset.asset_name}
+                                    {isOutsideLicense(asset) && (
+                                        <span className="asset-outside-license" title={t("Audits and hardening are not available for this asset under the current license")}>
+                                            {t("Outside license")}
+                                        </span>
+                                    )}
                                 </span>
                             </td>
                             <td>{asset.hostname || "-"}</td>

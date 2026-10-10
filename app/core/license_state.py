@@ -7,13 +7,26 @@ Thread-safe for concurrent access from request handlers and heartbeat thread.
 The state comes only from answers whose signed token verified (see
 app/core/license_client.py). The on-disk cache keeps that signed token itself,
 not the plain fields: at startup it is verified again, so the cache cannot be
-edited into a "valid" license. The offline grace window counts from the
-token's signed issue time, and a system clock that goes backwards (to stretch
-that window) invalidates the state.
+edited into a "valid" license.
+
+The entitlement is a number of assets (max_assets: plan + 50 per add-on pack,
+None = unlimited); app/core/asset_entitlement.py enforces it.
+
+Without contact with the license server (licensing v3):
+
+    0 .. 48 h after the last signed answer      the license's own plan
+    48 h .. 48 h + 30 days                      the pilot: 5 assets
+    after that                                  locked
+
+counted from the answer's signed issue time. The next signed answer puts the
+license's own plan back; nothing on the license server changes. These numbers
+are part of the code (OFFLINE_GRACE, PILOT_FALLBACK_*), not configuration. A
+system clock that goes backwards (to stretch the windows) invalidates the
+state, and a license past its signed expiry is not valid offline either.
 """
 import logging
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -22,14 +35,31 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Without a signed answer for OFFLINE_GRACE, NGCorion runs on the pilot
+# entitlement (PILOT_FALLBACK_ASSETS assets) for PILOT_FALLBACK_DAYS more, then
+# locks. Fixed in code on purpose: a setting could be raised by whoever runs
+# the product.
+OFFLINE_GRACE = timedelta(hours=48)
+PILOT_FALLBACK_DAYS = 30
+PILOT_FALLBACK_ASSETS = 5
+PILOT_PLAN_CODE = "NGC-PILOT-5-1M"
+PILOT_PLAN_NAME = "NGCorion Pilot"
+
+
 @dataclass
 class LicenseState:
     """Current license state"""
     valid: bool = False
-    plan_type: Optional[str] = None
+    # The plan's SKU and product name, e.g. "NGC-BUS-250-1Y", "NGCorion Business".
+    plan_code: Optional[str] = None
+    plan_name: Optional[str] = None
     is_pilot_mode: bool = False
-    limits: Optional[dict] = None
-    usage: Optional[dict] = None
+    # How many assets the license covers (plan + add-ons); None = unlimited.
+    # Only meaningful while `valid`.
+    max_assets: Optional[int] = None
+    addon_packs: int = 0
+    # The license's own term, from the signed answer.
+    expires_at: Optional[datetime] = None
     message: str = "No license activated"
     last_validated_at: Optional[datetime] = None
     # True while the license server cannot be reached. The state is then served
@@ -39,8 +69,12 @@ class LicenseState:
     # instead of the misleading "no valid license".
     offline: bool = False
     # When the license server signed the answer this state comes from (UTC).
-    # The offline grace window counts from here: a signed time cannot be moved.
+    # The offline windows count from here: a signed time cannot be moved.
     issued_at: Optional[datetime] = None
+    # True while the offline pilot fallback is in force (no signed answer for
+    # more than OFFLINE_GRACE); `offline_pilot_until` is when it ends.
+    offline_pilot: bool = False
+    offline_pilot_until: Optional[datetime] = None
 
 
 # Module-level singleton
@@ -170,20 +204,15 @@ def restore_cached_state() -> bool:
         return False
 
     age = now - issued
-    if age > _grace_window():
+    if age > OFFLINE_GRACE + timedelta(days=PILOT_FALLBACK_DAYS):
         logger.warning(
-            "[License] Cached license state is %.1fh old, past the %sh offline "
-            "grace window; ignoring it.",
-            age.total_seconds() / 3600, settings.LICENSE_OFFLINE_GRACE_HOURS,
+            "[License] Cached license state is %.1f days old, past the offline grace and pilot "
+            "fallback windows; ignoring it.", age.total_seconds() / 86400,
         )
         return False
 
     with _state_lock:
-        _license_state.valid = bool(state.get("valid", False))
-        _license_state.plan_type = state.get("plan_type")
-        _license_state.is_pilot_mode = bool(state.get("is_pilot_mode", False))
-        _license_state.limits = state.get("limits")
-        _license_state.usage = state.get("usage")
+        _apply(state)
         _license_state.last_validated_at = issued
         _license_state.issued_at = issued
         _signed_token = token
@@ -198,60 +227,121 @@ def restore_cached_state() -> bool:
         )
     logger.info(
         "[License] Restored cached license state (valid=%s, plan=%s, age=%.1fh)",
-        state.get("valid"), state.get("plan_type"), age.total_seconds() / 3600,
+        state.get("valid"), state.get("plan_code"), age.total_seconds() / 3600,
     )
     return True
 
 
-def _grace_window() -> timedelta:
-    """How long a validated state survives without a successful re-validation."""
-    return timedelta(hours=settings.LICENSE_OFFLINE_GRACE_HOURS)
+def _max_assets(limits) -> Optional[int]:
+    """The asset limit a signed `limits` object grants. A token without max_assets comes from a
+    license server older than licensing v3 (its limits were audit/hardening quotas): it is held to
+    the pilot entitlement rather than read as unlimited."""
+    if not isinstance(limits, dict) or "max_assets" not in limits:
+        return PILOT_FALLBACK_ASSETS
+    value = limits.get("max_assets")
+    if value is None:
+        return None
+    try:
+        return max(int(value), 0)
+    except (TypeError, ValueError):
+        return PILOT_FALLBACK_ASSETS
+
+
+def _apply(state: dict) -> None:
+    """Copy a verified state (license_token.claims_to_state) into the singleton. Caller holds the lock."""
+    limits = state.get("limits")
+    _license_state.valid = bool(state.get("valid", False))
+    _license_state.plan_code = state.get("plan_code")
+    _license_state.plan_name = state.get("plan_name")
+    _license_state.is_pilot_mode = bool(state.get("is_pilot_mode", False))
+    _license_state.max_assets = _max_assets(limits)
+    try:
+        _license_state.addon_packs = int(limits.get("addon_packs") or 0) if isinstance(limits, dict) else 0
+    except (TypeError, ValueError):
+        _license_state.addon_packs = 0
+    _license_state.expires_at = _utc_from_epoch(state.get("expires_at"))
+
+
+def _clear_entitlement() -> None:
+    """No license: no plan, no assets. Caller holds the lock."""
+    _license_state.plan_code = None
+    _license_state.plan_name = None
+    _license_state.is_pilot_mode = False
+    _license_state.max_assets = None
+    _license_state.addon_packs = 0
+    _license_state.expires_at = None
 
 
 def get_license_state() -> LicenseState:
     """
-    Get current license state (thread-safe read).
+    Get current license state (thread-safe read), with the offline rules applied.
 
-    Fails closed on staleness: a state that has not been confirmed by the
-    license server within LICENSE_OFFLINE_GRACE_HOURS is reported as invalid,
-    even if the last answer we got was "valid". Otherwise a permanently
-    unreachable license server would grant an unlimited free run.
+    The license's own plan holds for OFFLINE_GRACE after the last signed
+    answer; then the pilot entitlement (PILOT_FALLBACK_ASSETS assets) for
+    PILOT_FALLBACK_DAYS; then the state is invalid. A permanently unreachable
+    license server must not grant an unlimited free run, and a short outage
+    must not lock the product out.
     """
     with _state_lock:
-        valid = _license_state.valid
-        message = _license_state.message
-        last = _license_state.last_validated_at
-        # The grace window counts from the signed issue time when there is one.
-        reference = _license_state.issued_at or last
-        previous_max = _max_seen
-        now = _seen_now()
-
-        if valid and previous_max is not None and now < previous_max - CLOCK_ROLLBACK_TOLERANCE:
-            valid = False
-            message = (
-                "The system clock was set back. Correct the date and time; the license "
-                "is re-validated with the license server."
-            )
-        elif valid and reference is not None and now - reference > _grace_window():
-            valid = False
-            message = (
-                f"License could not be re-validated for more than "
-                f"{settings.LICENSE_OFFLINE_GRACE_HOURS}h. Check connectivity to "
-                f"the license server."
-            )
-
-        # Return a copy to avoid external mutation
-        return LicenseState(
-            valid=valid,
-            plan_type=_license_state.plan_type,
+        current = LicenseState(
+            valid=_license_state.valid,
+            plan_code=_license_state.plan_code,
+            plan_name=_license_state.plan_name,
             is_pilot_mode=_license_state.is_pilot_mode,
-            limits=_license_state.limits.copy() if _license_state.limits else None,
-            usage=_license_state.usage.copy() if _license_state.usage else None,
-            message=message,
-            last_validated_at=last,
+            max_assets=_license_state.max_assets,
+            addon_packs=_license_state.addon_packs,
+            expires_at=_license_state.expires_at,
+            message=_license_state.message,
+            last_validated_at=_license_state.last_validated_at,
             offline=_license_state.offline,
             issued_at=_license_state.issued_at,
         )
+        # The windows count from the signed issue time when there is one.
+        reference = _license_state.issued_at or _license_state.last_validated_at
+        previous_max = _max_seen
+        now = _seen_now()
+
+    if not current.valid:
+        return current
+    if previous_max is not None and now < previous_max - CLOCK_ROLLBACK_TOLERANCE:
+        current.valid = False
+        current.message = (
+            "The system clock was set back. Correct the date and time; the license "
+            "is re-validated with the license server."
+        )
+        return current
+    if current.expires_at is not None and now > current.expires_at:
+        current.valid = False
+        current.message = "The license has expired."
+        return current
+    if reference is None or now - reference <= OFFLINE_GRACE:
+        return current
+
+    fallback_until = reference + OFFLINE_GRACE + timedelta(days=PILOT_FALLBACK_DAYS)
+    if now > fallback_until:
+        current.valid = False
+        current.message = (
+            f"NGCorion has not reached the license server since "
+            f"{reference.strftime('%Y-%m-%d %H:%M')} UTC: past the "
+            f"{int(OFFLINE_GRACE.total_seconds() // 3600)}h grace and the {PILOT_FALLBACK_DAYS}-day "
+            f"pilot fallback. Restore the connection to the license server."
+        )
+        return current
+
+    # The offline pilot: the license keeps its key and term, the entitlement
+    # drops to the pilot's until a signed answer arrives again.
+    current.offline_pilot = True
+    current.offline_pilot_until = fallback_until
+    current.is_pilot_mode = True
+    current.max_assets = PILOT_FALLBACK_ASSETS if current.max_assets is None else min(
+        current.max_assets, PILOT_FALLBACK_ASSETS)
+    current.message = (
+        f"No contact with the license server for more than "
+        f"{int(OFFLINE_GRACE.total_seconds() // 3600)}h: running as a pilot license "
+        f"({PILOT_FALLBACK_ASSETS} assets) until {fallback_until.strftime('%Y-%m-%d %H:%M')} UTC. "
+        f"The {current.plan_name or 'licensed'} plan returns as soon as the license server is reached."
+    )
+    return current
 
 
 def set_license_state(data: dict):
@@ -262,11 +352,7 @@ def set_license_state(data: dict):
     """
     global _signed_token
     with _state_lock:
-        _license_state.valid = data.get("valid", False)
-        _license_state.plan_type = data.get("plan_type")
-        _license_state.is_pilot_mode = data.get("is_pilot_mode", False)
-        _license_state.limits = data.get("limits")
-        _license_state.usage = data.get("usage")
+        _apply(data)
         _license_state.message = data.get("message", "")
         _license_state.last_validated_at = datetime.utcnow()
         _license_state.issued_at = _utc_from_epoch(data.get("issued_at"))
@@ -280,10 +366,10 @@ def mark_license_server_offline(error) -> None:
     Flag that the license server could not be reached, without touching
     validity.
 
-    Used by the heartbeat loop: a failed heartbeat never invalidates a license
-    on its own (the server-side 48h rule does that), but the state must show
-    `offline` so API errors say "license server unreachable" instead of
-    "no valid license".
+    Used by the heartbeat loop: a failed heartbeat never changes the license on
+    its own (the offline windows in get_license_state do, from the signed issue
+    time), but the state must show `offline` so API errors say "license server
+    unreachable" instead of "no valid license".
     """
     with _state_lock:
         _license_state.offline = True
@@ -315,10 +401,7 @@ def mark_license_rejected(reason) -> None:
     with _state_lock:
         _license_state.valid = False
         _license_state.offline = False
-        _license_state.plan_type = None
-        _license_state.is_pilot_mode = False
-        _license_state.limits = None
-        _license_state.usage = None
+        _clear_entitlement()
         _license_state.last_validated_at = datetime.utcnow()
         _license_state.issued_at = None
         _license_state.message = f"License rejected by the license server: {reason}"
@@ -337,10 +420,11 @@ def refresh_license_state(client) -> LicenseState:
       answer is stored as-is and the app locks down. That is a real licensing
       decision.
     * The license server could not be reached -> the last successful state is
-      kept (and flagged `offline`) for up to LICENSE_OFFLINE_GRACE_HOURS. A
-      remote license server WILL have transient outages; flipping `valid` to
-      False on the first failed call would 403 every request in the product
-      because of a dropped packet.
+      kept (and flagged `offline`); get_license_state applies the offline
+      windows to it (own plan for 48h, then the pilot, then locked). A remote
+      license server WILL have transient outages; flipping `valid` to False on
+      the first failed call would 403 every request in the product because of
+      a dropped packet.
 
     * No license is activated at all -> valid=False with an actionable message
       ("activate a license key"), and no exception: this is a steady state, not
@@ -373,9 +457,7 @@ def refresh_license_state(client) -> LicenseState:
         with _state_lock:
             _license_state.valid = False
             _license_state.offline = False
-            _license_state.plan_type = None
-            _license_state.limits = None
-            _license_state.usage = None
+            _clear_entitlement()
             _license_state.message = str(e)
         logger.warning(f"[License] {e}")
         return get_license_state()
@@ -390,22 +472,3 @@ def refresh_license_state(client) -> LicenseState:
             )
         logger.error(f"[License] Validation rejected: {e}")
         raise
-
-
-def update_usage(operation_type: str, delta: int):
-    """
-    Optimistically update local usage counter after successful consume.
-    Thread-safe.
-    """
-    with _state_lock:
-        if _license_state.usage is None:
-            return
-        
-        usage_key_map = {
-            "audit": "used_audits",
-            "harden": "used_hardens",
-        }
-        
-        usage_key = usage_key_map.get(operation_type)
-        if usage_key and usage_key in _license_state.usage:
-            _license_state.usage[usage_key] += delta

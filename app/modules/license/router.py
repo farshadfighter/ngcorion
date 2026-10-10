@@ -13,6 +13,7 @@ from datetime import datetime
 import logging
 import requests
 
+from app.core.asset_entitlement import usage as asset_usage
 from app.core.license_state import get_license_state, refresh_license_state
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, license_error_detail, require_admin
@@ -39,13 +40,55 @@ class LicenseActivateRequest(BaseModel):
 
 
 class LicenseStatusResponse(BaseModel):
-    """License status response"""
+    """License status: the license's plan and its asset limit, as the signed answers say, with the
+    offline rules applied (license_state.get_license_state). No counts from the inventory here:
+    this endpoint answers before login; GET /api/license/usage has them."""
     valid: bool
-    plan_type: Optional[str] = None
-    is_pilot_mode: bool = False
     message: str
-    limits: Optional[dict] = None
-    usage: Optional[dict] = None
+    plan_code: Optional[str] = None
+    plan_name: Optional[str] = None
+    is_pilot_mode: bool = False
+    # None = unlimited.
+    max_assets: Optional[int] = None
+    addon_packs: int = 0
+    expires_at: Optional[datetime] = None
+    # When the license server last signed an answer for this installation.
+    last_contact_at: Optional[datetime] = None
+    # The license server cannot be reached right now.
+    offline: bool = False
+    # No signed answer for more than 48h: running on the pilot entitlement
+    # until `offline_pilot_until` (then locked), or until the server is reached.
+    offline_pilot: bool = False
+    offline_pilot_until: Optional[datetime] = None
+
+
+class LicenseUsageResponse(BaseModel):
+    """The inventory against the license (asset_entitlement.usage)."""
+    used: int
+    max_assets: Optional[int] = None
+    unlimited: bool = False
+    over_limit: bool = False
+    remaining: Optional[int] = None
+    # While over the limit: assets with a higher id are outside the license
+    # (audits and hardening refused); None when all are covered.
+    licensed_through_id: Optional[int] = None
+
+
+def _status(state) -> LicenseStatusResponse:
+    return LicenseStatusResponse(
+        valid=state.valid,
+        message=state.message,
+        plan_code=state.plan_code,
+        plan_name=state.plan_name,
+        is_pilot_mode=state.is_pilot_mode,
+        max_assets=state.max_assets if state.valid else None,
+        addon_packs=state.addon_packs,
+        expires_at=state.expires_at,
+        last_contact_at=state.issued_at,
+        offline=state.offline,
+        offline_pilot=state.offline_pilot,
+        offline_pilot_until=state.offline_pilot_until,
+    )
 
 
 @router.get("/status", response_model=LicenseStatusResponse)
@@ -53,16 +96,12 @@ def get_license_status(request: Request):
     """
     Get current license status.
 
-    The license server's database is the persistent source of truth for usage
-    counters. The in-memory state in this process is only a cache that is synced
-    at startup and on the hourly heartbeat, so it can be stale or empty after a
-    restart (or differ between multiple workers). To keep the usage numbers
-    correct and stable across logout/login and restarts, we reconcile with the
-    license server on every status read, falling back to the cached state only
-    when the server is unreachable.
-
-    Asset Management is not license-gated — `limits`/`usage` only ever contain
-    the audit/hardening dimensions.
+    The license server is the source of truth for the plan and its limit. The
+    in-memory state in this process is a cache synced at startup and on the
+    hourly heartbeat, so it can be stale after a restart (or differ between
+    workers); the status read reconciles with the license server (at most every
+    STATUS_REFRESH_TTL_SECONDS), falling back to the cached state only when the
+    server is unreachable.
     """
     state = get_license_state()
     client = getattr(request.app.state, "license_client", None)
@@ -90,16 +129,16 @@ def get_license_status(request: Request):
             )
             state = get_license_state()
 
-    usage = dict(state.usage) if state.usage else None
+    return _status(state)
 
-    return LicenseStatusResponse(
-        valid=state.valid,
-        plan_type=state.plan_type,
-        is_pilot_mode=state.is_pilot_mode,
-        message=state.message,
-        limits=state.limits,
-        usage=usage
-    )
+
+@router.get("/usage", response_model=LicenseUsageResponse)
+def get_license_usage(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """How many assets the inventory holds against the license's limit (signed-in users)."""
+    return LicenseUsageResponse(**asset_usage(db))
 
 
 @router.post("/activate", response_model=LicenseStatusResponse)
@@ -150,15 +189,7 @@ def _activate(data: LicenseActivateRequest, request: Request):
         start_heartbeat(client)
         
         # Return current state
-        state = get_license_state()
-        return LicenseStatusResponse(
-            valid=state.valid,
-            plan_type=state.plan_type,
-            is_pilot_mode=state.is_pilot_mode,
-            message=state.message,
-            limits=state.limits,
-            usage=state.usage
-        )
+        return _status(get_license_state())
     
     except LicenseServerError as e:
         # The server answered with a 5xx/429: it is broken or overloaded, and

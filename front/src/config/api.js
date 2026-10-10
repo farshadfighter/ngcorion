@@ -1,7 +1,7 @@
 /**
  * The one axios instance every request goes through. It attaches the bearer token and turns error
  * answers into application events: 401 logs out, 503 with "maintenance" shows the restore overlay,
- * 403 becomes the license, quota or permission dialog. Never create another axios instance: these
+ * 403 becomes the license, asset-limit or permission dialog. Never create another axios instance: these
  * rules would be bypassed.
  */
 import axios from 'axios';
@@ -125,9 +125,10 @@ api.interceptors.response.use(
                 return Promise.reject(error);
             }
 
-            // حالت ۲: سهمیه تمام شده — دست نخورده
-            if (data.detail?.includes('quota') || data.detail?.includes('limit')) {
-                window.dispatchEvent(new CustomEvent('quota-exhausted', {
+            // حالت ۲: the license's asset limit (X-Asset-Limit): an asset that cannot be
+            // added, or an audit/hardening of an asset the license does not cover.
+            if (error.response.headers?.["x-asset-limit"]) {
+                window.dispatchEvent(new CustomEvent('asset-limit', {
                     detail: { message: data.detail }
                 }));
                 return Promise.reject(error);

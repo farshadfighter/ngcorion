@@ -102,7 +102,7 @@ jobs:
             left=$(cd /app && find app -name "*.py" ! -name "__init__.py" | sort | tr "\n" " ")
             test "$left" = "app/modules/assets/schemas.py app/modules/hardening/schemas/base.py app/modules/shared/schemas/base.py " \
               || { echo "source left in the image: $left"; exit 1; }
-            for m in main core/license_client core/license_state core/license_token core/dependencies middleware/license_middleware; do
+            for m in main core/license_client core/license_state core/license_token core/asset_entitlement core/dependencies middleware/license_middleware; do
               ls /app/app/$m.cpython-*.so >/dev/null || { echo "app/$m is not compiled"; exit 1; }
             done'
       - name: Start and answer

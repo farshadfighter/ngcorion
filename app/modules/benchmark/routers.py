@@ -25,13 +25,8 @@ from pydantic import BaseModel, Field, create_model
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import (
-    assert_session_access,
-    check_quota_available,
-    consume_quota_on_success,
-    owner_scope,
-    require_permission,
-)
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import assert_session_access, owner_scope, require_permission
 from app.core.hardening_param_security import ParameterSecurityError
 from app.models import Asset, AuditSession, User, log_action
 from app.modules.shared.hardening_audit import log_session_execute_outcome
@@ -109,16 +104,14 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
                    target_id=target_id, result=result, detail=detail)
 
     @router.post("/execute", response_model=BenchmarkSessionResponse,
-                 dependencies=[Depends(check_quota_available("audit"))],
                  summary=f"Run a {spec.label} audit ({spec.benchmark})")
     def execute(body: AuditRequest, request: Request,  # type: ignore[valid-type]
                 current_user: User = Depends(require_permission("AUDITING", "write")),
                 db: Session = Depends(get_db)):
-        """Run an audit. Needs auditing write permission and available audit quota; quota is consumed
-        only when the audit succeeds. Credential, connection and target errors are answered with
-        their own status codes and logged.
+        """Run an audit. Needs auditing write permission and an asset the license covers.
+        Credential, connection and target errors are answered with their own status codes and logged.
         """
-        consume_quota = consume_quota_on_success("audit")
+        require_licensed_asset(db, body.asset_id)
         user_id = current_user.id
         asset = db.query(Asset).filter(Asset.id == body.asset_id).first()
         where = f"Asset ID: {body.asset_id}, Name: {asset.asset_name if asset else None}, " \
@@ -148,7 +141,6 @@ def build_audit_router(spec: ModuleSpec) -> APIRouter:
         summary = service.summary(db, session.id)
         _log(db, user_id, session.id, "success",
              f"{where}, Profile: {body.profile}, Compliance: {session.compliance_pct}%")
-        consume_quota(request)
         return summary
 
     @router.get("/sessions", response_model=List[BenchmarkSessionResponse])
@@ -278,15 +270,15 @@ def build_hardening_router(spec: ModuleSpec) -> APIRouter:
             "auto_fixable": ts.auto_fixable(body.check_id),
         }
 
-    @router.post("/execute-single", dependencies=[Depends(check_quota_available("harden"))])
+    @router.post("/execute-single")
     def execute_single(http_request: Request, body: SingleFixRequest,  # type: ignore[valid-type]
                        current_user: User = Depends(require_permission("HARDENING", "write")),
                        db: Session = Depends(get_db)):
-        """Run one fix. Needs hardening write permission and hardening quota (consumed only on
-        success); with a session id, the session must be the caller's and of this module, and the
+        """Run one fix. Needs hardening write permission and an asset the license covers; with a
+        session id, the session must be the caller's and of this module, and the
         check is marked passed when the fix verifies.
         """
-        consume_quota = consume_quota_on_success("harden")
+        require_licensed_asset(db, body.asset_id)
         user_id = current_user.id
         if body.session_id is not None:
             session = db.query(AuditSession).filter(AuditSession.id == body.session_id).first()
@@ -320,7 +312,6 @@ def build_hardening_router(spec: ModuleSpec) -> APIRouter:
             logger.exception("%s single fix failed", spec.label)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Single fix failed. See the server logs for details.")
-        consume_quota(http_request)
         ok = result.get("success") is True
         _log(1 if ok else 0, 0 if ok else 1, result.get("error_message"))
         return result

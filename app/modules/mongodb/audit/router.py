@@ -13,13 +13,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 
-from app.core.dependencies import( 
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import (
     get_current_user,
     require_permission,
-    assert_session_access, owner_scope,
-    require_quota ,
-    check_quota_available,
-    consume_quota_on_success)
+    assert_session_access,
+    owner_scope,
+)
 
 from app.models import User, log_action
 
@@ -110,19 +110,18 @@ class MongoDBSHAuditResultResponse(BaseModel):
 router = APIRouter(prefix="/api/audit/mongodb", tags=["Audit - MongoDB CIS"])
 
 
-@router.post("/execute", response_model=MongoDBSHAuditSessionResponse, dependencies=[Depends(check_quota_available("audit"))] )
+@router.post("/execute", response_model=MongoDBSHAuditSessionResponse)
 def execute_mongodb_audit(
     audit_request: MongoDBSHAuditRequest,
     request: Request,
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
-    #_quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute a CIS compliance audit on a MongoDB instance.
     ...
     """
-    consume_quota = consume_quota_on_success("audit")
+    require_licensed_asset(db, audit_request.asset_id)
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
@@ -161,7 +160,6 @@ def execute_mongodb_audit(
             result="success",
             detail=f"Asset ID: {audit_request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
-        consume_quota(request)
 
         return summary
 
@@ -304,7 +302,6 @@ def get_asset_audit_history(
     db: Session = Depends(get_db),
 ):
     """Recent MongoDB audit sessions of one asset that the caller can see."""
-    consume_quota = consume_quota_on_success("audit")
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == asset_id).first()

@@ -13,7 +13,6 @@ import {
 } from "../../store/auditSlice";
 import { AuditingWizard } from "./AuditingWizard";
 import { AuditingResultModal } from "./AuditingResultModal";
-import { LicenseLimitModal } from "../License/LicenseLimitModal";
 import { Pagination } from "../Logs/Pagination.jsx";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 import { getDeviceName } from "../../store/hardeningSlice";
@@ -26,12 +25,6 @@ export const AuditingList = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { sessionId } = useParams();
-    const { usage, limits } = useSelector((state) => state.license);
-    const [showLimitModal, setShowLimitModal] = useState(false);
-
-    const isAuditLimitReached =
-        limits?.max_audits !== null &&
-        (usage?.used_audits ?? 0) >= (limits?.max_audits ?? 0);
 
     const { sessions, isLoading, isClearing, error, successMessage } = useSelector(
         (state) => state.audit
@@ -133,8 +126,6 @@ export const AuditingList = () => {
         navigate("/audit/sessions");
     };
 
-    const handleNavigateToLicence = () => navigate("/settings/license");
-
     const handleWizardComplete = () => {
         setShowWizard(false);
         dispatch(fetchAuditSessions());
@@ -164,10 +155,7 @@ export const AuditingList = () => {
             <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                 <button
                     className="btn-auditing-primary"
-                    onClick={() => isAuditLimitReached ? setShowLimitModal(true) : setShowWizard(true)}
-                    disabled={isAuditLimitReached}
-                    title={isAuditLimitReached ? t("Audit limit reached") : ""}
-                    style={{ opacity: isAuditLimitReached ? 0.6 : 1, cursor: isAuditLimitReached ? "not-allowed" : "pointer" }}
+                    onClick={() => setShowWizard(true)}
                 >
                     <img src="/icons/audit.svg" alt="" className="btn-icon" />
                   {t("Add New Auditing")}
@@ -351,18 +339,6 @@ export const AuditingList = () => {
                 />
             )}
 
-            {/* ── License Limit Modal ───────────────────────────────────────────── */}
-            {showLimitModal && (
-                <LicenseLimitModal
-                    isOpen={showLimitModal}
-                    module="auditing"
-                    onClose={() => setShowLimitModal(false)}
-                    onGoToLicence={() => {
-                        setShowLimitModal(false);
-                        handleNavigateToLicence();
-                    }}
-                />
-            )}
         </div>
     );
 };

@@ -2,6 +2,31 @@
 
 ## 2.1.0 — unreleased
 
+### Licensing by number of assets
+
+- A license covers a number of assets: the plan (Essential 25, Professional
+  100, Business 250, Enterprise 500 / 1,000 / 2,500, Enterprise Unlimited)
+  plus add-on packs of 50 assets. Audits and hardening runs are no longer
+  counted; the audit/hardening quotas and the license server's `/consume`
+  are gone.
+- Every asset in the inventory counts. Adding an asset beyond the limit (by
+  hand, by Excel import, from discovery) is refused with a clear message; an
+  import or a bulk approval adds what fits and reports the rest.
+- While the inventory is larger than the license covers, audits and hardening
+  run only on the first assets the license covers (the oldest); the others
+  stay in the inventory, marked "Outside license". Scheduled audits follow the
+  same rule (before, they were not licensed at all), and so does the Cisco
+  auto-audit.
+- Without contact with the license server: the license's plan for 48 hours,
+  then a pilot license (5 assets) for up to 30 days, then locked. The plan
+  returns with the next answer from the license server; nothing changes on the
+  license itself. Before, the license server overwrote the plan with the pilot
+  plan for good. `LICENSE_OFFLINE_GRACE_HOURS` is no longer read.
+- The License page shows the plan, assets used against the limit, add-on
+  packs, expiry, the last contact with the license server, and the offline
+  pilot; the asset pages show the same in the header. The heartbeat reports
+  the asset count to the license server.
+
 ### Licensing can no longer be bypassed by configuration
 
 - Every answer of the license server is signed (Ed25519). NGCorion accepts an

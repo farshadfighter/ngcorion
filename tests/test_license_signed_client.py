@@ -66,23 +66,21 @@ class SigningServer:
                 r = response({"detail": "this license already activate in another VM"}, 400)
                 r.raise_for_status()
             self.bound_fp = fp
-        extra = {"op": body.get("operation_type"), "count": body.get("count")} if typ == "consume" else {}
-        claims = dict(typ=typ, lic=body["license_key"], fp=fp, nonce=body.get("nonce"), **extra)
+        claims = dict(typ=typ, lic=body["license_key"], fp=fp, nonce=body.get("nonce"))
         claims.update(self.overrides)
         token = make_token(key=self.key, **claims)
         payload = {"valid": True, "message": "ok", "organization_token": ORG, "signed_token": token,
                    # Plain fields a fake server could inflate: the client must ignore them.
-                   "limits": {"max_audits": None, "max_hardens": None}}
+                   "limits": {"max_assets": None, "addon_packs": 0}}
         if typ == "heartbeat":
-            payload = {"success": True, "message": "ok", "should_downgrade": False, "signed_token": token}
+            payload = {"success": True, "message": "ok", "signed_token": token}
         return response(payload)
 
 
 def stub_server(method, path, idempotent=False, **kwargs):
     """The development stand-in that used to unlock everything: no signature at all."""
-    return response({"valid": True, "plan_type": "unlimited", "message": "ok", "organization_token": ORG,
-                     "limits": {"max_audits": None, "max_hardens": None},
-                     "usage": {"used_audits": 0, "used_hardens": 0}})
+    return response({"valid": True, "plan_code": "NGC-ENT-ULT-1Y", "message": "ok", "organization_token": ORG,
+                     "limits": {"max_assets": None, "addon_packs": 0}})
 
 
 @pytest.fixture
@@ -156,34 +154,32 @@ def test_without_a_built_in_key_nothing_is_trusted(client, monkeypatch):
 def test_state_comes_from_the_token_not_the_plain_fields(client):
     activate(client, SigningServer())
     state = client.validate()
-    assert state["limits"] == {"max_audits": 100, "max_hardens": 100}   # signed, not the inflated plain field
+    assert state["limits"] == {"max_assets": 350, "addon_packs": 2}   # signed, not the inflated plain field
     assert state["valid"] is True and state["signed_token"]
 
 
 def test_a_signed_no_is_a_no(client):
     activate(client, SigningServer())
-    client._request = SigningServer(valid=False, msg="license has expierd", limits=None, usage=None)
+    client._request = SigningServer(valid=False, msg="license has expierd", limits=None)
     st.set_license_state(client.validate())
     assert st.get_license_state().valid is False
 
 
-def test_consume_must_confirm_the_same_operation(client):
+def test_heartbeat_sends_the_asset_count_and_returns_the_signed_state(client):
     activate(client, SigningServer())
-    client._request = SigningServer()
-    state = client.consume("audit", 1)
-    assert state["usage"]["used_audits"] == 3
+    server = SigningServer()
+    client._request = server
+    result = client.heartbeat(asset_count=37)
+    assert server.calls[-1][1]["asset_count"] == 37
+    assert result["state"]["limits"] == {"max_assets": 350, "addon_packs": 2}
+    assert "should_downgrade" not in result
 
-    client._request = SigningServer(op="harden")
-    with pytest.raises(LicenseAnswerUntrusted, match="does not confirm"):
-        client.consume("audit", 1)
+    client.heartbeat()                      # no count known: the field is left out
+    assert "asset_count" not in server.calls[-1][1]
 
 
-def test_heartbeat_reports_downgrade_from_the_signed_answer(client):
-    activate(client, SigningServer())
-    client._request = SigningServer(down=True)
-    result = client.heartbeat()
-    assert result["should_downgrade"] is True
-    assert result["state"]["signed_token"]
+def test_there_is_no_consume_call(client):
+    assert not hasattr(client, "consume")
 
 
 # ==================== machine binding ====================
@@ -259,27 +255,6 @@ def test_plain_http_to_another_host_is_refused(tmp_path, url):
 @pytest.mark.parametrize("url", ["https://10.0.0.20", "http://127.0.0.1:8001", "http://localhost:8001"])
 def test_https_and_loopback_are_accepted(tmp_path, url):
     assert LicenseClient(url, str(tmp_path)).server_url == url
-
-
-# ==================== the consume dependency ====================
-
-def test_unverified_consume_is_403_and_does_not_count(client):
-    from types import SimpleNamespace
-
-    from fastapi import HTTPException
-
-    from app.core.dependencies import consume_quota_on_success
-
-    activate(client, SigningServer())
-    st.set_license_state(client.validate())
-    before = st.get_license_state().usage
-
-    client._request = stub_server
-    request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(license_client=client)))
-    with pytest.raises(HTTPException) as exc:
-        consume_quota_on_success("audit")(request)
-    assert exc.value.status_code == 403
-    assert st.get_license_state().usage == before
 
 
 # ==================== the license server's address ====================

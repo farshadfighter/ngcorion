@@ -13,12 +13,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import (
-    require_permission,
-    assert_session_access,
-    check_quota_available,
-    consume_quota_on_success,
-)
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import require_permission, assert_session_access
 
 from app.models import User, AuditSession
 from app.models.audit import DeviceType
@@ -160,8 +156,7 @@ def execute_single_fix(
     http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden"))
+    db: Session = Depends(get_db)
 
 ):
     """
@@ -174,7 +169,7 @@ def execute_single_fix(
 
     **Permissions:** Requires HARDENING write permission
     """
-    consume_quota = consume_quota_on_success("harden")
+    require_licensed_asset(db, request.asset_id)
     # Read the id while the session is healthy: current_user may be expired,
     # and refreshing it inside an exception handler (after a failed flush)
     # raises PendingRollbackError, masking the real error.
@@ -194,7 +189,6 @@ def execute_single_fix(
             verify_ssl=request.verify_ssl,
         )
 
-        consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="windows", action="execute_single",

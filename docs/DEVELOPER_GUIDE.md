@@ -75,7 +75,7 @@ and review will send a change back that breaks one of them.
   - a Pydantic model with a plain method or a `computed_field` cannot be
     compiled: put such models in one of the modules listed in
     `KEEP_AS_SOURCE`, or add the module there. Licensing, permission and
-    quota code may never be added to it (`MUST_COMPILE`; the build fails).
+    asset-limit code may never be added to it (`MUST_COMPILE`; the build fails).
   To try a compiled tree locally: `pip install cython==3.2.4 setuptools`, then
   `python scripts/compile_app.py --keep-sources` in a copy of the checkout.
 

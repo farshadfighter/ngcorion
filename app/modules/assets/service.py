@@ -13,6 +13,7 @@ from app.models import (
     NetworkZone, OSCatalog, VendorCatalog,
     AssetDependency, AssetSecurityStatus
 )
+from app.core.asset_entitlement import check_asset_capacity
 from app.modules.assets.change_history import FIELD_META, compute_field_changes
 from .schemas import AssetTypeCreate
 from .hosting import requires_hosting
@@ -158,6 +159,8 @@ class AssetService:
         security_status_data = data.pop('security_status', None)
 
         _validate_hosting(db, data.get('asset_type_id'), data.get('hosted_on_asset_id'))
+        # The license covers a number of assets; refuse past it with a clear 403.
+        check_asset_capacity(db)
 
         # Create asset
         asset = Asset(**data)

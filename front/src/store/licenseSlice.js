@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
     getLicenseStatus,
+    getLicenseUsage,
     activateLicense,
     clearLicenseFromStorage,
 } from "../components/License/licenseService";
@@ -28,6 +29,18 @@ export const getLicenseStatusThunk = createAsyncThunk(
     }
 );
 
+// The inventory against the license's asset limit (GET /api/license/usage).
+export const getLicenseUsageThunk = createAsyncThunk(
+    "license/getUsage",
+    async (_, { rejectWithValue }) => {
+        try {
+            return await getLicenseUsage();
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || err.message);
+        }
+    }
+);
+
 // فعال‌سازی لایسنس
 export const activateLicenseThunk = createAsyncThunk(
     "license/activate",
@@ -43,20 +56,46 @@ export const activateLicenseThunk = createAsyncThunk(
     }
 );
 
+// The status fields of an API answer (LicenseStatusResponse) as slice state.
+function applyStatus(data) {
+    return {
+        isValid: !!data.valid,
+        planCode: data.plan_code ?? null,
+        planName: data.plan_name ?? null,
+        isPilotMode: !!data.is_pilot_mode,
+        maxAssets: data.max_assets ?? null,
+        addonPacks: data.addon_packs ?? 0,
+        expiresAt: data.expires_at ?? null,
+        lastContactAt: data.last_contact_at ?? null,
+        offline: !!data.offline,
+        offlinePilot: !!data.offline_pilot,
+        offlinePilotUntil: data.offline_pilot_until ?? null,
+        message: data.message ?? "",
+    };
+}
+
 // =====================
 // Slice
 // =====================
 const licenseSlice = createSlice({
     name: "license",
     initialState: {
-        // اطلاعات لایسنس فعال
+        // اطلاعات لایسنس فعال (GET /api/license/status)
         isValid: false,
-        planType: null,
+        planCode: null,
+        planName: null,
         isPilotMode: false,
-        limits: null,
-        usage: null,
+        maxAssets: null,          // null = unlimited
+        addonPacks: 0,
         expiresAt: null,
+        lastContactAt: null,      // when the license server last signed an answer
+        offline: false,           // the license server cannot be reached right now
+        offlinePilot: false,      // no contact for > 48h: pilot entitlement until offlinePilotUntil
+        offlinePilotUntil: null,
         message: "",
+        // The inventory against the limit (GET /api/license/usage):
+        // { used, max_assets, unlimited, over_limit, remaining, licensed_through_id }
+        usage: null,
 
         // وضعیت loading
         isActivating: false,
@@ -77,12 +116,8 @@ const licenseSlice = createSlice({
         },
         clearLicense: (state) => {
             clearLicenseFromStorage();
-            state.isValid = false;
-            state.planType = null;
-            state.isPilotMode = false;
-            state.limits = null;
+            Object.assign(state, applyStatus({}));
             state.usage = null;
-            state.message = "";
             state.isInitialized = false;
         },
 
@@ -94,17 +129,14 @@ const licenseSlice = createSlice({
                 state.isValidating = true;
                 state.error = null;
             })
-        .addCase(getLicenseStatusThunk.fulfilled, (state, action) => {
-            state.isValidating = false;
-            state.isValid = action.payload.valid;
-            state.planType = action.payload.plan_type;
-            state.isPilotMode = action.payload.is_pilot_mode;
-            state.limits = action.payload.limits;   // { max_audits, max_hardens } — Asset Management is not license-gated
-            state.usage = action.payload.usage;     // { used_audits, used_hardens }
-            state.expiresAt = action.payload.expires_at;  // ✅ اضافه شد
-            state.message = action.payload.message;
-            state.isInitialized = true;
-        })
+            .addCase(getLicenseStatusThunk.fulfilled, (state, action) => {
+                state.isValidating = false;
+                Object.assign(state, applyStatus(action.payload));
+                state.isInitialized = true;
+            })
+            .addCase(getLicenseUsageThunk.fulfilled, (state, action) => {
+                state.usage = action.payload;
+            })
             .addCase(getLicenseStatusThunk.rejected, (state, action) => {
                 state.isValidating = false;
                 state.isValid = false;
@@ -119,13 +151,7 @@ const licenseSlice = createSlice({
             })
             .addCase(activateLicenseThunk.fulfilled, (state, action) => {
                 state.isActivating = false;
-                state.isValid = action.payload.valid;
-                state.planType = action.payload.plan_type;
-                state.isPilotMode = action.payload.is_pilot_mode;
-                state.limits = action.payload.limits;
-                state.usage = action.payload.usage;     // ✅ اضافه شد
-                state.expiresAt = action.payload.expires_at;  // ✅ اضافه شد
-                state.message = action.payload.message;
+                Object.assign(state, applyStatus(action.payload));
                 state.successMessage = t("License activated successfully!");
                 state.isInitialized = true;
             })

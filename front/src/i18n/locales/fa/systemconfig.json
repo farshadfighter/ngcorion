@@ -40,7 +40,6 @@
   "Enter the SNMP server IP address.": "نشانی IP سرور SNMP را وارد کنید.",
   "Enter the syslog server address.": "نشانی سرور Syslog را وارد کنید.",
   "Every value must be a whole number of days, at least 1.": "هر مقدار باید عدد صحیح روز و دست‌کم ۱ باشد.",
-  "Expires": "انقضا",
   "Exploited in the wild (KEV)": "مورد سوءاستفادهٔ واقعی (KEV)",
   "Facility": "Facility",
   "Footer text (optional)": "متن پاورقی (اختیاری)",

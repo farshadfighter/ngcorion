@@ -146,6 +146,8 @@ from app.core.license_state import (
     restore_cached_state,
 )
 from app.core.heartbeat import start_heartbeat, stop_heartbeat
+# Registers the guard that refuses to flush assets past the license's limit.
+import app.core.asset_entitlement  # noqa: F401,E402
 from app.modules.noc.poller import start_noc_poller, stop_noc_poller
 from app.modules.noc.metrics_retention import start_metrics_retention_worker, stop_metrics_retention_worker
 from app.middleware.license_middleware import LicenseMiddleware
@@ -174,8 +176,8 @@ async def lifespan(app: FastAPI):
     from app.core.license_keys import LICENSE_SERVER_URL as license_server_url, TRUSTED_LICENSE_KEYS
     for name in ignored_license_settings():
         logger.warning(
-            "[Startup] %s is set but ignored: the license server is always %s. "
-            "Remove it from .env.", name, license_server_url,
+            "[Startup] %s is set but ignored: the license server (always %s) and the offline "
+            "rules are part of the code. Remove it from .env.", name, license_server_url,
         )
 
     client = LicenseClient(license_server_url, settings.LICENSE_STORAGE_DIR)
@@ -208,8 +210,9 @@ async def lifespan(app: FastAPI):
             )
         else:
             logger.info(
-                "[Startup] license validated (valid=%s, plan=%s)",
-                state.valid, state.plan_type,
+                "[Startup] license validated (valid=%s, plan=%s, assets=%s)",
+                state.valid, state.plan_code,
+                "unlimited" if state.max_assets is None else state.max_assets,
             )
     except Exception as exc:
         # App starts even if license validation fails — never block startup on
@@ -389,8 +392,9 @@ app.add_middleware(
     # headers axios/browsers add for uploads and content negotiation.
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
     # Only what a cross-origin caller legitimately needs to read. Downloads
-    # (Excel export/template) carry the filename here.
-    expose_headers=["Content-Disposition"],
+    # (Excel export/template) carry the filename here; X-Asset-Limit marks a
+    # refusal because of the license's asset limit (the UI's dialog for it).
+    expose_headers=["Content-Disposition", "X-Asset-Limit"],
 )
 
 # Added last so it is outermost (see the ordering note above) - every

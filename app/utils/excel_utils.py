@@ -404,7 +404,12 @@ def import_assets_from_excel(
     from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
     from datetime import datetime
 
+    from app.core.asset_entitlement import capacity_message, remaining_capacity
+
     results = {"created": 0, "updated": 0, "skipped": 0, "errors": [], "details": []}
+    # New assets the license still covers (None = no limit); rows past it are
+    # reported, not added, and updates of existing assets are unaffected.
+    room = remaining_capacity(db_session)
 
     # The template/export this import must round-trip against (ASSET_LIST_SHEETS,
     # above) spans 4 sheets - Overview, Network & System, Location & Owner,
@@ -666,6 +671,11 @@ def import_assets_from_excel(
                         )
                         continue
 
+                    if room is not None:
+                        if room <= 0:
+                            results["errors"].append(f"Row {row_idx}: {capacity_message()}")
+                            continue
+                        room -= 1
                     row_data["user_id"] = current_user.id
                     new_asset = Asset(**row_data)
                     db_session.add(new_asset)

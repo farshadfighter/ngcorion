@@ -5,18 +5,15 @@
 import { useState } from "react";
 import { HardeningWizard } from "./HardeningWizard";
 import { FixUnsuccessfulWizard } from "./FixUnsuccessfulWizard";
-import { LicenseLimitModal } from "../License/LicenseLimitModal";
 import { useDispatch } from "react-redux";
 import { getLicenseStatusThunk } from "../../store/licenseSlice";
 
 import "../../assets/hardening/FixAll.css";
 import { t } from "../../i18n";
 
-export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => {
+export const HardeningMain = ({ onNavigateToAuditing }) => {
     const [showWizard, setShowWizard] = useState(false);
     const [wizardMode, setWizardMode] = useState(null);
-    const [showLicenseModal, setShowLicenseModal] = useState(false);
-
     const handleFixAllClick = () => {
         console.log("Fix All clicked");
         setWizardMode("fix-all");
@@ -37,10 +34,6 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
         dispatch(getLicenseStatusThunk()); // ✅
     };
 
-
-    const handleLicenseModalClose = () => {
-        setShowLicenseModal(false);
-    };
 
     return (
         <div className="hardening-main-container">
@@ -87,14 +80,6 @@ export const HardeningMain = ({ onNavigateToAuditing, onNavigateToLicence }) => 
                     onNavigateToAuditing={onNavigateToAuditing}
                 />
             )}
-
-            {/* License Limit Modal */}
-            <LicenseLimitModal
-                isOpen={showLicenseModal}
-                onClose={handleLicenseModalClose}
-                module="hardening"
-                onGoToLicence={onNavigateToLicence}
-            />
         </div>
     );
 };

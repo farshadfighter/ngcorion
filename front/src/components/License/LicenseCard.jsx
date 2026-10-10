@@ -1,158 +1,50 @@
 /**
- * Card summarising the license (type, expiry, usage).
+ * One plan of the catalog (or the add-on pack) on the License page.
  */
-import { LICENSE_TYPES, MODULE_LABELS, MODULE_ICONS, API_FIELD_MAP } from "./licenseConfig";
-import { getModuleLimit, formatExpiryDate, isLicenseExpired } from "./licenseHelpers";
+import { ADDON, planLabel } from "./licenseConfig";
 import { t, n } from "../../i18n";
+import { tx } from "../../i18n/tx";
 
-export const LicenseCard = ({ licenseType, isActive = false, apiData = null, onActivate }) => {
-    const license = LICENSE_TYPES[licenseType];
-    if (!license) return null;
-
-    const expired = apiData ? isLicenseExpired(apiData.expires_at) : false;
-
+export const LicenseCard = ({ plan, isActive = false, addon = false }) => {
+    const color = addon ? "#64748B" : plan.color;
+    const title = addon ? t("Add-on pack") : planLabel(plan.code);
+    const code = addon ? ADDON.code : plan.code;
+    const assets = addon ? `+${n(ADDON.assets)}` : plan.assets === null ? t("Unlimited") : n(plan.assets);
     return (
-        <div
-            style={{
-                border: `1px solid #e5e7eb`,
-                borderBottom: `3px solid ${license.borderColor}`,
-                borderRadius: "12px",
-                padding: "20px 24px",
-                backgroundColor: "#ffffff",
-                marginBottom: "16px",
-                opacity: expired ? 0.6 : 1,
-            }}
-        >
-            {/* Header کارت */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div
-                        style={{
-                            width: "42px",
-                            height: "42px",
-                            borderRadius: "8px",
-                            backgroundColor: "white",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <img src="/icons/haedenIcon.svg" alt="" style={{  width: "24px", height: "24px", }} />
-                    </div>
-
-                    <div>
-                        <div style={{ fontSize: "18px", fontWeight: "600", color: "#111827" }}>
-                            {license.name}
-                        </div>
-                        {apiData?.expires_at && (
-                            <div style={{ fontSize: "12px", color: expired ? "#EF4444" : "#6B7280", marginTop: "2px" }}>
-                                {expired ? (
-                                    <>
-                                        <i className="fa-solid fa-ban" style={{ marginInlineEnd: "4px" }} />
-                                        {t("Expired")}
-                                    </>
-                                ) : (
-                                    <>
-                                        <i className="fa-solid fa-circle-check" style={{ marginInlineEnd: "4px", color: "#10B981" }} />
-                                        {t("Expires: {{expires_at}}", { expires_at: formatExpiryDate(apiData.expires_at) })}
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            backgroundColor: "#F3F4F6",
-                            borderRadius: "20px",
-                            padding: "6px 14px",
-                            fontSize: "13px",
-                            color: "#6B7280",
-                        }}
-                    >
-                        <i className="fa-regular fa-clock" />
-                        <span>{t("licence time: {{duration}}", { duration: license.duration })}</span>
-                    </div>
-
-                    {isActive && (
-                        <div
-                            style={{
-                                backgroundColor: license.bgColor,
-                                border: `1px solid ${license.borderColor}`,
-                                color: license.borderColor,
-                                borderRadius: "20px",
-                                padding: "6px 14px",
-                                fontSize: "12px",
-                                fontWeight: "600",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                            }}
-                        >
-                            <i className="fa-solid fa-circle-check" />
-                            {t("Active")}
-                        </div>
-                    )}
-                </div>
+        <div style={{
+            border: isActive ? `2px solid ${color}` : "1px solid #e5e7eb",
+            borderTop: `4px solid ${color}`,
+            borderRadius: "12px",
+            padding: "18px 18px 16px",
+            backgroundColor: isActive ? "#F8FAFC" : "#ffffff",
+            display: "flex", flexDirection: "column", gap: "10px", minWidth: 0,
+        }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                <div style={{ fontWeight: 700, fontSize: "15px", color: "#111827", lineHeight: 1.4 }}>{title}</div>
+                {isActive && (
+                    <span style={{
+                        fontSize: "11px", fontWeight: 700, color: "white", backgroundColor: color,
+                        borderRadius: "20px", padding: "3px 10px", whiteSpace: "nowrap",
+                    }}>
+                        {t("Current")}
+                    </span>
+                )}
             </div>
-
-            {/* ماژول‌ها */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                {Object.keys(MODULE_LABELS).map((module) => {
-                    const { used: usedKey } = API_FIELD_MAP[module];
-                    const usedValue = apiData ? apiData[usedKey] ?? 0 : null;
-                    const limit = getModuleLimit(licenseType, module);
-
-                    return (
-                        <div
-                            key={module}
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                border: "1px solid #E5E7EB",
-                                borderRadius: "8px",
-                                padding: "8px 14px",
-                                backgroundColor: "#F9FAFB",
-                                fontSize: "13px",
-                                color: "#374151",
-                            }}
-                        >
-                            <i className={`fa-solid ${MODULE_ICONS[module]}`} style={{ color: license.borderColor }} />
-                            <span>{MODULE_LABELS[module]}</span>
-                            <span style={{ fontWeight: "700", color: license.borderColor, marginInlineStart: "4px" }}>
-                                {usedValue !== null ? <>{n(usedValue)}/</> : ""}{n(limit)}
-                            </span>
-                        </div>
-                    );
-                })}
+            <div style={{ fontSize: "11px", color: "#6B7280", fontFamily: "monospace" }} dir="ltr">{code}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+                <span style={{ fontSize: "26px", fontWeight: 800, color, fontVariantNumeric: "tabular-nums" }}>{assets}</span>
+                <span style={{ fontSize: "13px", color: "#6B7280" }}>{t("assets")}</span>
             </div>
-
-            {/* دکمه activate */}
-            {!isActive && onActivate && (
-                <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
-                    <button
-                        onClick={() => onActivate(licenseType)}
-                        style={{
-                            padding: "8px 20px",
-                            borderRadius: "8px",
-                            border: "none",
-                            backgroundColor: license.borderColor,
-                            color: "#ffffff",
-                            fontSize: "13px",
-                            fontWeight: "600",
-                            cursor: "pointer",
-                        }}
-                    >
-                        {t("Activate")}
-                    </button>
-                </div>
-            )}
+            <div style={{ fontSize: "12.5px", color: "#4B5563", lineHeight: 1.7 }}>
+                {addon ? (
+                    t("Extends any plan except the pilot and Unlimited; the term follows the license.")
+                ) : (
+                    <>
+                        <div>{tx("Term: {{duration}}", { duration: plan.duration })}</div>
+                        <div>{plan.addons ? t("Add-on packs available") : plan.pilot ? t("Trial; no add-ons") : t("No limit; no add-ons needed")}</div>
+                    </>
+                )}
+            </div>
         </div>
     );
 };

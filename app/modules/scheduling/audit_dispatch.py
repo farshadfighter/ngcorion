@@ -113,5 +113,13 @@ _register_benchmark_modules()
 
 def run_audit(technology: str, db: Session, asset_id: int, user_id: int, params: dict):
     """Execute the audit for `technology`. Raises KeyError for an unknown
-    technology - callers validate against SUPPORTED_TECHNOLOGIES first."""
+    technology - callers validate against SUPPORTED_TECHNOLOGIES first - and
+    PermissionError when the license does not cover the asset (the same rule
+    as an audit started by hand: app/core/asset_entitlement.py)."""
+    from app.core.asset_entitlement import AssetLimitExceeded, require_licensed_asset
+
+    try:
+        require_licensed_asset(db, asset_id)
+    except AssetLimitExceeded as exc:
+        raise PermissionError(exc.detail) from exc
     return _DISPATCH_TABLE[technology](db, asset_id, user_id, params)

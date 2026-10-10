@@ -10,10 +10,13 @@ which is different from how it behaves when a license is genuinely invalid:
 - a licensing verdict from the server — HTTP 200 with `valid: false` on
   validate, or HTTP 400 on the heartbeat — must fail closed immediately, with
   no grace window: the grace window covers outages, not rejections;
+- without contact the license's plan holds for 48 hours, then the pilot
+  (5 assets) for 30 days, then the state is invalid; a signed answer brings
+  the plan back;
 - the last validated state is cached on disk (as the license server's signed
-  token) so a restart during an outage resumes inside the offline grace window
-  instead of refusing every request, while a cache older than the grace
-  window, an edited cache, or a clock set back is refused;
+  token) so a restart during an outage resumes where it was instead of
+  refusing every request, while a cache past both windows, an edited cache, or
+  a clock set back is refused;
 - the heartbeat retries with backoff, survives failures, and never leaves a
   dead thread marked as running.
 
@@ -58,11 +61,11 @@ from tests.license_signing_helpers import (  # noqa: F401  (fixture)
 
 VALID_RESPONSE = {
     "valid": True,
-    "plan_type": "plan_100",
+    "plan_code": "NGC-PRO-100-1Y",
+    "plan_name": "NGCorion Professional",
     "is_pilot_mode": False,
     "message": "ok",
-    "limits": {"max_audits": 100, "max_hardens": 100},
-    "usage": {"used_audits": 3, "used_hardens": 1},
+    "limits": {"max_assets": 100, "addon_packs": 0},
 }
 
 
@@ -95,7 +98,8 @@ class StubClient:
             raise self.validate_error
         return self.validate_result
 
-    def heartbeat(self):
+    def heartbeat(self, asset_count=None):
+        self.asset_count = asset_count
         if self.heartbeat_error:
             raise self.heartbeat_error
         return self.heartbeat_result
@@ -210,16 +214,15 @@ def test_heartbeat_rejection_invalidates_without_waiting_for_the_grace_window():
     assert "License has expired" in state.message
 
 
-def test_rejection_clears_the_plan_and_quota_snapshot():
+def test_rejection_clears_the_plan_and_its_limit():
     _seed_valid_state()
 
     st.mark_license_rejected("License revoked")
 
     state = st.get_license_state()
     assert state.valid is False
-    assert state.plan_type is None
-    assert state.limits is None
-    assert state.usage is None
+    assert state.plan_code is None
+    assert state.max_assets is None
 
 
 def test_rejection_is_written_through_to_the_cache(trusted_test_key):
@@ -302,7 +305,7 @@ def test_cached_state_is_restored_within_the_grace_window(trusted_test_key):
     assert st.restore_cached_state() is True
     restored = st.get_license_state()
     assert restored.valid is True
-    assert restored.plan_type == "plan_100"
+    assert (restored.plan_code, restored.max_assets) == ("NGC-BUS-250-1Y", 350)
     # Flagged offline until this process confirms with the server.
     assert restored.offline is True
 
@@ -317,8 +320,17 @@ def test_restored_state_keeps_the_signed_issue_time(trusted_test_key):
     assert abs((st.get_license_state().issued_at - datetime.utcfromtimestamp(issued)).total_seconds()) < 1
 
 
-def test_cached_state_past_the_grace_window_is_refused(trusted_test_key):
+def test_cache_in_the_pilot_window_restores_as_the_pilot(trusted_test_key):
     cache = FakeCache({"signed_token": make_token(iat=int(time.time()) - 72 * 3600)})
+    st.attach_state_cache(cache, verifier=verifier)
+
+    assert st.restore_cached_state() is True
+    state = st.get_license_state()
+    assert (state.valid, state.offline_pilot, state.max_assets) == (True, True, 5)
+
+
+def test_cached_state_past_both_windows_is_refused(trusted_test_key):
+    cache = FakeCache({"signed_token": make_token(iat=int(time.time()) - (48 * 3600 + 31 * 86400))})
     st.attach_state_cache(cache, verifier=verifier)
 
     assert st.restore_cached_state() is False
@@ -388,13 +400,78 @@ def test_state_cache_write_failure_never_breaks_validation():
     assert st.get_license_state().valid is True
 
 
-def test_grace_window_still_expires_in_memory(trusted_test_key):
-    st.set_license_state(signed_state(iat=int(time.time()) - 49 * 3600))
+# ==================== offline: own plan 48h, then the pilot, then locked ====================
+
+def test_within_48_hours_the_license_keeps_its_plan(trusted_test_key):
+    st.set_license_state(signed_state(iat=int(time.time()) - 47 * 3600))
+
+    state = st.get_license_state()
+
+    assert (state.valid, state.offline_pilot, state.max_assets, state.is_pilot_mode) == (True, False, 350, False)
+
+
+def test_after_48_hours_it_falls_back_to_the_pilot(trusted_test_key):
+    issued = int(time.time()) - 49 * 3600
+    st.set_license_state(signed_state(iat=issued))
+
+    state = st.get_license_state()
+
+    assert (state.valid, state.offline_pilot, state.is_pilot_mode) == (True, True, True)
+    assert state.max_assets == st.PILOT_FALLBACK_ASSETS == 5
+    assert state.plan_code == "NGC-BUS-250-1Y"          # the license is unchanged
+    expected_end = datetime.utcfromtimestamp(issued) + timedelta(hours=48, days=30)
+    assert abs((state.offline_pilot_until - expected_end).total_seconds()) < 1
+    assert "pilot" in state.message
+
+
+def test_an_unlimited_license_offline_is_also_held_to_the_pilot(trusted_test_key):
+    st.set_license_state(signed_state(iat=int(time.time()) - 50 * 3600,
+                                      limits={"max_assets": None, "addon_packs": 0}))
+
+    assert st.get_license_state().max_assets == 5
+
+
+def test_after_the_pilot_month_it_locks(trusted_test_key):
+    st.set_license_state(signed_state(iat=int(time.time()) - (48 * 3600 + 30 * 86400 + 60)))
 
     state = st.get_license_state()
 
     assert state.valid is False
-    assert "could not be re-validated" in state.message
+    assert "pilot fallback" in state.message
+
+
+def test_a_signed_answer_brings_the_plan_back(trusted_test_key):
+    st.set_license_state(signed_state(iat=int(time.time()) - 60 * 3600))
+    assert st.get_license_state().offline_pilot is True
+
+    st.set_license_state(signed_state())                 # the server is reached again
+
+    state = st.get_license_state()
+    assert (state.valid, state.offline_pilot, state.max_assets) == (True, False, 350)
+
+
+def test_an_expired_license_is_not_valid_offline(trusted_test_key):
+    st.set_license_state(signed_state(exp=int(time.time()) - 60))
+
+    state = st.get_license_state()
+
+    assert state.valid is False
+    assert "expired" in state.message
+
+
+def test_a_token_without_an_asset_limit_gets_the_pilot_limit(trusted_test_key):
+    """An answer from a license server before licensing v3 carries audit/hardening quotas; it
+    must not be read as "unlimited assets"."""
+    st.set_license_state(signed_state(limits={"max_audits": None, "max_hardens": None}))
+
+    assert st.get_license_state().max_assets == 5
+
+
+def test_the_offline_rules_are_not_configurable():
+    from app.core.config import settings
+    assert not hasattr(st, "_grace_window")
+    assert st.OFFLINE_GRACE == timedelta(hours=48)
+    assert settings.LICENSE_OFFLINE_GRACE_HOURS is None
 
 
 # ==================== heartbeat ====================
@@ -440,6 +517,16 @@ def test_successful_heartbeat_refreshes_the_state():
     assert client.calls == 1
 
 
+def test_heartbeat_reports_the_asset_count(monkeypatch):
+    import app.core.heartbeat as hb
+    monkeypatch.setattr(hb, "_asset_count", lambda: 42)
+    client = StubClient(validate_result=VALID_RESPONSE)
+
+    HeartbeatService(client)._run_once()
+
+    assert client.asset_count == 42
+
+
 def test_heartbeat_thread_survives_repeated_failures_and_stops_promptly():
     client = StubClient(heartbeat_error=LicenseServerUnreachable("down"))
     service = HeartbeatService(
@@ -462,7 +549,7 @@ def test_heartbeat_thread_survives_repeated_failures_and_stops_promptly():
 def test_a_dead_heartbeat_thread_is_not_reported_as_running():
     """`running` must reflect reality, or start_heartbeat() refuses to restart."""
     class Killer:
-        def heartbeat(self):
+        def heartbeat(self, asset_count=None):
             raise SystemExit("thread killer")
 
     service = HeartbeatService(Killer(), interval_seconds=1)

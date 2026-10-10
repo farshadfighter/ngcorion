@@ -43,7 +43,8 @@ Middleware, outermost first (`app/main.py`):
 3. **LicenseMiddleware** (`app/middleware/license_middleware.py`): refuses
    `/api/*` while no valid license is known (login, health and license
    endpoints pass through). The license state comes from the license server
-   and is cached on disk, with an offline grace window. See section 9.
+   and is cached on disk, with offline rules (own plan 48h, then the pilot).
+   See section 9.
 4. **MaintenanceMiddleware**: turns requests away while a system-backup
    restore swaps the database.
 
@@ -67,8 +68,11 @@ Then the route's dependencies (`app/core/dependencies.py`):
   counts, histories and statistics filter with `owned_sessions`; a hardening
   request that names a session, a finding or an action goes through
   `require_own_session`, `require_own_result` or `require_own_action`.
-- `check_quota_available` / `consume_quota_on_success` enforce the license
-  quota for audits and hardening runs.
+- The license's asset limit (`app/core/asset_entitlement.py`): every audit
+  and hardening entry point calls `require_licensed_asset` before it connects
+  to the target, the code that adds assets calls `check_asset_capacity` (bulk
+  adds: `remaining_capacity`), and a `before_flush` guard refuses any other
+  insert past the limit. Refusals are 403 with `X-Asset-Limit`.
 
 Every state-changing action is written to the audit log
 (`app/models/security_audit_log.py`, `log_action`).
@@ -185,7 +189,7 @@ state). `/api/system/health` (admin) shows whether each task is running.
   alerts bell, user menu) and renders the page in `<Outlet />`.
 - `src/store/*Slice` hold server data per area; requests go through the one
   axios instance `src/config/api.js`, which attaches the token and turns
-  401/403 into logout, license, quota and permission events.
+  401/403 into logout, license, asset-limit and permission events.
 - **i18n** (`src/i18n/`): every UI string is `t("English text")`; Persian
   translations live in `src/i18n/locales/fa/<area>.json` and
   `npm run i18n:check` fails CI if one is missing. Sentences the API sends
@@ -212,7 +216,7 @@ state). `/api/system/health` (admin) shows whether each task is running.
 The license server (separate repository) decides; NGCorion only acts on
 answers it can prove came from it.
 
-- **Signed answers.** Every answer (activate, validate, heartbeat, consume)
+- **Signed answers.** Every answer (activate, validate, heartbeat)
   carries a token signed with the license server's Ed25519 private key.
   `app/core/license_token.py` verifies it against the public keys built into
   `app/core/license_keys.py` (code, not configuration, so it cannot be swapped
@@ -227,10 +231,21 @@ answers it can prove came from it.
   license server binds a license to one fingerprint. Installations activated
   by releases before signing carried the license server's own fingerprint; the
   client re-activates them once with the real one.
-- **Offline grace and the cache.** The on-disk cache stores the last signed
-  token, re-verified at startup; the 48h grace window counts from the token's
-  signed issue time. A clock that goes backwards (to stretch the window) makes
-  the state invalid.
+- **What a license entitles.** A number of assets (`max_assets`: the plan's
+  assets plus 50 per add-on pack, or unlimited), counted over the whole
+  inventory. Assets are not added beyond it; while the inventory is larger
+  (after the offline fallback, or a smaller plan), audits and hardening run
+  only on the first `max_assets` assets by id (the oldest), from the API and
+  from the scheduler. Audits and hardening runs are not counted. The hourly
+  heartbeat reports the asset count to the license server.
+- **Offline, and the cache.** Without a signed answer the license's own plan
+  holds for 48 hours; then NGCorion runs as a pilot license (5 assets) for 30
+  days; then it locks. The next signed answer puts the plan back; the license
+  server never changes a license for being offline. These numbers are code
+  (`app/core/license_state.py`), not configuration. The windows count from
+  the token's signed issue time; the on-disk cache stores that token and is
+  re-verified at startup. A clock that goes backwards (to stretch the window)
+  or a license past its signed expiry makes the state invalid.
 - **Address.** The license server is `https://lic.ngcorion.com`, built into
   the code next to the signing keys (`app/core/license_keys.py`) and verified
   against the public certificate authorities; it cannot be configured. The

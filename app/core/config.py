@@ -5,7 +5,7 @@ Loads settings from environment variables with fallback defaults.
 SECURITY: Override all sensitive defaults in production via .env file.
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 from urllib.parse import urlparse
 import json
 
@@ -144,16 +144,16 @@ class Settings(BaseSettings):
     LICENSE_CONNECT_TIMEOUT: float = 5.0
     LICENSE_READ_TIMEOUT: float = 10.0
     # Attempts per call (1 = no retry). Only connection-level failures are
-    # retried; a read timeout on POST is never retried, because /consume is not
-    # idempotent and a retry could double-charge the quota.
+    # retried on activation; validate and heartbeat also retry read timeouts.
     LICENSE_HTTP_RETRIES: int = 3
 
-    # How long the last successfully validated license state stays usable while
-    # the license server is unreachable. Mirrors the server-side rule that
-    # downgrades a license after 48h without a heartbeat, so a network outage
-    # degrades exactly as slowly as the server policy allows instead of locking
-    # the whole app out on the first failed call.
-    LICENSE_OFFLINE_GRACE_HOURS: int = 48
+    # Ignored (licensing v3). Without contact with the license server NGCorion
+    # keeps the license's plan for 48 hours, then runs as a pilot (5 assets)
+    # for 30 days, then locks: fixed in app/core/license_state.py, because a
+    # setting here could be raised by whoever runs the product. Kept as a field
+    # only so an old .env that still sets it starts with a warning instead of
+    # failing validation.
+    LICENSE_OFFLINE_GRACE_HOURS: Optional[int] = None
 
     # How often the background job scheduler checks for due ScheduledJobs.
     SCHEDULER_SWEEP_INTERVAL_SECONDS: int = 60
@@ -210,9 +210,12 @@ settings = Settings()
 
 
 def ignored_license_settings() -> List[str]:
-    """Names of the old license-server settings that are set although they have no effect."""
-    return [name for name in ("LICENSE_SERVER_URL", "LICENSE_SERVER_CA_BUNDLE")
-            if (getattr(settings, name) or "").strip()]
+    """Names of the old license settings that are set although they have no effect."""
+    names = [name for name in ("LICENSE_SERVER_URL", "LICENSE_SERVER_CA_BUNDLE")
+             if (getattr(settings, name) or "").strip()]
+    if settings.LICENSE_OFFLINE_GRACE_HOURS is not None:
+        names.append("LICENSE_OFFLINE_GRACE_HOURS")
+    return names
 
 
 _INSECURE_DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production-min-32-chars"

@@ -23,6 +23,12 @@ export const getLicenseStatus = async () => {
     return response.data;
 };
 
+// How many assets the inventory holds against the license (signed-in users).
+export const getLicenseUsage = async () => {
+    const response = await api.get('/api/license/usage');
+    return response.data;
+};
+
 export const activateLicense = async (licenseKey) => {
     const response = await api.post('/api/license/activate', {
         license_key: licenseKey,

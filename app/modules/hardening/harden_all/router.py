@@ -11,12 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import (
-    check_quota_available,
-    consume_quota_on_success,
-    require_permission,
-    assert_session_access,
-)
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import require_permission, assert_session_access
 from app.core.ssh_exceptions import (
     SSHAlgorithmMismatchError,
     SSHAuthenticationError,
@@ -79,8 +75,7 @@ def execute_harden_all(
     http_request: Request,
     request: HardenAllRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden")),
+    db: Session = Depends(get_db)
 ):
     """
     Remediate every fixable failed check in the session (or the subset named by
@@ -88,7 +83,6 @@ def execute_harden_all(
 
     Credentials are used for this call only and are never stored.
     """
-    consume_quota = consume_quota_on_success("harden")
     # Read the id up front: current_user can expire, and touching it inside an
     # exception handler after a failed flush raises PendingRollbackError, which
     # would mask the real failure.
@@ -99,6 +93,7 @@ def execute_harden_all(
     _assert_session_owner(db, request.session_id, current_user)
 
     device_family, asset_id = service.describe_session(db, request.session_id)
+    require_licensed_asset(db, asset_id)
 
     def _log(*, success: int = 0, failed: int = 0, error: str = None):
         log_session_execute_outcome(
@@ -118,7 +113,6 @@ def execute_harden_all(
         result = service.execute_plan(db, request, user_id)
 
         if not result.dry_run:
-            consume_quota(http_request)
             _log(success=result.successful, failed=result.failed)
         return result
 

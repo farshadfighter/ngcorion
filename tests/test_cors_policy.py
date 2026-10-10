@@ -43,7 +43,7 @@ from app.core.config import (  # noqa: E402
 # two cannot drift apart silently.
 ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 ALLOWED_HEADERS = ["Authorization", "Content-Type", "Accept", "X-Requested-With"]
-EXPOSED_HEADERS = ["Content-Disposition"]
+EXPOSED_HEADERS = ["Content-Disposition", "X-Asset-Limit"]
 
 TRUSTED = "https://ngcorion.example.com"
 SECOND_TRUSTED = "http://localhost:5173"

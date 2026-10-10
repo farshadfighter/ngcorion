@@ -15,9 +15,13 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
-from app.core.dependencies import( get_current_user, require_permission, assert_session_access, owner_scope, require_quota,
-    check_quota_available,
-    consume_quota_on_success)
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import (
+    get_current_user,
+    require_permission,
+    assert_session_access,
+    owner_scope,
+)
 
 from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, log_action
@@ -135,19 +139,18 @@ class LinuxAuditStatisticsResponse(BaseModel):
 router = APIRouter(prefix="/api/audit/linux", tags=["Audit - Linux CIS"])
 
 
-@router.post("/execute", response_model=LinuxAuditSessionResponse, dependencies=[Depends(check_quota_available("audit"))])
+@router.post("/execute", response_model=LinuxAuditSessionResponse)
 def execute_linux_audit(
     audit_request: LinuxAuditRequest,
     request: Request,
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
-    #_quota_check: None = Depends(require_quota("audit"))
 ):
     """
     Execute CIS compliance audit on a Linux server.
     ...
     """
-    consume_quota = consume_quota_on_success("audit")
+    require_licensed_asset(db, audit_request.asset_id)
     from app.models import Asset
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
     asset_name = asset.asset_name if asset else None
@@ -185,7 +188,6 @@ def execute_linux_audit(
             detail=f"Asset ID: {audit_request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
 
-        consume_quota(request)
 
         return summary
 

@@ -17,7 +17,7 @@ import { ResetPassword } from "./components/ResetPassword.jsx";
 import { DashboardLayout } from "./components/DashboardLayout.jsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import { LicenseActivationScreen } from "./components/License/LicenseActivationScreen.jsx";
-import QuotaExhaustedModal from './components/License/QuotaExhaustedModal';
+import AssetLimitModal from './components/License/AssetLimitModal';
 import {PermissionToast} from "./components/UserManagement/Permissiontoast.jsx";
 import { MaintenanceOverlay } from "./components/SystemBackup/MaintenanceOverlay.jsx";
 
@@ -393,12 +393,12 @@ function AppContent() {
                     <Route path="/dashboard" element={<Navigate to="/overview" replace />} />
                     <Route path="*" element={<Navigate to="/overview" replace />} />
                 </Routes>
+                {/* The license's asset limit refused something (any page); inside the router for its link. */}
+                <AssetLimitModal />
             </BrowserRouter>
 
-            {/* مودال سهمیه تمام شده - نمایش در تمام صفحات */}
             <PermissionToast />
             <MaintenanceOverlay />
-            <QuotaExhaustedModal />
         </>
     );
 }

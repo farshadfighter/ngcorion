@@ -12,13 +12,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import (
-    require_permission,
-    assert_session_access,
-    owner_scope,
-    consume_quota_on_success,
-    check_quota_available,
-)
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import require_permission, assert_session_access, owner_scope
 
 from app.models import User, log_action
 from app.modules.windows.winrm_endpoint import DEFAULT_WINRM_PORT
@@ -126,21 +121,19 @@ router = APIRouter(
 )
 
 
-@router.post("/execute", response_model=WindowsAuditSessionResponse,
-    dependencies=[Depends(check_quota_available("audit"))])
+@router.post("/execute", response_model=WindowsAuditSessionResponse)
 
 def execute_windows_audit(
     audit_request: WindowsAuditRequest,
     request: Request,
     current_user: User = Depends(require_permission("AUDITING", "write")),
     db: Session = Depends(get_db),
-    #_quota_check: None = Depends(require_quota("audit"))
 ):
     """Run a Windows audit now: connect over WinRM with the given credentials (not stored), collect,
     evaluate every rule and store the session and results; uses one audit from the license quota on
     success.
     """
-    consume_quota = consume_quota_on_success("audit")
+    require_licensed_asset(db, audit_request.asset_id)
     from app.models import Asset
 
     asset = db.query(Asset).filter(Asset.id == audit_request.asset_id).first()
@@ -178,7 +171,6 @@ def execute_windows_audit(
             detail=f"Asset ID: {audit_request.asset_id}, Name: {asset_name}, IP: {session.target_ip}, Profile: {audit_request.profile}, Compliance: {session.compliance_pct}%"
         )
         
-        consume_quota(request)
 
         return summary
 

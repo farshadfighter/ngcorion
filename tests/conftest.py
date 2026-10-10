@@ -38,6 +38,31 @@ from unittest.mock import Mock, MagicMock, patch
 MOCK_DATA_DIR = TESTS_DIR / "mock_data"
 
 
+# ==================== LICENSE ====================
+
+@pytest.fixture(autouse=True)
+def unlimited_license():
+    """Every test runs with a valid, unlimited license, as a licensed installation would: tests of
+    other features must not depend on licensing (adding assets and running audits are licensed
+    operations, app/core/asset_entitlement.py). The licensing tests reset the state themselves
+    (their own autouse fixtures run after this one) to test the limits."""
+    from app.core import license_state
+
+    def _reset():
+        license_state._license_state.__init__()
+        license_state._signed_token = None
+        license_state._max_seen = None
+
+    _reset()
+    license_state.set_license_state({
+        "valid": True, "message": "test license", "plan_code": "NGC-ENT-ULT-1Y",
+        "plan_name": "NGCorion Enterprise Unlimited", "is_pilot_mode": False,
+        "limits": {"max_assets": None, "addon_packs": 0},
+    })
+    yield
+    _reset()
+
+
 # ==================== DATA LOADING FIXTURES ====================
 
 @pytest.fixture(scope="session")

@@ -12,13 +12,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import (
-    require_own_session,
-    get_current_user,
-    require_permission,
-    check_quota_available,
-    consume_quota_on_success
-    )
+from app.core.asset_entitlement import require_licensed_asset
+from app.core.dependencies import require_own_session, get_current_user, require_permission
 
 from app.models import User
 from app.modules.shared.hardening_audit import log_session_execute_outcome
@@ -114,8 +109,7 @@ async def execute_single_fix(
     http_request: Request,
     request: SingleFixRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden"))
+    db: Session = Depends(get_db)
 ):
     """
     Execute hardening for a single check.
@@ -124,7 +118,7 @@ async def execute_single_fix(
     """
     # Object-level access: only the owner of the audit (or an admin) may act on it.
     require_own_session(db, request.session_id, current_user)
-    consume_quota = consume_quota_on_success("harden")
+    require_licensed_asset(db, request.asset_id)
     # Read the id while the session is healthy: current_user may be expired,
     # and refreshing it inside an exception handler (after a failed flush)
     # raises PendingRollbackError, masking the real error.
@@ -142,7 +136,6 @@ async def execute_single_fix(
             sudo_password=request.sudo_password,
         )
 
-        consume_quota(http_request)
         succeeded = isinstance(result, dict) and result.get("success") is True
         log_session_execute_outcome(
             db, device_type="mongodb", action="execute_single",

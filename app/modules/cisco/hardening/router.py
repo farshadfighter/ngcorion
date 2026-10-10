@@ -18,14 +18,14 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from app.core.database import get_db
+from app.core.asset_entitlement import (
+    asset_of_action, asset_of_result, check_asset_capacity, require_licensed_asset,
+)
 from app.core.dependencies import (
     owner_scope, require_own_action, require_own_result, require_own_session,
     get_current_user,
     require_permission,
-    require_quota,
-    check_quota_available,
-    consume_quota_on_success,
-    ) 
+)
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
@@ -375,8 +375,7 @@ async def preview_hardening(
     http_request: Request,
     request: HardeningPreviewRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(check_quota_available("harden"))
+    db: Session = Depends(get_db)
 ):
     """
     Preview hardening commands for a failed check.
@@ -399,7 +398,7 @@ async def preview_hardening(
     """
     # Object-level access: only the owner of the audit (or an admin) may act on it.
     require_own_result(db, request.audit_result_id, current_user)
-    consume_quota = consume_quota_on_success("harden")
+    require_licensed_asset(db, asset_of_result(db, request.audit_result_id))
     # Read the id while the session is healthy: current_user may be expired, and
     # refreshing it inside an exception handler (after a failed flush) raises
     # PendingRollbackError, masking the real error.
@@ -431,7 +430,6 @@ async def preview_hardening(
             check_number=preview.get("check_number", ""),
             check_title=preview.get("check_title", ""),
         )
-        consume_quota(http_request)
         return preview
 
     except CheckAlreadyPassingError as e:
@@ -459,8 +457,7 @@ async def preview_hardening(
 def execute_hardening(
     request: HardeningExecuteRequest,
     current_user: User = Depends(require_permission("HARDENING", "write")),
-    db: Session = Depends(get_db),
-    _quota_check: None = Depends(require_quota("harden"))
+    db: Session = Depends(get_db)
 ):
     """
     Execute hardening commands on device.
@@ -492,6 +489,7 @@ def execute_hardening(
     """
     # Object-level access: only the owner of the audit (or an admin) may act on it.
     require_own_action(db, request.action_id, current_user)
+    require_licensed_asset(db, asset_of_action(db, request.action_id))
     # Read the id while the session is healthy: current_user may be expired, and
     # refreshing it inside an exception handler (after a failed flush) raises
     # PendingRollbackError, masking the real error.
@@ -770,6 +768,12 @@ def auto_audit_device(
     - 504: Connection timeout
     - 500: Other execution errors
     """
+    # The audit counts against the license like any other: an inventory asset
+    # the license covers, or room in the license for the asset this creates.
+    if request.asset_id is not None:
+        require_licensed_asset(db, request.asset_id)
+    else:
+        check_asset_capacity(db)
     try:
         result = HardeningService.auto_audit_device(
             db=db,

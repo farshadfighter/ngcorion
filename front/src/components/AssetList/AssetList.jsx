@@ -6,6 +6,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAssets, deleteAsset, clearMessages } from "../../store/assetSlice";
+import { getLicenseUsageThunk } from "../../store/licenseSlice";
 import { usePermission } from "../../hooks/usePermission";
 import api from "../../config/api";
 import { OverviewTab } from "./OverviewTab";
@@ -31,11 +32,15 @@ import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
 const PRIMARY = "#1e3a5f";
 
-// Asset Management has no license entitlement, so this list is not
-// license-gated (no LicenseLimitModal here).
+// The license covers a number of assets: the list shows when the inventory is
+// over that number, and which assets are outside it (audits and hardening run
+// only on the first ones). Adding past the limit is refused by the backend
+// (the asset-limit dialog, components/License/AssetLimitModal.jsx).
 export const AssetList = () => {
     const dispatch = useDispatch();
     const { assets, isLoading, error, successMessage } = useSelector((state) => state.assets);
+    const licenseUsage = useSelector((state) => state.license.usage);
+    const licensedThroughId = licenseUsage?.over_limit ? licenseUsage.licensed_through_id : null;
     const { assetTypes, locations, owners } = useAssetFormOptions();
     // The backend requires ASSET_LIST delete; without this the button is shown
     // to everyone and a user who lacks the permission just gets a 403 that used
@@ -223,6 +228,14 @@ export const AssetList = () => {
         dispatch(fetchAssets());
     };
 
+    // Refresh the license usage whenever the list changes (added, deleted, imported).
+    useEffect(() => {
+        dispatch(getLicenseUsageThunk());
+    }, [dispatch, assets.length]);
+
+    const isOutsideLicense = (asset) => licensedThroughId !== null && licensedThroughId !== undefined
+        && asset.id > licensedThroughId;
+
     const isNewAsset = (asset) => {
         if (!asset.created_at) return false;
         return (new Date() - new Date(asset.created_at)) / (1000 * 60 * 60) < 24;
@@ -236,6 +249,7 @@ export const AssetList = () => {
         onViewHistory:   handleViewHistory,
         canDelete,
         isNewAsset,
+        isOutsideLicense,
         selectedIds,
         onToggleSelect:  toggleSelectOne,
         onToggleAll:     toggleSelectAll,
@@ -281,8 +295,16 @@ export const AssetList = () => {
                        setUploading(true);
                        try {
                            const formData = new FormData(); formData.append("file", file);
-                           await api.post("/api/assets/import/excel/upload", formData);
+                           const res = await api.post("/api/assets/import/excel/upload", formData);
                            await dispatch(fetchAssets());
+                           // Rows the license's asset limit (or anything else) kept out.
+                           const rowErrors = res.data?.errors || [];
+                           if (rowErrors.length) {
+                               setBulkError(tr("Imported {{created}}, updated {{updated}}; {{failed}} rows were not imported: {{first}}", {
+                                   created: res.data.created ?? 0, updated: res.data.updated ?? 0,
+                                   failed: rowErrors.length, first: rowErrors[0],
+                               }));
+                           }
                        } catch (err) {
                            setBulkError(tr("Import failed: {{error}}", { error: err.response?.data?.detail || err.message }));
                        } finally {
@@ -294,6 +316,13 @@ export const AssetList = () => {
             {successMessage && <div className="alert alert-success">{successMessage}</div>}
             {error          && <div className="alert alert-error">{error}</div>}
             {bulkError      && <div className="alert alert-error">{bulkError}</div>}
+            {licenseUsage?.over_limit && (
+                <div className="alert alert-error" role="status">
+                    {tr("The inventory has {{used}} assets and the license covers {{limit}}. Audits and hardening run only on the first {{limit}} assets; those marked \"Outside license\" are kept but not audited.", {
+                        used: licenseUsage.used, limit: licenseUsage.max_assets,
+                    })}
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="asset-tabs">

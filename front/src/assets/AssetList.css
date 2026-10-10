@@ -1047,3 +1047,16 @@ td.completeness-indicator.incomplete {
 
 /* Asset name with its type icon in the inventory tables. */
 .asset-name-cell { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
+
+/* An asset beyond the license's asset limit (audits and hardening refused). */
+.asset-outside-license {
+    margin-inline-start: 8px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #991B1B;
+    background: #FEE2E2;
+    border: 1px solid #FECACA;
+}

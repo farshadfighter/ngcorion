@@ -3,8 +3,8 @@ Compile the NGCorion backend (the `app` package) to native extension modules.
 
 Used by Dockerfile.ngcorion when it builds the production image: every
 module under app/ becomes a compiled .so and its .py source is removed from
-the image, so the code that enforces licensing and quotas (the license client
-and middleware, main.py, the routers with their quota dependencies) cannot be
+the image, so the code that enforces licensing (the license client, state and
+middleware, the asset limit, main.py, the routers that check it) cannot be
 read or edited in place. Package __init__.py files stay as source; they only
 mark packages. So do the few modules in KEEP_AS_SOURCE (below).
 
@@ -42,6 +42,7 @@ KEEP_AS_SOURCE = {
 # build fails rather than shipping the licensing code as editable source.
 MUST_COMPILE = {
     "app/main.py",
+    "app/core/asset_entitlement.py",
     "app/core/config.py",
     "app/core/dependencies.py",
     "app/core/license_client.py",

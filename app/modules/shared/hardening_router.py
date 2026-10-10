@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import assert_session_access, get_current_user, require_permission, require_quota
+from app.core.dependencies import assert_session_access, get_current_user, require_permission
 from app.models import AuditSession, AuditResult, Asset, HardeningAction
 from app.models.audit import CheckStatus
 

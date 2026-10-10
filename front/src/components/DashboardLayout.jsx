@@ -1,7 +1,7 @@
 /**
  * The application shell: sidebar menu (each entry shown only with its read permission), header
  * with the alert bell, language switch and user menu, the forced password-change dialog,
- * maintenance overlay, license and quota dialogs, and the page itself in <Outlet/>.
+ * maintenance overlay, license dialogs, and the page itself in <Outlet/>.
  */
 import React, { Suspense } from 'react';
 import { useSelector, useDispatch } from "react-redux";
@@ -147,11 +147,14 @@ export const DashboardLayout = () => {
         hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
 
-    // Asset Management (asset-list, auto-discovery) is not license-gated, so
-    // those pages don't show a license usage badge.
+    // Pages where the license's asset limit matters show the plan and the
+    // assets used against it.
     const menuToModule = {
         "hardening":        "hardening",
         "operation-device": "auditing",
+        "asset-list":       "assets",
+        "auto-discovery":   "assets",
+        "licence":          "assets",
     };
     const currentModule = menuToModule[activeMenu] || "";
 
@@ -629,7 +632,7 @@ export const DashboardLayout = () => {
                         </div>
                     </div>
                     <div className="header-center" style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-                        {currentModule && <LicenseBadge module={currentModule} />}
+                        {currentModule && <LicenseBadge />}
                     </div>
                     <div className="header-right">
                         <AlertBell summary={alertSummary} onChanged={refreshAlerts} />

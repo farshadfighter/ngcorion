@@ -11,12 +11,12 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
+from app.core.asset_entitlement import require_licensed_asset
 from app.core.dependencies import (
     get_current_user,
     require_permission,
-    assert_session_access, owner_scope,
-    check_quota_available,
-    consume_quota_on_success,
+    assert_session_access,
+    owner_scope,
 )
 
 from app.core.ssh_exceptions import SSHConnectionError
@@ -105,7 +105,6 @@ router = APIRouter(prefix="/api/audit/cisco", tags=["Audit - Cisco CIS"])
 @router.post(
     "/execute",
     response_model=CiscoAuditSessionResponse,
-    dependencies=[Depends(check_quota_available("audit"))],
 )
 def execute_cisco_audit(
     audit_request: CiscoAuditRequest,
@@ -129,7 +128,7 @@ def execute_cisco_audit(
     **Note:** SSH credentials are used only for the audit session and never stored.
     """
     # Get quota consumption function (only consume on success)
-    consume_quota = consume_quota_on_success("audit")
+    require_licensed_asset(db, audit_request.asset_id)
 
     # Get asset info for logging
     from app.models import Asset
@@ -172,7 +171,6 @@ def execute_cisco_audit(
         )
 
         # Only consume quota after successful audit
-        consume_quota(request)
 
         return summary
 
@@ -526,7 +524,6 @@ class CISBenchmarkAuditRequest(BaseModel):
 @router.post(
     "/cis-benchmark/execute",
     response_model=CISBenchmarkTableResponse,
-    dependencies=[Depends(check_quota_available("audit"))],
 )
 def execute_cis_benchmark_audit(
     http_request: Request,
@@ -554,7 +551,7 @@ def execute_cis_benchmark_audit(
 
     **Note:** SSH credentials are used only for the audit session and never stored.
     """
-    consume_quota = consume_quota_on_success("audit")
+    require_licensed_asset(db, request.asset_id)
 
     # Get asset info for logging
     from app.models import Asset
@@ -576,7 +573,6 @@ def execute_cis_benchmark_audit(
             ssh_port=request.ssh_port,
         )
 
-        consume_quota(http_request)
 
         # Return results in CIS Benchmark table format
         table = AuditService.get_cis_benchmark_table(db, session.id)

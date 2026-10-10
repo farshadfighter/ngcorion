@@ -10,6 +10,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 
+from app.core.asset_entitlement import check_asset_capacity
 from app.models import (
     DiscoveryScan,
     DiscoveredHost,
@@ -504,6 +505,7 @@ class DiscoveryService:
             fields_applied = []
 
             if action == "create_new":
+                check_asset_capacity(db)
                 # Create new asset from discovered data
                 new_asset = Asset(
                     asset_name=asset_data.get("asset_name", f"Discovered-{host.ip_address}"),
