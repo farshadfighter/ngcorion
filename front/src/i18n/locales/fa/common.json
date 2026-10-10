@@ -14,6 +14,7 @@
   "Assets currently active and operational": "دارایی‌هایی که اکنون فعال و عملیاتی هستند",
   "At least 8 characters": "حداقل ۸ نویسه",
   "Auditing": "ممیزی",
+  "Authorised use only. This system is monitored: every sign-in and every action is recorded with your user name and address. Unauthorised access is prohibited and may be prosecuted.": "استفاده فقط برای کاربران مجاز. این سامانه پایش می‌شود: هر ورود و هر اقدام با نام کاربری و نشانی شما ثبت می‌شود. دسترسی غیرمجاز ممنوع است و پیگرد قانونی دارد.",
   "Automated checks against the current topology (redundancy, exposure, best practice).": "بررسی خودکار توپولوژی فعلی (افزونگی، در معرض بودن، بهترین روش‌ها).",
   "Back to login": "بازگشت به ورود",
   "Backup Overview": "نمای کلی پشتیبان‌گیری",
@@ -102,6 +103,7 @@
   "User Management": "مدیریت کاربران",
   "Yesterday {{time}}": "دیروز {{time}}",
   "You don't have permission to view {{page}}.": "شما اجازهٔ مشاهدهٔ {{page}} را ندارید.",
+  "You were signed out after a period of inactivity.": "به دلیل مدتی عدم فعالیت از سامانه خارج شدید.",
   "Your password has been reset. Redirecting to login...": "رمز عبور شما بازنشانی شد. در حال انتقال به صفحهٔ ورود...",
   "Your password has been updated. Use your new password next time you log in.": "رمز عبور شما به‌روز شد. از این پس با رمز عبور جدید وارد شوید.",
   "Your password was set by an administrator. Choose your own password to continue.": "رمز عبور شما را مدیر سیستم تعیین کرده است. برای ادامه، رمز عبور خودتان را انتخاب کنید."

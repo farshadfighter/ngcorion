@@ -83,6 +83,22 @@
   Iranian mirrors. CI builds the image and checks it starts, answers and
   contains nothing it should not.
 
+### Security (AFTA review)
+
+- Idle sessions end: a session unused for `SESSION_IDLE_TIMEOUT_MINUTES` (30)
+  is ended at the server and its token revoked; the UI signs out after the
+  same time without keyboard or mouse input (its automatic refreshes would
+  otherwise keep a session alive on an unattended screen). New table
+  `user_sessions`.
+- A notice on the login page before sign-in (`LOGIN_BANNER`, or the built-in
+  Persian/English one).
+- The audit trail (`audit_logs`) is append-only in the database too: a
+  trigger refuses changes and deletions (the backup/restore engine, which
+  replaces the whole database, is the one exception).
+- The sign-in history (`login_logs`) can no longer be cleared from the Logs
+  page: it is an authentication record, and clearing it also reset the
+  failed-login counter an attacker is held back by.
+
 ### Virtual appliance
 
 - `appliance/build.sh` builds NGCorion as a virtual appliance: an OVA for

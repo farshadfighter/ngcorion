@@ -70,7 +70,10 @@ def dsn() -> str:
 
 
 def connect(**kw) -> psycopg.Connection:
-    return psycopg.connect(dsn(), **kw)
+    """A connection for the backup/restore engine. It declares maintenance
+    (ngcorion.audit_maintenance), which the audit trail's append-only trigger
+    lets through: a restore replaces every table, the audit trail included."""
+    return psycopg.connect(dsn(), options="-c ngcorion.audit_maintenance=on", **kw)
 
 
 def _sa_url() -> str:

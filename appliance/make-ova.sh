@@ -35,5 +35,8 @@ done > "$NAME.mf")
 
 mkdir -p "$OUT"
 tar -C "$WORK" --format=ustar -cf "$OUT/$NAME.ova" "$NAME.ovf" "$VMDK" "$NAME.mf"
-qemu-img convert -p -O vhdx -o subformat=dynamic "$QCOW2" "$OUT/$NAME.vhdx"
+# 1 MB blocks (Microsoft's recommendation for Linux guests): with the default
+# 32 MB blocks every block a filesystem touches at all is stored whole, and the
+# VHDX of a mostly empty disk came out nearly three times the size of the qcow2.
+qemu-img convert -p -O vhdx -o subformat=dynamic,block_size=1M "$QCOW2" "$OUT/$NAME.vhdx"
 echo "Made $OUT/$NAME.ova and $OUT/$NAME.vhdx"

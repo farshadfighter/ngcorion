@@ -15,6 +15,7 @@ import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.sessions import touch as touch_session
 from app.core.database import get_db
 from app.core.security import password_fingerprint
 from app.models import User
@@ -122,6 +123,10 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
         )
+
+    # Idle timeout: a session unused for SESSION_IDLE_TIMEOUT_MINUTES is ended
+    # (its token revoked); otherwise the use is noted (app/core/sessions.py).
+    touch_session(db, payload, user.id)
 
     # A password someone else chose must be replaced before anything else.
     # (request is None only when code calls this function directly, never for

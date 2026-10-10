@@ -6,6 +6,24 @@ Report suspected vulnerabilities privately to the maintainers (not in a public
 issue). Include the affected version (`/api/health` shows it), the steps to
 reproduce, and the impact you observed.
 
+## Security controls
+
+How the product authenticates, limits and records what its users do. The same
+controls are mapped to the AFTA / Common Criteria requirements in
+`docs/SECURITY_TARGET.md`.
+
+| Area | Control |
+|---|---|
+| Accounts | Personal accounts, roles (admin, manager, user) and per-module read/write/delete permissions, checked on every API call. |
+| Passwords | Strength rules on every new password; bcrypt hashes; a password set by an admin (new account, reset) must be changed at the next sign-in; reset codes by e-mail are single-use, short-lived and rate-limited. |
+| Sign-in | 5 failures from one address or 10 for one account within 15 minutes block further attempts for 15 minutes; every attempt is recorded (`login_logs`). |
+| Sessions | JWT with a random id: logout revokes it at the server; a password change ends every other session; a session unused for `SESSION_IDLE_TIMEOUT_MINUTES` (30) is ended, and the UI signs out after the same time without input; a token lasts `ACCESS_TOKEN_EXPIRE_MINUTES` (120) at most. |
+| Notice | A notice on the login page before sign-in (`LOGIN_BANNER`, or the built-in one). |
+| Audit trail | Privileged actions are recorded in `audit_logs` (who, what, target, address, result, time). A database trigger refuses any change or deletion; only the backup/restore engine, which replaces the whole database, may. Sign-in history is not clearable from the Logs page either. |
+| Device credentials | Entered per run and never stored, except for scheduled jobs, whose credentials are encrypted (Fernet) with a key outside the database; SSH host keys are pinned (trust on first use). |
+| Licensing | Answers from the license server are Ed25519-signed and verified against keys built into the code; no configuration can switch this off. |
+| Transport | HTTPS only (Traefik, TLS 1.2+), HSTS and security headers; the API is not reachable without TLS. |
+
 ## Dependency checks
 
 CI checks every locked dependency against the known-vulnerability databases on

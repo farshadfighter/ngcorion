@@ -12,6 +12,7 @@ import jwt
 from app.core.config import settings
 from app.core.dependencies import get_current_user, security
 from app.models.revoked_token import RevokedToken
+from app.core.sessions import open_session
 from app.core.security import create_access_token, get_password_hash, password_fingerprint, verify_password
 from app.core.auth_rate_limiter import (
     check_login_rate_limit,
@@ -35,6 +36,20 @@ from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
 
 router = APIRouter()
+
+
+def _open_session(db: Session, token: str, user_id: int, ip: str) -> None:
+    """Start the idle-timeout record of a token this router just issued."""
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    open_session(db, payload, user_id, ip)
+
+
+@router.get("/login-banner")
+def login_banner():
+    """What the login page shows before anyone signs in: the notice (LOGIN_BANNER; null means
+    the built-in bilingual one) and the idle timeout the UI signs out after. Public."""
+    return {"banner": settings.LOGIN_BANNER or None,
+            "idle_timeout_minutes": settings.SESSION_IDLE_TIMEOUT_MINUTES}
 
 
 def log_login_attempt(
@@ -231,6 +246,7 @@ def login(
             "pwv": password_fingerprint(user.hashed_password),
         }
     )
+    _open_session(db, access_token, user.id, client_ip)
     
     # Get user permissions
     permissions = get_user_permissions(db, user.id, user.role)
@@ -317,6 +333,7 @@ def change_own_password(
                detail="Password changed by the user")
     token = create_access_token(data={"sub": current_user.username, "role": current_user.role.value,
                                       "pwv": password_fingerprint(current_user.hashed_password)})
+    _open_session(db, token, current_user.id, client_ip)
     return {
         "access_token": token,
         "token_type": "bearer",

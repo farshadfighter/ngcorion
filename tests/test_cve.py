@@ -523,6 +523,8 @@ def clean(data_dir):
     s = SessionLocal()
     try:
         s.execute(text(f"TRUNCATE {_CVE_TABLES}"))
+        # audit_logs is append-only; test clean-up declares maintenance like the restore engine does.
+        s.execute(text("SET LOCAL ngcorion.audit_maintenance = 'on'"))
         s.execute(text("DELETE FROM audit_logs WHERE module = 'cve' AND user_id = :u"), {"u": uid})
         s.execute(text("DELETE FROM users WHERE id = :u"), {"u": uid})
         s.commit()

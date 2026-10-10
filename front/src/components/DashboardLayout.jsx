@@ -11,6 +11,7 @@ import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import LicenseBadge from './License/LicenseBadge';
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { IdleLogout } from "./IdleLogout";
 import { usePermission } from "../hooks/usePermission";
 import { AlertBell } from "./Alerts/AlertBell";
 import { useAlertSummary } from "./Alerts/useAlertSummary";
@@ -216,6 +217,7 @@ export const DashboardLayout = () => {
 
     return (
         <div className="dashboard-container">
+            <IdleLogout />
             {/* ── SIDEBAR ── */}
             <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
                 <div className="sidebar-header">

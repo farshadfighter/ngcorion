@@ -8,16 +8,35 @@ import { loginUser, clearError } from "../store/authSlice";
 import UserIcon from "../assets/UserIcon.jsx";
 import LockIcon from "../assets/LockIcon.jsx";
 import { currentLanguage, LANGUAGES, setLanguage, t } from "../i18n";
+import api from "../config/api";
+import { IDLE_MINUTES_KEY, IDLE_NOTICE_KEY } from "../utils/idle";
+
+// Shown under the form before anyone signs in, unless the server sets its own (LOGIN_BANNER).
+// (One literal on purpose: the i18n extractor only sees whole strings.)
+const DEFAULT_BANNER = () => t("Authorised use only. This system is monitored: every sign-in and every action is recorded with your user name and address. Unauthorised access is prohibited and may be prosecuted.");
 
 export const Login = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [showErrorDialog, setShowErrorDialog] = useState(false);
+    const [banner, setBanner] = useState(null);
+    const [idleNotice] = useState(() => sessionStorage.getItem(IDLE_NOTICE_KEY) === "1");
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
     const { isLoading, error, token } = useSelector((state) => state.auth);
+
+    // The notice before sign-in, and the idle timeout the app signs out after.
+    useEffect(() => {
+        sessionStorage.removeItem(IDLE_NOTICE_KEY);
+        api.get("/auth/login-banner")
+            .then(({ data }) => {
+                setBanner(data?.banner || "");
+                if (data?.idle_timeout_minutes) localStorage.setItem(IDLE_MINUTES_KEY, String(data.idle_timeout_minutes));
+            })
+            .catch(() => setBanner(""));
+    }, []);
 
     useEffect(() => {
         if (token) {
@@ -122,6 +141,15 @@ export const Login = () => {
                 >
                     {t("Forgot password?")}
                 </button>
+
+                {idleNotice && (
+                    <p className="login-idle-notice" role="status">
+                        {t("You were signed out after a period of inactivity.")}
+                    </p>
+                )}
+                {banner !== null && (
+                    <p className="login-banner" role="note">{banner || DEFAULT_BANNER()}</p>
+                )}
             </form>
 
             {showErrorDialog && error && (

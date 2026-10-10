@@ -23,6 +23,7 @@ from app.models.user import User, UserRole
 from app.models.login_log import LoginLog
 from app.models.password_reset_token import PasswordResetToken
 from app.models.revoked_token import RevokedToken
+from app.models.user_session import UserSession
 
 # Import user permissions
 from app.models.user_permission import UserPermission, ModuleEnum
@@ -193,6 +194,7 @@ __all__ = [
     "LoginLog",
     "PasswordResetToken",
     "RevokedToken",
+    "UserSession",
     "UserPermission",
     "ModuleEnum",
     # Reference tables

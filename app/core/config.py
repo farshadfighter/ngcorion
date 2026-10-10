@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-here-change-in-production-min-32-chars"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
+    # A web session unused for this long is ended (app/core/sessions.py); the
+    # UI also signs out after this long without keyboard or mouse input.
+    SESSION_IDLE_TIMEOUT_MINUTES: int = 30
+    # Notice shown on the login page before anyone signs in (empty: the
+    # built-in bilingual notice).
+    LOGIN_BANNER: Optional[str] = None
 
     # CORS Origins — browsers only; see resolve_cors_origins() below.
     #

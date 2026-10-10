@@ -4,10 +4,15 @@ The System Logs page shows a unified feed stitched together from six sources.
 Its "Clear History" button had no server side at all: the frontend only emptied
 its own Redux array, so the rows came back on the next refresh.
 
-This provides the missing DELETE. It clears the five operational log tables in
+This provides the missing DELETE. It clears the four operational log tables in
 one transaction and reports how many rows went from each.
 
-The security audit trail (audit_logs) is deliberately NOT cleared:
+The security audit trail (audit_logs) and the sign-in history (login_logs) are
+deliberately NOT cleared. Sign-ins are authentication audit records, and the
+failed ones are what the login rate limiter counts: clearing them would wipe
+the evidence of a password-guessing attack and reset its counter.
+
+On the audit trail:
   * it is the tamper-evidence record of privileged actions, including this one;
   * the unified feed's "Auditing" section is a filtered view over it, so wiping
     it would erase unrelated security history to tidy up a log page.
@@ -21,7 +26,6 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.models import (
     User,
-    LoginLog,
     AssetLog,
     AssetRequirementLog,
     DiscoveryAuditLog,
@@ -34,7 +38,6 @@ router = APIRouter(prefix="/api/logs", tags=["Logs"])
 
 # (response key, model). Order is stable so the response reads predictably.
 _CLEARABLE = (
-    ("login", LoginLog),
     ("asset", AssetLog),
     ("asset_requirement", AssetRequirementLog),
     ("discovery", DiscoveryAuditLog),

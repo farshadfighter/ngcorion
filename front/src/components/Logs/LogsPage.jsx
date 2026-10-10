@@ -18,7 +18,6 @@ import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 /* DELETE /api/logs/clear keys -> the Section names this page shows, so the
    summary line matches the table's own labels. */
 const SECTION_LABELS = {
-    login: t("Login"),
     asset: t("Asset Management"),
     asset_requirement: t("Asset Requirement"),
     discovery: t("Auto Discovery"),
@@ -44,9 +43,9 @@ export const LogsPage = () => {
     // so those rows stay on screen afterwards and otherwise look like a failure.
     const handleClearHistory = () => {
         const ok = window.confirm(
-            t("Permanently delete all Login, Asset Management, Asset Requirement, Auto Discovery and Hardening log entries?") +
+            t("Permanently delete all Asset Management, Asset Requirement, Auto Discovery and Hardening log entries?") +
             "\n\n" + t("This cannot be undone.") + "\n\n" +
-            t("Entries in the Auditing section are NOT deleted — they are the security audit trail and are kept on purpose, so they will still be listed after this.")
+            t("Entries in the Login and Auditing sections are NOT deleted — they are the security audit trail and are kept on purpose, so they will still be listed after this.")
         );
         if (ok) dispatch(clearLogs());
     };

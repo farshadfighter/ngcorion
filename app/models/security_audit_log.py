@@ -2,7 +2,11 @@
 Audit Log Model
 
 Tracks all sensitive actions in the system for security and compliance.
-This table is append-only - no UPDATE or DELETE operations should exist.
+This table is append-only: no code path updates or deletes a row, and a
+database trigger (AUDIT_GUARD_SQL; migration a1d3f5b7c9e2, and the listener at
+the end of this file for a database made by create_all) refuses it. Exceptions:
+the ON DELETE SET NULL of a deleted user account, and the backup/restore engine,
+which declares itself with the setting ngcorion.audit_maintenance = on.
 """
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
@@ -190,3 +194,26 @@ def log_discovery_action(db, current_user, action: str, detail: str = None, ip: 
         ip_address=ip,
         detail=detail
     )
+
+
+AUDIT_GUARD_SQL = """
+CREATE OR REPLACE FUNCTION audit_logs_append_only() RETURNS trigger AS $$
+BEGIN
+    IF current_setting('ngcorion.audit_maintenance', true) = 'on' THEN
+        RETURN COALESCE(NEW, OLD);
+    END IF;
+    IF TG_OP = 'UPDATE' AND NEW.user_id IS NULL AND OLD.user_id IS NOT NULL
+       AND (to_jsonb(NEW) - 'user_id') = (to_jsonb(OLD) - 'user_id') THEN
+        RETURN NEW;  -- ON DELETE SET NULL of the user account
+    END IF;
+    RAISE EXCEPTION 'audit_logs is append-only';
+END;
+$$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS audit_logs_no_change ON audit_logs;
+CREATE TRIGGER audit_logs_no_change BEFORE UPDATE OR DELETE ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION audit_logs_append_only();
+"""
+
+from sqlalchemy import DDL, event  # noqa: E402
+
+event.listen(AuditLog.__table__, "after_create", DDL(AUDIT_GUARD_SQL).execute_if(dialect="postgresql"))
