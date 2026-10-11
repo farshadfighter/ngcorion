@@ -148,7 +148,7 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 | **FIA_UAU.7** | عدم نمایش رمز هنگام ورود | فیلدهای `type="password"` در رابط |
 | **FIA_ATD.1** | ویژگی‌های کاربر | نام کاربری، نقش، مجوزها، وضعیت فعال، اجبار تغییر رمز (`app/models/user.py`) |
 | **FMT_SMR.1** | نقش‌ها | admin، manager، user، guest (`UserRole`) |
-| **FMT_MOF.1 / FMT_MTD.1** | مدیریت کارکردها و داده‌های TSF فقط توسط نقش مجاز | `require_admin`، `require_permission(module, type)` در `app/core/dependencies.py`؛ مدیریت کاربر با `USER_MANAGEMENT` |
+| **FMT_MOF.1 / FMT_MTD.1** | مدیریت کارکردها و داده‌های TSF فقط توسط نقش مجاز | `require_admin`، `require_permission(module, type)` در `app/core/dependencies.py`؛ مدیریت کاربر با `USER_MANAGEMENT`؛ تعیین رمز موقت برای کاربر دیگر فقط مدیر سیستم، با تغییر اجباری و پایان نشست‌ها (`UserService.reset_password`) |
 | **FMT_SMF.1** | کارکردهای مدیریتی | ایجاد/غیرفعال‌سازی کاربر، تنظیم مجوز، بازیابی رمز (کد یک‌بارمصرف ایمیلی؛ رمز `admin` از کنسول ماشین مجازی)، تنظیمات سامانه، کلیدهای پین‌شدهٔ دستگاه‌ها، لایسنس، پشتیبان‌گیری |
 | **FDP_ACC.1 / FDP_ACF.1** | کنترل دسترسی بر اساس نقش و مالکیت | مجوز ماژول‌ها و `owner_scope` / `assert_session_access` (کاربر عادی فقط جلسات خودش را می‌بیند) |
 | **FTA_SSL.3** | پایان نشست پس از بیکاری | `SESSION_IDLE_TIMEOUT_MINUTES` (۳۰) سمت سرور (`app/core/sessions.py`) و خروج خودکار رابط (`front/src/components/IdleLogout.jsx`) |

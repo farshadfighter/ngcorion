@@ -1,7 +1,7 @@
 """
 Users Router - User management API with Permission Control
 """
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models import User, UserRole
 from app.schemas.user import (
-    UserCreate, UserUpdate, UserResponse, 
+    AdminPasswordReset, UserCreate, UserUpdate, UserResponse, 
     UserListResponse, ModuleInfo, get_available_modules
 )
 from .service import UserService
@@ -199,6 +199,26 @@ def update_user(
         current_user_id=current_user.id
     )
     return updated_user
+
+
+@router.post("/{user_id}/reset-password", response_model=UserResponse)
+def reset_user_password(
+    user_id: int,
+    data: AdminPasswordReset,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Set a temporary password for another user (system administrators only).
+
+    For a user who forgot their password and cannot use the emailed reset code. The user must
+    choose a new password at the next sign-in, and their open sessions end. Audit-logged
+    (user.password_reset). Not for your own account: use PUT /auth/me/password.
+    """
+    service = UserService(db)
+    return service.reset_password(user_id, data.new_password, actor=current_user,
+                                  ip=request.client.host if request.client else None)
 
 
 @router.delete("/{user_id}")

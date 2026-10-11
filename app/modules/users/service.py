@@ -308,6 +308,31 @@ class UserService:
         
         return user
     
+    def reset_password(self, user_id: int, new_password: str, actor: User, ip: Optional[str] = None) -> User:
+        """A system administrator sets a temporary password for another user (who forgot theirs and
+        has no email for the self-service reset). The user must replace it at the next sign-in
+        (must_change_password), and every session they still have ends at once: tokens carry a
+        fingerprint of the password hash, which no longer matches.
+
+        Changing a password through update_user still needs the user's current password (commit
+        5f147c8): that path is for someone who knows it. This one is separate, limited to system
+        administrators, never for one's own account, and recorded in the audit trail.
+        """
+        if actor is None or actor.role != UserRole.ADMIN:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="Only system administrators can set a temporary password")
+        if actor.id == user_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Change your own password from your account menu")
+        user = self.get_user_by_id(user_id)
+        user.hashed_password = get_password_hash(new_password)
+        user.must_change_password = True
+        self.db.commit()
+        self.db.refresh(user)
+        log_user_action(self.db, actor, "user.password_reset", user.id, ip=ip,
+                        detail=f"Set a temporary password for '{user.username}'; it must be changed at the next sign-in")
+        return user
+
     def delete_user(self, user_id: int, current_user_id: int = None) -> dict:
         """
         Delete user (permissions are deleted automatically via CASCADE)

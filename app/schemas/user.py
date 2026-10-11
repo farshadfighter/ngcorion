@@ -138,6 +138,18 @@ class UserUpdate(BaseModel):
         return validate_password_strength(v)
 
 
+class AdminPasswordReset(BaseModel):
+    """Body of POST /api/users/{id}/reset-password: a temporary password a system administrator sets
+    for another user, who must replace it at the next sign-in. It meets the same policy as any
+    password."""
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator('new_password')
+    @classmethod
+    def _validate_password(cls, v: str) -> str:
+        return validate_password_strength(v)
+
+
 class UserResponse(BaseModel):
     """
     Schema for user response with permissions

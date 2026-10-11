@@ -3,7 +3,9 @@ Password changes through UserService.update_user.
 
 Policy (5f147c8): setting a new password always requires the target user's
 current password - for admins too. A user who has forgotten it resets it via
-the emailed-OTP flow instead (/auth/forgot-password + /auth/reset-password).
+the emailed-OTP flow instead (/auth/forgot-password + /auth/reset-password), or a
+system administrator sets a temporary password for them through the separate,
+audited POST /api/users/{id}/reset-password (tests/test_admin_password_reset.py).
 """
 import pytest
 from fastapi import HTTPException

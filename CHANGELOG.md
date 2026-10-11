@@ -110,6 +110,15 @@
   the filters select. Exports are formula-safe and recorded in the trail
   (`audit_trail.export`). Before, the Logs page showed only the latest 50
   entries of each section, with no search.
+- A system administrator can set a temporary password for another user who
+  cannot sign in and has no email for the self-service reset (User
+  Management → key button; `POST /api/users/{id}/reset-password`). The
+  password meets the password policy (the dialog can generate one), the
+  user's open sessions end at once, the user must choose their own password
+  at the next sign-in, and the action is in the audit trail
+  (`user.password_reset`, never the password). Changing a password through
+  Edit user still needs the user's current password (5f147c8); before, the
+  only way back for such a user was to delete and recreate the account.
 - Date fields follow the interface language: in Persian every date field
   (audit trail, reports, remediation deadlines and acceptances, asset dates,
   CVE export, NOC time range, the system clock) takes and shows Jalali dates

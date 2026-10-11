@@ -100,6 +100,7 @@ const TEMPLATES = [
     // app/core/dependencies.py require_permission
     msg("Insufficient permission: {{permission}} access required for {{module}}"),
     // audit trail details (scripts/audit_messages.py lists them; most specific first)
+    msg("Set a temporary password for '{{username}}'; it must be changed at the next sign-in"),
     msg("Installed certificate from '{{source}}' (issued_to={{value}}, expires_at={{value2}}); traefik: {{value3}}"),
     msg("Software collection on {{asset_name}} ({{ip_address}}) failed: could not connect"),
     msg("Asset ID: {{asset_id}}, Name: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
@@ -701,6 +702,10 @@ msg("The current password is incorrect.");
 msg("The new password must be different from the current one.");
 msg("Password change required: choose your own password before continuing.");
 msg("Session has ended. Please login again.");
+
+// temporary password set by an administrator (app/modules/users/service.py reset_password)
+msg("Only system administrators can set a temporary password");
+msg("Change your own password from your account menu");
 
 // audit trail details without values (scripts/audit_messages.py)
 msg("Password changed by the user");

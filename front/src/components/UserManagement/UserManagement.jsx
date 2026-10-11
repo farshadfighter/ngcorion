@@ -1,5 +1,6 @@
 /**
- * User Management page (administrators): list, search, add, edit, delete.
+ * User Management page (administrators): list, search, add, edit, delete, and (system
+ * administrators) set a temporary password for a user who cannot sign in.
  */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,12 +8,16 @@ import { fetchUsers, deleteUser, clearMessages } from "../../store/userSlice";
 import { AddUserModal } from "./AddUserModal";
 import { EditUserModal } from "./EditUserModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { TempPasswordModal } from "./TempPasswordModal";
 import { t } from "../../i18n";
 import { tv } from "../../i18n/backendText";
 
 export const UserManagement = () => {
     const dispatch = useDispatch();
     const { users, isLoading, error, successMessage } = useSelector((state) => state.users);
+    // Only a system administrator sets temporary passwords, and never their own (the server checks too).
+    const { role: myRole, username: myName } = useSelector((state) => state.auth);
+    const [tempPasswordFor, setTempPasswordFor] = useState(null);
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -103,6 +108,16 @@ export const UserManagement = () => {
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
+                                    {myRole === "admin" && user.username !== myName && (
+                                        <button
+                                            className="btn-icon btn-edit"
+                                            onClick={() => setTempPasswordFor(user)}
+                                            title={t("Set a temporary password")}
+                                            aria-label={t("Set a temporary password")}
+                                        >
+                                            <i className="fa-solid fa-key"></i>
+                                        </button>
+                                    )}
                                     <button
                                         className="btn-icon btn-delete"
                                         onClick={() => handleDeleteClick(user)}
@@ -132,6 +147,9 @@ export const UserManagement = () => {
                         setSelectedUser(null);
                     }}
                 />
+            )}
+            {tempPasswordFor && (
+                <TempPasswordModal user={tempPasswordFor} onClose={() => setTempPasswordFor(null)} />
             )}
             {showDeleteModal && selectedUser && (
                 <DeleteConfirmModal
