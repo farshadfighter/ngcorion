@@ -216,3 +216,22 @@ jobs:
       - name: npm packages (npm audit)
         working-directory: front
         run: npm audit --audit-level=moderate
+
+  docs:
+    name: Documents (Persian PDF)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Chromium for printing
+        run: uv run --no-project --with playwright==1.63.0 python -m playwright install --with-deps chromium
+      - name: User and admin guides, architecture and Security Target as PDF
+        run: >-
+          uv run --no-project --with markdown==3.5.2 --with playwright==1.63.0 --with pypdf==5.4.0
+          python scripts/docs_pdf.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ngcorion-docs-fa-pdf
+          path: dist/docs/*.pdf
+          if-no-files-found: error

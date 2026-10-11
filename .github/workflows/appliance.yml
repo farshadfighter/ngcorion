@@ -124,6 +124,19 @@ jobs:
                  --output-file "$out/ngcorion-$VERSION-sbom-frontend.cdx.json")
           (cd "$out" && sha256sum ngcorion-"$VERSION"-sbom-*.cdx.json >> SHA256SUMS)
 
+      - name: Documents (Persian PDF)
+        # The user and admin guides, the security architecture and the Security Target, printed
+        # from docs/ by scripts/docs_pdf.py (the font comes from front/node_modules, installed for
+        # the SBOM above). Added to SHA256SUMS like the images.
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          out="$PWD/appliance/output/$VERSION"
+          uv run --no-project --with playwright==1.63.0 python -m playwright install --with-deps chromium
+          uv run --no-project --with markdown==3.5.2 --with playwright==1.63.0 --with pypdf==5.4.0 \
+            python scripts/docs_pdf.py --out "$out"
+          (cd "$out" && sha256sum NGCorion-*-fa.pdf >> SHA256SUMS)
+
       - name: Split files over 2 GiB
         id: files
         env:
@@ -160,6 +173,9 @@ jobs:
             echo
             echo "First start and console: \`appliance/README.md\`. Software bill of materials:"
             echo "\`ngcorion-$VERSION-sbom-python.cdx.json\` and \`ngcorion-$VERSION-sbom-frontend.cdx.json\` (CycloneDX)."
+            echo
+            echo "Documents (Persian, PDF): user guide, admin guide, security architecture and Security Target"
+            echo "(\`NGCorion-*-fa.pdf\`), printed from \`docs/\` at this commit."
             if [ -n "$SPLIT" ]; then
               echo
               echo "### Files in parts"

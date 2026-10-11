@@ -42,7 +42,10 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
 4. The tag starts `.github/workflows/appliance.yml` (the Release tag workflow
    starts it itself): it builds the OVA, VHDX and
    qcow2 from that commit, the software bill of materials (CycloneDX, Python and
-   web UI) and `SHA256SUMS`, and attaches them to a **draft** GitHub release.
+   web UI), the Persian documents as PDF (user and admin guides, security
+   architecture, Security Target; `scripts/docs_pdf.py`) and `SHA256SUMS`, and
+   attaches them to a **draft** GitHub release. CI prints the same PDFs on
+   every push (artifact `ngcorion-docs-fa-pdf`).
 5. Try the images (at least VMware ESXi), then publish the draft.
 
 ## Delivery and its verification

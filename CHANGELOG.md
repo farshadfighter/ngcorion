@@ -191,6 +191,15 @@
   (`docs/fa/ADMIN_GUIDE.md`, AGD_PRE/AGD_OPE) and security architecture
   (`docs/fa/ARCHITECTURE.md`, ADV_ARC); the Security Target points to them.
 
+### Documents as PDF
+- The Persian user guide, admin guide, security architecture and Security
+  Target are printed to PDF by `scripts/docs_pdf.py`: right-to-left A4 in the
+  Vazirmatn font, a cover (product, version, document id, Jalali date), a
+  linked table of contents, bookmarks and page numbers; links between the
+  documents lead to the other PDFs. CI builds them on every push (artifact
+  `ngcorion-docs-fa-pdf`) and the appliance release attaches them, listed in
+  `SHA256SUMS`. The Markdown stays the source.
+
 ### Smaller deployment
 
 - The Redis container is gone from `docker-compose.yml` and the appliance: no
