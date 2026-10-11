@@ -48,6 +48,7 @@
   "Must contain at least one special character (@$!%*?&_#)": "باید حداقل یک نویسهٔ خاص داشته باشد (@$!%*?&_#)",
   "Must contain at least one uppercase letter": "باید حداقل یک حرف بزرگ لاتین داشته باشد",
   "No users found": "کاربری پیدا نشد",
+  "NOC": "NOC",
   "Password *": "رمز عبور *",
   "Passwords do not match": "رمزهای عبور یکسان نیستند",
   "Permissions": "دسترسی‌ها",

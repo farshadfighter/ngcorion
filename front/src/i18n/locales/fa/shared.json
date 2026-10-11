@@ -18,6 +18,7 @@
   "CRIT": "بحرانی",
   "Custom": "سفارشی",
   "Data Center": "مرکز داده",
+  "Database": "پایگاه داده",
   "Detected {{label}}": "شناسایی‌شده: {{label}}",
   "DHCP server": "سرور DHCP",
   "Different version": "نسخهٔ متفاوت",

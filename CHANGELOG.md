@@ -191,6 +191,22 @@
   (`docs/fa/ADMIN_GUIDE.md`, AGD_PRE/AGD_OPE) and security architecture
   (`docs/fa/ARCHITECTURE.md`, ADV_ARC); the Security Target points to them.
 
+### A clearer menu
+- The sidebar follows the work: Assets, Security assessment (risk, audits,
+  CVE), Remediation & hardening, Device backups, Network & monitoring,
+  Reports, Administration; at most seven entries per group, plain names
+  instead of the two "Operation & Device" entries.
+- Group headings open and close their group (the current page's group stays
+  open, the rest is remembered per browser); the overview pages that used to
+  open only from a clickable heading are entries of their own. Collapsed, each
+  group is an icon whose entries appear beside it. Entries are real links.
+- Every entry needs the permission its page needs: Risk and License were shown
+  to everyone, and a user without the risk permission landed on "no access".
+  The license and NGCorion backup entries are for system administrators.
+- Logs and the audit trail are one page, "Logs and audit trail", with the
+  module activity as its third tab; `/settings/logs` opens that tab. The CVE
+  database moved to Administration. Page URLs are unchanged.
+
 ### Documents as PDF
 - The Persian user guide, admin guide, security architecture and Security
   Target are printed to PDF by `scripts/docs_pdf.py`: right-to-left A4 in the

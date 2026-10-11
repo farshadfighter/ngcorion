@@ -1,8 +1,9 @@
 /**
- * Audit trail: the whole security audit trail for review, searched, filtered and paged on the server
- * (GET /api/audit-trail/events, /logins), with CSV export of what the filters select. Two tabs:
- * security events (audit_logs: who did what, to what, from where, with what result) and sign-ins
- * (login_logs). Nothing here can change the trail; exporting is itself recorded in it.
+ * Logs and audit trail: the whole security audit trail for review, searched, filtered and paged on
+ * the server (GET /api/audit-trail/events, /logins), with CSV export of what the filters select.
+ * Tabs: security events (audit_logs: who did what, to what, from where, with what result), sign-ins
+ * (login_logs), and module activity (the latest entries of each module's own log, LogsPage, which
+ * /settings/logs opens directly). Nothing here can change the trail; exporting is itself recorded.
  */
 import React, { useEffect, useState } from "react";
 
@@ -11,6 +12,7 @@ import "../../assets/AuditTrail.css";
 import { t, uiLocale, n } from "../../i18n";
 import { tbDetail } from "../../i18n/backendText.js";
 import { DateInput } from "../shared/DateInput.jsx";
+import { LogsPage } from "./LogsPage.jsx";
 
 const PAGE_SIZE = 50;
 
@@ -34,8 +36,8 @@ const resultLabel = (result) => {
 const params = (filters, extra = {}) => Object.fromEntries(
     Object.entries({ ...filters, ...extra }).filter(([, v]) => v !== "" && v !== null && v !== undefined));
 
-export const AuditTrailPage = () => {
-    const [tab, setTab] = useState("events");
+export const AuditTrailPage = ({ initialTab = "events" }) => {
+    const [tab, setTab] = useState(initialTab);
     const [draft, setDraft] = useState(EMPTY_EVENTS);
     const [filters, setFilters] = useState(EMPTY_EVENTS);
     const [page, setPage] = useState(1);
@@ -47,12 +49,13 @@ export const AuditTrailPage = () => {
     // Bumped to reload the filter lists: an export, or another tab, may have added actions.
     const [facetsStamp, setFacetsStamp] = useState(0);
 
-    const path = tab === "events" ? "/api/audit-trail/events" : "/api/audit-trail/logins";
+    const path = { events: "/api/audit-trail/events", logins: "/api/audit-trail/logins" }[tab] || null;
     // The request the table should show; it is loading until the answer to this very request arrives.
     const requestKey = JSON.stringify([path, filters, page]);
     const loading = loadedKey !== requestKey;
 
     useEffect(() => {
+        if (!path) return undefined; // module activity loads its own data
         let current = true;
         api.get(path, { params: params(filters, { page, page_size: PAGE_SIZE }) })
             .then(({ data: body }) => { if (current) { setData(body); setError(null); } })
@@ -133,7 +136,13 @@ export const AuditTrailPage = () => {
                         className={`at-tab ${tab === "logins" ? "is-on" : ""}`} onClick={() => switchTab("logins")}>
                     {t("Sign-ins")}
                 </button>
+                <button type="button" role="tab" aria-selected={tab === "modules"}
+                        className={`at-tab ${tab === "modules" ? "is-on" : ""}`} onClick={() => switchTab("modules")}>
+                    {t("Module activity")}
+                </button>
             </div>
+
+            {tab === "modules" ? <LogsPage embedded /> : <>
 
             <form className="at-filters" onSubmit={apply}>
                 {tab === "events" && (
@@ -248,6 +257,7 @@ export const AuditTrailPage = () => {
                     {t("Next page")}
                 </button>
             </div>
+            </>}
         </div>
     );
 };

@@ -27,7 +27,6 @@ const AssetManagementDashboard = lazy(() => import("./components/AssetManagement
 const AuditingDashboard = lazy(() => import("./components/Auditing/AuditingDashboard").then((m) => ({ default: m.AuditingDashboard })));
 const AuditingList = lazy(() => import("./components/Auditing/AuditingList").then((m) => ({ default: m.AuditingList })));
 const UserManagement = lazy(() => import("./components/UserManagement/UserManagement").then((m) => ({ default: m.UserManagement })));
-const LogsPage = lazy(() => import("./components/Logs/LogsPage").then((m) => ({ default: m.LogsPage })));
 const AuditTrailPage = lazy(() => import("./components/Logs/AuditTrailPage").then((m) => ({ default: m.AuditTrailPage })));
 const BackupPage = lazy(() => import("./components/Backup/BackupPage"));
 const BackupOverview = lazy(() => import("./components/Backup/BackupOverview").then((m) => ({ default: m.BackupOverview })));
@@ -314,7 +313,7 @@ function AppContent() {
                         } />
                         <Route path="/settings/logs" element={
                             <RequirePermission module="logs" name="System Logs">
-                                <LogsPage />
+                                <AuditTrailPage initialTab="modules" />
                             </RequirePermission>
                         } />
                         <Route path="/settings/audit-trail" element={

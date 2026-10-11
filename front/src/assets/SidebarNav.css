@@ -1,0 +1,90 @@
+/* Sidebar menu groups (components/SidebarNav.jsx); the item look itself is in Dashboard.css. */
+
+.sidebar-nav a.nav-item { text-decoration: none; }
+.sidebar-nav a.nav-item:focus-visible,
+.sbn-head:focus-visible,
+.sbn-rail-btn:focus-visible,
+.sbn-flyout-item:focus-visible { outline: 2px solid #ffffff; outline-offset: -2px; }
+
+/* group heading: a button that opens and closes the group */
+.sbn-head {
+    width: 100%;
+    border: none;
+    background: none;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+.sbn-head:hover .nav-section-title { color: rgba(255, 255, 255, 0.9); }
+.sbn-head .nav-section-title { flex: 1; white-space: normal; line-height: 1.5; }
+.sbn-head.nav-section-active .nav-section-title { color: #ffffff; }
+.sbn-head.nav-section-active .section-icon { opacity: 1; }
+/* the group of the current page stays open: nothing to click */
+.sbn-head:disabled { cursor: default; }
+.sbn-head:disabled .sbn-caret { visibility: hidden; }
+
+.sbn-caret {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
+    transition: transform 0.2s ease;
+}
+.sbn-group:not(.is-open) .sbn-caret { transform: rotate(90deg); }
+[dir="rtl"] .sbn-group:not(.is-open) .sbn-caret { transform: rotate(-90deg); }
+
+.sbn-group + .sbn-group,
+.sidebar-nav > a + .sbn-group { border-top: 1px solid rgba(255, 255, 255, 0.07); }
+.sbn-items { padding-bottom: 4px; }
+
+/* collapsed rail: one icon per group, its entries beside it on hover or focus */
+.sbn-rail-btn {
+    width: 100%;
+    border: none;
+    background: none;
+    font: inherit;
+}
+.sbn-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    margin-inline-start: 14px;
+    margin-top: -14px;
+    border-radius: 50%;
+    background: #ef4444;
+}
+.sidebar.collapsed a.nav-item { position: relative; }
+
+.sbn-flyout {
+    position: fixed;
+    inset-inline-start: 70px;
+    z-index: 2000;
+    min-width: 220px;
+    padding: 8px 0;
+    background: #0d2240;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+.sbn-flyout-title {
+    padding: 6px 16px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 4px;
+}
+.sbn-flyout-item {
+    display: block;
+    padding: 8px 16px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.sbn-flyout-item:hover,
+.sbn-flyout-item.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+.sbn-flyout-item.active { box-shadow: inset 4px 0 0 #ffffff; }
+[dir="rtl"] .sbn-flyout-item.active { box-shadow: inset -4px 0 0 #ffffff; }

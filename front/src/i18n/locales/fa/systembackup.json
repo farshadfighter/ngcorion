@@ -126,6 +126,7 @@
   "Making the backup": "در حال ساخت پشتیبان",
   "New passphrase": "رمز جدید",
   "Next backup": "پشتیبان بعدی",
+  "NGCorion backup": "پشتیبان‌گیری NGCorion",
   "NGCorion backup failed": "پشتیبان‌گیری NGCorion ناموفق بود",
   "NGCorion is restoring a backup": "NGCorion در حال بازیابی یک پشتیبان است",
   "NGCorion was restored from the backup of {{when}}.": "NGCorion از پشتیبان {{when}} بازیابی شد.",

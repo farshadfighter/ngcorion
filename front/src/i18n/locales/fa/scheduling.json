@@ -27,6 +27,8 @@
   "Recurrence": "تکرار",
   "Run history": "تاریخچهٔ اجرا",
   "Scan type": "نوع اسکن",
+  "Schedule Auditing": "ممیزی زمان‌بندی‌شده",
+  "Schedule Discovery": "کشف زمان‌بندی‌شده",
   "SQL Server Login": "نام ورود SQL Server",
   "Sudo Password (optional)": "رمز Sudo (اختیاری)",
   "Target (IP / CIDR / range)": "هدف (IP / CIDR / بازه)",
