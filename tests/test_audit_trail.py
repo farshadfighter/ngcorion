@@ -105,7 +105,7 @@ def test_export_is_formula_safe_and_recorded(db, tag):
                                         AuditLog.username == READER.username)
               .order_by(AuditLog.id.desc()).first())
     assert record is not None and record.ip_address == "192.0.2.30"
-    assert "3 rows" in record.detail and tag in record.detail
+    assert record.detail.startswith("Exported 3 security events; filters: ") and tag in record.detail
 
 
 def test_logins(db, tag):

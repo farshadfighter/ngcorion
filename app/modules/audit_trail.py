@@ -198,10 +198,12 @@ def _csv(header: List[str], rows) -> io.StringIO:
 
 
 def _record_export(db: Session, user: User, request: Request, kind: str, filters: dict, rows: int) -> None:
-    used = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in filters.items() if v not in (None, "")}
+    used = ", ".join(f"{k}={v.isoformat() if isinstance(v, date) else v}"
+                     for k, v in filters.items() if v not in (None, ""))
     log_action(db, user_id=user.id, username=user.username, action="audit_trail.export", module="logs",
                ip_address=request.client.host if request.client else None,
-               detail=f"{kind}: {rows} rows; filters {used or 'none'}")
+               detail=(f"Exported {rows} security events; filters: {used or 'none'}" if kind == "events"
+                       else f"Exported {rows} sign-ins; filters: {used or 'none'}"))
 
 
 def _download(content: io.StringIO, name: str) -> Response:

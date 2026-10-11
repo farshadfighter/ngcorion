@@ -110,6 +110,12 @@
   the filters select. Exports are formula-safe and recorded in the trail
   (`audit_trail.export`). Before, the Logs page showed only the latest 50
   entries of each section, with no search.
+- The audit trail reads in Persian: the detail of every event and sign-in is
+  translated at display time (the stored record and the CSV keep the original
+  English). `scripts/audit_messages.py` finds every sentence the code writes
+  into the trail, and a test fails when a new one has no translation. The Logs
+  page says it shows the latest 50 entries of each section and links to the
+  audit trail.
 - The sign-in history table (`login_logs`) is now created by a migration. It
   was only ever made by `create_all` at application start, so a database
   built by Alembic alone (a restore into an empty database, tools, CI) had no

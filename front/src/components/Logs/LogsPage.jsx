@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 import {
     fetchAllLogs,
     clearLogs,
@@ -108,6 +109,19 @@ export const LogsPage = () => {
     return (
         <div className="logs-wrapper">
             <div className="rep-shortcut-row"><ReportShortcut template="user_activity" adminOnly className="bkm-btn bkm-btn-sm" /></div>
+
+            {/* This feed is a snapshot: the latest 50 entries of each section. Reviewing the
+                security audit trail (search, filters, every entry, CSV export) is the Audit
+                trail page's job; say so here, where people look for it first. */}
+            <div className="logs-trail-note" role="note">
+                <i className="fa-solid fa-circle-info" aria-hidden="true" />
+                <span>
+                    {t("This page shows the latest 50 entries of each section. The whole security audit trail, with search, filters and CSV export, is on the Audit trail page.")}
+                </span>
+                <Link to="/settings/audit-trail" className="logs-trail-link">
+                    {t("Open the audit trail")}
+                </Link>
+            </div>
 
             {/* Toolbar */}
             <div className="logs-toolbar">

@@ -99,6 +99,99 @@ const TEMPLATES = [
     msg("{{name}} - {{error}}"),
     // app/core/dependencies.py require_permission
     msg("Insufficient permission: {{permission}} access required for {{module}}"),
+    // audit trail details (scripts/audit_messages.py lists them; most specific first)
+    msg("Installed certificate from '{{source}}' (issued_to={{value}}, expires_at={{value2}}); traefik: {{value3}}"),
+    msg("Software collection on {{asset_name}} ({{ip_address}}) failed: could not connect"),
+    msg("Asset ID: {{asset_id}}, Name: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
+    msg("Session: {{id}}, Asset: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
+    msg("Deleted session for Asset ID: {{asset_id}}, Name: {{asset_name}}, IP: {{target_ip}}"),
+    msg("Asset: {{asset_name}}, Session: {{id}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
+    msg("Deleted session for Asset ID: {{asset_id}}, Name: {{value}}, IP: {{target_ip}}"),
+    msg("Updated webhook '{{name}}' and replaced its secret"),
+    msg("Restore #{{id}} of backup #{{backup_id}} on {{asset_name}} ({{device_ip}}): {{status}}. Reason: {{reason}}"),
+    msg("{{kind}}: {{new}} new, {{changed}} updated, {{removed}} removed, {{kev}} KEV, {{epss}} EPSS"),
+    msg("Asset Name: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}. Error: {{e}}"),
+    msg("Asset Name: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}. Error: {{exc}}"),
+    msg("Exported {{rows}} security events; filters: {{value}}"),
+    msg("Deleted session for Asset ID: {{asset_id}}, IP: {{ip}}"),
+    msg("releases kept besides those in use: {{releases}}"),
+    msg("Exported risk JSON for asset {{asset_id}} ('{{asset_name}}')"),
+    msg("Asset: {{asset_name}}, IP: {{target_ip}}, Profile: {{profile}}, Error: {{e}}"),
+    msg("Deleted session: {{session_id}}, Asset: {{asset_name}}, IP: {{target_ip}}"),
+    msg("Removed the identification of '{{key}}'"),
+    msg("Software collection on {{asset_name}} failed: {{value}}"),
+    msg("Restored {{value}} backup; safety backup {{value2}}"),
+    msg("Updated SMS settings (provider={{value}})"),
+    msg("Deadlines {{value}}, longest acceptance {{value2}}"),
+    msg("Collected {{item_count}} items from {{asset_name}} ({{ip_address}}) over {{platform}}"),
+    msg("Login successfully with {{role}} Role."),
+    msg("Updated SMTP settings (host={{value}}:{{value2}})"),
+    msg("Exported {{rows}} sign-ins; filters: {{value}}"),
+    msg("plan {{plan_code}}, {{max_assets}} assets, valid until {{offline_until}}"),
+    msg("Created user '{{username}}' with role '{{role}}'"),
+    msg("Deleted user '{{username}}' with role '{{role}}'"),
+    msg("Asset: {{asset_name}}, Profile: {{profile}}, Error: {{e}}"),
+    msg("Exported {{value}} software products"),
+    msg("Pinned host key of {{name}} cleared"),
+    msg("{{where}}, Profile: {{profile}}, Compliance: {{compliance_pct}}%"),
+    msg("Updated permissions for '{{username}}'"),
+    msg("export: {{cves}} CVEs written to {{file}}"),
+    msg("Asset ID: {{asset_id}}, Asset Name: {{asset_name}}"),
+    msg("Login successful (role={{role}})"),
+    msg("{{name}} ({{size}} bytes) queued as job {{id}}"),
+    msg("Created zone '{{name}}' (score={{score}})"),
+    msg("Restore test of {{filename}} started"),
+    msg("Default language set to {{value}}"),
+    msg("Updated risk settings: {{value}}"),
+    msg("Copied {{filename}} to destinations"),
+    msg("automatic update on at {{time}}"),
+    msg("Tested rule '{{name}}': {{value}}/{{results}} sent"),
+    msg("Applied {{section}} configuration"),
+    msg("Cleared system logs: {{deleted}}"),
+    msg("Saved with warnings: {{warnings}}"),
+    msg("key {{license_key}}, plan {{status}}, {{status2}} assets"),
+    msg("Destination {{name}} changed"),
+    msg("Destination {{name}} removed"),
+    msg("{{kind}}: {{releases}} - {{records}} records, {{rows}} rows"),
+    msg("Tested webhook '{{name}}': {{value}}"),
+    msg("Restore of {{filename}} started"),
+    msg("Acknowledged '{{title}}' ({{source_label}})"),
+    msg("Created rule '{{name}}' ({{event_type}})"),
+    msg("Turned off rule '{{name}}'"),
+    msg("Updated webhook '{{name}}'"),
+    msg("Deleted webhook '{{name}}'"),
+    msg("Backup #{{id}} queued ({{contents}})"),
+    msg("Destination {{name}} added"),
+    msg("Changed role to '{{role}}'"),
+    msg("Turned on rule '{{name}}'"),
+    msg("Updated zone '{{name}}': {{changes}}"),
+    msg("Identified '{{match_key}}' as {{what}}"),
+    msg("Added webhook '{{name}}'"),
+    msg("Test email to {{to}}: {{value}}"),
+    msg("Updated rule '{{name}}'"),
+    msg("Deleted rule '{{name}}'"),
+    msg("Deleted zone '{{zone_name}}'"),
+    msg("Upload failed: {{exc}}"),
+    msg("Delete failed: {{exc}}"),
+    msg("Updated {{changes}} for '{{username}}'"),
+    msg("Resolved '{{title}}' ({{source_label}})"),
+    msg("Test SMS to {{phone}}: {{value}}"),
+    msg("{{value}} {{host}}:{{port}} - removed {{fingerprints}}"),
+    msg("Uploaded {{original}} as {{filename}}"),
+    msg("Downloaded {{filename}}"),
+    msg("asset {{asset_id}}: {{vendor}} {{product}} {{version}}"),
+    msg("{{ref}} ({{value}}) until {{expires_at}}"),
+    msg("{{filename}}: no match"),
+    msg("Checked {{filename}}: {{verify_status}}"),
+    msg("{{where}}. Error: {{exc}}"),
+    msg("Deleted {{name}}"),
+    msg("Test {{channel}}{{value}}: {{value2}}"),
+    msg("job {{id}} ({{kind}})"),
+    msg("{{ref}} until {{expires_at}}"),
+    msg("{{filename}}: match"),
+    msg("key {{license_key}}: {{detail}}"),
+    msg("{{ref}} on {{asset_name}}: {{value}}"),
+    msg("{{code}} from {{code2}}"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -609,6 +702,30 @@ msg("The new password must be different from the current one.");
 msg("Password change required: choose your own password before continuing.");
 msg("Session has ended. Please login again.");
 
+// audit trail details without values (scripts/audit_messages.py)
+msg("Password changed by the user");
+msg("Password reset code generated");
+msg("Password reset via emailed OTP");
+msg("Current password was wrong");
+msg("No active account for email");
+msg("Invalid or expired reset code");
+msg("Rate limited");
+msg("report settings changed");
+msg("Backup settings changed");
+msg("Backup passphrase set");
+msg("Restore refused: wrong password");
+msg("Backup passphrase change refused");
+msg("Removed the installed certificate and key");
+msg("NVD API key set");
+msg("automatic update off");
+msg("automatic advisory updates on");
+msg("automatic advisory updates off");
+msg("no reason given");
+msg("every asset");
+msg("nothing");
+msg("none");
+msg("no release");
+
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const COMPILED = TEMPLATES.map((key) => {
@@ -635,6 +752,17 @@ export function tb(text) {
         return t(key, values);
     }
     return text;
+}
+
+/** An audit trail detail: one sentence, or several joined with "; " ("NVD API key set; automatic update off"). */
+export function tbDetail(text) {
+    const whole = tb(text);
+    if (whole !== text || typeof text !== "string" || !text.includes("; ")) return whole;
+    const parts = text.split("; ");
+    const shown = parts.map(tb);
+    // a record of values ("rows=3; filters=...") keeps its own separators
+    if (shown.every((part, i) => part === parts[i])) return text;
+    return shown.join(currentLanguage() === "fa" ? "؛ " : "; ");
 }
 
 /** Comma-joined API lists such as "Admins, r.karimi, the person behind it". */

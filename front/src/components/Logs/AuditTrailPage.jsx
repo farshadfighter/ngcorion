@@ -9,7 +9,7 @@ import React, { useEffect, useState } from "react";
 import api from "../../config/api.js";
 import "../../assets/AuditTrail.css";
 import { t, uiLocale, n } from "../../i18n";
-import { tb } from "../../i18n/backendText.js";
+import { tbDetail } from "../../i18n/backendText.js";
 
 const PAGE_SIZE = 50;
 
@@ -208,7 +208,7 @@ export const AuditTrailPage = () => {
                                     <td>{e.target_id ?? "—"}</td>
                                     <td dir="ltr" className="at-mono">{e.ip_address || "—"}</td>
                                     <td><span className={`at-badge ${e.result === "success" ? "ok" : "fail"}`}>{resultLabel(e.result)}</span></td>
-                                    <td dir="auto" className="at-detail">{e.detail ? tb(e.detail) : ""}</td>
+                                    <td dir="auto" className="at-detail">{e.detail ? tbDetail(e.detail) : ""}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -229,7 +229,7 @@ export const AuditTrailPage = () => {
                                     <td><span className={`at-badge ${e.success ? "ok" : "fail"}`}>{e.success ? t("Successful") : t("Failed")}</span></td>
                                     <td dir="ltr" className="at-mono">{e.ip_address || "—"}</td>
                                     <td dir="ltr" className="at-detail at-muted">{e.user_agent || "—"}</td>
-                                    <td dir="auto" className="at-detail">{e.message ? tb(e.message) : ""}</td>
+                                    <td dir="auto" className="at-detail">{e.message ? tbDetail(e.message) : ""}</td>
                                 </tr>
                             ))}
                         </tbody>
