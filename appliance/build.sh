@@ -31,7 +31,6 @@ export BASE_REGISTRY PYPI_INDEX="${PYPI_INDEX:-https://mirror-pypi.runflare.com/
 COMPOSE_IMAGES=(
     "docker.arvancloud.ir/traefik:v3.7"
     "docker.arvancloud.ir/postgres:17-alpine"
-    "docker.arvancloud.ir/redis:8-alpine"
 )
 
 echo "[appliance] NGCorion $VERSION -> $OUT"
@@ -59,9 +58,8 @@ docker save ngcorion/backend:latest "ngcorion/backend:$VERSION" "${COMPOSE_IMAGE
 echo "[appliance] Staging /opt/ngcorion..."
 B="$STAGE/bundle"
 cp "$REPO/docker-compose.yml" "$B/"
-mkdir -p "$B/db/postgres-main" "$B/db/redis" "$B/traefik/dynamic" "$B/traefik/certs" "$B/data/cve" "$B/appliance"
+mkdir -p "$B/db/postgres-main" "$B/traefik/dynamic" "$B/traefik/certs" "$B/data/cve" "$B/appliance"
 cp "$REPO/db/postgres-main/init.sql" "$B/db/postgres-main/"
-cp "$REPO/db/redis/redis.conf" "$B/db/redis/"
 cp "$REPO/traefik/dynamic/tls.yml" "$B/traefik/dynamic/"
 cp -r "$HERE/ngcorion_appliance" "$B/appliance/"
 find "$B/appliance" -name __pycache__ -prune -exec rm -rf {} +

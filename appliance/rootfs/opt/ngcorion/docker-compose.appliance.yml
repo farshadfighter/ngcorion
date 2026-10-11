@@ -8,5 +8,3 @@ services:
     pull_policy: never
   postgres:
     pull_policy: never
-  redis:
-    pull_policy: never

@@ -24,12 +24,6 @@ else
     echo "✗ License DB init script NOT found"
 fi
 
-if [ -f "docker/redis/redis.conf" ]; then
-    echo "✓ Redis config exists"
-else
-    echo "✗ Redis config NOT found"
-fi
-
 echo ""
 echo "=== Docker Installation Check ==="
 

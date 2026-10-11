@@ -270,7 +270,7 @@ answers it can prove came from it.
 ## 10. The virtual appliance
 
 `appliance/` builds NGCorion as a VM image (OVA, VHDX, qcow2): Ubuntu 24.04
-LTS, Docker, the four container images preloaded, and the same
+LTS, Docker, the three container images (backend, PostgreSQL, Traefik) preloaded, and the same
 `docker-compose.yml` under `/opt/ngcorion` (with `docker-compose.appliance.yml`
 forbidding pulls). See `appliance/README.md`.
 

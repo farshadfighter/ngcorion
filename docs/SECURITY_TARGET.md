@@ -31,12 +31,12 @@ NGCorion یک برنامهٔ تحت وب برای سازمان‌هاست که:
 
 * **ماشین مجازی آماده (Appliance):** فایل OVA (VMware)، VHDX (Hyper-V)، qcow2 (KVM)، مبتنی بر Ubuntu 24.04،
   بدون SSH و بدون پوستهٔ ورود؛ پیکربندی اولیه فقط از کنسول (`appliance/`).
-* **نصب روی Docker** با `docker-compose.yml` (Traefik، backend، PostgreSQL، Redis).
+* **نصب روی Docker** با `docker-compose.yml` (Traefik، backend، PostgreSQL).
 
 ### ۱.۳ مرز فیزیکی و منطقی TOE
 
 ```
-مرورگر کاربر ──HTTPS──► Traefik (TLS) ──► NGCorion backend (FastAPI) ──► PostgreSQL / Redis
+مرورگر کاربر ──HTTPS──► Traefik (TLS) ──► NGCorion backend (FastAPI) ──► PostgreSQL
                                               │
                                               ├── SSH/WinRM/API ──► دارایی‌های ممیزی‌شونده
                                               └── HTTPS ──► سرور لایسنس (lic.ngcorion.com)

@@ -156,6 +156,12 @@
   (`docs/fa/ADMIN_GUIDE.md`, AGD_PRE/AGD_OPE) and security architecture
   (`docs/fa/ARCHITECTURE.md`, ADV_ARC); the Security Target points to them.
 
+### Smaller deployment
+
+- The Redis container is gone from `docker-compose.yml` and the appliance: no
+  NGCorion code used it (the license server, which did, has its own). One
+  service, image and volume fewer to run, patch and secure.
+
 ### Code standards
 
 - The backend is linted in CI with ruff (pyflakes and syntax errors: unused or
@@ -170,6 +176,10 @@
 
 ### Upgrade notes
 
+- Docker installations: start with `docker compose up -d --remove-orphans` so
+  the old `redis` container is removed; the `redis_data` volume can then be
+  deleted (`docker volume ls`, `docker volume rm <project>_redis_data`). The
+  appliance does this by itself.
 - Docker installations: check that `SECRET_KEY` in `.env` has at least 32
   characters (the appliance generates 64). A shorter key now stops the start.
   Replacing it signs everyone out and makes stored secrets (scheduled-job

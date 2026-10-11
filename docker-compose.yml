@@ -140,10 +140,6 @@ services:
       # another container on this compose network can reach uvicorn directly
       # to forge the header, and Traefik is the only thing that does.
       FORWARDED_ALLOW_IPS: "*"
-      # No application code uses Redis today; the variable is kept for forward
-      # compatibility. (The license server, which used DB 1 of this instance,
-      # now runs on its own host with its own Redis.)
-      REDIS_URL: redis://redis:6379/0
       # The license server is always https://lic.ngcorion.com, built into the
       # code (app/core/license_keys.py); there is nothing to configure. This
       # host must resolve that name and reach it on port 443.
@@ -175,8 +171,6 @@ services:
       retries: 3
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
@@ -235,28 +229,8 @@ services:
     networks:
       - app
 
-  redis:
-    restart: always
-    image: docker.arvancloud.ir/redis:8-alpine
-    container_name: redis
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - redis_data:/data
-      - ./db/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    expose:
-      - "6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 60s
-    networks:
-      - app
-
 volumes:
   postgres_data:
-  redis_data:
   license_client_data:
   ngcorion_backups:
 

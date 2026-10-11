@@ -218,7 +218,7 @@ class System:
         for line in (out.stdout or "").splitlines():
             if "\t" in line:
                 name, status = line.split("\t", 1)
-                if name in ("backend", "postgres", "redis", "traefik"):
+                if name in ("backend", "postgres", "traefik"):
                     rows.append((name, status))
         return rows
 

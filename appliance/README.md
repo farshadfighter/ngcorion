@@ -33,8 +33,8 @@ slower.
 
 What happens:
 
-1. The backend image is built (or `NGCORION_BACKEND_IMAGE` is used); Traefik,
-   PostgreSQL and Redis are pulled; all four are saved into one archive.
+1. The backend image is built (or `NGCORION_BACKEND_IMAGE` is used); Traefik and
+   PostgreSQL are pulled; all three are saved into one archive.
 2. Packer boots the Ubuntu cloud image under QEMU. A temporary build account
    (random password per build, set through cloud-init) is the only way in.
 3. `provision/10-base.sh` updates the OS, installs Docker and the guest tools
