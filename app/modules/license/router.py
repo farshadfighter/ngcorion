@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, license_error_detail, require_admin
 from app.core.license_client import LicenseRejected, LicenseServerError, LicenseServerUnreachable
 from app.core.heartbeat import start_heartbeat
+from app.models.security_audit_log import log_action
 
 logger = logging.getLogger(__name__)
 
@@ -175,13 +176,22 @@ def activate_license(
     license is valid, replacing it is an admin action; otherwise anyone who can
     reach the server could swap the installed key out from under the operator.
     """
-    _require_admin_while_licensed(credentials, db)
-    return _activate(data, request)
+    actor = _require_admin_while_licensed(credentials, db)
+    try:
+        status = _activate(data, request)
+    except HTTPException as exc:
+        _audit(db, actor, request, "license.activate", "failed", f"key {_masked(data.license_key)}: {exc.detail}")
+        raise
+    _audit(db, actor, request, "license.activate", "success",
+           f"key {_masked(data.license_key)}, plan {getattr(status, 'plan_code', None)}, "
+           f"{getattr(status, 'max_assets', None)} assets")
+    return status
 
 
-def _require_admin_while_licensed(credentials, db) -> None:
+def _require_admin_while_licensed(credentials, db):
     """Without a valid license these endpoints are open (the first-run screen, shown before anyone
-    can log in); with one, changing the license is an administrator's action."""
+    can log in); with one, changing the license is an administrator's action. Returns the
+    administrator, or None on the first-run screen."""
     if get_license_state().valid:
         if credentials is None:
             raise HTTPException(
@@ -189,7 +199,24 @@ def _require_admin_while_licensed(credentials, db) -> None:
                 detail="Administrator login is required to replace an active license",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        require_admin(get_current_user(credentials, db))
+        return require_admin(get_current_user(credentials, db))
+    return None
+
+
+def _masked(license_key: Optional[str]) -> str:
+    """A license key as the audit trail shows it: enough to tell keys apart, not enough to use."""
+    key = (license_key or "").strip()
+    return f"{key[:4]}…{key[-4:]}" if len(key) > 8 else "…"
+
+
+def _audit(db: Session, actor, request: Request, action: str, result: str, detail: str) -> None:
+    """A license change in the audit trail. Before the first license there is nobody signed in:
+    the actor is then the first-run screen."""
+    log_action(db, user_id=actor.id if actor else None,
+               username=actor.username if actor else "(first-run screen)",
+               action=action, module="license",
+               ip_address=request.client.host if request is not None and request.client else None,
+               result=result, detail=str(detail)[:500])
 
 
 # ---------- offline (air-gapped) licenses ----------
@@ -227,16 +254,20 @@ def offline_license_install(
 ):
     """Install an offline license file: verified (signature, this machine, still valid) and stored;
     from then on NGCorion runs without contacting the license server until the file ends."""
-    _require_admin_while_licensed(credentials, db)
+    actor = _require_admin_while_licensed(credentials, db)
     client = request.app.state.license_client
     try:
         client.install_offline_license(data.content)
     except LicenseRejected as exc:
         logger.warning("Offline license file not accepted: %s", exc.detail)
+        _audit(db, actor, request, "license.offline_install", "failed", exc.detail)
         raise HTTPException(status_code=400, detail=exc.detail)
     refresh_license_state(client)
     start_heartbeat(client)
-    return _status(get_license_state())
+    status = _status(get_license_state())
+    _audit(db, actor, request, "license.offline_install", "success",
+           f"plan {status.plan_code}, {status.max_assets} assets, valid until {status.offline_until}")
+    return status
 
 
 def _activate(data: LicenseActivateRequest, request: Request):

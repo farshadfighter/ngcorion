@@ -232,6 +232,33 @@ def test_license_activation_open_while_unlicensed(db, monkeypatch):
     assert license_router.activate_license(data, request=None, credentials=None, db=db) == "activated"
 
 
+def test_license_changes_are_audited_with_a_masked_key(db, monkeypatch):
+    from fastapi import HTTPException
+    from app.models.security_audit_log import AuditLog
+    license_router = importlib.import_module("app.modules.license.router")
+    monkeypatch.setattr(license_router, "get_license_state", lambda: SimpleNamespace(valid=False))
+    request = SimpleNamespace(client=SimpleNamespace(host="192.0.2.7"))
+    key = "ABCD-EFGH-IJKL-MNOP"
+    monkeypatch.setattr(license_router, "_activate",
+                        lambda data, request: SimpleNamespace(plan_code="NGC-BUS-250-1Y", max_assets=250))
+    license_router.activate_license(license_router.LicenseActivateRequest(license_key=key),
+                                    request=request, credentials=None, db=db)
+
+    def refused(data, request):
+        raise HTTPException(status_code=400, detail="This license key is not valid")
+    monkeypatch.setattr(license_router, "_activate", refused)
+    with pytest.raises(HTTPException):
+        license_router.activate_license(license_router.LicenseActivateRequest(license_key=key),
+                                        request=request, credentials=None, db=db)
+
+    rows = db.query(AuditLog).filter(AuditLog.action == "license.activate").order_by(AuditLog.id).all()
+    assert [r.result for r in rows[-2:]] == ["success", "failed"]
+    for row in rows[-2:]:
+        assert row.username == "(first-run screen)" and row.ip_address == "192.0.2.7"
+        assert "ABCD…MNOP" in row.detail and key not in row.detail
+    assert "NGC-BUS-250-1Y" in rows[-2].detail and "not valid" in rows[-1].detail
+
+
 def test_xlsx_rows_never_store_a_formula():
     """Report and software exports: text from devices or users that starts
     with '=' is stored as text (openpyxl would otherwise write a formula)."""

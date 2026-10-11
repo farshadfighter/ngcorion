@@ -103,6 +103,10 @@
   and *Remove pin* for a device that was reinstalled. Before, a device that
   changed its key could not be audited again on the appliance (no shell to run
   `ssh-keygen -R`). Each removal is audited with the dropped fingerprint.
+- License activation and offline license installation, accepted or refused,
+  are written to the audit trail (`license.activate`,
+  `license.offline_install`) with who did it (or the first-run screen), the
+  address, and the license key masked to its first and last four characters.
 - Password-reset codes are never written to the log. Without a mail server
   in `.env` (the appliance's default) the code used to be logged in clear
   instead of sent, so anyone able to read the log could reset any account.
