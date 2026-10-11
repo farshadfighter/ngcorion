@@ -18,7 +18,7 @@ from app.core.auth_rate_limiter import (
     check_login_rate_limit,
     check_password_reset_rate_limit,
 )
-from app.core.email import send_password_reset_otp
+from app.core.email import password_reset_mail_config, send_password_reset_otp
 from app.schemas.auth import (
     UserLogin,
     Token,
@@ -425,7 +425,7 @@ def forgot_password(
         return generic
 
     otp, user = result
-    background_tasks.add_task(send_password_reset_otp, user.email, otp)
+    background_tasks.add_task(send_password_reset_otp, password_reset_mail_config(db), user.email, otp)
     log_action(
         db=db,
         user_id=user.id,

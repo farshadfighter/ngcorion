@@ -1,77 +1,59 @@
 """
-Email sending utilities.
+The password-reset email.
 
-Uses the standard-library ``smtplib`` so no extra dependency is required.
+It goes through the mail server set in System Configuration > SMTP (the same one alerts and
+reports use). Installations that set the SMTP_* variables in ``.env`` before that page existed
+keep working: those are used when the page has no server.
 
-If ``settings.SMTP_HOST`` is empty, emails are logged to the console instead of
-sent — this lets the password-reset flow work end-to-end in development before a
-real mail server is configured. Fill in the SMTP_* settings in ``.env`` to switch
-to live sending; no code change is needed.
+Without any mail server the code is not sent, and it is never written to the log either: a
+reset code in a log would let anyone who can read the log take over the account. The log says
+only that a reset was requested and could not be delivered.
 """
 import logging
-import smtplib
-from email.message import EmailMessage
-from email.utils import formataddr
+from typing import Any, Dict
+
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-def send_email(to: str, subject: str, text_body: str, html_body: str | None = None) -> None:
-    """
-    Send an email, or log it to the console when SMTP is not configured.
+def password_reset_mail_config(db: Session) -> Dict[str, Any]:
+    """The SMTP settings for the reset email: System Configuration, else the SMTP_* variables of
+    ``.env``, else {} (no mail server)."""
+    from app.models.system_config import SECTION_SMTP
+    from app.modules.alerts.channels import load_section
 
-    This never raises: failures are logged. It is safe to call from a FastAPI
-    BackgroundTask, where an exception would otherwise be swallowed silently.
-    """
-    from_addr = formataddr((settings.SMTP_FROM_NAME, settings.SMTP_FROM_EMAIL))
+    config = load_section(db, SECTION_SMTP)
+    if config.get("host"):
+        return config
+    if settings.SMTP_HOST:
+        return {
+            "host": settings.SMTP_HOST,
+            "port": settings.SMTP_PORT,
+            "use_tls": settings.SMTP_USE_TLS,
+            "use_ssl": not settings.SMTP_USE_TLS,
+            "username": settings.SMTP_USERNAME,
+            "password": settings.SMTP_PASSWORD,
+            "from_email": settings.SMTP_FROM_EMAIL,
+            "from_name": settings.SMTP_FROM_NAME,
+        }
+    return {}
 
-    # Development / unconfigured mode: log instead of send.
-    if not settings.SMTP_HOST:
-        logger.info(
-            "[email:console] SMTP not configured — logging email instead of sending.\n"
-            "  From:    %s\n  To:      %s\n  Subject: %s\n  Body:\n%s",
-            from_addr, to, subject, text_body,
-        )
-        # Also print so it shows up plainly in the dev server console.
-        print(
-            f"\n===== DEV EMAIL (SMTP not configured) =====\n"
-            f"From: {from_addr}\nTo: {to}\nSubject: {subject}\n\n{text_body}\n"
-            f"===========================================\n"
-        )
+
+def send_password_reset_otp(config: Dict[str, Any], to_email: str, otp: str) -> None:
+    """Send the reset code. Runs as a background task, so it never raises; failures are logged
+    without the code."""
+    from app.modules.alerts.channels import DeliveryError, send_email
+
+    if not config.get("host"):
+        logger.warning("A password reset was requested, but no mail server is set "
+                       "(System Configuration > SMTP); no code was sent.")
         return
 
-    message = EmailMessage()
-    message["From"] = from_addr
-    message["To"] = to
-    message["Subject"] = subject
-    message.set_content(text_body)
-    if html_body:
-        message.add_alternative(html_body, subtype="html")
-
-    try:
-        if settings.SMTP_USE_TLS:
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-                server.starttls()
-                if settings.SMTP_USERNAME:
-                    server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-                server.send_message(message)
-        else:
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-                if settings.SMTP_USERNAME:
-                    server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-                server.send_message(message)
-        logger.info("Sent email to %s (subject=%r)", to, subject)
-    except Exception:
-        logger.exception("Failed to send email to %s (subject=%r)", to, subject)
-
-
-def send_password_reset_otp(to_email: str, otp: str) -> None:
-    """Build and send the password-reset OTP email."""
     expire_minutes = settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
-    subject = f"{settings.SMTP_FROM_NAME} — Password reset code"
-
+    subject = f"{config.get('from_name') or 'NGCorion'} — Password reset code"
     text_body = (
         "We received a request to reset the password for your account.\n\n"
         f"Your password reset code is: {otp}\n\n"
@@ -80,7 +62,6 @@ def send_password_reset_otp(to_email: str, otp: str) -> None:
         "If you did not request a password reset, you can safely ignore this email — "
         "your password will not change.\n"
     )
-
     html_body = (
         f"<p>We received a request to reset the password for your account.</p>"
         f"<p>Your password reset code is:</p>"
@@ -91,5 +72,8 @@ def send_password_reset_otp(to_email: str, otp: str) -> None:
         f"<p style=\"color:#6B7280;font-size:13px;\">If you did not request a password reset, "
         f"you can safely ignore this email — your password will not change.</p>"
     )
-
-    send_email(to_email, subject, text_body, html_body)
+    try:
+        send_email(config, [to_email], subject, text_body, html_body)
+        logger.info("Sent a password reset code to %s", to_email)
+    except DeliveryError as exc:
+        logger.error("Could not send a password reset code to %s: %s", to_email, exc)

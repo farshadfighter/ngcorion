@@ -98,6 +98,12 @@
 - The sign-in history (`login_logs`) can no longer be cleared from the Logs
   page: it is an authentication record, and clearing it also reset the
   failed-login counter an attacker is held back by.
+- Password-reset codes are never written to the log. Without a mail server
+  in `.env` (the appliance's default) the code used to be logged in clear
+  instead of sent, so anyone able to read the log could reset any account.
+  Reset emails now go through the mail server of System Configuration > SMTP
+  (the one alerts and reports use), with the `.env` SMTP settings as a
+  fallback; without either, nothing is sent and the log says so.
 
 ### Virtual appliance
 
