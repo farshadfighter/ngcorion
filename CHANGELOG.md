@@ -199,6 +199,16 @@
   page for a system administrator, as the menu already did: a direct URL now
   says "no access" instead of a half-empty page. The asset-limit dialog offers
   the License page to administrators only.
+- The asset list no longer fails for everyone once the user who owned an
+  asset is deleted (the owner becomes empty, which the API refused).
+- `deploy.sh` starts the backend with `--remove-orphans`, so an upgrade from
+  2.0.0 also stops the `redis` container the release no longer has.
+
+Checked with an upgrade from 2.0.0 on real data: 2.0.0 database (users,
+permissions, assets, sign-ins, audit events) migrated to this release, schema
+identical to a fresh install, sign-in, audit trail and temporary passwords
+working; a 2.0.0 backup restored into this release the same way, with the
+audit trail still append-only.
 
 ### A clearer menu
 - The sidebar follows the work: Assets, Security assessment (risk, audits,

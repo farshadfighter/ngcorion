@@ -182,3 +182,15 @@ class TestPayloads:
         backup = importlib.import_module("app.modules.backup.router")
         groups = backup.list_backups_by_asset(search="FGT-Icon", device_type=None, current_user=user, db=db)
         assert groups and groups[0].icon == "firewall"
+
+
+def test_asset_whose_owner_was_deleted_still_lists():
+    # asset_inventory.user_id is ON DELETE SET NULL: deleting the user who owned an asset leaves it
+    # ownerless, and the asset list must still answer instead of failing validation for everyone.
+    from datetime import datetime
+
+    from app.modules.assets.schemas import AssetResponse
+    now = datetime(2026, 10, 11)
+    row = AssetResponse.model_validate({"id": 7, "asset_name": "srv-007", "asset_type_id": 1, "user_id": None,
+                                        "created_at": now, "updated_at": now})
+    assert row.user_id is None

@@ -249,7 +249,8 @@ class AssetUpdate(BaseModel):
 class AssetResponse(AssetBase):
     """An asset as the API returns it, with its related names and the inferred device family."""
     id: int
-    user_id: int
+    # None once the user who owned it is deleted (the column is ON DELETE SET NULL).
+    user_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     # Best-effort device family (cisco/fortinet/linux/...) for filtering the

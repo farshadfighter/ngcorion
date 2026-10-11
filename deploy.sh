@@ -42,7 +42,9 @@ docker compose build backend
 docker tag "ngcorion/backend:$NGCORION_TAG" ngcorion/backend:latest
 
 echo "[deploy] Restarting the backend container..."
-docker compose up -d backend
+# --remove-orphans: stop and remove containers of services the new compose file no longer has
+# (the redis service of 2.0.0); their volumes stay until removed by hand.
+docker compose up -d --remove-orphans backend
 
 echo "[deploy] Waiting for the backend to report healthy..."
 DEADLINE=$((SECONDS + 60))
