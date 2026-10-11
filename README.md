@@ -78,6 +78,15 @@ cd front && npm run lint && npm test && npm run i18n:check && npm run build
 
 ## Documentation
 
+Persian (for operators and the AFTA / Common Criteria evaluation):
+
+- [docs/fa/USER_GUIDE.md](docs/fa/USER_GUIDE.md): راهنمای کاربر.
+- [docs/fa/ADMIN_GUIDE.md](docs/fa/ADMIN_GUIDE.md): راهنمای مدیر — نصب، پیکربندی امن و راهبری.
+- [docs/fa/ARCHITECTURE.md](docs/fa/ARCHITECTURE.md): سند معماری امنیتی.
+- [docs/SECURITY_TARGET.md](docs/SECURITY_TARGET.md): هدف امنیتی.
+
+English (for developers):
+
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how the pieces fit together.
 - [docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md): conventions, and step-by-step
   recipes (new API endpoint, new page, new audit/hardening target).

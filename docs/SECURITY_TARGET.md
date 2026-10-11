@@ -138,7 +138,7 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 
 | مؤلفه CC | الزام | پیاده‌سازی در NGCorion (کد) |
 |---|---|---|
-| **FAU_GEN.1** | تولید رکورد ممیزی برای: شروع/پایان کارکرد ممیزی، ورود موفق/ناموفق، خروج، تغییر رمز، مدیریت کاربر و مجوز، اجرای ممیزی و مقاوم‌سازی، بازگردانی، پشتیبان‌گیری/بازیابی، تغییر تنظیمات | `app/models/security_audit_log.py` (`log_action`)، `app/models/login_log.py`، فراخوانی در روترها (مثلاً `app/modules/auth/router.py`) |
+| **FAU_GEN.1** | تولید رکورد ممیزی برای: شروع/پایان کارکرد ممیزی، ورود موفق/ناموفق، خروج، تغییر و بازیابی رمز، مدیریت کاربر و مجوز، اجرای ممیزی و مقاوم‌سازی، بازگردانی، پشتیبان‌گیری/بازیابی، تغییر تنظیمات، فعال‌سازی و نصب لایسنس، حذف کلید پین‌شدهٔ دستگاه | `app/models/security_audit_log.py` (`log_action`)، `app/models/login_log.py`، فراخوانی در روترها (مثلاً `app/modules/auth/router.py`) |
 | **FAU_GEN.2** | انتساب رویداد به هویت کاربر | ستون‌های `user_id`، `username`، `ip_address` در `audit_logs` |
 | **FAU_SAR.1 / FAU_SAR.2** | امکان مرور ممیزی فقط برای کاربران مجاز | صفحهٔ Logs با مجوز `LOGS:read` (`app/modules/logs/router.py`) |
 | **FAU_STG.1** | حفاظت از دنبالهٔ ممیزی در برابر حذف/تغییر | تریگر پایگاه داده `audit_logs_no_change` (مهاجرت `a1d3f5b7c9e2`)؛ سابقهٔ ورود از صفحهٔ Logs قابل پاک کردن نیست (`app/modules/logs/clear_router.py`) |
@@ -149,7 +149,7 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 | **FIA_ATD.1** | ویژگی‌های کاربر | نام کاربری، نقش، مجوزها، وضعیت فعال، اجبار تغییر رمز (`app/models/user.py`) |
 | **FMT_SMR.1** | نقش‌ها | admin، manager، user، guest (`UserRole`) |
 | **FMT_MOF.1 / FMT_MTD.1** | مدیریت کارکردها و داده‌های TSF فقط توسط نقش مجاز | `require_admin`، `require_permission(module, type)` در `app/core/dependencies.py`؛ مدیریت کاربر با `USER_MANAGEMENT` |
-| **FMT_SMF.1** | کارکردهای مدیریتی | ایجاد/غیرفعال‌سازی کاربر، تنظیم مجوز، بازنشانی رمز، تنظیمات سامانه، پشتیبان‌گیری |
+| **FMT_SMF.1** | کارکردهای مدیریتی | ایجاد/غیرفعال‌سازی کاربر، تنظیم مجوز، بازیابی رمز (کد یک‌بارمصرف ایمیلی؛ رمز `admin` از کنسول ماشین مجازی)، تنظیمات سامانه، کلیدهای پین‌شدهٔ دستگاه‌ها، لایسنس، پشتیبان‌گیری |
 | **FDP_ACC.1 / FDP_ACF.1** | کنترل دسترسی بر اساس نقش و مالکیت | مجوز ماژول‌ها و `owner_scope` / `assert_session_access` (کاربر عادی فقط جلسات خودش را می‌بیند) |
 | **FTA_SSL.3** | پایان نشست پس از بیکاری | `SESSION_IDLE_TIMEOUT_MINUTES` (۳۰) سمت سرور (`app/core/sessions.py`) و خروج خودکار رابط (`front/src/components/IdleLogout.jsx`) |
 | **FTA_SSL.4** | خروج به درخواست کاربر | `POST /auth/logout` توکن را باطل می‌کند (`revoked_tokens`) |
@@ -173,8 +173,8 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 
 | کلاس | مؤلفه | مدرک / محل در مخزن |
 |---|---|---|
-| ADV | ADV_ARC.1، ADV_FSP.2، ADV_TDS.1 | `docs/ARCHITECTURE.md`، فهرست API (OpenAPI در محیط توسعه)، این سند |
-| AGD | AGD_OPE.1، AGD_PRE.1 | `README.md`، `appliance/README.md`، `docs/DEVELOPER_GUIDE.md` — **راهنمای کاربر/مدیر به فارسی باید تکمیل شود** |
+| ADV | ADV_ARC.1، ADV_FSP.2، ADV_TDS.1 | `docs/fa/ARCHITECTURE.md` (معماری امنیتی، فارسی)، `docs/ARCHITECTURE.md` (جزئیات فنی)، فهرست API (`/openapi.json` برای کاربر واردشده)، این سند |
+| AGD | AGD_OPE.1، AGD_PRE.1 | `docs/fa/ADMIN_GUIDE.md` (نصب، پیکربندی امن و راهبری)، `docs/fa/USER_GUIDE.md` (راهنمای کاربر)، `appliance/README.md` |
 | ALC | ALC_CMC.2، ALC_CMS.2 | گیت با تگ نسخه (`vX.Y.Z`)، `CHANGELOG.md`، CI روی هر تغییر |
 | ALC | ALC_DEL.1 | انتشار از GitHub Release با `SHA256SUMS`؛ ساخت تکرارپذیر (`.github/workflows/appliance.yml`) |
 | ALC | ALC_FLR.1 | `SECURITY.md` (گزارش آسیب‌پذیری)، Dependabot، `pip-audit`/`npm audit` در CI |
@@ -188,10 +188,10 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 | مدرک | وضعیت |
 |---|---|
 | هدف امنیتی (همین سند) | پیش‌نویس آماده |
-| معماری و طراحی | `docs/ARCHITECTURE.md` (انگلیسی) — ترجمه/تکمیل فارسی لازم |
-| مشخصات کارکردی (API) | از OpenAPI قابل تولید |
-| راهنمای نصب و راه‌اندازی امن (AGD_PRE) | `appliance/README.md` — نسخهٔ فارسی لازم |
-| راهنمای کاربر و مدیر (AGD_OPE) | **باید نوشته شود** |
+| معماری و طراحی | `docs/fa/ARCHITECTURE.md` (فارسی)، `docs/ARCHITECTURE.md` (جزئیات فنی، انگلیسی) |
+| مشخصات کارکردی (API) | `/openapi.json` (برای کاربر واردشده) |
+| راهنمای نصب و راه‌اندازی امن (AGD_PRE) | `docs/fa/ADMIN_GUIDE.md` بخش‌های ۲ تا ۵ |
+| راهنمای کاربر و مدیر (AGD_OPE) | `docs/fa/USER_GUIDE.md`، `docs/fa/ADMIN_GUIDE.md` |
 | مدیریت پیکربندی و نسخه (ALC_CMC/CMS) | گیت + تگ + CHANGELOG + CI |
 | فرایند تحویل (ALC_DEL) | Release + SHA256SUMS |
 | فرایند رفع نقص (ALC_FLR) | `SECURITY.md` |

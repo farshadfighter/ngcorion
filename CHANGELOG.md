@@ -149,6 +149,13 @@
   licensing module uncompiled. Tests and development use the source; CI
   checks the image contains no other source and starts it.
 
+### Documentation (AFTA)
+
+- Persian user guide (`docs/fa/USER_GUIDE.md`, AGD_OPE), administrator guide
+  covering delivery, installation, secure configuration and operation
+  (`docs/fa/ADMIN_GUIDE.md`, AGD_PRE/AGD_OPE) and security architecture
+  (`docs/fa/ARCHITECTURE.md`, ADV_ARC); the Security Target points to them.
+
 ### Code standards
 
 - The backend is linted in CI with ruff (pyflakes and syntax errors: unused or
