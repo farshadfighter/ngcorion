@@ -140,7 +140,7 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 |---|---|---|
 | **FAU_GEN.1** | تولید رکورد ممیزی برای: شروع/پایان کارکرد ممیزی، ورود موفق/ناموفق، خروج، تغییر و بازیابی رمز، مدیریت کاربر و مجوز، اجرای ممیزی و مقاوم‌سازی، بازگردانی، پشتیبان‌گیری/بازیابی، تغییر تنظیمات، فعال‌سازی و نصب لایسنس، حذف کلید پین‌شدهٔ دستگاه | `app/models/security_audit_log.py` (`log_action`)، `app/models/login_log.py`، فراخوانی در روترها (مثلاً `app/modules/auth/router.py`) |
 | **FAU_GEN.2** | انتساب رویداد به هویت کاربر | ستون‌های `user_id`، `username`، `ip_address` در `audit_logs` |
-| **FAU_SAR.1 / FAU_SAR.2** | امکان مرور ممیزی فقط برای کاربران مجاز | صفحهٔ Logs با مجوز `LOGS:read` (`app/modules/logs/router.py`) |
+| **FAU_SAR.1 / FAU_SAR.2 / FAU_SAR.3** | مرور کامل دنبالهٔ ممیزی فقط برای کاربران مجاز، با جستجو و فیلتر (ماژول، اقدام، نتیجه، کاربر، نشانی، بازهٔ زمانی) و خروجی CSV ثبت‌شده | صفحهٔ «دنبالهٔ ممیزی» با مجوز `LOGS:read` (`app/modules/audit_trail.py`، `front/src/components/Logs/AuditTrailPage.jsx`) |
 | **FAU_STG.1** | حفاظت از دنبالهٔ ممیزی در برابر حذف/تغییر | تریگر پایگاه داده `audit_logs_no_change` (مهاجرت `a1d3f5b7c9e2`)؛ سابقهٔ ورود از صفحهٔ Logs قابل پاک کردن نیست (`app/modules/logs/clear_router.py`) |
 | **FIA_UID.2 / FIA_UAU.2** | شناسایی و احراز هویت پیش از هر اقدام | `get_current_user` در `app/core/dependencies.py` برای همهٔ مسیرهای `/api` |
 | **FIA_AFL.1** | پاسخ به تلاش‌های ناموفق | ۵ شکست از یک نشانی یا ۱۰ شکست برای یک حساب در ۱۵ دقیقه ← توقف ۱۵ دقیقه‌ای (`app/core/auth_rate_limiter.py`) |

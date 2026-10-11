@@ -103,6 +103,13 @@
   and *Remove pin* for a device that was reinstalled. Before, a device that
   changed its key could not be audited again on the appliance (no shell to run
   `ssh-keygen -R`). Each removal is audited with the dropped fingerprint.
+- Audit trail page (System → Audit trail, Logs read permission): the whole
+  security audit trail (`audit_logs`) and every sign-in attempt
+  (`login_logs`), with text search, filters (module, action, result, user,
+  address, date range) and paging done on the server, and CSV export of what
+  the filters select. Exports are formula-safe and recorded in the trail
+  (`audit_trail.export`). Before, the Logs page showed only the latest 50
+  entries of each section, with no search.
 - License activation and offline license installation, accepted or refused,
   are written to the audit trail (`license.activate`,
   `license.offline_install`) with who did it (or the first-run screen), the

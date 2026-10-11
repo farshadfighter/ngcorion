@@ -605,6 +605,10 @@ app.include_router(health_router)
 from app.modules.device_keys import router as device_keys_router
 app.include_router(device_keys_router)
 
+# The security audit trail for review: search, filters, paging, CSV export (LOGS read).
+from app.modules.audit_trail import router as audit_trail_router
+app.include_router(audit_trail_router)
+
 
 # --- SPA catch-all ----------------------------------------------------------
 # Serves the React build (front/dist) for the root and any client-side route.

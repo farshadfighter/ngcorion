@@ -57,6 +57,7 @@ const menuFromPath = (pathname) => {
     if (pathname.startsWith("/noc/hosts"))            return "noc-hosts";
     if (pathname.startsWith("/settings/users"))       return "user-management";
     if (pathname.startsWith("/settings/logs"))        return "system-logs";
+    if (pathname.startsWith("/settings/audit-trail")) return "audit-trail";
     if (pathname.startsWith("/settings/license"))     return "licence";
     if (pathname.startsWith("/settings/system-backup")) return "system-backup";
     if (pathname.startsWith("/settings/system"))      return "system-configuration";
@@ -198,6 +199,7 @@ export const DashboardLayout = () => {
         "noc-hosts":           t("NOC Host"),
         "user-management":     t("User Management"),
         "system-logs":         t("System Logs"),
+        "audit-trail":         t("Audit trail"),
         "system-configuration": t("System Configuration"),
         "system-backup":       t("NGCorion backup"),
         "notifications":       t("Notifications"),
@@ -564,6 +566,13 @@ export const DashboardLayout = () => {
                              onClick={() => navigate("/settings/logs")} title={t("Logs")}>
                             {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
                             {!isSidebarCollapsed && <span>{t("Logs")}</span>}
+                        </div>
+                    )}
+                    {canReadLogs && (
+                        <div className={`nav-item ${isSidebarCollapsed ? "" : "sub-item"} ${activeMenu === "audit-trail" ? "active" : ""}`}
+                             onClick={() => navigate("/settings/audit-trail")} title={t("Audit trail")}>
+                            {isSidebarCollapsed && <img src="/icons/administration.svg" alt="" className="nav-icon-img" />}
+                            {!isSidebarCollapsed && <span>{t("Audit trail")}</span>}
                         </div>
                     )}
 
