@@ -88,7 +88,13 @@ Connections will fail with `host_key_mismatch` until the old pin is removed.
 1. Confirm the change is expected (maintenance window, RMA, reimage).
 2. Verify the **new** fingerprint out of band — from the device console, not
    over the connection you are about to trust.
-3. Remove the old entry:
+3. Remove the old entry. In the web interface (administrators): System
+   Configuration → **Pinned device keys** → *Remove pin* on that device. This
+   is the only way on the virtual appliance, which has no shell; the removal
+   and the fingerprint it dropped are written to the audit trail
+   (`device_key.forget`). The same list holds the pinned HTTPS certificates of
+   API-managed devices (Sophos). On a Docker installation the file can also be
+   edited directly:
 
    ```bash
    # inside the backend container, or on the host with the same path

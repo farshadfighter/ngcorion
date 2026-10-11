@@ -601,6 +601,10 @@ from app.modules.system_health import public_router as health_public_router, rou
 app.include_router(health_public_router)
 app.include_router(health_router)
 
+# Pinned device keys (SSH host keys, TLS certificates): list and forget, admins only.
+from app.modules.device_keys import router as device_keys_router
+app.include_router(device_keys_router)
+
 
 # --- SPA catch-all ----------------------------------------------------------
 # Serves the React build (front/dist) for the root and any client-side route.

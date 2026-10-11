@@ -19,6 +19,7 @@ export const ConfigModal = ({
     warning,
     saveLabel,
     saveDisabled = false,
+    showCancel = true,
 }) => (
     <div className="modal-overlay" onClick={onClose}>
         <div className="sc-modal" onClick={(e) => e.stopPropagation()}>
@@ -49,14 +50,16 @@ export const ConfigModal = ({
             </div>
 
             <div className="sc-modal-footer">
-                <button
-                    type="button"
-                    className="sc-btn sc-btn-ghost"
-                    onClick={onClose}
-                    disabled={isSaving}
-                >
-                    {t("Cancel")}
-                </button>
+                {showCancel && (
+                    <button
+                        type="button"
+                        className="sc-btn sc-btn-ghost"
+                        onClick={onClose}
+                        disabled={isSaving}
+                    >
+                        {t("Cancel")}
+                    </button>
+                )}
                 <button
                     type="button"
                     className="sc-btn sc-btn-primary"

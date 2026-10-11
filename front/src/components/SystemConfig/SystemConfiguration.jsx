@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSelector } from "react-redux";
 
 import { SECTIONS } from "./sections";
 import "../../assets/SystemConfig.css";
@@ -12,13 +13,15 @@ import "../../assets/SystemConfig.css";
  */
 export const SystemConfiguration = () => {
     const [active, setActive] = useState(null);
+    const role = useSelector((state) => state.auth.role);
+    const sections = SECTIONS.filter((section) => !section.adminOnly || role === "admin");
 
     const ActiveModal = active?.modal;
 
     return (
         <div className="sc-page">
             <div className="sc-grid">
-                {SECTIONS.map((section) => (
+                {sections.map((section) => (
                     <button
                         key={section.key}
                         type="button"

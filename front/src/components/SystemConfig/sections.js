@@ -7,6 +7,7 @@ import { CertificateConfigModal } from "./CertificateConfigModal";
 import { LanguageConfigModal } from "./LanguageConfigModal";
 import { RemediationConfigModal } from "./RemediationConfigModal";
 import { ReportsConfigModal } from "./ReportsConfigModal";
+import { DeviceKeysModal } from "./DeviceKeysModal";
 import { t } from "../../i18n";
 
 /**
@@ -22,6 +23,7 @@ import { t } from "../../i18n";
  *   certificate GET /api/system/certificate  + POST /certificate/upload
  *                                            + DELETE /certificate
  *   locale      GET/PUT /api/system/locale   (default language)
+ *   devicekeys  GET /api/system/device-keys  + DELETE /device-keys/{kind}  (administrators only)
  */
 export const SECTIONS = [
     {
@@ -86,6 +88,14 @@ export const SECTIONS = [
         hint: t("Organization name and logo on reports, and how long they are kept"),
         icon: "fa-solid fa-file-lines",
         modal: ReportsConfigModal,
+    },
+    {
+        key: "devicekeys",
+        title: t("Pinned device keys"),
+        hint: t("SSH host keys and certificates of audited devices"),
+        icon: "fa-solid fa-key",
+        modal: DeviceKeysModal,
+        adminOnly: true,
     },
 ];
 

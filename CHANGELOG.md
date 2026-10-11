@@ -98,6 +98,11 @@
 - The sign-in history (`login_logs`) can no longer be cleared from the Logs
   page: it is an authentication record, and clearing it also reset the
   failed-login counter an attacker is held back by.
+- System Configuration → Pinned device keys (administrators): the SSH host
+  keys and HTTPS certificates NGCorion pinned, with the asset each belongs to,
+  and *Remove pin* for a device that was reinstalled. Before, a device that
+  changed its key could not be audited again on the appliance (no shell to run
+  `ssh-keygen -R`). Each removal is audited with the dropped fingerprint.
 - Password-reset codes are never written to the log. Without a mail server
   in `.env` (the appliance's default) the code used to be logged in clear
   instead of sent, so anyone able to read the log could reset any account.

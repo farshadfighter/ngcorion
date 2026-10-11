@@ -64,7 +64,7 @@ import socket
 import threading
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import paramiko
 
@@ -354,6 +354,18 @@ class KnownHostsStore:
                 finally:
                     if fcntl is not None:  # pragma: no branch
                         fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+    def entries(self) -> List[Tuple[str, int, str, str]]:
+        """Every pinned key as (host, port, key type, SHA256 fingerprint), for the administrators'
+        list of pinned device keys."""
+        with self._lock:
+            keys = self._load_unlocked()
+        out = []
+        for name in keys.keys():
+            host, port = split_entry_name(name)
+            for keytype, pkey in keys[name].items():
+                out.append((host, port, keytype, key_fingerprint(pkey)))
+        return sorted(out)
 
     def forget(self, host: str, port: int = SSH_DEFAULT_PORT) -> bool:
         """

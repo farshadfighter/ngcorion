@@ -23,7 +23,7 @@ import os
 import ssl
 import threading
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from app.core.ssh_host_keys import HostKeyPolicyMode, policy_mode, resolve_store_path
 
@@ -85,6 +85,15 @@ def fingerprint(der: bytes) -> str:
 
 def pinned(host: str, port: int) -> Optional[str]:
     return _load().get(_key(host, port))
+
+
+def entries() -> List[Tuple[str, int, str]]:
+    """Every pinned certificate as (host, port, SHA256 fingerprint)."""
+    out = []
+    for key, value in _load().items():
+        host, _, port = key[1:].rpartition("]:")
+        out.append((host, int(port), value))
+    return sorted(out)
 
 
 def forget(host: str, port: int) -> bool:
