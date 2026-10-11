@@ -55,6 +55,8 @@ jobs:
         run: uv run alembic upgrade head
       - name: Check there is a single migration head
         run: test "$(uv run alembic heads | wc -l)" -eq 1
+      - name: Every model table comes from a migration
+        run: uv run python scripts/check_migrations_cover_models.py
       - name: Run tests
         run: uv run pytest -q -p no:warnings
 

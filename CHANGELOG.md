@@ -110,6 +110,11 @@
   the filters select. Exports are formula-safe and recorded in the trail
   (`audit_trail.export`). Before, the Logs page showed only the latest 50
   entries of each section, with no search.
+- The sign-in history table (`login_logs`) is now created by a migration. It
+  was only ever made by `create_all` at application start, so a database
+  built by Alembic alone (a restore into an empty database, tools, CI) had no
+  sign-in history table. CI now checks after the migrations that every model
+  table exists (`scripts/check_migrations_cover_models.py`).
 - License activation and offline license installation, accepted or refused,
   are written to the audit trail (`license.activate`,
   `license.offline_install`) with who did it (or the first-run screen), the
