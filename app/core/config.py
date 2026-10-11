@@ -225,11 +225,15 @@ def ignored_license_settings() -> List[str]:
 
 
 _INSECURE_DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production-min-32-chars"
+# Placeholders published in this repository (config.py, .env.example): never a real key.
+_PUBLISHED_SECRET_KEYS = {_INSECURE_DEFAULT_SECRET_KEY, "change-this-to-a-random-32-character-string"}
+MIN_SECRET_KEY_LENGTH = 32
 
 
 def require_secure_secret_key() -> str:
     """
-    Return SECRET_KEY, or raise if it is still the published placeholder.
+    Return SECRET_KEY, or raise if it is still the published placeholder or shorter than
+    MIN_SECRET_KEY_LENGTH characters.
 
     SECRET_KEY signs every JWT this app issues; the default value above is
     checked into the repository and public, so leaving it in place lets
@@ -240,11 +244,20 @@ def require_secure_secret_key() -> str:
     state.
     """
     key = settings.SECRET_KEY
-    if key == _INSECURE_DEFAULT_SECRET_KEY:
+    if key in _PUBLISHED_SECRET_KEYS:
         raise RuntimeError(
-            "SECRET_KEY is still the default placeholder from config.py. Generate "
+            "SECRET_KEY is still a published placeholder (config.py / .env.example). Generate "
             "a real one (e.g. `openssl rand -hex 32`) and set SECRET_KEY in the "
             "environment or .env file before starting the app."
+        )
+    # It is the HMAC key of every session token and the root of the keys that encrypt stored
+    # secrets (credential_crypto): a short one can be brute-forced offline from a single token.
+    if len(key) < MIN_SECRET_KEY_LENGTH:
+        raise RuntimeError(
+            f"SECRET_KEY is {len(key)} characters long; at least {MIN_SECRET_KEY_LENGTH} are required. "
+            "Generate one with `openssl rand -hex 32` and set SECRET_KEY in the environment or .env "
+            "file. Changing it signs everyone out and, unless a system backup is restored, makes "
+            "stored secrets (scheduled-job credentials, SNMP, SMTP, ...) unreadable: re-enter them."
         )
     return key
 

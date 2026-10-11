@@ -107,6 +107,10 @@
   are written to the audit trail (`license.activate`,
   `license.offline_install`) with who did it (or the first-run screen), the
   address, and the license key masked to its first and last four characters.
+- `SECRET_KEY` must have at least 32 characters and must not be a placeholder
+  published in the repository (`config.py`, `.env.example`); NGCorion stops at
+  start-up otherwise. It signs every session token and protects the stored
+  secrets, and a short key can be brute-forced offline from one token.
 - Password-reset codes are never written to the log. Without a mail server
   in `.env` (the appliance's default) the code used to be logged in clear
   instead of sent, so anyone able to read the log could reset any account.
@@ -159,6 +163,11 @@
 
 ### Upgrade notes
 
+- Docker installations: check that `SECRET_KEY` in `.env` has at least 32
+  characters (the appliance generates 64). A shorter key now stops the start.
+  Replacing it signs everyone out and makes stored secrets (scheduled-job
+  credentials, SNMP, SMTP, backup destinations) unreadable: re-enter them, or
+  restore a system backup, which re-encrypts them under the new key.
 - Images built before this release contain the `.env` of the checkout they
   were built from, if it had one. After upgrading, delete the old backend
   image (Compose named it after the folder, e.g. `ngcorion-backend`; see
