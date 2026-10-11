@@ -11,6 +11,7 @@ import api from "../../config/api";
 import { dropUnscoredRiskLevels } from "./useAssetFormOptions";
 import { requiresHosting } from "../shared/assetHosting";
 import { t as tr } from "../../i18n";
+import { DateInput } from "../shared/DateInput.jsx";
 
 const STATUS_FALLBACK = ["active", "standby", "decommissioned", "unknown"];
 const CONFIDENTIALITY_FALLBACK = ["public", "internal", "confidential", "critical"];
@@ -527,11 +528,11 @@ export const AddAssetModal = ({ isOpen, onClose }) => {
                     </div>
                     <div className="form-group">
                         <label>{tr("Last Audit Date")}</label>
-                        <input type="date" name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isLoadingOptions} />
+                        <DateInput name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isLoadingOptions} />
                     </div>
                     <div className="form-group">
                         <label>{tr("Last Patch Date")}</label>
-                        <input type="date" name="last_patch_date" value={formData.last_patch_date} onChange={handleChange} disabled={isLoadingOptions} />
+                        <DateInput name="last_patch_date" value={formData.last_patch_date} onChange={handleChange} disabled={isLoadingOptions} />
                     </div>
                     <div className="form-group">
                         <label>{tr("Asset Value (USD)")}</label>

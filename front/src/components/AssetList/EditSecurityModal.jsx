@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux";
 import { updateAsset, fetchAssets } from "../../store/assetSlice";
 import { useAssetFormOptions } from "./useAssetFormOptions";
 import { t } from "../../i18n";
+import { DateInput } from "../shared/DateInput.jsx";
 
 // Validation function
 const validateAssetValue = (value) => {
@@ -136,11 +137,11 @@ export const EditSecurityModal = ({ asset, isOpen, onClose }) => {
                                 </div>
                                 <div className="form-group">
                                     <label>{t("Last Audit Date")}</label>
-                                    <input type="date" name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isSubmitting} />
+                                    <DateInput name="last_audit_date" value={formData.last_audit_date} onChange={handleChange} disabled={isSubmitting} />
                                 </div>
                                 <div className="form-group">
                                     <label>{t("Last Patch Date")}</label>
-                                    <input type="date" name="last_patch_date" value={formData.last_patch_date} onChange={handleChange} disabled={isSubmitting} />
+                                    <DateInput name="last_patch_date" value={formData.last_patch_date} onChange={handleChange} disabled={isSubmitting} />
                                 </div>
                                 <div className="form-group">
                                     <label>{t("Asset Value (USD)")}</label>

@@ -3,6 +3,7 @@ import api from "../../config/api.js";
 import { t } from "../../i18n";
 import { formatDate } from "../../utils/dates.js";
 import { SEVERITY, errorText } from "./remediationFormat.js";
+import { DateInput } from "../shared/DateInput.jsx";
 
 const dayOffset = (days) => {
     const d = new Date();
@@ -66,7 +67,7 @@ export function AcceptanceModal({ item, onClose, onSent }) {
                               placeholder={t("What reduces the risk meanwhile (optional)")} />
                 </label>
                 <label className="alr-lbl">{t("Until")}
-                    <input type="date" className="bkm-select" value={until} min={dayOffset(1)} max={dayOffset(maxDays)}
+                    <DateInput className="bkm-select" value={until} min={dayOffset(1)} max={dayOffset(maxDays)}
                            onChange={(e) => setUntil(e.target.value)} />
                     <span className="alr-hint">
                         {until ? formatDate(`${until}T12:00:00`) : ""} · {t("At most {{days}} days for this severity", { days: maxDays })}

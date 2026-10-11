@@ -110,6 +110,14 @@
   the filters select. Exports are formula-safe and recorded in the trail
   (`audit_trail.export`). Before, the Logs page showed only the latest 50
   entries of each section, with no search.
+- Date fields follow the interface language: in Persian every date field
+  (audit trail, reports, remediation deadlines and acceptances, asset dates,
+  CVE export, NOC time range, the system clock) takes and shows Jalali dates
+  with Persian digits, typed (`۱۴۰۵/۰۷/۱۹`) or picked from a month calendar
+  that starts on Saturday. Before, they showed the browser's Gregorian
+  `mm/dd/yyyy` picker. The calendar arithmetic is checked day by day against
+  ICU for 1950-2060. The report builder's period labels read "From date" /
+  "To date" (the Persian "To" was the word for an email recipient).
 - The audit trail reads in Persian: the detail of every event and sign-in is
   translated at display time (the stored record and the CSV keep the original
   English). `scripts/audit_messages.py` finds every sentence the code writes

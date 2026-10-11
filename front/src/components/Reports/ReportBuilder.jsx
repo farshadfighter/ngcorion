@@ -8,6 +8,8 @@ import { ScheduleModal } from "./ScheduleModal.jsx";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
 import "../../assets/Reports.css";
+import { DateInput } from "../shared/DateInput.jsx";
+import { formatDate } from "../../utils/dates.js";
 
 function Seg({ value, options, onChange, name }) {
     return (
@@ -157,10 +159,10 @@ export function ReportBuilder() {
                         </div>
                         {form.preset === "custom" && (
                             <div className="rep-grid-2">
-                                <label className="alr-lbl">{t("From")}
-                                    <input type="date" className="bkm-select" value={form.from} onChange={(e) => set({ from: e.target.value })} /></label>
-                                <label className="alr-lbl">{t("To")}
-                                    <input type="date" className="bkm-select" value={form.to} onChange={(e) => set({ to: e.target.value })} /></label>
+                                <label className="alr-lbl">{t("From date")}
+                                    <DateInput className="bkm-select" value={form.from} onChange={(e) => set({ from: e.target.value })} /></label>
+                                <label className="alr-lbl">{t("To date")}
+                                    <DateInput className="bkm-select" value={form.to} onChange={(e) => set({ to: e.target.value })} /></label>
                             </div>
                         )}
                         <label className={`rep-check ${form.compare ? "is-on" : ""}`}>
@@ -305,7 +307,7 @@ export function ReportBuilder() {
                         <dt>{t("Report")}</dt><dd>{tb(tpl.title)}</dd>
                         {oneAudit && <><dt>{t("Audit")}</dt><dd>#{form.options.audit_session}</dd></>}
                         {usesPeriod
-                            ? <><dt>{t("Period")}</dt><dd>{form.preset === "custom" && form.from && form.to ? `${form.from} – ${form.to}` : label(PERIODS, form.preset)}
+                            ? <><dt>{t("Period")}</dt><dd>{form.preset === "custom" && form.from && form.to ? `${formatDate(`${form.from}T12:00:00`)} – ${formatDate(`${form.to}T12:00:00`)}` : label(PERIODS, form.preset)}
                                 {form.compare ? ` · ${t("compared")}` : ""}</dd></>
                             : !oneAudit && <><dt>{t("Figures")}</dt><dd>{t("As they are when the report is built")}</dd></>}
                         {usesAssets && <><dt>{t("Assets")}</dt><dd>{assetCount != null ? t("{{count}} assets", { count: assetCount })

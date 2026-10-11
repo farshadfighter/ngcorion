@@ -5,10 +5,11 @@ import { fetchSection, saveSection } from "../../store/systemConfigSlice";
 import { ConfigModal } from "./ConfigModal";
 import { TIMEZONES } from "./timezones";
 import { t, uiLocale } from "../../i18n";
+import { DateTimeInput } from "../shared/DateInput.jsx";
 
 const SECTION = "time";
 
-/** <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm", not a full ISO string. */
+/** A datetime-local value is "YYYY-MM-DDTHH:mm", not a full ISO string. */
 const toLocalInput = (value) => {
     const d = value ? new Date(value) : new Date();
     if (Number.isNaN(d.getTime())) return "";
@@ -164,8 +165,7 @@ const TimeForm = ({ stored, onClose }) => {
             ) : (
                 <label className="sc-field">
                     <span>{t("Date and time")}</span>
-                    <input
-                        type="datetime-local"
+                    <DateTimeInput
                         value={manualTime}
                         onChange={(e) => setManualTime(e.target.value)}
                     />

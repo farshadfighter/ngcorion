@@ -10,6 +10,7 @@ import api from "../../config/api.js";
 import "../../assets/AuditTrail.css";
 import { t, uiLocale, n } from "../../i18n";
 import { tbDetail } from "../../i18n/backendText.js";
+import { DateInput } from "../shared/DateInput.jsx";
 
 const PAGE_SIZE = 50;
 
@@ -166,11 +167,11 @@ export const AuditTrailPage = () => {
                        placeholder={t("Address")} aria-label={t("Address")} />
                 <label className="at-date">
                     <span>{t("From date")}</span>
-                    <input className="at-input" type="date" value={draft.date_from} onChange={set("date_from")} />
+                    <DateInput className="at-input" value={draft.date_from} onChange={set("date_from")} />
                 </label>
                 <label className="at-date">
                     <span>{t("To date")}</span>
-                    <input className="at-input" type="date" value={draft.date_to} onChange={set("date_to")} />
+                    <DateInput className="at-input" value={draft.date_to} onChange={set("date_to")} />
                 </label>
                 <div className="at-actions">
                     <button type="submit" className="at-btn at-btn-primary">

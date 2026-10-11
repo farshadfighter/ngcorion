@@ -1,0 +1,61 @@
+/* Jalali date field and its month calendar (components/shared/DateInput.jsx) */
+
+.di-wrap { position: relative; display: inline-flex; align-items: stretch; max-width: 100%; vertical-align: middle; }
+/* Forms whose fields fill the row: the field and its calendar button do too. */
+.alr-lbl .di-wrap, .form-group .di-wrap, .sc-field .di-wrap { display: flex; width: 100%; }
+.alr-lbl .di-wrap > .di-field, .form-group .di-wrap > .di-field, .sc-field .di-wrap > .di-field { width: 100%; }
+.di-wrap > .di-field { flex: 1 1 auto; min-width: 0; padding-inline-end: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+.di-wrap.is-invalid > .di-field { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); }
+
+.di-toggle {
+    position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%);
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: 6px; background: transparent; color: #4b5563; cursor: pointer; padding: 0;
+}
+.di-toggle:hover:not(:disabled) { background: #eef2f7; color: #1e3a5f; }
+.di-toggle:focus-visible { outline: 2px solid #1e3a5f; outline-offset: 1px; }
+.di-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.di-datetime { display: inline-flex; gap: 6px; align-items: stretch; max-width: 100%; flex-wrap: wrap; }
+.di-datetime .di-wrap { flex: 1 1 150px; }
+.di-time { flex: 0 0 auto; }
+.alr-lbl .di-datetime, .form-group .di-datetime, .sc-field .di-datetime { display: flex; width: 100%; flex-wrap: nowrap; }
+.di-datetime .di-wrap { width: auto; flex: 1 1 auto; }
+.alr-lbl .di-datetime .di-time, .form-group .di-datetime .di-time, .sc-field .di-datetime .di-time { width: auto; flex: 0 0 auto; }
+
+.di-panel {
+    position: fixed; z-index: 10050; width: 272px; padding: 12px;
+    background: #fff; border: 1px solid #d0d5dd; border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18);
+    font-family: inherit; color: #111827;
+}
+.di-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.di-title { font-weight: 700; font-size: 14px; }
+.di-nav {
+    width: 30px; height: 30px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb;
+    color: #374151; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.di-nav:hover { border-color: #1e3a5f; color: #1e3a5f; }
+
+.di-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.di-weekday { text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; padding: 4px 0; }
+.di-weekday:last-of-type { color: #b91c1c; }
+.di-gap { height: 34px; }
+.di-day {
+    height: 34px; border: 1px solid transparent; border-radius: 8px; background: none;
+    font: inherit; font-size: 13px; color: #111827; cursor: pointer;
+}
+.di-day:hover:not(:disabled) { background: #eef2f7; }
+.di-day:focus-visible { outline: 2px solid #1e3a5f; outline-offset: -2px; }
+.di-day.is-friday { color: #b91c1c; }
+.di-day.is-today { border-color: #1e3a5f; font-weight: 700; }
+.di-day.is-selected, .di-day.is-selected:hover { background: #1e3a5f; color: #fff; }
+.di-day:disabled { color: #c4c9d2; cursor: not-allowed; }
+
+.di-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9; }
+.di-link {
+    border: none; background: none; color: #1e3a5f; font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; padding: 4px 6px; border-radius: 6px;
+}
+.di-link:hover:not(:disabled) { background: #eef2f7; }
+.di-link:disabled { color: #c4c9d2; cursor: not-allowed; }

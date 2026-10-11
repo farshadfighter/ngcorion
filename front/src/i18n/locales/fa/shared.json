@@ -8,6 +8,7 @@
   "All targets": "همهٔ اهداف",
   "Automatic:": "خودکار:",
   "Categories": "دسته‌ها",
+  "Choose a date": "انتخاب تاریخ",
   "Compute": "پردازش",
   "Connects via {{connects_via}}": "اتصال از طریق {{connects_via}}",
   "Container host": "میزبان کانتینر",
@@ -25,6 +26,7 @@
   "DMZ": "DMZ",
   "DNS server": "سرور DNS",
   "Endpoints": "نقاط پایانی",
+  "Enter a date such as 1405/07/19": "تاریخ را مانند ۱۴۰۵/۰۷/۱۹ وارد کنید",
   "External": "خارجی",
   "Firewall": "فایروال",
   "Found in your inventory · most assets first": "موجود در دارایی‌های شما · بیشترین تعداد اول",
@@ -40,6 +42,7 @@
   "Loading supported targets…": "در حال بارگذاری اهداف پشتیبانی‌شده…",
   "Matches {{versionText}}": "منطبق با {{versionText}}",
   "Network": "شبکه",
+  "Next month": "ماه بعد",
   "No {{target}} asset in your inventory yet - add it under Asset Management first.": "هنوز دارایی {{target}} در فهرست شما نیست - ابتدا آن را در مدیریت دارایی‌ها اضافه کنید.",
   "No assets of a supported type in your inventory yet.": "هنوز دارایی‌ای از نوع پشتیبانی‌شده در فهرست شما نیست.",
   "No assets yet": "هنوز دارایی‌ای نیست",
@@ -74,5 +77,6 @@
   "You are auditing {{target}} - choose an asset": "در حال ممیزی {{target}} هستید - یک دارایی انتخاب کنید",
   "You are auditing {{target}} on {{asset}} ({{ip}})": "در حال ممیزی {{target}} روی {{asset}} ({{ip}}) هستید",
   "You are hardening {{target}} - choose an asset": "در حال مقاوم‌سازی {{target}} هستید - یک دارایی انتخاب کنید",
-  "You are hardening {{target}} on {{asset}} ({{ip}})": "در حال مقاوم‌سازی {{target}} روی {{asset}} ({{ip}}) هستید"
+  "You are hardening {{target}} on {{asset}} ({{ip}})": "در حال مقاوم‌سازی {{target}} روی {{asset}} ({{ip}}) هستید",
+  "yyyy/mm/dd": "سال/ماه/روز"
 }

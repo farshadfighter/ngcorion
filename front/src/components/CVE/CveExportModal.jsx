@@ -3,6 +3,7 @@ import api from "../../config/api.js";
 import { Icon } from "./CveIcons.jsx";
 import { t } from "../../i18n";
 import { tx } from "../../i18n/tx";
+import { DateInput } from "../shared/DateInput.jsx";
 
 const isoDay = (d) => d.toISOString().slice(0, 10);
 
@@ -43,7 +44,7 @@ export function CveExportModal({ onStarted, onClose }) {
                                 <b>{t("Changes since a date")}</b>
                                 <span>{t("Small. Pick the date the other server was last updated, or earlier.")}</span>
                                 {kind === "delta" && (
-                                    <input type="date" className="cvx-input cvx-date" value={since} max={isoDay(today)}
+                                    <DateInput className="cvx-input cvx-date" value={since} max={isoDay(today)}
                                            aria-label={t("Changes since")} onChange={(e) => setSince(e.target.value)} />
                                 )}
                             </div>

@@ -3,6 +3,7 @@
  */
 import { useState } from "react";
 import { t as tr } from "../../i18n";
+import { DateTimeInput } from "./DateInput.jsx";
 
 // Presets map straight to NocService.pick_granularity's tier boundaries
 // (app/modules/noc/service.py) - 1h/6h stay in raw resolution, 24h/7d land
@@ -77,13 +78,13 @@ export function TimeRangePicker({ value, onChange, dark = false }) {
             {customOpen && (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: t.textFaint, gap: 2 }}>
-                        {tr("From")}
-                        <input type="datetime-local" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
+                        {tr("From date")}
+                        <DateTimeInput value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
                             style={{ padding: "5px 7px", border: `1px solid ${t.border}`, borderRadius: 6, fontSize: 12, background: t.surface, color: t.text }} />
                     </label>
                     <label style={{ display: "flex", flexDirection: "column", fontSize: 10.5, color: t.textFaint, gap: 2 }}>
-                        {tr("To")}
-                        <input type="datetime-local" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
+                        {tr("To date")}
+                        <DateTimeInput value={customTo} onChange={(e) => setCustomTo(e.target.value)}
                             style={{ padding: "5px 7px", border: `1px solid ${t.border}`, borderRadius: 6, fontSize: 12, background: t.surface, color: t.text }} />
                     </label>
                     <button type="button" onClick={applyCustom}

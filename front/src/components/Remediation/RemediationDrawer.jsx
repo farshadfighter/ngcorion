@@ -7,6 +7,7 @@ import { AcceptanceModal } from "./AcceptanceModal.jsx";
 import {
     ACCEPTANCE_STATUS, SEVERITY, SOURCE, STATUS, dueClass, dueText, errorText, eventText, itemTitle, shortDate, sourceLink,
 } from "./remediationFormat.js";
+import { DateInput } from "../shared/DateInput.jsx";
 
 const toDateInput = (iso) => (iso ? iso.slice(0, 10) : "");
 
@@ -109,7 +110,7 @@ export function RemediationDrawer({ itemId, canWrite, onClose, onChanged }) {
                                         </select>
                                     </label>
                                     <label className="alr-lbl">{t("Deadline")}
-                                        <input type="date" className="bkm-select" value={toDateInput(item.due_at)} disabled={!editable || busy}
+                                        <DateInput className="bkm-select" value={toDateInput(item.due_at)} disabled={!editable || busy}
                                                onChange={(e) => e.target.value && save({ due_date: e.target.value })} />
                                         <span className={`alr-hint ${dueClass(item)}`}>
                                             {shortDate(item.due_at)}{active ? ` · ${dueText(item)}` : ""}
