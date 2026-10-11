@@ -7,12 +7,12 @@ RESTful endpoints for Apache HTTP Server CIS hardening operations.
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.asset_entitlement import require_licensed_asset
-from app.core.dependencies import require_own_session, get_current_user, require_permission
+from app.core.dependencies import require_own_session, require_permission
 from app.models import User
 from app.modules.shared.hardening_audit import log_session_execute_outcome
 from .service import ApacheHardeningService

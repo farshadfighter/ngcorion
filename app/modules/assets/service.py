@@ -5,7 +5,7 @@ import logging
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
-from typing import List, Optional
+from typing import Optional
 from math import ceil
 from datetime import date as date_type
 from app.models import (

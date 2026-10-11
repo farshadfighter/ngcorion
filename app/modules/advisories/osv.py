@@ -13,7 +13,6 @@ ecosystem plus a list of what changed when:
 The parser is pure, so it is tested on captured records. OSV_BASE_URL points
 it at a mirror.
 """
-import io
 import json
 import logging
 import math
@@ -22,7 +21,7 @@ import re
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
+from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple
 from urllib.parse import quote
 
 import requests

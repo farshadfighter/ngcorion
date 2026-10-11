@@ -21,7 +21,6 @@ from .parameter_metadata import (
     get_apache_auto_fix_preview,
     get_apache_check_defaults,
     is_apache_check_auto_fixable,
-    APACHE_CHECK_PARAMETER_MAP,
     get_all_supported_checks
 )
 from .command_templates import get_apache_hardening_template

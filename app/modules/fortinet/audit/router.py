@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 from app.core.database import get_db
 from app.core.asset_entitlement import require_licensed_asset
 from app.core.dependencies import (
-    get_current_user,
     require_permission,
     assert_session_access,
     owner_scope,
@@ -267,7 +266,7 @@ def discover_vdoms(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("VDOM discovery failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

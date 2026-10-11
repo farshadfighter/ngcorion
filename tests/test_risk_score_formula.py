@@ -23,7 +23,6 @@ import pytest
 
 from app.modules.risk.levels import (
     DEFAULT_THRESHOLDS,
-    RISK_LEVELS,
     THRESHOLD_KEYS,
     risk_level_for_score,
     thresholds_from_settings,

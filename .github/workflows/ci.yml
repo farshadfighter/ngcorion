@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   backend:
-    name: Backend (pytest)
+    name: Backend (lint, pytest)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
@@ -49,6 +49,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
       - name: Install dependencies
         run: uv sync --frozen --group dev
+      - name: Lint (ruff, rules in pyproject.toml)
+        run: uvx ruff@0.15.8 check app tests alembic
       - name: Apply migrations
         run: uv run alembic upgrade head
       - name: Check there is a single migration head

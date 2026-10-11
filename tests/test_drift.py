@@ -25,7 +25,7 @@ from app.core.database import engine
 from app.models.asset import Asset
 from app.models.asset_types import AssetType
 from app.models.backup import DeviceBackup
-from app.models.drift import DriftRun, DriftResult
+from app.models.drift import DriftResult
 from app.models.user import User
 from app.modules.drift.service import DriftService, _severity_for
 

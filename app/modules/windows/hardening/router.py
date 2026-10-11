@@ -6,7 +6,7 @@ Credentials connect directly to Windows Server via WinRM (not SSH).
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status , Request
 from pydantic import BaseModel, Field

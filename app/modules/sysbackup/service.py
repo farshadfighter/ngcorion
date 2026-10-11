@@ -17,7 +17,6 @@ import re
 import secrets
 import shutil
 import socket
-import threading
 import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
@@ -32,7 +31,7 @@ from app.core.credential_crypto import PURPOSE_SYSTEM_CONFIG, decrypt, encrypt
 from app.core.database import SessionLocal
 from app.core.singleton import lock_key, runner_is_alive, runner_tag
 from app.models.system_backup import (BK_FAILED, BK_MISSING, BK_PENDING, BK_QUEUED, BK_READY, BK_RUNNING,
-                                      CONTENTS, KIND_MANUAL, KIND_SAFETY, KIND_SCHEDULED, KIND_UPLOADED,
+                                      CONTENTS, KIND_SAFETY, KIND_SCHEDULED, KIND_UPLOADED,
                                       BackupDestination, SystemBackup)
 from app.models.system_config import SystemConfigSetting
 from app.modules.sysbackup import container, dbdump, files

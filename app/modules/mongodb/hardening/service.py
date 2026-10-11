@@ -20,7 +20,6 @@ from app.models.audit import CheckStatus, DeviceType
 
 from .command_templates import get_all_supported_checks, get_mongodb_hardening_template
 from .parameter_metadata import (
-    MONGODB_CHECK_PARAMETER_MAP,
     aggregate_mongodb_parameters_for_checks,
     categorize_mongodb_checks_by_fixability,
     get_mongodb_auto_fix_preview,

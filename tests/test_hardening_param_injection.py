@@ -23,7 +23,6 @@ from app.core.hardening_param_security import (
     ParameterSecurityError,
     escape_powershell_single_quoted,
     escape_sql_identifier_text,
-    quote_shell,
     reject_shell_breakout_chars,
     validate_cli_line,
     validate_delimited_text,

@@ -20,9 +20,9 @@ what was found so a reviewer can judge.
 """
 
 import re
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from app.modules.benchmark.rules import BenchmarkRule, as_list, json_section, section
+from app.modules.benchmark.rules import BenchmarkRule, as_list, json_section
 from app.modules.benchmark.winps import registry_value
 from app.modules.windows.audit import rules as W
 

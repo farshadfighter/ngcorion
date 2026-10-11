@@ -286,11 +286,11 @@ class UserService:
         
         # Audit logging
         changes = []
-        if user_data.username: changes.append(f"username")
-        if user_data.email: changes.append(f"email")
+        if user_data.username: changes.append("username")
+        if user_data.email: changes.append("email")
         if user_data.phone is not None: changes.append("phone")
-        if user_data.password: changes.append(f"password")
-        if user_data.is_active is not None: changes.append(f"is_active")
+        if user_data.password: changes.append("password")
+        if user_data.is_active is not None: changes.append("is_active")
         
         if user_data.role is not None:
             log_user_action(self.db, current_user, "role.change", user_id,

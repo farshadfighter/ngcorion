@@ -376,7 +376,7 @@ def delete_audit_session(
 
         return {"message": f"Audit session {session_id} deleted successfully"}
 
-    except Exception as exc:
+    except Exception:
         logging.getLogger(__name__).exception("Failed to delete audit session")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

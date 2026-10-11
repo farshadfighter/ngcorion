@@ -34,7 +34,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.system_config import SECTION_SMS, SECTION_SMTP, SECTION_SYSLOG, SECTION_TIME
+from app.models.system_config import SECTION_TIME
 
 TIMEOUT = 15
 SEVERITY_CEF = {"info": 3, "warning": 6, "critical": 9}

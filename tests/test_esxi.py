@@ -16,7 +16,6 @@ and evidence as the sample.
 import shutil
 import subprocess
 import sys
-from contextlib import contextmanager
 from pathlib import Path
 
 import pytest

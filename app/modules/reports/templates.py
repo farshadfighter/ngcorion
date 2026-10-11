@@ -19,7 +19,6 @@ from sqlalchemy.orm import Session
 from app.models.audit import AuditResult, CheckStatus
 from app.models.backup import DeviceBackup
 from app.models.hardening import HardeningAction
-from app.models.remediation import ACCEPT_APPROVED, RiskAcceptance
 from app.models.risk import AssetRiskScore
 from app.modules.reports import calendar as cal
 from app.modules.reports import charts, data

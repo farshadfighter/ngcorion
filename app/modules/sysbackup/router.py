@@ -4,11 +4,9 @@ every secret the product stores.
 """
 import os
 import socket
-import tempfile
 import threading
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, List, Literal, Optional
 from urllib.parse import unquote
 
@@ -21,9 +19,8 @@ from app.core.database import get_db
 from app.core.dependencies import require_admin
 from app.core.security import verify_password
 from app.models import User, log_action
-from app.models.system_backup import (BK_PENDING, BK_READY, CONTENTS, DEST_TYPES, KINDS, RESTORE, RESTORE_TEST,
-                                      RS_PENDING, BackupDestination, SystemBackup, SystemRestore)
-from app.modules.sysbackup import container, dbdump
+from app.models.system_backup import (BK_READY, CONTENTS, BackupDestination, SystemBackup, SystemRestore)
+from app.modules.sysbackup import container
 from app.modules.sysbackup import destinations as dest_io
 from app.modules.sysbackup import restore as restore_mod
 from app.modules.sysbackup import service

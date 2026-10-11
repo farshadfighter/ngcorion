@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import require_permission
 from app.models import User, Asset, TopologyLink
 from app.models.topology_log import (
     log_topology_link_created,

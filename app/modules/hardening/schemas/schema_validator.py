@@ -6,8 +6,7 @@ Handles dependency checking, type validation, and nested field validation.
 """
 
 import re
-import ipaddress
-from typing import Dict, Any, List, Tuple, Optional, Set
+from typing import Dict, Any, List, Tuple, Optional
 
 from .base import (
     InputDefinition,
@@ -15,7 +14,6 @@ from .base import (
     DependsOn,
     ItemValidation,
     InputType,
-    ControlSchema,
 )
 from .schema_loader import SchemaLoader
 

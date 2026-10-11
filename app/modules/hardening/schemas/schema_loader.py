@@ -7,8 +7,7 @@ Provides access to controls and shared field resolution.
 
 import json
 from pathlib import Path
-from typing import Optional, List, Dict, Any
-from functools import lru_cache
+from typing import Optional, List, Dict
 
 from .base import (
     ControlSchema,

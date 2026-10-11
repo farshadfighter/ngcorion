@@ -13,7 +13,7 @@ just drops the staging schema; the running system never noticed.
 import logging
 import time
 from pathlib import Path
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple
 
 import psycopg
 from psycopg import sql

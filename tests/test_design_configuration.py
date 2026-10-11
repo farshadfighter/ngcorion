@@ -21,8 +21,8 @@ from sqlalchemy.orm import Session
 from app.core.database import engine
 from app.models.asset import Asset
 from app.models.asset_types import AssetType
-from app.models.design import ArchitectureDesign, DesignComponent, DesignRelationship
-from app.models.configuration import ConfigurationJob, ConfigurationObject
+from app.models.design import DesignRelationship
+from app.models.configuration import ConfigurationObject
 from app.models.user import User
 from app.modules.design.service import DesignService
 from app.modules.configuration.service import ConfigurationService

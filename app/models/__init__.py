@@ -308,6 +308,14 @@ __all__ = [
     "log_user_action",
     "log_asset_action",
     "log_discovery_action",
+    # NOC metrics, alerts and notifications
+    "AssetMetricSample",
+    "AssetMetricRollup",
+    "Alert",
+    "AlertSeen",
+    "NotificationDelivery",
+    "NotificationRule",
+    "NotificationWebhook",
 ]
 
 # Remediation tracking and risk acceptance (see app/models/remediation.py)

@@ -61,7 +61,7 @@ def get_harden_all_plan(
         return service.build_plan(db, session_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception("Harden All plan failed for session %s", session_id)
         logging.getLogger(__name__).exception("Failed to build hardening plan")
         raise HTTPException(

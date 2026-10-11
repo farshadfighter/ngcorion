@@ -1,19 +1,19 @@
 """
 Audit Service Layer
 """
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from contextlib import contextmanager
 import logging
 import time
 
-from app.models import AuditSession, AuditResult, Asset, User
+from app.models import AuditSession, AuditResult, Asset
 from app.models.audit import DeviceType, CheckStatus
 from app.modules.software.collect import cisco_item
 from app.modules.software.hooks import save_single
 from .ssh_client import CiscoSSHClient, redact_sensitive_data
-from .rules import build_all_cisco_cis_rules, evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
+from .rules import evaluate_compliance, filter_rules_by_profile, build_cis_benchmark_rules
 from .cis_benchmark_map import CIS_BENCHMARK_SECTIONS, CIS_BENCHMARK_VERSION
 from app.core.dependencies import owned_sessions
 
@@ -807,7 +807,6 @@ class AuditService:
                 "most_recent_session": {...}
             }
         """
-        from sqlalchemy import func
 
         # Query sessions
         query = db.query(AuditSession)

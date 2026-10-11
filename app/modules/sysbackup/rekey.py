@@ -7,7 +7,7 @@ keep working after the restore.
 """
 import json
 import logging
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from psycopg import sql
 

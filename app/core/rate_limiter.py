@@ -5,7 +5,6 @@ Rate Limiter for Discovery Scans
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.models.user import User
 from app.models.discovery import DiscoveryScan
 
 class RateLimiter:

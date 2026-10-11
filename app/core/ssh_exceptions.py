@@ -7,7 +7,6 @@ resolution suggestions, and serialization support for API responses.
 """
 
 from typing import List, Optional, Any, Dict
-import re
 
 
 class SSHConnectionError(Exception):

@@ -24,12 +24,12 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.singleton import runner_is_alive, runner_tag
-from app.models.system_backup import (BK_READY, CONTENTS, RESTORE, RESTORE_TEST, RS_FAILED, RS_PENDING,
+from app.models.system_backup import (BK_READY, RESTORE, RESTORE_TEST, RS_FAILED, RS_PENDING,
                                       RS_QUEUED, RS_RUNNING, RS_SUCCEEDED, SystemBackup, SystemRestore)
 from app.modules.sysbackup import container, dbdump, files, maintenance, rekey, service
 from app.modules.sysbackup.service import BackupError, JobLock, update_row

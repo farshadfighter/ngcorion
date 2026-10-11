@@ -12,7 +12,6 @@ import json
 import os
 import uuid
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 
 import psycopg
 import pytest

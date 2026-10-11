@@ -7,7 +7,7 @@ repeater, ordered_multi_enum, list_string, list_int, multi_enum, ref
 """
 
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
 

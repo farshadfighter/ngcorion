@@ -36,3 +36,18 @@ dependencies = [
 dev = [
     "pytest>=9.1.1",
 ]
+
+# Lint (CI runs `ruff check`): pyflakes and syntax errors - unused or duplicate imports and
+# variables, undefined names, f-strings without placeholders. Style is not enforced.
+[tool.ruff]
+target-version = "py313"
+extend-exclude = ["alembic/versions"]  # released migrations are history, not edited
+
+[tool.ruff.lint]
+select = ["F", "E9"]
+
+[tool.ruff.lint.per-file-ignores]
+# These modules import a pytest fixture from another test module; pytest injects it by name.
+"tests/test_license_reliability.py" = ["F811"]
+"tests/test_license_signed_client.py" = ["F811"]
+"tests/test_offline_license.py" = ["F811"]

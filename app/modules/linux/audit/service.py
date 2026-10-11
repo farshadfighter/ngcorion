@@ -469,7 +469,6 @@ class LinuxAuditService:
         asset_id: Optional[int] = None, owner_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Get comprehensive statistics about Linux audit sessions."""
-        from sqlalchemy import func
 
         query = owned_sessions(db.query(AuditSession), owner_id).filter(AuditSession.device_type == DeviceType.LINUX)
         if asset_id:

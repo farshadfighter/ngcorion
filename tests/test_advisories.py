@@ -7,11 +7,10 @@ import, incremental online update), signed packages and the daily update.
 
 Everything runs inside a rolled-back transaction.
 """
-import io
 import json
 import sys
 import zipfile
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import pytest

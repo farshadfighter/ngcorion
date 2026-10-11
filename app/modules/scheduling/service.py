@@ -23,7 +23,6 @@ from app.models.scheduling import (
     ScheduledJob, ScheduledJobRun,
     JOB_TYPE_DISCOVERY, JOB_TYPE_AUDIT, RECURRENCE_ONCE,
 )
-from app.models.asset import Asset
 from app.modules.scheduling.recurrence import compute_next_run_at
 from app.modules.scheduling.audit_dispatch import SUPPORTED_TECHNOLOGIES, REQUIRED_PARAMS, run_audit
 from app.modules.scheduling.schemas import ScheduledJobCreate, ScheduledJobUpdate

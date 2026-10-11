@@ -20,8 +20,7 @@ from .parameter_metadata import (
     categorize_linux_checks_by_fixability,
     get_linux_auto_fix_preview,
     get_linux_check_defaults,
-    is_linux_check_auto_fixable,
-    LINUX_CHECK_PARAMETER_MAP
+    is_linux_check_auto_fixable
 )
 from .command_templates import (
     get_linux_hardening_template,

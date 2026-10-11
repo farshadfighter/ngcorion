@@ -10,7 +10,7 @@ Kept separate from Asset itself since this is monitoring state, not
 inventory data, and separate from each other since a device has exactly one
 status but any number of interfaces.
 """
-from sqlalchemy import Column, Integer, BigInteger, Float, String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, BigInteger, String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base

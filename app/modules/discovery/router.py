@@ -33,11 +33,9 @@ from .schemas import (
     ScanRequest, ScanResponse, ScanListItem,
     ApplyDiscoveryRequest, ApplyDiscoveryResponse,
     AssetMatchResponse, CreateAssetFromDiscoveryRequest,
-    DiscoveredHost as DiscoveredHostSchema, DiscoveredPort,
-    PendingHostsListResponse, PendingHostResponse,
-    ApproveHostRequest, BulkApproveRequest,
+    PendingHostsListResponse, ApproveHostRequest, BulkApproveRequest,
     AddPortsRequest, OverwritePortsRequest, PortManagementResponse,
-    ApplyDiscoveryMode, ApplyDiscoveryModeResponse, DiscoveryPreviewResponse
+    ApplyDiscoveryMode, ApplyDiscoveryModeResponse
 )
 from .service import DiscoveryService, host_vendor
 from .port_service import PortService
@@ -120,7 +118,7 @@ def start_scan(
 
         return scan_response
 
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("Failed to start scan")
         raise HTTPException(
             status_code=500,

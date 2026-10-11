@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import require_permission
 from app.models import User
 from app.modules.design.service import DesignService
 from app.modules.configuration.service import ConfigurationService

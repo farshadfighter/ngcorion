@@ -1222,7 +1222,6 @@ def _build_firewall(rules):
         "Public": ("9.3", "publicfw.log", 5),
     }
     for prof, (base, logfile, _) in specs.items():
-        n = 1
         def fwrule(sub, title, fn, sev="medium"):
             """Add a rule on one setting of this firewall profile."""
             _add(rules, f"WIN-2025-{base}.{sub}", f"{base}.{sub}",

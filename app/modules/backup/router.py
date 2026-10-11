@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.singleton import runner_tag
-from app.core.dependencies import get_current_user, require_permission
+from app.core.dependencies import require_permission
 from app.core.ssh_exceptions import SSHConnectionError
 from app.models import User, Asset, DeviceBackup
 from app.models.backup_restore import RESTORE_ACTIVE_STATUSES, BackupRestore

@@ -16,7 +16,6 @@ import logging
 
 from app.modules.cisco.audit.ssh_client import CiscoSSHClient
 from app.modules.cisco.audit.rules import CISRule
-from app.core.ssh_exceptions import SSHConnectionError
 
 logger = logging.getLogger(__name__)
 

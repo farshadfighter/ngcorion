@@ -26,7 +26,6 @@ from app.core.credential_crypto import encrypt_json, decrypt_json
 from app.models.asset import Asset
 from app.models.asset_types import AssetType
 from app.models.user import User
-from app.models.scheduling import ScheduledJob, ScheduledJobRun
 from app.modules.scheduling.recurrence import compute_next_run_at
 from app.modules.scheduling.audit_dispatch import REQUIRED_PARAMS, SUPPORTED_TECHNOLOGIES
 from app.modules.scheduling.service import SchedulingService

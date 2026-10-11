@@ -15,7 +15,7 @@ Each parameter includes:
 """
 
 from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

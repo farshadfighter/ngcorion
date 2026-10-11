@@ -28,7 +28,6 @@ from app.core.database import engine as db_engine
 from app.models import Asset, AuditResult, User
 from app.models.asset_types import AssetType
 from app.models.audit import CheckStatus, DeviceType
-from app.modules.benchmark import connectors
 from app.modules.benchmark.audit_service import BenchmarkAuditService
 from app.modules.benchmark.connectors import NginxConnector
 from app.modules.benchmark.hardening_service import BenchmarkHardeningService, run_template

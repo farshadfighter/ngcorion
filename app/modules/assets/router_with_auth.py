@@ -35,8 +35,7 @@ from .schemas import (
     OSCatalogCreate, OSCatalogResponse,
     VendorCatalogCreate, VendorCatalogResponse,
     AssetDependencyCreate, AssetDependencyResponse,
-    AssetSecurityStatusCreate, AssetSecurityStatusResponse,
-    PaginatedResponse
+    AssetSecurityStatusCreate, AssetSecurityStatusResponse
 )
 from .service import AssetInUseError, AssetService
 from app.core.dependencies import get_current_user, require_admin, require_admin_or_manager, require_permission

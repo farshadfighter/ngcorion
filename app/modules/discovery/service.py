@@ -8,15 +8,13 @@ import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
 
 from app.core.asset_entitlement import check_asset_capacity
 from app.models import (
     DiscoveryScan,
     DiscoveredHost,
     Asset,
-    DiscoveryApplication,
-    User
+    DiscoveryApplication
 )
 from app.models.discovery import (
     log_scan_started,

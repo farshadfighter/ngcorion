@@ -20,7 +20,6 @@ from app.models.audit import CheckStatus, DeviceType
 
 from .command_templates import get_all_supported_checks, get_mssql_hardening_template
 from .parameter_metadata import (
-    MSSQL_CHECK_PARAMETER_MAP,
     aggregate_mssql_parameters_for_checks,
     categorize_mssql_checks_by_fixability,
     get_mssql_auto_fix_preview,

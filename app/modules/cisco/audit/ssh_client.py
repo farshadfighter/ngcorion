@@ -32,7 +32,6 @@ except ImportError:
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
-    SSHConnectionTimeoutError,
     SSHNetworkError,
     SSHAlgorithmMismatchError,
     SSHHostKeyError,

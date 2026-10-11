@@ -7,7 +7,6 @@ Tests that:
 - Command counts match expectations
 """
 
-import pytest
 
 
 class TestAuditCommandGeneration:

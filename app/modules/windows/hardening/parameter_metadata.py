@@ -15,9 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from .command_templates import (
     get_all_supported_checks,
-    get_windows_hardening_template,
-    get_windows_template_statements,   # re-exported for callers
-    get_windows_verify_statements,     # re-exported for callers
+    get_windows_hardening_template,     # re-exported for callers
 )
 
 

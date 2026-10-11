@@ -18,7 +18,7 @@ from app.core.secret_redaction import redact_text
 import re
 import logging
 import time
-from typing import Dict, Optional
+from typing import Dict
 
 from app.modules.windows.winrm_endpoint import (
     DEFAULT_WINRM_PORT,

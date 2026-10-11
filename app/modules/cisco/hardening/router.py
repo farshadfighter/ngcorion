@@ -23,7 +23,6 @@ from app.core.asset_entitlement import (
 )
 from app.core.dependencies import (
     owner_scope, require_own_action, require_own_result, require_own_session,
-    get_current_user,
     require_permission,
 )
 from app.core.ssh_exceptions import (
@@ -35,7 +34,7 @@ from app.core.ssh_exceptions import (
     SSHHostKeyError
 )
 from app.models import User
-from app.models import User, Asset, AuditResult, log_hardening_preview, log_hardening_execute
+from app.models import Asset, AuditResult, log_hardening_preview, log_hardening_execute
 from .service import HardeningService, CheckAlreadyPassingError, MissingParametersError
 
 logger = logging.getLogger(__name__)
@@ -728,7 +727,7 @@ def delete_hardening_action(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("Failed to delete action")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -823,7 +822,7 @@ def auto_audit_device(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("Auto-audit failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -921,7 +920,7 @@ def auto_fix_all_failures(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("Auto-fix failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

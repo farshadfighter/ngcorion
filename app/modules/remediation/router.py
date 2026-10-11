@@ -8,7 +8,7 @@ requester, critical/known-exploited only by an administrator) - see
 service.can_decide. Deadline settings need SYSTEM_CONFIG write.
 """
 from datetime import date, datetime, time, timedelta
-from typing import Dict, List, Literal, Optional
+from typing import Dict, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -19,8 +19,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.models import User, log_action
 from app.models.remediation import (ACCEPT_APPROVED, ACCEPT_EXPIRED, ACCEPT_PENDING, ACCEPT_REJECTED,
-                                    ACCEPT_REVOKED, ITEM_ACCEPTED, ITEM_ACTIVE, ITEM_IN_PROGRESS, ITEM_OPEN,
-                                    ITEM_PENDING, ITEM_RESOLVED, SCOPE_ITEM, SCOPE_REF, SEVERITIES,
+                                    ACCEPT_REVOKED, ITEM_ACTIVE, ITEM_RESOLVED, SCOPE_REF, SEVERITIES,
                                     RemediationEvent, RemediationItem, RiskAcceptance)
 from app.modules.remediation import service
 from app.modules.remediation.service import RemediationError

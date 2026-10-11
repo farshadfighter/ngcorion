@@ -20,7 +20,6 @@ from app.models import (
     AuditResult,
     AuditSession,
     Asset,
-    User,
     HardeningAction
 )
 from app.models.audit import CheckStatus
@@ -651,12 +650,10 @@ class HardeningService:
             }
         """
         from app.modules.cisco.audit.service import AuditService
-        from app.models.audit import DeviceType
 
         logger.info(f"Starting auto-audit for device {ip_address}")
 
         # If no asset_id provided, create a temporary asset
-        temp_asset_created = False
         if asset_id is None:
             logger.info(f"Creating temporary asset for {ip_address}")
             temp_asset = Asset(
@@ -670,7 +667,6 @@ class HardeningService:
             db.commit()
             db.refresh(temp_asset)
             asset_id = temp_asset.id
-            temp_asset_created = True
             logger.info(f"Created temporary asset ID {asset_id}")
 
         # Execute audit using existing audit service
@@ -1040,7 +1036,6 @@ class HardeningService:
                 "most_common_checks": [{"check_number": str, "count": int}, ...]
             }
         """
-        from sqlalchemy import func
 
         query = db.query(HardeningAction)
 
@@ -1133,8 +1128,7 @@ class HardeningService:
         """
         from .parameter_metadata import (
             aggregate_parameters_for_checks,
-            categorize_checks_by_fixability,
-            check_has_required_params
+            categorize_checks_by_fixability
         )
         from .command_templates import has_template
 

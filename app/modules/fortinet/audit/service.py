@@ -701,7 +701,7 @@ def _policy_field_evidence(rule, output: str) -> str:
             ]
             return (f"{scope_n} policies; none use '{rule.expected}' as {rule.key} "
                     f"(COMPLIANT):\n" + "\n".join(lines)) if lines else \
-                   f"0 policies configured (COMPLIANT)"
+                   "0 policies configured (COMPLIANT)"
         lines = [
             f"Policy ID {f['label']}: {rule.key} = {f['value']} (NON-COMPLIANT)"
             for f in failures

@@ -28,7 +28,7 @@ from app.schemas.auth import (
 )
 from app.models import LoginLog, UserRole, User
 from app.models.security_audit_log import log_action
-from app.core.locale import LANGUAGES, user_language
+from app.core.locale import user_language
 from pydantic import BaseModel, Field, field_validator
 from app.schemas.user import validate_password_strength
 from typing import Literal

@@ -13,7 +13,7 @@ IDs are this product's (DNS-<family>-<n>); the STIG's own vulnerability
 numbers are not reproduced.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from app.modules.benchmark.rules import BenchmarkRule, as_list, json_section
 from app.modules.benchmark.winps import registry_value

@@ -58,7 +58,6 @@ except ImportError:  # pragma: no cover - fallback if paramiko structure changes
 from app.core.ssh_exceptions import (
     SSHConnectionError,
     SSHAuthenticationError,
-    SSHConnectionTimeoutError,
     SSHNetworkError,
     SSHAlgorithmMismatchError,
     SSHHostKeyError,

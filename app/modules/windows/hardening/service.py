@@ -26,7 +26,6 @@ from app.modules.windows.audit.rules import (
 
 from .command_templates import get_all_supported_checks, get_windows_hardening_template
 from .parameter_metadata import (
-    WINDOWS_CHECK_PARAMETER_MAP,
     aggregate_windows_parameters_for_checks,
     categorize_windows_checks_by_fixability,
     get_windows_auto_fix_preview,

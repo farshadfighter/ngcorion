@@ -16,14 +16,13 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from app.core.credential_crypto import PURPOSE_NOTIFICATIONS, decrypt, encrypt
+from app.core.credential_crypto import PURPOSE_NOTIFICATIONS, encrypt
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models import Asset, AssetType, User, UserPermission, log_action
 from app.models.risk import RiskZone
 from app.models.notification import (ALERT_ACKNOWLEDGED, ALERT_ACTIVE, ALERT_OPEN_STATUSES, ALERT_RESOLVED,
-                                     CHANNEL_EMAIL, CHANNEL_SMS, CHANNEL_SYSLOG, CHANNEL_WEBHOOK, SEVERITIES,
-                                     Alert, AlertSeen, NotificationDelivery, NotificationRule,
+                                     CHANNEL_EMAIL, CHANNEL_SMS, CHANNEL_SYSLOG, CHANNEL_WEBHOOK, Alert, AlertSeen, NotificationDelivery, NotificationRule,
                                      NotificationWebhook)
 from app.models.system_config import SECTION_SMS, SECTION_SMTP, SECTION_SYSLOG
 from app.models.user import UserRole

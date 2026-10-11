@@ -11,11 +11,6 @@ it will be classified as "not_supported" by the categorize function.
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from .command_templates import (
-    get_mongodb_hardening_template,
-    get_mongodb_template_commands,
-    get_mongodb_verify_commands,
-)
 
 
 @dataclass

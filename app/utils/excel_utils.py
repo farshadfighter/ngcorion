@@ -402,7 +402,6 @@ def import_assets_from_excel(
     from openpyxl import load_workbook
     from app.models import Asset, AssetType, AssetLocation, AssetOwner
     from app.models.enums import StatusEnum, ConfidentialityLevelEnum, RiskLevelEnum
-    from datetime import datetime
 
     from app.core.asset_entitlement import capacity_message, remaining_capacity
 

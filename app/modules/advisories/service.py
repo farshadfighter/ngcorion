@@ -2,7 +2,6 @@
 What the pages show: the state of the advisory database, and one asset's
 security updates (grouped by package, as an admin installs them).
 """
-from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional
 

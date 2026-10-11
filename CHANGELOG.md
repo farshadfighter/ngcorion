@@ -130,6 +130,13 @@
   licensing module uncompiled. Tests and development use the source; CI
   checks the image contains no other source and starts it.
 
+### Code standards
+
+- The backend is linted in CI with ruff (pyflakes and syntax errors: unused or
+  duplicate imports and variables, undefined names; rules in `pyproject.toml`).
+  About 200 unused imports, dead variables and duplicate imports were removed;
+  behaviour is unchanged.
+
 ### Dependencies
 
 - React 19, Vite 8, ESLint 10; FastAPI 0.142, Alembic 1.20, Netmiko 4.8,

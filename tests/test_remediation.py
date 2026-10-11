@@ -24,7 +24,7 @@ from app.models.asset_types import AssetType
 from app.models.audit import AuditResult, AuditSession, CheckStatus
 from app.models.cve import AssetSoftware
 from app.models.hardening import HardeningAction
-from app.models.remediation import RemediationEvent, RemediationItem, RiskAcceptance
+from app.models.remediation import RemediationEvent, RemediationItem
 from app.modules.alerts import events as alert_events
 from app.modules.cve import feeds, store
 from app.modules.cve import settings as cve_settings

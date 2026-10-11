@@ -32,7 +32,7 @@ from app.modules.benchmark import connectors
 from app.modules.benchmark.audit_service import BenchmarkAuditService
 from app.modules.benchmark.connectors import MySQLConnection, mysql_client_script, split_sql
 from app.modules.benchmark.hardening_service import BenchmarkHardeningService, run_template
-from app.modules.benchmark.rules import assemble, evaluate, section
+from app.modules.benchmark.rules import assemble, evaluate
 from app.modules.benchmark.templates import PLACEHOLDER_RE
 from app.modules.mysql import rules as R
 from app.modules.mysql.collect import collect, mysql_commands, redact_option_files

@@ -16,8 +16,7 @@ from .command_templates import (
     get_apache_hardening_template,
     get_apache_template_commands_for_distro,
     get_apache_verify_commands_for_distro,
-    get_apache_service_name,
-    get_distro_family
+    get_apache_service_name
 )
 
 logger = logging.getLogger(__name__)

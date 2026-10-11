@@ -56,7 +56,7 @@ These are wired into the same four engine hooks as the RHEL-10 set
 ``command_templates`` and ``parameter_metadata``).
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from dataclasses import replace
 import re
 
@@ -795,7 +795,6 @@ def build_rhel10_hardening_templates() -> List[Any]:
     # kernel modules
     for mod, section in _R10_MODULES:
         mod_u = mod.replace("-", "_")
-        net = section.startswith("3.")
         t.append(LinuxHardeningTemplate(
             check_id=f"LNX-RHEL10-L1-{section}",
             description=f"Disable the {mod} kernel module",
@@ -948,7 +947,7 @@ def build_rhel10_hardening_templates() -> List[Any]:
             check_id=check_id,
             description=f"Set sshd {directive}",
             commands=[
-                f"mkdir -p /etc/ssh/sshd_config.d",
+                "mkdir -p /etc/ssh/sshd_config.d",
                 f"sed -i '/^{directive}[[:space:]]/d' {_SSHD_DROPIN} 2>/dev/null || true",
                 f"echo '{directive} {value}' >> {_SSHD_DROPIN}",
             ],

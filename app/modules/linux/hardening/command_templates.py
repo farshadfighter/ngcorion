@@ -11,9 +11,8 @@ Each template includes:
 - verify_commands: Commands to verify the fix was applied
 """
 
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-import copy
 import re
 import shlex
 

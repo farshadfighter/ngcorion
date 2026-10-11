@@ -5,7 +5,7 @@ Common response models used across audit and hardening modules.
 This eliminates duplication and ensures consistent API responses.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
 

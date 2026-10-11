@@ -25,7 +25,7 @@ from app.modules.active_directory.hardening import TEMPLATES
 from app.modules.active_directory.spec import SPEC
 from app.modules.benchmark import connectors
 from app.modules.benchmark.audit_service import BenchmarkAuditService
-from app.modules.benchmark.hardening_service import BenchmarkHardeningService, run_template
+from app.modules.benchmark.hardening_service import BenchmarkHardeningService
 from app.modules.benchmark.rules import evaluate
 from app.modules.windows.audit import rules as W
 from app.modules.windows.hardening.command_templates import WINDOWS_HARDENING_TEMPLATES

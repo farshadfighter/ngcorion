@@ -9,7 +9,7 @@ Based on Appendix: CIS Controls v8 IG 3 Mapped Recommendations (pages 210-213)
 """
 
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
 
 # CIS Benchmark Version

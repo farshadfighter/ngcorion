@@ -28,7 +28,6 @@ from app.core.dependencies import (
     owner_scope,
     require_own_action,
     require_own_result,
-    get_current_user,
     require_permission,
 )
 from app.core.ssh_exceptions import (
@@ -52,7 +51,6 @@ from .command_templates import get_all_fortigate_templated_checks, has_fortigate
 from .manual_remediation import (
     has_manual_remediation,
     get_manual_remediation,
-    get_manual_parameters,
     parse_evidence_options,
 )
 
@@ -549,7 +547,7 @@ def get_fortinet_device_options(
         SSHConnectionError,
     ) as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=e.to_dict())
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("Device option fetch failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -611,7 +609,7 @@ def discover_fortinet_vdoms(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"VDOM discovery failed: {str(e)}",
         )
-    except Exception as e:
+    except Exception:
         logging.getLogger(__name__).exception("VDOM discovery failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

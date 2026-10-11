@@ -17,7 +17,7 @@ both already used by the manual template picker.
 """
 import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy.orm import Session, joinedload
 

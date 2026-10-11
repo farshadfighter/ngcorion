@@ -10,7 +10,7 @@ a specific edition's PDF and can differ slightly from the edition in use.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from app.modules.benchmark.rules import BenchmarkRule, section
 
@@ -221,7 +221,6 @@ def build_rules() -> List[BenchmarkRule]:
     storage, network, virtual machines.
     """
     r: List[BenchmarkRule] = []
-    A = ["ADVANCED"]
 
     # 1 Install ───────────────────────────────────────────────────────────
     _manual(r, "1.1", "Ensure ESXi is properly patched", "high",

@@ -254,7 +254,7 @@ def _activate(data: LicenseActivateRequest, request: Request):
     
     try:
         # Activate with license server
-        result = client.activate(data.license_key)
+        client.activate(data.license_key)
         
         # Immediately validate to populate state
         refresh_license_state(client)

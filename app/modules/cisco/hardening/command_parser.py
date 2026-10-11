@@ -11,7 +11,7 @@ Handles various remediation patterns:
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
 from .command_templates import has_template, get_template

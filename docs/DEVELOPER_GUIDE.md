@@ -91,6 +91,7 @@ cd front && npm ci && VITE_BACKEND_URL=http://127.0.0.1:8000 npm run dev
 Checks before a push (CI runs the same):
 
 ```bash
+uvx ruff@0.15.8 check app tests alembic   # rules in pyproject.toml [tool.ruff]
 uv run pytest -q
 cd front && npm run lint && npm test && npm run i18n:check && npm run build
 ```

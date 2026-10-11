@@ -20,7 +20,7 @@ markers, which rules.py then evaluates using regex patterns.
 import re
 import logging
 import time
-from typing import Optional, Dict
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 

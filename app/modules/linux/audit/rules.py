@@ -1288,7 +1288,7 @@ def build_linux_cis_rules() -> List[LinuxCISRule]:
             severity="medium",
             level="L2",
             rationale=rationale,
-            remediation=f"Add appropriate audit rules to /etc/audit/rules.d/audit.rules",
+            remediation="Add appropriate audit rules to /etc/audit/rules.d/audit.rules",
             check=lambda d, p, pat=pattern: _check_audit_rule_exists(d, pat),
             evidence=lambda d, p: _get_output(d, "audit_rules_loaded")[:500],
             expected_value=f"auditd rule set for '{key}' events loaded",

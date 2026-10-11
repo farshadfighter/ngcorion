@@ -18,7 +18,7 @@ from app.core.database import engine as db_engine
 from app.models import Asset, User, UserRole
 from app.models.asset_types import AssetType
 from app.models.audit import AuditResult, AuditSession, CheckStatus
-from app.models.remediation import RemediationItem, RiskAcceptance
+from app.models.remediation import RemediationItem
 from app.models.report import Report, ReportFile, ReportSchedule
 from app.models.risk import AssetRiskHistory
 from app.models.user_permission import ModuleEnum, UserPermission

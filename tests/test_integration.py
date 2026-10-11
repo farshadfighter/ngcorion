@@ -10,7 +10,6 @@ Tests the complete flow:
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 
 class TestCompleteAuditFlow:

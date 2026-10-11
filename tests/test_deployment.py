@@ -26,7 +26,6 @@ from app.models.asset import Asset
 from app.models.asset_types import AssetType
 from app.models.backup import DeviceBackup
 from app.models.configuration import ConfigurationJob, ConfigurationObject
-from app.models.deployment import DeploymentJob
 from app.models.user import User
 from app.modules.deployment.service import DeploymentService
 

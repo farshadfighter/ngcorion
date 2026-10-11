@@ -13,8 +13,6 @@ from typing import Any, Dict, List, Optional
 
 from .command_templates import (
     get_mssql_hardening_template,
-    get_mssql_template_statements,
-    get_mssql_verify_statements,
 )
 
 

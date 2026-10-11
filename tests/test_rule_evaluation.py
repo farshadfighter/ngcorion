@@ -8,7 +8,6 @@ Tests that:
 - Evidence is extracted correctly
 """
 
-import pytest
 
 
 class TestRuleCount:

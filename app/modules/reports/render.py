@@ -9,7 +9,7 @@ import io
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from jinja2 import Environment, FileSystemLoader, pass_context, select_autoescape
 from markupsafe import Markup

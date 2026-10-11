@@ -8,7 +8,6 @@ Tests that:
 - Parameter substitution works
 """
 
-import pytest
 
 
 class TestTemplateRegistry:
@@ -150,7 +149,7 @@ class TestServiceTemplates:
 
         for template in service_templates:
             commands = " ".join(template.commands)
-            assert "systemctl" in commands, f"Template should use systemctl"
+            assert "systemctl" in commands, "Template should use systemctl"
 
 
 class TestSSHTemplates:
@@ -182,7 +181,6 @@ class TestDistroTransformation:
         template = get_linux_hardening_template_for_distro("LNX-L1-2.4.1", "ubuntu")
 
         if template:
-            commands = " ".join(template.commands)
             # Ubuntu might use apt-get
             # Just verify transformation returns valid template
             assert len(template.commands) > 0
@@ -194,7 +192,6 @@ class TestDistroTransformation:
         template = get_linux_hardening_template_for_distro("LNX-L1-2.4.1", "rocky")
 
         if template:
-            commands = " ".join(template.commands)
             # Rocky might use dnf
             assert len(template.commands) > 0
 

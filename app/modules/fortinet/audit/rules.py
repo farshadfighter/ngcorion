@@ -21,7 +21,7 @@ evidence-only (``is_manual``) and excluded from the compliance score by the serv
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .ssh_client import SCOPE_GLOBAL, SCOPE_VDOM, SCOPE_VDOM_ROOT
+from .ssh_client import SCOPE_GLOBAL, SCOPE_VDOM
 
 
 # Rule types that only test for the presence/absence of a config line — a coarse

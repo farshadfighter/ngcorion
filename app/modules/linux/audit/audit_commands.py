@@ -38,9 +38,6 @@ def get_linux_audit_commands(distro_id: str = "ubuntu") -> List[Dict[str, Any]]:
     is_debian = distro_id in ("ubuntu", "debian")
     is_rhel = distro_id in ("rocky", "rhel", "centos", "fedora", "almalinux")
     is_rhel_family = is_rhel  # alias for clarity in RHEL-specific blocks
-    pkg_mgr = "apt" if is_debian else "dnf"
-    firewall = "ufw" if is_debian else "firewalld"
-    mac = "apparmor" if is_debian else "selinux"
 
     # ==================== SECTION 1: INITIAL SETUP ====================
 

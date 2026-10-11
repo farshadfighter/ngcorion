@@ -15,7 +15,6 @@ TestLive runs the real collection and real fixes on the local Docker daemon
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path

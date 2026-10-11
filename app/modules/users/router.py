@@ -8,7 +8,6 @@ from typing import List
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models import User, UserRole
-from app.models.user_permission import ModuleEnum, get_all_modules
 from app.schemas.user import (
     UserCreate, UserUpdate, UserResponse, 
     UserListResponse, ModuleInfo, get_available_modules

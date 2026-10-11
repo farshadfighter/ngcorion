@@ -25,7 +25,6 @@ from app.models import (
     AuditResult,
     AuditSession,
     Asset,
-    User,
     HardeningAction
 )
 from app.models.audit import CheckStatus
@@ -40,8 +39,7 @@ from app.modules.fortinet.audit.ssh_client import (
 from .command_parser import FortiGateRemediationParser, apply_fortigate_defaults
 from .ssh_executor import (
     FortiGateHardeningExecutor,
-    redact_fortigate_secrets,
-    FortiGateHardeningExecutionError
+    redact_fortigate_secrets
 )
 from .command_templates import has_fortigate_template, IFACE_ALLOWACCESS_FORBIDDEN
 from .manual_remediation import (

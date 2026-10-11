@@ -249,7 +249,6 @@ class TestRecomputeSessionStats:
             self._rows = rows
 
         def query(self, model):
-            from app.models import AuditSession as _S
             outer = self
 
             class _Q:

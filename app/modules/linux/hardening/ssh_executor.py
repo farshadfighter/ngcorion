@@ -14,13 +14,9 @@ import time
 
 from app.modules.linux.common.fast_ssh_runner import HardeningSSHRunner
 from .command_templates import (
-    get_linux_hardening_template,
     get_linux_hardening_template_for_distro,
-    get_linux_template_commands,
     get_linux_template_commands_for_distro,
-    get_linux_verify_commands,
-    get_linux_verify_commands_for_distro,
-    LinuxHardeningTemplate
+    get_linux_verify_commands_for_distro
 )
 
 logger = logging.getLogger(__name__)
