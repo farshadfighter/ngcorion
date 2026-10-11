@@ -22,7 +22,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import or_
+from sqlalchemy import literal_column
 from sqlalchemy.orm import Query as SAQuery, Session
 
 from app.core.database import get_db
@@ -82,6 +82,13 @@ class Facets(BaseModel):
     results: List[str]
 
 
+# The fields the search box looks in, joined by a newline (taken out of every search, so a match
+# never spans two fields). The trigram index ix_audit_logs_search_trgm is built on exactly this
+# expression (alembic c3e5f7a9b1d4); change both together.
+SEARCH_TEXT = literal_column("coalesce(action, '') || E'\\n' || coalesce(username, '') || E'\\n' || "
+                             "coalesce(module, '') || E'\\n' || coalesce(detail, '')")
+
+
 def _like(text: str) -> str:
     """A LIKE pattern matching `text` anywhere, with LIKE's own wildcards taken literally."""
     escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -102,11 +109,8 @@ def _period(db: Session, query: SAQuery, column, date_from: Optional[date], date
 def _events(db: Session, q, module, action, result, username, ip, date_from, date_to) -> SAQuery:
     query = db.query(AuditLog)
     if q:
-        pattern = _like(q.strip())
-        query = query.filter(or_(AuditLog.action.ilike(pattern, escape="\\"),
-                                 AuditLog.username.ilike(pattern, escape="\\"),
-                                 AuditLog.module.ilike(pattern, escape="\\"),
-                                 AuditLog.detail.ilike(pattern, escape="\\")))
+        # A newline would let a search span two fields of SEARCH_TEXT.
+        query = query.filter(SEARCH_TEXT.ilike(_like(q.replace("\n", " ").strip()), escape="\\"))
     if module:
         query = query.filter(AuditLog.module == module)
     if action:

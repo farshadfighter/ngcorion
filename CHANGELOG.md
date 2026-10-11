@@ -210,6 +210,18 @@ identical to a fresh install, sign-in, audit trail and temporary passwords
 working; a 2.0.0 backup restored into this release the same way, with the
 audit trail still append-only.
 
+### Performance
+- The audit trail's search box uses a trigram index (PostgreSQL's pg_trgm, in
+  its own schema `ngcorion_ext`): at a million events a search takes 13-200 ms
+  instead of 1.4-1.9 s, and a filtered CSV export 50 ms instead of 0.8 s.
+  Building the index on an existing million-event trail takes about 35 s
+  during the upgrade. Where pg_trgm cannot be created the migration skips the
+  index with a warning and search works as before.
+
+Load-tested at 2,500 assets, a million audit events and 200,000 sign-ins:
+asset list (all 2,500) 220 ms, every audit trail and sign-in history page,
+filter and facet under 250 ms.
+
 ### A clearer menu
 - The sidebar follows the work: Assets, Security assessment (risk, audits,
   CVE), Remediation & hardening, Device backups, Network & monitoring,

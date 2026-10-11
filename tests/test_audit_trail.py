@@ -10,6 +10,7 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy import text
 
 from app.core.database import SessionLocal
 from app.models import LoginLog
@@ -72,6 +73,34 @@ def test_filters_and_search(_tz, db, tag):
                                    page=1, page_size=50, db=db, _user=READER).total == 2
     assert audit_trail.list_events(filters=_events(username=tag, date_to=today - timedelta(days=2)),
                                    page=1, page_size=50, db=db, _user=READER).total == 1
+
+
+@patch.object(audit_trail, "local_timezone", return_value=None)
+def test_search_looks_in_each_field_but_not_across_them(_tz, db, tag):
+    _seed(db, tag)
+
+    def found(text):
+        return audit_trail.list_events(filters=_events(username=tag, q=text), page=1, page_size=50,
+                                       db=db, _user=READER).total
+
+    assert found("PASSWORD_CH") == 1          # action, any case
+    assert found("user_manage") == 2          # module (the _ is literal, not a wildcard)
+    assert found(tag[-6:]) == 3               # user name
+    assert found("role to 'adm") == 1         # detail
+    assert found("user.create\n" + tag) == 0  # never across two fields
+
+
+def test_search_uses_the_trigram_index(db):
+    # alembic c3e5f7a9b1d4 builds ix_audit_logs_search_trgm on SEARCH_TEXT; if the two drift apart the
+    # planner silently goes back to reading every row (about 1.5 s at a million events).
+    if not db.execute(text("SELECT 1 FROM pg_indexes WHERE indexname = 'ix_audit_logs_search_trgm'")).scalar():
+        pytest.skip("pg_trgm not available in this database: the migration skipped the index")
+    query = audit_trail._events(db, **_events(q="load-01234"))
+    sql = str(query.statement.compile(dialect=db.bind.dialect, compile_kwargs={"literal_binds": True}))
+    db.execute(text("SET LOCAL enable_seqscan = off"))
+    plan = "\n".join(r[0] for r in db.execute(text("EXPLAIN " + sql)))
+    db.rollback()
+    assert "ix_audit_logs_search_trgm" in plan, plan
 
 
 def test_days_are_the_configured_time_zone(db, tag):
