@@ -101,10 +101,11 @@ jobs:
             if setpriv --reuid=10001 --regid=10001 --clear-groups touch /app/app/x 2>/dev/null; then
               echo "the app user can write its own code"; exit 1
             fi
-            # Compiled: no module source but package markers and the schema
-            # modules scripts/compile_app.py keeps (KEEP_AS_SOURCE).
+            # Compiled: no module source but package markers, the schema modules
+            # scripts/compile_app.py keeps (KEEP_AS_SOURCE) and the python -m
+            # entry points (RUN_AS_MAIN).
             left=$(cd /app && find app -name "*.py" ! -name "__init__.py" | sort | tr "\n" " ")
-            test "$left" = "app/modules/assets/schemas.py app/modules/hardening/schemas/base.py app/modules/shared/schemas/base.py " \
+            test "$left" = "app/modules/assets/schemas.py app/modules/audit_archive/__main__.py app/modules/hardening/schemas/base.py app/modules/shared/schemas/base.py app/modules/sysbackup/cli.py " \
               || { echo "source left in the image: $left"; exit 1; }
             for m in main core/license_client core/license_state core/license_token core/asset_entitlement core/dependencies middleware/license_middleware; do
               ls /app/app/$m.cpython-*.so >/dev/null || { echo "app/$m is not compiled"; exit 1; }
@@ -128,6 +129,9 @@ jobs:
           docker logs ngcorion 2>&1 | grep -q "Running as uid 10001"
           # The PDF libraries are present (WeasyPrint loads Pango).
           docker exec ngcorion python -c "import weasyprint"
+          # The command-line tools the admin guide gives run on the compiled code.
+          docker exec -w /app ngcorion python -m app.modules.sysbackup.cli --help > /dev/null
+          docker exec -w /app ngcorion python -m app.modules.audit_archive --help > /dev/null
 
   appliance:
     name: Appliance (Packer template, OVA packaging)
