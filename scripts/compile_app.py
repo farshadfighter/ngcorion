@@ -6,7 +6,7 @@ module under app/ becomes a compiled .so and its .py source is removed from
 the image, so the code that enforces licensing (the license client, state and
 middleware, the asset limit, main.py, the routers that check it) cannot be
 read or edited in place. Package __init__.py files stay as source; they only
-mark packages. So do the few modules in KEEP_AS_SOURCE (below).
+mark packages. So do the few modules in KEEP_AS_SOURCE and RUN_AS_MAIN (below).
 
 This raises the bar, it is not encryption: someone with root on the machine
 can still observe the program while it runs. It is meant to stop a casual
@@ -38,6 +38,15 @@ KEEP_AS_SOURCE = {
     "app/modules/shared/schemas/base.py",
 }
 
+# Command-line entry points run with `python -m`: runpy needs a module's code object, and a
+# compiled module has none ("No code object available for ..."). Thin argument handling only; the
+# work they call is compiled. tests/test_compile_entry_points.py checks every `python -m app...`
+# the documentation gives is listed here.
+RUN_AS_MAIN = {
+    "app/modules/audit_archive/__main__.py",
+    "app/modules/sysbackup/cli.py",
+}
+
 # Must always be compiled: if one of these ever lands in KEEP_AS_SOURCE the
 # build fails rather than shipping the licensing code as editable source.
 MUST_COMPILE = {
@@ -56,10 +65,10 @@ MUST_COMPILE = {
 
 
 def sources(root: Path):
-    """Every module of the app package except package markers and KEEP_AS_SOURCE."""
+    """Every module of the app package except package markers, KEEP_AS_SOURCE and RUN_AS_MAIN."""
     for path in sorted((root / "app").rglob("*.py")):
         rel = path.relative_to(root).as_posix()
-        if path.name != "__init__.py" and rel not in KEEP_AS_SOURCE:
+        if path.name != "__init__.py" and rel not in KEEP_AS_SOURCE | RUN_AS_MAIN:
             yield path
 
 
@@ -77,7 +86,7 @@ def main(argv=None) -> int:
 
     root = Path(args.root).resolve()
     os.chdir(root)
-    clash = MUST_COMPILE & KEEP_AS_SOURCE
+    clash = MUST_COMPILE & (KEEP_AS_SOURCE | RUN_AS_MAIN)
     if clash:
         print("licensing modules may not stay source:", *sorted(clash), file=sys.stderr)
         return 1

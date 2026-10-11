@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from app.core.database import SessionLocal
+from app.core.storage_guard import storage_critical
 from app.models.system_backup import BK_READY, KIND_SCHEDULED, RESTORE_TEST, SystemBackup, SystemRestore
 from app.modules.sysbackup import restore, service
 
@@ -101,7 +102,10 @@ class BackupWorker:
             if now - last_house >= HOUSEKEEPING_EVERY:
                 await asyncio.to_thread(housekeeping)
                 last_house = now
-            if (now - last_schedule).total_seconds() >= SCHEDULE_SECONDS:
+            # Disk nearly full (app/core/storage_guard.py): no scheduled backup is written; one an
+            # administrator starts still is.
+            if (now - last_schedule).total_seconds() >= SCHEDULE_SECONDS \
+                    and not await asyncio.to_thread(storage_critical):
                 await asyncio.to_thread(queue_scheduled)
                 last_schedule = now
             if await asyncio.to_thread(build_next):

@@ -142,6 +142,8 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 | **FAU_GEN.2** | انتساب رویداد به هویت کاربر | ستون‌های `user_id`، `username`، `ip_address` در `audit_logs` |
 | **FAU_SAR.1 / FAU_SAR.2 / FAU_SAR.3** | مرور کامل دنبالهٔ ممیزی فقط برای کاربران مجاز، با جستجو و فیلتر (ماژول، اقدام، نتیجه، کاربر، نشانی، بازهٔ زمانی) و خروجی CSV ثبت‌شده | صفحهٔ «دنبالهٔ ممیزی» با مجوز `LOGS:read` (`app/modules/audit_trail.py`، `front/src/components/Logs/AuditTrailPage.jsx`) |
 | **FAU_STG.1** | حفاظت از دنبالهٔ ممیزی در برابر حذف/تغییر | تریگر پایگاه داده `audit_logs_no_change` (مهاجرت `a1d3f5b7c9e2`)؛ سابقهٔ ورود از صفحهٔ Logs قابل پاک کردن نیست (`app/modules/logs/clear_router.py`) |
+| **FAU_STG.3** | اقدام در صورت احتمال از دست رفتن داده‌های ممیزی | هشدار «فضای دیسک کم است» (`system.disk_low`، پیش‌فرض ۲ گیگابایت) به مدیران؛ اندازهٔ دنباله در سلامت سیستم (`app/modules/alerts/events.py`، `app/modules/system_health.py`) |
+| **FAU_STG.4** | جلوگیری از از دست رفتن داده‌های ممیزی | زیر `STORAGE_CRITICAL_MB` فضای آزاد، رویدادهای قابل ممیزی (هر تغییر) جز از مدیر سیستم رد می‌شوند و کارهای زمان‌بندی‌شده منتظر می‌مانند؛ ورود/خروج از این حالت ثبت می‌شود (`app/core/storage_guard.py`)؛ بایگانی و حذف راستی‌آزمایی‌شده با ابزار `app/modules/audit_archive/` که خودِ حذف را ثبت می‌کند |
 | **FIA_UID.2 / FIA_UAU.2** | شناسایی و احراز هویت پیش از هر اقدام | `get_current_user` در `app/core/dependencies.py` برای همهٔ مسیرهای `/api` |
 | **FIA_AFL.1** | پاسخ به تلاش‌های ناموفق | ۵ شکست از یک نشانی یا ۱۰ شکست برای یک حساب در ۱۵ دقیقه ← توقف ۱۵ دقیقه‌ای (`app/core/auth_rate_limiter.py`) |
 | **FIA_SOS.1** | کیفیت رمز | حداقل ۸ نویسه با حروف بزرگ، کوچک، رقم و نماد (`app/schemas/user.py`) |
@@ -203,6 +205,6 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 ## ۸. منطق پوشش (خلاصه)
 
 * هر تهدید بند ۳.۲ حداقل با یک هدف بند ۴.۱ پوشش داده شده و هر هدف حداقل با یک SFR بند ۵.
-* وابستگی‌های SFR: FAU_GEN.1←FPT_STM.1 (محیط، A.TIME)؛ FIA_AFL.1←FIA_UAU.1 (پوشش با FIA_UAU.2)؛
+* وابستگی‌های SFR: FAU_GEN.1←FPT_STM.1 (محیط، A.TIME)؛ FAU_STG.3 و FAU_STG.4←FAU_STG.1؛ FIA_AFL.1←FIA_UAU.1 (پوشش با FIA_UAU.2)؛
   FMT_MTD.1←FMT_SMR.1 و FMT_SMF.1؛ FCS_COP.1←مدیریت کلید (کلید Fernet و SECRET_KEY در تنظیمات محیط؛
   کلید لایسنس درون کد).

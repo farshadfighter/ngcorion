@@ -12,14 +12,14 @@ import { tb } from "../../i18n/backendText";
  *   <PermissionToast />
  */
 export const PermissionToast = () => {
-    const [toast, setToast] = useState(null); // { message: string }
+    const [toast, setToast] = useState(null); // { title, message }
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
         const handlePermissionDenied = (e) => {
             const message = e.detail?.message ? tb(e.detail.message) : t("You do not have permission to perform this action.");
 
-            setToast({ message });
+            setToast({ title: e.detail?.title || t("Access Denied"), message });
             setVisible(true);
 
             // بعد از 4 ثانیه محو میشه
@@ -105,7 +105,7 @@ export const PermissionToast = () => {
             <div className={`permission-toast ${!visible ? "hide" : ""}`}>
                 <span className="permission-toast-icon">🔒</span>
                 <div className="permission-toast-body">
-                    <div className="permission-toast-title">{t("Access Denied")}</div>
+                    <div className="permission-toast-title">{toast.title}</div>
                     <div className="permission-toast-message">{toast.message}</div>
                 </div>
                 <button

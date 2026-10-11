@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.sessions import touch as touch_session
 from app.core.database import get_db
 from app.core.security import password_fingerprint
+from app.core.storage_guard import check_request as check_storage
 from app.models import User
 from app.models.revoked_token import RevokedToken
 
@@ -137,6 +138,9 @@ def get_current_user(
             detail="Password change required: choose your own password before continuing.",
             headers={"X-Password-Change-Required": "1"},
         )
+
+    # Disk nearly full: only system administrators may change anything (app/core/storage_guard.py).
+    check_storage(request, user)
 
     return user
 

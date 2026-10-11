@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from app.core.database import SessionLocal
+from app.core.storage_guard import storage_critical
 from app.modules.reports import service
 
 logger = logging.getLogger(__name__)
@@ -74,7 +75,10 @@ class ReportWorker:
             if now - last_purge >= PURGE_EVERY:
                 await asyncio.to_thread(housekeeping)
                 last_purge = now
-            if (now - last_schedule).total_seconds() >= SCHEDULE_SECONDS:
+            # Disk nearly full (app/core/storage_guard.py): scheduled reports wait; a report an
+            # administrator asks for is still built.
+            if (now - last_schedule).total_seconds() >= SCHEDULE_SECONDS \
+                    and not await asyncio.to_thread(storage_critical):
                 await asyncio.to_thread(run_schedules)
                 last_schedule = now
             busy = await asyncio.to_thread(build_next)

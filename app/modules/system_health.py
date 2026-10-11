@@ -11,7 +11,6 @@ Health of the running NGCorion.
 """
 import os
 import shutil
-import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -139,14 +138,22 @@ def health_detail(request: Request, current_user: User = Depends(require_admin),
     lic = get_license_state()
     checks.append(_ok("license", lic.message) if lic.valid else _fail("license", lic.message))
 
-    for label, path in (("disk_data", os.getenv("CVE_DATA_DIR") or tempfile.gettempdir()),
-                        ("disk_app", str(ALEMBIC_DIR.parent))):
+    from app.core.storage_guard import disk_paths, storage_state
+    for label, path in zip(("disk_data", "disk_app"), disk_paths()):
         try:
             usage = shutil.disk_usage(path)
             detail = f"{usage.free / 1024 ** 3:.1f} GB free of {usage.total / 1024 ** 3:.1f} GB ({path})"
             checks.append(_warn(label, detail) if usage.free < LOW_DISK_BYTES else _ok(label, detail))
         except OSError as exc:
             checks.append(_warn(label, f"Cannot read {path}: {exc.strerror}"))
+    guard = storage_state(force=True)
+    checks.append(_fail("storage_guard", f"Less than {guard['limit'] // 1024 ** 2} MB free: changes are "
+                                         "paused for everyone but system administrators")
+                  if guard["critical"] else _ok("storage_guard", "Enough free disk for the audit trail"))
+    sizes = db.execute(text("SELECT pg_database_size(current_database()), pg_total_relation_size('audit_logs'), "
+                            "pg_total_relation_size('login_logs')")).one()
+    checks.append(_ok("database_size", f"Database {sizes[0] / 1024 ** 3:.2f} GB, audit trail "
+                                       f"{sizes[1] / 1024 ** 2:.0f} MB, sign-in history {sizes[2] / 1024 ** 2:.0f} MB"))
 
     worst = "error" if any(c["status"] == "error" for c in checks) else \
         "warning" if any(c["status"] == "warning" for c in checks) else "ok"

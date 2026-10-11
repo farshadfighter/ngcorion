@@ -12,10 +12,8 @@ database and returns the problems it sees right now. Two kinds:
 
 Evaluators only read; app/modules/alerts/engine.py turns problems into alerts.
 """
-import os
 import re
 import shutil
-import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Callable, Dict, List, Optional
@@ -376,12 +374,8 @@ def _task_stopped(db: Session, params: Dict, now: datetime, since: datetime) -> 
             for name, label in BACKGROUND_TASKS if not _lock_held(db, name)]
 
 
-def disk_paths() -> List[str]:
-    return [os.getenv("CVE_DATA_DIR") or tempfile.gettempdir(),
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))]
-
-
 def _disk_low(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.core.storage_guard import disk_paths
     floor = float(params.get("gb", 2))
     out, seen = [], set()
     for path in disk_paths():

@@ -28,8 +28,9 @@
     color: rgba(255, 255, 255, 0.45);
     transition: transform 0.2s ease;
 }
-.sbn-group:not(.is-open) .sbn-caret { transform: rotate(90deg); }
-[dir="rtl"] .sbn-group:not(.is-open) .sbn-caret { transform: rotate(-90deg); }
+/* closed: points along the line (right in English, left in Persian); open: down */
+.sbn-group:not(.is-open) .sbn-caret { transform: rotate(-90deg); }
+[dir="rtl"] .sbn-group:not(.is-open) .sbn-caret { transform: rotate(90deg); }
 
 .sbn-group + .sbn-group,
 .sidebar-nav > a + .sbn-group { border-top: 1px solid rgba(255, 255, 255, 0.07); }

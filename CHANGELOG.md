@@ -201,6 +201,15 @@
   the License page to administrators only.
 - The asset list no longer fails for everyone once the user who owned an
   asset is deleted (the owner becomes empty, which the API refused).
+- Narrow screens: on a phone-sized screen (640 px or less) the menu starts as
+  the icon rail, so pages keep their width; the audit trail's buttons wrap
+  instead of running off the screen. A closed menu group's arrow points along
+  the line (right in English, left in Persian). Checked in English and Persian
+  at 1440, 1024, 768 and 390 px.
+- The PDF guides print every nested list as a list: sub-items written with
+  three spaces came out as a literal `*` (installation, Docker setup, audit
+  credentials) or flat (audit trail review); the review section names the
+  page's three tabs.
 - `deploy.sh` starts the backend with `--remove-orphans`, so an upgrade from
   2.0.0 also stops the `redis` container the release no longer has.
 
@@ -209,6 +218,26 @@ permissions, assets, sign-ins, audit events) migrated to this release, schema
 identical to a fresh install, sign-in, audit trail and temporary passwords
 working; a 2.0.0 backup restored into this release the same way, with the
 audit trail still append-only.
+
+### Audit storage (FAU_STG.3 / FAU_STG.4)
+- When free disk falls below `STORAGE_CRITICAL_MB` (500 MB by default),
+  changes are refused (507) to everyone but system administrators, and
+  scheduled audits, discovery, reports and backups wait; reading and signing
+  out go on. Entering and leaving this state is recorded in the audit trail
+  and shown in the health check (`storage_guard`), which also gives the size
+  of the database, the audit trail and the sign-in history. The "Disk space
+  low" alert (2 GB) warns well before.
+- New archive tool, `python -m app.modules.audit_archive export | verify |
+  purge`: writes the audit events and sign-ins older than a day to a zip with
+  a SHA-256 manifest, and removes from the database only rows that are byte
+  for byte in a verified archive, recording the removal (count, cut-off,
+  archive hash) in the trail. Tested at 300,000 events: 5 s to archive (4 MB),
+  7 s to remove.
+- Fix: `python -m app.modules.sysbackup.cli` (backup and restore from the
+  command line) failed in the production image, whose modules are compiled
+  and have no code object for `python -m`. Command-line entry points now stay
+  Python source (`RUN_AS_MAIN` in `scripts/compile_app.py`); a test checks
+  every `python -m` the documentation gives.
 
 ### Performance
 - The audit trail's search box uses a trigram index (PostgreSQL's pg_trgm, in

@@ -128,6 +128,10 @@ const TEMPLATES = [
     msg("Login successfully with {{role}} Role."),
     msg("Updated SMTP settings (host={{value}}:{{value2}})"),
     msg("Exported {{rows}} sign-ins; filters: {{value}}"),
+    // audit storage (app/core/storage_guard.py, app/modules/audit_archive/)
+    msg("{{mb}} MB free on {{path}}: changes paused for everyone but system administrators"),
+    msg("{{mb}} MB free on {{path}}: changes allowed again"),
+    msg("Removed {{events}} audit events and {{logins}} sign-ins older than {{cutoff}}, archived in {{file}} (SHA-256 {{sha}})"),
     msg("plan {{plan_code}}, {{max_assets}} assets, valid until {{offline_until}}"),
     msg("Created user '{{username}}' with role '{{role}}'"),
     msg("Deleted user '{{username}}' with role '{{role}}'"),
@@ -702,6 +706,9 @@ msg("The current password is incorrect.");
 msg("The new password must be different from the current one.");
 msg("Password change required: choose your own password before continuing.");
 msg("Session has ended. Please login again.");
+
+// disk nearly full (app/core/storage_guard.py)
+msg("The server is almost out of disk space: changes are paused until a system administrator frees space.");
 
 // temporary password set by an administrator (app/modules/users/service.py reset_password)
 msg("Only system administrators can set a temporary password");

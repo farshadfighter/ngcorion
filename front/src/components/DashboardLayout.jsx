@@ -31,7 +31,9 @@ export const DashboardLayout = () => {
     const activeMenu = menuFromPath(pathname);
 
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    // On a phone-sized screen the menu starts as the icon rail, so the page keeps the width.
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+        () => typeof window !== "undefined" && !!window.matchMedia?.("(max-width: 640px)").matches);
     const [showDropdown, setShowDropdown] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const mustChangePassword = useSelector((state) => state.auth.mustChangePassword);

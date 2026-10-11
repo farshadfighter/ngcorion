@@ -15,6 +15,7 @@ from typing import Optional
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.storage_guard import storage_critical
 from app.modules.scheduling.service import SchedulingService
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,9 @@ class JobScheduler:
     async def _loop(self) -> None:
         while not self._stop_event.is_set():
             try:
-                await self._sweep_once()
+                # Disk nearly full (app/core/storage_guard.py): due jobs wait, they run once there is room.
+                if not await asyncio.to_thread(storage_critical):
+                    await self._sweep_once()
             except Exception:
                 logger.exception("[Scheduler] Sweep failed")
             try:

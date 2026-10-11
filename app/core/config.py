@@ -201,6 +201,12 @@ class Settings(BaseSettings):
     NOC_METRICS_STORAGE_BUDGET_GB: float = 10.0
     NOC_METRICS_STORAGE_EVICT_THRESHOLD: float = 0.8
 
+    # Audit storage (FAU_STG.4, app/core/storage_guard.py): below this much free disk, changes are
+    # refused to everyone but system administrators and scheduled work waits, so the space left
+    # goes to recording what administrators do to free it. The "Disk space low" alert (2 GB by
+    # default) warns well before. 0 turns the guard off.
+    STORAGE_CRITICAL_MB: int = 500
+
     # NGCorion self-backup (app/modules/sysbackup): encrypted .ngbak archives
     # of the database and the files the product keeps on disk. Mounted as a
     # volume in docker-compose so archives survive container recreation; copy

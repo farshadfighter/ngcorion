@@ -62,6 +62,17 @@ api.interceptors.response.use(
         }
 
         // ----------------------------------------
+        // 507: the server's disk is nearly full and only system administrators may
+        // change anything (app/core/storage_guard.py). Said once, plainly.
+        // ----------------------------------------
+        if (error.response?.status === 507) {
+            window.dispatchEvent(new CustomEvent('permission-denied', {
+                detail: { title: t("Disk almost full"), message: error.response.data?.detail, url: error.config?.url }
+            }));
+            return Promise.reject(error);
+        }
+
+        // ----------------------------------------
         // 401 — Unauthorized: توکن نداره یا منقضی شده
         // ----------------------------------------
         if (error.response?.status === 401) {
