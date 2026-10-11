@@ -71,7 +71,11 @@ export const ASSET_ICONS = {
         label: t("Storage"), family: "storage",
         d: "M3.5 6h17v5h-17zM3.5 13h17v5h-17zM16.5 8.5h.01M16.5 15.5h.01M6.5 8.5h6M6.5 15.5h6",
     },
-    workstation: { label: t("Workstation"), family: "endpoints", d: "M3.5 4.5h17v11h-17zM9 20h6M12 15.5V20" },
+    workstation: { label: t("PC / workstation"), family: "endpoints", d: "M3.5 4.5h17v11h-17zM9 20h6M12 15.5V20" },
+    printer: {
+        label: t("Printer"), family: "endpoints",
+        d: "M7 8.5V3.5h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 5 8.5h14a1.5 1.5 0 0 1 1.5 1.5v5.5A1.5 1.5 0 0 1 19 17h-2M7 13.5h10v7H7zM16.5 11h.01",
+    },
     iot: {
         label: t("IoT device"), family: "endpoints",
         d: "M8 8h8v8H8zM10.5 4v4M13.5 4v4M10.5 16v4M13.5 16v4M4 10.5h4M4 13.5h4M16 10.5h4M16 13.5h4",
@@ -128,7 +132,8 @@ const NAME_RULES = [
     [/windows/i, "windows"],
     [/linux|ubuntu|debian|centos|rhel|red ?hat|rocky|alma|suse|fedora/i, "linux"],
     [/workstation|desktop|laptop|\bpc\b|endpoint/i, "workstation"],
-    [/\biot\b|camera|cctv|printer|sensor|\bplc\b|scada|voip|ip ?phone/i, "iot"],
+    [/printer|\bmfp\b|\bmfd\b|multi-?function|copier|plotter|laserjet/i, "printer"],
+    [/\biot\b|camera|cctv|sensor|\bplc\b|scada|voip|ip ?phone/i, "iot"],
     [/internet|\bisp\b|\bwan\b|cloud/i, "internet"],
     [/server|bare ?metal/i, "server"],
 ];

@@ -40,6 +40,11 @@ class TestSuggestIcon:
         ("VMware ESXi Host", "hypervisor"),
         ("NAS", "storage"),
         ("Workstation", "workstation"),
+        ("PC", "workstation"),
+        ("Printer", "printer"),
+        ("Network Printer", "printer"),
+        ("MFP", "printer"),
+        ("Copier", "printer"),
         ("IP Camera", "iot"),
         ("Internet", "internet"),
         ("Generic Asset", "other"),
@@ -194,3 +199,10 @@ def test_asset_whose_owner_was_deleted_still_lists():
     row = AssetResponse.model_validate({"id": 7, "asset_name": "srv-007", "asset_type_id": 1, "user_id": None,
                                         "created_at": now, "updated_at": now})
     assert row.user_id is None
+
+
+def test_printer_vendor_and_badge():
+    # A printer whose type says nothing is known by its maker; HP is not taken as a printer.
+    assert resolve_icon(asset("Device", vendor="Kyocera")) == "printer"
+    assert resolve_icon(asset("Device", vendor="HP")) == "other"
+    assert icon_badge(asset("Printer", vendor="Kyocera", os_name="Embedded")) == "Kyocera"

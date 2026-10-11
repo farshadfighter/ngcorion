@@ -191,6 +191,12 @@
   (`docs/fa/ADMIN_GUIDE.md`, AGD_PRE/AGD_OPE) and security architecture
   (`docs/fa/ARCHITECTURE.md`, ADV_ARC); the Security Target points to them.
 
+### Asset icons
+- New printer icon (printers, MFPs, copiers, plotters; by name, or by maker:
+  Kyocera, Ricoh, Xerox, Konica, Lexmark, Brother), with the maker under it.
+  The default "Printer" asset type uses it without any change. The desktop
+  icon is now called "PC / workstation" so it is found as a PC.
+
 ### Fixes
 - The audit trail's date range counts whole days in the time zone set in
   System Configuration, as reports do; before, a day ran from 03:30 to 03:30

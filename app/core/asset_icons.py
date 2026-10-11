@@ -25,11 +25,11 @@ ICON_KEYS: Tuple[str, ...] = (
     "server", "hypervisor", "container", "cluster", "linux", "windows",
     "web", "database", "storage",
     "directory", "dns", "dhcp",
-    "workstation", "iot", "internet", "other",
+    "workstation", "printer", "iot", "internet", "other",
 )
 
 # Network-ish icons show the vendor as their badge; hosts show the OS.
-_VENDOR_BADGE_ICONS = {"router", "switch", "wireless", "load_balancer", "firewall", "storage"}
+_VENDOR_BADGE_ICONS = {"router", "switch", "wireless", "load_balancer", "firewall", "storage", "printer"}
 
 # Function before platform: a "Linux Web Server" is a web server, a
 # "Windows Database Server" a database. The generic "server" is last.
@@ -51,7 +51,8 @@ _NAME_RULES: Sequence[Tuple[re.Pattern, str]] = [
     (re.compile(r"windows", re.I), "windows"),
     (re.compile(r"linux|ubuntu|debian|centos|rhel|red ?hat|rocky|alma|suse|fedora", re.I), "linux"),
     (re.compile(r"workstation|desktop|laptop|\bpc\b|endpoint", re.I), "workstation"),
-    (re.compile(r"\biot\b|camera|cctv|printer|sensor|\bplc\b|scada|voip|ip ?phone", re.I), "iot"),
+    (re.compile(r"printer|\bmfp\b|\bmfd\b|multi-?function|copier|plotter|laserjet", re.I), "printer"),
+    (re.compile(r"\biot\b|camera|cctv|sensor|\bplc\b|scada|voip|ip ?phone", re.I), "iot"),
     (re.compile(r"internet|\bisp\b|\bwan\b|cloud", re.I), "internet"),
     (re.compile(r"server|bare ?metal", re.I), "server"),
 ]
@@ -72,6 +73,8 @@ _VENDOR_RULES: Sequence[Tuple[re.Pattern, str]] = [
     (re.compile(r"aruba|ubiquiti|ruckus|meraki", re.I), "wireless"),
     (re.compile(r"synology|netapp|qnap", re.I), "storage"),
     (re.compile(r"vmware", re.I), "hypervisor"),
+    # Printer makers only; HP and Canon also make servers and cameras, so a type name decides those.
+    (re.compile(r"kyocera|ricoh|xerox|konica|lexmark|brother industries|\bbrother\b", re.I), "printer"),
 ]
 
 
