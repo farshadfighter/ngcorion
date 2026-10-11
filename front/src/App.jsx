@@ -62,6 +62,7 @@ const SystemBackup = lazy(() => import("./components/SystemBackup/SystemBackup")
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
 import {
     RequireAdmin,
+    RequireAnyPermission,
     RequirePermission,
     AssetListRoute,
     AutoDiscoveryRoute,
@@ -162,7 +163,12 @@ function AppContent() {
                         <Route path="/overview" element={<OverviewDashboard />} />
 
                         {/* Asset Management */}
-                        <Route path="/assets" element={<AssetManagementDashboard />} />
+                        <Route path="/assets" element={
+                            <RequireAnyPermission modules={["asset_list", "asset_requirement", "asset_auto_discovery"]}
+                                                  name="Asset Management">
+                                <AssetManagementDashboard />
+                            </RequireAnyPermission>
+                        } />
                         <Route path="/assets/requirements" element={
                             <RequirePermission module="asset_requirement" name="Asset Requirement">
                                 <AssetRequirement />
@@ -362,7 +368,9 @@ function AppContent() {
                                 <SystemBackup />
                             </RequireAdmin>
                         } />
-                        <Route path="/settings/license" element={<License />} />
+                        <Route path="/settings/license" element={
+                            <RequireAdmin name="License Management"><License /></RequireAdmin>
+                        } />
                         <Route path="/settings/system" element={
                             <RequirePermission module="system_config" name="System Configuration">
                                 <SystemConfiguration />

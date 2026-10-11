@@ -35,6 +35,13 @@ export const RequirePermission = ({ module, name, children }) => {
     return allowed ? children : <AccessDenied menuName={t(name)} />;
 };
 
+/** Pages that gather several modules (an overview): open with any one of their read permissions. */
+export const RequireAnyPermission = ({ modules, name, children }) => {
+    const { role, permissions } = useSelector((state) => state.auth);
+    const allowed = role === "admin" || modules.some((m) => permissions?.[m]?.read === true);
+    return allowed ? children : <AccessDenied menuName={t(name)} />;
+};
+
 /** Pages for system administrators only (no module permission grants them). */
 export const RequireAdmin = ({ name, children }) => {
     const role = useSelector((state) => state.auth.role);

@@ -15,6 +15,8 @@ const AssetLimitModal = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { maxAssets, usage, offlinePilot } = useSelector((state) => state.license);
+    // Only system administrators manage the license; the others are told to ask one.
+    const isAdmin = useSelector((state) => state.auth.role) === "admin";
     const [open, setOpen] = useState(false);
     const closeRef = useRef(null);
 
@@ -73,12 +75,12 @@ const AssetLimitModal = () => {
                     }}>
                         {t("Close")}
                     </button>
-                    <button onClick={() => { close(); navigate("/settings/license"); }} style={{
+                    {isAdmin && <button onClick={() => { close(); navigate("/settings/license"); }} style={{
                         padding: "9px 18px", borderRadius: "8px", border: "none", backgroundColor: "#1e3a5f",
                         color: "white", cursor: "pointer", fontSize: "14px", fontWeight: 600,
                     }}>
                         {t("Go to Licence")}
-                    </button>
+                    </button>}
                 </div>
             </div>
         </div>

@@ -4,8 +4,10 @@ over audit_logs and login_logs, CSV export protected against formula injection, 
 itself recorded in the trail.
 """
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -52,7 +54,8 @@ def _seed(db, tag):
     db.commit()
 
 
-def test_filters_and_search(db, tag):
+@patch.object(audit_trail, "local_timezone", return_value=None)  # no time zone set: days in UTC
+def test_filters_and_search(_tz, db, tag):
     _seed(db, tag)
     page = audit_trail.list_events(filters=_events(username=tag), page=1, page_size=50, db=db, _user=READER)
     assert page.total == 3 and page.items[0].timestamp >= page.items[-1].timestamp
@@ -69,6 +72,22 @@ def test_filters_and_search(db, tag):
                                    page=1, page_size=50, db=db, _user=READER).total == 2
     assert audit_trail.list_events(filters=_events(username=tag, date_to=today - timedelta(days=2)),
                                    page=1, page_size=50, db=db, _user=READER).total == 1
+
+
+def test_days_are_the_configured_time_zone(db, tag):
+    # 00:30 on 2026-10-11 in Tehran (UTC+3:30) is still 2026-10-10 in UTC
+    db.add(AuditLog(username=tag, action="user.create", module="user_management", result="success",
+                    timestamp=datetime(2026, 10, 10, 21, 0, tzinfo=timezone.utc)))
+    db.commit()
+
+    def count(day):
+        return audit_trail.list_events(filters=_events(username=tag, date_from=day, date_to=day), page=1,
+                                       page_size=50, db=db, _user=READER).total
+
+    with patch.object(audit_trail, "local_timezone", return_value=ZoneInfo("Asia/Tehran")):
+        assert count(date(2026, 10, 11)) == 1 and count(date(2026, 10, 10)) == 0
+    with patch.object(audit_trail, "local_timezone", return_value=None):
+        assert count(date(2026, 10, 10)) == 1 and count(date(2026, 10, 11)) == 0
 
 
 def test_like_wildcards_are_literal(db, tag):

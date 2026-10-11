@@ -191,6 +191,15 @@
   (`docs/fa/ADMIN_GUIDE.md`, AGD_PRE/AGD_OPE) and security architecture
   (`docs/fa/ARCHITECTURE.md`, ADV_ARC); the Security Target points to them.
 
+### Fixes
+- The audit trail's date range counts whole days in the time zone set in
+  System Configuration, as reports do; before, a day ran from 03:30 to 03:30
+  in Tehran (UTC days), so events after midnight landed on the wrong day.
+- The asset overview (`/assets`) asks for an asset permission and the License
+  page for a system administrator, as the menu already did: a direct URL now
+  says "no access" instead of a half-empty page. The asset-limit dialog offers
+  the License page to administrators only.
+
 ### A clearer menu
 - The sidebar follows the work: Assets, Security assessment (risk, audits,
   CVE), Remediation & hardening, Device backups, Network & monitoring,

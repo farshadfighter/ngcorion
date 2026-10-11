@@ -29,6 +29,7 @@ from app.core.database import get_db
 from app.core.dependencies import require_permission
 from app.models import LoginLog, User
 from app.models.security_audit_log import AuditLog, log_action
+from app.modules.alerts.channels import local_timezone
 from app.utils.excel_utils import neutralize_formula
 
 router = APIRouter(prefix="/api/audit-trail", tags=["Audit trail"])
@@ -87,12 +88,14 @@ def _like(text: str) -> str:
     return f"%{escaped}%"
 
 
-def _period(query: SAQuery, column, date_from: Optional[date], date_to: Optional[date]) -> SAQuery:
-    """Limit to whole days, both ends included (UTC)."""
+def _period(db: Session, query: SAQuery, column, date_from: Optional[date], date_to: Optional[date]) -> SAQuery:
+    """Limit to whole days, both ends included, in the time zone set in System Configuration (the
+    days people read on their clock and on reports); UTC when none is set."""
+    tz = local_timezone(db) or timezone.utc
     if date_from:
-        query = query.filter(column >= datetime.combine(date_from, time.min, tzinfo=timezone.utc))
+        query = query.filter(column >= datetime.combine(date_from, time.min, tzinfo=tz))
     if date_to:
-        query = query.filter(column < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc))
+        query = query.filter(column < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=tz))
     return query
 
 
@@ -114,7 +117,7 @@ def _events(db: Session, q, module, action, result, username, ip, date_from, dat
         query = query.filter(AuditLog.username.ilike(_like(username.strip()), escape="\\"))
     if ip:
         query = query.filter(AuditLog.ip_address.ilike(_like(ip.strip()), escape="\\"))
-    return _period(query, AuditLog.timestamp, date_from, date_to)
+    return _period(db, query, AuditLog.timestamp, date_from, date_to)
 
 
 def _logins(db: Session, username, success, ip, date_from, date_to) -> SAQuery:
@@ -125,7 +128,7 @@ def _logins(db: Session, username, success, ip, date_from, date_to) -> SAQuery:
         query = query.filter(LoginLog.success == success)
     if ip:
         query = query.filter(LoginLog.ip_address.ilike(_like(ip.strip()), escape="\\"))
-    return _period(query, LoginLog.timestamp, date_from, date_to)
+    return _period(db, query, LoginLog.timestamp, date_from, date_to)
 
 
 # Filters shared by the list and the export of each kind.
