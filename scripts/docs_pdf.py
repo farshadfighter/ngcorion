@@ -202,7 +202,7 @@ def fix_outline(path: Path, headings: list[str]) -> None:
     if len(items) != len(headings):
         print(f"  {path.name}: {len(items)} bookmarks for {len(headings)} headings, left unchanged")
         return
-    for item, text in zip(items, headings):
+    for item, text in zip(items, headings, strict=True):
         item[NameObject("/Title")] = TextStringObject(text)
     writer = PdfWriter(clone_from=reader)
     with open(path, "wb") as f:
