@@ -6,6 +6,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../config/api";
 import { t } from "../i18n";
+import { tb } from "../i18n/backendText";
 
 // ==========================================
 // Async Thunks
@@ -26,6 +27,10 @@ export const loginUser = createAsyncThunk(
             }
             if (err.response?.status === 403) {
                 return rejectWithValue(t("Account is inactive"));
+            }
+            // Directory sign-in on, and no directory server could be reached.
+            if (err.response?.status === 503 && typeof err.response?.data?.detail === "string") {
+                return rejectWithValue(tb(err.response.data.detail));
             }
             if (err.response?.status === 429) {
                 return rejectWithValue(
@@ -126,6 +131,7 @@ const signedIn = (state, data) => {
     state.mustChangePassword = !!data.must_change_password;
     state.mfaEnrolmentDue = !!data.mfa_enrolment_due;
     state.recoveryCodesLeft = data.mfa_recovery_codes_left ?? null;
+    state.authSource = data.auth_source || "local";
 
     localStorage.setItem("token",       data.access_token);
     localStorage.setItem("username",    data.username);
@@ -156,6 +162,8 @@ const authSlice = createSlice({
         mfaEnrolmentDue: false,
         // Signed in with a recovery code: how many are left (a warning is shown once).
         recoveryCodesLeft: null,
+        // "ldap": the password belongs to the organization's directory (no password change here).
+        authSource: "local",
     },
     reducers: {
         logout: (state) => {
@@ -252,6 +260,7 @@ const authSlice = createSlice({
                 state.languageChosen = !!action.payload.language_chosen;
                 state.mustChangePassword = !!action.payload.must_change_password;
                 state.mfaEnrolmentDue = !!action.payload.mfa_enrolment_due;
+                state.authSource = action.payload.auth_source || "local";
 
                 localStorage.setItem("username",    action.payload.username);
                 localStorage.setItem("role",        action.payload.role);

@@ -41,6 +41,8 @@ export const DashboardLayout = () => {
     // Two-step sign-in required and not set up: only its setup is shown. The dialog stays open
     // after it is turned on (the flag clears) until the recovery codes are saved.
     const mfaEnrolmentDue = useSelector((state) => state.auth.mfaEnrolmentDue);
+    // A directory account changes its password in the directory, not here.
+    const authSource = useSelector((state) => state.auth.authSource);
     const recoveryCodesLeft = useSelector((state) => state.auth.recoveryCodesLeft);
     const [forcedSetup, setForcedSetup] = useState(false);
     const [showTwoStep, setShowTwoStep] = useState(false);
@@ -198,10 +200,12 @@ export const DashboardLayout = () => {
                                 <button className="logout-btn" onClick={() => setShowDropdown(!showDropdown)}>⋮</button>
                                 {showDropdown && (
                                     <div className="user-menu-dropdown-container">
+                                        {authSource !== "ldap" && (
                                         <button className="user-menu-dropdown-btn action-primary"
                                                 onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}>
                                             <i className="fa-solid fa-key"></i> {" "}{t("Change Password")}
                                         </button>
+                                        )}
                                         <button className="user-menu-dropdown-btn action-primary"
                                                 onClick={() => { setShowTwoStep(true); setShowDropdown(false); }}>
                                             <i className="fa-solid fa-shield-halved"></i> {" "}{t("Two-step sign-in")}

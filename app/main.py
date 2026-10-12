@@ -23,6 +23,7 @@ from app.core.config import (
 from app.core.dependencies import get_current_user
 from app.modules.auth import router as auth_router
 from app.modules.auth import mfa_router as auth_mfa_router
+from app.modules.directory.router import router as directory_router
 from app.modules.logs import router as logs_router
 from app.modules.logs import clear_router as logs_clear_router
 from app.modules.users import router as users_router
@@ -280,6 +281,7 @@ async def lifespan(app: FastAPI):
     from app.modules.remediation.engine import start_remediation_sync, stop_remediation_sync
     from app.modules.reports.engine import start_report_worker, stop_report_worker
     from app.modules.sysbackup.engine import start_backup_worker, stop_backup_worker
+    from app.modules.directory.engine import start_directory_check, stop_directory_check
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
@@ -289,6 +291,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("remediation-sync", start_remediation_sync, stop_remediation_sync),
         SingletonTask("report-worker", start_report_worker, stop_report_worker),
         SingletonTask("system-backup", start_backup_worker, stop_backup_worker),
+        SingletonTask("directory-check", start_directory_check, stop_directory_check),
     ]
     for task in singletons:
         task.start()
@@ -437,6 +440,7 @@ async def custom_swagger_ui_html():
 app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
 app.include_router(auth_mfa_router.router, prefix="/auth", tags=["Authentication"])
 app.include_router(auth_mfa_router.admin_router)
+app.include_router(directory_router)
 
 # Protected routes (auth required)
 app.include_router(logs_router.router, prefix="/api/logs", tags=["Logs"])

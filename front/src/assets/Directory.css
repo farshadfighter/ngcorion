@@ -1,0 +1,36 @@
+/* Active Directory / LDAP settings (components/SystemConfig/DirectoryConfigModal.jsx). */
+.dir-modal { max-width: 860px; }
+.dir-h { margin: 22px 0 8px; font-size: 14px; color: #14213D; border-top: 1px solid #eef0f4; padding-top: 16px; }
+.dir-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.dir-switch { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid #D8DEE9; border-radius: 10px; cursor: pointer; background: #f8fafc; }
+.dir-switch input { width: 18px; height: 18px; margin-top: 2px; accent-color: #14213D; flex: 0 0 18px; }
+.dir-switch span { display: flex; flex-direction: column; gap: 3px; }
+.dir-switch b { font-size: 14px; color: #14213D; }
+.dir-switch small, .dir-note { font-size: 12px; color: #6b7280; line-height: 1.7; }
+.dir-radio { display: flex; gap: 16px; flex-wrap: wrap; padding: 8px 0; font-size: 13.5px; }
+.dir-radio input { width: auto !important; accent-color: #14213D; }
+.sc-field textarea { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #D8DEE9; border-radius: 8px; font: inherit; font-size: 14px; resize: vertical; }
+.dir-ca { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.dir-file { position: relative; overflow: hidden; display: inline-flex; align-items: center; cursor: pointer; }
+.dir-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.dir-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0; font-size: 13px; }
+.dir-search { flex: 1 1 180px; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid #D8DEE9; border-radius: 8px; font: inherit; font-size: 13.5px; }
+.dir-link { background: none; border: 0; padding: 0; color: #2D5A9E; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.dir-icon { background: none; border: 0; color: #9ca3af; cursor: pointer; padding: 4px 6px; }
+.dir-icon:hover { color: #b91c1c; }
+.dir-ok { color: #15803d; }
+.dir-bad { color: #b91c1c; }
+.dir-muted { color: #6b7280; }
+.dir-dn { display: block; font-size: 11px; color: #9ca3af; overflow-wrap: anywhere; }
+.dir-map td { vertical-align: middle; }
+.dir-map select { height: 32px; border: 1px solid #D8DEE9; border-radius: 6px; padding: 0 6px; font: inherit; font-size: 13px; }
+.dir-perms { margin: 4px 0 10px; background: #f8fafc; }
+.dir-perms input { width: 16px; height: 16px; accent-color: #14213D; }
+.dir-groups { list-style: none; margin: 6px 0; padding: 0; border: 1px solid #eef0f4; border-radius: 8px; max-height: 200px; overflow: auto; }
+.dir-groups li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.dir-groups li:last-child { border-bottom: 0; }
+.dir-probe { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; font-size: 13px; }
+.dir-badge { display: inline-block; margin-inline-start: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 700; background: #e0e7ff; color: #3730a3; vertical-align: middle; letter-spacing: .02em; }
+@media (max-width: 640px) { .dir-grid { grid-template-columns: minmax(0, 1fr); } }
+.dir-perms input[type="checkbox"], .dir-switch input[type="checkbox"] { width: 16px !important; height: 16px !important; padding: 0; }
+.dir-perms td, .dir-perms th { padding: 4px 8px; }

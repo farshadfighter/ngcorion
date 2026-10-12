@@ -29,6 +29,8 @@ from app.core.dependencies import get_current_user, require_admin
 from app.core.security import verify_password
 from app.models import User
 from app.models.security_audit_log import log_action, log_user_action
+from app.modules.directory import service as directory
+from app.modules.directory.ldap import DirectoryUnavailable
 from app.schemas.auth import MfaLogin, Token
 
 from .router import issue_session, log_login_attempt
@@ -50,7 +52,15 @@ def _check_password(db: Session, user: User, password: str, request: Request, ac
     """The caller's own password, counted like sign-in failures (a stolen session cannot guess it)."""
     ip = _ip(request)
     check_login_rate_limit(db, ip, user.username)
-    if not verify_password(password or "", user.hashed_password):
+    if user.auth_source == "ldap":
+        try:
+            good = directory.check_password(db, user, password or "")
+        except DirectoryUnavailable:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail="The directory cannot be reached to check your password. Try again later.")
+    else:
+        good = verify_password(password or "", user.hashed_password)
+    if not good:
         log_login_attempt(db, user.username, False, ip, request.headers.get("user-agent", "Unknown"),
                           "Wrong password for a two-step sign-in change")
         _log(db, user, action, ip, "Wrong password for a two-step sign-in change", "failed")

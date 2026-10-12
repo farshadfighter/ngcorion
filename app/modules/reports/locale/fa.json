@@ -556,5 +556,7 @@
   "{n} Mb/s": "{n} مگابیت بر ثانیه",
   "{n} of {total}": "{n} از {total}",
   "{section}: no access to {module}": "{section}: دسترسی به {module} ندارید",
-  "{start} to {end}": "{start} تا {end}"
+  "{start} to {end}": "{start} تا {end}",
+  "Directory not reachable": "دایرکتوری در دسترس نیست",
+  "Local administrator signed in": "ورود مدیر محلی"
 }

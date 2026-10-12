@@ -9,6 +9,7 @@ import { RemediationConfigModal } from "./RemediationConfigModal";
 import { ReportsConfigModal } from "./ReportsConfigModal";
 import { DeviceKeysModal } from "./DeviceKeysModal";
 import { AuthenticationConfigModal } from "./AuthenticationConfigModal";
+import { DirectoryConfigModal } from "./DirectoryConfigModal";
 import { t } from "../../i18n";
 
 /**
@@ -26,6 +27,7 @@ import { t } from "../../i18n";
  *   locale      GET/PUT /api/system/locale   (default language)
  *   devicekeys  GET /api/system/device-keys  + DELETE /device-keys/{kind}  (administrators only)
  *   authentication GET/PUT /api/system/authentication + GET /authentication/users (administrators only)
+ *   directory   GET/PUT /api/system/directory + POST /test, /test-user, /groups, /check (administrators only)
  */
 export const SECTIONS = [
     {
@@ -105,6 +107,14 @@ export const SECTIONS = [
         hint: t("Roles that must use a code from a phone app after the password"),
         icon: "fa-solid fa-shield-halved",
         modal: AuthenticationConfigModal,
+        adminOnly: true,
+    },
+    {
+        key: "directory",
+        title: t("Active Directory / LDAP"),
+        hint: t("Sign in with the organization's accounts; roles from directory groups"),
+        icon: "fa-solid fa-sitemap",
+        modal: DirectoryConfigModal,
         adminOnly: true,
     },
 ];

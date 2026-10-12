@@ -1,5 +1,5 @@
 """Application user accounts and their roles."""
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -36,6 +36,15 @@ class User(Base):
     must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Where the password is checked: "local" (hashed_password) or "ldap" (Active Directory / LDAP,
+    # app/modules/directory). A directory account is made at its first sign-in; its role and
+    # permissions follow its directory groups, and hashed_password holds a random value nobody knows.
+    auth_source = Column(String(10), nullable=False, default="local", server_default="local")
+    external_dn = Column(Text, nullable=True)
+    # Turned off by the directory check (disabled, deleted or out of every mapped group there), not
+    # by an administrator: the next successful directory sign-in turns it back on.
+    disabled_by_directory = Column(Boolean, nullable=False, default=False, server_default="false")
+    directory_synced_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationship to permissions - cascade delete ensures permissions are deleted when user is deleted
     permissions = relationship("UserPermission", back_populates="user", cascade="all, delete-orphan")

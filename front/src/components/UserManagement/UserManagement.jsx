@@ -15,6 +15,7 @@ import api from "../../config/api";
 import { t } from "../../i18n";
 import { formatDate } from "../../utils/dates";
 import "../../assets/TwoStep.css";
+import "../../assets/Directory.css";
 import { tv } from "../../i18n/backendText";
 
 const TwoStepBadge = ({ state }) => {
@@ -115,8 +116,13 @@ export const UserManagement = () => {
                         <tbody>
                         {users.map((user) => (
                             <tr key={user.id}>
-                                <td>{user.username}</td>
-                                <td>{user.email}</td>
+                                <td>
+                                    {user.username}
+                                    {user.auth_source === "ldap" && (
+                                        <span className="dir-badge" title={t("Signs in through the organization's directory")}>AD</span>
+                                    )}
+                                </td>
+                                <td>{user.email || "—"}</td>
                                 <td>
                                         <span className={`badge badge-${user.role}`}>
                                             {tv(user.role)}
@@ -124,7 +130,7 @@ export const UserManagement = () => {
                                 </td>
                                 <td>
                                         <span className={`badge badge-${user.is_active ? 'active' : 'inactive'}`}>
-                                            {user.is_active ? t("Active") : t("Inactive")}
+                                            {user.is_active ? t("Active") : user.disabled_by_directory ? t("Off in the directory") : t("Inactive")}
                                         </span>
                                 </td>
                                 {myRole === "admin" && <td><TwoStepBadge state={twoStep[user.id]} /></td>}
@@ -136,7 +142,7 @@ export const UserManagement = () => {
                                     >
                                         <i className="fa-solid fa-pen"></i>
                                     </button>
-                                    {myRole === "admin" && user.username !== myName && (
+                                    {myRole === "admin" && user.username !== myName && user.auth_source !== "ldap" && (
                                         <button
                                             className="btn-icon btn-edit"
                                             onClick={() => setTempPasswordFor(user)}

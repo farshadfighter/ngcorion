@@ -156,13 +156,16 @@ class UserResponse(BaseModel):
     """
     id: int
     username: str
-    email: str
+    # None for a directory account whose directory entry has no address (or one already in use).
+    email: Optional[str] = None
     phone: Optional[str] = None
     language: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime
     permissions: List[PermissionResponse] = []
+    auth_source: str = "local"          # "ldap": Active Directory / LDAP account
+    disabled_by_directory: bool = False
 
     class Config:
         from_attributes = True
@@ -174,10 +177,12 @@ class UserListResponse(BaseModel):
     """
     id: int
     username: str
-    email: str
+    email: Optional[str] = None
     phone: Optional[str] = None
     role: str
     is_active: bool
+    auth_source: str = "local"
+    disabled_by_directory: bool = False
 
     class Config:
         from_attributes = True

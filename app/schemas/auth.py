@@ -72,6 +72,8 @@ class Token(BaseModel):
     mfa_recovery_codes_left: Optional[int] = None
     # Two-step sign-in is required for this role and not set up: the UI shows only its setup.
     mfa_enrolment_due: bool = False
+    # "local" or "ldap" (Active Directory / LDAP: the password is changed there, not here).
+    auth_source: str = "local"
 
 
 class MfaChallenge(BaseModel):

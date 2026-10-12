@@ -166,6 +166,18 @@ class UserService:
         if current_user_id != user_id:
             self._assert_role_within_reach(current_user, user.role, "modify")
         self._assert_can_grant(current_user, user_data.permissions)
+        # A directory account's name and password are the directory's, and its role and permissions
+        # follow its directory groups (app/modules/directory): only the rest can be edited here.
+        if user.auth_source != "local" and (
+                (user_data.username is not None and user_data.username != user.username)
+                or user_data.password is not None
+                or (user_data.role is not None and user_data.role != user.role.value)
+                or user_data.permissions is not None):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="This account comes from the directory: its name, password, role and "
+                                       "permissions are set there and by the group mapping")
+        if user_data.is_active and user.disabled_by_directory:
+            user.disabled_by_directory = False
 
         # Update username
         if user_data.username is not None:
@@ -325,6 +337,9 @@ class UserService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="Change your own password from your account menu")
         user = self.get_user_by_id(user_id)
+        if user.auth_source != "local":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="This account signs in through the directory; its password is changed there")
         user.hashed_password = get_password_hash(new_password)
         user.must_change_password = True
         self.db.commit()

@@ -143,6 +143,25 @@ const TEMPLATES = [
     msg("export: {{cves}} CVEs written to {{file}}"),
     msg("Asset ID: {{asset_id}}, Asset Name: {{asset_name}}"),
     msg("Login successful (role={{role}})"),
+    // sign-in with Active Directory / LDAP (app/modules/directory)
+    msg("Created directory account '{{username}}' with role '{{role}}' at its first sign-in"),
+    msg("Role of '{{username}}' set to '{{role}}' by its directory groups"),
+    msg("Permissions of '{{username}}' set by its directory groups"),
+    msg("Turned on '{{username}}' again: the directory allows it"),
+    msg("Turned off '{{username}}': no longer in the directory"),
+    msg("Turned off '{{username}}': disabled in the directory"),
+    msg("Turned off '{{username}}': in no mapped directory group any more"),
+    msg("{{name}} from {{address}} while directory sign-in is on"),
+    msg("{{server}}: the service account was refused (check its name and password)"),
+    msg("{{server}}: the server's certificate is not trusted (upload the CA certificate) or does not match its name"),
+    msg("{{server}}: the server's certificate does not carry the name used to reach it"),
+    msg("{{server}}: no answer in time"),
+    msg("{{server}}: connection refused"),
+    msg("{{server}}: search failed ({{reason}})"),
+    msg("Directory settings incomplete: {{fields}}"),
+    msg("Not a server name or address: {{value}}"),
+    msg("Unknown module: {{value}}"),
+    msg("Tested the directory sign-in of '{{username}}'"),
     // two-step sign-in (app/modules/auth/mfa_router.py)
     msg("Login successful (role={{role}}) with a recovery code; {{left}} left"),
     msg("Login successful (role={{role}}) with a two-step code"),
@@ -711,6 +730,32 @@ msg("The current password is incorrect.");
 msg("The new password must be different from the current one.");
 msg("Password change required: choose your own password before continuing.");
 msg("Session has ended. Please login again.");
+
+// sign-in with Active Directory / LDAP (app/modules/directory, app/modules/auth/router.py)
+msg("Local administrator signed in while directory sign-in is on");
+msg("The account is disabled in the directory");
+msg("The account is in no directory group mapped to an NGCorion role");
+msg("Directory not reachable");
+msg("The directory could not be reached");
+msg("Turned on sign-in with the organization's directory");
+msg("Turned off sign-in with the organization's directory");
+msg("Changed the directory sign-in settings");
+msg("Connected and signed in as the service account");
+msg("Connected, but the base DN was not found");
+msg("Map at least one directory group to a role before turning directory sign-in on");
+msg("Directory sign-in is off");
+msg("Sign-in with your organization account is not available right now. Try again in a few minutes or ask an administrator.");
+msg("Your password is managed by your organization's directory. Change it there.");
+msg("This account signs in through the directory; its password is changed there");
+msg("This account comes from the directory: its name, password, role and permissions are set there and by the group mapping");
+msg("The directory cannot be reached to check your password. Try again later.");
+msg("A filter must be in parentheses, e.g. (objectClass=user)");
+msg("The CA certificate must be in PEM format (-----BEGIN CERTIFICATE-----)");
+msg("no directory server is configured");
+msg("Local administrator signed in");
+msg("Sign-in with Active Directory / LDAP cannot reach any directory server");
+msg("A local administrator account signs in while sign-in goes through the directory");
+msg("Directory account check");
 
 // two-step sign-in (app/core/mfa.py, app/modules/auth/mfa_router.py)
 msg("The code is not correct.");

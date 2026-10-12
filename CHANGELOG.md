@@ -225,6 +225,34 @@ identical to a fresh install, sign-in, audit trail and temporary passwords
 working; a 2.0.0 backup restored into this release the same way, with the
 audit trail still append-only.
 
+### Sign-in with Active Directory / LDAP
+- Users sign in with their organization account. Active Directory, or another
+  LDAP directory (OpenLDAP, FreeIPA); several servers tried in order; LDAPS or
+  StartTLS only, the server certificate checked against the uploaded CA (or
+  the system's) and the server name. The service account's password is stored
+  encrypted and never sent back to the browser.
+- Directory groups map to a role and, below system administrator, module
+  permissions; a user gets the highest role and every permission of their
+  mapped groups, nested groups included. A user in no mapped group, or
+  disabled in the directory, cannot sign in (and sees only "incorrect username
+  or password"; the reason is in the audit trail).
+- The account is made at the first sign-in; its role and permissions follow
+  the directory at every sign-in and every 15 minutes, when accounts disabled,
+  deleted or out of every mapped group in the directory are turned off.
+  Turning directory sign-in off ends every directory session at once.
+- Local accounts always sign in with their own password, so a local
+  administrator still gets in when the directory is down; that raises the new
+  "Local administrator signed in" alert. New alert: "Directory not reachable".
+- Directory accounts have no password change or reset in NGCorion, and their
+  name, role and permissions cannot be edited there (User Management marks
+  them "AD"). Two-step sign-in applies to them by role, its password step
+  checked against the directory.
+- Settings: System Configuration → Active Directory / LDAP, with connection
+  test, group search, a test of one user (groups and resulting role), and the
+  last account check. Tested against Samba AD (LDAPS, StartTLS, nested groups,
+  disabled accounts, failover) and OpenLDAP. New dependency: ldap3. Migration
+  `e5a7c9b1d3f8`.
+
 ### Two-step sign-in (FIA_UAU.5)
 - After the password, a 6-digit code from an authenticator app (TOTP, RFC
   6238: Google Authenticator, Microsoft Authenticator, FreeOTP...), or a

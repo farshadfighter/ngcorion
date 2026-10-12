@@ -1,6 +1,8 @@
 """
 Auth Router - Login API with Permissions
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -10,6 +12,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 import jwt
 
 from app.core import mfa
+from app.modules.directory import service as directory
+from app.modules.directory.ldap import DirectoryUnavailable
 from app.core.config import settings
 from app.core.dependencies import get_current_user, security
 from app.models.revoked_token import RevokedToken
@@ -38,6 +42,7 @@ from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _open_session(db: Session, token: str, user_id: int, ip: str) -> None:
@@ -163,12 +168,14 @@ def login(
         )
         raise exc
 
-    auth_service = AuthService(db)
-    user = auth_service.authenticate_user(
-        user_credentials.username, 
-        user_credentials.password
-    )
-    
+    # Directory sign-in on: a name that is not a local account is checked against Active Directory /
+    # LDAP (app/modules/directory). Local accounts always use their own password.
+    directory_on = directory.enabled(db)
+    if directory_on and directory.local_account(db, user_credentials.username) is None:
+        user = _directory_sign_in(db, user_credentials, client_ip, user_agent)
+    else:
+        user = AuthService(db).authenticate_user(user_credentials.username, user_credentials.password)
+
     if not user:
         log_login_attempt(
             db=db,
@@ -220,6 +227,13 @@ def login(
             detail="Account is inactive"
         )
 
+    # The emergency path: a local administrator while sign-in goes through the directory (alert
+    # "auth.emergency_login").
+    if directory_on and user.auth_source == "local" and user.role == UserRole.ADMIN:
+        log_action(db=db, user_id=user.id, username=user.username, action="auth.emergency_login", module="auth",
+                   target_id=user.id, ip_address=client_ip,
+                   detail="Local administrator signed in while directory sign-in is on")
+
     # Two-step sign-in on: the password alone opens nothing. The answer is a short-lived token that
     # POST /auth/login/mfa exchanges, with a code, for the session (app/core/mfa.py).
     mfa_row = mfa.start_grace(db, mfa.get_policy(db), user)
@@ -253,6 +267,31 @@ def login(
     return issue_session(db, user, client_ip)
 
 
+def _directory_sign_in(db: Session, creds: UserLogin, client_ip: str, user_agent: str):
+    """The user from the directory, None for a refused name or password (logged like a local
+    failure by the caller), or 503 when no directory server can be used."""
+    try:
+        result = directory.sign_in(db, creds.username, creds.password, client_ip)
+    except DirectoryUnavailable as exc:
+        logger.warning("[Auth] directory sign-in unavailable: %s", exc)
+        log_login_attempt(db, creds.username, False, client_ip, user_agent, "Directory not reachable")
+        log_action(db=db, username=creds.username, action="auth.login", module="auth", ip_address=client_ip,
+                   result="failed", detail="The directory could not be reached")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Sign-in with your organization account is not available right now. "
+                                   "Try again in a few minutes or ask an administrator.")
+    if result.outcome == "ok":
+        return result.user
+    # The same answer to the user in every case; the reason only in the audit trail.
+    if result.outcome == "disabled":
+        log_action(db=db, username=creds.username, action="auth.login", module="auth", ip_address=client_ip,
+                   result="failed", detail="The account is disabled in the directory")
+    elif result.outcome == "no_group":
+        log_action(db=db, username=creds.username, action="auth.login", module="auth", ip_address=client_ip,
+                   result="failed", detail="The account is in no directory group mapped to an NGCorion role")
+    return None
+
+
 def issue_session(db: Session, user: User, client_ip: str) -> dict:
     """A new access token for a user who has fully signed in, and what the UI needs with it."""
     access_token = create_access_token(
@@ -274,6 +313,7 @@ def issue_session(db: Session, user: User, client_ip: str) -> dict:
         "language_chosen": bool(user.language),
         "must_change_password": bool(user.must_change_password),
         "mfa_enrolment_due": mfa.status_of(db, user)["enrolment_due"],
+        "auth_source": user.auth_source,
     }
 
 
@@ -302,6 +342,8 @@ def read_current_user(
         "must_change_password": bool(current_user.must_change_password),
         # Two-step sign-in must be set up before anything else (app/core/mfa.py).
         "mfa_enrolment_due": mfa.status_of(db, current_user)["enrolment_due"],
+        # "ldap": the password is the directory's (no password change here).
+        "auth_source": current_user.auth_source,
     }
 
 
@@ -333,6 +375,9 @@ def change_own_password(
     so the response carries a fresh token for this session.
     """
     client_ip = request.client.host if request.client else None
+    if current_user.auth_source != "local":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Your password is managed by your organization's directory. Change it there.")
     if not verify_password(data.current_password, current_user.hashed_password):
         log_action(db, user_id=current_user.id, username=current_user.username, action="auth.password_change",
                    module="auth", target_id=current_user.id, ip_address=client_ip, result="failed",

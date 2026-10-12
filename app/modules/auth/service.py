@@ -59,7 +59,8 @@ class AuthService:
             identically to a success (to avoid leaking whether the email exists).
         """
         user = self.db.query(User).filter(User.email == email).first()
-        if not user or not user.is_active:
+        # A directory account's password is the directory's: no reset code here.
+        if not user or not user.is_active or user.auth_source != "local":
             return None
 
         # Invalidate the user's previous unused codes so only the newest one works.

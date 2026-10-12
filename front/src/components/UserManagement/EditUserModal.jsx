@@ -400,6 +400,9 @@ export const EditUserModal = ({ user, onClose }) => {
         });
     };
 
+    // An Active Directory / LDAP account: only its email, phone and on/off are edited here.
+    const fromDirectory = user.auth_source === "ldap";
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setPasswordError(null);
@@ -415,6 +418,15 @@ export const EditUserModal = ({ user, onClose }) => {
         }
 
         const updateData = {};
+        if (fromDirectory) {
+            // Name, password, role and permissions come from the directory and its group mapping.
+            if (formData.email !== (user.email || "")) updateData.email = formData.email || null;
+            if (formData.phone !== (user.phone || "")) updateData.phone = formData.phone;
+            if (formData.is_active !== user.is_active) updateData.is_active = formData.is_active;
+            const result = await dispatch(updateUser({ userId: user.id, userData: updateData }));
+            if (!result.error) onClose();
+            return;
+        }
         if (formData.username !== user.username) updateData.username = formData.username;
         if (formData.email !== user.email) updateData.email = formData.email;
         if (formData.phone !== (user.phone || "")) updateData.phone = formData.phone;
@@ -484,6 +496,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                     name="username"
                                     value={formData.username}
                                     onChange={handleChange}
+                                    disabled={fromDirectory}
                                     required
                                     minLength={3}
                                     style={styles.input}
@@ -494,9 +507,9 @@ export const EditUserModal = ({ user, onClose }) => {
                                 <FocusInput
                                     type="email"
                                     name="email"
-                                    value={formData.email}
+                                    value={formData.email || ""}
                                     onChange={handleChange}
-                                    required
+                                    required={!fromDirectory}
                                     style={styles.input}
                                 />
                             </div>
@@ -525,6 +538,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
+                                    disabled={fromDirectory}
                                 >
                                     <option value="user">{t("User")}</option>
                                     <option value="manager">{t("Manager")}</option>
@@ -585,6 +599,15 @@ export const EditUserModal = ({ user, onClose }) => {
 
                         <div style={styles.divider} />
 
+                        {fromDirectory && (
+                            <p style={{ margin: "0 0 12px", padding: "10px 14px", borderRadius: "10px", background: "#eef2ff",
+                                        color: "#3730a3", fontSize: "13px", lineHeight: 1.8 }}>
+                                <i className="fa-solid fa-sitemap" aria-hidden="true" />{" "}
+                                {t("This account signs in through the organization's directory. Its name and password are managed there; its role and permissions follow its directory groups (System Configuration → Active Directory / LDAP).")}
+                            </p>
+                        )}
+
+                        {!fromDirectory && (<>
                         {/* ── Password Change ── */}
                         <div style={styles.sectionLabel}>
                             {t("Change Password")}
@@ -723,6 +746,7 @@ export const EditUserModal = ({ user, onClose }) => {
                                 </tbody>
                             </table>
                         )}
+                        </>)}
 
                     </div>
 

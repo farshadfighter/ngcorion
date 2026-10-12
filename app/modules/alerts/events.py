@@ -308,6 +308,28 @@ def _compliance_drop(db: Session, params: Dict, now: datetime, since: datetime) 
 
 
 # ---------------------------------------------------------------------------
+# Sign-in through the directory (app/modules/directory)
+# ---------------------------------------------------------------------------
+
+def _directory_unreachable(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.modules.directory import service as directory
+    status = directory.last_status(db) or {}
+    if not directory.enabled(db) or status.get("ok", True):
+        return []
+    return [Problem(key="directory", title="Directory not reachable", detail=(status.get("error") or "")[:400] or None,
+                    source_label="Active Directory / LDAP", link="/settings/system")]
+
+
+def _emergency_login(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.security_audit_log import AuditLog
+    rows = (db.query(AuditLog).filter(AuditLog.action == "auth.emergency_login", AuditLog.timestamp >= since)
+            .order_by(AuditLog.id).all())
+    return [Problem(key=f"emergency:{r.id}", title="Local administrator signed in",
+                    detail=f"{r.username} from {r.ip_address or 'unknown address'} while directory sign-in is on",
+                    source_label=r.username, link="/settings/audit-trail", owner_user_id=r.user_id) for r in rows]
+
+
+# ---------------------------------------------------------------------------
 # Backup
 # ---------------------------------------------------------------------------
 
@@ -363,7 +385,7 @@ def _license_problem(db: Session, params: Dict, now: datetime, since: datetime) 
 
 BACKGROUND_TASKS = (("job-scheduler", "Job scheduler"), ("noc-poller", "NOC poller"),
                     ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update"),
-                    ("system-backup", "NGCorion backup"))
+                    ("system-backup", "NGCorion backup"), ("directory-check", "Directory account check"))
 
 
 def _task_stopped(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
@@ -618,6 +640,12 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("reports.schedule_failed", "reports", "Scheduled report failed",
               "A scheduled report could not be built or emailed", "state", 300, _report_schedule_failed,
               has_owner=True, roles=["admin"]),
+    EventType("system.directory_unreachable", "system", "Directory not reachable",
+              "Sign-in with Active Directory / LDAP cannot reach any directory server", "state", 300,
+              _directory_unreachable, severity="critical", channels=["email", "sms"], repeat_minutes=240),
+    EventType("system.emergency_login", "system", "Local administrator signed in",
+              "A local administrator account signs in while sign-in goes through the directory", "event", 60,
+              _emergency_login, has_owner=True, severity="warning", channels=["email"]),
     EventType("software.unexpected", "software", "New software outside known repositories",
               "Software installed by hand or from a repository new to the asset", "event", 300,
               _software_unexpected, uses_assets=True, has_owner=True, severity="warning", channels=[],
