@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
 import { t, n } from "../../i18n";
+import "../../assets/AssetGroups.css";
 
 export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsset, isOutsideLicense = () => false, selectedIds, onToggleSelect, onToggleAll, allSelected, canDelete = true }) => {
     const [sortColumn, setSortColumn] = useState(null);
@@ -82,6 +83,9 @@ export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsse
                                         </span>
                                     )}
                                 </span>
+                                {asset.tags?.length > 0 && (
+                                    <span className="ag-tags">{asset.tags.map((tag) => <span key={tag} className="ag-tag">{tag}</span>)}</span>
+                                )}
                             </td>
                             <td>{asset.hostname || "-"}</td>
                             <td>{asset.asset_type_name || "-"}</td>

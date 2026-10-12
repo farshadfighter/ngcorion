@@ -160,6 +160,8 @@ over within 30 seconds.
 | remediation-sync | `remediation` | Keeps remediation items in step with findings |
 | report-worker | `reports` | Builds queued and scheduled reports |
 | system-backup | `sysbackup` | Scheduled backups of the NGCorion database and files |
+| directory-check | `directory` | Checks directory (AD/LDAP) accounts every 15 minutes |
+| group-runs | `asset_groups` | Group audits: a database queue, several assets at a time in a thread pool; resumes after a restart |
 
 The license heartbeat runs in every worker (each keeps its own license
 state). `/api/system/health` (admin) shows whether each task is running.

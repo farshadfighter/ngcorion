@@ -222,6 +222,31 @@ const TEMPLATES = [
     msg("key {{license_key}}: {{detail}}"),
     msg("{{ref}} on {{asset_name}}: {{value}}"),
     msg("{{code}} from {{code2}}"),
+    // asset groups, credential profiles, group audits (app/modules/asset_groups)
+    msg("Created asset group '{{name}}'"),
+    msg("Changed asset group '{{name}}'"),
+    msg("Added {{n}} asset(s) to group '{{name}}'"),
+    msg("Removed {{n}} asset(s) from group '{{name}}'"),
+    msg("Deleted asset group '{{name}}'"),
+    msg("Added tag(s) {{tags}} to {{ids}} asset(s)"),
+    msg("Removed tag(s) {{tags}} from {{ids}} asset(s)"),
+    msg("Changed the owner of {{changed}} asset(s) in one step"),
+    msg("Changed the location of {{changed}} asset(s) in one step"),
+    msg("Changed the status of {{changed}} asset(s) in one step"),
+    msg("Changed the zone of {{changed}} asset(s) in one step"),
+    msg("Deleted {{deleted}} asset(s) in one step"),
+    msg("Created credential profile '{{name}}' for user '{{username}}'"),
+    msg("Changed the sign-in details of credential profile '{{name}}'"),
+    msg("Changed credential profile '{{name}}'"),
+    msg("Deleted credential profile '{{name}}'"),
+    msg("Tested credential profile '{{name}}' on {{asset_name}} ({{ip_address}})"),
+    msg("Started a {{technology}} audit of group '{{name}}' ({{total}} assets) with credential profile '{{name2}}'"),
+    msg("Stopped the audit of group '{{group_name}}'"),
+    msg("Retried {{n}} failed asset(s) of the audit of group '{{group_name}}'"),
+    msg("Scheduled job '{{job_name}}' started a {{technology}} audit of group '{{name}}' with credential profile '{{name2}}'"),
+    msg("{{group_name}} ({{technology}}): {{failed}} asset(s) could not be audited"),
+    msg("{{name}}: password not changed for {{rotation_days}} days or more"),
+    msg("A group run covers at most {{value}} assets"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -897,3 +922,45 @@ export function tv(value) {
     if (value === null || value === undefined || value === "") return value;
     return VALUES[String(value).toLowerCase()] ?? value;
 }
+
+// asset groups, credential profiles, group audits (app/modules/asset_groups)
+msg("Group audit finished with failures");
+msg("A group audit ends with assets that could not be audited");
+msg("Credential profile due for a password change");
+msg("A credential profile's password is older than its change period");
+msg("Group audits");
+msg("Group not found");
+msg("A group with this name exists");
+msg("Assets join a dynamic group through its rules");
+msg("Scheduled audits use this group: delete them first");
+msg("A group audit of this group is running");
+msg("Enter at least one tag");
+msg("Unknown status");
+msg("Choose an owner or location that exists");
+msg("Zone not found");
+msg("Type the number of assets to confirm the deletion");
+msg("Credential profile not found");
+msg("A credential profile with this name exists");
+msg("The kind of a credential profile cannot change");
+msg("Scheduled audits use this profile: change or delete them first");
+msg("A group audit with this profile is running");
+msg("The asset has no IP address");
+msg("Group audit not found");
+msg("The group audit is not running");
+msg("The credential profile was deleted");
+msg("The asset was deleted");
+msg("Wait for the run to finish or stop it first");
+msg("The group has no assets");
+msg("This technology cannot be audited with a credential profile");
+msg("The credential profile is of a different kind than the technology needs");
+msg("Enter the password");
+msg("A port is a number from 1 to 65535");
+msg("Unknown WinRM transport");
+msg("Unknown profile kind");
+msg("Unknown secret field");
+msg("A secret is at most 1024 characters");
+msg("A tag is 1 to 64 characters");
+msg("NGCorion restarted while this audit was running");
+msg("The group or credential profile of this schedule no longer exists");
+msg("Internal error");
+msg("Not a number");

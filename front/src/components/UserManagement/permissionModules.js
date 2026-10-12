@@ -35,6 +35,7 @@ export const PERMISSION_MODULES = [
     { name: "noc",                  label: t("NOC"),                icon: "fa-solid fa-satellite-dish" },
     { name: "remediation",          label: t("Remediation"),        icon: "fa-solid fa-clipboard-check" },
     { name: "reports",              label: t("Reports"),            icon: "fa-solid fa-file-lines" },
+    { name: "credential_profiles",  label: t("Use credential profiles"), icon: "fa-solid fa-id-card" },
 ];
 
 export default PERMISSION_MODULES;

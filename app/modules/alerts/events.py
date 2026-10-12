@@ -307,6 +307,27 @@ def _compliance_drop(db: Session, params: Dict, now: datetime, since: datetime) 
     return out
 
 
+def _group_run_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from sqlalchemy import func
+    from app.models.asset_groups import GroupRun, GroupRunItem
+    rows = (db.query(GroupRun, func.count(GroupRunItem.id))
+            .join(GroupRunItem, GroupRunItem.run_id == GroupRun.id)
+            .filter(GroupRun.status.in_(("done", "stopped")), GroupRun.finished_at >= since,
+                    GroupRunItem.status == "failed")
+            .group_by(GroupRun.id).all())
+    return [Problem(key=f"group_run:{run.id}", title="Group audit finished with failures",
+                    detail=f"{run.group_name} ({run.technology}): {failed} asset(s) could not be audited",
+                    source_label=run.group_name, link=f"/audit/group-runs/{run.id}",
+                    owner_user_id=run.started_by) for run, failed in rows]
+
+
+def _credential_rotation(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.modules.asset_groups.profiles import rotation_due
+    return [Problem(key=f"credential_profile:{p.id}", title="Credential profile due for a password change",
+                    detail=f"{p.name}: password not changed for {p.rotation_days} days or more",
+                    source_label=p.name, link="/settings/system") for p in rotation_due(db)]
+
+
 # ---------------------------------------------------------------------------
 # Sign-in through the directory (app/modules/directory)
 # ---------------------------------------------------------------------------
@@ -385,7 +406,8 @@ def _license_problem(db: Session, params: Dict, now: datetime, since: datetime) 
 
 BACKGROUND_TASKS = (("job-scheduler", "Job scheduler"), ("noc-poller", "NOC poller"),
                     ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update"),
-                    ("system-backup", "NGCorion backup"), ("directory-check", "Directory account check"))
+                    ("system-backup", "NGCorion backup"), ("directory-check", "Directory account check"),
+                    ("group-runs", "Group audits"))
 
 
 def _task_stopped(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
@@ -595,6 +617,9 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("audit.scheduled_failed", "audit", "Scheduled job failed",
               "A scheduled audit or discovery could not run or finish", "event", 60, _scheduled_failed,
               uses_assets=True, has_owner=True),
+    EventType("audit.group_run_failed", "audit", "Group audit finished with failures",
+              "A group audit ends with assets that could not be audited", "event", 60, _group_run_failed,
+              has_owner=True, roles=["admin", "manager"]),
     EventType("audit.compliance_drop", "audit", "Compliance dropped",
               "An asset falls {points} points or more below its previous audit", "event", 300, _compliance_drop,
               params=[Param("points", "Drop of at least", 10, "points", 1, 100)], uses_assets=True,
@@ -643,6 +668,9 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("system.directory_unreachable", "system", "Directory not reachable",
               "Sign-in with Active Directory / LDAP cannot reach any directory server", "state", 300,
               _directory_unreachable, severity="critical", channels=["email", "sms"], repeat_minutes=240),
+    EventType("system.credential_rotation", "system", "Credential profile due for a password change",
+              "A credential profile's password is older than its change period", "state", 3600,
+              _credential_rotation, severity="info", channels=["email"], repeat_minutes=10080),
     EventType("system.emergency_login", "system", "Local administrator signed in",
               "A local administrator account signs in while sign-in goes through the directory", "event", 60,
               _emergency_login, has_owner=True, severity="warning", channels=["email"]),

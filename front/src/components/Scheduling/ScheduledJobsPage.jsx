@@ -2,7 +2,7 @@
  * Scheduled discoveries and audits: list, create, edit, enable, run now and run history. Audit
  * credentials entered here are stored encrypted by the backend and never shown again.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
     fetchScheduledJobs,
@@ -16,6 +16,7 @@ import {
 import { fetchAssets } from "../../store/assetSlice.jsx";
 import { usePermission } from "../../hooks/usePermission";
 import { AccessDenied } from "../routePages.jsx";
+import api from "../../config/api.js";
 import "../../assets/Scheduling.css";
 import { t as tr, uiLocale } from "../../i18n";
 
@@ -121,6 +122,12 @@ const emptyForm = {
     technology: "cisco",
     asset_id: "",
     audit_params: {},
+    // audit of a whole asset group with a credential profile (instead of one asset and typed credentials)
+    target_kind: "asset",
+    group_id: "",
+    credential_profile_id: "",
+    concurrency: 10,
+    audit_profile: "",
 };
 
 const scheduleSummary = (job) => {
@@ -138,6 +145,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
     const canReadAuditing = usePermission("auditing", "read");
     const canWriteDiscovery = usePermission("asset_auto_discovery", "write");
     const canWriteAuditing = usePermission("auditing", "write");
+    const canUseProfiles = usePermission("credential_profiles", "read");
 
     const canRead = jobType === "discovery" ? canReadDiscovery : canReadAuditing;
     const canWrite = jobType === "discovery" ? canWriteDiscovery : canWriteAuditing;
@@ -149,6 +157,19 @@ export const ScheduledJobsPage = ({ jobType }) => {
     const [showCreate, setShowCreate] = useState(false);
     const [form, setForm] = useState({ ...emptyForm, job_type: jobType });
     const [historyJobId, setHistoryJobId] = useState(null);
+    const [groups, setGroups] = useState([]);
+    const [profiles, setProfiles] = useState([]);
+    const [profileKinds, setProfileKinds] = useState({});
+
+    // Groups and credential profiles for "audit a whole group"; only when the user may use profiles.
+    useEffect(() => {
+        if (jobType !== "audit" || !canUseProfiles || !showCreate) return;
+        api.get("/api/asset-groups").then(({ data }) => setGroups(data)).catch(() => setGroups([]));
+        api.get("/api/credential-profiles").then(({ data }) => setProfiles(data)).catch(() => setProfiles([]));
+        api.get("/api/credential-profiles/technologies").then(({ data }) => setProfileKinds(data)).catch(() => setProfileKinds({}));
+    }, [jobType, canUseProfiles, showCreate]);
+    const fittingProfiles = useMemo(
+        () => profiles.filter((p) => p.kind === profileKinds[form.technology]), [profiles, profileKinds, form.technology]);
 
     useEffect(() => {
         if (canRead) {
@@ -180,6 +201,25 @@ export const ScheduledJobsPage = ({ jobType }) => {
             payload.scan_type = undefined;
             payload.ports = undefined;
             payload.protocol = undefined;
+            const byGroup = form.target_kind === "group";
+            delete payload.target_kind;
+            if (byGroup) {
+                payload.asset_id = undefined;
+                payload.audit_params = undefined;
+                payload.group_id = Number(form.group_id);
+                payload.credential_profile_id = Number(form.credential_profile_id);
+                payload.concurrency = Number(form.concurrency) || 10;
+                payload.audit_profile = form.audit_profile || undefined;
+                if (payload.recurrence !== "weekly") payload.day_of_week = undefined;
+                dispatch(createScheduledJob(payload));
+                setShowCreate(false);
+                setForm({ ...emptyForm, job_type: jobType });
+                return;
+            }
+            payload.group_id = undefined;
+            payload.credential_profile_id = undefined;
+            payload.concurrency = undefined;
+            payload.audit_profile = undefined;
             payload.asset_id = Number(form.asset_id) || undefined;
             const fields = TECH_FIELDS[form.technology] || [];
             const params = {};
@@ -333,6 +373,49 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                         ))}
                                     </select>
                                 </div>
+                                {canUseProfiles && (
+                                    <div className="sched-field">
+                                        <label>{tr("What to audit")}</label>
+                                        <select value={form.target_kind} onChange={(e) => setForm({ ...form, target_kind: e.target.value })}>
+                                            <option value="asset">{tr("One asset, with the credentials typed here")}</option>
+                                            <option value="group">{tr("An asset group, with a credential profile")}</option>
+                                        </select>
+                                    </div>
+                                )}
+                                {form.target_kind === "group" ? (
+                                    <>
+                                        <div className="sched-field">
+                                            <label>{tr("Asset group")}</label>
+                                            <select value={form.group_id} onChange={(e) => setForm({ ...form, group_id: e.target.value })}>
+                                                <option value="">{tr("— Select a group —")}</option>
+                                                {groups.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.asset_count})</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="sched-field">
+                                            <label>{tr("Credential profile")}</label>
+                                            <select value={form.credential_profile_id} onChange={(e) => setForm({ ...form, credential_profile_id: e.target.value })}>
+                                                <option value="">{fittingProfiles.length ? tr("— Select a profile —") : tr("No profile of this kind — ask an administrator")}</option>
+                                                {fittingProfiles.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.username}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="sched-field">
+                                            <label>{tr("Benchmark profile")}</label>
+                                            <select value={form.audit_profile} onChange={(e) => setForm({ ...form, audit_profile: e.target.value })}>
+                                                <option value="">{tr("The technology's default")}</option>
+                                                <option value="L1">{tr("Level 1")}</option>
+                                                <option value="FULL">{tr("Full (Level 1 and 2)")}</option>
+                                            </select>
+                                        </div>
+                                        <div className="sched-field">
+                                            <label>{tr("Assets audited at the same time")}</label>
+                                            <input type="number" min={1} max={50} value={form.concurrency}
+                                                   onChange={(e) => setForm({ ...form, concurrency: e.target.value })} />
+                                        </div>
+                                        <p className="sched-modal-hint">
+                                            {tr("Each run audits every asset in the group at that moment (a dynamic group picks up new matching assets). No credentials are stored in the schedule: it signs in with the credential profile.")}
+                                        </p>
+                                    </>
+                                ) : (<>
                                 <div className="sched-field">
                                     <label>{tr("Asset")}</label>
                                     <select value={form.asset_id} onChange={(e) => setForm({ ...form, asset_id: e.target.value })}>
@@ -358,6 +441,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                 <p className="sched-modal-hint">
                                     {tr("Credentials are stored encrypted at rest so this job can run unattended - the one exception to this app's usual \"never stored\" rule, same as NOC's SNMP credentials.")}
                                 </p>
+                                </>)}
                             </>
                         )}
 
@@ -399,7 +483,8 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                     isSaving ||
                                     !canWrite ||
                                     !form.job_name ||
-                                    (form.job_type === "discovery" ? !form.target : !form.asset_id)
+                                    (form.job_type === "discovery" ? !form.target
+                                        : form.target_kind === "group" ? (!form.group_id || !form.credential_profile_id) : !form.asset_id)
                                 }
                             >
                                 {tr("Create")}

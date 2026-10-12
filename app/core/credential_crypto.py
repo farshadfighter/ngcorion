@@ -30,6 +30,7 @@ PURPOSE_CVE = "cve-database-secrets"
 PURPOSE_NOTIFICATIONS = "notification-secrets"
 PURPOSE_SYSTEM_BACKUP = "system-backup"
 PURPOSE_MFA = "user-mfa-secrets"
+PURPOSE_CREDENTIAL_PROFILES = "credential-profiles"
 
 
 def _fernet_key(raw: bytes) -> Fernet:

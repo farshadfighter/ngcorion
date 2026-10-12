@@ -335,3 +335,7 @@ from app.models.software import (SoftwareChange, SoftwareCollection, SoftwareIte
 
 # Distribution security advisories: fixed versions per package and release (see app/models/advisory.py)
 from app.models.advisory import DistroFeed, DistroVuln  # noqa: E402,F401
+
+# Tags, asset groups, credential profiles and group audit runs (see app/models/asset_groups.py)
+from app.models.asset_groups import (AssetGroup, AssetGroupMember, AssetTag, CredentialProfile,  # noqa: E402,F401
+                                     GroupRun, GroupRunItem)

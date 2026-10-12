@@ -22,15 +22,14 @@ import { EditSecurityModal } from "./EditSecurityModal";
 import { AddAssetModal } from "./AddAssetModal";
 import { ChangeHistoryModal } from "./ChangeHistoryModal";
 import { useAssetFormOptions } from "./useAssetFormOptions";
+import { BulkBar } from "./BulkActions";
 
 import "../../assets/AssetList.css"
 // Pagination's styles live with the Logs page it was first built for.
 import "../../assets/LogsPage.css"
-import { t as tr, n } from "../../i18n";
-import { tx } from "../../i18n/tx";
+import { t as tr } from "../../i18n";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
 
-const PRIMARY = "#1e3a5f";
 
 // The license covers a number of assets: the list shows when the inventory is
 // over that number, and which assets are outside it (audits and hardening run
@@ -59,9 +58,9 @@ export const AssetList = () => {
 
     // ── Multi-select delete ────────────────────────────────────────────────────
     const [selectedIds, setSelectedIds]               = useState(new Set());
-    const [showDeleteSelectedModal, setShowDeleteSelectedModal] = useState(false);
-    const [isDeletingSelected, setIsDeletingSelected] = useState(false);
     const [bulkError, setBulkError]                   = useState(null);
+    const [bulkNotice, setBulkNotice]                 = useState(null);
+    const [tagsByAsset, setTagsByAsset]               = useState({});
 
     // ── Edit modals ────────────────────────────────────────────────────────────
     const [showEditOverviewModal,  setShowEditOverviewModal]  = useState(false);
@@ -83,14 +82,15 @@ export const AssetList = () => {
     useEffect(() => { dispatch(fetchAssets()); }, [dispatch]);
 
     useEffect(() => {
-        if (successMessage || error || bulkError) {
+        if (successMessage || error || bulkError || bulkNotice) {
             const timer = setTimeout(() => {
                 dispatch(clearMessages());
                 setBulkError(null);
-            }, 3000);
+                setBulkNotice(null);
+            }, bulkNotice ? 5000 : 3000);
             return () => clearTimeout(timer);
         }
-    }, [successMessage, error, bulkError, dispatch]);
+    }, [successMessage, error, bulkError, bulkNotice, dispatch]);
 
     // ── Filtering & sorting ────────────────────────────────────────────────────
     const filteredAssets = Array.isArray(assets)
@@ -100,7 +100,8 @@ export const AssetList = () => {
                 asset.asset_name?.toLowerCase().includes(q) ||
                 asset.hostname?.toLowerCase().includes(q) ||
                 asset.ip_address?.toLowerCase().includes(q) ||
-                asset.serial_number?.toLowerCase().includes(q)
+                asset.serial_number?.toLowerCase().includes(q) ||
+                (tagsByAsset[asset.id] || []).some((tag) => tag.includes(q))
             );
         })
         : [];
@@ -120,6 +121,7 @@ export const AssetList = () => {
             asset_type_name: assetType?.type_name || asset.asset_type_id || "-",
             location_name:   location?.site_name || location?.location_name || asset.location_id || "-",
             owner_name:      owner?.full_name || asset.owner_id || "-",
+            tags:            tagsByAsset[asset.id] || [],
         };
     });
 
@@ -141,7 +143,6 @@ export const AssetList = () => {
     // see would make the delete count surprising.
     const allIds         = pagedAssets.map(a => a.id);
     const allSelected    = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
-    const someSelected   = selectedIds.size > 0;
 
     const toggleSelectAll = () => {
         if (allSelected) {
@@ -207,24 +208,16 @@ export const AssetList = () => {
         }
     };
 
-    // ── Multi delete ───────────────────────────────────────────────────────────
-    const handleDeleteSelectedConfirm = async () => {
-        setIsDeletingSelected(true);
-        const outcomes = await Promise.allSettled(
-            [...selectedIds].map(id => dispatch(deleteAsset(id)).unwrap())
-        );
-        setSelectedIds(new Set());
-        setShowDeleteSelectedModal(false);
-        setIsDeletingSelected(false);
-        // allSettled swallows per-asset failures, and the last thunk to settle
-        // decides what the slice's error says — so count them here rather than
-        // reporting "deleted" for a batch that partly failed.
-        const failed = outcomes.filter(o => o.status === "rejected").length;
-        if (failed) {
-            setBulkError(
-                tr("{{failed}} of {{length}} assets could not be deleted.", { failed, length: outcomes.length })
-            );
-        }
+    // ── Bulk edit (BulkActions.jsx) ───────────────────────────────────────────
+    const loadTags = () => {
+        api.get("/api/asset-groups/tags/assets").then(({ data }) => setTagsByAsset(data || {})).catch(() => setTagsByAsset({}));
+    };
+    useEffect(loadTags, []);
+
+    const handleBulkDone = (message, action) => {
+        setBulkNotice(message);
+        if (action === "delete") setSelectedIds(new Set());
+        loadTags();
         dispatch(fetchAssets());
     };
 
@@ -316,6 +309,7 @@ export const AssetList = () => {
             {successMessage && <div className="alert alert-success">{successMessage}</div>}
             {error          && <div className="alert alert-error">{error}</div>}
             {bulkError      && <div className="alert alert-error">{bulkError}</div>}
+            {bulkNotice     && <div className="alert alert-success" role="status">{bulkNotice}</div>}
             {licenseUsage?.over_limit && (
                 <div className="alert alert-error" role="status">
                     {tr("The inventory has {{used}} assets and the license covers {{limit}}. Audits and hardening run only on the first {{limit}} assets; those marked \"Outside license\" are kept but not audited.", {
@@ -340,33 +334,21 @@ export const AssetList = () => {
                 ))}
             </div>
 
-            {/* Search + Delete Selected */}
+            {/* Search; bulk actions on the selected rows below */}
             <div className="search-sort-container" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div className="search-box">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
                     </svg>
-                    <input className="search-input" placeholder={tr("Search Asset")}
+                    <input className="search-input" placeholder={tr("Search name, address or tag")}
                            value={searchQuery}
                            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} />
                 </div>
 
-                {/* Delete Selected — فقط وقتی چیزی select شده نمایش داده میشه */}
-                {someSelected && canDelete && (
-                    <button
-                        onClick={() => setShowDeleteSelectedModal(true)}
-                        style={{
-                            display: "flex", alignItems: "center", gap: "6px",
-                            padding: "8px 18px", background: "#dc2626", color: "white",
-                            border: "none", borderRadius: "8px", fontSize: "14px",
-                            fontWeight: "600", cursor: "pointer",
-                        }}
-                    >
-                        <i className="fa-solid fa-trash"></i>
-                        {tr("Delete Selected ({{size}})", { size: selectedIds.size })}
-                    </button>
-                )}
             </div>
+
+            <BulkBar selectedIds={selectedIds} owners={owners} locations={locations}
+                     onClear={() => setSelectedIds(new Set())} onDone={handleBulkDone} />
 
             {isLoading && <div className="loading-spinner">{tr("Loading assets...")}</div>}
 
@@ -401,40 +383,6 @@ export const AssetList = () => {
                         <div className="modal-actions">
                             <button className="btn-cancel" onClick={() => setShowDeleteModal(false)}>{tr("Cancel")}</button>
                             <button className="btn-delete2" onClick={handleDeleteConfirm}>{tr("Delete")}</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Delete selected modal ────────────────────────────────────────── */}
-            {showDeleteSelectedModal && (
-                <div className="modal-overlay" onClick={() => !isDeletingSelected && setShowDeleteSelectedModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header" style={{ borderBottom: `3px solid ${PRIMARY}` }}>
-                            <h3 style={{ color: PRIMARY }}>{tr("Delete Selected Assets")}</h3>
-                            <button className="modal-close" onClick={() => setShowDeleteSelectedModal(false)}>✕</button>
-                        </div>
-                        <div className="modal-body">
-                            <p>{selectedIds.size === 1
-                                ? tx("Are you sure you want to delete {{count}} selected asset?", { count: <strong>{n(selectedIds.size)}</strong> })
-                                : tx("Are you sure you want to delete {{count}} selected assets?", { count: <strong>{n(selectedIds.size)}</strong> })}</p>
-                            <p style={{ color: "#dc2626", fontSize: "13px", marginTop: "8px" }}>{tr("This action cannot be undone.")}</p>
-                        </div>
-                        <div className="modal-actions">
-                            <button className="btn-cancel" onClick={() => setShowDeleteSelectedModal(false)}
-                                    disabled={isDeletingSelected}>{tr("Cancel")}</button>
-                            <button
-                                onClick={handleDeleteSelectedConfirm}
-                                disabled={isDeletingSelected}
-                                style={{
-                                    padding: "10px 20px", background: PRIMARY, color: "white",
-                                    border: "none", borderRadius: "8px", fontSize: "14px",
-                                    fontWeight: "600", cursor: isDeletingSelected ? "not-allowed" : "pointer",
-                                    opacity: isDeletingSelected ? 0.7 : 1,
-                                }}
-                            >
-                                {isDeletingSelected ? tr("Deleting...") : tr("Yes, Delete {{size}}", { size: selectedIds.size })}
-                            </button>
                         </div>
                     </div>
                 </div>

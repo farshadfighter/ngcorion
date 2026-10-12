@@ -94,6 +94,7 @@
   "Save & recalculate": "ذخیره و محاسبهٔ دوباره",
   "Saving recalculates this asset's risk score.": "با ذخیره، امتیاز ریسک این دارایی دوباره محاسبه می‌شود.",
   "Score": "امتیاز",
+  "Search Asset": "جستجوی دارایی",
   "Severity Score": "امتیاز شدت",
   "Sort by {{label}}": "مرتب‌سازی بر اساس {{label}}",
   "These values come from Asset List and are not editable here.": "این مقادیر از فهرست دارایی‌ها می‌آیند و اینجا قابل ویرایش نیستند.",

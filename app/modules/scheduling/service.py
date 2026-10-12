@@ -51,15 +51,38 @@ def _validate_create(data: ScheduledJobCreate) -> None:
     elif data.job_type == JOB_TYPE_AUDIT:
         if not data.technology or data.technology not in SUPPORTED_TECHNOLOGIES:
             raise ValueError(f"technology must be one of {sorted(SUPPORTED_TECHNOLOGIES)}")
-        if not data.asset_id:
-            raise ValueError("asset_id is required for an audit job")
-        params = data.audit_params or {}
-        missing = REQUIRED_PARAMS[data.technology] - params.keys()
-        if missing:
-            raise ValueError(f"audit_params missing required field(s): {sorted(missing)}")
+        if data.group_id:
+            # A group audit signs in with a credential profile: no credentials in the job itself.
+            if not data.credential_profile_id:
+                raise ValueError("credential_profile_id is required for a group audit job")
+        else:
+            if not data.asset_id:
+                raise ValueError("asset_id is required for an audit job")
+            params = data.audit_params or {}
+            missing = REQUIRED_PARAMS[data.technology] - params.keys()
+            if missing:
+                raise ValueError(f"audit_params missing required field(s): {sorted(missing)}")
 
     if data.recurrence == "weekly" and data.day_of_week is None:
         raise ValueError("day_of_week is required for a weekly recurrence")
+
+
+def _start_group_run(db: Session, job: ScheduledJob, params: dict):
+    """A scheduled group audit only queues the run; the group-run worker audits the assets."""
+    from app.models.asset_groups import AssetGroup, CredentialProfile
+    from app.models.security_audit_log import log_action
+    from app.modules.asset_groups.runs import start_run
+    group = db.get(AssetGroup, job.group_id)
+    profile = db.get(CredentialProfile, job.credential_profile_id) if job.credential_profile_id else None
+    if group is None or profile is None:
+        raise ValueError("The group or credential profile of this schedule no longer exists")
+    group_run = start_run(db, group, job.technology, profile, params.get("profile"), job.concurrency or 10,
+                          None, scheduled_job_id=job.id, started_by_id=job.created_by)
+    db.flush()
+    log_action(db, user_id=job.created_by, action="group_run.start", module="auditing", target_id=group_run.id,
+               detail=f"Scheduled job '{job.job_name}' started a {job.technology} audit of group '{group.name}' "
+                      f"with credential profile '{profile.name}'")
+    return group_run
 
 
 class SchedulingService:
@@ -78,6 +101,10 @@ class SchedulingService:
             ScanRequest(**params)
             technology = None
             asset_id = None
+        elif data.group_id:
+            params = {"profile": data.audit_profile} if data.audit_profile else {}
+            technology = data.technology
+            asset_id = None
         else:
             params = dict(data.audit_params or {})
             technology = data.technology
@@ -88,6 +115,9 @@ class SchedulingService:
             job_type=data.job_type,
             technology=technology,
             asset_id=asset_id,
+            group_id=data.group_id if data.job_type == JOB_TYPE_AUDIT else None,
+            credential_profile_id=data.credential_profile_id if data.group_id else None,
+            concurrency=(data.concurrency or 10) if data.group_id else None,
             params_encrypted=encrypt_json(json.dumps(params)),
             recurrence=data.recurrence,
             hour=data.hour,
@@ -144,7 +174,12 @@ class SchedulingService:
             ScanRequest(**current)
             job.params_encrypted = encrypt_json(json.dumps(current))
 
-        if job.job_type == JOB_TYPE_AUDIT and data.audit_params is not None:
+        if job.group_id:
+            if data.credential_profile_id is not None:
+                job.credential_profile_id = data.credential_profile_id
+            if data.concurrency is not None:
+                job.concurrency = data.concurrency
+        elif job.job_type == JOB_TYPE_AUDIT and data.audit_params is not None:
             current = json.loads(decrypt_json(job.params_encrypted))
             current.update(data.audit_params)
             missing = REQUIRED_PARAMS[job.technology] - current.keys()
@@ -231,6 +266,9 @@ class SchedulingService:
                 scan = DiscoveryService.start_scan(db, ScanRequest(**params), job.created_by)
                 DiscoveryService.execute_scan(db, scan["scan_id"])
                 run.result_ref = f"scan:{scan['scan_id']}"
+            elif job.group_id:
+                group_run = _start_group_run(db, job, params)
+                run.result_ref = f"group_run:{group_run.id}"
             else:
                 session = run_audit(job.technology, db, job.asset_id, job.created_by, params)
                 run.result_ref = f"audit_session:{session.id}"

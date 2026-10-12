@@ -558,5 +558,7 @@
   "{section}: no access to {module}": "{section}: دسترسی به {module} ندارید",
   "{start} to {end}": "{start} تا {end}",
   "Directory not reachable": "دایرکتوری در دسترس نیست",
-  "Local administrator signed in": "ورود مدیر محلی"
+  "Local administrator signed in": "ورود مدیر محلی",
+  "Group audit finished with failures": "ممیزی گروهی با خطا پایان یافت",
+  "Credential profile due for a password change": "زمان تعویض گذرواژهٔ پروفایل اعتبارنامه رسیده است"
 }

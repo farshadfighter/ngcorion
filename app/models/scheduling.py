@@ -51,6 +51,13 @@ class ScheduledJob(Base):
 
     params_encrypted = Column(Text, nullable=False)
 
+    # Audit of a whole asset group (asset_id empty), signing in with a credential profile instead of
+    # stored credentials; each firing starts a group run (app/modules/asset_groups/runs.py).
+    group_id = Column(Integer, ForeignKey("asset_groups.id", ondelete="CASCADE"), nullable=True)
+    credential_profile_id = Column(Integer, ForeignKey("credential_profiles.id", ondelete="RESTRICT"),
+                                   nullable=True)
+    concurrency = Column(Integer, nullable=True)
+
     recurrence = Column(String(20), nullable=False, default=RECURRENCE_DAILY)
     hour = Column(Integer, nullable=True)  # 0-23, time of day for daily/weekly
     minute = Column(Integer, nullable=False, default=0)  # 0-59
@@ -67,6 +74,8 @@ class ScheduledJob(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     asset = relationship("Asset")
+    group = relationship("AssetGroup")
+    credential_profile = relationship("CredentialProfile")
     runs = relationship("ScheduledJobRun", back_populates="job", cascade="all, delete-orphan")
 
 

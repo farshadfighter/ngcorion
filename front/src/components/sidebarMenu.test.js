@@ -20,7 +20,7 @@ describe("sidebar menu", () => {
 
     it("shows a user with the default permissions only what they can open", () => {
         const menu = visibleMenu({ role: "user", permissions: read(["dashboard", "asset_list"]) });
-        expect(labels(menu)).toEqual(["dashboard", "alerts", "assets", "asset-management", "asset-list", "software"]);
+        expect(labels(menu)).toEqual(["dashboard", "alerts", "assets", "asset-management", "asset-list", "asset-groups", "software"]);
     });
 
     it("never shows risk, the license or the NGCorion backup without the right to open them", () => {

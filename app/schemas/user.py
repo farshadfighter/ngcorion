@@ -211,6 +211,7 @@ MODULE_DESCRIPTIONS = {
     ModuleEnum.LOGS: "System Log",
     ModuleEnum.REMEDIATION: "Remediation and risk acceptance",
     ModuleEnum.REPORTS: "Reports: build, archive and schedule",
+    ModuleEnum.CREDENTIAL_PROFILES: "Use credential profiles in group runs and schedules",
 }
 
 

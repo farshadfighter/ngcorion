@@ -1,0 +1,60 @@
+/* Asset groups, group audits, bulk edit and credential profiles (components/AssetGroups,
+   AssetList bulk bar, SystemConfig/CredentialProfilesModal). Builds on BackupModule.css (bkm-*)
+   and Alerts.css (alr-*). */
+
+.ag-name { font-weight: 700; font-size: 14px; background: none; border: 0; padding: 0; cursor: pointer; text-align: start; }
+.ag-ml { margin-inline-start: 6px; }
+.ag-danger { border-color: #fecaca; color: #b91c1c; }
+.ag-danger:hover { background: #fef2f2; }
+
+.ag-rules-cell { max-width: 460px; }
+.ag-rule-chip { display: inline-block; margin-block: 2px; margin-inline-end: 6px; padding: 2px 8px; border-radius: 6px; background: #eef2f7; color: #1e3a5f; font-size: 12px; white-space: nowrap; }
+.ag-tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; background: #ecfdf5; color: #065f46; font-size: 11.5px; font-weight: 600; direction: ltr; unicode-bidi: isolate; }
+.ag-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+
+/* group editor */
+.ag-drawer { width: 720px; }
+.ag-box { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.ag-rule { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr) minmax(0, 1.5fr) auto; gap: 8px; align-items: center; }
+.ag-rule .bkm-select { width: 100%; box-sizing: border-box; min-width: 0; }
+.ag-add { align-self: flex-start; }
+.ag-seg { display: inline-flex; border: 1px solid #d1d5db; border-radius: 9px; overflow: hidden; align-self: flex-start; }
+.ag-seg button { border: 0; background: #fff; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; color: #374151; cursor: pointer; }
+.ag-seg button + button { border-inline-start: 1px solid #d1d5db; }
+.ag-seg button.is-on { background: #1e3a5f; color: #fff; }
+.ag-seg button:disabled { cursor: default; }
+.ag-members { display: flex; flex-direction: column; gap: 2px; max-height: 360px; overflow-y: auto; }
+.ag-member { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; }
+.ag-push { margin-inline-start: auto; }
+.ag-cand { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; font: inherit; font-size: 13px; cursor: pointer; text-align: start; }
+.ag-cand:hover { border-color: #1e3a5f; }
+
+/* group runs */
+.ag-progress { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ag-bar { flex: 1 1 140px; display: flex; height: 9px; border-radius: 5px; overflow: hidden; background: #eef1f5; min-width: 80px; }
+.ag-bar i { display: block; height: 100%; }
+.ag-bar-done { background: #16a34a; }
+.ag-bar-failed { background: #dc2626; }
+.ag-bar-skipped { background: #f59e0b; }
+.ag-bar-running { background: #3b82f6; }
+.ag-modal { width: 560px; }
+.ag-detail { max-width: 520px; overflow-wrap: anywhere; }
+
+/* asset list bulk bar */
+.ag-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-radius: 10px; background: #1e3a5f; color: #fff; }
+.ag-bulk b { font-size: 13.5px; margin-inline-end: 6px; }
+.ag-bulk button { height: 32px; padding: 0 12px; border-radius: 7px; border: 1px solid rgba(255, 255, 255, .35); background: transparent; color: #fff; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ag-bulk button:hover { background: rgba(255, 255, 255, .12); }
+.ag-bulk .ag-bulk-danger { border-color: #fca5a5; color: #fecaca; }
+.ag-bulk .ag-bulk-clear { margin-inline-start: auto; border: 0; opacity: .85; }
+.ag-confirm-input { width: 120px; text-align: center; direction: ltr; }
+
+/* credential profiles (System Configuration) */
+.cp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+.cp-back { align-self: flex-start; margin-bottom: 6px; }
+.cp-due { padding: 2px 6px; margin-top: 3px; font-size: 11.5px; }
+
+@media (max-width: 720px) {
+    .ag-rule { grid-template-columns: 1fr 1fr; }
+    .cp-grid { grid-template-columns: 1fr; }
+}

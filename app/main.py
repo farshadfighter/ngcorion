@@ -24,6 +24,9 @@ from app.core.dependencies import get_current_user
 from app.modules.auth import router as auth_router
 from app.modules.auth import mfa_router as auth_mfa_router
 from app.modules.directory.router import router as directory_router
+from app.modules.asset_groups.router import (bulk_router as asset_bulk_router, groups_router as asset_groups_router,
+                                             profiles_router as credential_profiles_router,
+                                             runs_router as group_runs_router)
 from app.modules.logs import router as logs_router
 from app.modules.logs import clear_router as logs_clear_router
 from app.modules.users import router as users_router
@@ -282,6 +285,7 @@ async def lifespan(app: FastAPI):
     from app.modules.reports.engine import start_report_worker, stop_report_worker
     from app.modules.sysbackup.engine import start_backup_worker, stop_backup_worker
     from app.modules.directory.engine import start_directory_check, stop_directory_check
+    from app.modules.asset_groups.runs import start_group_runs, stop_group_runs
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
@@ -292,6 +296,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("report-worker", start_report_worker, stop_report_worker),
         SingletonTask("system-backup", start_backup_worker, stop_backup_worker),
         SingletonTask("directory-check", start_directory_check, stop_directory_check),
+        SingletonTask("group-runs", start_group_runs, stop_group_runs),
     ]
     for task in singletons:
         task.start()
@@ -448,6 +453,11 @@ app.include_router(logs_router.router, prefix="/api/logs", tags=["Logs"])
 app.include_router(logs_clear_router.router)
 app.include_router(users_router.router, prefix="/api/users", tags=["Users"])
 app.include_router(asset_types_router)
+# before the assets router: POST /api/assets/bulk
+app.include_router(asset_bulk_router)
+app.include_router(asset_groups_router)
+app.include_router(credential_profiles_router)
+app.include_router(group_runs_router)
 app.include_router(assets_router)
 app.include_router(owners_router)
 app.include_router(locations_router)

@@ -7,6 +7,8 @@ job_type belongs to, same as the manual endpoints these jobs eventually
 call.
 """
 import logging
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -43,7 +45,29 @@ def _to_summary(job) -> ScheduledJobSummary:
     summary = ScheduledJobSummary.model_validate(job)
     if job.asset is not None:
         summary.asset_name = job.asset.asset_name
+    if job.group is not None:
+        summary.group_name = job.group.name
+    if job.credential_profile is not None:
+        summary.credential_profile_name = job.credential_profile.name
     return summary
+
+
+def _check_group_job(db: Session, current_user: User, technology: Optional[str], group_id: Optional[int],
+                     profile_id: Optional[int]) -> None:
+    """A group audit: the group and profile exist, the profile fits the technology, and the caller may
+    use credential profiles."""
+    from app.models.asset_groups import AssetGroup, CredentialProfile
+    from app.modules.asset_groups.profiles import kind_for
+    require_permission("CREDENTIAL_PROFILES", "read")(current_user=current_user, db=db)
+    if group_id is not None and db.get(AssetGroup, group_id) is None:
+        raise HTTPException(status_code=404, detail="Group not found")
+    if profile_id is not None:
+        profile = db.get(CredentialProfile, profile_id)
+        if profile is None:
+            raise HTTPException(status_code=404, detail="Credential profile not found")
+        if kind_for(technology or "") != profile.kind:
+            raise HTTPException(status_code=400,
+                                detail="The credential profile is of a different kind than the technology needs")
 
 
 @router.post("/jobs", response_model=ScheduledJobSummary)
@@ -56,7 +80,9 @@ def create_job(
     or auditing, write); credentials in the job are stored encrypted.
     """
     _require_job_type_permission(data.job_type, "write", current_user, db)
-    if data.job_type == JOB_TYPE_AUDIT and data.asset_id:
+    if data.job_type == JOB_TYPE_AUDIT and data.group_id:
+        _check_group_job(db, current_user, data.technology, data.group_id, data.credential_profile_id)
+    elif data.job_type == JOB_TYPE_AUDIT and data.asset_id:
         asset = db.query(Asset).filter(Asset.id == data.asset_id).first()
         if not asset:
             raise HTTPException(status_code=404, detail="Asset not found")
@@ -116,6 +142,8 @@ def update_job(
     if not job:
         raise HTTPException(status_code=404, detail="Scheduled job not found")
     _require_job_type_permission(job.job_type, "write", current_user, db)
+    if job.group_id and data.credential_profile_id is not None:
+        _check_group_job(db, current_user, job.technology, None, data.credential_profile_id)
     try:
         job = SchedulingService.update_job(db, job, data)
     except ValueError as exc:

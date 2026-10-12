@@ -67,6 +67,9 @@ class ModuleEnum(str, enum.Enum):
     # Reports (catalog, archive, schedules)
     REPORTS = "reports"
 
+    # Using credential profiles (defined by system administrators) in group runs and schedules
+    CREDENTIAL_PROFILES = "credential_profiles"
+
 
 class UserPermission(Base):
     """

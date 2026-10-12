@@ -225,6 +225,40 @@ identical to a fresh install, sign-in, audit trail and temporary passwords
 working; a 2.0.0 backup restored into this release the same way, with the
 audit trail still append-only.
 
+### Asset groups, bulk edit and group audits
+
+- Tags on assets ("pci", "web"), added or removed for many assets at once.
+- Asset groups (Assets → Asset groups): dynamic, by conditions that all have
+  to hold (type, Risk zone, owner, location, status, operating system,
+  manufacturer, name, tag, IP range in CIDR), re-evaluated every time the
+  group is used; or static, assets chosen by hand. The editor shows the
+  assets that match while the conditions are written.
+- Bulk edit in the asset list: add or remove tags, set owner, location,
+  status or Risk zone, add to a static group, delete. Each changed asset gets
+  its own change-history entry; deleting asks for the number of assets to be
+  typed.
+- Credential profiles (System Configuration, system administrators only):
+  SSH, WinRM, SQL Server or Sophos API sign-in details defined once,
+  encrypted under their own key and re-keyed on restore to another server.
+  Write-only: a password is never shown again, an empty field keeps it. Each
+  profile can be tried on one asset (a sign-in only), carries a password
+  change period (default 90 days, alert "Credential profile due for a password
+  change"), and shows when it was last used. Using a profile needs the new
+  "Use credential profiles" permission.
+- Group audits (Security assessment → Group audits): every asset of a group,
+  one technology, one credential profile, up to 50 at a time. Each asset gets
+  its normal audit session and score; the run lists what failed and why
+  (sign-in refused, unreachable, not covered by the license, no address,
+  interrupted by a restart, error) and retries only those. A restart marks
+  audits that were running as interrupted and carries on with the queue.
+  Stopping cancels what has not started. Alert "Group audit finished with
+  failures".
+- Scheduled audits can target a group with a credential profile instead of
+  one asset with typed credentials; no credentials are stored in the
+  schedule. A group or profile used by a schedule cannot be deleted.
+- Every group, profile, bulk change and group audit is in the audit trail
+  (who, what, which profile), without any secret.
+
 ### Sign-in with Active Directory / LDAP
 - Users sign in with their organization account. Active Directory, or another
   LDAP directory (OpenLDAP, FreeIPA); several servers tried in order; LDAPS or

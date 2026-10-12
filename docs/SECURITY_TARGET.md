@@ -158,7 +158,7 @@ OE.ADMIN، OE.PLATFORM، OE.TIME، OE.NETWORK، OE.BROWSER — متناظر با
 | **FTA_SSL.4** | خروج به درخواست کاربر | `POST /auth/logout` توکن را باطل می‌کند (`revoked_tokens`) |
 | **FTA_TAB.1** | اطلاعیهٔ پیش از ورود | `LOGIN_BANNER` / متن پیش‌فرض دوزبانه (`front/src/components/Login.jsx`) |
 | **FCS_COP.1 (رمز عبور)** | درهم‌سازی | bcrypt (`app/core/security.py`) |
-| **FCS_COP.1 (اعتبارنامه)** | رمزنگاری متقارن | Fernet (AES-128-CBC + HMAC-SHA256) با کلید مشتق از تنظیمات (`app/core/credential_crypto.py`) |
+| **FCS_COP.1 (اعتبارنامه)** | رمزنگاری متقارن | Fernet (AES-128-CBC + HMAC-SHA256) با کلید مشتق از تنظیمات، یک کلید جدا (HKDF) برای هر نوع راز (`app/core/credential_crypto.py`)؛ از جمله پروفایل‌های اعتبارنامهٔ ممیزی گروهی که فقط مدیر سیستم می‌سازد، فقط‌نوشتنی‌اند (هیچ API رازشان را برنمی‌گرداند)، استفاده از آن‌ها مجوز جدا («استفاده از پروفایل‌های اعتبارنامه») می‌خواهد و هر استفاده بدون راز در دنبالهٔ ممیزی ثبت می‌شود (`app/modules/asset_groups/profiles.py`) |
 | **FCS_COP.1 (لایسنس)** | تأیید امضا | Ed25519 با کلیدهای عمومی درون کد (`app/core/license_keys.py`، `license_token.py`) |
 | **FCS_COP.1 (نشست)** | امضای توکن | HMAC-SHA256 (JWT HS256) |
 | **FTP_TRP.1** | مسیر امن کاربر | Traefik با TLS 1.2/1.3 و رمزهای AEAD (`traefik/dynamic/tls.yml`)، تغییر مسیر HTTP به HTTPS، HSTS (`app/middleware/security_headers.py`) |

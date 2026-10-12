@@ -216,7 +216,6 @@
   "Selected names are combined into one object list on the command line.": "نام‌های انتخاب‌شده در خط فرمان در یک فهرست شیء ترکیب می‌شوند.",
   "Session {{sessionId}}": "نشست {{sessionId}}",
   "Show VDOMs": "نمایش VDOMها",
-  "Skipped": "ردشده",
   "Sophos Firewall hardening guidance": "رهنمود مقاوم‌سازی Sophos Firewall",
   "Status of CIS Benchmark section is unknown, audit your asset to specify status": "وضعیت این بخش از بنچمارک CIS نامشخص است؛ برای تعیین وضعیت، دارایی را ممیزی کنید",
   "Status:": "وضعیت:",

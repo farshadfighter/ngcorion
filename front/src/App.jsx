@@ -57,6 +57,8 @@ const ReportsCatalog = lazy(() => import("./components/Reports/ReportsCatalog").
 const ReportBuilder = lazy(() => import("./components/Reports/ReportBuilder").then((m) => ({ default: m.ReportBuilder })));
 const ReportsArchive = lazy(() => import("./components/Reports/ReportsArchive").then((m) => ({ default: m.ReportsArchive })));
 const ReportSchedules = lazy(() => import("./components/Reports/ReportSchedules").then((m) => ({ default: m.ReportSchedules })));
+const AssetGroupsPage = lazy(() => import("./components/AssetGroups/AssetGroupsPage").then((m) => ({ default: m.AssetGroupsPage })));
+const GroupRunsPage = lazy(() => import("./components/AssetGroups/GroupRunsPage").then((m) => ({ default: m.GroupRunsPage })));
 const SoftwarePage = lazy(() => import("./components/Software/SoftwarePage").then((m) => ({ default: m.SoftwarePage })));
 const SystemBackup = lazy(() => import("./components/SystemBackup/SystemBackup").then((m) => ({ default: m.SystemBackup })));
 const NocHostDetail = lazy(() => import("./components/NOC/NocHostDetail").then((m) => ({ default: m.NocHostDetail })));
@@ -179,6 +181,11 @@ function AppContent() {
                                 <AssetListRoute />
                             </RequirePermission>
                         } />
+                        <Route path="/assets/groups" element={
+                            <RequirePermission module="asset_list" name="Asset groups">
+                                <AssetGroupsPage />
+                            </RequirePermission>
+                        } />
                         <Route path="/assets/software" element={
                             <RequirePermission module="asset_list" name="Software">
                                 <SoftwarePage />
@@ -213,6 +220,16 @@ function AppContent() {
                         <Route path="/audit/schedule-auditing" element={
                             <RequirePermission module="auditing" name="Schedule Auditing">
                                 <ScheduledJobsPage key="audit" jobType="audit" />
+                            </RequirePermission>
+                        } />
+                        <Route path="/audit/group-runs" element={
+                            <RequirePermission module="auditing" name="Group audits">
+                                <GroupRunsPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/audit/group-runs/:runId" element={
+                            <RequirePermission module="auditing" name="Group audits">
+                                <GroupRunsPage />
                             </RequirePermission>
                         } />
                         <Route path="/audit/sessions/:sessionId" element={

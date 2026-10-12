@@ -28,6 +28,13 @@ class ScheduledJobCreate(BaseModel):
     asset_id: Optional[int] = None
     audit_params: Optional[dict[str, Any]] = None
 
+    # Audit of a whole asset group, signing in with a credential profile (instead of asset_id and
+    # audit_params credentials)
+    group_id: Optional[int] = None
+    credential_profile_id: Optional[int] = None
+    concurrency: Optional[int] = Field(None, ge=1, le=50)
+    audit_profile: Optional[str] = Field(None, pattern="^(L1|FULL)$")
+
 
 class ScheduledJobUpdate(BaseModel):
     """Partial update. Only recurrence/enabled/audit credentials are meant
@@ -47,6 +54,8 @@ class ScheduledJobUpdate(BaseModel):
     version_detection: Optional[bool] = None
 
     audit_params: Optional[dict[str, Any]] = None
+    credential_profile_id: Optional[int] = None
+    concurrency: Optional[int] = Field(None, ge=1, le=50)
 
 
 class ScheduledJobSummary(BaseModel):
@@ -57,6 +66,11 @@ class ScheduledJobSummary(BaseModel):
     technology: Optional[str]
     asset_id: Optional[int]
     asset_name: Optional[str] = None
+    group_id: Optional[int] = None
+    group_name: Optional[str] = None
+    credential_profile_id: Optional[int] = None
+    credential_profile_name: Optional[str] = None
+    concurrency: Optional[int] = None
     recurrence: str
     hour: Optional[int]
     minute: int

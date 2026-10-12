@@ -10,6 +10,7 @@ import { ReportsConfigModal } from "./ReportsConfigModal";
 import { DeviceKeysModal } from "./DeviceKeysModal";
 import { AuthenticationConfigModal } from "./AuthenticationConfigModal";
 import { DirectoryConfigModal } from "./DirectoryConfigModal";
+import { CredentialProfilesModal } from "./CredentialProfilesModal";
 import { t } from "../../i18n";
 
 /**
@@ -28,6 +29,7 @@ import { t } from "../../i18n";
  *   devicekeys  GET /api/system/device-keys  + DELETE /device-keys/{kind}  (administrators only)
  *   authentication GET/PUT /api/system/authentication + GET /authentication/users (administrators only)
  *   directory   GET/PUT /api/system/directory + POST /test, /test-user, /groups, /check (administrators only)
+ *   credentials /api/credential-profiles (create, edit, delete, test: administrators only)
  */
 export const SECTIONS = [
     {
@@ -115,6 +117,14 @@ export const SECTIONS = [
         hint: t("Sign in with the organization's accounts; roles from directory groups"),
         icon: "fa-solid fa-sitemap",
         modal: DirectoryConfigModal,
+        adminOnly: true,
+    },
+    {
+        key: "credentials",
+        title: t("Credential profiles"),
+        hint: t("Encrypted device sign-in details for group audits and scheduled group audits"),
+        icon: "fa-solid fa-id-card",
+        modal: CredentialProfilesModal,
         adminOnly: true,
     },
 ];

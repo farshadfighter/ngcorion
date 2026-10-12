@@ -28,6 +28,7 @@ COLUMNS: List[Tuple[str, str, str, str, Optional[str]]] = [
     ("backup_destinations", "id", "secret_encrypted", cc.PURPOSE_SYSTEM_BACKUP, None),
     ("user_mfa", "user_id", "secret", cc.PURPOSE_MFA, None),
     ("user_mfa", "user_id", "pending_secret", cc.PURPOSE_MFA, None),
+    ("credential_profiles", "id", "secrets_encrypted", cc.PURPOSE_CREDENTIAL_PROFILES, None),
 ]
 # JSON settings rows: top-level string values carrying ENC_PREFIX.
 JSON_COLUMNS = [("system_config_settings", "id", "config_json", cc.PURPOSE_SYSTEM_CONFIG)]
