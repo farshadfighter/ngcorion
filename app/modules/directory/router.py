@@ -56,7 +56,7 @@ class DirectoryConfig(BaseModel):
     enabled: bool = False
     kind: Literal["ad", "ldap"] = "ad"
     servers: List[str] = Field(default_factory=list, max_length=10)
-    security: Literal["ldaps", "starttls"] = "ldaps"
+    security: Literal["ldaps", "starttls", "plain"] = "ldaps"     # plain: no encryption, by choice
     base_dn: str = Field("", max_length=1024)
     bind_dn: str = Field("", max_length=1024)
     bind_password: Optional[str] = Field(None, max_length=256)   # empty: keep the stored one
@@ -124,6 +124,7 @@ def put_directory(body: DirectoryConfig, request: Request, current_user: User = 
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="Map at least one directory group to a role before turning directory sign-in on")
     was_on = service.enabled(db)
+    stored_security = service.load_config(db)["security"]
     saved = service.save_config(db, cfg, current_user)
     who = {"user_id": current_user.id, "username": current_user.username, "action": "system_config.directory",
            "module": "system_config", "ip_address": request.client.host if request.client else None}
@@ -134,6 +135,8 @@ def put_directory(body: DirectoryConfig, request: Request, current_user: User = 
         log_action(db, **who, detail="Turned off sign-in with the organization's directory")
     else:
         log_action(db, **who, detail="Changed the directory sign-in settings")
+    if saved["security"] == "plain" and (stored_security != "plain" or not was_on) and saved["enabled"]:
+        log_action(db, **who, detail="Directory sign-in uses plain LDAP: passwords cross the network unencrypted")
     return {"config": saved, "status": service.last_status(db)}
 
 

@@ -321,3 +321,42 @@ def test_turning_directory_sign_in_off_ends_directory_sessions(db):
     with pytest.raises(HTTPException) as exc:
         get_current_user(creds, db, _req(path="/auth/me"))
     assert exc.value.status_code == 401
+
+
+def test_plain_ldap_is_a_choice_and_never_touches_tls(monkeypatch):
+    assert dr.DirectoryConfig(security="plain").security == "plain"
+    with pytest.raises(ValueError):
+        dr.DirectoryConfig(security="ssl3")
+    s = dl.Settings(kind="ldap", servers=["ldap.corp.local"], security="plain", base_dn="dc=x", bind_dn="b",
+                    bind_password="p")
+    server = dl._server(s, "ldap.corp.local")
+    assert server.port == 389 and not server.ssl and server.tls is None
+    assert dl._server(dl.Settings(**{**s.__dict__, "security": "ldaps"}), "h").port == 636
+    calls = []
+
+    class Conn:
+        result = {"result": 8, "description": "strongerAuthRequired"}
+
+        def __init__(self, *a, **kw):
+            pass
+
+        def open(self):
+            calls.append("open")
+
+        def start_tls(self):
+            calls.append("start_tls")
+            return True
+
+        def bind(self):
+            return False
+
+        def unbind(self):
+            pass
+
+    monkeypatch.setattr(dl, "Connection", Conn)
+    with pytest.raises(dl.EncryptionRequired):
+        dl._open(s, "ldap.corp.local", "uid=a", "pw")
+    assert calls == ["open"]                              # no StartTLS in plain mode
+    with pytest.raises(DirectoryUnavailable) as exc:
+        dl.Session(s)
+    assert "requires an encrypted connection" in str(exc.value)

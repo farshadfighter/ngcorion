@@ -228,8 +228,11 @@ audit trail still append-only.
 ### Sign-in with Active Directory / LDAP
 - Users sign in with their organization account. Active Directory, or another
   LDAP directory (OpenLDAP, FreeIPA); several servers tried in order; LDAPS or
-  StartTLS only, the server certificate checked against the uploaded CA (or
-  the system's) and the server name. The service account's password is stored
+  StartTLS, the server certificate checked against the uploaded CA (or the
+  system's) and the server name; or, chosen explicitly for directories without
+  a certificate, plain LDAP on 389 (passwords cross the network unencrypted:
+  the settings show a warning and choosing it is in the audit trail; a DC that
+  requires LDAP signing refuses it with a clear message). The service account's password is stored
   encrypted and never sent back to the browser.
 - Directory groups map to a role and, below system administrator, module
   permissions; a user gets the highest role and every permission of their

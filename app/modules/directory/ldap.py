@@ -1,10 +1,12 @@
 """
-Talking to Active Directory or another LDAP directory (ldap3): connect over TLS, find a user, check
-a password, list the user's groups. No database, no settings storage: callers pass a Settings.
+Talking to Active Directory or another LDAP directory (ldap3): connect, find a user, check a
+password, list the user's groups. No database, no settings storage: callers pass a Settings.
 
-Only encrypted connections exist: LDAPS (636) or StartTLS (389), the server certificate checked
-against the CA the administrator uploaded (or the system's CAs) and its name against the server
-address. Every value put in a search filter is escaped (RFC 4515), and an empty password is
+Connections: LDAPS (636) or StartTLS (389), the server certificate checked against the CA the
+administrator uploaded (or the system's CAs) and its name against the server address; or, when the
+administrator chooses it, plain LDAP (389) without encryption, where passwords cross the network
+readable (offered for directories that have no certificate; the UI and the audit trail say so, and
+Active Directory with LDAP signing required refuses it). Every value put in a search filter is escaped (RFC 4515), and an empty password is
 refused before any bind: LDAP treats a bind with a name and no password as an anonymous bind that
 "succeeds".
 """
@@ -41,7 +43,7 @@ class DirectoryUnavailable(Exception):
 class Settings:
     kind: str                         # "ad" | "ldap"
     servers: List[str]                # host or host:port, tried in order
-    security: str                     # "ldaps" | "starttls"
+    security: str                     # "ldaps" | "starttls" | "plain" (no encryption)
     base_dn: str
     bind_dn: str
     bind_password: str
@@ -84,8 +86,12 @@ def _tls(s: Settings) -> Tls:
 def _server(s: Settings, address: str) -> Server:
     host, _, port = address.strip().partition(":")
     ldaps = s.security == "ldaps"
-    return Server(host, port=int(port) if port else (636 if ldaps else 389), use_ssl=ldaps, tls=_tls(s),
-                  get_info=NONE, connect_timeout=CONNECT_TIMEOUT)
+    return Server(host, port=int(port) if port else (636 if ldaps else 389), use_ssl=ldaps,
+                  tls=None if s.security == "plain" else _tls(s), get_info=NONE, connect_timeout=CONNECT_TIMEOUT)
+
+
+class EncryptionRequired(LDAPException):
+    """The server refuses a password over an unencrypted connection (AD: LDAP signing required)."""
 
 
 def _open(s: Settings, address: str, user: str, password: str) -> Connection:
@@ -100,6 +106,9 @@ def _open(s: Settings, address: str, user: str, password: str) -> Connection:
         if s.security == "starttls" and not conn.start_tls():
             raise LDAPStartTLSError("StartTLS was refused")
         if not conn.bind():
+            # 8 strongerAuthRequired, 13 confidentialityRequired: plain LDAP refused by policy
+            if conn.result.get("result") in (8, 13):
+                raise EncryptionRequired("the server requires an encrypted connection")
             raise LDAPBindError(conn.result.get("description") or "invalid credentials")
     except Exception:
         conn.unbind()
@@ -109,6 +118,8 @@ def _open(s: Settings, address: str, user: str, password: str) -> Connection:
 
 def _reason(exc: Exception) -> str:
     text = str(exc)
+    if isinstance(exc, EncryptionRequired):
+        return "the server requires an encrypted connection (choose LDAPS or StartTLS)"
     if "doesn't match any name" in text:
         return "the server's certificate does not carry the name used to reach it"
     if "CERTIFICATE_VERIFY_FAILED" in text or "certificate verify failed" in text:

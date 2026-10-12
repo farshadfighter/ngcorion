@@ -148,14 +148,20 @@ export const DirectoryConfigModal = ({ onClose }) => {
                                     </select></label>
                                 <div className="sc-field"><span>{t("Encryption")}</span>
                                     <div className="dir-radio" role="radiogroup">
-                                        {[["ldaps", "LDAPS (636)"], ["starttls", "StartTLS (389)"]].map(([v, label]) => (
+                                        {[["ldaps", "LDAPS (636)"], ["starttls", "StartTLS (389)"], ["plain", t("LDAP (389), not encrypted")]].map(([v, label]) => (
                                             <label key={v}><input type="radio" name="dir-sec" checked={cfg.security === v}
                                                                   onChange={() => set({ security: v })} /> {label}</label>
                                         ))}
                                     </div>
-                                    <small className="dir-note">{t("Connections without encryption are not supported.")}</small>
+                                    <small className="dir-note">{t("StartTLS uses the same port 389 as plain LDAP, encrypted.")}</small>
                                 </div>
                             </div>
+                            {cfg.security === "plain" && (
+                                <div className="dir-warn" role="alert">
+                                    <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+                                    <span>{t("Without encryption, the password of everyone who signs in, and the service account's, crosses the network readable by anyone who can see the traffic, and the server is not verified. Use it only on an isolated management network, and move to StartTLS (same port 389) or LDAPS as soon as the directory has a certificate. Active Directory with LDAP signing required refuses it.")}</span>
+                                </div>
+                            )}
                             <label className="sc-field"><span>{t("Servers, in order (one per line; host or host:port)")}</span>
                                 <textarea dir="ltr" rows={2} value={cfg.servers.join("\n")} placeholder="dc1.corp.local&#10;dc2.corp.local"
                                           onChange={(e) => set({ servers: e.target.value.split(/\n/) })} /></label>
@@ -171,7 +177,7 @@ export const DirectoryConfigModal = ({ onClose }) => {
                                            placeholder={cfg.has_password ? t("Stored; type to replace") : ""}
                                            onChange={(e) => setPassword(e.target.value)} /></label>
                             </div>
-                            <div className="sc-field"><span>{t("CA certificate of the directory (PEM)")}</span>
+                            {cfg.security !== "plain" && <div className="sc-field"><span>{t("CA certificate of the directory (PEM)")}</span>
                                 <div className="dir-ca">
                                     <span className={cfg.ca_pem ? "dir-ok" : "dir-muted"}>
                                         {cfg.ca_pem ? t("Loaded") : t("None: the system's trusted CAs are used")}
@@ -182,7 +188,7 @@ export const DirectoryConfigModal = ({ onClose }) => {
                                     </label>
                                     {cfg.ca_pem && <button type="button" className="sc-btn sc-btn-ghost" onClick={() => set({ ca_pem: "" })}>{t("Remove")}</button>}
                                 </div>
-                            </div>
+                            </div>}
                             <button type="button" className="dir-link" onClick={() => setAdvanced(!advanced)} aria-expanded={advanced}>
                                 {advanced ? t("Hide advanced settings") : t("Advanced settings")}
                             </button>

@@ -156,6 +156,7 @@ const TEMPLATES = [
     msg("{{server}}: the server's certificate is not trusted (upload the CA certificate) or does not match its name"),
     msg("{{server}}: the server's certificate does not carry the name used to reach it"),
     msg("{{server}}: no answer in time"),
+    msg("{{server}}: the server requires an encrypted connection (choose LDAPS or StartTLS)"),
     msg("{{server}}: connection refused"),
     msg("{{server}}: search failed ({{reason}})"),
     msg("Directory settings incomplete: {{fields}}"),
@@ -740,6 +741,7 @@ msg("The directory could not be reached");
 msg("Turned on sign-in with the organization's directory");
 msg("Turned off sign-in with the organization's directory");
 msg("Changed the directory sign-in settings");
+msg("Directory sign-in uses plain LDAP: passwords cross the network unencrypted");
 msg("Connected and signed in as the service account");
 msg("Connected, but the base DN was not found");
 msg("Map at least one directory group to a role before turning directory sign-in on");

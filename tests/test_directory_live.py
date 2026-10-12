@@ -20,7 +20,7 @@ from app.models import LoginLog, User, UserRole
 from app.models.system_config import SystemConfigSetting
 from app.modules.auth.router import login
 from app.modules.directory import service as ds
-from app.modules.directory.ldap import Session as LdapSession
+from app.modules.directory.ldap import DirectoryUnavailable, Session as LdapSession
 from app.schemas.auth import UserLogin
 
 ENV = {k: os.environ.get(k) for k in ("NGC_TEST_AD_SERVER", "NGC_TEST_AD_BASE", "NGC_TEST_AD_CA",
@@ -58,9 +58,16 @@ def _login(db, name):
     return login(UserLogin(username=name, password=USERS[name]), req, db)
 
 
-@pytest.mark.parametrize("security", ["ldaps", "starttls"])
+@pytest.mark.parametrize("security", ["ldaps", "starttls", "plain"])
 def test_service_account_nested_groups_and_passwords(security):
-    with LdapSession(ds.settings_from(_cfg(security, ["unreachable.invalid", ENV["NGC_TEST_AD_SERVER"]]))) as d:
+    try:
+        d = LdapSession(ds.settings_from(_cfg(security, ["unreachable.invalid", ENV["NGC_TEST_AD_SERVER"]])))
+    except DirectoryUnavailable as exc:
+        # a DC that requires LDAP signing refuses plain LDAP, and says so
+        if security == "plain" and "requires an encrypted connection" in str(exc):
+            pytest.skip("this DC requires an encrypted connection")
+        raise
+    with d:
         user = d.find_user("A.Rezaei")
         groups = d.groups_of(user)
         assert any(g.lower().startswith("cn=ngc-secops,") for g in groups)          # through Team-Security

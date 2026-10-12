@@ -34,3 +34,6 @@
 @media (max-width: 640px) { .dir-grid { grid-template-columns: minmax(0, 1fr); } }
 .dir-perms input[type="checkbox"], .dir-switch input[type="checkbox"] { width: 16px !important; height: 16px !important; padding: 0; }
 .dir-perms td, .dir-perms th { padding: 4px 8px; }
+.dir-warn { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 14px; padding: 10px 12px; border-radius: 8px;
+            background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; line-height: 1.8; }
+.dir-warn i { margin-top: 4px; }
