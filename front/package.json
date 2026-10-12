@@ -24,7 +24,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-i18next": "^17.0.15",
+    "react-i18next": "^17.0.16",
     "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.4",
     "recharts": "^3.8.1"
