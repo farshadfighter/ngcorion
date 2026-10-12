@@ -225,6 +225,31 @@ identical to a fresh install, sign-in, audit trail and temporary passwords
 working; a 2.0.0 backup restored into this release the same way, with the
 audit trail still append-only.
 
+### Two-step sign-in (FIA_UAU.5)
+- After the password, a 6-digit code from an authenticator app (TOTP, RFC
+  6238: Google Authenticator, Microsoft Authenticator, FreeOTP...), or a
+  one-time recovery code. Works offline; no SMS or email. A code is accepted
+  once, 30 s either side of now. The password step alone returns only a
+  five-minute token that opens nothing but the code step; wrong codes count
+  towards the sign-in lockout.
+- Setup from the account menu: password, QR code (or the key by hand), first
+  code, then 8 recovery codes shown once (copy or save). Moving to a new phone
+  needs a code from the old one; new recovery codes and turning it off need
+  the password and a code.
+- Policy (System Configuration → Two-step sign-in, system administrators):
+  the roles that must use it (default: admin and manager) and the days such a
+  user has to set it up from their next sign-in (default 7; system
+  administrators none). After that, the session reaches only the setup.
+- Turning it on or off, moving it, or a reset ends the user's other sessions.
+  A system administrator resets it for a user who lost the phone and the codes
+  (User Management, which also shows everyone's state); the VM console's
+  "reset the web administrator's password" resets it for `admin` too.
+- The secret is encrypted under its own key (and re-encrypted when a backup
+  is restored on another server); recovery codes are kept only as salted
+  PBKDF2 hashes. Every step is in the audit trail.
+- Upgrade note: system administrators set it up at their first sign-in after
+  the upgrade (migration `d4f6a8c0e2b6`).
+
 ### Audit storage (FAU_STG.3 / FAU_STG.4)
 - When free disk falls below `STORAGE_CRITICAL_MB` (500 MB by default),
   changes are refused (507) to everyone but system administrators, and

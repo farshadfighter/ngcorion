@@ -14,6 +14,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 from sqlalchemy.orm import Session
+from app.core import mfa
 from app.core.config import settings
 from app.core.sessions import touch as touch_session
 from app.core.database import get_db
@@ -101,6 +102,13 @@ def get_current_user(
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    # A token made for one step of something (the two-step sign-in's mfa token) is not a session.
+    if payload.get("purpose"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
 
     # Logged out: the token's id was revoked (server-side logout).
     if payload.get("jti") and db.get(RevokedToken, str(payload["jti"])) is not None:
@@ -111,7 +119,11 @@ def get_current_user(
         )
 
     user = db.query(User).filter(User.username == username).first()
-    if user is None or payload.get("pwv") != password_fingerprint(user.hashed_password):
+    # pwv: the password changed since; mfv: two-step sign-in was turned on/off or reset since
+    # (a token from before two-step sign-in existed has no mfv, which matches version 0).
+    mfa_row = mfa.get_row(db, user.id) if user is not None else None
+    if (user is None or payload.get("pwv") != password_fingerprint(user.hashed_password)
+            or payload.get("mfv", 0) != mfa.version_of(mfa_row)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session is no longer valid. Please login again.",
@@ -137,6 +149,17 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password change required: choose your own password before continuing.",
             headers={"X-Password-Change-Required": "1"},
+        )
+
+    # Two-step sign-in required for this role and not set up yet (past the grace period, or a
+    # system administrator): only the setup itself (app/core/mfa.py).
+    if (request is not None and request.url.path not in mfa.ENROLMENT_ALLOWED
+            and not (mfa_row is not None and mfa_row.enabled)
+            and mfa.enrolment_due(mfa.get_policy(db), user, mfa_row)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Two-step sign-in required: set it up before continuing.",
+            headers={"X-MFA-Enrollment-Required": "1"},
         )
 
     # Disk nearly full: only system administrators may change anything (app/core/storage_guard.py).

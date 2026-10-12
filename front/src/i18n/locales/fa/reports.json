@@ -33,7 +33,6 @@
   "Built by me": "ساختهٔ من",
   "Check a file…": "تأیید اصالت فایل…",
   "Check a report file": "تأیید اصالت فایل گزارش",
-  "Checking…": "در حال بررسی…",
   "Choose a PDF or Excel file to see whether it is exactly a report this system built. Any change to the file, even one character, makes the check fail.": "یک فایل PDF یا Excel انتخاب کنید تا ببینید دقیقاً همان گزارشی است که این سیستم ساخته یا نه. هر تغییری در فایل، حتی یک نویسه، باعث رد شدن آن می‌شود.",
   "Classification": "طبقه‌بندی",
   "Coming later": "در برنامه",

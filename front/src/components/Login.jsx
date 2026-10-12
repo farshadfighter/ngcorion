@@ -4,12 +4,13 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
-import { loginUser, clearError } from "../store/authSlice";
+import { loginUser, loginMfa, cancelMfa, clearError } from "../store/authSlice";
 import UserIcon from "../assets/UserIcon.jsx";
 import LockIcon from "../assets/LockIcon.jsx";
 import { currentLanguage, LANGUAGES, setLanguage, t } from "../i18n";
 import api from "../config/api";
 import { IDLE_MINUTES_KEY, IDLE_NOTICE_KEY } from "../utils/idle";
+import { asciiDigits } from "../utils/digits";
 
 // Shown under the form before anyone signs in, unless the server sets its own (LOGIN_BANNER).
 // (One literal on purpose: the i18n extractor only sees whole strings.)
@@ -25,7 +26,10 @@ export const Login = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const location = useLocation();
-    const { isLoading, error, token } = useSelector((state) => state.auth);
+    const { isLoading, error, token, mfaChallenge } = useSelector((state) => state.auth);
+    // Two-step sign-in: the code from the app, or a recovery code instead.
+    const [code, setCode] = useState("");
+    const [useRecovery, setUseRecovery] = useState(false);
 
     // The notice before sign-in, and the idle timeout the app signs out after.
     useEffect(() => {
@@ -66,6 +70,23 @@ export const Login = () => {
         }
     };
 
+    const handleCode = async (e) => {
+        e.preventDefault();
+        if (!code.trim()) return;
+        try {
+            await dispatch(loginMfa({ mfaToken: mfaChallenge.token, code })).unwrap();
+        } catch {
+            setCode("");
+        }
+    };
+
+    const backToPassword = () => {
+        setCode("");
+        setUseRecovery(false);
+        setPassword("");
+        dispatch(cancelMfa());
+    };
+
     const getErrorMessage = () => {
         if (!error) return null;
         if (typeof error === "string") return error;
@@ -90,6 +111,53 @@ export const Login = () => {
                     </button>
                 ))}
             </div>
+            {mfaChallenge ? (
+            <form className="login-form" onSubmit={handleCode}>
+                <div className="logo-wrapper">
+                    <img className="log-logo" src="/logo2.png" alt="logo" />
+                </div>
+                <div className="login-mfa">
+                    <h2 className="login-mfa-title">{t("Two-step sign-in")}</h2>
+                    <p className="login-mfa-hint">
+                        {useRecovery
+                            ? t("Enter one of the recovery codes you saved when you set up two-step sign-in. Each code works once.")
+                            : t("Open the authenticator app on your phone and enter the 6-digit code for NGCorion.")}
+                    </p>
+                    <p className="login-mfa-user"><i className="fa-solid fa-user" aria-hidden="true"></i> {mfaChallenge.username}</p>
+                </div>
+                <div className="input-wrapper">
+                    <LockIcon />
+                    <input
+                        key={useRecovery ? "recovery" : "totp"}
+                        type="text"
+                        className="password-input login-code-input"
+                        dir="ltr"
+                        aria-label={useRecovery ? t("Recovery code") : t("6-digit code")}
+                        placeholder={useRecovery ? "XXXX-XXXX" : "123456"}
+                        inputMode={useRecovery ? "text" : "numeric"}
+                        autoComplete="one-time-code"
+                        maxLength={useRecovery ? 12 : 6}
+                        value={code}
+                        onChange={(e) => {
+                            const v = asciiDigits(e.target.value);
+                            setCode(useRecovery ? v.toUpperCase() : v.replace(/\D/g, ""));
+                        }}
+                        disabled={isLoading}
+                        autoFocus
+                    />
+                </div>
+                <button type="submit" className="log-button" disabled={isLoading || (!useRecovery && code.length !== 6)}>
+                    {isLoading ? t("Checking…") : t("Verify")}
+                </button>
+                <button type="button" className="login-link" onClick={() => { setUseRecovery(!useRecovery); setCode(""); }}
+                        disabled={isLoading}>
+                    {useRecovery ? t("Use the code from the app") : t("Lost your phone? Use a recovery code")}
+                </button>
+                <button type="button" className="login-link" onClick={backToPassword} disabled={isLoading}>
+                    {t("Back to sign-in")}
+                </button>
+            </form>
+            ) : (
             <form className="login-form" onSubmit={handleSubmit}>
 
                 {/* LOGO BOX */}
@@ -151,6 +219,7 @@ export const Login = () => {
                     <p className="login-banner" role="note">{banner || DEFAULT_BANNER()}</p>
                 )}
             </form>
+            )}
 
             {showErrorDialog && error && (
                 <div

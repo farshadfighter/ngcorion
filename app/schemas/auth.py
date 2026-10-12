@@ -2,7 +2,7 @@
 Auth Schemas - Login and Token schemas
 """
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Dict
+from typing import Dict, Optional
 
 from app.schemas.user import validate_password_strength
 
@@ -68,6 +68,24 @@ class Token(BaseModel):
     language_chosen: bool = False
     # The password was chosen by someone else; the UI asks for a new one first.
     must_change_password: bool = False
+    # Signed in with a recovery code: how many are left (the UI warns when few remain).
+    mfa_recovery_codes_left: Optional[int] = None
+    # Two-step sign-in is required for this role and not set up: the UI shows only its setup.
+    mfa_enrolment_due: bool = False
+
+
+class MfaChallenge(BaseModel):
+    """Login answer when the account uses two-step sign-in: no session yet, only the token that
+    POST /auth/login/mfa exchanges, with a code, for one (valid a few minutes)."""
+    mfa_required: bool = True
+    mfa_token: str
+    username: str
+
+
+class MfaLogin(BaseModel):
+    """Body of POST /auth/login/mfa: a 6-digit code from the app, or a recovery code."""
+    mfa_token: str = Field(..., max_length=2048)
+    code: str = Field(..., min_length=6, max_length=20)
 
 
 class TokenData(BaseModel):

@@ -21,6 +21,9 @@ from app.modules.users.service import UserService
 from app.schemas.user import PermissionCreate, UserCreate, UserUpdate
 from app.utils.excel_utils import neutralize_formula
 
+from app.models.system_config import SystemConfigSetting  # noqa: E402
+from app.models.user_mfa import UserMfa  # noqa: E402
+
 PASSWORD = "Str0ng-Passw0rd!"
 
 
@@ -30,9 +33,10 @@ def db():
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     # revoked_tokens: get_current_user looks up the token id (server-side logout);
-    # user_sessions: and notes its use (idle timeout)
+    # user_sessions: and notes its use (idle timeout); user_mfa and system_config_settings: the
+    # two-step sign-in version and policy (app/core/mfa.py)
     tables = [User.__table__, UserPermission.__table__, AuditLog.__table__, RevokedToken.__table__,
-              UserSession.__table__]
+              UserSession.__table__, UserMfa.__table__, SystemConfigSetting.__table__]
     Base.metadata.create_all(bind=engine, tables=tables)
     session = sessionmaker(bind=engine)()
     try:

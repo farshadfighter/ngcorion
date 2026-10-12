@@ -34,11 +34,15 @@ _SKIP_IFACES = ("lo", "docker", "br-", "veth", "virbr")
 
 # Sets a user's password inside the backend container (console menu, "Reset
 # the web administrator's password"). The password arrives on stdin, never on
-# a command line; the user must choose a new one at the next login.
+# a command line; the user must choose a new one at the next login. Their two-step sign-in is
+# cleared too (a lost phone must not lock out the last administrator): they set it up again right
+# after signing in, and every open session ends.
 _RESET_PASSWORD_PY = r"""
 import sys, bcrypt
+from datetime import datetime, timezone
 from app.core.database import SessionLocal
 from app.models.user import User
+from app.models.user_mfa import UserMfa
 from app.schemas.user import validate_password_strength
 password = validate_password_strength(sys.stdin.readline().rstrip("\n"))
 db = SessionLocal()
@@ -48,6 +52,12 @@ if user is None:
 user.hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 user.must_change_password = True
 user.is_active = True
+mfa = db.query(UserMfa).filter(UserMfa.user_id == user.id).with_for_update().first()
+if mfa is not None:
+    mfa.enabled, mfa.secret, mfa.pending_secret, mfa.last_used_step = False, None, None, None
+    mfa.recovery_codes, mfa.enabled_at = [], None
+    mfa.version = (mfa.version or 0) + 1
+    mfa.deadline = datetime.now(timezone.utc)
 db.commit()
 print("ok")
 """

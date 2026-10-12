@@ -1,6 +1,7 @@
 /**
  * User Management page (administrators): list, search, add, edit, delete, and (system
- * administrators) set a temporary password for a user who cannot sign in.
+ * administrators) each user's two-step sign-in state, a temporary password for a user who cannot
+ * sign in, and a reset of two-step sign-in for one who lost the phone.
  */
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -9,8 +10,23 @@ import { AddUserModal } from "./AddUserModal";
 import { EditUserModal } from "./EditUserModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { TempPasswordModal } from "./TempPasswordModal";
+import { ResetTwoStepModal } from "./ResetTwoStepModal";
+import api from "../../config/api";
 import { t } from "../../i18n";
+import { formatDate } from "../../utils/dates";
+import "../../assets/TwoStep.css";
 import { tv } from "../../i18n/backendText";
+
+const TwoStepBadge = ({ state }) => {
+    if (!state) return <span className="ts-badge off">—</span>;
+    if (state.enabled) return <span className="ts-badge on"><i className="fa-solid fa-lock" aria-hidden="true" /> {t("On")}</span>;
+    if (state.enrolment_due) return <span className="ts-badge due">{t("Required, not set up")}</span>;
+    if (state.required && state.deadline) {
+        return <span className="ts-badge grace">{t("Due by {{date}}", { date: formatDate(state.deadline) })}</span>;
+    }
+    if (state.required) return <span className="ts-badge grace">{t("Required at next sign-in")}</span>;
+    return <span className="ts-badge off">{t("Off")}</span>;
+};
 
 export const UserManagement = () => {
     const dispatch = useDispatch();
@@ -18,6 +34,16 @@ export const UserManagement = () => {
     // Only a system administrator sets temporary passwords, and never their own (the server checks too).
     const { role: myRole, username: myName } = useSelector((state) => state.auth);
     const [tempPasswordFor, setTempPasswordFor] = useState(null);
+    const [resetTwoStepFor, setResetTwoStepFor] = useState(null);
+    // user id → { enabled, required, enrolment_due, deadline } (system administrators only)
+    const [twoStep, setTwoStep] = useState({});
+    const loadTwoStep = () => {
+        if (myRole !== "admin") return;
+        api.get("/api/system/authentication/users")
+            .then(({ data }) => setTwoStep(Object.fromEntries(data.map((s) => [s.user_id, s]))))
+            .catch(() => setTwoStep({}));
+    };
+    useEffect(loadTwoStep, [myRole]);
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -82,6 +108,7 @@ export const UserManagement = () => {
                             <th>{t("Email")}</th>
                             <th>{t("Role")}</th>
                             <th>{t("Status")}</th>
+                            {myRole === "admin" && <th>{t("Two-step sign-in")}</th>}
                             <th>{t("Actions")}</th>
                         </tr>
                         </thead>
@@ -100,6 +127,7 @@ export const UserManagement = () => {
                                             {user.is_active ? t("Active") : t("Inactive")}
                                         </span>
                                 </td>
+                                {myRole === "admin" && <td><TwoStepBadge state={twoStep[user.id]} /></td>}
                                 <td>
                                     <button
                                         className="btn-icon btn-edit"
@@ -116,6 +144,16 @@ export const UserManagement = () => {
                                             aria-label={t("Set a temporary password")}
                                         >
                                             <i className="fa-solid fa-key"></i>
+                                        </button>
+                                    )}
+                                    {myRole === "admin" && user.username !== myName && twoStep[user.id]?.enabled && (
+                                        <button
+                                            className="btn-icon btn-edit"
+                                            onClick={() => setResetTwoStepFor(user)}
+                                            title={t("Reset two-step sign-in")}
+                                            aria-label={t("Reset two-step sign-in")}
+                                        >
+                                            <i className="fa-solid fa-mobile-screen-button"></i>
                                         </button>
                                     )}
                                     <button
@@ -150,6 +188,10 @@ export const UserManagement = () => {
             )}
             {tempPasswordFor && (
                 <TempPasswordModal user={tempPasswordFor} onClose={() => setTempPasswordFor(null)} />
+            )}
+            {resetTwoStepFor && (
+                <ResetTwoStepModal user={resetTwoStepFor}
+                                   onClose={(changed) => { setResetTwoStepFor(null); if (changed) loadTwoStep(); }} />
             )}
             {showDeleteModal && selectedUser && (
                 <DeleteConfirmModal

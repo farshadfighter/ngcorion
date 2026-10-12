@@ -101,9 +101,12 @@ api.interceptors.response.use(
             // verifyToken thunk (clears state, routes to login). Skipping the hard
             // redirect here avoids a full page reload on startup.
             const isAuthVerify = error.config?.url?.includes('/auth/me');
+            // A wrong password or two-step code at sign-in is the login page's own error to show;
+            // a reload would throw away the code step it is on.
+            const isSignIn = error.config?.url?.includes('/auth/login');
 
             // Only logout if this is NOT a device SSH error AND NOT a device operation
-            const shouldLogout = !isDeviceSshError && !isDeviceOperation && !isAuthVerify;
+            const shouldLogout = !isDeviceSshError && !isDeviceOperation && !isAuthVerify && !isSignIn;
 
             if (shouldLogout) {
                 localStorage.removeItem('token');
@@ -150,6 +153,13 @@ api.interceptors.response.use(
             // A caller that reports missing permissions itself (the dashboard's
             // panels) passes skipPermissionToast in the request config.
             if (error.response.headers?.["x-password-change-required"] || error.config?.skipPermissionToast) {
+                return Promise.reject(error);
+            }
+
+            // Two-step sign-in must be set up first (its grace period ended): the dashboard
+            // switches to the setup dialog, so no toast either.
+            if (error.response.headers?.["x-mfa-enrollment-required"]) {
+                window.dispatchEvent(new CustomEvent('mfa-enrolment-required'));
                 return Promise.reject(error);
             }
 

@@ -22,6 +22,7 @@ from app.core.config import (
 )
 from app.core.dependencies import get_current_user
 from app.modules.auth import router as auth_router
+from app.modules.auth import mfa_router as auth_mfa_router
 from app.modules.logs import router as logs_router
 from app.modules.logs import clear_router as logs_clear_router
 from app.modules.users import router as users_router
@@ -434,6 +435,8 @@ async def custom_swagger_ui_html():
 
 # Authentication routes (no auth required)
 app.include_router(auth_router.router, prefix="/auth", tags=["Authentication"])
+app.include_router(auth_mfa_router.router, prefix="/auth", tags=["Authentication"])
+app.include_router(auth_mfa_router.admin_router)
 
 # Protected routes (auth required)
 app.include_router(logs_router.router, prefix="/api/logs", tags=["Logs"])

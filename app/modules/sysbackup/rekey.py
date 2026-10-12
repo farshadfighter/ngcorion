@@ -26,6 +26,8 @@ COLUMNS: List[Tuple[str, str, str, str, Optional[str]]] = [
     ("notification_webhooks", "id", "secret_encrypted", cc.PURPOSE_NOTIFICATIONS, None),
     ("cve_settings", "key", "value", cc.PURPOSE_CVE, "key IN ('nvd_api_key', 'signing_key')"),
     ("backup_destinations", "id", "secret_encrypted", cc.PURPOSE_SYSTEM_BACKUP, None),
+    ("user_mfa", "user_id", "secret", cc.PURPOSE_MFA, None),
+    ("user_mfa", "user_id", "pending_secret", cc.PURPOSE_MFA, None),
 ]
 # JSON settings rows: top-level string values carrying ENC_PREFIX.
 JSON_COLUMNS = [("system_config_settings", "id", "config_json", cc.PURPOSE_SYSTEM_CONFIG)]

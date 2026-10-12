@@ -143,6 +143,11 @@ const TEMPLATES = [
     msg("export: {{cves}} CVEs written to {{file}}"),
     msg("Asset ID: {{asset_id}}, Asset Name: {{asset_name}}"),
     msg("Login successful (role={{role}})"),
+    // two-step sign-in (app/modules/auth/mfa_router.py)
+    msg("Login successful (role={{role}}) with a recovery code; {{left}} left"),
+    msg("Login successful (role={{role}}) with a two-step code"),
+    msg("Reset two-step sign-in for '{{username}}'; they set it up again at the next sign-in"),
+    msg("Two-step sign-in required for: {{roles}}; grace period {{value}} days"),
     msg("{{name}} ({{size}} bytes) queued as job {{id}}"),
     msg("Created zone '{{name}}' (score={{score}})"),
     msg("Restore test of {{filename}} started"),
@@ -706,6 +711,25 @@ msg("The current password is incorrect.");
 msg("The new password must be different from the current one.");
 msg("Password change required: choose your own password before continuing.");
 msg("Session has ended. Please login again.");
+
+// two-step sign-in (app/core/mfa.py, app/modules/auth/mfa_router.py)
+msg("The code is not correct.");
+msg("The sign-in step has expired. Sign in again.");
+msg("Enter a code from your current authenticator app.");
+msg("Start the setup again.");
+msg("The code is not correct. Check the phone's clock and try the next code.");
+msg("Two-step sign-in is not on.");
+msg("Your role must use two-step sign-in. To move it to a new phone, set it up again.");
+msg("Manage your own two-step sign-in from your account menu");
+msg("Two-step sign-in required: set it up before continuing.");
+msg("Two-step sign-in was reset");
+msg("Turned on two-step sign-in");
+msg("Moved two-step sign-in to a new authenticator app");
+msg("Made new recovery codes");
+msg("Turned off two-step sign-in");
+msg("Wrong password for a two-step sign-in change");
+msg("Wrong two-step code");
+msg("Password accepted; waiting for the two-step code");
 
 // disk nearly full (app/core/storage_guard.py)
 msg("The server is almost out of disk space: changes are paused until a system administrator frees space.");

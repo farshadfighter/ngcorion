@@ -1,6 +1,6 @@
 /**
- * Redux slice: login, logout (the server revokes the token), token check and the cached role and
- * permissions. The token is kept in localStorage; the backend re-checks role and permissions on
+ * Redux slice: login (and its two-step code step), logout (the server revokes the token), token
+ * check and the cached role and permissions. The token is kept in localStorage; the backend re-checks role and permissions on
  * every request.
  */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
@@ -39,6 +39,29 @@ export const loginUser = createAsyncThunk(
                 if (Array.isArray(detail)) return rejectWithValue(detail.map(e => e.msg).join(", "));
             }
             return rejectWithValue(t("Failed to connect to the server"));
+        }
+    }
+);
+
+// Second sign-in step (two-step sign-in on): the password step's mfa_token and a code from the
+// authenticator app, or a recovery code, for the session.
+export const loginMfa = createAsyncThunk(
+    "auth/loginMfa",
+    async ({ mfaToken, code }, { rejectWithValue }) => {
+        try {
+            const response = await api.post("/auth/login/mfa", { mfa_token: mfaToken, code: code.trim() });
+            return response.data;
+        } catch (err) {
+            const detail = err.response?.data?.detail;
+            if (err.response?.status === 401 && detail === "The sign-in step has expired. Sign in again.") {
+                return rejectWithValue({ expired: true, message: t("The sign-in step has expired. Sign in again.") });
+            }
+            if (err.response?.status === 401) return rejectWithValue({ message: t("The code is not correct.") });
+            if (err.response?.status === 429) {
+                return rejectWithValue({ message: t("Too many failed login attempts. Please wait before trying again.") });
+            }
+            if (err.response?.status === 422) return rejectWithValue({ message: t("Enter the 6-digit code or a recovery code.") });
+            return rejectWithValue({ message: t("Failed to connect to the server") });
         }
     }
 );
@@ -90,6 +113,26 @@ export const hasPermission = (permissions, role, module, action) => {
 // Slice
 // ==========================================
 
+// A login or second-step answer that carries the session.
+const signedIn = (state, data) => {
+    state.isLoading   = false;
+    state.mfaChallenge = null;
+    state.token       = data.access_token;
+    state.username    = data.username;
+    state.role        = data.role;
+    state.permissions = data.permissions || {};
+    state.language    = data.language || null;
+    state.languageChosen = !!data.language_chosen;
+    state.mustChangePassword = !!data.must_change_password;
+    state.mfaEnrolmentDue = !!data.mfa_enrolment_due;
+    state.recoveryCodesLeft = data.mfa_recovery_codes_left ?? null;
+
+    localStorage.setItem("token",       data.access_token);
+    localStorage.setItem("username",    data.username);
+    localStorage.setItem("role",        data.role);
+    localStorage.setItem("permissions", JSON.stringify(data.permissions || {}));
+};
+
 const authSlice = createSlice({
     name: "auth",
     initialState: {
@@ -107,6 +150,12 @@ const authSlice = createSlice({
         // installer): the dashboard shows only the change-password form, and
         // the backend refuses everything else until it is done.
         mustChangePassword: false,
+        // Two-step sign-in: the password step passed and the code is asked ({ token, username }).
+        mfaChallenge: null,
+        // Required for this role and not set up: the dashboard shows only its setup.
+        mfaEnrolmentDue: false,
+        // Signed in with a recovery code: how many are left (a warning is shown once).
+        recoveryCodesLeft: null,
     },
     reducers: {
         logout: (state) => {
@@ -126,6 +175,28 @@ const authSlice = createSlice({
             state.error = null;
         },
 
+        cancelMfa: (state) => {
+            state.mfaChallenge = null;
+            state.error = null;
+        },
+
+        // The server answered 403 X-MFA-Enrollment-Required (the grace period ended mid-session).
+        mfaEnrolmentRequired: (state) => {
+            state.mfaEnrolmentDue = true;
+        },
+
+        recoveryWarningSeen: (state) => {
+            state.recoveryCodesLeft = null;
+        },
+
+        // Two-step sign-in was turned on, off or moved: the server ended the other sessions and
+        // answered with a fresh token for this one.
+        sessionReplaced: (state, action) => {
+            state.token = action.payload.access_token;
+            state.mfaEnrolmentDue = !!action.payload.mfa_enrolment_due;
+            localStorage.setItem("token", action.payload.access_token);
+        },
+
         // PUT /auth/me/password answered with a fresh token (the old one stops
         // working once the password changes).
         passwordChanged: (state, action) => {
@@ -141,23 +212,28 @@ const authSlice = createSlice({
                 state.error     = null;
             })
             .addCase(loginUser.fulfilled, (state, action) => {
-                state.isLoading   = false;
-                state.token       = action.payload.access_token;
-                state.username    = action.payload.username;
-                state.role        = action.payload.role;
-                state.permissions = action.payload.permissions || {};
-                state.language    = action.payload.language || null;
-                state.languageChosen = !!action.payload.language_chosen;
-                state.mustChangePassword = !!action.payload.must_change_password;
-
-                localStorage.setItem("token",       action.payload.access_token);
-                localStorage.setItem("username",    action.payload.username);
-                localStorage.setItem("role",        action.payload.role);
-                localStorage.setItem("permissions", JSON.stringify(action.payload.permissions || {}));
+                if (action.payload.mfa_required) {
+                    state.isLoading = false;
+                    state.mfaChallenge = { token: action.payload.mfa_token, username: action.payload.username };
+                    return;
+                }
+                signedIn(state, action.payload);
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error     = action.payload;
+            })
+            .addCase(loginMfa.pending, (state) => {
+                state.isLoading = true;
+                state.error     = null;
+            })
+            .addCase(loginMfa.fulfilled, (state, action) => {
+                signedIn(state, action.payload);
+            })
+            .addCase(loginMfa.rejected, (state, action) => {
+                state.isLoading = false;
+                state.error     = action.payload?.message || t("Failed to connect to the server");
+                if (action.payload?.expired) state.mfaChallenge = null;
             })
 
             // ── Token verification on app load ──
@@ -175,6 +251,7 @@ const authSlice = createSlice({
                 state.language    = action.payload.language || null;
                 state.languageChosen = !!action.payload.language_chosen;
                 state.mustChangePassword = !!action.payload.must_change_password;
+                state.mfaEnrolmentDue = !!action.payload.mfa_enrolment_due;
 
                 localStorage.setItem("username",    action.payload.username);
                 localStorage.setItem("role",        action.payload.role);
@@ -198,5 +275,7 @@ const authSlice = createSlice({
     },
 });
 
-export const { logout, clearError, passwordChanged } = authSlice.actions;
+export const {
+    logout, clearError, passwordChanged, cancelMfa, mfaEnrolmentRequired, recoveryWarningSeen, sessionReplaced,
+} = authSlice.actions;
 export default authSlice.reducer;

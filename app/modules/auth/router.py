@@ -9,6 +9,7 @@ from app.core.database import get_db
 from fastapi.security import HTTPAuthorizationCredentials
 import jwt
 
+from app.core import mfa
 from app.core.config import settings
 from app.core.dependencies import get_current_user, security
 from app.models.revoked_token import RevokedToken
@@ -21,6 +22,7 @@ from app.core.auth_rate_limiter import (
 from app.core.email import password_reset_mail_config, send_password_reset_otp
 from app.schemas.auth import (
     UserLogin,
+    MfaChallenge,
     Token,
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -31,7 +33,7 @@ from app.models.security_audit_log import log_action
 from app.core.locale import user_language
 from pydantic import BaseModel, Field, field_validator
 from app.schemas.user import validate_password_strength
-from typing import Literal
+from typing import Literal, Union
 from app.models.user_permission import UserPermission, get_all_modules
 from .service import AuthService
 
@@ -120,7 +122,7 @@ def get_user_permissions(db: Session, user_id: int, user_role: UserRole) -> dict
     return result
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Union[Token, MfaChallenge])
 def login(
     user_credentials: UserLogin,
     request: Request,
@@ -218,6 +220,16 @@ def login(
             detail="Account is inactive"
         )
 
+    # Two-step sign-in on: the password alone opens nothing. The answer is a short-lived token that
+    # POST /auth/login/mfa exchanges, with a code, for the session (app/core/mfa.py).
+    mfa_row = mfa.start_grace(db, mfa.get_policy(db), user)
+    if mfa_row is not None and mfa_row.enabled:
+        log_action(db=db, user_id=user.id, username=user.username, action="auth.login_password", module="auth",
+                   target_id=user.id, ip_address=client_ip, result="success",
+                   detail="Password accepted; waiting for the two-step code")
+        return {"mfa_required": True, "mfa_token": mfa.issue_mfa_token(user, mfa_row),
+                "username": user.username}
+
     log_login_attempt(
         db=db,
         username=user.username,
@@ -238,28 +250,30 @@ def login(
         detail=f"Login successful (role={user.role.value})",
     )
     
-    # Create JWT token
+    return issue_session(db, user, client_ip)
+
+
+def issue_session(db: Session, user: User, client_ip: str) -> dict:
+    """A new access token for a user who has fully signed in, and what the UI needs with it."""
     access_token = create_access_token(
         data={
             "sub": user.username,
             "role": user.role.value,
             "pwv": password_fingerprint(user.hashed_password),
+            "mfv": mfa.version_of(mfa.get_row(db, user.id)),
         }
     )
     _open_session(db, access_token, user.id, client_ip)
-    
-    # Get user permissions
-    permissions = get_user_permissions(db, user.id, user.role)
-
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "username": user.username,
         "role": user.role.value,
-        "permissions": permissions,
+        "permissions": get_user_permissions(db, user.id, user.role),
         "language": user_language(db, user),
         "language_chosen": bool(user.language),
         "must_change_password": bool(user.must_change_password),
+        "mfa_enrolment_due": mfa.status_of(db, user)["enrolment_due"],
     }
 
 
@@ -286,6 +300,8 @@ def read_current_user(
         "language": user_language(db, current_user),
         "language_chosen": bool(current_user.language),
         "must_change_password": bool(current_user.must_change_password),
+        # Two-step sign-in must be set up before anything else (app/core/mfa.py).
+        "mfa_enrolment_due": mfa.status_of(db, current_user)["enrolment_due"],
     }
 
 
@@ -331,19 +347,7 @@ def change_own_password(
     log_action(db, user_id=current_user.id, username=current_user.username, action="auth.password_change",
                module="auth", target_id=current_user.id, ip_address=client_ip, result="success",
                detail="Password changed by the user")
-    token = create_access_token(data={"sub": current_user.username, "role": current_user.role.value,
-                                      "pwv": password_fingerprint(current_user.hashed_password)})
-    _open_session(db, token, current_user.id, client_ip)
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "username": current_user.username,
-        "role": current_user.role.value,
-        "permissions": get_user_permissions(db, current_user.id, current_user.role),
-        "language": user_language(db, current_user),
-        "language_chosen": bool(current_user.language),
-        "must_change_password": False,
-    }
+    return issue_session(db, current_user, client_ip)
 
 
 class LanguageUpdate(BaseModel):

@@ -1,0 +1,114 @@
+/* Two-step sign-in dialogs (components/TwoStep.jsx) and the policy panel (System Configuration). */
+.ts-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(6, 29, 66, .55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+}
+.ts-dialog {
+    width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(6, 29, 66, .35);
+    color: #1f2937;
+}
+.ts-dialog-sm { width: min(480px, 100%); }
+.ts-head { display: flex; gap: 14px; align-items: flex-start; padding: 20px 22px 12px; }
+.ts-head h2 { margin: 0 0 4px; font-size: 17px; color: #0A234E; }
+.ts-sub { margin: 0; font-size: 13px; color: #4b5563; line-height: 1.7; }
+.ts-head-icon {
+    flex: 0 0 40px; height: 40px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: #e8eef9; color: #1d4ed8; font-size: 18px;
+}
+.ts-head-icon.warn { background: #fef3c7; color: #b45309; }
+.ts-x { margin-inline-start: auto; background: none; border: 0; font-size: 16px; color: #6b7280; cursor: pointer; padding: 4px; }
+
+.ts-steps { list-style: none; display: flex; gap: 6px; margin: 0; padding: 4px 22px 14px; border-bottom: 1px solid #eef0f4; flex-wrap: wrap; }
+.ts-steps li { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9ca3af; flex: 1 1 0; min-width: 120px; }
+.ts-steps li.now { color: #0A234E; font-weight: 600; }
+.ts-steps li.done { color: #15803d; }
+.ts-step-n {
+    width: 22px; height: 22px; border-radius: 50%; flex: 0 0 22px;
+    display: grid; place-items: center; font-size: 11px;
+    border: 1.5px solid currentColor;
+}
+.ts-steps li.now .ts-step-n { background: #0A234E; color: #fff; border-color: #0A234E; }
+.ts-steps li.done .ts-step-n { background: #15803d; color: #fff; border-color: #15803d; }
+
+.ts-body { padding: 16px 22px 20px; display: flex; flex-direction: column; gap: 10px; }
+.ts-p { margin: 0; font-size: 13.5px; line-height: 1.8; color: #374151; }
+.ts-note { margin: 0; font-size: 12.5px; color: #6b7280; line-height: 1.7; }
+.ts-warn { color: #b45309; font-weight: 600; }
+.ts-label { font-size: 13px; font-weight: 600; color: #374151; margin-top: 4px; }
+.ts-input, .ts-code {
+    width: 100%; box-sizing: border-box; height: 42px; padding: 0 12px;
+    border: 1px solid #d1d5db; border-radius: 9px; font: inherit; font-size: 14px; background: #fff; color: #111827;
+}
+.ts-input:focus, .ts-code:focus { outline: 2px solid #93b4f5; border-color: #1d4ed8; }
+.ts-code { font-size: 20px; letter-spacing: .25em; text-align: center; font-variant-numeric: tabular-nums; max-width: 260px; }
+.ts-code::placeholder { letter-spacing: .1em; font-size: 15px; color: #c0c4cc; }
+.ts-error { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fef2f2; color: #b91c1c; font-size: 13px; }
+.ts-ok { margin: 0; padding: 9px 11px; border-radius: 8px; background: #f0fdf4; color: #15803d; font-size: 13.5px; font-weight: 600; }
+
+.ts-scan { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.ts-qr {
+    flex: 0 0 auto; width: 212px; height: 212px; border-radius: 12px; border: 1px solid #e5e7eb;
+    display: grid; place-items: center; background: #fff;
+}
+.ts-qr img { display: block; image-rendering: pixelated; }
+.ts-qr-wait { font-size: 13px; color: #9ca3af; }
+.ts-scan-text { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ts-link { align-self: flex-start; background: none; border: 0; padding: 0; color: #1d4ed8; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.ts-key { display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 8px; background: #f8fafc; border: 1px dashed #cbd5e1; }
+.ts-key code { font-size: 14px; letter-spacing: .06em; word-break: break-all; color: #0A234E; }
+.ts-key span { font-size: 12px; color: #6b7280; }
+
+.ts-codes-box { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #f8fafc; }
+.ts-codes {
+    margin: 0; padding: 0 0 0 1.6em; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px;
+    font-size: 12px; color: #9ca3af;
+}
+.ts-codes code { font-size: 15px; color: #111827; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.ts-codes-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.ts-check { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: #374151; cursor: pointer; }
+
+.ts-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; flex-wrap: wrap; }
+.ts-btn { height: 38px; padding: 0 16px; border-radius: 9px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+.ts-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ts-btn-primary { background: #0A234E; color: #fff; }
+.ts-btn-primary:hover:not(:disabled) { background: #143b7a; }
+.ts-btn-ghost { background: #fff; color: #374151; border-color: #d1d5db; }
+.ts-btn-ghost:hover:not(:disabled) { background: #f3f4f6; }
+.ts-btn-danger { background: #b91c1c; color: #fff; }
+
+.ts-state { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 10px; }
+.ts-state i { font-size: 20px; }
+.ts-state div { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.ts-state b { font-size: 15px; }
+.ts-state.on { background: #f0fdf4; color: #15803d; }
+.ts-state.off { background: #fff7ed; color: #c2410c; }
+.ts-state span { color: #4b5563; }
+.ts-menu { display: flex; flex-direction: column; gap: 8px; }
+.ts-menu button {
+    display: flex; gap: 12px; align-items: center; text-align: start;
+    padding: 11px 12px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; font: inherit;
+}
+.ts-menu button:hover { background: #f8fafc; border-color: #cbd5e1; }
+.ts-menu button i { width: 20px; color: #1d4ed8; }
+.ts-menu button.danger i, .ts-menu button.danger b { color: #b91c1c; }
+.ts-menu span { display: flex; flex-direction: column; gap: 2px; }
+.ts-menu b { font-size: 13.5px; color: #111827; }
+.ts-menu small { font-size: 12px; color: #6b7280; }
+
+/* Policy panel (System Configuration ← Authentication) and the user list column */
+.ts-badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ts-badge.on { background: #dcfce7; color: #15803d; }
+.ts-badge.due { background: #fee2e2; color: #b91c1c; }
+.ts-badge.grace { background: #fef3c7; color: #b45309; }
+.ts-badge.off { background: #f3f4f6; color: #6b7280; }
+
+@media (max-width: 520px) {
+    .ts-qr { margin-inline: auto; }
+    .ts-codes { grid-template-columns: minmax(0, 1fr); }
+}
+.ts-check input[type="checkbox"] { width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: #0A234E; }

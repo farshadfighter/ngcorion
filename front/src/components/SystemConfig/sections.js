@@ -8,6 +8,7 @@ import { LanguageConfigModal } from "./LanguageConfigModal";
 import { RemediationConfigModal } from "./RemediationConfigModal";
 import { ReportsConfigModal } from "./ReportsConfigModal";
 import { DeviceKeysModal } from "./DeviceKeysModal";
+import { AuthenticationConfigModal } from "./AuthenticationConfigModal";
 import { t } from "../../i18n";
 
 /**
@@ -24,6 +25,7 @@ import { t } from "../../i18n";
  *                                            + DELETE /certificate
  *   locale      GET/PUT /api/system/locale   (default language)
  *   devicekeys  GET /api/system/device-keys  + DELETE /device-keys/{kind}  (administrators only)
+ *   authentication GET/PUT /api/system/authentication + GET /authentication/users (administrators only)
  */
 export const SECTIONS = [
     {
@@ -95,6 +97,14 @@ export const SECTIONS = [
         hint: t("SSH host keys and certificates of audited devices"),
         icon: "fa-solid fa-key",
         modal: DeviceKeysModal,
+        adminOnly: true,
+    },
+    {
+        key: "authentication",
+        title: t("Two-step sign-in"),
+        hint: t("Roles that must use a code from a phone app after the password"),
+        icon: "fa-solid fa-shield-halved",
+        modal: AuthenticationConfigModal,
         adminOnly: true,
     },
 ];

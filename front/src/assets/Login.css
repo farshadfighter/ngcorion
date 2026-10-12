@@ -231,3 +231,11 @@ body, html {
     color: #1e3a5f;
     text-align: center;
 }
+
+/* Two-step sign-in: the code step after the password. */
+.login-mfa { width: 100%; text-align: center; margin-top: -30px; }
+.login-mfa-title { margin: 0 0 8px; font-size: 19px; color: #0A234E; }
+.login-mfa-hint { margin: 0; color: #4b5563; font-size: 13.5px; line-height: 1.8; }
+.login-mfa-user { margin: 10px 0 0; color: #0A234E; font-size: 13px; font-weight: 600; }
+.login-code-input { letter-spacing: .3em; font-size: 20px; font-variant-numeric: tabular-nums; text-align: center; }
+.login-code-input::placeholder { letter-spacing: .3em; color: #c0c4cc; }

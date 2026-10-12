@@ -1,16 +1,17 @@
 /**
  * The application shell: sidebar menu (each entry shown only with its read permission), header
- * with the alert bell, language switch and user menu, the forced password-change dialog,
+ * with the alert bell, language switch and user menu, the forced password-change and two-step setup dialogs,
  * maintenance overlay, license dialogs, and the page itself in <Outlet/>.
  */
 import React, { Suspense } from 'react';
 import { useSelector, useDispatch } from "react-redux";
-import { logoutUser } from "../store/authSlice";
+import { logoutUser, mfaEnrolmentRequired, recoveryWarningSeen } from "../store/authSlice";
 import { getLicenseStatusThunk } from "../store/licenseSlice";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import LicenseBadge from './License/LicenseBadge';
 import { ChangePasswordModal } from "./ChangePasswordModal";
+import { TwoStepAccount, TwoStepSetup } from "./TwoStep";
 import { IdleLogout } from "./IdleLogout";
 import { AlertBell } from "./Alerts/AlertBell";
 import { useAlertSummary } from "./Alerts/useAlertSummary";
@@ -37,6 +38,13 @@ export const DashboardLayout = () => {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const mustChangePassword = useSelector((state) => state.auth.mustChangePassword);
+    // Two-step sign-in required and not set up: only its setup is shown. The dialog stays open
+    // after it is turned on (the flag clears) until the recovery codes are saved.
+    const mfaEnrolmentDue = useSelector((state) => state.auth.mfaEnrolmentDue);
+    const recoveryCodesLeft = useSelector((state) => state.auth.recoveryCodesLeft);
+    const [forcedSetup, setForcedSetup] = useState(false);
+    const [showTwoStep, setShowTwoStep] = useState(false);
+    if (mfaEnrolmentDue && !mustChangePassword && !forcedSetup) setForcedSetup(true);
     const dropdownRef = useRef(null);
 
     const { summary: alertSummary, refresh: refreshAlerts } = useAlertSummary();
@@ -55,6 +63,13 @@ export const DashboardLayout = () => {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    // The grace period ended while signed in: the server refused a request (api.js).
+    useEffect(() => {
+        const onRequired = () => dispatch(mfaEnrolmentRequired());
+        window.addEventListener("mfa-enrolment-required", onRequired);
+        return () => window.removeEventListener("mfa-enrolment-required", onRequired);
+    }, [dispatch]);
 
     useEffect(() => {
         dispatch(getLicenseStatusThunk());
@@ -187,6 +202,10 @@ export const DashboardLayout = () => {
                                                 onClick={() => { setShowChangePassword(true); setShowDropdown(false); }}>
                                             <i className="fa-solid fa-key"></i> {" "}{t("Change Password")}
                                         </button>
+                                        <button className="user-menu-dropdown-btn action-primary"
+                                                onClick={() => { setShowTwoStep(true); setShowDropdown(false); }}>
+                                            <i className="fa-solid fa-shield-halved"></i> {" "}{t("Two-step sign-in")}
+                                        </button>
                                         <div className="user-menu-lang" role="group" aria-label={t("Language")}>
                                             <span className="user-menu-lang-label">{t("Language")}</span>
                                             {LANGUAGES.map((l) => (
@@ -252,12 +271,40 @@ export const DashboardLayout = () => {
                 <Suspense fallback={<div className="page-loading" role="status" aria-live="polite">{t("Loading…")}</div>}>
                     {/* Until a password chosen by someone else is replaced, the
                         backend refuses every page's requests: show none. */}
-                    {!mustChangePassword && <Outlet />}
+                    {!mustChangePassword && !mfaEnrolmentDue && <Outlet />}
                 </Suspense>
             </main>
 
             {showChangePassword && !mustChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
             {mustChangePassword && <ChangePasswordModal forced onClose={() => {}} />}
+            {forcedSetup && !mustChangePassword && (
+                <TwoStepSetup forced username={username} onClose={() => setForcedSetup(false)} />
+            )}
+            {showTwoStep && !forcedSetup && <TwoStepAccount username={username} onClose={() => setShowTwoStep(false)} />}
+            {recoveryCodesLeft !== null && !forcedSetup && (
+                <div className="ts-overlay" onClick={() => dispatch(recoveryWarningSeen())}>
+                    <div className="ts-dialog ts-dialog-sm" role="alertdialog" aria-modal="true" aria-labelledby="ts-rc-title"
+                         onClick={(e) => e.stopPropagation()}>
+                        <div className="ts-head">
+                            <div className="ts-head-icon warn" aria-hidden="true"><i className="fa-solid fa-key" /></div>
+                            <div>
+                                <h2 id="ts-rc-title">{t("You signed in with a recovery code")}</h2>
+                                <p className="ts-sub">{t("Recovery codes left: {{left}} of {{all}}", { left: recoveryCodesLeft, all: 8 })}</p>
+                            </div>
+                        </div>
+                        <div className="ts-body">
+                            <p className="ts-p">{t("If your phone is lost, move two-step sign-in to a new phone now, and make new recovery codes before they run out.")}</p>
+                            <div className="ts-actions">
+                                <button type="button" className="ts-btn ts-btn-ghost" onClick={() => dispatch(recoveryWarningSeen())}>{t("Later")}</button>
+                                <button type="button" className="ts-btn ts-btn-primary"
+                                        onClick={() => { dispatch(recoveryWarningSeen()); setShowTwoStep(true); }}>
+                                    {t("Open two-step sign-in")}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
