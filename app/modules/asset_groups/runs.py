@@ -74,19 +74,28 @@ def _clean(exc: BaseException) -> str:
 
 def start_run(db: Session, group: AssetGroup, technology: str, profile: CredentialProfile,
               audit_profile: Optional[str], concurrency: int, user: Optional[User],
-              scheduled_job_id: Optional[int] = None, started_by_id: Optional[int] = None) -> GroupRun:
-    """Queue an audit of every asset of `group`. Raises RunError when it cannot start."""
-    from app.modules.scheduling.audit_dispatch import SUPPORTED_TECHNOLOGIES
-    if technology not in SUPPORTED_TECHNOLOGIES or profiles.kind_for(technology) is None:
-        raise RunError("This technology cannot be audited with a credential profile")
-    if profiles.kind_for(technology) != profile.kind:
-        raise RunError("The credential profile is of a different kind than the technology needs")
+              scheduled_job_id: Optional[int] = None, started_by_id: Optional[int] = None,
+              kind: str = "audit") -> GroupRun:
+    """Queue an audit (kind "audit") or a configuration backup (kind "backup", technology = device
+    family) of every asset of `group`. Raises RunError when it cannot start."""
+    if kind == "backup":
+        from app.modules.backup.collect import FAMILIES
+        if technology not in FAMILIES:
+            raise RunError("This device type cannot be backed up")
+        if profile.kind != "ssh":
+            raise RunError("The credential profile is of a different kind than the technology needs")
+    else:
+        from app.modules.scheduling.audit_dispatch import SUPPORTED_TECHNOLOGIES
+        if technology not in SUPPORTED_TECHNOLOGIES or profiles.kind_for(technology) is None:
+            raise RunError("This technology cannot be audited with a credential profile")
+        if profiles.kind_for(technology) != profile.kind:
+            raise RunError("The credential profile is of a different kind than the technology needs")
     ids = groups.member_ids(db, group)
     if not ids:
         raise RunError("The group has no assets")
     if len(ids) > MAX_ASSETS:
         raise RunError(f"A group run covers at most {MAX_ASSETS} assets")
-    run = GroupRun(group_id=group.id, group_name=group.name, technology=technology,
+    run = GroupRun(group_id=group.id, group_name=group.name, technology=technology, kind=kind,
                    audit_profile=audit_profile, credential_profile_id=profile.id,
                    credential_profile_name=profile.name,
                    concurrency=max(1, min(int(concurrency or 10), MAX_CONCURRENCY)),
@@ -116,7 +125,8 @@ def summary(run: GroupRun, c: Dict[str, int]) -> Dict:
     total = sum(c.values())
     finished = sum(c.get(s, 0) for s in ("done", "failed", "skipped", "cancelled"))
     return {
-        "id": run.id, "group_id": run.group_id, "group_name": run.group_name, "technology": run.technology,
+        "id": run.id, "kind": run.kind, "group_id": run.group_id, "group_name": run.group_name,
+        "technology": run.technology,
         "audit_profile": run.audit_profile, "credential_profile_id": run.credential_profile_id,
         "credential_profile_name": run.credential_profile_name, "concurrency": run.concurrency,
         "status": run.status, "started_by_name": run.started_by_name, "scheduled_job_id": run.scheduled_job_id,
@@ -146,7 +156,7 @@ def recover_interrupted(db: Session) -> int:
     """At start-up: audits that were running when NGCorion stopped did not finish."""
     n = db.query(GroupRunItem).filter(GroupRunItem.status == "running") \
         .update({"status": "failed", "reason": "interrupted", "finished_at": _now(),
-                 "detail": "NGCorion restarted while this audit was running"}, synchronize_session=False)
+                 "detail": "NGCorion restarted while this asset was being processed"}, synchronize_session=False)
     db.commit()
     return n
 
@@ -182,6 +192,9 @@ def run_item(item_id: int) -> None:
         if item.asset_id is None:
             _finish(db, item, "failed", "error", "The asset was deleted")
             return
+        if run.kind == "backup":
+            _backup_item(db, item, run, profile)
+            return
         try:
             require_licensed_asset(db, item.asset_id)
         except AssetLimitExceeded as exc:
@@ -216,6 +229,44 @@ def run_item(item_id: int) -> None:
             _finish(db, item, "failed", "error", "Internal error")
     finally:
         db.close()
+
+
+def _backup_item(db: Session, item: GroupRunItem, run: GroupRun, profile: CredentialProfile) -> None:
+    """Back up one device's configuration. An unchanged configuration is not stored again: the
+    latest copy is marked confirmed instead."""
+    from app.models.backup import DeviceBackup
+    from app.modules.backup import changes
+    from app.modules.backup.collect import take_backup
+    asset = db.get(Asset, item.asset_id)
+    s, o = profiles.secrets_of(profile), profile.options or {}
+    try:
+        profiles.mark_used(db, profile.id)
+        db.commit()
+        text = take_backup(run.technology, asset.ip_address, profile.username, s.get("password"),
+                           s.get("enable_secret"), int(o.get("port") or 22))
+    except Exception as exc:  # noqa: BLE001 - one device's failure never stops the run
+        ensure_session_usable(db)
+        detail = _clean(exc)
+        reason = "auth" if isinstance(exc, PermissionError) else classify(f"{type(exc).__name__} {detail}")
+        _finish(db, db.get(GroupRunItem, item.id), "failed", reason, detail)
+        return
+    if not (text or "").strip():
+        _finish(db, item, "failed", "error", "The device returned an empty configuration")
+        return
+    now = datetime.utcnow()
+    previous = changes.latest(db, asset.id)
+    backup = DeviceBackup(asset_id=asset.id, asset_name=asset.asset_name, device_ip=asset.ip_address,
+                          device_type=run.technology, config_content=text, source="scheduled",
+                          created_by=run.started_by, created_at=now, group_run_id=run.id)
+    changes.note_change(db, backup, previous)
+    if backup.change_origin == "unchanged":
+        previous.confirmed_at = now
+        item.backup_id, item.outcome = previous.id, "unchanged"
+    else:
+        db.add(backup)
+        db.flush()
+        item.backup_id, item.outcome = backup.id, "first" if previous is None else "changed"
+    _finish(db, item, "done")
 
 
 def _fallback_user(db: Session) -> Optional[int]:
@@ -262,9 +313,15 @@ def sweep(db: Session) -> List[int]:
 
 
 def _finished(db: Session, run: GroupRun) -> None:
-    # The alert "audit.group_run_failed" (app/modules/alerts/events.py) picks up runs that end with
-    # failed assets.
+    # The alerts "audit.group_run_failed" and "backup.group_run_failed" (app/modules/alerts/events.py)
+    # pick up runs that end with failed assets.
     logger.info("[GroupRun] %s %s: %s", run.id, run.status, counts(db, [run.id])[run.id])
+    if run.kind == "backup":
+        try:
+            from app.modules.backup.retention import prune
+            prune(db)
+        except Exception:  # noqa: BLE001 - retention never holds up the queue
+            logger.exception("[GroupRun] backup retention failed")
 
 
 class GroupRunWorker:

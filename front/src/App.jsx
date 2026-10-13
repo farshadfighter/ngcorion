@@ -58,6 +58,7 @@ const ReportBuilder = lazy(() => import("./components/Reports/ReportBuilder").th
 const ReportsArchive = lazy(() => import("./components/Reports/ReportsArchive").then((m) => ({ default: m.ReportsArchive })));
 const ReportSchedules = lazy(() => import("./components/Reports/ReportSchedules").then((m) => ({ default: m.ReportSchedules })));
 const AssetGroupsPage = lazy(() => import("./components/AssetGroups/AssetGroupsPage").then((m) => ({ default: m.AssetGroupsPage })));
+const BackupSchedulesPage = lazy(() => import("./components/Backup/BackupSchedulesPage").then((m) => ({ default: m.BackupSchedulesPage })));
 const GroupRunsPage = lazy(() => import("./components/AssetGroups/GroupRunsPage").then((m) => ({ default: m.GroupRunsPage })));
 const SoftwarePage = lazy(() => import("./components/Software/SoftwarePage").then((m) => ({ default: m.SoftwarePage })));
 const SystemBackup = lazy(() => import("./components/SystemBackup/SystemBackup").then((m) => ({ default: m.SystemBackup })));
@@ -259,6 +260,21 @@ function AppContent() {
                         <Route path="/backup" element={
                             <RequirePermission module="backup" name="Backup & Restore">
                                 <BackupPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/backup/schedules" element={
+                            <RequirePermission module="backup" name="Backup schedules">
+                                <BackupSchedulesPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/backup/runs" element={
+                            <RequirePermission module="backup" name="Backup runs">
+                                <GroupRunsPage key="backup-runs" kind="backup" />
+                            </RequirePermission>
+                        } />
+                        <Route path="/backup/runs/:runId" element={
+                            <RequirePermission module="backup" name="Backup runs">
+                                <GroupRunsPage key="backup-run" kind="backup" />
                             </RequirePermission>
                         } />
                         <Route path="/backup/restores" element={

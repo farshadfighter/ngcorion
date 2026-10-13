@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.core.credential_crypto import encrypt_json, decrypt_json
 from app.models.scheduling import (
     ScheduledJob, ScheduledJobRun,
-    JOB_TYPE_DISCOVERY, JOB_TYPE_AUDIT, RECURRENCE_ONCE,
+    JOB_TYPE_DISCOVERY, JOB_TYPE_AUDIT, JOB_TYPE_BACKUP, RECURRENCE_ONCE,
 )
 from app.modules.scheduling.recurrence import compute_next_run_at
 from app.modules.scheduling.audit_dispatch import SUPPORTED_TECHNOLOGIES, REQUIRED_PARAMS, run_audit
@@ -62,13 +62,19 @@ def _validate_create(data: ScheduledJobCreate) -> None:
             missing = REQUIRED_PARAMS[data.technology] - params.keys()
             if missing:
                 raise ValueError(f"audit_params missing required field(s): {sorted(missing)}")
+    elif data.job_type == JOB_TYPE_BACKUP:
+        from app.modules.backup.collect import FAMILIES
+        if data.technology not in FAMILIES:
+            raise ValueError(f"technology must be one of {list(FAMILIES)}")
+        if not data.group_id or not data.credential_profile_id:
+            raise ValueError("group_id and credential_profile_id are required for a backup job")
 
     if data.recurrence == "weekly" and data.day_of_week is None:
         raise ValueError("day_of_week is required for a weekly recurrence")
 
 
-def _start_group_run(db: Session, job: ScheduledJob, params: dict):
-    """A scheduled group audit only queues the run; the group-run worker audits the assets."""
+def _start_group_run(db: Session, job: ScheduledJob, params: dict, kind: str = "audit"):
+    """A scheduled group audit (or backup) only queues the run; the group-run worker does the assets."""
     from app.models.asset_groups import AssetGroup, CredentialProfile
     from app.models.security_audit_log import log_action
     from app.modules.asset_groups.runs import start_run
@@ -77,8 +83,13 @@ def _start_group_run(db: Session, job: ScheduledJob, params: dict):
     if group is None or profile is None:
         raise ValueError("The group or credential profile of this schedule no longer exists")
     group_run = start_run(db, group, job.technology, profile, params.get("profile"), job.concurrency or 10,
-                          None, scheduled_job_id=job.id, started_by_id=job.created_by)
+                          None, scheduled_job_id=job.id, started_by_id=job.created_by, kind=kind)
     db.flush()
+    if kind == "backup":
+        log_action(db, user_id=job.created_by, action="group_run.start", module="backup", target_id=group_run.id,
+                   detail=f"Scheduled job '{job.job_name}' started a {job.technology} configuration backup of "
+                          f"group '{group.name}' with credential profile '{profile.name}'")
+        return group_run
     log_action(db, user_id=job.created_by, action="group_run.start", module="auditing", target_id=group_run.id,
                detail=f"Scheduled job '{job.job_name}' started a {job.technology} audit of group '{group.name}' "
                       f"with credential profile '{profile.name}'")
@@ -101,6 +112,10 @@ class SchedulingService:
             ScanRequest(**params)
             technology = None
             asset_id = None
+        elif data.job_type == JOB_TYPE_BACKUP:
+            params = {}
+            technology = data.technology
+            asset_id = None
         elif data.group_id:
             params = {"profile": data.audit_profile} if data.audit_profile else {}
             technology = data.technology
@@ -115,7 +130,7 @@ class SchedulingService:
             job_type=data.job_type,
             technology=technology,
             asset_id=asset_id,
-            group_id=data.group_id if data.job_type == JOB_TYPE_AUDIT else None,
+            group_id=data.group_id if data.job_type in (JOB_TYPE_AUDIT, JOB_TYPE_BACKUP) else None,
             credential_profile_id=data.credential_profile_id if data.group_id else None,
             concurrency=(data.concurrency or 10) if data.group_id else None,
             params_encrypted=encrypt_json(json.dumps(params)),
@@ -267,7 +282,8 @@ class SchedulingService:
                 DiscoveryService.execute_scan(db, scan["scan_id"])
                 run.result_ref = f"scan:{scan['scan_id']}"
             elif job.group_id:
-                group_run = _start_group_run(db, job, params)
+                group_run = _start_group_run(db, job, params,
+                                             kind="backup" if job.job_type == JOB_TYPE_BACKUP else "audit")
                 run.result_ref = f"group_run:{group_run.id}"
             else:
                 session = run_audit(job.technology, db, job.asset_id, job.created_by, params)

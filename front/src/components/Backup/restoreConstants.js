@@ -25,6 +25,7 @@ export const SOURCE_LABELS = {
     manual: t("Manual"),
     hardening: t("Before hardening"),
     pre_restore: t("Before restore"),
+    scheduled: t("Scheduled"),
 };
 
 export const sourceLabel = (source) => SOURCE_LABELS[source] || source || '-';

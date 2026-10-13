@@ -22,6 +22,8 @@ from app.core.database import Base
 # Recognized job_type values.
 JOB_TYPE_DISCOVERY = "discovery"
 JOB_TYPE_AUDIT = "audit"
+# Configuration backup of an asset group (technology = device family), with a credential profile.
+JOB_TYPE_BACKUP = "backup"
 
 # Recognized recurrence values.
 RECURRENCE_ONCE = "once"
@@ -38,7 +40,7 @@ class ScheduledJob(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     job_name = Column(String(200), nullable=False)
-    job_type = Column(String(20), nullable=False, index=True)  # discovery | audit
+    job_type = Column(String(20), nullable=False, index=True)  # discovery | audit | backup
 
     # Audit jobs only - which tech-specific AuditService to dispatch to.
     technology = Column(String(20), nullable=True)  # cisco|fortinet|linux|apache|mongodb|mssql|windows

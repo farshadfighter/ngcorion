@@ -143,6 +143,8 @@ export const DashboardLayout = () => {
         "backup-overview":     t("Device configuration backups"),
         "backup":              t("Device Backups"),
         "backup-restores":     t("Restore History"),
+        "backup-schedules":    t("Backup schedules"),
+        "backup-runs":         t("Backup runs"),
         "topology":            t("Topology"),
         "design-suggestion":   t("Suggested Design"),
         "architecture-validation": t("Architecture Validation"),

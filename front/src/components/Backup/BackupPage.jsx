@@ -7,6 +7,8 @@ import NewBackupModal from './NewBackupModal.jsx';
 import RestoreWizard from './RestoreWizard.jsx';
 import { BackupAssetList } from './BackupAssetList.jsx';
 import { BackupAssetDetail } from './BackupAssetDetail.jsx';
+import { BackupCompareModal } from './BackupCompareModal.jsx';
+import { Link, useSearchParams } from 'react-router-dom';
 import '../../assets/Backup.css';
 import '../../assets/LogsPage.css';
 import '../../assets/AssetRequirement.css';
@@ -38,6 +40,21 @@ export const BackupPage = () => {
     // wizard so "Undo" / "Review again" start from a clean state.
     const [restore, setRestore] = useState(null);
     const [detailRefresh, setDetailRefresh] = useState(0);
+    // ?asset=<id> opens an asset, &compare=<backup id> shows what that backup changed (alert links)
+    const [params, setParams] = useSearchParams();
+    const [compare, setCompare] = useState(null);
+    const wantAsset = Number(params.get('asset')) || null;
+    const wantCompare = Number(params.get('compare')) || null;
+    useEffect(() => {
+        if (!wantCompare) return undefined;
+        let alive = true;
+        api.get(`/api/backups/${wantCompare}`).then(({ data }) => {
+            if (alive && data.previous_backup_id) setCompare({ oldId: data.previous_backup_id, newId: data.id });
+        }).catch(() => {});
+        return () => { alive = false; };
+    }, [wantCompare]);
+    const openFromLink = wantAsset && !selected ? groups.find((g) => g.asset_id === wantAsset) : null;
+    const current = selected || openFromLink;
 
     // The server enforces this too; hiding the button just avoids a 403.
     const role = useSelector((state) => state.auth.role);
@@ -144,6 +161,9 @@ export const BackupPage = () => {
         <div className="backup-container">
             <div className="backup-header">
                 <h1 className="page-title">{tr("Device Backups")}</h1>
+                <span className="bk-head-links">
+                    <Link className="btn-header" to="/backup/schedules">{tr("Backup schedules")}</Link>
+                </span>
                 <button className="btn-header" onClick={() => setShowNew(true)}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" strokeWidth="2">
@@ -153,10 +173,11 @@ export const BackupPage = () => {
                 </button>
             </div>
 
-            {selected ? (
+            {current ? (
                 <BackupAssetDetail
-                    group={selected}
-                    onBack={() => setSelected(null)}
+                    group={current}
+                    onBack={() => { setSelected(null); if (wantAsset) setParams({}); }}
+                    onCompare={(oldId, newId) => setCompare({ oldId, newId })}
                     onView={setViewId}
                     onDelete={requestDelete}
                     onRestore={(id) => setRestore({ backupId: id, key: `b${id}-${Date.now()}` })}
@@ -236,6 +257,11 @@ export const BackupPage = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {compare && (
+                <BackupCompareModal oldId={compare.oldId} newId={compare.newId}
+                                    onClose={() => { setCompare(null); if (wantCompare) setParams(wantAsset ? { asset: String(wantAsset) } : {}); }} />
             )}
 
             {viewId && (

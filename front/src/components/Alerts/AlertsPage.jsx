@@ -146,7 +146,11 @@ export function AlertsPage() {
                                     </td>
                                     <td>
                                         {MODULES[a.module] || a.module}
-                                        {a.source && <span className="bkm-sub bkm-mono alr-clip" title={a.source}>{a.source}</span>}
+                                        {a.source && (
+                                            // a monospace face suits names and IPs, not Persian group names
+                                            <span className={`bkm-sub alr-clip${/[\u0600-\u06FF]/.test(a.source) ? "" : " bkm-mono"}`}
+                                                  dir="auto" title={a.source}>{a.source}</span>
+                                        )}
                                     </td>
                                     <td>
                                         {formatWhen(status === "resolved" ? a.resolved_at : a.first_seen_at)}

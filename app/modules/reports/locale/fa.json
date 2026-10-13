@@ -560,5 +560,9 @@
   "Directory not reachable": "دایرکتوری در دسترس نیست",
   "Local administrator signed in": "ورود مدیر محلی",
   "Group audit finished with failures": "ممیزی گروهی با خطا پایان یافت",
-  "Credential profile due for a password change": "زمان تعویض گذرواژهٔ پروفایل اعتبارنامه رسیده است"
+  "Credential profile due for a password change": "زمان تعویض گذرواژهٔ پروفایل اعتبارنامه رسیده است",
+  "Configuration changed outside NGCorion": "تغییر پیکربندی بیرون از NGCorion",
+  "Configuration changed by NGCorion": "تغییر پیکربندی توسط NGCorion",
+  "Group backup finished with failures": "پشتیبان‌گیری گروهی با خطا پایان یافت",
+  "Scheduled backup failed": "پشتیبان‌گیری زمان‌بندی‌شده ناموفق بود"
 }

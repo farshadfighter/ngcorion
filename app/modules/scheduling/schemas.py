@@ -9,7 +9,7 @@ class ScheduledJobCreate(BaseModel):
     asset, technology and credentials of an audit.
     """
     job_name: str = Field(..., min_length=1, max_length=200)
-    job_type: str = Field(..., pattern="^(discovery|audit)$")
+    job_type: str = Field(..., pattern="^(discovery|audit|backup)$")
     recurrence: str = Field("daily", pattern="^(once|hourly|daily|weekly)$")
     hour: Optional[int] = Field(None, ge=0, le=23)
     minute: int = Field(0, ge=0, le=59)

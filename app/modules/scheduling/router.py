@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.models import User, Asset
-from app.models.scheduling import JOB_TYPE_DISCOVERY, JOB_TYPE_AUDIT
+from app.models.scheduling import JOB_TYPE_DISCOVERY, JOB_TYPE_AUDIT, JOB_TYPE_BACKUP
 from app.modules.scheduling.service import SchedulingService
 from app.modules.scheduling.schemas import (
     ScheduledJobCreate,
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/api/scheduling", tags=["Scheduled Jobs"])
 _MODULE_FOR_JOB_TYPE = {
     JOB_TYPE_DISCOVERY: "asset_auto_discovery",
     JOB_TYPE_AUDIT: "auditing",
+    JOB_TYPE_BACKUP: "backup",
 }
 
 
@@ -53,7 +54,7 @@ def _to_summary(job) -> ScheduledJobSummary:
 
 
 def _check_group_job(db: Session, current_user: User, technology: Optional[str], group_id: Optional[int],
-                     profile_id: Optional[int]) -> None:
+                     profile_id: Optional[int], backup: bool = False) -> None:
     """A group audit: the group and profile exist, the profile fits the technology, and the caller may
     use credential profiles."""
     from app.models.asset_groups import AssetGroup, CredentialProfile
@@ -65,7 +66,7 @@ def _check_group_job(db: Session, current_user: User, technology: Optional[str],
         profile = db.get(CredentialProfile, profile_id)
         if profile is None:
             raise HTTPException(status_code=404, detail="Credential profile not found")
-        if kind_for(technology or "") != profile.kind:
+        if (profile.kind != "ssh") if backup else (kind_for(technology or "") != profile.kind):
             raise HTTPException(status_code=400,
                                 detail="The credential profile is of a different kind than the technology needs")
 
@@ -80,7 +81,9 @@ def create_job(
     or auditing, write); credentials in the job are stored encrypted.
     """
     _require_job_type_permission(data.job_type, "write", current_user, db)
-    if data.job_type == JOB_TYPE_AUDIT and data.group_id:
+    if data.job_type == JOB_TYPE_BACKUP:
+        _check_group_job(db, current_user, None, data.group_id, data.credential_profile_id, backup=True)
+    elif data.job_type == JOB_TYPE_AUDIT and data.group_id:
         _check_group_job(db, current_user, data.technology, data.group_id, data.credential_profile_id)
     elif data.job_type == JOB_TYPE_AUDIT and data.asset_id:
         asset = db.query(Asset).filter(Asset.id == data.asset_id).first()
@@ -110,6 +113,11 @@ def list_jobs(
     try:
         require_permission("auditing", "read")(current_user=current_user, db=db)
         jobs += SchedulingService.list_jobs(db, job_type=JOB_TYPE_AUDIT)
+    except HTTPException:
+        pass
+    try:
+        require_permission("backup", "read")(current_user=current_user, db=db)
+        jobs += SchedulingService.list_jobs(db, job_type=JOB_TYPE_BACKUP)
     except HTTPException:
         pass
     jobs.sort(key=lambda j: j.next_run_at)
@@ -143,7 +151,8 @@ def update_job(
         raise HTTPException(status_code=404, detail="Scheduled job not found")
     _require_job_type_permission(job.job_type, "write", current_user, db)
     if job.group_id and data.credential_profile_id is not None:
-        _check_group_job(db, current_user, job.technology, None, data.credential_profile_id)
+        _check_group_job(db, current_user, job.technology, None, data.credential_profile_id,
+                         backup=job.job_type == JOB_TYPE_BACKUP)
     try:
         job = SchedulingService.update_job(db, job, data)
     except ValueError as exc:

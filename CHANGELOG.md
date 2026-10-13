@@ -259,6 +259,37 @@ audit trail still append-only.
 - Every group, profile, bulk change and group audit is in the audit trail
   (who, what, which profile), without any secret.
 
+### Scheduled configuration backups and change detection
+
+- Backup schedules (Device backups → Backup schedules): back up every device
+  of an asset group (Cisco IOS, FortiGate, Linux, Apache, MongoDB) with an
+  SSH credential profile, nightly at 02:00 by default, up to 50 devices at a
+  time. Each run lists every device's result (first backup, unchanged,
+  changed with lines added and removed) and why a device failed (sign-in
+  refused, unreachable, no address); failed devices can be retried. No
+  credentials are stored in the schedule.
+- An unchanged configuration is not stored again; the latest backup records
+  that the device was still the same ("still the same on …").
+- Every backup — by hand, before a hardening or a restore, scheduled — is
+  compared with the device's previous one. Cisco IOS and FortiOS are compared
+  as configuration trees, so timestamps and counters that differ between two
+  captures are not a change; Linux, Apache and MongoDB file bundles are
+  compared file by file.
+- A change is "by NGCorion" when a hardening or a restore ran on the device
+  between the two backups, otherwise "outside NGCorion". New alerts
+  "Configuration changed outside NGCorion" (warning, on by default),
+  "Configuration changed by NGCorion" (information, off by default) and
+  "Group backup finished with failures"; each links to the comparison.
+- Compare any two backups of a device ("What changed", or pick two and
+  "Compare selected"); the backup list shows the change badge, the number of
+  scheduled backups and of changes, and filters for changes and source.
+- Retention: backups identical to the previous one are removed after 90 days
+  (configurable, 7–3,650); every changed version, the latest and first backup
+  of each device, and backups a hardening or restore relies on are kept.
+- Fixes: scheduled group audits are labelled "Group audit (…)" in the
+  schedule list; schedule times, next run and history use Persian digits and
+  dates, and the run status is translated.
+
 ### Sign-in with Active Directory / LDAP
 - Users sign in with their organization account. Active Directory, or another
   LDAP directory (OpenLDAP, FreeIPA); several servers tried in order; LDAPS or

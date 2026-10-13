@@ -40,12 +40,13 @@ def compute_overview(db: Session, now: Optional[datetime] = None, stale_days: in
     month_ago = now - timedelta(days=30)
 
     last = {}   # asset_id -> (last backup time, device_type)
-    for asset_id, created, device_type in (
-        db.query(DeviceBackup.asset_id, DeviceBackup.created_at, DeviceBackup.device_type)
+    for asset_id, created, confirmed, device_type in (
+        db.query(DeviceBackup.asset_id, DeviceBackup.created_at, DeviceBackup.confirmed_at, DeviceBackup.device_type)
         .order_by(DeviceBackup.asset_id, DeviceBackup.created_at.desc())
         .distinct(DeviceBackup.asset_id)
     ):
-        last[asset_id] = (created, (device_type or "").lower())
+        # a scheduled backup that found the configuration unchanged confirms the latest copy
+        last[asset_id] = (max(created, confirmed) if confirmed else created, (device_type or "").lower())
 
     devices: List[Dict] = []
     for a in db.query(Asset).options(joinedload(Asset.asset_type)).all():

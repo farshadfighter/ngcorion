@@ -739,3 +739,8 @@
 
 /* Asset name with its type icon. */
 .backup-asset-name-cell { display: inline-flex; align-items: center; gap: 10px; }
+
+.backup-source-badge.scheduled {
+    background: #ede9fe;
+    color: #5b21b6;
+}

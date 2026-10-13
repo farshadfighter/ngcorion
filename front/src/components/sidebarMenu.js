@@ -64,6 +64,8 @@ export const MENU_GROUPS = [
             { key: "backup-overview", label: t("Overview"), path: "/backup/overview", perm: "backup" },
             { key: "backup", label: t("Backups"), path: "/backup", perm: "backup" },
             { key: "backup-restores", label: t("Restore History"), path: "/backup/restores", perm: "backup" },
+            { key: "backup-schedules", keys: ["backup-runs"], label: t("Backup schedules"), path: "/backup/schedules",
+              perm: "backup" },
         ],
     },
     {
@@ -150,6 +152,8 @@ const PATHS = [
     ["/reports", "reports"],
     ["/backup/overview", "backup-overview"],
     ["/backup/restores", "backup-restores"],
+    ["/backup/schedules", "backup-schedules"],
+    ["/backup/runs", "backup-runs"],
     ["/backup", "backup"],
     ["/topology", "topology"],
     ["/design-suggestion", "design-suggestion"],

@@ -7,8 +7,9 @@ Tags, asset groups, credential profiles and group audit runs (app/modules/asset_
 - CredentialProfile: device sign-in details defined once by a system administrator and used by
   group runs and scheduled group audits. Write-only: the secrets are encrypted
   (credential_crypto PURPOSE_CREDENTIAL_PROFILES) and never returned; only the user name is shown.
-- GroupRun / GroupRunItem: one audit of every asset of a group with one technology and one
-  profile, a few assets at a time; each asset gets its normal audit session plus a line here.
+- GroupRun / GroupRunItem: one audit (or configuration backup) of every asset of a group with one
+  technology and one profile, a few assets at a time; each asset gets its normal audit session (or
+  device backup) plus a line here.
 """
 from datetime import datetime, timezone
 
@@ -79,7 +80,9 @@ class GroupRun(Base):
     id = Column(Integer, primary_key=True)
     group_id = Column(Integer, ForeignKey("asset_groups.id", ondelete="SET NULL"), nullable=True, index=True)
     group_name = Column(String(120), nullable=False)
-    technology = Column(String(40), nullable=False)
+    # audit: the technology's audit of each asset; backup: a configuration backup of each asset
+    kind = Column(String(10), nullable=False, default="audit", index=True)
+    technology = Column(String(40), nullable=False)       # audit technology or device family
     audit_profile = Column(String(40), nullable=True)      # the benchmark level, e.g. L1
     credential_profile_id = Column(Integer, ForeignKey("credential_profiles.id", ondelete="SET NULL"),
                                    nullable=True)
@@ -114,6 +117,9 @@ class GroupRunItem(Base):
     detail = Column(Text, nullable=True)
     session_id = Column(Integer, nullable=True)
     compliance = Column(Float, nullable=True)
+    # backup runs: the stored backup, and first | changed | unchanged
+    backup_id = Column(Integer, nullable=True)
+    outcome = Column(String(12), nullable=True)
     attempts = Column(Integer, nullable=False, default=0)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)

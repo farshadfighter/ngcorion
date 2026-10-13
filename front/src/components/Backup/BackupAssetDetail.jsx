@@ -7,10 +7,11 @@ import {
     RESTORE_STATUS_LABELS, formatDateTime, isRestorable, sourceLabel,
 } from './restoreConstants.js';
 import { t } from "../../i18n";
+import { ChangeBadge } from './ChangeBadge.jsx';
 
 const formatDate = formatDateTime;
 
-const SOURCE_FILTERS = ['all', 'manual', 'hardening', 'pre_restore'];
+const SOURCE_FILTERS = ['all', 'changes', 'scheduled', 'manual', 'hardening', 'pre_restore'];
 
 /**
  * Level two: the backups of a single asset.
@@ -19,8 +20,11 @@ const SOURCE_FILTERS = ['all', 'manual', 'hardening', 'pre_restore'];
  * view is unaffected by how many backups the rest of the estate has.
  */
 export const BackupAssetDetail = ({
-    group, onBack, onView, onDelete, onRestore, onOpenRestore, canRestore = false, refreshKey = 0,
+    group, onBack, onView, onDelete, onRestore, onOpenRestore, onCompare, canRestore = false, refreshKey = 0,
 }) => {
+    // two backups ticked for "Compare selected"
+    const [picked, setPicked] = useState([]);
+    const togglePick = (id) => setPicked((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id].slice(-2)));
     const [backups, setBackups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -72,7 +76,9 @@ export const BackupAssetDetail = ({
     const visible = useMemo(
         () => (sourceFilter === 'all'
             ? backups
-            : backups.filter((b) => b.source === sourceFilter)),
+            : sourceFilter === 'changes'
+                ? backups.filter((b) => b.changed)
+                : backups.filter((b) => b.source === sourceFilter)),
         [backups, sourceFilter]
     );
 
@@ -123,7 +129,7 @@ export const BackupAssetDetail = ({
                         onClick={() => applySource(s)}
                         className={`backup-filter-btn ${sourceFilter === s ? 'active' : ''}`}
                     >
-                        {s === 'all' ? t("All") : sourceLabel(s)}
+                        {s === 'all' ? t("All") : s === 'changes' ? t("Changes only") : sourceLabel(s)}
                     </button>
                 ))}
             </div>
@@ -164,12 +170,22 @@ export const BackupAssetDetail = ({
                 </div>
             ) : (
                 <>
+                    {picked.length === 2 && (
+                        <div className="bk-pick-bar">
+                            <span>{t("Two backups selected")}</span>
+                            <button type="button" className="bkm-btn bkm-btn-sm bkm-btn-primary"
+                                    onClick={() => onCompare(picked[0], picked[1])}>{t("Compare selected")}</button>
+                            <button type="button" className="bkm-btn bkm-btn-sm" onClick={() => setPicked([])}>{t("Clear selection")}</button>
+                        </div>
+                    )}
                     <div className="table-container">
                         <table className="requirement-table">
                             <thead>
                                 <tr>
+                                    <th style={{ width: 36 }} aria-label={t("Select to compare")} />
                                     <th>{t("Date")}</th>
                                     <th>{t("Source")}</th>
+                                    <th>{t("Change from the previous backup")}</th>
                                     <th>{t("Created By")}</th>
                                     <th>{t("Actions")}</th>
                                 </tr>
@@ -177,13 +193,16 @@ export const BackupAssetDetail = ({
                             <tbody>
                                 {paged.map((b) => (
                                     <tr key={b.id}>
+                                        <td><input type="checkbox" checked={picked.includes(b.id)} onChange={() => togglePick(b.id)}
+                                                   aria-label={t("Select to compare")} /></td>
                                         <td>{formatDate(b.created_at)}</td>
                                         <td>
                                             <span className={`backup-source-badge ${b.source}`}>
                                                 {sourceLabel(b.source)}
                                             </span>
                                         </td>
-                                        <td>{b.created_by_username || '-'}</td>
+                                        <td><ChangeBadge backup={b} /></td>
+                                        <td>{b.created_by_username || (b.source === 'scheduled' ? t("Schedule") : '-')}</td>
                                         <td>
                                             <div className="backup-actions">
                                                 <button
@@ -192,6 +211,11 @@ export const BackupAssetDetail = ({
                                                 >
                                                     {t("View")}
                                                 </button>
+                                                {b.previous_backup_id && b.changed && (
+                                                    <button className="btn-see-result" onClick={() => onCompare(b.previous_backup_id, b.id)}>
+                                                        {t("What changed")}
+                                                    </button>
+                                                )}
                                                 {canRestore && isRestorable(b.device_type) && (
                                                     <button
                                                         className="btn-restore"

@@ -269,15 +269,16 @@ def _scheduled_failed(db: Session, params: Dict, now: datetime, since: datetime)
             .options(joinedload(ScheduledJob.asset))
             .filter(ScheduledJobRun.status == "failed", ScheduledJobRun.finished_at >= since).all())
     out = []
+    links = {"audit": "/audit/schedule-auditing", "discovery": "/assets/schedule-discovery",
+             "backup": "/backup/schedules"}
     for run, job in rows:
-        kind = "audit" if job.job_type == "audit" else "discovery"
+        kind = job.job_type if job.job_type in links else "discovery"
         asset = job.asset
         out.append(Problem(
             key=f"run:{run.id}", title=f"Scheduled {kind} failed",
             detail=f"{job.job_name}: {(run.message or 'no reason given')[:300]}",
             asset_id=job.asset_id, source_label=_label(asset) if asset else job.job_name,
-            link="/audit/schedule-auditing" if kind == "audit" else "/assets/schedule-discovery",
-            owner_user_id=job.created_by))
+            link=links[kind], owner_user_id=job.created_by))
     return out
 
 
@@ -307,18 +308,68 @@ def _compliance_drop(db: Session, params: Dict, now: datetime, since: datetime) 
     return out
 
 
-def _group_run_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+def _group_runs_failed(db: Session, kind: str, since: datetime) -> List[Problem]:
     from sqlalchemy import func
     from app.models.asset_groups import GroupRun, GroupRunItem
     rows = (db.query(GroupRun, func.count(GroupRunItem.id))
             .join(GroupRunItem, GroupRunItem.run_id == GroupRun.id)
-            .filter(GroupRun.status.in_(("done", "stopped")), GroupRun.finished_at >= since,
+            .filter(GroupRun.kind == kind, GroupRun.status.in_(("done", "stopped")), GroupRun.finished_at >= since,
                     GroupRunItem.status == "failed")
             .group_by(GroupRun.id).all())
-    return [Problem(key=f"group_run:{run.id}", title="Group audit finished with failures",
-                    detail=f"{run.group_name} ({run.technology}): {failed} asset(s) could not be audited",
-                    source_label=run.group_name, link=f"/audit/group-runs/{run.id}",
-                    owner_user_id=run.started_by) for run, failed in rows]
+    out = []
+    for run, failed in rows:
+        if kind == "backup":
+            out.append(Problem(key=f"group_run:{run.id}", title="Group backup finished with failures",
+                               detail=f"{run.group_name} ({run.technology}): {failed} asset(s) could not be backed up",
+                               source_label=run.group_name, link=f"/backup/runs/{run.id}",
+                               owner_user_id=run.started_by))
+        else:
+            out.append(Problem(key=f"group_run:{run.id}", title="Group audit finished with failures",
+                               detail=f"{run.group_name} ({run.technology}): {failed} asset(s) could not be audited",
+                               source_label=run.group_name, link=f"/audit/group-runs/{run.id}",
+                               owner_user_id=run.started_by))
+    return out
+
+
+def _group_run_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    return _group_runs_failed(db, "audit", since)
+
+
+def _group_backup_failed(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    return _group_runs_failed(db, "backup", since)
+
+
+def _config_changes(db: Session, origin: str, since: datetime) -> List[Problem]:
+    from app.models import Asset
+    from app.models.backup import DeviceBackup
+    since = since.replace(tzinfo=None) if since.tzinfo else since     # backup times are naive UTC
+    rows = (db.query(DeviceBackup)
+            .filter(DeviceBackup.changed.is_(True), DeviceBackup.change_origin == origin,
+                    DeviceBackup.created_at >= since)
+            .order_by(DeviceBackup.id).all())
+    out = []
+    for b in rows:
+        asset = db.get(Asset, b.asset_id)
+        label = _label(asset) if asset else (b.asset_name or b.device_ip or f"#{b.asset_id}")
+        if origin == "external":
+            out.append(Problem(key=f"backup:{b.id}", title="Configuration changed outside NGCorion",
+                               detail=f"{b.added_lines or 0} line(s) added and {b.removed_lines or 0} removed "
+                                      f"since the previous backup",
+                               asset_id=b.asset_id, source_label=label, link=f"/backup?asset={b.asset_id}&compare={b.id}"))
+        else:
+            out.append(Problem(key=f"backup:{b.id}", title="Configuration changed by NGCorion",
+                               detail=f"{b.added_lines or 0} line(s) added and {b.removed_lines or 0} removed "
+                                      f"({b.change_ref or 'hardening or restore'})",
+                               asset_id=b.asset_id, source_label=label, link=f"/backup?asset={b.asset_id}&compare={b.id}"))
+    return out
+
+
+def _config_changed_external(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    return _config_changes(db, "external", since)
+
+
+def _config_changed_ngcorion(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    return _config_changes(db, "ngcorion", since)
 
 
 def _credential_rotation(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
@@ -627,6 +678,16 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("backup.restore_failed", "backup", "Restore failed or reverted",
               "A restore ends failed or is reverted automatically", "event", 60, _restore_failed,
               uses_assets=True, has_owner=True),
+    EventType("backup.group_run_failed", "backup", "Group backup finished with failures",
+              "A group backup ends with devices that could not be backed up", "event", 60, _group_backup_failed,
+              has_owner=True, roles=["admin", "manager"]),
+    EventType("backup.config_changed", "backup", "Configuration changed outside NGCorion",
+              "A device's configuration differs from its previous backup and NGCorion did not change it",
+              "event", 60, _config_changed_external, uses_assets=True, severity="warning"),
+    EventType("backup.config_changed_ngcorion", "backup", "Configuration changed by NGCorion",
+              "A device's configuration changed through a hardening or restore run by NGCorion",
+              "event", 60, _config_changed_ngcorion, uses_assets=True, severity="info", channels=[],
+              enabled=False),
     EventType("backup.stale", "backup", "Device without a recent backup",
               "Devices with no backup for {days} days", "state", 3600, _backup_stale,
               params=[Param("days", "Days without backup", 30, "days", 1, 365)], repeat_minutes=1440),

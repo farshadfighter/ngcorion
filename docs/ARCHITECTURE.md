@@ -152,7 +152,7 @@ over within 30 seconds.
 
 | Task | Module | What it does |
 |---|---|---|
-| job-scheduler | `scheduling` | Runs scheduled discoveries and audits (credentials stored encrypted) |
+| job-scheduler | `scheduling` | Runs scheduled discoveries, audits and group backups (credentials stored encrypted, or a credential profile) |
 | noc-poller | `noc` | Polls devices over SNMP; interface status and metrics |
 | noc-metrics-retention | `noc` | Rolls raw samples up and evicts old ones |
 | cve-auto-update | `cve` | Daily CVE/KEV/EPSS and distribution-advisory updates |
@@ -161,7 +161,7 @@ over within 30 seconds.
 | report-worker | `reports` | Builds queued and scheduled reports |
 | system-backup | `sysbackup` | Scheduled backups of the NGCorion database and files |
 | directory-check | `directory` | Checks directory (AD/LDAP) accounts every 15 minutes |
-| group-runs | `asset_groups` | Group audits: a database queue, several assets at a time in a thread pool; resumes after a restart |
+| group-runs | `asset_groups` | Group audits and group configuration backups: a database queue, several assets at a time in a thread pool; resumes after a restart. A backup run compares each configuration with the previous backup (`app/modules/backup/changes.py`) and prunes duplicate backups past the retention period (`retention.py`) |
 
 The license heartbeat runs in every worker (each keeps its own license
 state). `/api/system/health` (admin) shows whether each task is running.

@@ -17,8 +17,11 @@ import { fetchAssets } from "../../store/assetSlice.jsx";
 import { usePermission } from "../../hooks/usePermission";
 import { AccessDenied } from "../routePages.jsx";
 import api from "../../config/api.js";
+import { FAMILY_LABELS } from "../Backup/restoreConstants.js";
 import "../../assets/Scheduling.css";
-import { t as tr, uiLocale } from "../../i18n";
+import { n, t as tr } from "../../i18n";
+import { tb } from "../../i18n/backendText.js";
+import { formatDateTime } from "../../utils/dates.js";
 
 const DAY_NAMES = [tr("Monday"), tr("Tuesday"), tr("Wednesday"), tr("Thursday"), tr("Friday"), tr("Saturday"), tr("Sunday")];
 
@@ -130,32 +133,40 @@ const emptyForm = {
     audit_profile: "",
 };
 
+const runStatusLabel = (status) => ({ success: tr("Success"), failed: tr("Failed"), running: tr("Running") }[status] || status);
+
 const scheduleSummary = (job) => {
-    const hh = String(job.hour ?? 0).padStart(2, "0");
-    const mm = String(job.minute ?? 0).padStart(2, "0");
+    const hh = n(String(job.hour ?? 0).padStart(2, "0"));
+    const mm = n(String(job.minute ?? 0).padStart(2, "0"));
     if (job.recurrence === "hourly") return tr("Every hour at :{{mm}}", { mm });
     if (job.recurrence === "weekly") return tr("Weekly on {{value}} at {{hh}}:{{mm}}", { value: DAY_NAMES[job.day_of_week ?? 0], hh, mm });
     if (job.recurrence === "once") return tr("Once at {{hh}}:{{mm}}", { hh, mm });
     return tr("Daily at {{hh}}:{{mm}}", { hh, mm });
 };
 
-export const ScheduledJobsPage = ({ jobType }) => {
+export const ScheduledJobsPage = ({ jobType, footer = null }) => {
     const dispatch = useDispatch();
     const canReadDiscovery = usePermission("asset_auto_discovery", "read");
     const canReadAuditing = usePermission("auditing", "read");
     const canWriteDiscovery = usePermission("asset_auto_discovery", "write");
     const canWriteAuditing = usePermission("auditing", "write");
     const canUseProfiles = usePermission("credential_profiles", "read");
+    const canReadBackup = usePermission("backup", "read");
+    const canWriteBackup = usePermission("backup", "write");
+    const isBackup = jobType === "backup";
 
-    const canRead = jobType === "discovery" ? canReadDiscovery : canReadAuditing;
-    const canWrite = jobType === "discovery" ? canWriteDiscovery : canWriteAuditing;
-    const pageTitle = jobType === "discovery" ? tr("Schedule Discovery") : tr("Schedule Auditing");
+    const canRead = { discovery: canReadDiscovery, audit: canReadAuditing, backup: canReadBackup }[jobType];
+    const canWrite = { discovery: canWriteDiscovery, audit: canWriteAuditing, backup: canWriteBackup }[jobType];
+    const pageTitle = { discovery: tr("Schedule Discovery"), audit: tr("Schedule Auditing"),
+                        backup: tr("Backup schedules") }[jobType];
+    // a backup schedule always covers an asset group, signing in with a credential profile
+    const newForm = () => ({ ...emptyForm, job_type: jobType, ...(isBackup ? { technology: "cisco", target_kind: "group" } : {}) });
 
     const { jobs, runsByJobId, isLoading, isSaving, error, successMessage } = useSelector((state) => state.scheduling);
     const { assets } = useSelector((state) => state.assets);
 
     const [showCreate, setShowCreate] = useState(false);
-    const [form, setForm] = useState({ ...emptyForm, job_type: jobType });
+    const [form, setForm] = useState(newForm);
     const [historyJobId, setHistoryJobId] = useState(null);
     const [groups, setGroups] = useState([]);
     const [profiles, setProfiles] = useState([]);
@@ -163,13 +174,14 @@ export const ScheduledJobsPage = ({ jobType }) => {
 
     // Groups and credential profiles for "audit a whole group"; only when the user may use profiles.
     useEffect(() => {
-        if (jobType !== "audit" || !canUseProfiles || !showCreate) return;
+        if (jobType === "discovery" || !canUseProfiles || !showCreate) return;
         api.get("/api/asset-groups").then(({ data }) => setGroups(data)).catch(() => setGroups([]));
         api.get("/api/credential-profiles").then(({ data }) => setProfiles(data)).catch(() => setProfiles([]));
         api.get("/api/credential-profiles/technologies").then(({ data }) => setProfileKinds(data)).catch(() => setProfileKinds({}));
     }, [jobType, canUseProfiles, showCreate]);
     const fittingProfiles = useMemo(
-        () => profiles.filter((p) => p.kind === profileKinds[form.technology]), [profiles, profileKinds, form.technology]);
+        () => profiles.filter((p) => p.kind === (isBackup ? "ssh" : profileKinds[form.technology])),
+        [profiles, profileKinds, form.technology, isBackup]);
 
     useEffect(() => {
         if (canRead) {
@@ -201,7 +213,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
             payload.scan_type = undefined;
             payload.ports = undefined;
             payload.protocol = undefined;
-            const byGroup = form.target_kind === "group";
+            const byGroup = form.target_kind === "group" || isBackup;
             delete payload.target_kind;
             if (byGroup) {
                 payload.asset_id = undefined;
@@ -213,7 +225,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                 if (payload.recurrence !== "weekly") payload.day_of_week = undefined;
                 dispatch(createScheduledJob(payload));
                 setShowCreate(false);
-                setForm({ ...emptyForm, job_type: jobType });
+                setForm(newForm());
                 return;
             }
             payload.group_id = undefined;
@@ -232,7 +244,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
         if (payload.recurrence !== "weekly") payload.day_of_week = undefined;
         dispatch(createScheduledJob(payload));
         setShowCreate(false);
-        setForm({ ...emptyForm, job_type: jobType });
+        setForm(newForm());
     };
 
     const handleToggleEnabled = (job) => {
@@ -274,7 +286,9 @@ export const ScheduledJobsPage = ({ jobType }) => {
                     <div className="sched-empty">{tr("Loading scheduled jobs…")}</div>
                 ) : visibleJobs.length === 0 ? (
                     <div className="sched-empty">
-                        {jobType === "discovery"
+                        {jobType === "backup"
+                            ? tr("No scheduled backups yet. Click \"New Schedule\" to automate one.")
+                            : jobType === "discovery"
                             ? tr("No scheduled discovery scans yet. Click \"New Schedule\" to automate one.")
                             : tr("No scheduled audits yet. Click \"New Schedule\" to automate one.")}
                     </div>
@@ -296,14 +310,19 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                 <tr key={job.id}>
                                     <td className="sched-cell-strong">{job.job_name}</td>
                                     <td>
-                                        {job.job_type === "discovery" ? tr("Discovery") : tr("Audit ({{technology}}{{value}})", { technology: job.technology, value: job.asset_name ? ` — ${job.asset_name}` : "" })}
+                                        {job.job_type === "discovery" ? tr("Discovery")
+                                            : job.job_type === "backup"
+                                            ? tr("Configuration backup ({{technology}} — {{group}}, profile {{profile}})", { technology: FAMILY_LABELS[job.technology] || job.technology, group: job.group_name || "", profile: job.credential_profile_name || "" })
+                                            : job.group_id
+                                            ? tr("Group audit ({{technology}} — {{group}}, profile {{profile}})", { technology: job.technology, group: job.group_name || "", profile: job.credential_profile_name || "" })
+                                            : tr("Audit ({{technology}}{{value}})", { technology: job.technology, value: job.asset_name ? ` — ${job.asset_name}` : "" })}
                                     </td>
                                     <td>{scheduleSummary(job)}</td>
-                                    <td>{new Date(job.next_run_at).toLocaleString(uiLocale())}</td>
+                                    <td>{formatDateTime(job.next_run_at)}</td>
                                     <td>
                                         {job.last_run_at ? (
                                             <span className={`sched-badge ${job.last_run_status === "success" ? "sched-badge-success" : "sched-badge-failed"}`}>
-                                                {job.last_run_status}
+                                                {runStatusLabel(job.last_run_status)}
                                             </span>
                                         ) : (
                                             tr("Never")
@@ -328,11 +347,12 @@ export const ScheduledJobsPage = ({ jobType }) => {
                     </table>
                 )}
             </div>
+            {footer}
 
             {showCreate && (
                 <div className="sched-modal-backdrop" onClick={() => setShowCreate(false)}>
                     <div className="sched-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>{jobType === "discovery" ? tr("New scheduled discovery scan") : tr("New scheduled audit")}</h3>
+                        <h3>{{ discovery: tr("New scheduled discovery scan"), audit: tr("New scheduled audit"), backup: tr("New scheduled backup") }[jobType]}</h3>
 
                         <div className="sched-field">
                             <label>{tr("Job name")}</label>
@@ -359,6 +379,38 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                         <input placeholder="80,443,8080" value={form.ports} onChange={(e) => setForm({ ...form, ports: e.target.value })} />
                                     </div>
                                 )}
+                            </>
+                        ) : isBackup ? (
+                            <>
+                                <div className="sched-field">
+                                    <label>{tr("Device type")}</label>
+                                    <select value={form.technology} onChange={(e) => setForm({ ...form, technology: e.target.value })}>
+                                        {Object.entries(FAMILY_LABELS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="sched-field">
+                                    <label>{tr("Asset group")}</label>
+                                    <select value={form.group_id} onChange={(e) => setForm({ ...form, group_id: e.target.value })}>
+                                        <option value="">{tr("— Select a group —")}</option>
+                                        {groups.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.asset_count})</option>)}
+                                    </select>
+                                </div>
+                                <div className="sched-field">
+                                    <label>{tr("Credential profile")}</label>
+                                    <select value={form.credential_profile_id} onChange={(e) => setForm({ ...form, credential_profile_id: e.target.value })}>
+                                        <option value="">{fittingProfiles.length ? tr("— Select a profile —") : tr("No profile of this kind — ask an administrator")}</option>
+                                        {fittingProfiles.map((p) => <option key={p.id} value={p.id}>{p.name} · {p.username}</option>)}
+                                    </select>
+                                </div>
+                                <div className="sched-field">
+                                    <label>{tr("Devices backed up at the same time")}</label>
+                                    <input type="number" min={1} max={50} value={form.concurrency}
+                                           onChange={(e) => setForm({ ...form, concurrency: e.target.value })} />
+                                </div>
+                                {!canUseProfiles && <p className="sched-modal-hint">{tr("Scheduling a backup needs permission to use credential profiles. Ask an administrator.")}</p>}
+                                <p className="sched-modal-hint">
+                                    {tr("Each run backs up every device in the group. An unchanged configuration is not stored again; a changed one is kept as a new version, compared with the previous one, and raises the alert \"Configuration changed outside NGCorion\" unless NGCorion made the change.")}
+                                </p>
                             </>
                         ) : (
                             <>
@@ -484,6 +536,7 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                     !canWrite ||
                                     !form.job_name ||
                                     (form.job_type === "discovery" ? !form.target
+                                        : isBackup ? (!form.group_id || !form.credential_profile_id)
                                         : form.target_kind === "group" ? (!form.group_id || !form.credential_profile_id) : !form.asset_id)
                                 }
                             >
@@ -512,13 +565,13 @@ export const ScheduledJobsPage = ({ jobType }) => {
                                 <tbody>
                                     {(runsByJobId[historyJobId] || []).map((r) => (
                                         <tr key={r.id}>
-                                            <td>{r.started_at ? new Date(r.started_at).toLocaleString(uiLocale()) : "—"}</td>
+                                            <td>{r.started_at ? formatDateTime(r.started_at) : "—"}</td>
                                             <td>
                                                 <span className={`sched-badge ${r.status === "success" ? "sched-badge-success" : "sched-badge-failed"}`}>
-                                                    {r.status}
+                                                    {runStatusLabel(r.status)}
                                                 </span>
                                             </td>
-                                            <td>{r.message || "—"}</td>
+                                            <td dir="auto">{r.message ? tb(r.message) : "—"}</td>
                                         </tr>
                                     ))}
                                 </tbody>

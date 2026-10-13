@@ -9,8 +9,9 @@ Asset groups, tags, bulk edit, credential profiles and group audit runs.
                                     delete; zone: risk write)
   /api/credential-profiles          list (credential_profiles read); create, edit, delete and test
                                     sign-in: system administrators only
-  /api/group-runs                   group audits (auditing read / write; starting one also needs
-                                    credential_profiles read)
+  /api/group-runs                   group audits (auditing read / write) and group configuration
+                                    backups (?kind=backup; backup read / write); starting either also
+                                    needs credential_profiles read
 """
 from typing import Any, Dict, List, Literal, Optional
 
@@ -21,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import require_admin, require_permission
+from app.core.dependencies import get_current_user, require_admin, require_permission
 from app.models import Asset, User
 from app.models.asset_groups import (AssetGroup, AssetGroupMember, AssetTag, CredentialProfile, GroupRun,
                                      GroupRunItem)
@@ -552,90 +553,124 @@ def test_profile(profile_id: int, body: ProfileTestBody, request: Request,
 
 
 # ── group runs ───────────────────────────────────────────────────────────────
+# kind "audit" needs the auditing permission, kind "backup" the backup permission; starting either
+# also needs credential_profiles read.
+
+_RUN_MODULE = {"audit": "AUDITING", "backup": "BACKUP"}
+
 
 class RunBody(BaseModel):
     group_id: int
-    technology: str = Field(..., max_length=40)
+    kind: Literal["audit", "backup"] = "audit"
+    technology: str = Field(..., max_length=40)          # audit technology, or device family for a backup
     credential_profile_id: int
     audit_profile: Optional[Literal["L1", "FULL"]] = None
     concurrency: int = Field(10, ge=1, le=R.MAX_CONCURRENCY)
 
 
-def _get_run(db: Session, run_id: int) -> GroupRun:
+def _need(kind: str, perm: str, user: User, db: Session) -> None:
+    require_permission(_RUN_MODULE.get(kind, "AUDITING"), perm)(current_user=user, db=db)
+
+
+def _get_run(db: Session, run_id: int, user: User, perm: str) -> GroupRun:
     run = db.get(GroupRun, run_id)
     if run is None:
-        raise HTTPException(status_code=404, detail="Group audit not found")
+        raise HTTPException(status_code=404, detail="Group run not found")
+    _need(run.kind, perm, user, db)
     return run
 
 
 @runs_router.get("")
-def list_runs(limit: int = Query(100, ge=1, le=500),
-              current_user: User = Depends(require_permission("AUDITING", "read")),
-              db: Session = Depends(get_db)):
-    rows = db.query(GroupRun).order_by(GroupRun.id.desc()).limit(limit).all()
+def list_runs(kind: Literal["audit", "backup"] = "audit", limit: int = Query(100, ge=1, le=500),
+              current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _need(kind, "read", current_user, db)
+    rows = db.query(GroupRun).filter(GroupRun.kind == kind).order_by(GroupRun.id.desc()).limit(limit).all()
     c = R.counts(db, [r.id for r in rows])
     return [R.summary(r, c[r.id]) for r in rows]
 
 
 @runs_router.post("")
-def start_run(body: RunBody, request: Request,
-              current_user: User = Depends(require_permission("AUDITING", "write")),
+def start_run(body: RunBody, request: Request, current_user: User = Depends(get_current_user),
               db: Session = Depends(get_db)):
-    """Audit every asset of a group with one technology, signing in with a credential profile."""
+    """Audit (or back up the configuration of) every asset of a group, signing in with a credential
+    profile."""
+    _need(body.kind, "write", current_user, db)
     require_permission("CREDENTIAL_PROFILES", "read")(current_user=current_user, db=db)
     g = _get_group(db, body.group_id)
     p = _get_profile(db, body.credential_profile_id)
     try:
-        run = R.start_run(db, g, body.technology, p, body.audit_profile, body.concurrency, current_user)
+        run = R.start_run(db, g, body.technology, p, body.audit_profile, body.concurrency, current_user,
+                          kind=body.kind)
     except R.RunError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
     total = db.query(func.count(GroupRunItem.id)).filter(GroupRunItem.run_id == run.id).scalar()
-    log_action(db, **_who(current_user, request, "group_run.start", "auditing", run.id),
-               detail=f"Started a {run.technology} audit of group '{g.name}' ({total} assets) "
-                      f"with credential profile '{p.name}'")
+    if body.kind == "backup":
+        log_action(db, **_who(current_user, request, "group_run.start", "backup", run.id),
+                   detail=f"Started a {run.technology} configuration backup of group '{g.name}' ({total} assets) "
+                          f"with credential profile '{p.name}'")
+    else:
+        log_action(db, **_who(current_user, request, "group_run.start", "auditing", run.id),
+                   detail=f"Started a {run.technology} audit of group '{g.name}' ({total} assets) "
+                          f"with credential profile '{p.name}'")
     db.commit()
     return R.summary(run, R.counts(db, [run.id])[run.id])
 
 
 @runs_router.get("/{run_id}")
-def get_run(run_id: int, current_user: User = Depends(require_permission("AUDITING", "read")),
-            db: Session = Depends(get_db)):
-    run = _get_run(db, run_id)
+def get_run(run_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    run = _get_run(db, run_id, current_user, "read")
     items = [{"id": i.id, "asset_id": i.asset_id, "asset_name": i.asset_name, "ip_address": i.ip_address,
               "status": i.status, "reason": i.reason, "detail": i.detail, "session_id": i.session_id,
-              "compliance": i.compliance, "attempts": i.attempts, "started_at": i.started_at,
-              "finished_at": i.finished_at} for i in run.items]
+              "compliance": i.compliance, "backup_id": i.backup_id, "outcome": i.outcome,
+              "attempts": i.attempts, "started_at": i.started_at, "finished_at": i.finished_at} for i in run.items]
+    if run.kind == "backup":
+        from app.models.backup import DeviceBackup
+        ids = [i["backup_id"] for i in items if i["backup_id"]]
+        info = {b.id: b for b in db.query(DeviceBackup).filter(DeviceBackup.id.in_(ids))} if ids else {}
+        for i in items:
+            b = info.get(i["backup_id"])
+            if b is not None:
+                i.update(added_lines=b.added_lines, removed_lines=b.removed_lines, change_origin=b.change_origin,
+                         previous_backup_id=b.previous_backup_id)
     return {**R.summary(run, R.counts(db, [run.id])[run.id]), "items": items}
 
 
 @runs_router.post("/{run_id}/stop")
-def stop_run(run_id: int, request: Request, current_user: User = Depends(require_permission("AUDITING", "write")),
+def stop_run(run_id: int, request: Request, current_user: User = Depends(get_current_user),
              db: Session = Depends(get_db)):
-    """Stop: queued assets are cancelled; audits already running finish."""
-    run = _get_run(db, run_id)
+    """Stop: queued assets are cancelled; what is already running finishes."""
+    run = _get_run(db, run_id, current_user, "write")
     if run.status not in ("queued", "running"):
-        raise HTTPException(status_code=400, detail="The group audit is not running")
+        raise HTTPException(status_code=400, detail="The group run is not running")
     R.stop(db, run)
-    log_action(db, **_who(current_user, request, "group_run.stop", "auditing", run.id),
-               detail=f"Stopped the audit of group '{run.group_name}'")
+    if run.kind == "backup":
+        log_action(db, **_who(current_user, request, "group_run.stop", "backup", run.id),
+                   detail=f"Stopped the configuration backup of group '{run.group_name}'")
+    else:
+        log_action(db, **_who(current_user, request, "group_run.stop", "auditing", run.id),
+                   detail=f"Stopped the audit of group '{run.group_name}'")
     db.commit()
     return R.summary(run, R.counts(db, [run.id])[run.id])
 
 
 @runs_router.post("/{run_id}/retry")
-def retry_run(run_id: int, request: Request, current_user: User = Depends(require_permission("AUDITING", "write")),
+def retry_run(run_id: int, request: Request, current_user: User = Depends(get_current_user),
               db: Session = Depends(get_db)):
     """Queue the assets that failed again, with the same profile."""
+    run = _get_run(db, run_id, current_user, "write")
     require_permission("CREDENTIAL_PROFILES", "read")(current_user=current_user, db=db)
-    run = _get_run(db, run_id)
     if run.credential_profile_id is None:
         raise HTTPException(status_code=400, detail="The credential profile was deleted")
     try:
         n = R.retry_failed(db, run)
     except R.RunError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    log_action(db, **_who(current_user, request, "group_run.retry", "auditing", run.id),
-               detail=f"Retried {n} failed asset(s) of the audit of group '{run.group_name}'")
+    if run.kind == "backup":
+        log_action(db, **_who(current_user, request, "group_run.retry", "backup", run.id),
+                   detail=f"Retried {n} failed asset(s) of the configuration backup of group '{run.group_name}'")
+    else:
+        log_action(db, **_who(current_user, request, "group_run.retry", "auditing", run.id),
+                   detail=f"Retried {n} failed asset(s) of the audit of group '{run.group_name}'")
     db.commit()
     return R.summary(run, R.counts(db, [run.id])[run.id])

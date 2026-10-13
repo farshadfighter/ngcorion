@@ -7,7 +7,7 @@ import logging
 from typing import Optional, List
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session, joinedload
@@ -21,6 +21,8 @@ from app.models.backup_restore import RESTORE_ACTIVE_STATUSES, BackupRestore
 from app.modules.backup.restore import service as restore_service
 from app.modules.backup.restore.drivers import SUPPORTED_FAMILIES, Credentials
 from app.modules.backup.overview import RESTORE_GROUPS, compute_overview, restore_history
+from app.modules.backup import changes  # noqa: F401 - registers the change summary of every new backup
+from app.modules.backup import retention
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +43,26 @@ class BackupSummary(BaseModel):
     source: str
     hardening_action_id: Optional[int]
     created_by: Optional[int]
-    created_by_username: Optional[str]
+    created_by_username: Optional[str] = None
     created_at: Optional[datetime]
+    # compared with the asset's previous backup when it was saved
+    previous_backup_id: Optional[int] = None
+    changed: Optional[bool] = None
+    added_lines: Optional[int] = None
+    removed_lines: Optional[int] = None
+    change_origin: Optional[str] = None
+    change_ref: Optional[str] = None
+    confirmed_at: Optional[datetime] = None
+    group_run_id: Optional[int] = None
 
     class Config:
         from_attributes = True
+
+
+def _summary(b: DeviceBackup, username: Optional[str] = None) -> "BackupSummary":
+    out = BackupSummary.model_validate(b)
+    out.created_by_username = username if username is not None else (b.user.username if b.user else None)
+    return out
 
 
 class BackupDetail(BackupSummary):
@@ -86,22 +103,7 @@ def list_backups(
 
     backups = query.order_by(DeviceBackup.created_at.desc()).offset(offset).limit(limit).all()
 
-    result = []
-    for b in backups:
-        username = b.user.username if b.user else None
-        result.append(BackupSummary(
-            id=b.id,
-            asset_id=b.asset_id,
-            asset_name=b.asset_name,
-            device_ip=b.device_ip,
-            device_type=b.device_type,
-            source=b.source,
-            hardening_action_id=b.hardening_action_id,
-            created_by=b.created_by,
-            created_by_username=username,
-            created_at=b.created_at,
-        ))
-
+    result = [_summary(b) for b in backups]
     return result
 
 
@@ -115,8 +117,15 @@ class BackupAssetGroup(BaseModel):
     manual_count: int
     hardening_count: int
     pre_restore_count: int = 0
+    scheduled_count: int = 0
+    # configuration changes found, and how many of them were made outside NGCorion
+    change_count: int = 0
+    external_change_count: int = 0
+    last_change_at: Optional[datetime] = None
     icon: str = "other"
     last_backup_at: Optional[datetime]
+    # last time a scheduled backup found the configuration unchanged
+    last_confirmed_at: Optional[datetime] = None
 
 
 @router.get("/by-asset", response_model=List[BackupAssetGroup])
@@ -147,7 +156,13 @@ def list_backups_by_asset(
         func.sum(
             case((DeviceBackup.source == "pre_restore", 1), else_=0)
         ).label("pre_restore_count"),
+        func.sum(case((DeviceBackup.source == "scheduled", 1), else_=0)).label("scheduled_count"),
+        func.sum(case((DeviceBackup.changed.is_(True), 1), else_=0)).label("change_count"),
+        func.sum(case(((DeviceBackup.changed.is_(True)) & (DeviceBackup.change_origin == "external"), 1),
+                      else_=0)).label("external_change_count"),
+        func.max(case((DeviceBackup.changed.is_(True), DeviceBackup.created_at))).label("last_change_at"),
         func.max(DeviceBackup.created_at).label("last_backup_at"),
+        func.max(DeviceBackup.confirmed_at).label("last_confirmed_at"),
     )
 
     if device_type:
@@ -182,7 +197,12 @@ def list_backups_by_asset(
             manual_count=int(row.manual_count or 0),
             hardening_count=int(row.hardening_count or 0),
             pre_restore_count=int(row.pre_restore_count or 0),
+            scheduled_count=int(row.scheduled_count or 0),
+            change_count=int(row.change_count or 0),
+            external_change_count=int(row.external_change_count or 0),
+            last_change_at=row.last_change_at,
             last_backup_at=row.last_backup_at,
+            last_confirmed_at=row.last_confirmed_at,
         )
         for row in rows
     ]
@@ -422,6 +442,80 @@ def get_restore(
     return _restore_job_response(job)
 
 
+class DiffLineOut(BaseModel):
+    op: str
+    text: str
+
+
+class DiffSectionOut(BaseModel):
+    title: str
+    lines: List[DiffLineOut]
+
+
+class CompareResponse(BaseModel):
+    """What changed from one backup of an asset to another ("+" in the newer only, "-" in the older
+    only)."""
+    old: BackupSummary
+    new: BackupSummary
+    added: int
+    removed: int
+    sections: List[DiffSectionOut]
+    truncated: bool = False
+
+
+class BackupSettings(BaseModel):
+    retention_days: int = Field(..., ge=retention.MIN_DAYS, le=retention.MAX_DAYS)
+
+
+@router.get("/compare", response_model=CompareResponse)
+def compare_backups(
+    old: int = Query(..., description="the older backup"),
+    new: int = Query(..., description="the newer backup"),
+    current_user: User = Depends(require_permission("backup", "read")),
+    db: Session = Depends(get_db),
+):
+    """Compare two backups of the same asset, in configuration order (Cisco IOS and FortiOS as
+    configuration trees, file bundles file by file)."""
+    a, b = db.get(DeviceBackup, old), db.get(DeviceBackup, new)
+    if a is None or b is None:
+        raise HTTPException(status_code=404, detail="Backup not found")
+    if a.asset_id != b.asset_id:
+        raise HTTPException(status_code=400, detail="Compare two backups of the same asset")
+    if (a.created_at or datetime.min) > (b.created_at or datetime.min):
+        a, b = b, a
+    diff = changes.compare(b.device_type or a.device_type, a.config_content, b.config_content)
+    sections, shown, truncated = [], 0, False
+    for sec in diff.sections:
+        lines = [DiffLineOut(op=line.op, text=line.text) for line in sec.lines]
+        if shown + len(lines) > changes.MAX_LINES_SHOWN:
+            lines, truncated = lines[: max(0, changes.MAX_LINES_SHOWN - shown)], True
+        shown += len(lines)
+        sections.append(DiffSectionOut(title=sec.title, lines=lines))
+        if truncated:
+            break
+    return CompareResponse(old=_summary(a), new=_summary(b), added=diff.added, removed=diff.removed,
+                           sections=sections, truncated=truncated)
+
+
+@router.get("/settings", response_model=BackupSettings)
+def get_backup_settings(current_user: User = Depends(require_permission("backup", "read")),
+                        db: Session = Depends(get_db)):
+    return retention.get_settings(db)
+
+
+@router.put("/settings", response_model=BackupSettings)
+def save_backup_settings(body: BackupSettings, request: Request,
+                         current_user: User = Depends(require_permission("backup", "write")),
+                         db: Session = Depends(get_db)):
+    """How long backups identical to the previous one are kept."""
+    from app.models.security_audit_log import log_action
+    saved = retention.save_settings(db, body.retention_days, current_user.id)
+    log_action(db, user_id=current_user.id, username=current_user.username, action="backup.settings",
+               module="backup", ip_address=request.client.host if request.client else None,
+               detail=f"Device backups identical to the previous one are kept {saved['retention_days']} days")
+    return saved
+
+
 @router.get("/{backup_id}", response_model=BackupDetail)
 def get_backup(
     backup_id: int,
@@ -433,20 +527,7 @@ def get_backup(
     if not backup:
         raise HTTPException(status_code=404, detail="Backup not found")
 
-    username = backup.user.username if backup.user else None
-    return BackupDetail(
-        id=backup.id,
-        asset_id=backup.asset_id,
-        asset_name=backup.asset_name,
-        device_ip=backup.device_ip,
-        device_type=backup.device_type,
-        source=backup.source,
-        hardening_action_id=backup.hardening_action_id,
-        created_by=backup.created_by,
-        created_by_username=username,
-        created_at=backup.created_at,
-        config_content=backup.config_content,
-    )
+    return BackupDetail(**_summary(backup).model_dump(), config_content=backup.config_content)
 
 
 @router.post("/", response_model=BackupSummary, status_code=201)
@@ -494,18 +575,7 @@ def create_manual_backup(
     db.commit()
     db.refresh(backup)
 
-    return BackupSummary(
-        id=backup.id,
-        asset_id=backup.asset_id,
-        asset_name=backup.asset_name,
-        device_ip=backup.device_ip,
-        device_type=backup.device_type,
-        source=backup.source,
-        hardening_action_id=backup.hardening_action_id,
-        created_by=backup.created_by,
-        created_by_username=current_user.username,
-        created_at=backup.created_at,
-    )
+    return _summary(backup, current_user.username)
 
 
 @router.delete("/{backup_id}", status_code=204)
@@ -527,39 +597,8 @@ def delete_backup(
 # Internal Helpers
 # ============================================
 
-def _take_backup(
-    device_type: str,
-    ip: str,
-    username: str,
-    password: str,
-    secret: Optional[str] = None,
-    port: int = 22,
-) -> str:
-    """Connect to a device and snapshot its configuration.
-
-    Every family exposes the same ``backup_config()`` the pre-hardening flow uses,
-    so a manual backup captures exactly what a hardening run would roll back to.
-    The SSH families all take the same credentials this request carries.
-    """
-    if device_type == "cisco":
-        from app.modules.cisco.hardening.ssh_executor import CiscoHardeningExecutor
-        with CiscoHardeningExecutor(ip=ip, username=username, password=password, secret=secret) as ex:
-            return ex.backup_config()
-    elif device_type == "fortinet":
-        from app.modules.fortinet.hardening.ssh_executor import FortiGateHardeningExecutor
-        with FortiGateHardeningExecutor(ip=ip, username=username, password=password, port=port) as ex:
-            return ex.backup_config()
-    elif device_type == "linux":
-        from app.modules.linux.hardening.ssh_executor import LinuxSSHExecutor
-        with LinuxSSHExecutor(ip=ip, username=username, password=password, port=port) as ex:
-            return ex.backup_config()
-    elif device_type == "apache":
-        from app.modules.apache.hardening.ssh_executor import ApacheSSHExecutor
-        with ApacheSSHExecutor(ip=ip, username=username, password=password, port=port) as ex:
-            return ex.backup_config()
-    elif device_type == "mongodb":
-        from app.modules.mongodb.hardening.ssh_executor import MongoDBSSHExecutor
-        with MongoDBSSHExecutor(ip=ip, username=username, password=password, ssh_port=port) as ex:
-            return ex.backup_config()
-    else:
-        raise ValueError(f"Unsupported device type for manual backup: {device_type}")
+def _take_backup(device_type: str, ip: str, username: str, password: str,
+                 secret: Optional[str] = None, port: int = 22) -> str:
+    """Connect to a device and snapshot its configuration (app/modules/backup/collect.py)."""
+    from app.modules.backup.collect import take_backup
+    return take_backup(device_type, ip, username, password, secret, port)

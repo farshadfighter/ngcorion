@@ -247,6 +247,15 @@ const TEMPLATES = [
     msg("{{group_name}} ({{technology}}): {{failed}} asset(s) could not be audited"),
     msg("{{name}}: password not changed for {{rotation_days}} days or more"),
     msg("A group run covers at most {{value}} assets"),
+    // scheduled device backups (app/modules/backup, group runs of kind "backup")
+    msg("Started a {{technology}} configuration backup of group '{{name}}' ({{total}} assets) with credential profile '{{name2}}'"),
+    msg("Stopped the configuration backup of group '{{group_name}}'"),
+    msg("Retried {{n}} failed asset(s) of the configuration backup of group '{{group_name}}'"),
+    msg("Device backups identical to the previous one are kept {{value}} days"),
+    msg("Scheduled job '{{job_name}}' started a {{technology}} configuration backup of group '{{name}}' with credential profile '{{name2}}'"),
+    msg("{{group_name}} ({{technology}}): {{failed}} asset(s) could not be backed up"),
+    msg("{{added_lines}} line(s) added and {{removed_lines}} removed since the previous backup"),
+    msg("{{added_lines}} line(s) added and {{removed_lines}} removed ({{change_ref}})"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -926,6 +935,7 @@ export function tv(value) {
 // asset groups, credential profiles, group audits (app/modules/asset_groups)
 msg("Group audit finished with failures");
 msg("A group audit ends with assets that could not be audited");
+msg("A group backup ends with devices that could not be backed up");
 msg("Credential profile due for a password change");
 msg("A credential profile's password is older than its change period");
 msg("Group audits");
@@ -964,3 +974,18 @@ msg("NGCorion restarted while this audit was running");
 msg("The group or credential profile of this schedule no longer exists");
 msg("Internal error");
 msg("Not a number");
+
+// scheduled device backups (app/modules/backup)
+msg("Configuration changed outside NGCorion");
+msg("A device's configuration differs from its previous backup and NGCorion did not change it");
+msg("Configuration changed by NGCorion");
+msg("A device's configuration changed through a hardening or restore run by NGCorion");
+msg("Group backup finished with failures");
+msg("Scheduled backup failed");
+msg("Group run not found");
+msg("The group run is not running");
+msg("This device type cannot be backed up");
+msg("The device returned an empty configuration");
+msg("NGCorion restarted while this asset was being processed");
+msg("Compare two backups of the same asset");
+msg("group_id and credential_profile_id are required for a backup job");

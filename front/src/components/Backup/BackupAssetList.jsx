@@ -106,9 +106,27 @@ export const BackupAssetList = ({
                                                 {tr("{{pre_restore_count}} before restore", { pre_restore_count: g.pre_restore_count })}
                                             </span>
                                         )}
+                                        {g.scheduled_count > 0 && (
+                                            <span className="backup-source-badge scheduled">
+                                                {tr("{{value}} scheduled", { value: n(g.scheduled_count) })}
+                                            </span>
+                                        )}
                                     </span>
+                                    {g.change_count > 0 && (
+                                        <span className={`bkm-pill ${g.external_change_count ? "bkm-pill-orange" : "bkm-pill-run"} bk-changes-pill`}
+                                              title={g.last_change_at ? tr("Last change {{date}}", { date: formatDate(g.last_change_at) }) : undefined}>
+                                            {g.external_change_count
+                                                ? tr("{{value}} changes, {{external}} outside NGCorion", { value: n(g.change_count), external: n(g.external_change_count) })
+                                                : tr("{{value}} changes", { value: n(g.change_count) })}
+                                        </span>
+                                    )}
                                 </td>
-                                <td>{formatDate(g.last_backup_at)}</td>
+                                <td>
+                                    {formatDate(g.last_backup_at)}
+                                    {g.last_confirmed_at && g.last_confirmed_at > g.last_backup_at && (
+                                        <div className="bkm-small bkm-muted">{tr("still the same on {{date}}", { date: formatDate(g.last_confirmed_at) })}</div>
+                                    )}
+                                </td>
                                 <td>
                                     <button
                                         className="btn-see-result"

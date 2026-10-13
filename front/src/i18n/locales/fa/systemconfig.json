@@ -7,7 +7,6 @@
   "(optional, PEM)": "(اختیاری، PEM)",
   "{{count}} pinned keys": "{{count, number}} کلید پین‌شده",
   "{{on}} of {{all}}": "{{on}} از {{all}}",
-  "{{value}} days": "{{value}} روز",
   "A finding's deadline counts from the day it is first seen and can be changed on the finding itself. New values apply to findings recorded from now on.": "مهلت هر یافته از روز اولین مشاهده حساب می‌شود و روی خود یافته قابل تغییر است. مقادیر جدید فقط روی یافته‌هایی اثر دارد که از این پس ثبت می‌شوند.",
   "A user gets the highest role among their mapped groups and every permission those groups give. Nested groups count. A user in no mapped group cannot sign in.": "هر کاربر بالاترین نقش از میان گروه‌های نگاشت‌شده‌اش و همهٔ مجوزهایی را که آن گروه‌ها می‌دهند می‌گیرد. گروه‌های تودرتو هم حساب می‌شوند. کاربری که در هیچ گروه نگاشت‌شده‌ای نیست وارد نمی‌شود.",
   "Account check": "بررسی حساب‌ها",
