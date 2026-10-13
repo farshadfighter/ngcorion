@@ -45,6 +45,9 @@ jobs:
             || { echo "::error::$VERSION is not a semantic version"; exit 1; }
           code="$(sed -n 's/^ *VERSION: str = "\(.*\)"/\1/p' app/core/config.py | head -n1)"
           [ "$code" = "$VERSION" ] || { echo "::error::the code at this commit is version $code, not $VERSION"; exit 1; }
+          # An image without the license server's public key refuses every license (app/core/license_keys.py).
+          python3 -c "import importlib.util as u; s = u.spec_from_file_location('k', 'app/core/license_keys.py'); m = u.module_from_spec(s); s.loader.exec_module(m); raise SystemExit(0 if m.TRUSTED_LICENSE_KEYS else 1)" \
+            || { echo "::error::TRUSTED_LICENSE_KEYS in app/core/license_keys.py is empty: this build would refuse every license"; exit 1; }
           if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
             echo "::error::tag v$VERSION exists already; tags are never moved"; exit 1
           fi

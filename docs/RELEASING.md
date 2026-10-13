@@ -29,6 +29,9 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
 ## Making a release
 
 1. `main` is green in CI (tests, lint, build, dependency audit).
+   `TRUSTED_LICENSE_KEYS` in `app/core/license_keys.py` holds the license
+   server's public key; the Release tag and appliance workflows refuse to tag or
+   build without it, since such a build refuses every license.
 2. Set `VERSION` and `front/package.json` (`npm version X.Y.Z --no-git-tag-version`
    in `front/`), and give the `CHANGELOG.md` section its number and date.
 3. Commit and push, then tag: GitHub → Actions → **Release tag** → Run workflow

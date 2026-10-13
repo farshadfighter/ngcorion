@@ -61,6 +61,9 @@ jobs:
         run: |
           version="$(sed -n 's/^ *VERSION: str = "\(.*\)"/\1/p' app/core/config.py | head -n1)"
           test -n "$version" || { echo "::error::No VERSION in app/core/config.py"; exit 1; }
+          # An image without the license server's public key refuses every license (app/core/license_keys.py).
+          python3 -c "import importlib.util as u; s = u.spec_from_file_location('k', 'app/core/license_keys.py'); m = u.module_from_spec(s); s.loader.exec_module(m); raise SystemExit(0 if m.TRUSTED_LICENSE_KEYS else 1)" \
+            || { echo "::error::TRUSTED_LICENSE_KEYS in app/core/license_keys.py is empty: this build would refuse every license"; exit 1; }
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             tag="$GITHUB_REF_NAME"
             if [ "$tag" != "v$version" ]; then
