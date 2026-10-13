@@ -6,7 +6,7 @@ import {
     formatDateTime, formatTime, sourceLabel,
 } from './restoreConstants.js';
 import '../../assets/RestoreWizard.css';
-import { n, t as tr } from "../../i18n";
+import { n, t as tr, sep } from "../../i18n";
 import { tx } from "../../i18n/tx";
 
 /**
@@ -244,7 +244,7 @@ const Result = ({ job }) => {
                     )}
                     <div className="rw-row"><span>{tr("Duration")}</span><b>{duration(job)}</b></div>
                     <div className="rw-row"><span>{tr("Performed by")}</span>
-                        <b>{job.requested_by_username || '-'} · {formatDateTime(job.created_at)}</b></div>
+                        <b>{job.requested_by_username || '-'}{sep()}{formatDateTime(job.created_at)}</b></div>
                     <div className="rw-row last"><span>{tr("Reason")}</span><b className="plain">{job.reason}</b></div>
                 </div>
             </>

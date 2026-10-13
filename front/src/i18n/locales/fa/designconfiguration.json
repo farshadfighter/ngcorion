@@ -1,7 +1,7 @@
 {
   "— Not mapped —": "— نگاشت نشده —",
   "{{length}} design(s)": "{{length}} طرح",
-  "{{scale_label}} · {{total_assets}} asset(s) in inventory · {{matched_assets}} matched to a slot below": "{{scale_label}} · {{total_assets}} دارایی در فهرست · {{matched_assets}} مورد با جایگاه‌های زیر منطبق شده",
+  "{{scale_label}} · {{total_assets}} asset(s) in inventory · {{matched_assets}} matched to a slot below": "{{scale_label}}، {{total_assets}} دارایی در فهرست، {{matched_assets}} مورد با جایگاه‌های زیر منطبق شده",
   "A standard Cisco SAFE campus design sized to your real asset count. Solid boxes are matched to a real asset already in your inventory; dashed gray boxes have no matching asset yet and will be created as placeholders you can map later.": "طراحی استاندارد کمپوس Cisco SAFE متناسب با تعداد واقعی دارایی‌های شما. کادرهای توپر با یک دارایی واقعی موجود منطبق شده‌اند؛ کادرهای خاکستری خط‌چین هنوز دارایی منطبقی ندارند و به‌صورت جای‌نگهدار ساخته می‌شوند تا بعداً نگاشت کنید.",
   "Add a {{label}}": "افزودن {{label}}",
   "Add a device": "افزودن دستگاه",
@@ -33,6 +33,6 @@
   "Start from": "شروع از",
   "Start with an empty design and add components yourself.": "با یک طرح خالی شروع کنید و اجزا را خودتان اضافه کنید.",
   "Subnet": "زیرشبکه",
-  "v{{version_number}} · {{length}} component(s) · {{length2}} link(s)": "نسخهٔ {{version_number}} · {{length}} جزء · {{length2}} اتصال",
+  "v{{version_number}} · {{length}} component(s) · {{length2}} link(s)": "نسخهٔ {{version_number}}، {{length}} جزء، {{length2}} اتصال",
   "VLAN {{vlan}}": "VLAN {{vlan}}"
 }

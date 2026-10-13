@@ -314,7 +314,7 @@ function GroupDrawer({ group, options, canWrite, onClose, onSaved }) {
                     <section>
                         <h3 className="bkm-h3">
                             {g.kind === "dynamic" ? t("Assets that match now") : t("Assets in the group")}
-                            {count !== undefined && count !== null && <span className="bkm-muted"> · {n(count)}</span>}
+                            {count !== undefined && count !== null && <span className="bkm-muted"> ({n(count)})</span>}
                         </h3>
                         <div className="ag-members">
                             {shownAssets.map((a) => (

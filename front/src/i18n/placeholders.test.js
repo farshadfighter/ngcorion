@@ -20,4 +20,16 @@ describe("Persian translations", () => {
         }
         expect(wrong).toEqual([]);
     });
+
+    it("do not put a middle dot next to a number", () => {
+        // "·" beside a Persian digit reads as a zero (۲۴ · → ۲۴۰); Persian separates with "،".
+        const wrong = [];
+        for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+            const strings = JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
+            for (const [en, fa] of Object.entries(strings)) {
+                if (fa && /·\s*[۰-۹0-9{]|[۰-۹0-9}]\s*·/.test(fa)) wrong.push(`${file}: ${en} -> ${fa}`);
+            }
+        }
+        expect(wrong).toEqual([]);
+    });
 });

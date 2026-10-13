@@ -48,6 +48,7 @@ const ScheduledJobsPage = lazy(() => import("./components/Scheduling/ScheduledJo
 const CveFindings = lazy(() => import("./components/CVE/CveFindings").then((m) => ({ default: m.CveFindings })));
 const CveDatabase = lazy(() => import("./components/CVE/CveDatabase").then((m) => ({ default: m.CveDatabase })));
 const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m) => ({ default: m.NocDashboard })));
+const AssetDetailPage = lazy(() => import("./components/AssetList/AssetDetailPage").then((m) => ({ default: m.AssetDetailPage })));
 const SyslogPage = lazy(() => import("./components/NOC/SyslogPage").then((m) => ({ default: m.SyslogPage })));
 const NocHostList = lazy(() => import("./components/NOC/NocHostList").then((m) => ({ default: m.NocHostList })));
 const AlertsPage = lazy(() => import("./components/Alerts/AlertsPage").then((m) => ({ default: m.AlertsPage })));
@@ -181,6 +182,11 @@ function AppContent() {
                         <Route path="/assets/inventory" element={
                             <RequirePermission module="asset_list" name="Asset List">
                                 <AssetListRoute />
+                            </RequirePermission>
+                        } />
+                        <Route path="/assets/inventory/:assetId" element={
+                            <RequirePermission module="asset_list" name="Asset List">
+                                <AssetDetailPage />
                             </RequirePermission>
                         } />
                         <Route path="/assets/groups" element={

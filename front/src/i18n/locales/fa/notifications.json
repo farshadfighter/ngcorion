@@ -1,5 +1,5 @@
 {
-  " · {{open_alerts}} open": " · {{open_alerts}} باز",
+  " · {{open_alerts}} open": "، {{open_alerts}} باز",
   " · reminder": " · یادآوری",
   " · resolved notice": " · اطلاع رفع",
   " (no mobile)": " (بدون موبایل)",
@@ -68,7 +68,6 @@
   "NGCorion sends a JSON POST for each message, signed with a secret it generates. Internal addresses are allowed; this server's own addresses are not.": "NGCorion برای هر پیام یک درخواست POST با بدنهٔ JSON می‌فرستد که با کلیدی که خودش می‌سازد امضا شده است. نشانی‌های داخلی مجازند؛ نشانی‌های خود این سرور مجاز نیستند.",
   "No messages yet": "هنوز پیامی ارسال نشده",
   "not set up": "تنظیم نشده",
-  "Not set up": "تنظیم نشده",
   "off": "خاموش",
   "Off - send each alert at once": "خاموش - هر هشدار جداگانه ارسال شود",
   "On": "روشن",
@@ -117,7 +116,7 @@
   "Users get email at their account address and SMS at the mobile number in User Management.": "کاربران ایمیل را به نشانی حساب خود و پیامک را به شمارهٔ موبایل ثبت‌شده در مدیریت کاربران دریافت می‌کنند.",
   "Uses the syslog server set in System Configuration.": "از سرور Syslog تعریف‌شده در پیکربندی سیستم استفاده می‌کند.",
   "Waiting to retry": "در انتظار تلاش دوباره",
-  "Webhook · {{name}}": "وب‌هوک · {{name}}",
+  "Webhook · {{name}}": "وب‌هوک، {{name}}",
   "Where": "از چه راهی",
   "Where alerts are delivered. Counts cover the last 24 hours.": "مسیرهای ارسال هشدار. آمارها مربوط به ۲۴ ساعت اخیر است.",
   "Which assets": "کدام دارایی‌ها",

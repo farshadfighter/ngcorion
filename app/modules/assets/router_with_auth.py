@@ -204,6 +204,20 @@ def create_asset(
     return result
 
 
+@assets_router.get("/{asset_id}/360")
+def get_asset_360(asset_id: int, current_user: User = Depends(require_permission("ASSET_LIST", "read")),
+                  db: Session = Depends(get_db)):
+    """Everything about one asset on one page: identity, risk, audits, hardening, CVEs, remediation,
+    backups, monitoring, alerts, topology, software and a timeline - each section only when the user
+    may read its module (app/modules/assets/overview360.py)."""
+    from app.models import Asset
+    from app.modules.assets import overview360
+    asset = db.get(Asset, asset_id)
+    if asset is None:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return overview360.build(db, asset, current_user)
+
+
 @assets_router.get("/{asset_id}", response_model=AssetResponse)
 def get_asset(
     asset_id: int,

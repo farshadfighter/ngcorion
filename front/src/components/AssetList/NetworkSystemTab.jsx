@@ -2,6 +2,7 @@
  * Asset table tab: network and system columns.
  */
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { ManagePortsModal } from "./ManagePortsModal";
 import { isAssetComplete } from "./assetCompleteness";
@@ -80,7 +81,7 @@ export const NetworkSystemTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                             <td>
                                 <span className="asset-name-cell">
                                     <AssetIcon icon={asset.resolved_icon} size={28} />
-                                    {asset.asset_name}
+                                    <Link className="asset-name-link" to={`/assets/inventory/${asset.id}`}>{asset.asset_name}</Link>
                                 </span>
                             </td>
                             <td>{asset.serial_number || "-"}</td>

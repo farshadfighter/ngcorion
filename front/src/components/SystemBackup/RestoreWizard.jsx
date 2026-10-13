@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import api from "../../config/api.js";
-import { t, n } from "../../i18n";
+import { t, n, sep } from "../../i18n";
 import { tb } from "../../i18n/backendText";
 import { formatDateTime, formatWhen } from "../../utils/dates.js";
 import { KIND, PARTS, RESTORE_STEPS, bytes, contentsText, errorText } from "./format.js";
@@ -105,7 +105,7 @@ function Choose({ backups, onPick, onCancel }) {
                             <label key={b.id} className={`sbk-part ${picked === b.id ? "is-on" : ""}`}>
                                 <input type="radio" name="sbk-pick" checked={picked === b.id} onChange={() => setPicked(b.id)} />
                                 <div>
-                                    <b>{formatWhen(b.created_at)} · {KIND[b.kind]?.label}</b>
+                                    <b>{formatWhen(b.created_at)}{sep()}{KIND[b.kind]?.label}</b>
                                     <small>{contentsText(b.contents)}{b.note ? ` · ${b.note}` : ""}</small>
                                 </div>
                                 <span className="sbk-size">{bytes(b.size_bytes)}</span>
@@ -176,7 +176,7 @@ function Check({ backup, onBack, onCancel, onNext }) {
                 <section className="rep-stack">
                     <h3 className="bkm-h3">{t("Selected backup")}</h3>
                     <dl className="sbk-facts">
-                        <dt>{t("Made")}</dt><dd>{formatDateTime(info?.created_at || backup.created_at)} · {KIND[backup.kind]?.label}</dd>
+                        <dt>{t("Made")}</dt><dd>{formatDateTime(info?.created_at || backup.created_at)}{sep()}{KIND[backup.kind]?.label}</dd>
                         <dt>{t("Program version")}</dt>
                         <dd><span dir="ltr">{info?.app_version || backup.app_version || "—"}</span>{compat?.ok && ` · ${sameVersion ? t("same version") : t("older: upgraded during the restore")}`}</dd>
                         <dt>{t("Database version")}</dt><dd className="bkm-mono" dir="ltr">{info?.db_revision || backup.db_revision || "—"}</dd>

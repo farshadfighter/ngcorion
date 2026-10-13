@@ -78,6 +78,12 @@ export function hasStoredLanguage() {
 }
 export const isRtl = () => language === "fa";
 
+/**
+ * Separator between parts of a line ("12:04 · Manual"). In Persian a middle dot next to a Persian
+ * digit reads as a zero (۰), so Persian uses its comma.
+ */
+export const sep = () => (language === "fa" ? "، " : " · ");
+
 /** A number in the current language's digits. */
 export function n(value) {
     if (value === null || value === undefined || value === "") return value;

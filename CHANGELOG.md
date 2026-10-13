@@ -259,6 +259,23 @@ audit trail still append-only.
 - Every group, profile, bulk change and group audit is in the audit trail
   (who, what, which profile), without any secret.
 
+### One page per asset
+
+- Clicking an asset's name in the inventory opens its page
+  (/assets/inventory/<id>): type, status, address, tags, groups (static or by
+  rule), license coverage; risk score, latest compliance, vulnerabilities,
+  open and overdue remediation, last configuration backup and changes outside
+  NGCorion, SNMP and syslog; open alerts; latest audit of each technology,
+  top vulnerabilities, remediation items, backups with "What changed",
+  details, monitoring, topology neighbours, software and hardening; and a
+  timeline across all modules.
+- Each section shows only when the user may read its module; audits and
+  hardening follow the same "own items only" rule as their own pages
+  (GET /api/assets/{id}/360).
+- Persian: a middle dot next to a number read as a Persian zero ("۲۴ ·"
+  looked like "۲۴۰"); Persian now separates with "،", and a test keeps it so.
+  Backup coverage by device type uses Persian digits.
+
 ### Syslog from the assets
 
 - NGCorion receives syslog on UDP and TCP port 514 (Network & monitoring ->

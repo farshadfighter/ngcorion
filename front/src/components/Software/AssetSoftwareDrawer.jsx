@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../../config/api.js";
-import { isRtl, t, n } from "../../i18n";
+import { isRtl, t, n, sep } from "../../i18n";
 import { formatDate, formatDateTime, relativeDays } from "../../utils/dates.js";
 import { tb } from "../../i18n/backendText";
 import { CollectForm } from "./CollectForm.jsx";
@@ -365,7 +365,7 @@ function Changes({ assetId, data, reload }) {
                                 onClick={() => setSelected(c.id)}>
                             <span className={`sw-dot ${c.status === "ok" ? "is-ok" : "is-bad"}`} aria-hidden="true" />
                             <span>
-                                {formatDateTime(c.collected_at)} · {c.trigger === "manual" ? t("collected on demand") : (COLLECTOR[c.collector] || c.collector)}
+                                {formatDateTime(c.collected_at)}{sep()}{c.trigger === "manual" ? t("collected on demand") : (COLLECTOR[c.collector] || c.collector)}
                                 <span className="bkm-sub">
                                     {c.status !== "ok" ? tb(c.error || "") : c.summary?.first ? t("first list · {{count}} items", { count: c.items })
                                         : t("{{count}} changes", { count: c.added + c.updated + c.removed })}

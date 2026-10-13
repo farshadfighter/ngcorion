@@ -163,7 +163,7 @@ export function BackupOverview() {
                                                 <span className="bkm-track" title={`${Math.round(ratio * 100)}%`}>
                                                     <span style={{ width: `${Math.round(ratio * 100)}%`, background: ratio >= 0.9 ? "#166534" : ratio >= 0.6 ? "#1e3a5f" : "#c2410c" }} />
                                                 </span>
-                                                <span className="bkm-mono bkm-right">{f.fresh}/{f.total}</span>
+                                                <span className="bkm-right">{n(`${f.fresh}/${f.total}`)}</span>
                                             </div>
                                         );
                                     })}

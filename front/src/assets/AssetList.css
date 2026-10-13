@@ -1060,3 +1060,5 @@ td.completeness-indicator.incomplete {
     background: #FEE2E2;
     border: 1px solid #FECACA;
 }
+.asset-name-link { color: inherit; text-decoration: none; }
+.asset-name-link:hover { color: #1e3a5f; text-decoration: underline; }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../config/api.js";
 import { formatWhen } from "../../utils/dates.js";
-import { t } from "../../i18n";
+import { t, sep } from "../../i18n";
 import { tx } from "../../i18n/tx";
 
 function Stats({ s }) {
@@ -215,7 +215,7 @@ export function ChannelsTab({ channels: c, error, canWrite, onChanged }) {
                         <Kv k="URL"><span className="bkm-mono alr-clip" title={h.url}>{h.url}</span></Kv>
                         <Kv k="Format">{t("JSON · HMAC-SHA256 signature")}</Kv>
                         {h.last_error
-                            ? <Kv k="Last error" warn>{h.last_error} · {formatWhen(h.last_error_at)}</Kv>
+                            ? <Kv k="Last error" warn>{h.last_error}{sep()}{formatWhen(h.last_error_at)}</Kv>
                             : <Kv k="Last delivered">{h.last_success_at ? formatWhen(h.last_success_at) : t("Never")}</Kv>}
                     </Card>
                 ))}

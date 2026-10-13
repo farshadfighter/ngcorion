@@ -110,7 +110,7 @@ function BulkModal({ action, ids, owners, locations, onClose, onDone }) {
                             <div className="ag-tags">
                                 {tags.slice(0, 20).map((x) => (
                                     <button key={x.tag} type="button" className="ag-tag" onClick={() => setValue(tagList.includes(x.tag) ? value : [...tagList, x.tag].join(", "))}>
-                                        {x.tag} · {n(x.count)}
+                                        {x.tag} ({n(x.count)})
                                     </button>
                                 ))}
                             </div>

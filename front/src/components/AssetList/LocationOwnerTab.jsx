@@ -2,6 +2,7 @@
  * Asset table tab: location and owner columns.
  */
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
 import { t, n } from "../../i18n";
@@ -71,7 +72,7 @@ export const LocationOwnerTab = ({ assets, onEdit, onDelete, onViewHistory, isNe
                             <td>
                                 <span className="asset-name-cell">
                                     <AssetIcon icon={asset.resolved_icon} size={28} />
-                                    {asset.asset_name}
+                                    <Link className="asset-name-link" to={`/assets/inventory/${asset.id}`}>{asset.asset_name}</Link>
                                 </span>
                             </td>
                             <td>{asset.location_name || "-"}</td>

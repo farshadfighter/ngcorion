@@ -6,7 +6,7 @@ import AssetIcon from '../shared/AssetIcon.jsx';
 import {
     RESTORE_STATUS_LABELS, formatDateTime, isRestorable, sourceLabel,
 } from './restoreConstants.js';
-import { t } from "../../i18n";
+import { t, sep } from "../../i18n";
 import { ChangeBadge } from './ChangeBadge.jsx';
 
 const formatDate = formatDateTime;
@@ -147,7 +147,7 @@ export const BackupAssetDetail = ({
                                 <span className="backup-restore-reason" title={r.reason}>{r.reason}</span>
                             </span>
                             <span className="backup-restore-meta">
-                                {r.requested_by_username || '-'} · {formatDate(r.created_at)}
+                                {r.requested_by_username || '-'}{sep()}{formatDate(r.created_at)}
                             </span>
                             <button className="backup-restore-open" onClick={() => onOpenRestore(r.id)}>
                                 {t("Details")}

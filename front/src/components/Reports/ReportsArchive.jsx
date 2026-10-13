@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
-import { currentLanguage, t, n } from "../../i18n";
+import { currentLanguage, t, n, sep } from "../../i18n";
 import { tb } from "../../i18n/backendText";
 import { formatDateTime, formatWhen } from "../../utils/dates.js";
 import { STATUS, download, errorText, fileSize, periodText } from "./reportFormat.js";
@@ -241,7 +241,7 @@ function VerifyModal({ onClose }) {
                 {result && (result.match ? (
                     <div className="rep-verdict ok" role="status">
                         <b>{t("Authentic: this file was built by NGCorion and has not changed.")}</b>
-                        <div>{result.title} · <span className="bkm-mono">{result.code}</span> · {formatDateTime(result.created_at)}{result.created_by ? ` · ${result.created_by}` : ""}</div>
+                        <div>{result.title} · <span className="bkm-mono">{result.code}</span>{sep()}{formatDateTime(result.created_at)}{result.created_by ? `${sep()}${result.created_by}` : ""}</div>
                         <div className="rep-hash">SHA-256 {result.sha256}</div>
                     </div>
                 ) : (

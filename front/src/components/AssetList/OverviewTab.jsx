@@ -2,6 +2,7 @@
  * Asset table tab: overview columns.
  */
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import { isAssetComplete } from "./assetCompleteness";
 import { t, n } from "../../i18n";
@@ -76,7 +77,7 @@ export const OverviewTab = ({ assets, onEdit, onDelete, onViewHistory, isNewAsse
                             <td>
                                 <span className="asset-name-cell">
                                     <AssetIcon icon={asset.resolved_icon} size={28} />
-                                    {asset.asset_name}
+                                    <Link className="asset-name-link" to={`/assets/inventory/${asset.id}`}>{asset.asset_name}</Link>
                                     {isOutsideLicense(asset) && (
                                         <span className="asset-outside-license" title={t("Audits and hardening are not available for this asset under the current license")}>
                                             {t("Outside license")}

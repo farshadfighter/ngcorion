@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../config/api.js";
 import { usePermission } from "../../hooks/usePermission";
-import { t, n } from "../../i18n";
+import { t, n, sep } from "../../i18n";
 import { tb } from "../../i18n/backendText";
 import { formatDate, formatWhen } from "../../utils/dates.js";
 import { STATUS, download } from "./reportFormat.js";
@@ -54,7 +54,7 @@ export function ReportsCatalog() {
                             <div>
                                 <b title={r.title}>{r.title}</b>
                                 <span className="bkm-sub">
-                                    {r.schedule ? t("Scheduled") : r.created_by} · {formatWhen(r.created_at)}
+                                    {r.schedule ? t("Scheduled") : r.created_by}{sep()}{formatWhen(r.created_at)}
                                     {r.page_count ? ` · ${t("{{count}} pages", { count: r.page_count })}` : ""}
                                 </span>
                             </div>
