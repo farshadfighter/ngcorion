@@ -123,7 +123,7 @@ ARG NGCORION_VERSION=dev
 LABEL org.opencontainers.image.title="NGCorion" \
       org.opencontainers.image.version="$NGCORION_VERSION"
 
-EXPOSE 8000
+EXPOSE 8000 5514/udp 5514/tcp
 
 # Run `alembic upgrade head` before the server starts (see entrypoint.sh).
 RUN chmod +x /app/entrypoint.sh

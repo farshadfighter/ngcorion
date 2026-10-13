@@ -30,7 +30,8 @@ ROOT = Path(__file__).resolve().parents[3]
 # What each optional part of a backup holds. Every other table is "essential".
 CATEGORY_TABLES = {
     "cve": ("cve_entries", "cve_cpe_matches"),
-    "noc_history": ("asset_metric_samples", "asset_metric_rollups"),
+    # monitoring history: interface samples and rollups, and the syslog messages of the assets
+    "noc_history": ("asset_metric_samples", "asset_metric_rollups", "syslog_messages"),
     "reports": ("report_files",),
 }
 CATEGORIES = ("essential",) + tuple(CATEGORY_TABLES)

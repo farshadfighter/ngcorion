@@ -10,6 +10,7 @@ const ORDER = ["validate", "maintenance", "safety", "staging", "load", "check", 
 const CARRIED = {
     cve_entries: PARTS.cve.label, cve_cpe_matches: PARTS.cve.label,
     asset_metric_samples: PARTS.noc_history.label, asset_metric_rollups: PARTS.noc_history.label,
+    syslog_messages: PARTS.noc_history.label,
     report_files: PARTS.reports.label, backup_destinations: t("Backup destinations"),
 };
 const HIGHLIGHTS = [

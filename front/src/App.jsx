@@ -48,6 +48,7 @@ const ScheduledJobsPage = lazy(() => import("./components/Scheduling/ScheduledJo
 const CveFindings = lazy(() => import("./components/CVE/CveFindings").then((m) => ({ default: m.CveFindings })));
 const CveDatabase = lazy(() => import("./components/CVE/CveDatabase").then((m) => ({ default: m.CveDatabase })));
 const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m) => ({ default: m.NocDashboard })));
+const SyslogPage = lazy(() => import("./components/NOC/SyslogPage").then((m) => ({ default: m.SyslogPage })));
 const NocHostList = lazy(() => import("./components/NOC/NocHostList").then((m) => ({ default: m.NocHostList })));
 const AlertsPage = lazy(() => import("./components/Alerts/AlertsPage").then((m) => ({ default: m.AlertsPage })));
 const NotificationsPage = lazy(() => import("./components/Notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
@@ -341,6 +342,11 @@ function AppContent() {
                         <Route path="/noc/hosts/:assetId" element={
                             <RequirePermission module="noc" name="NOC Host">
                                 <NocHostDetail />
+                            </RequirePermission>
+                        } />
+                        <Route path="/noc/syslog" element={
+                            <RequirePermission module="noc" name="Syslog">
+                                <SyslogPage />
                             </RequirePermission>
                         } />
 

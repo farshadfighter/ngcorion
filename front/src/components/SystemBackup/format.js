@@ -20,7 +20,7 @@ export const PARTS = {
     },
     reports: { label: t("Report files"), hint: t("PDF and Excel files of archived reports") },
     cve: { label: t("CVE database"), hint: t("Can be rebuilt from an offline package or an online update") },
-    noc_history: { label: t("NOC monitoring history"), hint: t("Interface usage and availability samples and rollups") },
+    noc_history: { label: t("NOC monitoring history"), hint: t("Interface usage and availability samples and rollups, and the syslog messages of the assets") },
 };
 export const PART_ORDER = ["essential", "reports", "cve", "noc_history"];
 

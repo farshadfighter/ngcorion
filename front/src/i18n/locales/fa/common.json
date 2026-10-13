@@ -130,6 +130,7 @@
   "Since {{date}}": "از {{date}}",
   "Steps": "مراحل",
   "Suggested Design": "طرح پیشنهادی",
+  "Syslog messages the assets send to NGCorion.": "پیام‌های Syslog که دارایی‌ها به NGCorion می‌فرستند.",
   "System Configuration": "پیکربندی سیستم",
   "The deadline to set it up was {{date}}.": "مهلت راه‌اندازی {{date}} بود.",
   "The network as it actually is right now - every real asset and the cabling between them.": "شبکه همان‌طور که اکنون هست - همهٔ دارایی‌های واقعی و اتصالات میان آن‌ها.",

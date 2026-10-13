@@ -153,6 +153,7 @@ export const DashboardLayout = () => {
         "cve-database":        t("Vulnerability database"),
         "noc-dashboard":       t("Network status (NOC)"),
         "noc-hosts":           t("Hosts"),
+        "noc-syslog":          t("Syslog"),
         "user-management":     t("User Management"),
         "system-logs":         t("Logs and audit trail"),
         "audit-trail":         t("Logs and audit trail"),
@@ -171,6 +172,7 @@ export const DashboardLayout = () => {
         "design-configuration": t("Draw a planned blueprint here, even for devices that don't exist yet. Versioned, so you can compare a design's history over time."),
         "noc-dashboard": t("Live SNMP status for every asset, plotted on the same topology graph as Topology."),
         "noc-hosts": t("Every asset, searchable - open one to see its SNMP details and set up monitoring."),
+        "noc-syslog": t("Syslog messages the assets send to NGCorion."),
     };
 
     return (

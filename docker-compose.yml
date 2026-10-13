@@ -158,6 +158,13 @@ services:
       CVE_MAX_PACKAGE_MB: ${CVE_MAX_PACKAGE_MB:-2048}
     expose:
       - "8000"
+    ports:
+      # Syslog from the assets (Network & monitoring -> Syslog, off until a system administrator
+      # turns it on). The app does not run as root, so it listens on 5514; the host's standard
+      # port 514 is published to it. Docker's port mapping keeps the sender's address, which is
+      # how a message is matched to its asset. Port 8000 stays unpublished (see FORWARDED_ALLOW_IPS).
+      - "${SYSLOG_BIND_ADDR:-0.0.0.0}:514:5514/udp"
+      - "${SYSLOG_BIND_ADDR:-0.0.0.0}:514:5514/tcp"
     # /health answers 503 when the database is unreachable (app/modules/system_health.py).
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).status == 200 else 1)"]

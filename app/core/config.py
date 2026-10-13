@@ -201,6 +201,12 @@ class Settings(BaseSettings):
     NOC_METRICS_STORAGE_BUDGET_GB: float = 10.0
     NOC_METRICS_STORAGE_EVICT_THRESHOLD: float = 0.8
 
+    # Syslog intake (app/modules/syslog): the port the listener binds inside the container. The
+    # container does not run as root, so it listens on 5514 and docker-compose publishes the
+    # standard port 514 (UDP and TCP) of the host to it. Turned on and off in System Configuration.
+    SYSLOG_BIND_ADDRESS: str = "0.0.0.0"
+    SYSLOG_PORT: int = 5514
+
     # Audit storage (FAU_STG.4, app/core/storage_guard.py): below this much free disk, changes are
     # refused to everyone but system administrators and scheduled work waits, so the space left
     # goes to recording what administrators do to free it. The "Disk space low" alert (2 GB by

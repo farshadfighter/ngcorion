@@ -256,6 +256,15 @@ const TEMPLATES = [
     msg("{{group_name}} ({{technology}}): {{failed}} asset(s) could not be backed up"),
     msg("{{added_lines}} line(s) added and {{removed_lines}} removed since the previous backup"),
     msg("{{added_lines}} line(s) added and {{removed_lines}} removed ({{change_ref}})"),
+    // syslog intake (app/modules/syslog)
+    msg("{{n}} message(s), latest: {{latest}}"),
+    msg("No syslog message for {{hours}} hours or more (last one at {{last}} UTC)"),
+    msg("{{dropped}} message(s) dropped; add the device to the inventory to keep them"),
+    msg("Syslog intake is turned on but not receiving: {{reason}}"),
+    msg("An asset sends a syslog message at severity {{severity}} or worse (0 emergency ... 7 debug)"),
+    msg("An asset that sends syslog has sent nothing for {{hours}} hours"),
+    msg("Exported {{rows}} syslog messages"),
+    msg("Syslog intake settings: {{protocols}}, kept {{days}} days, at most {{gb}} GB, levels up to {{level}}"),
 ];
 
 // ── Fixed sentences: translated by exact match ────────────────────────────
@@ -988,4 +997,19 @@ msg("This device type cannot be backed up");
 msg("The device returned an empty configuration");
 msg("NGCorion restarted while this asset was being processed");
 msg("Compare two backups of the same asset");
+
+// syslog intake (app/modules/syslog)
+msg("Severe syslog message");
+msg("Asset stopped sending syslog");
+msg("Syslog from an address outside the inventory");
+msg("Syslog intake not listening");
+msg("An address that is not an asset sends syslog (its messages are dropped)");
+msg("Syslog intake is turned on but the port cannot be opened or the listener stopped");
+msg("Severity (0 emergency, 1 alert, 2 critical, 3 error, 4 warning)");
+msg("Quiet for");
+msg("Syslog intake turned on");
+msg("Syslog intake turned off");
+msg("Choose UDP, TCP or both");
+msg("the listener is not running");
+msg("Syslog intake");
 msg("group_id and credential_profile_id are required for a backup job");

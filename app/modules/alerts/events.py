@@ -204,6 +204,82 @@ def _interface_utilization(db: Session, params: Dict, now: datetime, since: date
 
 
 # ---------------------------------------------------------------------------
+# Syslog received from the assets (app/modules/syslog)
+# ---------------------------------------------------------------------------
+
+def _syslog_severe(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Messages at the chosen severity or worse since the last check, one alert per asset and check."""
+    from sqlalchemy import func
+    from app.models import Asset
+    from app.models.syslog import SyslogMessage
+    level = int(params.get("severity", 2))
+    since = since.replace(tzinfo=None) if since.tzinfo else since
+    rows = (db.query(SyslogMessage.asset_id, func.count(SyslogMessage.id), func.max(SyslogMessage.id))
+            .filter(SyslogMessage.received_at >= since, SyslogMessage.severity <= level)
+            .group_by(SyslogMessage.asset_id).all())
+    out = []
+    for asset_id, n, last_id in rows:
+        last = db.get(SyslogMessage, last_id)
+        asset = db.get(Asset, asset_id)
+        latest = f"{last.app_name}: {last.message}" if last.app_name else last.message
+        latest = latest[:300]
+        out.append(Problem(key=f"syslog:{asset_id}:{last_id}", title="Severe syslog message",
+                           detail=f"{n} message(s), latest: {latest}",
+                           asset_id=asset_id, source_label=_label(asset),
+                           link=f"/noc/syslog?asset={asset_id}&severity={level}"))
+    return out
+
+
+def _syslog_silent(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Assets that used to send syslog and have been quiet for the chosen number of hours."""
+    from app.models.syslog import SyslogSource
+    from app.modules.syslog import settings as syslog_settings
+    if not syslog_settings.get_settings(db)["enabled"]:
+        return []
+    hours = int(params.get("hours", 24))
+    now = now.replace(tzinfo=None) if now.tzinfo else now
+    rows = (db.query(SyslogSource).options(joinedload(SyslogSource.asset))
+            .filter(SyslogSource.asset_id.isnot(None), SyslogSource.received > 0,
+                    SyslogSource.last_seen < now - timedelta(hours=hours)).all())
+    out = []
+    for s in rows:
+        last = s.last_seen
+        out.append(Problem(key=f"asset:{s.asset_id}", title="Asset stopped sending syslog",
+                           detail=f"No syslog message for {hours} hours or more (last one at {last:%Y-%m-%d %H:%M} UTC)",
+                           asset_id=s.asset_id, source_label=_label(s.asset), link=f"/noc/syslog?asset={s.asset_id}"))
+    return out
+
+
+def _syslog_unknown(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Addresses outside the inventory that sent syslog in the last day (their messages are dropped)."""
+    from app.models.syslog import SyslogSource
+    now = now.replace(tzinfo=None) if now.tzinfo else now
+    rows = (db.query(SyslogSource).filter(SyslogSource.asset_id.is_(None),
+                                          SyslogSource.last_seen >= now - timedelta(hours=24))
+            .order_by(SyslogSource.last_seen.desc()).limit(100).all())
+    out = []
+    for s in rows:
+        dropped = s.dropped
+        out.append(Problem(key=f"source:{s.source_ip}", title="Syslog from an address outside the inventory",
+                           detail=f"{dropped} message(s) dropped; add the device to the inventory to keep them",
+                           source_label=s.source_ip, link="/noc/syslog?tab=sources"))
+    return out
+
+
+def _syslog_not_listening(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """The intake is turned on but the listener is not receiving (port taken, task stopped)."""
+    from app.modules.syslog.router import listener_status
+    now = now.replace(tzinfo=None) if now.tzinfo else now
+    st = listener_status(db, now)
+    if not st.enabled or st.listening and not st.error:
+        return []
+    reason = st.error or "the listener is not running"
+    return [Problem(key="syslog:listener", title="Syslog intake not listening",
+                    detail=f"Syslog intake is turned on but not receiving: {reason}", source_label="NGCorion",
+                    link="/noc/syslog?tab=settings")]
+
+
+# ---------------------------------------------------------------------------
 # CVE
 # ---------------------------------------------------------------------------
 
@@ -458,7 +534,7 @@ def _license_problem(db: Session, params: Dict, now: datetime, since: datetime) 
 BACKGROUND_TASKS = (("job-scheduler", "Job scheduler"), ("noc-poller", "NOC poller"),
                     ("noc-metrics-retention", "NOC metrics rollup"), ("cve-auto-update", "CVE automatic update"),
                     ("system-backup", "NGCorion backup"), ("directory-check", "Directory account check"),
-                    ("group-runs", "Group audits"))
+                    ("group-runs", "Group audits"), ("syslog-intake", "Syslog intake"))
 
 
 def _task_stopped(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
@@ -651,6 +727,20 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
               "An enabled interface goes down", "state", 60, _interface_down,
               params=[Param("linked_only", "Only interfaces used by a Topology link (1 = yes, 0 = every port)",
                             1, "", 0, 1)], uses_assets=True),
+    EventType("noc.syslog_severe", "noc", "Severe syslog message",
+              "An asset sends a syslog message at severity {severity} or worse (0 emergency ... 7 debug)",
+              "event", 60, _syslog_severe,
+              params=[Param("severity", "Severity (0 emergency, 1 alert, 2 critical, 3 error, 4 warning)", 2, "",
+                            0, 7)], uses_assets=True),
+    EventType("noc.syslog_silent", "noc", "Asset stopped sending syslog",
+              "An asset that sends syslog has sent nothing for {hours} hours", "state", 600, _syslog_silent,
+              params=[Param("hours", "Quiet for", 24, "hours", 1, 720)], uses_assets=True),
+    EventType("noc.syslog_unknown", "noc", "Syslog from an address outside the inventory",
+              "An address that is not an asset sends syslog (its messages are dropped)", "state", 600,
+              _syslog_unknown, severity="info", channels=[], enabled=False),
+    EventType("system.syslog_not_listening", "system", "Syslog intake not listening",
+              "Syslog intake is turned on but the port cannot be opened or the listener stopped", "state", 120,
+              _syslog_not_listening, severity="critical"),
     EventType("noc.interface_utilization", "noc", "Interface utilization high",
               "Above {percent}% for {minutes} minutes", "state", 300, _interface_utilization,
               params=[Param("percent", "Utilization", 90, "%", 1, 100),

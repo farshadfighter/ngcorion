@@ -259,6 +259,32 @@ audit trail still append-only.
 - Every group, profile, bulk change and group audit is in the audit trail
   (who, what, which profile), without any secret.
 
+### Syslog from the assets
+
+- NGCorion receives syslog on UDP and TCP port 514 (Network & monitoring ->
+  Syslog). Off until a system administrator turns it on; on, off, UDP/TCP,
+  retention (30 days by default), a disk budget (5 GB, the oldest go first)
+  and which levels are kept take effect within 15 seconds, without a restart,
+  and are in the audit trail.
+- Only addresses of assets in the inventory are kept; messages from other
+  addresses are dropped and those addresses listed, so the device can be
+  added. Per-address rate limit, message size limit, TCP connection limits.
+- RFC 5424, BSD/RFC 3164 (Linux, Cisco IOS with sequence numbers and
+  origin-id) and FortiGate key=value logs are parsed into time, host, program
+  or event name, severity and text; TCP takes one message per line or octet
+  counting.
+- The page: messages with asset, severity, period and text filters, live
+  refresh, older pages, CSV export; which assets send and when they last did;
+  the addresses outside the inventory; how to set up Cisco IOS, FortiGate and
+  rsyslog.
+- Alerts: "Severe syslog message" (critical or worse by default), "Asset
+  stopped sending syslog" (24 hours), "Syslog from an address outside the
+  inventory" (off by default), "Syslog intake not listening".
+- docker-compose publishes the host's port 514 (UDP/TCP) to the container's
+  5514 (the app does not run as root); SYSLOG_BIND_ADDR limits it to one
+  interface. Syslog messages are part of the optional "NOC monitoring
+  history" in NGCorion backups.
+
 ### Scheduled configuration backups and change detection
 
 - Backup schedules (Device backups → Backup schedules): back up every device

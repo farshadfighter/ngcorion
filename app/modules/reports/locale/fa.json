@@ -564,5 +564,9 @@
   "Configuration changed outside NGCorion": "تغییر پیکربندی بیرون از NGCorion",
   "Configuration changed by NGCorion": "تغییر پیکربندی توسط NGCorion",
   "Group backup finished with failures": "پشتیبان‌گیری گروهی با خطا پایان یافت",
-  "Scheduled backup failed": "پشتیبان‌گیری زمان‌بندی‌شده ناموفق بود"
+  "Scheduled backup failed": "پشتیبان‌گیری زمان‌بندی‌شده ناموفق بود",
+  "Severe syslog message": "پیام Syslog شدید",
+  "Asset stopped sending syslog": "دارایی دیگر Syslog نمی‌فرستد",
+  "Syslog from an address outside the inventory": "Syslog از نشانی‌ای بیرون از فهرست دارایی‌ها",
+  "Syslog intake not listening": "دریافت Syslog فعال نیست"
 }

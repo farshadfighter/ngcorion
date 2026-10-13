@@ -286,6 +286,7 @@ async def lifespan(app: FastAPI):
     from app.modules.sysbackup.engine import start_backup_worker, stop_backup_worker
     from app.modules.directory.engine import start_directory_check, stop_directory_check
     from app.modules.asset_groups.runs import start_group_runs, stop_group_runs
+    from app.modules.syslog.listener import start_syslog_intake, stop_syslog_intake
     singletons = [
         SingletonTask("job-scheduler", start_job_scheduler, stop_job_scheduler),
         SingletonTask("noc-poller", start_noc_poller, stop_noc_poller),
@@ -297,6 +298,7 @@ async def lifespan(app: FastAPI):
         SingletonTask("system-backup", start_backup_worker, stop_backup_worker),
         SingletonTask("directory-check", start_directory_check, stop_directory_check),
         SingletonTask("group-runs", start_group_runs, stop_group_runs),
+        SingletonTask("syslog-intake", start_syslog_intake, stop_syslog_intake),
     ]
     for task in singletons:
         task.start()
@@ -625,6 +627,10 @@ app.include_router(device_keys_router)
 # The security audit trail for review: search, filters, paging, CSV export (LOGS read).
 from app.modules.audit_trail import router as audit_trail_router
 app.include_router(audit_trail_router)
+
+# Syslog received from the assets: messages, overview, settings (NOC read; settings admins only).
+from app.modules.syslog.router import router as syslog_router
+app.include_router(syslog_router)
 
 
 # --- SPA catch-all ----------------------------------------------------------

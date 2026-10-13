@@ -108,7 +108,7 @@
   "How many to keep": "چند نسخه نگه داشته شود",
   "HTTPS certificate, SSH host keys of devices (known_hosts)": "گواهی HTTPS، کلیدهای میزبان SSH دستگاه‌ها (known_hosts)",
   "Inside": "داخل پشتیبان",
-  "Interface usage and availability samples and rollups": "نمونه‌ها و خلاصه‌های مصرف رابط‌ها و دسترس‌پذیری",
+  "Interface usage and availability samples and rollups, and the syslog messages of the assets": "نمونه‌ها و خلاصه‌های مصرف و دسترس‌پذیری رابط‌ها، و پیام‌های Syslog دارایی‌ها",
   "Keep this window open. NGCorion is in maintenance mode until the restore ends.": "این پنجره را باز نگه دارید. NGCorion تا پایان بازیابی در حالت نگهداری است.",
   "Keeping what the backup does not hold": "نگه داشتن آنچه در پشتیبان نیست",
   "Kept from the running system: {{tables}}": "از سیستم در حال کار نگه داشته شد: {{tables}}",
