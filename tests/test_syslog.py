@@ -112,6 +112,25 @@ def test_parses_the_formats_devices_send():
     p = parse(b'<189>date=2026-10-13 time=10:20:30 devname="FGT-HQ" type="event" subtype="system"', NOW)
     assert (p.app_name, p.message) == ("event/system", 'date=2026-10-13 time=10:20:30 devname="FGT-HQ" type="event" subtype="system"')
 
+    # Cisco NX-OS puts the year first, with or without ": " before it; it is not RFC 5424
+    p = parse(b"<189>2026 Oct 13 10:00:01 nx1 %VSHD-5-VSHD_SYSLOG_CONFIG_I: Configured from vty by admin on 10.1.1.5@pts/0",
+              NOW)
+    assert (p.hostname, p.app_name, p.device_time) == ("nx1", "%VSHD-5-VSHD_SYSLOG_CONFIG_I", datetime(2026, 10, 13, 10, 0, 1))
+    assert p.message == "Configured from vty by admin on 10.1.1.5@pts/0"
+    p = parse(b"<189>: 2026 Oct 13 10:00:01.250 UTC: %ETHPORT-5-IF_DOWN_LINK_FAILURE: Interface Ethernet1/1 is down", NOW)
+    assert (p.app_name, p.device_time, p.message) == ("%ETHPORT-5-IF_DOWN_LINK_FAILURE", datetime(2026, 10, 13, 10, 0, 1),
+                                                      "Interface Ethernet1/1 is down")
+    # a relay's header in front of the device's own sequence number and time, or before the mnemonic alone
+    p = parse(b"<189>Oct 13 10:00:02 core-sw-01 123: Oct 13 10:00:01.123 UTC: %SYS-5-CONFIG_I: Configured from console by admin",
+              NOW)
+    assert (p.hostname, p.app_name, p.device_time, p.message) == (
+        "core-sw-01", "%SYS-5-CONFIG_I", datetime(2026, 10, 13, 10, 0, 1), "Configured from console by admin")
+    p = parse(b"<189>Oct 13 10:00:02 sw1 77: %SYS-5-CONFIG_I: Configured from console by admin", NOW)
+    assert (p.hostname, p.app_name) == ("sw1", "%SYS-5-CONFIG_I")
+    # RFC 5424 without a time still parses
+    p = parse(b"<165>1 - host1 app - - - no time", NOW)
+    assert (p.device_time, p.hostname, p.app_name, p.message) == (None, "host1", "app", "no time")
+
     # a BSD time without a year in the future is last year's
     assert parse(b"<14>Dec 31 23:59:59 host app: x", NOW).device_time.year == 2025
 

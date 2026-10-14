@@ -287,9 +287,10 @@ audit trail still append-only.
   addresses are dropped and those addresses listed, so the device can be
   added. Per-address rate limit, message size limit, TCP connection limits.
 - RFC 5424, BSD/RFC 3164 (Linux, Cisco IOS with sequence numbers and
-  origin-id) and FortiGate key=value logs are parsed into time, host, program
-  or event name, severity and text; TCP takes one message per line or octet
-  counting.
+  origin-id, Cisco NX-OS with the year first, a relay's header in front of
+  the device's own) and FortiGate key=value logs are parsed into time, host,
+  program or event name, severity and text; TCP takes one message per line or
+  octet counting.
 - The page: messages with asset, severity, period and text filters, live
   refresh, older pages, CSV export; which assets send and when they last did;
   the addresses outside the inventory; how to set up Cisco IOS, FortiGate and

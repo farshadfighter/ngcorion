@@ -4,8 +4,10 @@ Parsing one syslog message (the bytes of one UDP datagram or one TCP frame).
 Accepted forms:
 - RFC 5424: "<PRI>1 TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [SD] MSG".
 - BSD / RFC 3164 as devices really send it: "<PRI>Oct 13 10:00:00 host tag[pid]: text", Cisco IOS
-  ("<189>45: *Oct 13 10:00:00.123: %SYS-5-CONFIG_I: Configured from console by admin"), an ISO
-  timestamp instead of the BSD one.
+  ("<189>45: *Oct 13 10:00:00.123: %SYS-5-CONFIG_I: Configured from console by admin"), Cisco
+  NX-OS with the year first ("<189>2026 Oct 13 10:00:00 nx1 %VSHD-5-...: text", also after ": "),
+  an ISO timestamp instead of the BSD one, and a relay's header in front of the device's own
+  ("Oct 13 10:00:01 sw1 123: Oct 13 10:00:01.123 UTC: %SYS-5-CONFIG_I: ...").
 - FortiOS key=value logs ("<189>date=2026-10-13 time=10:00:00 devname=\"FGT\" ... msg=\"...\"").
 Anything else is kept whole as the message (severity "notice", the RFC 3164 default).
 
@@ -27,6 +29,8 @@ _MONTHS = {m: i for i, m in enumerate(
     ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), 1)}
 # "Oct 13 10:00:00", "Oct  3 10:00:00.123", "*Oct 13 10:00:00.123 UTC" (Cisco: * or . = clock not synced)
 _BSD_TIME = re.compile(r"^[*.]?([A-Z][a-z]{2}) +(\d{1,2}) (\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?: [A-Z]{2,5})?:? ")
+# NX-OS: "2026 Oct 13 10:00:00", "2026 Oct 13 10:00:00.123 UTC:"
+_YEAR_TIME = re.compile(r"^(\d{4}) ([A-Z][a-z]{2}) +(\d{1,2}) (\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?: [A-Z]{2,5})?:? ")
 _ISO_TIME = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})?) ")
 _CISCO_SEQ = re.compile(r"^\d{1,10}: ")
 # Cisco "logging origin-id hostname": "router1: *Oct 13 10:00:00 ..."
@@ -84,6 +88,28 @@ def _bsd(m: "re.Match", now: datetime) -> Optional[datetime]:
     return dt
 
 
+def _year(m: "re.Match") -> Optional[datetime]:
+    try:
+        return datetime(int(m.group(1)), _MONTHS[m.group(2)], int(m.group(3)),
+                        int(m.group(4)), int(m.group(5)), int(m.group(6)))
+    except (KeyError, ValueError):
+        return None
+
+
+def _timestamp(rest: str, now: datetime) -> Tuple[Optional[datetime], str]:
+    """The device time at the start of `rest` (BSD, NX-OS year-first or ISO) and what follows it."""
+    m = _BSD_TIME.match(rest)
+    if m:
+        return _bsd(m, now), rest[m.end():]
+    m = _YEAR_TIME.match(rest)
+    if m:
+        return _year(m), rest[m.end():]
+    m = _ISO_TIME.match(rest)
+    if m:
+        return _iso(m.group(1)), rest[m.end():]
+    return None, rest
+
+
 def _structured_data_end(text: str) -> int:
     """Where the STRUCTURED-DATA of an RFC 5424 message ends ("-" or one or more [..] elements, in
     which "]" can be escaped)."""
@@ -100,7 +126,9 @@ def _structured_data_end(text: str) -> int:
 
 def _rfc5424(rest: str) -> Optional[Tuple[Optional[datetime], Optional[str], Optional[str], str]]:
     parts = rest.split(" ", 6)
-    if len(parts) < 6 or not parts[0].isdigit():
+    # VERSION is 1-2 digits and TIMESTAMP "-" or RFC 3339 ("2026 Oct 13 ..." from NX-OS is not 5424)
+    if len(parts) < 6 or not (parts[0].isdigit() and len(parts[0]) <= 2) \
+            or not (parts[1] == "-" or re.match(r"^\d{4}-\d{2}-\d{2}T", parts[1])):
         return None
     _version, ts, host, app, _procid, _msgid = parts[:6]
     tail = parts[6] if len(parts) > 6 else ""
@@ -134,23 +162,27 @@ def _fortios(rest: str) -> Optional[Tuple[Optional[datetime], Optional[str], Opt
 
 
 def _bsd_form(rest: str, now: datetime) -> Tuple[Optional[datetime], Optional[str], Optional[str], str]:
-    when, host = None, None
+    host = None
+    if rest.startswith(": "):              # NX-OS: "<189>: 2026 Oct 13 ..."
+        rest = rest[2:]
     rest = _CISCO_SEQ.sub("", rest, count=1)
     h = _CISCO_HOST.match(rest)
     if h:
         host, rest = h.group(1), rest[h.end():]
-    m = _BSD_TIME.match(rest)
-    if m:
-        when, rest = _bsd(m, now), rest[m.end():]
-    else:
-        m = _ISO_TIME.match(rest)
-        if m:
-            when, rest = _iso(m.group(1)), rest[m.end():]
+    when, rest = _timestamp(rest, now)
     if when is not None and host is None:
         # "host tag: text" - the first word is the host name unless it is already the tag
         first, _, after = rest.partition(" ")
         if first and after and not first.endswith(":") and "[" not in first and not _TAG.match(rest):
             host, rest = first, after
+    if when is not None:
+        # a relay's header in front of the device's own: "sw1 123: Oct 13 10:00:01.123 UTC: %SYS-..."
+        inner = _CISCO_SEQ.sub("", rest, count=1)
+        own, after = _timestamp(inner, now)
+        if own is not None:
+            when, rest = own, after
+        elif inner != rest and inner.startswith("%"):    # "sw1 123: %SYS-5-CONFIG_I: ..."
+            rest = inner
     app = None
     t = _TAG.match(rest)
     if t:
