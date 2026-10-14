@@ -4,7 +4,8 @@ host's port 514 to it), in the one worker that holds the "syslog-intake" lock (a
 
 Every second the queued messages are written (app/modules/syslog/intake.py); every 15 seconds the
 settings are read again, so turning the intake on or off, or a protocol, in System Configuration
-takes effect without a restart; every 5 seconds the status row is written for the API and alerts;
+takes effect without a restart; every 5 seconds the status row is written for the API and alerts; every 10 seconds configuration
+changes devices reported are turned into backups (config_changes.py);
 every hour old messages are removed (retention.py).
 
 TCP: one message per line (RFC 6587 non-transparent framing) or "LENGTH MESSAGE" (octet counting,
@@ -19,7 +20,7 @@ from typing import Dict, Optional
 
 from app.core.config import settings as app_settings
 from app.core.database import SessionLocal
-from app.modules.syslog import retention
+from app.modules.syslog import config_changes, retention
 from app.modules.syslog import settings as syslog_settings
 from app.modules.syslog.intake import Intake, normalize_ip
 
@@ -31,6 +32,7 @@ MAX_CONNECTIONS_PER_ADDRESS = 10
 IDLE_SECONDS = 600
 SETTINGS_EVERY = 15
 STATUS_EVERY = 5
+CHANGES_EVERY = 10          # reported configuration changes -> backups (config_changes.process)
 PRUNE_EVERY = 3600
 TICK = 1.0                  # seconds between rounds of the loop
 
@@ -176,6 +178,9 @@ class SyslogListener:
         row.queue_dropped = self.intake.queue_dropped
         db.commit()
 
+    def _changes(self, db):
+        return config_changes.process(db, bool(self.cfg.get("backup_on_change", True)))
+
     async def _reload(self) -> None:
         try:
             self.cfg = await asyncio.to_thread(self._db, syslog_settings.get_settings)
@@ -188,20 +193,28 @@ class SyslogListener:
 
     async def _main(self) -> None:
         loop = asyncio.get_running_loop()
-        last = {"settings": -1e9, "status": -1e9, "prune": loop.time()}
+        last = {"settings": -1e9, "status": -1e9, "changes": -1e9, "prune": loop.time()}
         while not self._stop.is_set():
             now = loop.time()
             if now - last["settings"] >= SETTINGS_EVERY:
                 last["settings"] = now
                 await self._reload()
-            if self.intake.queue or self.intake._sources:
+            if self.intake.queue or self.intake._sources or self.intake.changes:
                 try:
-                    while self.intake.queue or self.intake._sources:
+                    while self.intake.queue or self.intake._sources or self.intake.changes:
                         await asyncio.to_thread(self._db, self.intake.drain)
                         if not self.intake.queue:
                             break
                 except Exception:  # noqa: BLE001
                     logger.warning("[Syslog] could not store messages; retrying", exc_info=True)
+            if now - last["changes"] >= CHANGES_EVERY:
+                last["changes"] = now
+                try:
+                    done = await asyncio.to_thread(self._db, self._changes)
+                    if done["started"] or done["no_schedule"]:
+                        logger.info("[Syslog] reported configuration changes: %s", done)
+                except Exception:  # noqa: BLE001
+                    logger.warning("[Syslog] reported configuration changes not processed", exc_info=True)
             if now - last["status"] >= STATUS_EVERY:
                 last["status"] = now
                 try:

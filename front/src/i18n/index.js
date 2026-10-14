@@ -89,6 +89,11 @@ export function n(value) {
     if (value === null || value === undefined || value === "") return value;
     if (typeof value === "number") return numberFormat.format(value);
     // Already-formatted figures such as "54%" or "34/100".
+    // IP addresses ("10.20.0.9", "10.20.0.9, 10.20.0.10") stay as written, like everywhere else they are
+    // shown, and left-to-right inside Persian text so a list keeps its order.
+    if (typeof value === "string" && /\d+\.\d+\.\d+\.\d+/.test(value)) {
+        return language === "fa" && /[,\s]/.test(value.trim()) ? `\u2066${value}\u2069` : value;
+    }
     if (language === "fa" && typeof value === "string" && /^[\d\s.,%/+\-−:]+$/.test(value)) {
         const out = value.replace(/(\d)\.(\d)/g, "$1٫$2").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]).replace(/%/g, "٪");
         // After Persian letters the bidi algorithm reverses "10-24" or "34/100"; keep them left-to-right.

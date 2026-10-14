@@ -5,8 +5,10 @@ What happens to each received message, apart from the sockets (app/modules/syslo
    dropped and only counted per address (it shows as "not in the inventory" on the Syslog page).
 2. Each address may send RATE_PER_SECOND messages a second on average (bursts up to BURST); more is
    dropped and counted.
-3. Messages less severe than the configured level are not kept.
-4. Accepted messages wait in a bounded queue and are written to the database in batches
+3. A message reporting a configuration change (config_changes.detect) is recorded as a
+   ConfigChangeEvent whatever its severity; config_changes.process() backs the device up.
+4. Messages less severe than the configured level are not kept.
+5. Accepted messages wait in a bounded queue and are written to the database in batches
    (drain(), called about once a second); when the database cannot keep up and the queue is full,
    the newest are dropped and counted in the listener status.
 
@@ -24,7 +26,8 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.models.syslog import SyslogMessage, SyslogSource
+from app.models.syslog import ConfigChangeEvent, SyslogMessage, SyslogSource
+from app.modules.syslog.config_changes import MAX_EVENTS_PER_DRAIN, detect
 from app.modules.syslog.parser import parse
 
 logger = logging.getLogger(__name__)
@@ -72,6 +75,7 @@ class Intake:
         self.assets_loaded_at = 0.0
         self.queue: Deque[dict] = deque()
         self.queue_dropped = 0
+        self.changes: List[dict] = []       # configuration changes reported, written with the next drain
         self._buckets: Dict[str, _Bucket] = {}
         # address -> [asset_id, received, dropped, last_seen, hostname] since the last drain
         self._sources: Dict[str, list] = {}
@@ -130,6 +134,12 @@ class Intake:
             self.drop(ip, now)
             return False
         p = parse(raw, now)
+        if (b"CONFIG_I" in raw or b"logid=" in raw) and len(self.changes) < MAX_EVENTS_PER_DRAIN:
+            change = detect(raw.decode("utf-8", "replace"))
+            if change is not None:
+                self.changes.append({"asset_id": asset_id, "received_at": now, "message": change.message,
+                                     "changed_by": change.by, "changed_from": change.source,
+                                     "status": "pending"})
         if p.severity > self.store_max_severity:
             return False
         if len(self.queue) >= QUEUE_MAX:
@@ -159,9 +169,12 @@ class Intake:
         while self.queue and len(rows) < DRAIN_BATCH:
             rows.append(self.queue.popleft())
         sources = self._take_sources() if not self.queue else []
+        changes, self.changes = self.changes, []
         try:
             if rows:
                 db.execute(pg_insert(SyslogMessage.__table__), rows)
+            if changes:
+                db.execute(pg_insert(ConfigChangeEvent.__table__), changes)
             for ip, (asset_id, received, dropped, last_seen, hostname) in sources:
                 stmt = pg_insert(SyslogSource.__table__).values(
                     source_ip=ip, asset_id=asset_id, first_seen=last_seen, last_seen=last_seen,
@@ -183,6 +196,7 @@ class Intake:
                     self.queue.appendleft(r)
                 else:
                     self.queue_dropped += 1
+            self.changes = (changes + self.changes)[:MAX_EVENTS_PER_DRAIN]
             for ip, s in sources:
                 if ip not in self._sources:
                     self._sources[ip] = s

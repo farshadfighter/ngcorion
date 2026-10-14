@@ -11,7 +11,7 @@ import { ChangeBadge } from './ChangeBadge.jsx';
 
 const formatDate = formatDateTime;
 
-const SOURCE_FILTERS = ['all', 'changes', 'scheduled', 'manual', 'hardening', 'pre_restore'];
+const SOURCE_FILTERS = ['all', 'changes', 'scheduled', 'on_change', 'manual', 'hardening', 'pre_restore'];
 
 /**
  * Level two: the backups of a single asset.

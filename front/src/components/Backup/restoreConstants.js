@@ -26,6 +26,7 @@ export const SOURCE_LABELS = {
     hardening: t("Before hardening"),
     pre_restore: t("Before restore"),
     scheduled: t("Scheduled"),
+    on_change: t("On reported change"),
 };
 
 export const sourceLabel = (source) => SOURCE_LABELS[source] || source || '-';

@@ -310,6 +310,8 @@ function Settings({ data, isAdmin, onSaved, msg, setMsg }) {
                                onChange={(e) => setForm({ ...form, storage_budget_gb: e.target.value })} />
                     </label>
                     <p className="bkm-small bkm-muted">{t("When the messages take more space than this, the oldest are removed first.")}</p>
+                    {flag("backup_on_change", t("Back up a device when it reports a configuration change"))}
+                    <p className="bkm-small bkm-muted">{t("Cisco IOS, NX-OS and FortiGate report each change with who made it and from where. About a minute after the last change, the device is backed up with its scheduled backup's credential profile and compared with the previous backup. A device without a scheduled backup only raises an alert.")}</p>
                     {msg && <div className={`bkm-note ${msg.ok ? "bkm-note-ok" : "bkm-note-error"}`}>{msg.text}</div>}
                     {isAdmin && (
                         <div><button type="button" className="bkm-btn bkm-btn-primary" disabled={busy || !changed} onClick={save}>{t("Save")}</button></div>

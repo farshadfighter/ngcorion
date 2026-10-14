@@ -18,6 +18,7 @@ DEFAULTS = {
     "retention_days": 30,          # messages older than this are removed
     "storage_budget_gb": 5,        # and the oldest first when the table grows past this
     "store_max_severity": 7,       # keep messages at this severity or more severe (7 = everything)
+    "backup_on_change": True,      # back a device up when it reports a configuration change (config_changes.py)
 }
 LIMITS = {"retention_days": (1, 365), "storage_budget_gb": (1, 500), "store_max_severity": (0, 7)}
 

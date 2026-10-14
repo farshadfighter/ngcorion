@@ -93,6 +93,7 @@ class GroupRun(Base):
     started_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     started_by_name = Column(String(150), nullable=True)
     scheduled_job_id = Column(Integer, ForeignKey("scheduled_jobs.id", ondelete="SET NULL"), nullable=True)
+    trigger = Column(String(10), nullable=True)          # None | "syslog" (a device reported a change)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utcnow)
     started_at = Column(DateTime(timezone=True), nullable=True)
     finished_at = Column(DateTime(timezone=True), nullable=True)

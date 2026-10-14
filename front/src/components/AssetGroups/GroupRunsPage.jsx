@@ -118,7 +118,9 @@ function RunList({ kind }) {
                             {(runs || []).map((r) => (
                                 <tr key={r.id} className="bkm-row-click">
                                     <td><Link className="bkm-link" to={`${BASE[kind]}/${r.id}`} dir="auto">{r.group_name}</Link>
-                                        {r.scheduled_job_id && <div className="bkm-sub">{t("Scheduled")}</div>}</td>
+                                        {r.trigger === "syslog"
+                                            ? <div className="bkm-sub">{t("Device reported a change")}</div>
+                                            : r.scheduled_job_id && <div className="bkm-sub">{t("Scheduled")}</div>}</td>
                                     <td>{techLabel(kind, r.technology)}</td>
                                     <td dir="auto">{r.credential_profile_name || "—"}</td>
                                     <td><span className={`bkm-pill ${RUN_STATUS[r.status]?.cls}`}>{RUN_STATUS[r.status]?.label || r.status}</span></td>

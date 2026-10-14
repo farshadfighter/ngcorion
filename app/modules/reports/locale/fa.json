@@ -568,5 +568,6 @@
   "Severe syslog message": "پیام Syslog شدید",
   "Asset stopped sending syslog": "دارایی دیگر Syslog نمی‌فرستد",
   "Syslog from an address outside the inventory": "Syslog از نشانی‌ای بیرون از فهرست دارایی‌ها",
+  "Configuration change reported, no backup taken": "تغییر پیکربندی گزارش شد، پشتیبان گرفته نشد",
   "Syslog intake not listening": "دریافت Syslog فعال نیست"
 }

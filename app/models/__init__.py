@@ -341,4 +341,4 @@ from app.models.asset_groups import (AssetGroup, AssetGroupMember, AssetTag, Cre
                                      GroupRun, GroupRunItem)
 
 # Syslog messages received from the assets (see app/models/syslog.py)
-from app.models.syslog import SyslogMessage, SyslogSource, SyslogStatus  # noqa: E402,F401
+from app.models.syslog import ConfigChangeEvent, SyslogMessage, SyslogSource, SyslogStatus  # noqa: E402,F401

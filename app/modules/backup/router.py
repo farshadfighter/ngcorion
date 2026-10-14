@@ -54,15 +54,27 @@ class BackupSummary(BaseModel):
     change_ref: Optional[str] = None
     confirmed_at: Optional[datetime] = None
     group_run_id: Optional[int] = None
+    # a backup taken because the device reported the change over syslog: who changed it, from where
+    reported_by: Optional[str] = None
+    reported_from: Optional[str] = None
+    reported_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
-def _summary(b: DeviceBackup, username: Optional[str] = None) -> "BackupSummary":
+def _summary(b: DeviceBackup, username: Optional[str] = None, report: Optional[dict] = None) -> "BackupSummary":
     out = BackupSummary.model_validate(b)
     out.created_by_username = username if username is not None else (b.user.username if b.user else None)
+    for key, value in (report or {}).items():
+        setattr(out, key, value)
     return out
+
+
+def _summaries(db: Session, backups: List[DeviceBackup]) -> List["BackupSummary"]:
+    from app.modules.syslog.config_changes import reports_for
+    reports = reports_for(db, [b.id for b in backups if b.source == "on_change"])
+    return [_summary(b, report=reports.get(b.id)) for b in backups]
 
 
 class BackupDetail(BackupSummary):
@@ -103,8 +115,7 @@ def list_backups(
 
     backups = query.order_by(DeviceBackup.created_at.desc()).offset(offset).limit(limit).all()
 
-    result = [_summary(b) for b in backups]
-    return result
+    return _summaries(db, backups)
 
 
 class BackupAssetGroup(BaseModel):
@@ -156,7 +167,7 @@ def list_backups_by_asset(
         func.sum(
             case((DeviceBackup.source == "pre_restore", 1), else_=0)
         ).label("pre_restore_count"),
-        func.sum(case((DeviceBackup.source == "scheduled", 1), else_=0)).label("scheduled_count"),
+        func.sum(case((DeviceBackup.source.in_(("scheduled", "on_change")), 1), else_=0)).label("scheduled_count"),
         func.sum(case((DeviceBackup.changed.is_(True), 1), else_=0)).label("change_count"),
         func.sum(case(((DeviceBackup.changed.is_(True)) & (DeviceBackup.change_origin == "external"), 1),
                       else_=0)).label("external_change_count"),
@@ -493,7 +504,8 @@ def compare_backups(
         sections.append(DiffSectionOut(title=sec.title, lines=lines))
         if truncated:
             break
-    return CompareResponse(old=_summary(a), new=_summary(b), added=diff.added, removed=diff.removed,
+    old_out, new_out = _summaries(db, [a, b])
+    return CompareResponse(old=old_out, new=new_out, added=diff.added, removed=diff.removed,
                            sections=sections, truncated=truncated)
 
 
@@ -527,7 +539,7 @@ def get_backup(
     if not backup:
         raise HTTPException(status_code=404, detail="Backup not found")
 
-    return BackupDetail(**_summary(backup).model_dump(), config_content=backup.config_content)
+    return BackupDetail(**_summaries(db, [backup])[0].model_dump(), config_content=backup.config_content)
 
 
 @router.post("/", response_model=BackupSummary, status_code=201)

@@ -7,6 +7,10 @@ Syslog messages received from the assets (app/modules/syslog).
   outgrows its storage budget (app/modules/syslog/retention.py).
 - SyslogSource: one line per sending address - a registered asset, or an address that is not in the
   inventory (its messages are dropped, only counted) - with first/last seen and counters.
+- ConfigChangeEvent: a device reported that its configuration was changed (Cisco %SYS-5-CONFIG_I,
+  FortiGate "... configured" events), with who and from where when the message says so. The
+  listener backs the device up shortly after (app/modules/syslog/config_changes.py) and links the
+  backup, so the change is known within minutes, not at the next nightly backup.
 - SyslogStatus: a single row the listener rewrites every few seconds (whether it listens, on which
   port and protocols, the last error), read by the API and the alert on another worker.
 """
@@ -69,3 +73,20 @@ class SyslogStatus(Base):
     started_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
     queue_dropped = Column(BigInteger, nullable=False, default=0)   # lost because the database could not keep up
+
+
+class ConfigChangeEvent(Base):
+    __tablename__ = "config_change_events"
+
+    id = Column(Integer, primary_key=True)
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), nullable=False, index=True)
+    received_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    message = Column(Text, nullable=False)
+    changed_by = Column(String(128), nullable=True)            # the account the device names
+    changed_from = Column(String(128), nullable=True)          # address or line ("10.20.0.15", "console")
+    # pending -> queued (a backup run started) -> done | unchanged | failed; no_schedule when no backup
+    # schedule covers the device; off when backing up on change is turned off
+    status = Column(String(12), nullable=False, default="pending", index=True)
+    group_run_id = Column(Integer, ForeignKey("group_runs.id", ondelete="SET NULL"), nullable=True, index=True)
+    backup_id = Column(Integer, ForeignKey("device_backups.id", ondelete="SET NULL"), nullable=True, index=True)
+    processed_at = Column(DateTime, nullable=True)

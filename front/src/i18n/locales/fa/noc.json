@@ -23,6 +23,8 @@
   "Auth Protocol": "پروتکل Auth",
   "Averaged into {{granularity}} buckets for this range.": "برای این بازه در بازه‌های {{granularity}} میانگین‌گیری شده است.",
   "Back to hosts": "بازگشت به میزبان‌ها",
+  "Back up a device when it reports a configuration change": "پشتیبان‌گیری از دستگاه وقتی تغییر پیکربندی را گزارش می‌دهد",
+  "Cisco IOS, NX-OS and FortiGate report each change with who made it and from where. About a minute after the last change, the device is backed up with its scheduled backup's credential profile and compared with the previous backup. A device without a scheduled backup only raises an alert.": "Cisco IOS، NX-OS و FortiGate هر تغییر را همراه با نام انجام‌دهنده و نشانی او گزارش می‌دهند. حدود یک دقیقه پس از آخرین تغییر، از دستگاه با پروفایل اعتبارنامهٔ پشتیبان‌گیری زمان‌بندی‌شده‌اش نسخهٔ پشتیبان گرفته و با نسخهٔ قبلی مقایسه می‌شود. برای دستگاهی که پشتیبان‌گیری زمان‌بندی‌شده ندارد فقط هشدار داده می‌شود.",
   "Community String": "Community String",
   "Configure an SNMP credential first": "ابتدا اطلاعات ورود SNMP را تنظیم کنید",
   "Configure an SNMP credential to start collecting this.": "برای شروع جمع‌آوری این داده، اطلاعات ورود SNMP را تنظیم کنید.",

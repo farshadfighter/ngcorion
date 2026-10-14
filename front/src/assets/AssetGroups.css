@@ -87,3 +87,7 @@
 .bk-retention p { margin: 4px 0 0; }
 .bk-retention-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .bk-retention-row .bkm-select { width: 120px; }
+/* Who changed the configuration and from where, as the device reported over syslog. */
+.bk-reported { color: #374151; }
+.bk-reported-v { font-weight: 600; color: #1f2937; unicode-bidi: isolate; }
+.bk-reported-note { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }

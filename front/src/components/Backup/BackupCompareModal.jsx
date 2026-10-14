@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import api from "../../config/api.js";
 import { n, t } from "../../i18n";
 import { errorText } from "../AssetGroups/groupFormat.js";
-import { ChangeBadge } from "./ChangeBadge.jsx";
+import { ChangeBadge, ReportedBy } from "./ChangeBadge.jsx";
 import { formatDateTime, sourceLabel } from "./restoreConstants.js";
 import "../../assets/BackupModule.css";
 import "../../assets/Alerts.css";
@@ -60,6 +60,13 @@ export function BackupCompareModal({ oldId, newId, onClose }) {
                                 <span className="bk-cmp-arrow" aria-hidden="true">→</span>
                                 <div><span className="bkm-small bkm-muted">{t("Newer")}</span>{side(data.new)}</div>
                             </div>
+                            {(data.new.reported_by || data.new.reported_from) && (
+                                <div className="bkm-note bk-reported-note">
+                                    <b>{t("The device reported this change over syslog")}</b>
+                                    <ReportedBy backup={data.new} />
+                                    {data.new.reported_at && <span className="bkm-small bkm-muted">{formatDateTime(data.new.reported_at)}</span>}
+                                </div>
+                            )}
                             {data.sections.length === 0 && (
                                 <div className="bkm-empty"><b>{t("The two configurations are the same")}</b>
                                     <span>{t("Only capture details such as the timestamp differ.")}</span></div>

@@ -162,7 +162,7 @@ over within 30 seconds.
 | system-backup | `sysbackup` | Scheduled backups of the NGCorion database and files |
 | directory-check | `directory` | Checks directory (AD/LDAP) accounts every 15 minutes |
 | group-runs | `asset_groups` | Group audits and group configuration backups: a database queue, several assets at a time in a thread pool; resumes after a restart. A backup run compares each configuration with the previous backup (`app/modules/backup/changes.py`) and prunes duplicate backups past the retention period (`retention.py`) |
-| syslog-intake | `syslog` | Syslog listener (UDP/TCP 5514 in the container, 514 on the host) while turned on: messages from registered assets only, rate and size limits, batched writes, hourly retention by age and disk budget |
+| syslog-intake | `syslog` | Syslog listener (UDP/TCP 5514 in the container, 514 on the host) while turned on: messages from registered assets only, rate and size limits, batched writes, hourly retention by age and disk budget; configuration changes devices report (Cisco `CONFIG_I`, FortiGate) become one-asset backup runs with the covering backup schedule's profile (`config_changes.py`, every 10 s) |
 
 The license heartbeat runs in every worker (each keeps its own license
 state). `/api/system/health` (admin) shows whether each task is running.

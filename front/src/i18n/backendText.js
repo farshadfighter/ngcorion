@@ -15,6 +15,11 @@ const msg = (s) => s;
 
 // ── Sentences with values: "{name}" placeholders, matched as a whole ────────
 const TEMPLATES = [
+    // first: more specific than the generic "{{code}} from {{code2}}" further down (the first match wins)
+    // configuration changes reported over syslog (app/modules/syslog/config_changes.py)
+    msg("{{added_lines}} line(s) added and {{removed_lines}} removed; changed by {{user}} from {{address}} (reported over syslog)"),
+    msg("Changed by {{user}} from {{address}}; no scheduled backup covers this device"),
+    msg("Configuration change on '{{asset_name}}' reported over syslog by {{who}} from {{where}}; schedule '{{job_name}}' started a backup"),
     // alert titles
     msg("Vulnerability with CVSS {{score}} or higher"),
     msg("No backup for {{days}} days"),
@@ -1009,6 +1014,10 @@ msg("Severity (0 emergency, 1 alert, 2 critical, 3 error, 4 warning)");
 msg("Quiet for");
 msg("Syslog intake turned on");
 msg("Syslog intake turned off");
+msg("Backup on a reported configuration change turned on");
+msg("Backup on a reported configuration change turned off");
+msg("Configuration change reported, no backup taken");
+msg("A device reports a configuration change over syslog and no scheduled backup covers it");
 msg("Choose UDP, TCP or both");
 msg("the listener is not running");
 msg("Syslog intake");

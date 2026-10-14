@@ -2,7 +2,8 @@
 Keeping the syslog tables bounded: messages older than the retention period go, and when the
 messages table still takes more disk than its budget, the oldest go first until it fits (a burst
 from a noisy device can never fill the disk). Addresses outside the inventory that have not sent
-anything for 30 days are forgotten.
+anything for 30 days are forgotten, and configuration changes devices reported (config_changes.py)
+are kept CHANGE_EVENT_DAYS.
 
 Deletes run in batches so no single statement holds a long lock.
 """
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 BATCH = 20000
 MAX_BATCHES = 200            # per run; the next run carries on
 UNKNOWN_SOURCE_DAYS = 30
+CHANGE_EVENT_DAYS = 365
 
 
 def table_bytes(db: Session) -> int:
@@ -63,5 +65,8 @@ def prune(db: Session, now: Optional[datetime] = None) -> Dict[str, int]:
     forgotten = db.execute(text(
         "DELETE FROM syslog_sources WHERE asset_id IS NULL AND last_seen < :t"),
         {"t": now - timedelta(days=UNKNOWN_SOURCE_DAYS)}).rowcount or 0
+    changes = db.execute(text(
+        "DELETE FROM config_change_events WHERE received_at < :t AND status NOT IN ('pending', 'queued')"),
+        {"t": now - timedelta(days=CHANGE_EVENT_DAYS)}).rowcount or 0
     db.commit()
-    return {"by_age": by_age, "by_size": by_size, "unknown_sources": forgotten}
+    return {"by_age": by_age, "by_size": by_size, "unknown_sources": forgotten, "change_events": changes}

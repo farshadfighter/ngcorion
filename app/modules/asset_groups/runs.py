@@ -75,9 +75,11 @@ def _clean(exc: BaseException) -> str:
 def start_run(db: Session, group: AssetGroup, technology: str, profile: CredentialProfile,
               audit_profile: Optional[str], concurrency: int, user: Optional[User],
               scheduled_job_id: Optional[int] = None, started_by_id: Optional[int] = None,
-              kind: str = "audit") -> GroupRun:
+              kind: str = "audit", asset_ids: Optional[List[int]] = None,
+              trigger: Optional[str] = None) -> GroupRun:
     """Queue an audit (kind "audit") or a configuration backup (kind "backup", technology = device
-    family) of every asset of `group`. Raises RunError when it cannot start."""
+    family) of every asset of `group`, or only of `asset_ids` among them (a backup started by a change
+    a device reported over syslog, trigger "syslog"). Raises RunError when it cannot start."""
     if kind == "backup":
         from app.modules.backup.collect import FAMILIES
         if technology not in FAMILIES:
@@ -91,6 +93,9 @@ def start_run(db: Session, group: AssetGroup, technology: str, profile: Credenti
         if profiles.kind_for(technology) != profile.kind:
             raise RunError("The credential profile is of a different kind than the technology needs")
     ids = groups.member_ids(db, group)
+    if asset_ids is not None:
+        wanted = set(asset_ids)
+        ids = [i for i in ids if i in wanted]
     if not ids:
         raise RunError("The group has no assets")
     if len(ids) > MAX_ASSETS:
@@ -100,7 +105,8 @@ def start_run(db: Session, group: AssetGroup, technology: str, profile: Credenti
                    credential_profile_name=profile.name,
                    concurrency=max(1, min(int(concurrency or 10), MAX_CONCURRENCY)),
                    status="queued", started_by=user.id if user else started_by_id,
-                   started_by_name=user.username if user else None, scheduled_job_id=scheduled_job_id)
+                   started_by_name=user.username if user else None, scheduled_job_id=scheduled_job_id,
+                   trigger=trigger)
     db.add(run)
     db.flush()
     for aid, name, ip in db.query(Asset.id, Asset.asset_name, Asset.ip_address).filter(Asset.id.in_(ids)) \
@@ -130,6 +136,7 @@ def summary(run: GroupRun, c: Dict[str, int]) -> Dict:
         "audit_profile": run.audit_profile, "credential_profile_id": run.credential_profile_id,
         "credential_profile_name": run.credential_profile_name, "concurrency": run.concurrency,
         "status": run.status, "started_by_name": run.started_by_name, "scheduled_job_id": run.scheduled_job_id,
+        "trigger": run.trigger,
         "created_at": run.created_at, "started_at": run.started_at, "finished_at": run.finished_at,
         "total": total, "finished": finished, "counts": c,
     }
@@ -256,7 +263,8 @@ def _backup_item(db: Session, item: GroupRunItem, run: GroupRun, profile: Creden
     now = datetime.utcnow()
     previous = changes.latest(db, asset.id)
     backup = DeviceBackup(asset_id=asset.id, asset_name=asset.asset_name, device_ip=asset.ip_address,
-                          device_type=run.technology, config_content=text, source="scheduled",
+                          device_type=run.technology, config_content=text,
+                          source="on_change" if run.trigger == "syslog" else "scheduled",
                           created_by=run.started_by, created_at=now, group_run_id=run.id)
     changes.note_change(db, backup, previous)
     if backup.change_origin == "unchanged":

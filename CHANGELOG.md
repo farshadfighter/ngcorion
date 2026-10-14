@@ -329,6 +329,18 @@ audit trail still append-only.
 - Retention: backups identical to the previous one are removed after 90 days
   (configurable, 7–3,650); every changed version, the latest and first backup
   of each device, and backups a hardening or restore relies on are kept.
+- Backup on a reported change: when a device sends syslog to NGCorion, the
+  configuration change it reports (Cisco IOS/IOS-XE `%SYS-5-CONFIG_I`, NX-OS
+  `%VSHD-5-VSHD_SYSLOG_CONFIG_I`, FortiGate "Object attribute configured" /
+  "Configuration changed") is recorded with who made it and from which
+  address. About a minute after the last change the device alone is backed up
+  with the credential profile of the enabled backup schedule that covers it,
+  and compared as usual; at most once every 5 minutes per device. The backup
+  (source "On reported change"), the comparison, the "Configuration changed
+  outside NGCorion" alert and the asset's timeline say who changed it and from
+  where. Without a covering schedule the new alert "Configuration change
+  reported, no backup taken" is raised. On by default; Syslog → Settings
+  turns it off.
 - Fixes: scheduled group audits are labelled "Group audit (…)" in the
   schedule list; schedule times, next run and history use Persian digits and
   dates, and the run status is translated.

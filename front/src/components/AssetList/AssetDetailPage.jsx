@@ -129,6 +129,8 @@ function timelineText(e) {
             if (e.action === "ngcorion") return t("Configuration changed by NGCorion (+{{added}} −{{removed}})", { added: n(e.added ?? 0), removed: n(e.removed ?? 0) });
             if (e.action === "first") return t("First configuration backup");
             return t("Configuration backup");
+        case "change": return t("Device reported a configuration change by {{user}} from {{address}}", {
+            user: e.by || t("unknown user"), address: e.from || t("unknown address") });
         case "restore": return t("Configuration restored: {{status}}", { status: RESTORE_STATUS[e.status] || e.status });
         case "alert": return tb(e.text);
         default: return e.text || e.kind;
@@ -136,7 +138,7 @@ function timelineText(e) {
 }
 
 const KIND_LABEL = { asset: t("Inventory"), audit: t("Audit"), hardening: t("Hardening"), backup: t("Backup"),
-    restore: t("Restore"), alert: t("Alert") };
+    restore: t("Restore"), alert: t("Alert"), change: t("Change") };
 
 export function AssetDetailPage() {
     const { assetId } = useParams();

@@ -265,6 +265,13 @@ def _timeline(db: Session, a: Asset, can, owner: Optional[int]) -> List[Dict]:
             ev.append({"at": _iso(b.created_at), "kind": "backup", "action": b.change_origin or b.source,
                        "text": b.source, "added": b.added_lines, "removed": b.removed_lines, "status": None,
                        "link": f"/backup?asset={a.id}" + (f"&compare={b.id}" if b.changed else "")})
+        from app.models.syslog import ConfigChangeEvent
+        for c in (db.query(ConfigChangeEvent).filter(ConfigChangeEvent.asset_id == a.id)
+                  .order_by(ConfigChangeEvent.received_at.desc()).limit(TIMELINE_MAX)):
+            link = (f"/backup?asset={a.id}&compare={c.backup_id}" if c.status == "done" and c.backup_id
+                    else f"/noc/syslog?asset={a.id}")
+            ev.append({"at": _iso(c.received_at), "kind": "change", "action": c.status, "text": c.message[:200],
+                       "by": c.changed_by, "from": c.changed_from, "status": c.status, "link": link})
         for r in (db.query(BackupRestore).filter(BackupRestore.asset_id == a.id)
                   .order_by(BackupRestore.created_at.desc()).limit(TIMELINE_MAX)):
             ev.append({"at": _iso(r.finished_at or r.created_at), "kind": "restore", "action": r.status,

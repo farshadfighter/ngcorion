@@ -36,6 +36,7 @@ class SyslogSettings(BaseModel):
     retention_days: int = Field(..., ge=1, le=365)
     storage_budget_gb: int = Field(..., ge=1, le=500)
     store_max_severity: int = Field(..., ge=0, le=7)
+    backup_on_change: bool = True
 
 
 class MessageOut(BaseModel):
@@ -239,6 +240,11 @@ def save_settings(body: SyslogSettings, request: Request, current_user: User = D
         log_action(db, user_id=current_user.id, username=current_user.username, action="syslog.settings",
                    module="system_config", ip_address=ip,
                    detail=("Syslog intake turned on" if saved["enabled"] else "Syslog intake turned off"))
+    if saved["backup_on_change"] != before["backup_on_change"]:
+        log_action(db, user_id=current_user.id, username=current_user.username, action="syslog.settings",
+                   module="system_config", ip_address=ip,
+                   detail=("Backup on a reported configuration change turned on" if saved["backup_on_change"]
+                           else "Backup on a reported configuration change turned off"))
     protocols = " + ".join(p for p, on in (("UDP", saved["udp"]), ("TCP", saved["tcp"])) if on) or "-"
     days, gb, level = saved["retention_days"], saved["storage_budget_gb"], SEVERITIES[saved["store_max_severity"]]
     log_action(db, user_id=current_user.id, username=current_user.username, action="syslog.settings",

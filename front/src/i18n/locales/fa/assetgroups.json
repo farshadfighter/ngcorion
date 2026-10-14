@@ -51,6 +51,7 @@
   "Delete the group \"{{name}}\"? Its assets are not changed.": "گروه «{{name}}» حذف شود؟ دارایی‌های آن تغییری نمی‌کنند.",
   "Description": "توضیحات",
   "Device Backups": "پشتیبان دستگاه‌ها",
+  "Device reported a change": "تغییر گزارش‌شده از دستگاه",
   "Device type": "نوع دستگاه",
   "does not have": "ندارد",
   "Done": "انجام شد",

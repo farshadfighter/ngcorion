@@ -423,11 +423,20 @@ def _config_changes(db: Session, origin: str, since: datetime) -> List[Problem]:
             .filter(DeviceBackup.changed.is_(True), DeviceBackup.change_origin == origin,
                     DeviceBackup.created_at >= since)
             .order_by(DeviceBackup.id).all())
+    from app.modules.syslog.config_changes import reports_for
+    reports = reports_for(db, [b.id for b in rows if b.source == "on_change"])
     out = []
     for b in rows:
         asset = db.get(Asset, b.asset_id)
         label = _label(asset) if asset else (b.asset_name or b.device_ip or f"#{b.asset_id}")
-        if origin == "external":
+        r = reports.get(b.id)
+        if origin == "external" and r:
+            out.append(Problem(key=f"backup:{b.id}", title="Configuration changed outside NGCorion",
+                               detail=f"{b.added_lines or 0} line(s) added and {b.removed_lines or 0} removed; "
+                                      f"changed by {r['reported_by'] or 'unknown user'} from "
+                                      f"{r['reported_from'] or 'unknown address'} (reported over syslog)",
+                               asset_id=b.asset_id, source_label=label, link=f"/backup?asset={b.asset_id}&compare={b.id}"))
+        elif origin == "external":
             out.append(Problem(key=f"backup:{b.id}", title="Configuration changed outside NGCorion",
                                detail=f"{b.added_lines or 0} line(s) added and {b.removed_lines or 0} removed "
                                       f"since the previous backup",
@@ -437,6 +446,30 @@ def _config_changes(db: Session, origin: str, since: datetime) -> List[Problem]:
                                detail=f"{b.added_lines or 0} line(s) added and {b.removed_lines or 0} removed "
                                       f"({b.change_ref or 'hardening or restore'})",
                                asset_id=b.asset_id, source_label=label, link=f"/backup?asset={b.asset_id}&compare={b.id}"))
+    return out
+
+
+def _config_reported(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Changes devices reported over syslog that no scheduled backup covers (config_changes.py)."""
+    from app.models import Asset
+    from app.models.syslog import ConfigChangeEvent
+    since = since.replace(tzinfo=None) if since.tzinfo else since
+    rows = (db.query(ConfigChangeEvent)
+            .filter(ConfigChangeEvent.status == "no_schedule", ConfigChangeEvent.processed_at >= since)
+            .order_by(ConfigChangeEvent.id).all())
+    per_asset: Dict[int, List] = {}
+    for e in rows:
+        per_asset.setdefault(e.asset_id, []).append(e)
+    out = []
+    for aid, events in per_asset.items():
+        asset = db.get(Asset, aid)
+        who = ", ".join(dict.fromkeys(e.changed_by for e in events if e.changed_by)) or "unknown user"
+        where = ", ".join(dict.fromkeys(e.changed_from for e in events if e.changed_from)) or "unknown address"
+        out.append(Problem(key=f"config_report:{events[-1].id}",
+                           title="Configuration change reported, no backup taken",
+                           detail=f"Changed by {who} from {where}; no scheduled backup covers this device",
+                           asset_id=aid, source_label=_label(asset) if asset else f"#{aid}",
+                           link=f"/noc/syslog?asset={aid}"))
     return out
 
 
@@ -778,6 +811,9 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
               "A device's configuration changed through a hardening or restore run by NGCorion",
               "event", 60, _config_changed_ngcorion, uses_assets=True, severity="info", channels=[],
               enabled=False),
+    EventType("backup.config_reported", "backup", "Configuration change reported, no backup taken",
+              "A device reports a configuration change over syslog and no scheduled backup covers it",
+              "event", 60, _config_reported, uses_assets=True, severity="info"),
     EventType("backup.stale", "backup", "Device without a recent backup",
               "Devices with no backup for {days} days", "state", 3600, _backup_stale,
               params=[Param("days", "Days without backup", 30, "days", 1, 365)], repeat_minutes=1440),
