@@ -1,9 +1,11 @@
 /**
  * Topology page: the canvas, link editing and the topology checks (isolated nodes, single points
- * of failure).
+ * of failure); and the Neighbours view (?tab=neighbors): what the devices report over LLDP / CDP,
+ * which draws most links by itself. ?link=ID opens a link (the "Network link lost" alert).
  */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import {
     fetchTopology,
     createTopologyLink,
@@ -14,14 +16,17 @@ import {
     clearMessages,
 } from "../../store/topologySlice.jsx";
 import { TopologyCanvas } from "./TopologyCanvas.jsx";
+import { TopologyNeighbors } from "./TopologyNeighbors.jsx";
 import "../../assets/Topology.css";
-import { t as tr } from "../../i18n";
+import { n, t as tr } from "../../i18n";
 import { tv } from "../../i18n/backendText";
+import { formatDateTime } from "../../utils/dates.js";
 
 const LINK_TYPES = ["ethernet", "fiber", "wireless", "logical"];
 const LINK_STATUSES = ["active", "planned", "down"];
 
 const SEVERITY_CLASS = { low: "topo-badge-low", medium: "topo-badge-medium", high: "topo-badge-high" };
+const ORIGIN = { lldp: "LLDP", cdp: "CDP" };
 
 export const TopologyDashboard = () => {
     const dispatch = useDispatch();
@@ -31,10 +36,33 @@ export const TopologyDashboard = () => {
 
     const [selectedLink, setSelectedLink] = useState(null);
     const [showValidation, setShowValidation] = useState(false);
+    const [search, setSearch] = useSearchParams();
+    const tab = search.get("tab") === "neighbors" ? "neighbors" : "map";
+    const focusLink = Number(search.get("link")) || null;
 
     useEffect(() => {
-        dispatch(fetchTopology());
-    }, [dispatch]);
+        if (tab === "map") dispatch(fetchTopology());
+    }, [dispatch, tab]);
+
+    // Open the link the URL names (an alert, "Show on map" in Neighbours) once the graph is loaded.
+    const [focused, setFocused] = useState(null);
+    if (focusLink && focused !== focusLink && links.length) {
+        const hit = links.find((l) => l.id === focusLink);
+        if (hit) {
+            setFocused(focusLink);
+            setSelectedLink(hit);
+        }
+    }
+
+    const go = (name, linkId) => {
+        const p = new URLSearchParams();
+        if (name === "neighbors") p.set("tab", "neighbors");
+        if (linkId) p.set("link", String(linkId));
+        setFocused(null);
+        setSearch(p, { replace: !linkId });
+    };
+    const found = links.filter((l) => l.origin === "lldp" || l.origin === "cdp");
+    const missing = found.filter((l) => l.missing_since).length;
 
     useEffect(() => {
         if (!error && !successMessage) return;
@@ -81,15 +109,37 @@ export const TopologyDashboard = () => {
         dispatch(validateTopology());
     };
 
-    const nodeById = (id) => nodes.find((n) => n.id === Number(id));
+    const nodeById = (id) => nodes.find((node) => node.id === Number(id));
+    const tabs = (
+        <div className="topology-tabs" role="tablist" aria-label={tr("Topology")}>
+            <button type="button" role="tab" aria-selected={tab === "map"} className={`topology-tab ${tab === "map" ? "is-on" : ""}`}
+                    onClick={() => go("map")}>{tr("Map")}</button>
+            <button type="button" role="tab" aria-selected={tab === "neighbors"} className={`topology-tab ${tab === "neighbors" ? "is-on" : ""}`}
+                    onClick={() => go("neighbors")}>{tr("Neighbours (LLDP/CDP)")}</button>
+        </div>
+    );
+
+    if (tab === "neighbors") {
+        return (
+            <div className="topology-container">
+                <div className="topology-toolbar">{tabs}</div>
+                <TopologyNeighbors onShowLink={(id) => go("map", id)} />
+            </div>
+        );
+    }
 
     return (
         <div className="topology-container">
             <div className="topology-toolbar">
+                {tabs}
                 <div className="topology-toolbar-info">
-                    <span>{tr("{{length}} assets", { length: nodes.length })}</span>
+                    <span>{tr("{{length}} assets", { length: n(nodes.length) })}</span>
                     <span className="topology-toolbar-sep">•</span>
-                    <span>{tr("{{length}} links", { length: links.length })}</span>
+                    <span>{tr("{{length}} links", { length: n(links.length) })}</span>
+                    {found.length > 0 && <><span className="topology-toolbar-sep">•</span>
+                        <span>{tr("{{value}} found by LLDP/CDP", { value: n(found.length) })}</span></>}
+                    {missing > 0 && <><span className="topology-toolbar-sep">•</span>
+                        <span className="topology-missing-count">{tr("{{value}} no longer reported", { value: n(missing) })}</span></>}
                 </div>
                 <div className="topology-toolbar-actions">
                     <button className="topology-btn" onClick={() => dispatch(fetchTopology())} disabled={isLoading}>
@@ -126,6 +176,11 @@ export const TopologyDashboard = () => {
                     )}
                     <div className="topology-hint">
                         {tr("Drag a device to rearrange it - the layout is saved. Drag from a device's port to another device's port to create a link. Click a link to edit it.")}
+                        <div className="topology-legend">
+                            <span><i />{tr("Link")}</span>
+                            <span><i className="is-planned" />{tr("Planned, or a hosted VM")}</span>
+                            <span><i className="is-missing" />{tr("Found by LLDP/CDP, no longer reported")}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -139,7 +194,7 @@ export const TopologyDashboard = () => {
                         </div>
                         <div className="topology-panel-body">
                             <div className="topology-field">
-                                <label>{tr("Server")}</label>
+                                <label>{selectedLink.link_type === "hosted" ? tr("Server") : tr("From")}</label>
                                 <div className="topology-field-static">
                                     {nodeById(String(selectedLink.source_asset_id))?.name || selectedLink.source_asset_id}
                                     {selectedLink.source_interface ? ` (${selectedLink.source_interface})` : ""}
@@ -155,6 +210,23 @@ export const TopologyDashboard = () => {
                                         : ""}
                                 </div>
                             </div>
+                            {selectedLink.link_type !== "hosted" && (
+                                <div className="topology-field">
+                                    <label>{tr("Origin")}</label>
+                                    <p className="topology-field-note">
+                                        {ORIGIN[selectedLink.origin]
+                                            ? tr("Found in the devices' {{protocol}} tables.", { protocol: ORIGIN[selectedLink.origin] })
+                                            : tr("Drawn by hand.")}
+                                        {selectedLink.last_seen_at && <> {tr("Last reported {{when}}.", { when: formatDateTime(selectedLink.last_seen_at) })}</>}
+                                    </p>
+                                    {selectedLink.missing_since && (
+                                        <p className="topology-field-note is-warn">
+                                            {tr("The devices stopped reporting this link on {{when}}: the cable may be unplugged or moved. It is removed after 30 days.",
+                                                { when: formatDateTime(selectedLink.missing_since) })}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                             {selectedLink.link_type === "hosted" ? (
                                 <>
                                     {selectedLink.vlan && (
@@ -229,8 +301,9 @@ export const TopologyDashboard = () => {
                         </div>
                         {selectedLink.link_type !== "hosted" && (
                             <div className="topology-panel-footer">
-                                <button className="topology-btn topology-btn-danger" onClick={handleDeleteSelected}>
-                                    {tr("Delete")}
+                                <button className="topology-btn topology-btn-danger" onClick={handleDeleteSelected}
+                                        title={ORIGIN[selectedLink.origin] ? tr("Not drawn again at the next read; Neighbours → Add to map brings it back.") : undefined}>
+                                    {ORIGIN[selectedLink.origin] ? tr("Remove from map") : tr("Delete")}
                                 </button>
                                 <button
                                     className="topology-btn topology-btn-primary"

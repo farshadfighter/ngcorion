@@ -126,7 +126,7 @@ from app.models.topology import TopologyLink, TopologyNodePosition
 
 # Import NOC / SNMP monitoring models (depend on Asset and User)
 from app.models.noc import (AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface, DeviceReboot,
-                            NetworkEndpoint, NetworkDiscoverySource)
+                            NetworkEndpoint, NetworkDiscoverySource, TopologyNeighbor, TopologyDiscoverySource)
 from app.models.noc_metrics import AssetMetricSample, AssetMetricRollup
 from app.models.topology_log import (
     TopologyLog,
@@ -261,6 +261,8 @@ __all__ = [
     "DeviceReboot",
     "NetworkEndpoint",
     "NetworkDiscoverySource",
+    "TopologyNeighbor",
+    "TopologyDiscoverySource",
     "AssetSnmpInterface",
     # Architecture Validation
     "ArchitectureFinding",

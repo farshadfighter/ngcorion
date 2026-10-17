@@ -87,6 +87,10 @@ const TEMPLATES = [
     msg("Ignored the unknown device {{mac}}"),
     msg("No longer ignoring the device {{mac}}"),
     msg("Unknown device discovery turned on, every {{minutes}} minutes"),
+    // LLDP / CDP topology (app/modules/noc/topology_discovery.py)
+    msg("{{a}} port {{pa}} to {{b}} port {{pb}} is no longer reported by LLDP/CDP"),
+    msg("LLDP/CDP topology discovery turned on, every {{minutes}} minutes, links added to the map automatically"),
+    msg("LLDP/CDP topology discovery turned on, every {{minutes}} minutes, links added by hand"),
     msg("Restarted after {{value}} days of uptime"),
     msg("Restarted after {{value}} hours of uptime"),
     msg("A finding with CVSS {{cvss}} or higher"),
@@ -1057,3 +1061,11 @@ msg("Unknown device discovery turned off");
 msg("No such device");
 msg("This device is already an asset");
 msg("Unknown asset type");
+
+// LLDP / CDP topology (app/modules/noc/topology_discovery.py)
+msg("Network link lost");
+msg("A link found over LLDP/CDP is no longer reported by the devices");
+msg("LLDP/CDP topology discovery turned off");
+msg("No such neighbour");
+msg("This neighbour is not an asset yet");
+msg("This neighbour is already an asset");

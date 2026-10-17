@@ -132,6 +132,9 @@ def delete_link(
         raise HTTPException(status_code=404, detail="Topology link not found")
 
     link_id_for_log = link.id
+    # A link found over LLDP / CDP would be drawn again at the next read; remember it was removed.
+    from app.modules.noc.topology_discovery import suppress_link
+    suppress_link(db, link)
     TopologyService.delete_link(db, link)
     log_topology_link_deleted(db, current_user.id, link_id_for_log)
 

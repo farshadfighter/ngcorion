@@ -319,6 +319,27 @@ def _unknown_device(db: Session, params: Dict, now: datetime, since: datetime) -
     return out
 
 
+def _link_lost(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Topology links found over LLDP / CDP that the devices no longer report
+    (app/modules/noc/topology_discovery.py marks them missing); clears when the link is seen again or
+    removed from the map."""
+    from app.models.topology import TopologyLink
+    rows = (db.query(TopologyLink).options(joinedload(TopologyLink.source_asset),
+                                           joinedload(TopologyLink.destination_asset))
+            .filter(TopologyLink.origin != "manual", TopologyLink.missing_since.isnot(None)).all())
+    out = []
+    for link in rows:
+        a = link.source_asset.asset_name if link.source_asset else "-"
+        b = link.destination_asset.asset_name if link.destination_asset else "-"
+        pa, pb = link.source_interface or "-", link.destination_interface or "-"
+        out.append(Problem(key=f"link:{link.id}", title="Network link lost",
+                           detail=f"{a} port {pa} to {b} port {pb} is no longer reported by LLDP/CDP",
+                           asset_id=link.source_asset_id,
+                           source_label=_label(link.source_asset) if link.source_asset else None,
+                           link=f"/topology?link={link.id}"))
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Syslog received from the assets (app/modules/syslog)
 # ---------------------------------------------------------------------------
@@ -909,6 +930,9 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("noc.unknown_device", "noc", "New device on the network",
               "An address that is not an asset appears in the ARP or MAC table of a monitored router or switch",
               "event", 300, _unknown_device, uses_assets=True),
+    EventType("noc.link_lost", "noc", "Network link lost",
+              "A link found over LLDP/CDP is no longer reported by the devices", "state", 300, _link_lost,
+              uses_assets=True),
     EventType("noc.interface_utilization", "noc", "Interface utilization high",
               "Above {percent}% for {minutes} minutes", "state", 300, _interface_utilization,
               params=[Param("percent", "Utilization", 90, "%", 1, 100),

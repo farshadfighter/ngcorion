@@ -37,6 +37,9 @@ class TopologyLinkSummary(BaseModel):
     vlan: Optional[str]
     subnet: Optional[str]
     status: str
+    origin: str = "manual"                   # manual | lldp | cdp (found in the devices' neighbour tables)
+    last_seen_at: Optional[datetime] = None  # when the neighbour tables last showed it
+    missing_since: Optional[datetime] = None  # a found link the devices stopped reporting
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 

@@ -575,5 +575,6 @@
   "Temperature high": "دما بالاست",
   "Device restarted": "دستگاه راه‌اندازی مجدد شد",
   "Syslog intake not listening": "دریافت Syslog فعال نیست",
-  "New device on the network": "دستگاه جدید روی شبکه"
+  "New device on the network": "دستگاه جدید روی شبکه",
+  "Network link lost": "پیوند شبکه قطع شد"
 }

@@ -200,3 +200,55 @@ class NetworkDiscoverySource(Base):
     mac_entries = Column(Integer, nullable=False, default=0)
 
     asset = relationship("Asset")
+
+
+class TopologyNeighbor(Base):
+    """A neighbour a monitored device reports on one of its ports over LLDP or CDP
+    (app/modules/noc/topology_discovery.py). matched_asset_id is the asset it is, when it is one;
+    link_id the Topology link it makes (or confirms) between the two."""
+
+    __tablename__ = "noc_topology_neighbors"
+    __table_args__ = (UniqueConstraint("asset_id", "ident", name="uq_topology_neighbor_ident"),)
+
+    id = Column(Integer, primary_key=True)
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), nullable=False, index=True)
+    ident = Column(String(40), nullable=False)          # sha1 of protocol, local port, chassis, remote port
+    protocol = Column(String(4), nullable=False)        # lldp | cdp
+    local_port = Column(String(255), nullable=False)
+    local_if_index = Column(Integer, nullable=True)
+    chassis_id = Column(String(255), nullable=True)
+    chassis_kind = Column(String(4), nullable=True)     # mac | ip | name
+    remote_name = Column(String(255), nullable=True)
+    remote_port = Column(String(255), nullable=True)
+    remote_port_desc = Column(String(255), nullable=True)
+    remote_mgmt_ip = Column(String(45), nullable=True)
+    remote_description = Column(String(255), nullable=True)
+    capabilities = Column(JSON, nullable=True)          # router, bridge, wlan_ap, phone, station, ...
+    first_seen_at = Column(DateTime, nullable=False)
+    last_seen_at = Column(DateTime, nullable=False, index=True)
+
+    matched_asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="SET NULL"), nullable=True,
+                              index=True)
+    link_id = Column(Integer, ForeignKey("topology_links.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Someone removed the link this neighbour made from the map: do not draw it again.
+    suppressed = Column(Boolean, nullable=False, default=False)
+
+    asset = relationship("Asset", foreign_keys=[asset_id])
+    matched_asset = relationship("Asset", foreign_keys=[matched_asset_id])
+
+
+class TopologyDiscoverySource(Base):
+    """A monitored device whose LLDP / CDP neighbour tables NOC reads, and how the last read went."""
+
+    __tablename__ = "noc_topology_sources"
+
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), primary_key=True)
+    last_read_at = Column(DateTime, nullable=True)
+    ok = Column(Boolean, nullable=False, default=False)
+    error = Column(Text, nullable=True)
+    lldp = Column(Boolean, nullable=False, default=False)      # answered the LLDP tables
+    cdp = Column(Boolean, nullable=False, default=False)
+    neighbors = Column(Integer, nullable=False, default=0)
+    chassis_id = Column(String(255), nullable=True)            # its own LLDP chassis id
+
+    asset = relationship("Asset")

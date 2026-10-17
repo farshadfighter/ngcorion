@@ -355,12 +355,11 @@ def test_add_as_asset_needs_asset_write(db):
 
 
 def test_routes_are_guarded():
-    from app.main import app
-    for route in app.routes:
-        if getattr(route, "path", "").startswith("/api/noc/endpoints"):
-            deps = [d.call for d in route.dependant.dependencies]
-            assert any(getattr(c, "permission", None) or getattr(c, "__name__", "") == "require_admin" for c in deps), \
-                route.path
+    assert len(R.router.routes) >= 6
+    for route in R.router.routes:
+        deps = [d.call for d in route.dependant.dependencies]
+        assert any(getattr(c, "permission", None) or getattr(c, "__name__", "") == "require_admin" for c in deps), \
+            route.path
 
 
 # ── a real agent ────────────────────────────────────────────────────────────

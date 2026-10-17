@@ -26,6 +26,26 @@
 - Rows no longer seen are forgotten: private MACs after 7 days, unknown after
   30, known after 90, ignored after 365.
 
+### Topology from LLDP and CDP
+
+- NOC reads the LLDP (LLDP-MIB) and CDP (CISCO-CDP-MIB) neighbour tables of the
+  monitored devices, by default every 60 minutes, and draws the Topology map
+  from them: a cable reported from both ends makes one link, with the ports as
+  the devices name them and the speed of the port. A link drawn by hand for the
+  same ports is confirmed, never changed or doubled.
+- Neighbours are matched with the inventory by the chassis id the neighbour
+  reports, its MAC or management address, or its name. New view Topology →
+  Neighbours (LLDP/CDP): on the map, not on the map, not in the inventory,
+  removed from the map, the devices read, settings. A neighbour that is not an
+  asset (access point, IP phone, server) can be added as one, its link drawn at
+  once.
+- A found link the devices stop reporting turns red and dashed and raises the
+  new "Network link lost" alert; it is removed after 30 days. A found link
+  removed from the map stays off it until "Add to map".
+- The link panel shows where a link comes from and when it was last reported;
+  the map counts found and missing links. Interface names on links can be up to
+  100 characters.
+
 ### Nine new device icons
 
 - Camera, NVR, laptop, IP phone, UPS, PLC / industrial, WAF, IPS and VPN, with

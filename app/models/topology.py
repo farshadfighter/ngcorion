@@ -31,13 +31,20 @@ class TopologyLink(Base):
         nullable=False,
         index=True,
     )
-    source_interface = Column(String(50), nullable=True)
-    destination_interface = Column(String(50), nullable=True)
+    source_interface = Column(String(100), nullable=True)
+    destination_interface = Column(String(100), nullable=True)
     link_type = Column(String(30), nullable=False, default="ethernet")  # ethernet | fiber | wireless | logical
     speed_mbps = Column(Integer, nullable=True)
     vlan = Column(String(20), nullable=True)
     subnet = Column(String(50), nullable=True)
     status = Column(String(20), nullable=False, default="active")  # active | planned | down
+    # Drawn by hand, or found in the devices' own LLDP / CDP neighbour tables
+    # (app/modules/noc/topology_discovery.py). last_seen_at: when the neighbour tables last showed
+    # it (a hand-drawn link too, as confirmation); missing_since: a found link the devices no
+    # longer report.
+    origin = Column(String(10), nullable=False, default="manual")  # manual | lldp | cdp
+    last_seen_at = Column(DateTime, nullable=True)
+    missing_since = Column(DateTime, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -15,6 +15,7 @@ from typing import Optional
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.modules.noc import endpoints as endpoint_discovery
+from app.modules.noc import topology_discovery
 from app.modules.noc.service import NocService
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,12 @@ class NocPoller:
             await endpoint_discovery.run_if_due(db)
         except Exception:
             logger.exception("[NOC] Network discovery failed")
+            db.rollback()
+        try:
+            # Topology: LLDP / CDP neighbour tables, on their own interval.
+            await topology_discovery.run_if_due(db)
+        except Exception:
+            logger.exception("[NOC] Topology discovery failed")
             db.rollback()
         finally:
             db.close()
