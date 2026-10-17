@@ -1,7 +1,7 @@
 /**
  * NOC dashboard: reachability of monitored hosts, interfaces up and down, and poll-all.
  */
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { ReactFlow, Background, Controls, Panel } from "@xyflow/react";
@@ -13,6 +13,7 @@ import { fetchTopology } from "../../store/topologySlice.jsx";
 import "../../assets/Noc.css";
 import { t, uiLocale, n } from "../../i18n";
 import { ReportShortcut } from "../Reports/ReportShortcut.jsx";
+import api from "../../config/api.js";
 
 const GRID_COLUMNS = 6;
 const GRID_SPACING_X = 200;
@@ -34,6 +35,15 @@ export const NocDashboard = () => {
     const navigate = useNavigate();
     const { hosts, isPolling, error, successMessage } = useSelector((state) => state.noc);
     const { nodes: topologyNodes, links: topologyLinks } = useSelector((state) => state.topology);
+    const [unknown, setUnknown] = useState(null);
+
+    useEffect(() => {
+        const loadUnknown = () => api.get("/api/noc/endpoints", { params: { status: "unknown", page_size: 1 } })
+            .then(({ data }) => setUnknown(data.counts)).catch(() => setUnknown(null));
+        loadUnknown();
+        const timer = setInterval(loadUnknown, 60_000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         dispatch(fetchHosts());
@@ -143,6 +153,15 @@ export const NocDashboard = () => {
                     <div className="noc-stat-value">{n(stats.unmonitored)}</div>
                     <div className="noc-stat-label">{t("Not Monitored")}</div>
                 </div>
+                <button type="button" className={`noc-stat-card noc-stat-link ${unknown?.unknown ? "unknown" : ""}`}
+                        onClick={() => navigate("/noc/unknown-devices")}>
+                    <div className="noc-stat-icon"><i className="fa-solid fa-user-secret" /></div>
+                    <div className="noc-stat-value">{unknown ? n(unknown.unknown) : "—"}</div>
+                    <div className="noc-stat-label">
+                        {t("Unknown devices")}
+                        {unknown?.new ? <span className="noc-stat-new">{t("({{value}} new)", { value: n(unknown.new) })}</span> : null}
+                    </div>
+                </button>
             </div>
 
             <div className="noc-graph-wrap">

@@ -17,6 +17,7 @@ export const ICON_FAMILIES = {
     services: { label: t("Services"), color: "#6d28d9" },
     storage: { label: t("Storage"), color: "#a16207" },
     endpoints: { label: t("Endpoints"), color: "#15803d" },
+    facilities: { label: t("Cameras, power & OT"), color: "#4d7c0f" },
     external: { label: t("External"), color: "#0f766e" },
     identity: { label: t("Directory & network services"), color: "#be185d" },
     other: { label: t("Other"), color: "#6b7280" },
@@ -40,6 +41,18 @@ export const ASSET_ICONS = {
     firewall: {
         label: t("Firewall"), family: "security",
         d: "M4 6h16v12H4zM4 10h16M4 14h16M9 6v4M15 6v4M12 10v4M7 14v4M17 14v4",
+    },
+    waf: {
+        label: t("Web application firewall"), family: "security",
+        d: "M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6zM8 11h8M12 7.5c1.3 1.1 2 2.3 2 3.5s-.7 2.4-2 3.5M12 7.5c-1.3 1.1-2 2.3-2 3.5s.7 2.4 2 3.5",
+    },
+    ips: {
+        label: t("IPS / IDS"), family: "security",
+        d: "M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6zM7.5 12s1.8-3 4.5-3 4.5 3 4.5 3-1.8 3-4.5 3-4.5-3-4.5-3M12 12h.01",
+    },
+    vpn: {
+        label: t("VPN gateway"), family: "security",
+        d: "M7 11h10v9H7zM9.5 11V8.2a2.5 2.5 0 0 1 5 0V11M12 14.5v2M2.5 15.5H7M17 15.5h4.5",
     },
     server: {
         label: t("Physical server"), family: "compute",
@@ -72,6 +85,11 @@ export const ASSET_ICONS = {
         d: "M3.5 6h17v5h-17zM3.5 13h17v5h-17zM16.5 8.5h.01M16.5 15.5h.01M6.5 8.5h6M6.5 15.5h6",
     },
     workstation: { label: t("PC / workstation"), family: "endpoints", d: "M3.5 4.5h17v11h-17zM9 20h6M12 15.5V20" },
+    laptop: { label: t("Laptop"), family: "endpoints", d: "M5 5.5h14v10H5zM2.5 19h19l-1.5-3.5H4z" },
+    ip_phone: {
+        label: t("IP phone"), family: "endpoints",
+        d: "M3.5 8.5h17v11h-17zM5.5 8.5V5h4v3.5M12 11.5h6V14h-6zM12 17h.01M15 17h.01M18 17h.01M7.5 11v6",
+    },
     printer: {
         label: t("Printer"), family: "endpoints",
         d: "M7 8.5V3.5h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5V10A1.5 1.5 0 0 1 5 8.5h14a1.5 1.5 0 0 1 1.5 1.5v5.5A1.5 1.5 0 0 1 19 17h-2M7 13.5h10v7H7zM16.5 11h.01",
@@ -79,6 +97,22 @@ export const ASSET_ICONS = {
     iot: {
         label: t("IoT device"), family: "endpoints",
         d: "M8 8h8v8H8zM10.5 4v4M13.5 4v4M10.5 16v4M13.5 16v4M4 10.5h4M4 13.5h4M16 10.5h4M16 13.5h4",
+    },
+    camera: {
+        label: t("IP camera"), family: "facilities",
+        d: "M3.5 6.5H17l2.5 3-2.5 3H3.5zM14.5 9.5h.01M8.5 12.5V17M5 20h7M8.5 17v3",
+    },
+    nvr: {
+        label: t("Video recorder (NVR)"), family: "facilities",
+        d: "M3 7.5h18v9H3zM7 12a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0M10 10.5h7.5M10 13.5h5M5.5 16.5v2M18.5 16.5v2",
+    },
+    ups: {
+        label: t("UPS"), family: "facilities",
+        d: "M4 6h16v13H4zM9 3.5V6M15 3.5V6M12.8 8.5l-2.8 4h4l-2.8 4",
+    },
+    plc: {
+        label: t("PLC / industrial"), family: "facilities",
+        d: "M4 4h16v16H4zM4 8.5h16M7.5 4v4.5M11 4v4.5M14.5 4v4.5M7 12h4v5H7zM14 12.5h3M14 15h3M14 17.5h3",
     },
     directory: {
         label: t("Directory (AD)"), family: "identity",
@@ -115,6 +149,9 @@ const ALIASES = { cloud: "internet", loadbalancer: "load_balancer", "load-balanc
 
 // Mirrors _NAME_RULES in app/core/asset_icons.py - keep the two in step.
 const NAME_RULES = [
+    [/\bwaf\b|web ?application ?firewall|fortiweb|imperva|modsecurity/i, "waf"],
+    [/\bips\b|\bids\b|intrusion|snort|suricata/i, "ips"],
+    [/\bvpn\b|anyconnect|openvpn|wireguard/i, "vpn"],
     [/firewall|fortigate|palo ?alto|\basa\b|\butm\b|check ?point|sophos/i, "firewall"],
     [/load ?balanc|\bf5\b|big-?ip|haproxy|\badc\b/i, "load_balancer"],
     [/router|gateway|\bisr\b|\basr\b/i, "router"],
@@ -131,9 +168,15 @@ const NAME_RULES = [
     [/\bdhcp\b/i, "dhcp"],
     [/windows/i, "windows"],
     [/linux|ubuntu|debian|centos|rhel|red ?hat|rocky|alma|suse|fedora/i, "linux"],
-    [/workstation|desktop|laptop|\bpc\b|endpoint/i, "workstation"],
+    [/laptop|notebook|macbook|thinkpad/i, "laptop"],
+    [/workstation|desktop|\bpc\b|endpoint/i, "workstation"],
+    [/ip ?phone|voip|\bsip\b|desk ?phone|telephone/i, "ip_phone"],
     [/printer|\bmfp\b|\bmfd\b|multi-?function|copier|plotter|laserjet/i, "printer"],
-    [/\biot\b|camera|cctv|sensor|\bplc\b|scada|voip|ip ?phone/i, "iot"],
+    [/\bnvr\b|\bdvr\b|video ?recorder/i, "nvr"],
+    [/camera|cctv|\bip ?cam/i, "camera"],
+    [/\bups\b|uninterruptible/i, "ups"],
+    [/\bplc\b|scada|\bhmi\b|\brtu\b|industrial|operational technology/i, "plc"],
+    [/\biot\b|sensor/i, "iot"],
     [/internet|\bisp\b|\bwan\b|cloud/i, "internet"],
     [/server|bare ?metal/i, "server"],
 ];

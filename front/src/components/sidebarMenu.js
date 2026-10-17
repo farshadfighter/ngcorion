@@ -73,6 +73,7 @@ export const MENU_GROUPS = [
         items: [
             { key: "noc-dashboard", label: t("Network status (NOC)"), path: "/noc/dashboard", perm: "noc" },
             { key: "noc-hosts", label: t("Hosts"), path: "/noc/hosts", perm: "noc" },
+            { key: "noc-unknown", label: t("Unknown devices"), path: "/noc/unknown-devices", perm: "noc" },
             { key: "noc-syslog", label: t("Syslog"), path: "/noc/syslog", perm: "noc" },
             { key: "topology", label: t("Topology"), path: "/topology", perm: "topology" },
             { key: "design-suggestion", label: t("Suggested Design"), path: "/design-suggestion",
@@ -165,6 +166,7 @@ const PATHS = [
     ["/noc/dashboard", "noc-dashboard"],
     ["/noc/hosts", "noc-hosts"],
     ["/noc/syslog", "noc-syslog"],
+    ["/noc/unknown-devices", "noc-unknown"],
     ["/settings/users", "user-management"],
     ["/settings/logs", "system-logs"],
     ["/settings/audit-trail", "audit-trail"],

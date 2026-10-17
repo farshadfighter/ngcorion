@@ -293,6 +293,32 @@ def _device_rebooted(db: Session, params: Dict, now: datetime, since: datetime) 
     return out
 
 
+def _unknown_device(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    """Addresses first seen in a monitored router's or switch's tables that are no asset
+    (app/modules/noc/endpoints.py). Not those present at the first read of a device (baseline).
+    Many at once (a new floor, a lab switched on) make one alert instead of one each."""
+    from app.models.noc import NetworkEndpoint
+    since = since.replace(tzinfo=None) if since.tzinfo else since
+    rows = (db.query(NetworkEndpoint).options(joinedload(NetworkEndpoint.seen_by))
+            .filter(NetworkEndpoint.first_seen_at >= since, NetworkEndpoint.matched_asset_id.is_(None),
+                    NetworkEndpoint.state == "open", NetworkEndpoint.baseline.is_(False))
+            .order_by(NetworkEndpoint.id).all())
+    if len(rows) > 10:
+        count = len(rows)
+        return [Problem(key=f"endpoints:{rows[-1].id}", title="New devices on the network",
+                        detail=f"{count} addresses that are not assets appeared",
+                        link="/noc/unknown-devices")]
+    out = []
+    for r in rows:
+        mac, vendor, ip, port = r.mac, r.vendor or "-", r.ip or "-", r.seen_port or "-"
+        device = r.seen_by.asset_name if r.seen_by else "-"
+        out.append(Problem(key=f"endpoint:{r.id}", title="New device on the network",
+                           detail=f"MAC {mac}, maker {vendor}, IP {ip}, seen by {device}, port {port}",
+                           asset_id=r.seen_by_asset_id, source_label=_label(r.seen_by) if r.seen_by else None,
+                           link=f"/noc/unknown-devices?focus={r.id}"))
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Syslog received from the assets (app/modules/syslog)
 # ---------------------------------------------------------------------------
@@ -880,6 +906,9 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
               params=[Param("celsius", "Temperature", 70, "°C", 20, 150)], uses_assets=True, severity="critical"),
     EventType("noc.device_rebooted", "noc", "Device restarted",
               "A device's uptime starts again from zero", "event", 60, _device_rebooted, uses_assets=True),
+    EventType("noc.unknown_device", "noc", "New device on the network",
+              "An address that is not an asset appears in the ARP or MAC table of a monitored router or switch",
+              "event", 300, _unknown_device, uses_assets=True),
     EventType("noc.interface_utilization", "noc", "Interface utilization high",
               "Above {percent}% for {minutes} minutes", "state", 300, _interface_utilization,
               params=[Param("percent", "Utilization", 90, "%", 1, 100),

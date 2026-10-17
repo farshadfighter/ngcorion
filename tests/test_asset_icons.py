@@ -45,7 +45,25 @@ class TestSuggestIcon:
         ("Network Printer", "printer"),
         ("MFP", "printer"),
         ("Copier", "printer"),
-        ("IP Camera", "iot"),
+        ("IP Camera", "camera"),
+        ("CCTV", "camera"),
+        ("NVR", "nvr"),
+        ("Video Recorder", "nvr"),
+        ("Laptop", "laptop"),
+        ("IP Phone", "ip_phone"),
+        ("VoIP Phone", "ip_phone"),
+        ("UPS", "ups"),
+        ("PLC", "plc"),
+        ("SCADA HMI", "plc"),
+        ("IoT Sensor", "iot"),
+        ("WAF", "waf"),
+        ("Web Application Firewall", "waf"),
+        ("FortiWeb", "waf"),
+        ("IPS", "ips"),
+        ("Intrusion Prevention", "ips"),
+        ("VPN Gateway", "vpn"),
+        ("Industrial Switch", "switch"),
+        ("Domain Controller", "directory"),
         ("Internet", "internet"),
         ("Generic Asset", "other"),
         (None, "other"),
@@ -56,7 +74,8 @@ class TestSuggestIcon:
     def test_short_keywords_need_word_boundaries(self):
         # "asa" and "ap" must not fire inside ordinary words.
         assert suggest_icon("Nasa Lab Gear") == "other"
-        assert suggest_icon("Laptop") == "workstation"
+        assert suggest_icon("Backups") == "other"      # not "ups"
+        assert suggest_icon("Laptop") == "laptop"
 
 
 class TestResolveOrder:
@@ -73,6 +92,12 @@ class TestResolveOrder:
         assert resolve_icon(asset("Generic Asset", os_name="Ubuntu", vendor="Fortinet")) == "linux"
         assert resolve_icon(asset("Generic Asset")) == "other"
 
+    def test_device_makers(self):
+        assert resolve_icon(asset("Generic Asset", vendor="Hangzhou Hikvision Digital Technology")) == "camera"
+        assert resolve_icon(asset("Generic Asset", vendor="Yealink(Xiamen) Network Technology")) == "ip_phone"
+        assert resolve_icon(asset("Generic Asset", vendor="American Power Conversion")) == "ups"
+        assert resolve_icon(asset("Generic Asset", vendor="Rockwell Automation")) == "plc"
+
     def test_role_counts_as_a_keyword(self):
         assert resolve_icon(asset("Appliance", role="Perimeter firewall")) == "firewall"
 
@@ -80,7 +105,7 @@ class TestResolveOrder:
         assert resolve_icon(asset("Switch", type_icon="spaceship", icon="nope")) == "switch"
 
     def test_every_rule_returns_a_known_key(self):
-        for name in ["router", "wan", "nas", "esxi", "camera", "iis", "ad", "pc"]:
+        for name in ["router", "wan", "nas", "esxi", "camera", "iis", "ad", "pc", "ups", "waf", "nvr"]:
             assert suggest_icon(name) in ICON_KEYS
 
 
@@ -206,3 +231,22 @@ def test_printer_vendor_and_badge():
     assert resolve_icon(asset("Device", vendor="Kyocera")) == "printer"
     assert resolve_icon(asset("Device", vendor="HP")) == "other"
     assert icon_badge(asset("Printer", vendor="Kyocera", os_name="Embedded")) == "Kyocera"
+
+
+class TestFrontendMirror:
+    """front/src/components/shared/assetIcons.js draws the keys this resolver returns and repeats its
+    name rules; a key missing there would draw as "other"."""
+    JS = (PROJECT_ROOT / "front/src/components/shared/assetIcons.js").read_text(encoding="utf-8")
+
+    def test_same_icon_keys(self):
+        import re
+        block = self.JS[self.JS.index("export const ASSET_ICONS"):self.JS.index("export const ICON_KEYS")]
+        js_keys = re.findall(r"^    (\w+): \{", block, re.M)
+        assert js_keys and set(js_keys) == set(ICON_KEYS)
+
+    def test_same_name_rules(self):
+        import re
+        from app.core.asset_icons import _NAME_RULES
+        block = self.JS[self.JS.index("const NAME_RULES"):]
+        js_rules = re.findall(r'\[/(.+?)/i, "(\w+)"\]', block)
+        assert [(p.pattern, key) for p, key in _NAME_RULES] == [(p.replace("\\\\", "\\"), k) for p, k in js_rules]

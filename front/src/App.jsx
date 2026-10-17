@@ -50,6 +50,7 @@ const CveDatabase = lazy(() => import("./components/CVE/CveDatabase").then((m) =
 const NocDashboard = lazy(() => import("./components/NOC/NocDashboard").then((m) => ({ default: m.NocDashboard })));
 const AssetDetailPage = lazy(() => import("./components/AssetList/AssetDetailPage").then((m) => ({ default: m.AssetDetailPage })));
 const SyslogPage = lazy(() => import("./components/NOC/SyslogPage").then((m) => ({ default: m.SyslogPage })));
+const UnknownDevicesPage = lazy(() => import("./components/NOC/UnknownDevicesPage").then((m) => ({ default: m.UnknownDevicesPage })));
 const NocHostList = lazy(() => import("./components/NOC/NocHostList").then((m) => ({ default: m.NocHostList })));
 const AlertsPage = lazy(() => import("./components/Alerts/AlertsPage").then((m) => ({ default: m.AlertsPage })));
 const NotificationsPage = lazy(() => import("./components/Notifications/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
@@ -353,6 +354,11 @@ function AppContent() {
                         <Route path="/noc/syslog" element={
                             <RequirePermission module="noc" name="Syslog">
                                 <SyslogPage />
+                            </RequirePermission>
+                        } />
+                        <Route path="/noc/unknown-devices" element={
+                            <RequirePermission module="noc" name="Unknown devices">
+                                <UnknownDevicesPage />
                             </RequirePermission>
                         } />
 

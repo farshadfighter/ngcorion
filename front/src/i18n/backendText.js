@@ -81,6 +81,12 @@ const TEMPLATES = [
     msg("{{name}} {{value}}% full (and {{more}} more)"),
     msg("{{name}} {{value}}% full"),
     msg("{{name}} at {{value}} °C"),
+    // unknown devices (app/modules/noc/endpoints.py)
+    msg("MAC {{mac}}, maker {{vendor}}, IP {{ip}}, seen by {{device}}, port {{port}}"),
+    msg("{{count}} addresses that are not assets appeared"),
+    msg("Ignored the unknown device {{mac}}"),
+    msg("No longer ignoring the device {{mac}}"),
+    msg("Unknown device discovery turned on, every {{minutes}} minutes"),
     msg("Restarted after {{value}} days of uptime"),
     msg("Restarted after {{value}} hours of uptime"),
     msg("A finding with CVSS {{cvss}} or higher"),
@@ -1042,3 +1048,12 @@ msg("Choose UDP, TCP or both");
 msg("the listener is not running");
 msg("Syslog intake");
 msg("group_id and credential_profile_id are required for a backup job");
+
+// unknown devices (app/modules/noc/endpoints.py)
+msg("New device on the network");
+msg("New devices on the network");
+msg("An address that is not an asset appears in the ARP or MAC table of a monitored router or switch");
+msg("Unknown device discovery turned off");
+msg("No such device");
+msg("This device is already an asset");
+msg("Unknown asset type");

@@ -21,19 +21,27 @@ import re
 from typing import Optional, Sequence, Tuple
 
 ICON_KEYS: Tuple[str, ...] = (
-    "router", "switch", "wireless", "load_balancer", "firewall",
+    "router", "switch", "wireless", "load_balancer", "firewall", "waf", "ips", "vpn",
     "server", "hypervisor", "container", "cluster", "linux", "windows",
     "web", "database", "storage",
     "directory", "dns", "dhcp",
-    "workstation", "printer", "iot", "internet", "other",
+    "workstation", "laptop", "ip_phone", "printer", "iot",
+    "camera", "nvr", "ups", "plc",
+    "internet", "other",
 )
 
 # Network-ish icons show the vendor as their badge; hosts show the OS.
-_VENDOR_BADGE_ICONS = {"router", "switch", "wireless", "load_balancer", "firewall", "storage", "printer"}
+_VENDOR_BADGE_ICONS = {"router", "switch", "wireless", "load_balancer", "firewall", "waf", "ips", "vpn",
+                       "storage", "printer", "ip_phone", "camera", "nvr", "ups", "plc"}
 
 # Function before platform: a "Linux Web Server" is a web server, a
 # "Windows Database Server" a database. The generic "server" is last.
 _NAME_RULES: Sequence[Tuple[re.Pattern, str]] = [
+    # Kinds of security gateway before the generic firewall: a "Web Application Firewall" is a WAF,
+    # a "VPN gateway" is not a router.
+    (re.compile(r"\bwaf\b|web ?application ?firewall|fortiweb|imperva|modsecurity", re.I), "waf"),
+    (re.compile(r"\bips\b|\bids\b|intrusion|snort|suricata", re.I), "ips"),
+    (re.compile(r"\bvpn\b|anyconnect|openvpn|wireguard", re.I), "vpn"),
     (re.compile(r"firewall|fortigate|palo ?alto|\basa\b|\butm\b|check ?point|sophos", re.I), "firewall"),
     (re.compile(r"load ?balanc|\bf5\b|big-?ip|haproxy|\badc\b", re.I), "load_balancer"),
     (re.compile(r"router|gateway|\bisr\b|\basr\b", re.I), "router"),
@@ -50,9 +58,15 @@ _NAME_RULES: Sequence[Tuple[re.Pattern, str]] = [
     (re.compile(r"\bdhcp\b", re.I), "dhcp"),
     (re.compile(r"windows", re.I), "windows"),
     (re.compile(r"linux|ubuntu|debian|centos|rhel|red ?hat|rocky|alma|suse|fedora", re.I), "linux"),
-    (re.compile(r"workstation|desktop|laptop|\bpc\b|endpoint", re.I), "workstation"),
+    (re.compile(r"laptop|notebook|macbook|thinkpad", re.I), "laptop"),
+    (re.compile(r"workstation|desktop|\bpc\b|endpoint", re.I), "workstation"),
+    (re.compile(r"ip ?phone|voip|\bsip\b|desk ?phone|telephone", re.I), "ip_phone"),
     (re.compile(r"printer|\bmfp\b|\bmfd\b|multi-?function|copier|plotter|laserjet", re.I), "printer"),
-    (re.compile(r"\biot\b|camera|cctv|sensor|\bplc\b|scada|voip|ip ?phone", re.I), "iot"),
+    (re.compile(r"\bnvr\b|\bdvr\b|video ?recorder", re.I), "nvr"),
+    (re.compile(r"camera|cctv|\bip ?cam", re.I), "camera"),
+    (re.compile(r"\bups\b|uninterruptible", re.I), "ups"),
+    (re.compile(r"\bplc\b|scada|\bhmi\b|\brtu\b|industrial|operational technology", re.I), "plc"),
+    (re.compile(r"\biot\b|sensor", re.I), "iot"),
     (re.compile(r"internet|\bisp\b|\bwan\b|cloud", re.I), "internet"),
     (re.compile(r"server|bare ?metal", re.I), "server"),
 ]
@@ -75,6 +89,11 @@ _VENDOR_RULES: Sequence[Tuple[re.Pattern, str]] = [
     (re.compile(r"vmware", re.I), "hypervisor"),
     # Printer makers only; HP and Canon also make servers and cameras, so a type name decides those.
     (re.compile(r"kyocera|ricoh|xerox|konica|lexmark|brother industries|\bbrother\b", re.I), "printer"),
+    (re.compile(r"imperva", re.I), "waf"),
+    (re.compile(r"hikvision|dahua|axis communications|hanwha|uniview|vivotek|milesight", re.I), "camera"),
+    (re.compile(r"yealink|grandstream|polycom|\bsnom\b|fanvil|avaya|mitel", re.I), "ip_phone"),
+    (re.compile(r"american power conversion|\bapc\b|eaton|vertiv|liebert|riello|socomec", re.I), "ups"),
+    (re.compile(r"rockwell|allen-?bradley|phoenix contact|\bwago\b|beckhoff|omron|mitsubishi electric", re.I), "plc"),
 ]
 
 

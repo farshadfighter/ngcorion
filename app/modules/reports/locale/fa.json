@@ -574,5 +574,6 @@
   "Disk almost full": "دیسک تقریباً پر است",
   "Temperature high": "دما بالاست",
   "Device restarted": "دستگاه راه‌اندازی مجدد شد",
-  "Syslog intake not listening": "دریافت Syslog فعال نیست"
+  "Syslog intake not listening": "دریافت Syslog فعال نیست",
+  "New device on the network": "دستگاه جدید روی شبکه"
 }

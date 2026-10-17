@@ -2,7 +2,8 @@
 Background SNMP poller.
 
 Sweeps every asset with an SNMP credential on a fixed interval and persists
-the result (AssetSnmpStatus / AssetSnmpInterface). An asyncio task, not a
+the result (AssetSnmpStatus / AssetSnmpInterface); after a sweep, reads the
+ARP / MAC tables for unknown devices when that is due (endpoints.py). An asyncio task, not a
 thread like app/core/heartbeat.py: SNMP polling here is I/O-bound over UDP
 via `puresnmp`'s native async API, so a task on the existing event loop is
 both simpler and cheaper than a second OS thread running its own loop.
@@ -13,6 +14,7 @@ from typing import Optional
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.modules.noc import endpoints as endpoint_discovery
 from app.modules.noc.service import NocService
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,12 @@ class NocPoller:
                 logger.info("[NOC] Polled %d asset(s)", count)
         except Exception:
             logger.exception("[NOC] Poll sweep failed")
+        try:
+            # Unknown devices: ARP / MAC tables, on their own (longer) interval.
+            await endpoint_discovery.run_if_due(db)
+        except Exception:
+            logger.exception("[NOC] Network discovery failed")
+            db.rollback()
         finally:
             db.close()
 

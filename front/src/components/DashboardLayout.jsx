@@ -154,6 +154,7 @@ export const DashboardLayout = () => {
         "noc-dashboard":       t("Network status (NOC)"),
         "noc-hosts":           t("Hosts"),
         "noc-syslog":          t("Syslog"),
+        "noc-unknown":         t("Unknown devices"),
         "user-management":     t("User Management"),
         "system-logs":         t("Logs and audit trail"),
         "audit-trail":         t("Logs and audit trail"),
@@ -173,6 +174,7 @@ export const DashboardLayout = () => {
         "noc-dashboard": t("Live SNMP status for every asset, plotted on the same topology graph as Topology."),
         "noc-hosts": t("Every asset, searchable - open one to see its SNMP details and set up monitoring."),
         "noc-syslog": t("Syslog messages the assets send to NGCorion."),
+        "noc-unknown": t("Devices on the network that are not in the inventory, found in the routers' and switches' own tables."),
     };
 
     return (

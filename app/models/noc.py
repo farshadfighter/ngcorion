@@ -143,3 +143,60 @@ class AssetSnmpInterface(Base):
     last_polled_at = Column(DateTime, nullable=True)
 
     asset = relationship("Asset")
+
+
+class NetworkEndpoint(Base):
+    """A device address NOC saw in the ARP or MAC table of a monitored router or switch
+    (app/modules/noc/endpoints.py). One row per MAC; matched_asset_id is set when the address
+    belongs to an asset (its MAC, its IP, or a monitored device's own interface), otherwise the
+    device is unknown and listed on the Unknown devices page until someone adds it as an asset or
+    ignores it."""
+
+    __tablename__ = "noc_network_endpoints"
+
+    id = Column(Integer, primary_key=True)
+    mac = Column(String(17), nullable=False, unique=True)          # aa:bb:cc:dd:ee:ff
+    ip = Column(String(45), nullable=True, index=True)              # the address seen last
+    other_ips = Column(JSON, nullable=True)                         # more addresses on the same MAC
+    vendor = Column(String(160), nullable=True)                     # from the OUI registry
+    private_mac = Column(Boolean, nullable=False, default=False)    # locally administered address
+    guess_kind = Column(String(20), nullable=True)                  # app/modules/noc/oui.py guess()
+    guess_icon = Column(String(20), nullable=True)
+    first_seen_at = Column(DateTime, nullable=False, index=True)
+    last_seen_at = Column(DateTime, nullable=False, index=True)
+    # Found in the first read of every device that reported it: present before NOC looked, so no
+    # "new device" alert for it.
+    baseline = Column(Boolean, nullable=False, default=False)
+    # Where it was seen: the device and port with the fewest addresses (an access port rather than
+    # an uplink), and how (arp, mac or both).
+    seen_by_asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="SET NULL"), nullable=True)
+    seen_if_index = Column(Integer, nullable=True)
+    seen_port = Column(String(255), nullable=True)
+    seen_vlan = Column(Integer, nullable=True)
+    seen_via = Column(String(10), nullable=True)
+
+    matched_asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="SET NULL"), nullable=True,
+                              index=True)
+    state = Column(String(10), nullable=False, default="open", index=True)   # open | ignored
+    ignore_note = Column(String(255), nullable=True)
+    ignored_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    ignored_at = Column(DateTime, nullable=True)
+
+    seen_by = relationship("Asset", foreign_keys=[seen_by_asset_id])
+    matched_asset = relationship("Asset", foreign_keys=[matched_asset_id])
+
+
+class NetworkDiscoverySource(Base):
+    """A monitored device whose ARP / MAC tables NOC reads, and how the last read went."""
+
+    __tablename__ = "noc_discovery_sources"
+
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), primary_key=True)
+    first_read_at = Column(DateTime, nullable=True)
+    last_read_at = Column(DateTime, nullable=True)
+    ok = Column(Boolean, nullable=False, default=False)
+    error = Column(Text, nullable=True)
+    arp_entries = Column(Integer, nullable=False, default=0)
+    mac_entries = Column(Integer, nullable=False, default=0)
+
+    asset = relationship("Asset")

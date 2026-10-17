@@ -108,6 +108,7 @@ from app.modules.topology.router import router as topology_router
 
 # Import NOC (SNMP monitoring) router
 from app.modules.noc.router import router as noc_router
+from app.modules.noc.endpoints_router import router as noc_endpoints_router
 
 # Import architecture validation router
 from app.modules.architecture_validation.router import router as architecture_validation_router
@@ -570,6 +571,7 @@ app.include_router(topology_router)
 
 # NOC (SNMP monitoring) routes
 app.include_router(noc_router)
+app.include_router(noc_endpoints_router)
 
 # Architecture Validation routes
 app.include_router(architecture_validation_router)

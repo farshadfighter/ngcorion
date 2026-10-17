@@ -59,7 +59,7 @@
 
 .noc-stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    grid-template-columns: repeat(5, minmax(140px, 1fr));
     gap: 14px;
     margin-bottom: 20px;
 }
@@ -106,6 +106,11 @@
 .noc-stat-card.reachable .noc-stat-value { color: var(--noc-up); }
 .noc-stat-card.unreachable .noc-stat-value { color: var(--noc-down); }
 .noc-stat-card.unmonitored .noc-stat-value { color: var(--noc-text-dim); }
+.noc-stat-link { font: inherit; text-align: start; cursor: pointer; }
+.noc-stat-new { margin-inline-start: 6px; color: #c2410c; font-weight: 600; }
+.noc-stat-link:hover { border-color: #f59e0b; }
+.noc-stat-card.unknown .noc-stat-icon { background: #fff7ed; color: #c2410c; }
+.noc-stat-card.unknown .noc-stat-value { color: #c2410c; }
 
 /* ── Buttons ── */
 
@@ -373,7 +378,12 @@
 .noc-sensor bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #374151; }
 .noc-sensor b { font-variant-numeric: tabular-nums; }
 
+@media (max-width: 1100px) {
+    .noc-stats { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
+}
+
 @media (max-width: 900px) {
+    .noc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .noc-ht-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     /* host page: one column, and wide tables scroll inside their card instead of widening the page */
     .noc-container { padding: 20px 16px; }

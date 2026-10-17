@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+### Unknown devices on the network
+
+- New page Network & monitoring → Unknown devices: the addresses the monitored
+  routers and switches see that are not in the inventory. NGCorion scans
+  nothing; it reads their ARP table (IP ↔ MAC, IP-MIB, with the newer
+  ipNetToPhysicalTable as fallback) and MAC table (which MAC behind which port,
+  Q-BRIDGE-MIB, with BRIDGE-MIB as fallback) over SNMP, by default every
+  15 minutes, with the SNMP credentials already given in NOC → Hosts.
+- Each address shows the maker (from the MAC prefix, nmap's list), a guess of
+  the kind with its icon (camera, IP phone, UPS, PLC, virtual machine,
+  computer, network device …), the device, port and VLAN it was seen on (the
+  access port when it shows on several), and when it was first and last seen.
+  Random (private) MACs of phones and laptops are marked.
+- Add as asset (IP, MAC and maker filled in, the asset type matching the guess
+  chosen; counts against the license like any asset), or ignore one or many
+  with a note. Tabs for new (24 hours), ignored, known, the devices read and
+  their errors, and the settings (system administrators). The NOC dashboard
+  shows the count.
+- Alert "New device on the network" when an address that is not an asset first
+  appears; what the first read of each device finds is the baseline and raises
+  nothing, and more than 10 at once make one alert.
+- Rows no longer seen are forgotten: private MACs after 7 days, unknown after
+  30, known after 90, ignored after 365.
+
+### Nine new device icons
+
+- Camera, NVR, laptop, IP phone, UPS, PLC / industrial, WAF, IPS and VPN, with
+  name and maker rules (e.g. Hikvision → camera, Yealink → IP phone, APC →
+  UPS, Imperva → WAF). Icons chosen by hand stay; an asset whose icon is
+  automatic may now show one of the new ones.
+
 ## 2.1.0 — 2026-10-17
 
 ### Licensing by number of assets
