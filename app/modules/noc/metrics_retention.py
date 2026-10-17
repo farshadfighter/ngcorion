@@ -222,6 +222,19 @@ def run_once(db: Session, now: datetime | None = None) -> None:
     run_rollups(db, now)
     apply_time_based_retention(db, now)
     enforce_storage_budget(db)
+    forget_old_reboots(db, now)
+
+
+REBOOT_RETENTION_DAYS = 730
+
+
+def forget_old_reboots(db: Session, now: datetime) -> int:
+    """Restarts NOC noticed (noc_device_reboots) are kept two years."""
+    from app.models.noc import DeviceReboot
+    n = (db.query(DeviceReboot).filter(DeviceReboot.detected_at < now - timedelta(days=REBOOT_RETENTION_DAYS))
+         .delete(synchronize_session=False))
+    db.commit()
+    return n
 
 
 # ==========================================

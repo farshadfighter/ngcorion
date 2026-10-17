@@ -1,14 +1,14 @@
 """NOC Service - SNMP credential management and poll orchestration/persistence."""
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.asset import Asset
 from app.models.enums import StatusEnum
-from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface
+from app.models.noc import AssetSnmpCredential, AssetSnmpStatus, AssetSnmpInterface, DeviceReboot
 from app.models.noc_metrics import AssetMetricSample, AssetMetricRollup
 from app.core.snmp_crypto import encrypt_secret
 from app.modules.noc.snmp_client import poll_asset, DevicePollResult
@@ -25,6 +25,16 @@ MAX_CONCURRENT_POLLS = 20
 # A single dropped packet must not flip status (flapping); one success
 # immediately flips it back to ACTIVE - see _apply_auto_status below.
 NOC_INACTIVE_AFTER_FAILURES = 3
+
+# Reboot detection (see _note_reboot): the boot time the uptime implies may move by poll latency
+# between two polls; a later boot time by more than this is a restart.
+REBOOT_TOLERANCE = timedelta(seconds=120)
+# TimeTicks (hundredths of a second, 32 bits) wrap after about 497 days: the implied boot time then
+# jumps forward by exactly this much, which is not a restart.
+UPTIME_WRAP = timedelta(seconds=2 ** 32 / 100)
+
+# Device health values recorded in the metric history (app/models/noc_metrics.py) and charted.
+HEALTH_METRICS = ("cpu_percent", "memory_percent", "disk_percent", "temperature_c")
 
 
 class NocService:
@@ -122,6 +132,9 @@ class NocService:
             status = AssetSnmpStatus(asset_id=asset_id)
             db.add(status)
 
+        now = datetime.utcnow()
+        if result.reachable:
+            NocService._apply_health(db, asset_id, status, result, now)
         status.reachable = result.reachable
         status.sys_descr = result.sys_descr
         status.sys_name = result.sys_name
@@ -129,7 +142,7 @@ class NocService:
         status.sys_location = result.sys_location
         status.sys_uptime_ticks = result.sys_uptime_ticks
         status.error_message = result.error_message
-        status.last_polled_at = datetime.utcnow()
+        status.last_polled_at = now
         status.consecutive_poll_failures = 0 if result.reachable else (status.consecutive_poll_failures or 0) + 1
 
         NocService._apply_auto_status(db, asset_id, result.reachable, status.consecutive_poll_failures)
@@ -165,6 +178,45 @@ class NocService:
         return status
 
     @staticmethod
+    def _apply_health(db: Session, asset_id: int, status: AssetSnmpStatus, result: DevicePollResult,
+                      now: datetime) -> None:
+        """Store the health of a successful poll and notice a restart. Health is kept as last known
+        while the device does not answer (the history shows the gap)."""
+        h = result.health
+        ticks = h.uptime_ticks if h is not None and h.uptime_ticks is not None else result.sys_uptime_ticks
+        if ticks is not None:
+            NocService._note_reboot(db, asset_id, status, int(ticks), now)
+            status.device_uptime_ticks = int(ticks)
+        if h is None:
+            return
+        status.cpu_percent = h.cpu_percent
+        status.memory_percent = h.memory_percent
+        status.memory_total_bytes = h.memory_total_bytes
+        status.disk_percent = h.disk_percent
+        status.temperature_c = h.temperature_c
+        status.health = h.detail()
+
+    @staticmethod
+    def _note_reboot(db: Session, asset_id: int, status: AssetSnmpStatus, ticks: int, now: datetime) -> None:
+        """The uptime implies a boot time (now - uptime). Compared with the one the previous successful
+        poll implied: later by more than REBOOT_TOLERANCE means the device restarted in between (a
+        DeviceReboot row, which the alert "noc.device_rebooted" reports), unless it is the 497-day
+        counter wrap. Re-anchored every poll, so clock drift never adds up to a false restart."""
+        booted = now - timedelta(seconds=ticks / 100)
+        previous = status.last_reboot_at
+        status.last_reboot_at = booted
+        if previous is None:
+            return
+        moved = booted - previous
+        if moved <= REBOOT_TOLERANCE:
+            return
+        if abs(moved - UPTIME_WRAP) <= timedelta(minutes=10):
+            return
+        db.add(DeviceReboot(asset_id=asset_id, detected_at=now, booted_at=booted,
+                            previous_uptime_seconds=max(int(moved.total_seconds()), 0)))
+        logger.info("[NOC] asset %s restarted at %s", asset_id, booted.isoformat(timespec="seconds"))
+
+    @staticmethod
     def _record_metric_samples(
         db: Session,
         asset_id: int,
@@ -187,6 +239,12 @@ class NocService:
                 sampled_at=sampled_at,
             )
         ]
+        if result.reachable and result.health is not None:
+            for metric in HEALTH_METRICS:
+                value = getattr(result.health, metric)
+                if value is not None:
+                    samples.append(AssetMetricSample(asset_id=asset_id, interface_id=None, metric_type=metric,
+                                                     value=float(value), sampled_at=sampled_at))
         for iface in result.interfaces:
             row = interfaces_by_index.get(iface.if_index)
             if row is None or row.id is None:

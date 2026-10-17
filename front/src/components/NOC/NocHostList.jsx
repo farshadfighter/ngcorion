@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchHosts, clearMessages } from "../../store/nocSlice.jsx";
 import { Pagination } from "../Logs/Pagination.jsx";
+import { HealthBar } from "./Health.jsx";
 import AssetIcon from "../shared/AssetIcon.jsx";
 import "../../assets/Noc.css";
 // Pagination's styles live with the Logs page it was first built for (see
@@ -85,6 +86,9 @@ export const NocHostList = () => {
                                 <th>{t("Type")}</th>
                                 <th>{t("IP Address")}</th>
                                 <th>{t("SNMP Monitoring")}</th>
+                                <th>{t("CPU")}</th>
+                                <th>{t("Memory")}</th>
+                                <th>{t("Disk")}</th>
                                 <th>{t("Last Polled")}</th>
                             </tr>
                         </thead>
@@ -108,6 +112,9 @@ export const NocHostList = () => {
                                         <td>{h.asset_type_name || "—"}</td>
                                         <td>{h.ip_address || "—"}</td>
                                         <td>{h.has_credential ? t("Configured") : t("Not configured")}</td>
+                                        <td><HealthBar value={h.reachable ? h.health?.cpu_percent : null} compact /></td>
+                                        <td><HealthBar value={h.reachable ? h.health?.memory_percent : null} compact /></td>
+                                        <td><HealthBar value={h.reachable ? h.health?.disk_percent : null} compact /></td>
                                         <td>{h.last_polled_at ? new Date(h.last_polled_at).toLocaleString(uiLocale()) : "—"}</td>
                                     </tr>
                                 );

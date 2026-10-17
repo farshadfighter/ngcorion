@@ -10,6 +10,8 @@ import { Link, useParams } from "react-router-dom";
 
 import api from "../../config/api.js";
 import { n, t } from "../../i18n";
+import { HealthBar } from "../NOC/Health.jsx";
+import { celsius, duration } from "../NOC/healthFormat.js";
 import { tb } from "../../i18n/backendText.js";
 import { formatDateTime, formatWhen, relativeDays } from "../../utils/dates.js";
 import { TECHS, errorText } from "../AssetGroups/groupFormat.js";
@@ -129,6 +131,9 @@ function timelineText(e) {
             if (e.action === "ngcorion") return t("Configuration changed by NGCorion (+{{added}} −{{removed}})", { added: n(e.added ?? 0), removed: n(e.removed ?? 0) });
             if (e.action === "first") return t("First configuration backup");
             return t("Configuration backup");
+        case "reboot": return e.value
+            ? t("Device restarted after {{value}} of uptime", { value: duration(e.value) })
+            : t("Device restarted");
         case "change": return t("Device reported a configuration change by {{user}} from {{address}}", {
             user: e.by || t("unknown user"), address: e.from || t("unknown address") });
         case "restore": return t("Configuration restored: {{status}}", { status: RESTORE_STATUS[e.status] || e.status });
@@ -138,7 +143,7 @@ function timelineText(e) {
 }
 
 const KIND_LABEL = { asset: t("Inventory"), audit: t("Audit"), hardening: t("Hardening"), backup: t("Backup"),
-    restore: t("Restore"), alert: t("Alert"), change: t("Change") };
+    restore: t("Restore"), alert: t("Alert"), change: t("Change"), reboot: t("Restart") };
 
 export function AssetDetailPage() {
     const { assetId } = useParams();
@@ -346,7 +351,20 @@ export function AssetDetailPage() {
                                     : d.monitoring.snmp.reachable ? t("Reachable") : t("Unreachable")}
                             </Kv>
                             {d.monitoring.snmp.uptime_seconds != null && (
-                                <Kv label={t("Up for")}>{t("{{value}} days", { value: n(Math.floor(d.monitoring.snmp.uptime_seconds / 86400)) })}</Kv>
+                                <Kv label={t("Up for")}>{duration(d.monitoring.snmp.uptime_seconds)}</Kv>
+                            )}
+                            {d.monitoring.snmp.reachable && [d.monitoring.snmp.cpu_percent, d.monitoring.snmp.memory_percent,
+                                d.monitoring.snmp.disk_percent].some((v) => v != null) && (
+                                <Kv label={t("CPU, memory, disk")}>
+                                    <span className="a360-health">
+                                        <HealthBar value={d.monitoring.snmp.cpu_percent} compact />
+                                        <HealthBar value={d.monitoring.snmp.memory_percent} compact />
+                                        <HealthBar value={d.monitoring.snmp.disk_percent} compact />
+                                    </span>
+                                </Kv>
+                            )}
+                            {d.monitoring.snmp.reachable && d.monitoring.snmp.temperature_c != null && (
+                                <Kv label={t("Temperature")}>{celsius(d.monitoring.snmp.temperature_c)}</Kv>
                             )}
                             {d.monitoring.snmp.interfaces > 0 && (
                                 <Kv label={t("Interfaces")}>

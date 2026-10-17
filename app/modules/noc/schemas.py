@@ -4,6 +4,15 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class HealthNow(BaseModel):
+    """Device health from the last successful poll (app/modules/noc/health.py); a measure is null when
+    the device does not report it."""
+    cpu_percent: Optional[float] = None
+    memory_percent: Optional[float] = None
+    disk_percent: Optional[float] = None
+    temperature_c: Optional[float] = None
+
+
 class SnmpCredentialSet(BaseModel):
     """Input for PUT /api/noc/hosts/{asset_id}/credential. Secret fields
     (community/auth_key/priv_key) are plaintext here and encrypted before
@@ -43,6 +52,26 @@ class HostSummary(BaseModel):
     sys_name: Optional[str] = None
     last_polled_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    health: HealthNow = HealthNow()
+    uptime_seconds: Optional[int] = None
+
+
+class FileSystemInfo(BaseModel):
+    name: str
+    size: int
+    used: int
+    percent: Optional[float] = None
+
+
+class SensorInfo(BaseModel):
+    name: str
+    celsius: float
+
+
+class RebootInfo(BaseModel):
+    detected_at: datetime
+    booted_at: datetime
+    previous_uptime_seconds: Optional[int] = None
 
 
 class InterfaceInfo(BaseModel):
@@ -81,6 +110,15 @@ class HostDetail(BaseModel):
     error_message: Optional[str] = None
     last_polled_at: Optional[datetime] = None
     interfaces: list[InterfaceInfo] = []
+    # health: the device's own uptime (hrSystemUptime where it has one), CPU, memory, disk, temperature
+    uptime_seconds: Optional[int] = None
+    health: HealthNow = HealthNow()
+    memory_total_bytes: Optional[int] = None
+    health_source: Optional[str] = None      # host-resources | ucd | cisco | fortigate
+    filesystems: list[FileSystemInfo] = []
+    sensors: list[SensorInfo] = []
+    booted_at: Optional[datetime] = None
+    reboots: list[RebootInfo] = []           # restarts NOC noticed, newest first (last 20)
 
 
 class PollNowResponse(BaseModel):

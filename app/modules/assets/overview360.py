@@ -175,7 +175,12 @@ def _monitoring(db: Session, a: Asset, now: datetime) -> Dict:
             "configured": db.query(AssetSnmpCredential.id).filter(AssetSnmpCredential.asset_id == a.id).first()
             is not None,
             "reachable": st.reachable if st else None, "last_polled_at": _iso(st.last_polled_at) if st else None,
-            "uptime_seconds": (st.sys_uptime_ticks // 100) if st and st.sys_uptime_ticks else None,
+            "uptime_seconds": ((st.device_uptime_ticks or st.sys_uptime_ticks) // 100)
+            if st and (st.device_uptime_ticks or st.sys_uptime_ticks) else None,
+            "cpu_percent": st.cpu_percent if st else None,
+            "memory_percent": st.memory_percent if st else None,
+            "disk_percent": st.disk_percent if st else None,
+            "temperature_c": st.temperature_c if st else None,
             "error": st.error_message if st and not st.reachable else None,
             "interfaces": len(ifaces),
             "interfaces_down": sum(1 for i in ifaces if i.if_admin_status == "up" and i.if_oper_status == "down"),
@@ -276,6 +281,12 @@ def _timeline(db: Session, a: Asset, can, owner: Optional[int]) -> List[Dict]:
                   .order_by(BackupRestore.created_at.desc()).limit(TIMELINE_MAX)):
             ev.append({"at": _iso(r.finished_at or r.created_at), "kind": "restore", "action": r.status,
                        "text": (r.reason or "")[:200], "status": r.status, "link": "/backup/restores"})
+    if can("noc"):
+        from app.models.noc import DeviceReboot
+        for r in (db.query(DeviceReboot).filter(DeviceReboot.asset_id == a.id)
+                  .order_by(DeviceReboot.detected_at.desc()).limit(TIMELINE_MAX)):
+            ev.append({"at": _iso(r.booted_at), "kind": "reboot", "action": "reboot", "text": None,
+                       "value": r.previous_uptime_seconds, "status": None, "link": f"/noc/hosts/{a.id}"})
     from app.modules.alerts.router import MODULE_PERMISSION
     alert_modules = [m for m, perm in MODULE_PERMISSION.items() if can(perm)]
     if alert_modules:

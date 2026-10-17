@@ -25,6 +25,7 @@
   "{{pre_restore_count}} before restore": "{{pre_restore_count}} پیش از بازیابی",
   "{{value}} changes": "{{value}} تغییر",
   "{{value}} changes, {{external}} outside NGCorion": "{{value}} تغییر، {{external}} بیرون از NGCorion",
+  "{{value}} days": "{{value}} روز",
   "{{value}} scheduled": "{{value}} زمان‌بندی‌شده",
   "#{{id}} · {{count}} lines": "#{{id}}، {{count, number}} خط",
   "← Back": "→ بازگشت",

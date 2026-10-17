@@ -3,8 +3,9 @@ SNMP polling client for NOC monitoring.
 
 Thin wrapper around `puresnmp` (pure-Python, no net-snmp C bindings needed -
 fits the slim Docker image the same way the rest of this app's dependencies
-do): one device-level poll (MIB-2 system group) and one interface-level walk
-(IF-MIB ifTable), both read-only GETs/WALKs - this module never writes
+do): one device-level poll (MIB-2 system group), one interface-level walk
+(IF-MIB ifTable) and the device health walks (CPU, memory, disk, temperature -
+app/modules/noc/health.py), all read-only GETs/WALKs - this module never writes
 anything to a device.
 """
 import asyncio
@@ -15,6 +16,7 @@ from puresnmp.exc import Timeout, SnmpError
 
 from app.models.noc import AssetSnmpCredential
 from app.core.snmp_crypto import decrypt_secret
+from app.modules.noc import health as device_health
 
 # MIB-2 "system" group (RFC 1213)
 OID_SYS_DESCR = "1.3.6.1.2.1.1.1.0"
@@ -76,6 +78,7 @@ class DevicePollResult:
     sys_uptime_ticks: int | None = None
     error_message: str | None = None
     interfaces: list[InterfacePollResult] = field(default_factory=list)
+    health: device_health.Health | None = None
 
 
 def _build_credentials(credential: AssetSnmpCredential):
@@ -175,6 +178,12 @@ async def poll_asset(
         # Interfaces are a bonus, not required for "reachable" - swallow and
         # report the device-level data we already have.
         pass
+
+    # Health (CPU, memory, disk, temperature): best effort as well, each MIB with its own timeout.
+    try:
+        result.health = await device_health.collect(client, result.sys_descr, timeout)
+    except Exception:  # noqa: BLE001
+        result.health = None
 
     return result
 

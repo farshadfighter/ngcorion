@@ -71,6 +71,18 @@ const TEMPLATES = [
     // rule catalogue summaries (values already filled in by the API)
     msg("No SNMP answer for {{polls}} polls in a row"),
     msg("Above {{percent}}% for {{minutes}} minutes"),
+    // device health and restarts (app/modules/noc/health.py, alerts noc.cpu_high ... noc.device_rebooted)
+    msg("CPU at or above {{percent}}% for {{minutes}} minutes"),
+    msg("Memory at or above {{percent}}% for {{minutes}} minutes"),
+    msg("A file system at or above {{percent}}% full"),
+    msg("A temperature sensor at or above {{celsius}} °C"),
+    msg("CPU at {{value}}%, at or above {{percent}}% for {{minutes}} min"),
+    msg("Memory at {{value}}%, at or above {{percent}}% for {{minutes}} min"),
+    msg("{{name}} {{value}}% full (and {{more}} more)"),
+    msg("{{name}} {{value}}% full"),
+    msg("{{name}} at {{value}} °C"),
+    msg("Restarted after {{value}} days of uptime"),
+    msg("Restarted after {{value}} hours of uptime"),
     msg("A finding with CVSS {{cvss}} or higher"),
     msg("No successful update for {{days}} days"),
     msg("An asset falls {{points}} points or more below its previous audit"),
@@ -276,6 +288,14 @@ const TEMPLATES = [
 msg("Device unreachable");
 msg("Interface down");
 msg("Interface utilization high");
+msg("CPU usage high");
+msg("Memory usage high");
+msg("Disk almost full");
+msg("Temperature high");
+msg("Device restarted");
+msg("A device's uptime starts again from zero");
+msg("CPU usage");
+msg("Memory usage");
 msg("Exploited vulnerability on an asset");
 msg("Critical vulnerability");
 msg("CVE database outdated");

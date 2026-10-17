@@ -1,6 +1,6 @@
 /**
- * One monitored host: SNMP credential (secrets write-only), system information, interfaces and
- * metric charts.
+ * One monitored host: SNMP credential (secrets write-only), system information, device health (CPU,
+ * memory, disk, temperature, restarts), interfaces and metric charts.
  */
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,16 +17,17 @@ import { MetricChart } from "../shared/MetricChart.jsx";
 import { TimeRangePicker } from "../shared/TimeRangePicker.jsx";
 import "../../assets/Noc.css";
 import AssetIcon from "../shared/AssetIcon.jsx";
-import { t, uiLocale } from "../../i18n";
+import { n, t, uiLocale } from "../../i18n";
+import { HealthCard, RebootsCard } from "./Health.jsx";
+import { celsius, pct } from "./healthFormat.js";
 
-function formatUptime(ticks) {
-    if (ticks == null) return "—";
-    const totalSeconds = Math.floor(ticks / 100); // sysUpTime is in hundredths of a second
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return t("{{days}}d {{hours}}h {{minutes}}m", { days, hours, minutes });
-}
+// Device-level metrics of the History chart (no interface to pick) and how their values read.
+const HEALTH_METRICS = {
+    cpu_percent: { label: t("CPU"), color: "#1e3a5f", format: pct },
+    memory_percent: { label: t("Memory"), color: "#7c3aed", format: pct },
+    disk_percent: { label: t("Disk (fullest file system)"), color: "#b45309", format: pct },
+    temperature_c: { label: t("Temperature"), color: "#dc2626", format: celsius },
+};
 
 function formatBytes(n) {
     if (n == null) return "—";
@@ -58,10 +59,14 @@ function classifyInterfaceType(ifType) {
     for (const [group, codes] of Object.entries(IF_TYPE_GROUPS)) {
         if (codes.has(ifType)) return group;
     }
-    return t("Other");
+    return "Other";
 }
 
-const INTERFACE_FILTERS = [t("All"), t("Physical"), "VLAN", t("Aggregate"), t("Tunnel"), t("Other")];
+// Filter keys stay English (they are compared with classifyInterfaceType); only the labels are translated.
+const INTERFACE_FILTERS = ["All", "Physical", "VLAN", "Aggregate", "Tunnel", "Other"];
+const GROUP_LABELS = { All: t("All"), Physical: t("Physical"), VLAN: "VLAN", Aggregate: t("Aggregate"),
+    Tunnel: t("Tunnel"), Other: t("Other") };
+const IF_STATUS = { up: t("up"), down: t("down"), testing: t("testing") };
 
 // ifDescr is frequently blank or unhelpful on real devices (FortiGate
 // leaves it empty for VLANs/aggregates/tunnels; even set, it's often a
@@ -70,7 +75,7 @@ const INTERFACE_FILTERS = [t("All"), t("Physical"), "VLAN", t("Aggregate"), t("T
 // them, and only fall back to "<Type> #<index>" when the device gave us
 // nothing at all rather than showing a bare "—".
 function interfaceDisplayName(iface) {
-    return iface.if_alias || iface.if_name || iface.if_descr || `${classifyInterfaceType(iface.if_type)} #${iface.if_index}`;
+    return iface.if_alias || iface.if_name || iface.if_descr || `${GROUP_LABELS[classifyInterfaceType(iface.if_type)]} #${n(iface.if_index)}`;
 }
 
 // How often the page re-fetches while open, so it reflects the background
@@ -85,14 +90,17 @@ export const NocHostDetail = () => {
     const navigate = useNavigate();
     const { currentHost, isPolling, error, successMessage, metricSeries, isLoadingMetric } = useSelector((state) => state.noc);
 
-    const [interfaceFilter, setInterfaceFilter] = useState(t("All"));
+    const [interfaceFilter, setInterfaceFilter] = useState("All");
 
-    const [historyMetric, setHistoryMetric] = useState("reachable");
+    // null until picked: CPU when the device reports it, else reachability
+    const [pickedMetric, setHistoryMetric] = useState(null);
     const [historyInterfaceId, setHistoryInterfaceId] = useState(null);
     const [historyRange, setHistoryRange] = useState(() => {
         const to = new Date();
-        const from = new Date(to.getTime() - 24 * 3600 * 1000);
-        return { from: from.toISOString(), to: to.toISOString(), label: "24h" };
+        // 6 hours: every poll is shown (wider ranges read 5-minute averages, which a device added
+        // a few minutes ago does not have yet)
+        const from = new Date(to.getTime() - 6 * 3600 * 1000);
+        return { from: from.toISOString(), to: to.toISOString(), label: "6h" };
     });
 
     const [version, setVersion] = useState("v2c");
@@ -140,17 +148,19 @@ export const NocHostDetail = () => {
     // for the traffic metrics (device-level "reachable" needs none) - an
     // explicit user pick in historyInterfaceId always wins.
     const effectiveInterfaceId = historyInterfaceId ?? currentHost?.interfaces?.[0]?.id ?? null;
+    const historyMetric = pickedMetric ?? (currentHost?.health?.cpu_percent != null ? "cpu_percent" : "reachable");
+    const deviceLevel = historyMetric === "reachable" || historyMetric in HEALTH_METRICS;
 
     useEffect(() => {
-        if (historyMetric !== "reachable" && effectiveInterfaceId === null) return;
+        if (!deviceLevel && effectiveInterfaceId === null) return;
         dispatch(fetchHostMetric({
             assetId,
             metric: historyMetric,
-            interfaceId: historyMetric === "reachable" ? null : effectiveInterfaceId,
+            interfaceId: deviceLevel ? null : effectiveInterfaceId,
             from: historyRange.from,
             to: historyRange.to,
         }));
-    }, [dispatch, assetId, historyMetric, effectiveInterfaceId, historyRange]);
+    }, [dispatch, assetId, historyMetric, deviceLevel, effectiveInterfaceId, historyRange]);
 
     if (!currentHost) {
         return <div className="noc-container"><div className="noc-empty">{t("Loading…")}</div></div>;
@@ -220,12 +230,13 @@ export const NocHostDetail = () => {
                         </dl>
                     </div>
 
+                    <HealthCard host={currentHost} />
+
                     <div className="noc-card">
                         <h3>{t("System Info")}</h3>
                         <dl className="noc-kv-grid">
                             <dt>{t("Hostname")}</dt><dd>{currentHost.sys_name || "—"}</dd>
                             <dt>{t("OS / Firmware")}</dt><dd>{currentHost.sys_descr || "—"}</dd>
-                            <dt>{t("Uptime")}</dt><dd>{formatUptime(currentHost.sys_uptime_ticks)}</dd>
                             <dt>{t("Contact")}</dt><dd>{currentHost.sys_contact || "—"}</dd>
                             <dt>{t("Location")}</dt><dd>{currentHost.sys_location || "—"}</dd>
                         </dl>
@@ -247,11 +258,14 @@ export const NocHostDetail = () => {
                                     onChange={(e) => setHistoryMetric(e.target.value)}
                                     className="noc-mini-select"
                                 >
+                                    {Object.entries(HEALTH_METRICS).map(([key, m]) => (
+                                        <option key={key} value={key}>{m.label}</option>
+                                    ))}
                                     <option value="reachable">{t("Reachability")}</option>
                                     <option value="if_in_octets">{t("Interface — In traffic")}</option>
                                     <option value="if_out_octets">{t("Interface — Out traffic")}</option>
                                 </select>
-                                {historyMetric !== "reachable" && (
+                                {!deviceLevel && (
                                     <select
                                         value={effectiveInterfaceId ?? ""}
                                         onChange={(e) => setHistoryInterfaceId(Number(e.target.value))}
@@ -272,9 +286,10 @@ export const NocHostDetail = () => {
                         ) : (
                             <MetricChart
                                 points={metricSeries?.points}
-                                color={historyMetric === "reachable" ? "#16a34a" : "#1e3a5f"}
+                                color={historyMetric === "reachable" ? "#16a34a" : HEALTH_METRICS[historyMetric]?.color || "#1e3a5f"}
                                 valueFormatter={(v) =>
-                                    historyMetric === "reachable" ? (v >= 0.5 ? "up" : "down") : formatBytes(v)
+                                    historyMetric === "reachable" ? (v >= 0.5 ? t("up") : t("down"))
+                                        : HEALTH_METRICS[historyMetric] ? HEALTH_METRICS[historyMetric].format(v) : formatBytes(v)
                                 }
                             />
                         )}
@@ -284,6 +299,8 @@ export const NocHostDetail = () => {
                             </div>
                         )}
                     </div>
+
+                    <RebootsCard reboots={currentHost.reboots} />
 
                     <div className="noc-card">
                         {(() => {
@@ -309,7 +326,7 @@ export const NocHostDetail = () => {
                                                     className={`noc-chip ${interfaceFilter === f ? "noc-chip-active" : ""}`}
                                                     onClick={() => setInterfaceFilter(f)}
                                                 >
-                                                    {f} ({counts[f]})
+                                                    {GROUP_LABELS[f]} ({n(counts[f])})
                                                 </button>
                                             ))}
                                         </div>
@@ -333,12 +350,12 @@ export const NocHostDetail = () => {
                                             <tbody>
                                                 {visible.map((iface) => (
                                                     <tr key={iface.if_index}>
-                                                        <td>{iface.if_index}</td>
+                                                        <td>{n(iface.if_index)}</td>
                                                         <td>{interfaceDisplayName(iface)}</td>
-                                                        <td style={{ color: "#6b7280" }}>{iface._group}</td>
+                                                        <td style={{ color: "#6b7280" }}>{GROUP_LABELS[iface._group]}</td>
                                                         <td>{iface.if_speed ? t("{{toFixed}} Mbps", { toFixed: (iface.if_speed / 1e6).toFixed(0) }) : "—"}</td>
-                                                        <td style={{ color: iface.if_admin_status === "up" ? "#15803d" : undefined }}>{iface.if_admin_status || "—"}</td>
-                                                        <td style={{ color: iface.if_oper_status === "up" ? "#15803d" : iface.if_oper_status === "down" ? "#b91c1c" : undefined }}>{iface.if_oper_status || "—"}</td>
+                                                        <td style={{ color: iface.if_admin_status === "up" ? "#15803d" : undefined }}>{IF_STATUS[iface.if_admin_status] || iface.if_admin_status || "—"}</td>
+                                                        <td style={{ color: iface.if_oper_status === "up" ? "#15803d" : iface.if_oper_status === "down" ? "#b91c1c" : undefined }}>{IF_STATUS[iface.if_oper_status] || iface.if_oper_status || "—"}</td>
                                                         <td>{formatBytes(iface.in_octets)}</td>
                                                         <td>{formatBytes(iface.out_octets)}</td>
                                                     </tr>

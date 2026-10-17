@@ -276,6 +276,27 @@ audit trail still append-only.
   looked like "۲۴۰"); Persian now separates with "،", and a test keeps it so.
   Backup coverage by device type uses Persian digits.
 
+### Device health over SNMP
+
+- Every NOC poll also reads CPU, memory, disk and temperature: HOST-RESOURCES-MIB
+  (Linux, Windows), net-snmp's UCD-SNMP-MIB, ENTITY-SENSOR-MIB, and the Cisco
+  (CPU, memory pools, environment) and FortiGate MIBs. The host page has a
+  "Device health" card (the four values, the file systems, the temperature
+  sensors, the device's own uptime — hrSystemUptime, not the SNMP agent's),
+  charts of each value in History (6 hours by default), and the restarts NOC
+  noticed. The host list has CPU, memory and disk columns; the asset page shows
+  them too.
+- A restart is noticed when the uptime starts again from zero (the 497-day
+  counter wrap is not one) and raises the alert "Device restarted".
+- New alerts: "CPU usage high" and "Memory usage high" (every poll of the window
+  at or above the threshold, 90% for 10 / 15 minutes by default — a short spike
+  does not count), "Disk almost full" (90%) and "Temperature high" (70 °C,
+  critical).
+- Fixes: on the host page in Persian the interface filters compared translated
+  labels with English groups, so the interface table could show nothing;
+  interface status and counts are now translated and use Persian digits. The
+  host page fits a phone screen.
+
 ### Syslog from the assets
 
 - NGCorion receives syslog on UDP and TCP port 514 (Network & monitoring ->

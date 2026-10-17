@@ -204,6 +204,96 @@ def _interface_utilization(db: Session, params: Dict, now: datetime, since: date
 
 
 # ---------------------------------------------------------------------------
+# Device health (app/modules/noc/health.py) and restarts
+# ---------------------------------------------------------------------------
+
+def _sustained(db: Session, metric: str, threshold: float, minutes: int, now: datetime) -> List:
+    """Assets whose every sample of `metric` in the last `minutes` was at or above `threshold`, with
+    the window covered (a single spike or a device that just appeared does not count). Each sample
+    stands for one poll interval, so two samples a minute apart cover a 2-minute window."""
+    start = now - timedelta(minutes=minutes)
+    rows = db.execute(text("""
+        SELECT asset_id, min(value) AS low, count(*) AS n, min(sampled_at) AS first_at, max(sampled_at) AS last_at,
+               (array_agg(value ORDER BY sampled_at DESC))[1] AS last_value
+        FROM asset_metric_samples
+        WHERE metric_type = :metric AND interface_id IS NULL AND sampled_at >= :start
+        GROUP BY asset_id
+    """), {"metric": metric, "start": start}).all()
+    interval = settings.NOC_POLL_INTERVAL_SECONDS
+    return [r for r in rows if r.n >= 2 and r.low >= threshold
+            and (r.last_at - r.first_at).total_seconds() + interval >= minutes * 60 * 0.9]
+
+
+def _usage_high(db: Session, params: Dict, now: datetime, metric: str, title: str, what: str) -> List[Problem]:
+    from app.models import Asset
+    percent = float(params.get("percent", 90))
+    minutes = int(params.get("minutes", 10))
+    out = []
+    for r in _sustained(db, metric, percent, minutes, now):
+        asset = db.get(Asset, r.asset_id)
+        out.append(Problem(key=f"{metric}:{r.asset_id}", title=title,
+                           detail=f"{what} at {r.last_value:.0f}%, at or above {percent:.0f}% for {minutes} min",
+                           asset_id=r.asset_id, source_label=_label(asset) if asset else f"#{r.asset_id}",
+                           link=f"/noc/hosts/{r.asset_id}"))
+    return out
+
+
+def _cpu_high(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    return _usage_high(db, params, now, "cpu_percent", "CPU usage high", "CPU")
+
+
+def _memory_high(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    return _usage_high(db, params, now, "memory_percent", "Memory usage high", "Memory")
+
+
+def _disk_full(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.noc import AssetSnmpStatus
+    percent = float(params.get("percent", 90))
+    rows = (db.query(AssetSnmpStatus).options(joinedload(AssetSnmpStatus.asset))
+            .filter(AssetSnmpStatus.reachable.is_(True), AssetSnmpStatus.disk_percent >= percent).all())
+    out = []
+    for s in rows:
+        full = [f for f in ((s.health or {}).get("filesystems") or []) if (f.get("percent") or 0) >= percent]
+        name = full[0]["name"] if full else "disk"
+        detail = f"{name} {s.disk_percent:.0f}% full"
+        if len(full) > 1:
+            detail += f" (and {len(full) - 1} more)"
+        out.append(Problem(key=f"disk:{s.asset_id}", title="Disk almost full", detail=detail, asset_id=s.asset_id,
+                           source_label=_label(s.asset), link=f"/noc/hosts/{s.asset_id}"))
+    return out
+
+
+def _temperature_high(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.noc import AssetSnmpStatus
+    celsius = float(params.get("celsius", 70))
+    rows = (db.query(AssetSnmpStatus).options(joinedload(AssetSnmpStatus.asset))
+            .filter(AssetSnmpStatus.reachable.is_(True), AssetSnmpStatus.temperature_c >= celsius).all())
+    out = []
+    for s in rows:
+        sensors = (s.health or {}).get("sensors") or []
+        name = sensors[0]["name"] if sensors else "sensor"
+        out.append(Problem(key=f"temp:{s.asset_id}", title="Temperature high",
+                           detail=f"{name} at {s.temperature_c:.0f} °C", asset_id=s.asset_id,
+                           source_label=_label(s.asset), link=f"/noc/hosts/{s.asset_id}"))
+    return out
+
+
+def _device_rebooted(db: Session, params: Dict, now: datetime, since: datetime) -> List[Problem]:
+    from app.models.noc import DeviceReboot
+    since = since.replace(tzinfo=None) if since.tzinfo else since
+    rows = (db.query(DeviceReboot).options(joinedload(DeviceReboot.asset))
+            .filter(DeviceReboot.detected_at >= since).order_by(DeviceReboot.id).all())
+    out = []
+    for r in rows:
+        up = r.previous_uptime_seconds or 0
+        span = f"{up / 86400:.0f} days" if up >= 2 * 86400 else f"{up / 3600:.0f} hours"
+        out.append(Problem(key=f"reboot:{r.id}", title="Device restarted",
+                           detail=f"Restarted after {span} of uptime",
+                           asset_id=r.asset_id, source_label=_label(r.asset), link=f"/noc/hosts/{r.asset_id}"))
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Syslog received from the assets (app/modules/syslog)
 # ---------------------------------------------------------------------------
 
@@ -774,6 +864,22 @@ EVENTS: Dict[str, EventType] = {e.code: e for e in (
     EventType("system.syslog_not_listening", "system", "Syslog intake not listening",
               "Syslog intake is turned on but the port cannot be opened or the listener stopped", "state", 120,
               _syslog_not_listening, severity="critical"),
+    EventType("noc.cpu_high", "noc", "CPU usage high",
+              "CPU at or above {percent}% for {minutes} minutes", "state", 120, _cpu_high,
+              params=[Param("percent", "CPU usage", 90, "%", 1, 100),
+                      Param("minutes", "For", 10, "minutes", 2, 240)], uses_assets=True),
+    EventType("noc.memory_high", "noc", "Memory usage high",
+              "Memory at or above {percent}% for {minutes} minutes", "state", 120, _memory_high,
+              params=[Param("percent", "Memory usage", 90, "%", 1, 100),
+                      Param("minutes", "For", 15, "minutes", 2, 240)], uses_assets=True),
+    EventType("noc.disk_full", "noc", "Disk almost full",
+              "A file system at or above {percent}% full", "state", 300, _disk_full,
+              params=[Param("percent", "Used", 90, "%", 1, 100)], uses_assets=True),
+    EventType("noc.temperature_high", "noc", "Temperature high",
+              "A temperature sensor at or above {celsius} °C", "state", 120, _temperature_high,
+              params=[Param("celsius", "Temperature", 70, "°C", 20, 150)], uses_assets=True, severity="critical"),
+    EventType("noc.device_rebooted", "noc", "Device restarted",
+              "A device's uptime starts again from zero", "event", 60, _device_rebooted, uses_assets=True),
     EventType("noc.interface_utilization", "noc", "Interface utilization high",
               "Above {percent}% for {minutes} minutes", "state", 300, _interface_utilization,
               params=[Param("percent", "Utilization", 90, "%", 1, 100),

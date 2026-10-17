@@ -10,7 +10,8 @@ Kept separate from Asset itself since this is monitoring state, not
 inventory data, and separate from each other since a device has exactly one
 status but any number of interfaces.
 """
-from sqlalchemy import Column, Integer, BigInteger, String, Boolean, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import (Column, Integer, BigInteger, String, Boolean, Text, DateTime, Float, ForeignKey,
+                        UniqueConstraint, JSON)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -79,6 +80,34 @@ class AssetSnmpStatus(Base):
     # app/modules/noc/service.py's NOC_INACTIVE_AFTER_FAILURES threshold.
     # Flap-dampening: one dropped packet must not flip status.
     consecutive_poll_failures = Column(Integer, nullable=False, default=0)
+
+    # Device health from the last successful poll (app/modules/noc/health.py); null when the device
+    # does not report it. disk_percent is the fullest file system, temperature_c the hottest sensor.
+    device_uptime_ticks = Column(BigInteger, nullable=True)   # host uptime (hrSystemUptime), else sysUpTime
+    cpu_percent = Column(Float, nullable=True)
+    memory_percent = Column(Float, nullable=True)
+    memory_total_bytes = Column(BigInteger, nullable=True)
+    disk_percent = Column(Float, nullable=True)
+    temperature_c = Column(Float, nullable=True)
+    # {"source": "host-resources|cisco|fortigate|ucd", "filesystems": [{name, size, used, percent}],
+    #  "sensors": [{name, celsius}]}
+    health = Column(JSON, nullable=True)
+    last_reboot_at = Column(DateTime, nullable=True)
+
+    asset = relationship("Asset")
+
+
+class DeviceReboot(Base):
+    """A restart NOC noticed: the device's uptime went back between two polls. booted_at is when
+    the device came up (detection time minus its new uptime)."""
+
+    __tablename__ = "noc_device_reboots"
+
+    id = Column(Integer, primary_key=True)
+    asset_id = Column(Integer, ForeignKey("asset_inventory.id", ondelete="CASCADE"), nullable=False, index=True)
+    detected_at = Column(DateTime, nullable=False, index=True)
+    booted_at = Column(DateTime, nullable=False)
+    previous_uptime_seconds = Column(BigInteger, nullable=True)
 
     asset = relationship("Asset")
 

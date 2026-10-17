@@ -569,5 +569,10 @@
   "Asset stopped sending syslog": "دارایی دیگر Syslog نمی‌فرستد",
   "Syslog from an address outside the inventory": "Syslog از نشانی‌ای بیرون از فهرست دارایی‌ها",
   "Configuration change reported, no backup taken": "تغییر پیکربندی گزارش شد، پشتیبان گرفته نشد",
+  "CPU usage high": "مصرف پردازنده بالاست",
+  "Memory usage high": "مصرف حافظه بالاست",
+  "Disk almost full": "دیسک تقریباً پر است",
+  "Temperature high": "دما بالاست",
+  "Device restarted": "دستگاه راه‌اندازی مجدد شد",
   "Syslog intake not listening": "دریافت Syslog فعال نیست"
 }

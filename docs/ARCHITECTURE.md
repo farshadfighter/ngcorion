@@ -153,7 +153,7 @@ over within 30 seconds.
 | Task | Module | What it does |
 |---|---|---|
 | job-scheduler | `scheduling` | Runs scheduled discoveries, audits and group backups (credentials stored encrypted, or a credential profile) |
-| noc-poller | `noc` | Polls devices over SNMP; interface status and metrics |
+| noc-poller | `noc` | Polls devices over SNMP; interface status and metrics; device health (CPU, memory, disk, temperature from HOST-RESOURCES / UCD / ENTITY-SENSOR / Cisco / FortiGate MIBs, `app/modules/noc/health.py`) and restarts (`noc_device_reboots`) |
 | noc-metrics-retention | `noc` | Rolls raw samples up and evicts old ones |
 | cve-auto-update | `cve` | Daily CVE/KEV/EPSS and distribution-advisory updates |
 | alert-engine | `alerts` | Evaluates alert rules, sends notifications |

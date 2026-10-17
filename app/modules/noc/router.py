@@ -27,12 +27,30 @@ from app.modules.noc.schemas import (
     PollAllResponse,
     MetricPoint,
     MetricSeriesResponse,
+    HealthNow,
+    RebootInfo,
 )
+from app.models.noc import DeviceReboot
 
 # What a metric name may legally be - keeps the endpoint from being used as
 # an arbitrary column-name injection point and gives callers a clear 400
 # instead of a silently-empty series for a typo'd metric name.
-VALID_METRICS = {"reachable", "if_in_octets", "if_out_octets"}
+VALID_METRICS = {"reachable", "if_in_octets", "if_out_octets",
+                 "cpu_percent", "memory_percent", "disk_percent", "temperature_c"}
+
+
+def _health(status) -> HealthNow:
+    if status is None:
+        return HealthNow()
+    return HealthNow(cpu_percent=status.cpu_percent, memory_percent=status.memory_percent,
+                     disk_percent=status.disk_percent, temperature_c=status.temperature_c)
+
+
+def _uptime_seconds(status) -> Optional[int]:
+    if status is None or not status.reachable:
+        return None
+    ticks = status.device_uptime_ticks if status.device_uptime_ticks is not None else status.sys_uptime_ticks
+    return int(ticks // 100) if ticks is not None else None
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +93,8 @@ def list_hosts(
             sys_name=status.sys_name if status else None,
             last_polled_at=status.last_polled_at if status else None,
             error_message=status.error_message if status else None,
+            health=_health(status),
+            uptime_seconds=_uptime_seconds(status),
         )
         for asset, status, has_credential in rows
     ]
@@ -94,6 +114,9 @@ def get_host_detail(
     credential = NocService.get_credential(db, asset_id)
     status = NocService.get_status(db, asset_id)
     interfaces = NocService.get_interfaces(db, asset_id)
+    detail = (status.health or {}) if status else {}
+    reboots = (db.query(DeviceReboot).filter(DeviceReboot.asset_id == asset_id)
+               .order_by(DeviceReboot.detected_at.desc()).limit(20).all())
 
     return HostDetail(
         asset_id=asset.id,
@@ -111,6 +134,15 @@ def get_host_detail(
         error_message=status.error_message if status else None,
         last_polled_at=status.last_polled_at if status else None,
         interfaces=[InterfaceInfo.model_validate(i) for i in interfaces],
+        uptime_seconds=_uptime_seconds(status),
+        health=_health(status),
+        memory_total_bytes=status.memory_total_bytes if status else None,
+        health_source=detail.get("source"),
+        filesystems=detail.get("filesystems") or [],
+        sensors=detail.get("sensors") or [],
+        booted_at=status.last_reboot_at if status else None,
+        reboots=[RebootInfo(detected_at=r.detected_at, booted_at=r.booted_at,
+                            previous_uptime_seconds=r.previous_uptime_seconds) for r in reboots],
     )
 
 
@@ -175,7 +207,8 @@ async def poll_all_now(
 @router.get("/hosts/{asset_id}/metrics", response_model=MetricSeriesResponse)
 def get_host_metrics(
     asset_id: int,
-    metric: str = Query(..., description="e.g. reachable, if_in_octets, if_out_octets"),
+    metric: str = Query(..., description="reachable, if_in_octets, if_out_octets, cpu_percent, memory_percent, "
+                                         "disk_percent or temperature_c"),
     interface_id: Optional[int] = Query(None, description="Omit for a device-level metric like 'reachable'"),
     start: Optional[datetime] = Query(None, alias="from"),
     end: Optional[datetime] = Query(None, alias="to"),
