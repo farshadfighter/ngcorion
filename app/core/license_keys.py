@@ -29,4 +29,6 @@ from typing import Dict
 LICENSE_SERVER_URL = "https://lic.ngcorion.com"
 
 TRUSTED_LICENSE_KEYS: Dict[str, str] = {
+    # lic.ngcorion.com, generated on the license server 2026-10-17 (first signing key).
+    "02f8c805e424e285": "enEtOhXcwcTeVQ8iNrO36S5oNqfI0H9Tgb8coCPANyg=",
 }

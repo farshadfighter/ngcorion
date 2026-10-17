@@ -23,8 +23,8 @@ Tags are never moved or deleted once pushed; a fix gets a new number.
 
 | Tag | Commit | |
 |---|---|---|
-| `v2.0.0` | `7f5be33` | 2026-10-04 (Release tag, ref `7f5be33`, no appliance) |
-| `v2.1.0-rc.1` | `main` | release candidate of 2.1.0 |
+| `v2.0.0` | `7f5be33` | 2026-10-04; not on GitHub as a tag yet. The draft release "NGCorion 2.0.0 appliance" was built from `11f65b0` (20 commits later, before VERSION moved on), so it is not this commit |
+| `v2.1.0` | the "Version 2.1.0" commit | 2026-10-17; first release with the license server key built in (`02f8c805e424e285`). The release candidate `2.1.0-rc.1` was never tagged |
 
 ## Making a release
 

@@ -44,7 +44,9 @@ and review will send a change back that breaks one of them.
    (`app/core/license_token.py`); never act on an unsigned field of a license
    server answer, and never make the trusted keys configurable. For local
    development run the real license server with a development key and add its
-   public key to `app/core/license_keys.py` in your working copy only.
+   public key to `app/core/license_keys.py` in your working copy only; the
+   committed list holds only lic.ngcorion.com's key
+   (`tests/test_license_keys.py` checks each entry's id against its key).
 
 ## 2. Code conventions
 

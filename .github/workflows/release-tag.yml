@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version, without the v (e.g. 2.1.0-rc.1)"
+        description: "Version, without the v (e.g. 2.1.0)"
         required: true
       ref:
         description: "Commit or branch to tag"

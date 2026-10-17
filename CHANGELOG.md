@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0-rc.1 — 2026-10-11 (release candidate)
+## 2.1.0 — 2026-10-17
 
 ### Licensing by number of assets
 
@@ -516,14 +516,29 @@ filter and facet under 250 ms.
 - Requires the matching license server release (signed answers, migration
   005). Upgrade the license server first; older NGCorion releases keep working
   against it.
-- Put the license server's public key into `app/core/license_keys.py`
-  (license server: `scripts/generate_signing_key.py`). Without it NGCorion
-  refuses every license.
+- This release trusts the license server key `02f8c805e424e285`
+  (lic.ngcorion.com, `app/core/license_keys.py`); the license server must sign
+  with the matching private key (`GET /api/signing-key` shows its key id).
+- System administrators (role `admin`) set up two-step sign-in at their first
+  sign-in after the upgrade: until then the session opens only the setup.
+  Managers get 7 days. Have an authenticator app ready; the policy is in System
+  Configuration → Two-step sign-in.
 - docker-compose now mounts the host's `/etc/machine-id`. On the first
   validation after the upgrade each installation re-activates once, binding
   its license to the real machine; a second copy of the same installation is
   then refused. To move a license to new hardware later, use "Release
   machine" in the license admin UI.
+
+### Upgrade test
+
+- 2.0.0 (`7f5be33`) to 2.1.0 on a database created and filled by 2.0.0 (40
+  assets, two users, 25 sign-ins, 15 audit events): every migration ran
+  (`f9c2d4e6a8b0` → `d1f3a5c7e9b2`); the upgraded schema equals a fresh
+  install's column for column and index for index; the 2.0.0 password still
+  signs in, the admin is taken to the two-step setup first, and all main pages
+  then open without a server or page error; the 2.0.0 assets, audit events
+  and sign-in history are there, and the 2.0.0 user's permissions still apply.
+- Full test suite on a freshly migrated database: 3,366 passed, 60 skipped.
 
 ## 2.0.0 — 2026-10-04
 
