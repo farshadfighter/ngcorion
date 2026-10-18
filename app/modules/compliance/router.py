@@ -296,18 +296,21 @@ class MappingIn(BaseModel):
     topics: List[str] = Field(default_factory=list, max_length=40)
     checks: List[str] = Field(default_factory=list, max_length=200)
 
-    def as_dict(self) -> Dict:
-        out: Dict = {}
-        if self.all:
-            out["all"] = True
-        for f in ("domains", "topics", "checks"):
-            vals = [v.strip() for v in getattr(self, f) if v and v.strip()]
-            if vals:
-                out[f] = vals
-        why = D.validate_mapping(out)
-        if why:
-            raise HTTPException(status_code=400, detail=why)
-        return out
+
+def _mapping(m: MappingIn) -> Dict:
+    """The stored form of a mapping (empty lists left out), or 400 when it names an unknown domain or
+    topic. A module-level function: a plain method on a Pydantic model breaks the compiled image."""
+    out: Dict = {}
+    if m.all:
+        out["all"] = True
+    for f in ("domains", "topics", "checks"):
+        vals = [v.strip() for v in getattr(m, f) if v and v.strip()]
+        if vals:
+            out[f] = vals
+    why = D.validate_mapping(out)
+    if why:
+        raise HTTPException(status_code=400, detail=why)
+    return out
 
 
 class RequirementIn(BaseModel):
@@ -395,7 +398,7 @@ def import_standard(body: StandardImport, request: Request,
         raise HTTPException(status_code=400, detail="Two sections have the same reference")
     data = {"sections": [s.model_dump() for s in body.sections],
             "requirements": [{"ref": r.ref, "section": r.section if r.section in sections else None,
-                              "title": r.title, "title_fa": r.title_fa, "mapping": r.mapping.as_dict()}
+                              "title": r.title, "title_fa": r.title_fa, "mapping": _mapping(r.mapping)}
                              for r in body.requirements]}
     std = ComplianceStandard(key=_new_key(db), builtin=False, enabled=True, created_by=current_user.id,
                              **StandardIn(**body.model_dump(include=set(StandardIn.model_fields))).model_dump())
@@ -465,7 +468,7 @@ def add_requirement(standard_id: int, body: RequirementIn, request: Request,
         raise HTTPException(status_code=400, detail="A standard has at most 500 requirements")
     if q.filter(ComplianceRequirement.ref == body.ref).first():
         raise HTTPException(status_code=409, detail="A requirement with this reference already exists")
-    mapping = body.mapping.as_dict()
+    mapping = _mapping(body.mapping)
     if body.section:
         _ensure_section(db, std, body.section)
     last = max([r.position for r in q] or [-1])
@@ -504,7 +507,7 @@ def update_requirement(requirement_id: int, body: RequirementIn, request: Reques
     if body.section:
         _ensure_section(db, std, body.section)
     req.ref, req.section, req.title, req.title_fa = body.ref, body.section or None, body.title, body.title_fa
-    req.mapping = body.mapping.as_dict()
+    req.mapping = _mapping(body.mapping)
     log_action(db, user_id=current_user.id, username=current_user.username, action="compliance.requirement_update",
                module="auditing", target_id=req.id, ip_address=_ip(request),
                detail=f"Changed requirement {req.ref} of the standard {std.name}")
