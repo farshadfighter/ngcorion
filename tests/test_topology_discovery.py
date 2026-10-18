@@ -377,6 +377,24 @@ def test_graph_shows_where_a_link_came_from(db):
     assert link.origin == "lldp" and link.last_seen_at is not None and link.missing_since is None
 
 
+def test_graph_draws_the_real_ports(db):
+    import importlib
+    topo = importlib.import_module("app.modules.topology.router")
+    admin = _user(db)
+    a, b = _two_switches(db)
+    db.add(AssetSnmpInterface(asset_id=a.id, if_index=99, if_name="Vlan10", if_type=53))      # not cabled
+    db.flush()
+    for i in db.query(AssetSnmpInterface).filter(AssetSnmpInterface.asset_id.in_([a.id, b.id]), AssetSnmpInterface.if_type.is_(None)):
+        i.if_type = 6
+    db.flush()
+    graph = topo.get_topology(current_user=admin, db=db)
+    nodes = {n.id: n for n in graph.nodes}
+    assert nodes[a.id].interfaces == ["Gi1/0/1", "Gi1/0/24"] and nodes[b.id].interfaces == ["Gi1/0/1"]
+    plain = _asset(db, "not-polled")
+    graph = topo.get_topology(current_user=admin, db=db)
+    assert next(n for n in graph.nodes if n.id == plain.id).interfaces is None
+
+
 def test_routes_are_guarded():
     assert len(R.router.routes) >= 6
     for route in R.router.routes:

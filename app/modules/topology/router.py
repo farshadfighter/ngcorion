@@ -43,6 +43,7 @@ def get_topology(
     assets = TopologyService.get_nodes(db)
     links = list(TopologyService.get_links(db)) + TopologyService.get_hosted_edges(db)
     positions = TopologyService.get_positions(db)
+    interfaces = TopologyService.get_interfaces(db)
 
     nodes = [
         TopologyNode(
@@ -54,6 +55,7 @@ def get_topology(
             icon_badge=a.icon_badge,
             ip_address=a.ip_address,
             port_count=getattr(a, "port_count", None),
+            interfaces=interfaces.get(a.id),
             pos_x=positions[a.id].pos_x if a.id in positions else None,
             pos_y=positions[a.id].pos_y if a.id in positions else None,
         )

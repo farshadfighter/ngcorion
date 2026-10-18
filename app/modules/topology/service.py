@@ -49,6 +49,25 @@ class TopologyService:
             for asset in hosted
         ]
 
+    # IF-MIB ifType values of physical ports: ethernetCsmacd, fastEther, fastEtherFX, gigabitEthernet,
+    # ieee80211. Loopbacks, VLAN interfaces, tunnels and port-channels are not cabled ports.
+    PHYSICAL_IF_TYPES = (6, 62, 69, 117, 71)
+    MAX_DRAWN_PORTS = 96
+
+    @staticmethod
+    def get_interfaces(db: Session) -> dict[int, list[str]]:
+        """asset_id -> its physical port names from the last NOC poll, in ifIndex order (only for
+        assets with no more than MAX_DRAWN_PORTS of them; bigger chassis keep the generic catalog)."""
+        from app.models.noc import AssetSnmpInterface
+        out: dict[int, list[str]] = defaultdict(list)
+        rows = (db.query(AssetSnmpInterface.asset_id, AssetSnmpInterface.if_name, AssetSnmpInterface.if_descr)
+                .filter(AssetSnmpInterface.if_type.in_(TopologyService.PHYSICAL_IF_TYPES))
+                .order_by(AssetSnmpInterface.asset_id, AssetSnmpInterface.if_index))
+        for asset_id, name, descr in rows:
+            if name or descr:
+                out[asset_id].append(name or descr)
+        return {k: v for k, v in out.items() if len(v) <= TopologyService.MAX_DRAWN_PORTS}
+
     @staticmethod
     def get_positions(db: Session) -> dict[int, TopologyNodePosition]:
         """asset_id -> saved position, for the assets that have been dragged

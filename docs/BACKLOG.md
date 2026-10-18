@@ -9,8 +9,8 @@ this file describes what is not (yet).
 
 | # | Improvement | State |
 |---|---|---|
-| I1 | Latin names (devices, ports, users, products) inside Persian sentences from the server (alerts, audit trail) kept whole and in place: first-strong isolation in `tb()` | done |
-| I2 | Topology nodes draw the device's real interfaces (from the NOC poll) instead of the generic port catalog, so a link found over LLDP/CDP sits exactly on its port | to do |
+| I1 | Latin names (devices, ports, users, products) inside Persian sentences from the server (alerts, audit trail) kept whole and in place: first-strong isolation in `tb()` | done (3ac5ec3) |
+| I2 | Topology nodes draw the device's real interfaces (from the NOC poll) instead of the generic port catalog, so a link found over LLDP/CDP sits exactly on its port | done |
 | I3 | Cisco IOS MAC tables of every VLAN: read the VLAN list (CISCO-VTP-MIB) and each VLAN's BRIDGE-MIB table (`community@VLAN` on v2c, context `vlan-<id>` on v3) | to do |
 
 Bugs reported from testing on the customer test server go before everything else here.
@@ -29,7 +29,8 @@ Bugs reported from testing on the customer test server go before everything else
 ## Known limits (shipped, documented, not yet improved)
 
 - Unknown devices: a Cisco IOS switch answers its MAC table for the default VLAN only (I3).
-- Topology: a found link is anchored on the catalog port with the same number, not the real port (I2).
+- Topology: an asset not polled over SNMP (or with more than 96 physical ports) still draws the generic
+  port catalog of its type; a link to it is anchored on the catalog port with the same number.
 - Unknown devices / topology: tested against snmpsim and net-snmp agents, not yet on real switches.
 
 ## On the customer side

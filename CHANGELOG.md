@@ -46,6 +46,13 @@
   the map counts found and missing links. Interface names on links can be up to
   100 characters.
 
+### Real ports on the Topology map
+
+- A device polled by NOC is drawn with its own physical ports (IF-MIB, up to
+  96) instead of the generic port list of its type, so a link drawn by hand or
+  found over LLDP/CDP sits on the exact port; long and short port names
+  (GigabitEthernet1/0/24, Gi1/0/24) are the same port.
+
 ### Persian sentences with English names
 
 - In alerts, the audit trail, the asset page timeline and group runs, the

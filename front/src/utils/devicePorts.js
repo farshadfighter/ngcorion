@@ -52,3 +52,23 @@ export function defaultPortsForType(typeName, explicitCount) {
 }
 
 export default defaultPortsForType;
+
+// Long interface names and the short forms devices also use for the same port, as on the server
+// (app/modules/noc/topology_discovery.py port_key): "GigabitEthernet1/0/24" = "Gi1/0/24".
+const PORT_PREFIXES = [
+    ["hundredgigabitethernet", "hu"], ["hundredgige", "hu"], ["fortygigabitethernet", "fo"],
+    ["twentyfivegigabitethernet", "twe"], ["twentyfivegige", "twe"], ["tengigabitethernet", "te"],
+    ["gigabitethernet", "gi"], ["fastethernet", "fa"], ["ethernet", "eth"], ["port-channel", "po"],
+    ["management", "mgmt"],
+];
+
+/** One spelling per port name, for matching a link's port with a node's ports. */
+export function portKey(name) {
+    if (!name) return null;
+    const key = String(name).toLowerCase().replace(/\s+/g, "");
+    for (const [long, short] of PORT_PREFIXES) {
+        if (key.startsWith(long)) return short + key.slice(long.length);
+    }
+    if (/^et\d/.test(key)) return `eth${key.slice(2)}`;
+    return key;
+}

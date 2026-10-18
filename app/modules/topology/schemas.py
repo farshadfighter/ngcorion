@@ -14,6 +14,10 @@ class TopologyNode(BaseModel):
     icon_badge: Optional[str] = None
     ip_address: Optional[str] = None
     port_count: Optional[int] = None
+    # The device's own physical ports from the NOC poll (IF-MIB), in ifIndex order; the canvas draws
+    # these instead of its generic port catalog, so links (drawn or found over LLDP/CDP) sit on the
+    # real port. None when the asset is not polled over SNMP.
+    interfaces: Optional[list[str]] = None
     # None means "never dragged" - the frontend falls back to its grid layout.
     pos_x: Optional[float] = None
     pos_y: Optional[float] = None

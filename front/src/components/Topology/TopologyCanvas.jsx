@@ -7,7 +7,7 @@ import "@xyflow/react/dist/style.css";
 import DEVICE_NODE_TYPES from "../shared/deviceNodeTypes.js";
 import IconLegend from "../shared/IconLegend.jsx";
 import { t } from "../../i18n";
-import { defaultPortsForType } from "../../utils/devicePorts.js";
+import { defaultPortsForType, portKey } from "../../utils/devicePorts.js";
 
 const GRID_COLUMNS = 5;
 const GRID_SPACING_X = 220;
@@ -58,24 +58,31 @@ export function TopologyCanvas({ nodes, links, onConnect, onEdgeClick, onNodeDra
                     subtitle: node.ip_address || node.hostname || undefined,
                     badge: node.icon_badge || undefined,
                     portCount: node.port_count,
+                    ports: node.interfaces?.length ? node.interfaces : undefined,
                 },
             }))
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodes.length]);
 
-    // A link names its ports as the devices do ("GigabitEthernet1/0/24" from LLDP), the node draws
-    // its catalog ports ("Gi0/24"): anchor on the same name, else on the port with the same number,
-    // else on the node's first handle.
+    // The ports each node draws: the device's real ones when the NOC polls it, else its catalog. A link
+    // anchors on the same port (also spelled long or short: "GigabitEthernet1/0/24" = "Gi1/0/24"), else
+    // on the catalog port with the same number, else on the node's first handle.
     const handles = useMemo(() => {
         const out = {};
-        for (const node of nodes) out[node.id] = defaultPortsForType(node.type_name || node.icon, node.port_count);
+        for (const node of nodes) {
+            out[node.id] = node.interfaces?.length ? node.interfaces
+                : defaultPortsForType(node.type_name || node.icon, node.port_count);
+        }
         return out;
     }, [nodes]);
     const handleOf = (assetId, port) => {
         const ports = handles[assetId] || [];
         if (!port || !ports.length) return undefined;
         if (ports.includes(port)) return port;
+        const key = portKey(port);
+        const same = ports.find((p) => portKey(p) === key);
+        if (same) return same;
         const num = /(\d+)$/.exec(port)?.[1];
         return num ? ports.find((p) => /(\d+)$/.exec(p)?.[1] === num) : undefined;
     };

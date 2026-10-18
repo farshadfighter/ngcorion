@@ -22,6 +22,7 @@ const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f", opaci
 //   planned     dashed hollow tile (a design device not built yet); `dashed` is the old name
 //   status      "up" | "down" live-status dot (NOC)
 //   portCount   real port count, shown as text
+//   ports       the device's real port names (Topology: from the NOC poll); replaces the catalog
 //   showPortHandles  false on read-only canvases
 //
 // One connection handle per known port (EVE-NG style - drag directly from a specific numbered
@@ -30,10 +31,11 @@ const GENERIC_HANDLE_STYLE = { width: 8, height: 8, background: "#1e3a5f", opaci
 // 48-port switch is wider than other nodes; read-only canvases skip them to keep nodes compact.
 export function DeviceNode({ data, selected }) {
     const {
-        label, icon, typeName, subtitle, badge, status, portCount,
+        label, icon, typeName, subtitle, badge, status, portCount, ports: realPorts,
         planned = false, dashed = false, showPortHandles = true,
     } = data;
-    const ports = showPortHandles ? defaultPortsForType(typeName || icon, portCount) : [];
+    const ports = !showPortHandles ? []
+        : realPorts?.length ? realPorts : defaultPortsForType(typeName || icon, portCount);
     const width = ports.length > 0 ? Math.max(112, ports.length * 9) : 112;
     const displayPortCount = portCount ?? ports.length;
 
