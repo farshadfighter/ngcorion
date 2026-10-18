@@ -21,18 +21,20 @@ const LicenseBadge = () => {
     const over = !!usage?.over_limit;
     const accent = over ? "#FCA5A5" : offlinePilot ? "#FCD34D" : "#7aaddb";
 
+    const plan = offlinePilot ? t("Pilot (offline)") : isValid ? planLabel(planCode, planName) : t("No Active Licence");
+
     return (
-        <div style={{
-            display: "flex", alignItems: "stretch", borderRadius: "10px", overflow: "hidden",
+        <div className="license-badge" style={{
+            display: "flex", alignItems: "stretch", borderRadius: "10px", overflow: "hidden", flexShrink: 0,
             border: "1px solid #d1d9e6", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", height: "44px",
-        }} title={over ? t("More assets than the license covers") : undefined}>
-            <div style={{
+        }} title={over ? t("More assets than the license covers") : plan}>
+            <div className="license-badge-plan" style={{
                 display: "flex", alignItems: "center", gap: "8px", padding: "0 14px",
                 backgroundColor: "#ffffff", borderInlineEnd: "1px solid #d1d9e6",
             }}>
                 <i className="fa-solid fa-id-card" style={{ fontSize: "15px", color: "#1d2939" }} />
                 <span style={{ fontSize: "13px", fontWeight: 700, color: "#1d2939", whiteSpace: "nowrap" }}>
-                    {offlinePilot ? t("Pilot (offline)") : isValid ? planLabel(planCode, planName) : t("No Active Licence")}
+                    {plan}
                 </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 14px", backgroundColor: "#0f2044" }}>

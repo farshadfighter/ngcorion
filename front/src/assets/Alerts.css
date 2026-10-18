@@ -8,7 +8,9 @@ a.bkm-btn, a.bkm-btn:hover { text-decoration: none; color: #1f2937; }
 .bkm-head p a:hover { text-decoration: underline; }
 .alr-editor .bkm-select, .alr-modal .bkm-select, .alr-contact .bkm-select { box-sizing: border-box; min-width: 0; }
 
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* Pinned to the corner of its containing block: left where it is, inside a table's scroll box
+   it would sit beyond the box and widen the page on a phone. */
+.sr-only { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* severity */
 .alr-sev-critical { background: #fee2e2; color: #991b1b; }

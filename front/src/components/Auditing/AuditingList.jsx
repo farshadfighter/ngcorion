@@ -152,7 +152,7 @@ export const AuditingList = () => {
     return (
         <div className="auditing-container">
             {/* Header */}
-            <div className="auditing-header" style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <div className="auditing-header">
                 <button
                     className="btn-auditing-primary"
                     onClick={() => setShowWizard(true)}
@@ -163,12 +163,10 @@ export const AuditingList = () => {
 
                 {/* Clear History */}
                 <button
-                    className="btn-modal-primary"
+                    className="btn-modal-primary auditing-clear"
                     onClick={handleClearHistoryClick}
                     disabled={sessions.length === 0 || isClearing}
                     style={{
-                        position: "absolute",
-                        right: 0,
                         opacity: sessions.length === 0 || isClearing ? 0.5 : 1,
                         cursor: sessions.length === 0 || isClearing ? "not-allowed" : "pointer",
                         display: "flex",

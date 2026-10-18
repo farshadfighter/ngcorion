@@ -23,7 +23,7 @@
 .cvx-num { text-align: end; font-variant-numeric: tabular-nums; }
 .cvx-sub { display: block; font-size: 12px; color: #4b5563; margin-top: 2px; font-weight: 400; }
 .cvx-clip { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cvx-sr { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+.cvx-sr { position: absolute !important; inset-block-start: 0; inset-inline-start: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
 .cvx-col { display: flex; flex-direction: column; gap: 12px; }
 .cvx-indent { margin-inline-start: 44px; }
 .cvx-full { grid-column: 1 / -1; }

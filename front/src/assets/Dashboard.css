@@ -619,3 +619,20 @@
     gap: 16px;
     padding-inline: 16px;
 }
+/* Below 1280px the header cannot hold title, search box, the whole badge and the clock on one
+   line: the search becomes an icon (GlobalSearch.css) and the badge keeps the asset count, with
+   the plan in its tooltip. A long title ends in an ellipsis instead of running under the rest. */
+.header-left, .header-left > div { min-width: 0; }
+.header-left .page-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-right { flex-shrink: 0; }
+@media (max-width: 1279px) {
+    .license-badge-plan { display: none !important; }
+}
+/* Below 1100px the clock keeps the time only; if the header still does not fit, it wraps onto a
+   second line rather than drawing its parts over each other. */
+@media (max-width: 1099px) {
+    .current-date { display: none; }
+}
+.dashboard-header { flex-wrap: wrap; row-gap: 12px; }
+.header-center { flex: 1 0 auto; }
+.header-right { margin-inline-start: auto; }

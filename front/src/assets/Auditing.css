@@ -9,11 +9,21 @@
 }
 
 /* Header */
+/* The new-audit button in the middle, "Clear history" at the end; stacked on a phone, where the
+   end button used to be drawn over the middle one. */
 .auditing-header {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
+    gap: 12px;
     margin-bottom: 20px;
+}
+.auditing-header .btn-auditing-primary { grid-column: 2; }
+.auditing-header .auditing-clear { grid-column: 3; justify-self: end; }
+@media (max-width: 700px) {
+    .auditing-header { grid-template-columns: 1fr; justify-items: center; }
+    .auditing-header .btn-auditing-primary,
+    .auditing-header .auditing-clear { grid-column: 1; justify-self: center; }
 }
 
 .btn-auditing-primary {
